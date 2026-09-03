@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
@@ -48,7 +49,7 @@ class MessageSquashServiceTest {
             val fixture = Fixture()
             val service = fixture.service()
 
-            val updated = service.squash(
+            val updated = service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.third.id, fixture.first.id),
                 strategy = strategy,
@@ -94,7 +95,7 @@ class MessageSquashServiceTest {
         val service = fixture.service()
 
         assertFailsWith<IllegalStateException> {
-            service.squash(
+            service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
                 strategy = SquashType.SUMMARIZE,
@@ -112,7 +113,7 @@ class MessageSquashServiceTest {
         val fixture = Fixture(commitConflict = true)
 
         assertFailsWith<IllegalStateException> {
-            fixture.service().squash(
+            fixture.service().compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
                 strategy = SquashType.CONCATENATE,
@@ -127,7 +128,7 @@ class MessageSquashServiceTest {
     fun `repeating a committed request does not create duplicate state`() = runBlocking {
         val fixture = Fixture()
         val service = fixture.service()
-        service.squash(
+        service.compactRuntimeHistory(
             conversationId = fixture.conversation.id,
             messageIds = listOf(fixture.first.id, fixture.third.id),
             strategy = SquashType.CONCATENATE,
@@ -135,7 +136,7 @@ class MessageSquashServiceTest {
         val countsAfterFirst = fixture.storageCounts()
 
         assertFailsWith<IllegalArgumentException> {
-            service.squash(
+            service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
                 strategy = SquashType.CONCATENATE,
@@ -185,7 +186,10 @@ class MessageSquashServiceTest {
         val conversation = Conversation(
             id = initialThread.conversationId,
             projectId = Project.Id("project"),
-            agentDefinitionId = AgentDefinition.Id("agent"),
+            participants = setOf(
+                Conversation.Participant.User(User.Id("user")),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+            ),
             displayName = "Test",
             currentThread = initialThread.id,
             createdAt = Clock.System.now(),
@@ -360,7 +364,7 @@ private class InMemoryConversationRepository(
         values.computeIfPresent(id) { _, conversation -> conversation.copy(currentThread = threadId) }
     }
     override suspend fun updateDisplayName(id: Conversation.Id, displayName: String) = Unit
-    override suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: AgentDefinition.Id) = Unit
+    override suspend fun updateParticipants(id: Conversation.Id, participants: Set<Conversation.Participant>) = Unit
     override suspend fun touch(id: Conversation.Id) = Unit
 }
 

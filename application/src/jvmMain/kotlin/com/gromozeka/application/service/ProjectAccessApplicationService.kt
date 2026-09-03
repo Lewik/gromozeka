@@ -1,11 +1,13 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.ProjectAccessDeniedException
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional
 class ProjectAccessApplicationService(
     private val projectService: ProjectDomainService,
     private val membershipRepository: ProjectMembershipRepository,
+    private val conversationRepository: ConversationRepository,
     private val identityRepository: IdentityRepository,
     private val securityAuditRecorder: SecurityAuditRecorder,
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
@@ -223,6 +226,20 @@ class ProjectAccessApplicationService(
         ) {
             throw IllegalStateException("A project must have at least one owner")
         }
+        val participant = Conversation.Participant.User(userId)
+        val affectedConversations = conversationRepository.findByProject(projectId)
+            .filter { participant in it.participants }
+        check(affectedConversations.none { conversation ->
+            conversation.participants.count { it is Conversation.Participant.User } == 1
+        }) {
+            "Cannot remove the last user participant from a conversation"
+        }
+        affectedConversations.forEach { conversation ->
+            conversationRepository.updateParticipants(
+                conversation.id,
+                conversation.participants - participant,
+            )
+        }
         val removed = membershipRepository.delete(projectId, userId)
         if (removed) {
             securityAuditRecorder.record(
@@ -244,6 +261,7 @@ class ProjectAccessApplicationService(
                 DeclarativeStateKey.agents,
                 DeclarativeStateKey.prompts,
                 DeclarativeStateKey.workers,
+                DeclarativeStateKey.conversationUnreadState(userId),
             )
         }
         return removed

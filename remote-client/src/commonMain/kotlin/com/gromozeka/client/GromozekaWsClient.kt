@@ -13,6 +13,7 @@ import com.gromozeka.remote.protocol.ClientRequest
 import com.gromozeka.remote.protocol.ClientSessionId
 import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
 import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
+import com.gromozeka.remote.protocol.ConversationHistoryChangedEvent
 import com.gromozeka.remote.protocol.ConversationReplayCompletedEvent
 import com.gromozeka.remote.protocol.ConversationRuntimeStatePayload
 import com.gromozeka.remote.protocol.ConversationRuntimeStateQuery
@@ -329,6 +330,15 @@ internal class GromozekaWsClient(
                     is ConversationExecutionCompletedEvent -> emit(
                         ConversationRuntimeEvent.ExecutionCompleted(
                             conversationId = event.conversationId,
+                            shouldNotifyUser = event.shouldNotifyUser,
+                            cursorSequence = event.cursorSequence,
+                        )
+                    )
+                    is ConversationHistoryChangedEvent -> emit(
+                        ConversationRuntimeEvent.HistoryChanged(
+                            conversationId = event.conversationId,
+                            taskId = event.taskId,
+                            kind = event.kind,
                             cursorSequence = event.cursorSequence,
                         )
                     )
@@ -361,6 +371,7 @@ internal class GromozekaWsClient(
     private fun ServerPayload.cursorSequenceOrNull(): Long? =
         when (this) {
             is MessageUpsertedEvent -> cursorSequence
+            is ConversationHistoryChangedEvent -> cursorSequence
             is ConversationExecutionCompletedEvent -> cursorSequence
             is ConversationExecutionFailedEvent -> cursorSequence
             else -> null
@@ -665,6 +676,7 @@ internal class GromozekaWsClient(
                 when (val payload = envelope.payload) {
                     is ServerResponse -> registryMutex.withLock { pending.remove(envelope.id) }?.complete(payload)
                     is MessageUpsertedEvent -> routeConversationEvent(payload.subscriptionId, payload)
+                    is ConversationHistoryChangedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationReplayCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionFailedEvent -> routeConversationEvent(payload.subscriptionId, payload)

@@ -10,17 +10,18 @@ import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SettingsResponse
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 internal class RemoteSettingsService(
     private val client: GromozekaWsClient,
     private val scope: CoroutineScope,
     override val homeDirectory: String,
+    private val persistToServer: Boolean,
 ) : SettingsService {
     private val _settingsFlow = MutableStateFlow(Settings())
     private var syncJob: Job? = null
@@ -53,6 +54,7 @@ internal class RemoteSettingsService(
 
     override fun saveSettings(settings: Settings) {
         _settingsFlow.value = settings
+        if (!persistToServer) return
         scope.launch {
             client.requestTyped<SaveSettingsRequest, SavedResponse>(SaveSettingsRequest(settings))
         }
@@ -63,6 +65,7 @@ internal class RemoteSettingsService(
     }
 
     override fun reloadSettings() {
+        if (!persistToServer) return
         scope.launch { refreshFromServer() }
     }
 }

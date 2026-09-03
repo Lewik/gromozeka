@@ -684,7 +684,7 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(second))
         val secondWorker = worker("worker-2")
         val claimedSecond = assertNotNull(coordinator.claimAsEligibleWorker(second, secondWorker))
-        val stopInstruction = claimedSecond.requireUserTurn().userMessage.instructions
+        val stopInstruction = claimedSecond.requireAgentInvocation().userMessage.instructions
             .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
             .single()
 
@@ -714,7 +714,7 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(third))
         val claimedThird = assertNotNull(coordinator.claimAsEligibleWorker(third, worker("worker-3")))
         assertTrue(
-            claimedThird.requireUserTurn().userMessage.instructions
+            claimedThird.requireAgentInvocation().userMessage.instructions
                 .none { it is Conversation.Message.Instruction.PreviousTurnTerminated }
         )
     }
@@ -748,14 +748,14 @@ class InMemoryConversationRuntimeStoresTest {
 
         val cancelled = task("message-2", QueuedMessagePlacement.END_OF_TURN)
         assertTrue(coordinator.submit(cancelled))
-        assertTrue(coordinator.cancelByMessageId(conversationId, cancelled.requireUserTurn().userMessage.id))
+        assertTrue(coordinator.cancelByMessageId(conversationId, cancelled.requireAgentInvocation().userMessage.id))
 
         val replacement = task("message-3", QueuedMessagePlacement.END_OF_TURN)
         assertTrue(coordinator.submit(replacement))
         val claimedReplacement = assertNotNull(
             coordinator.claimAsEligibleWorker(replacement, worker("worker-2"))
         )
-        val stopInstruction = claimedReplacement.requireUserTurn().userMessage.instructions
+        val stopInstruction = claimedReplacement.requireAgentInvocation().userMessage.instructions
             .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
             .single()
 
@@ -809,7 +809,7 @@ class InMemoryConversationRuntimeStoresTest {
         val claimedSteering = assertNotNull(
             coordinator.claimAsEligibleWorker(steering, worker("resumed-worker"))
         )
-        val stopInstruction = claimedSteering.requireUserTurn().userMessage.instructions
+        val stopInstruction = claimedSteering.requireAgentInvocation().userMessage.instructions
             .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
             .single()
         assertEquals(active.turnId.value, stopInstruction.turnId)
@@ -865,7 +865,7 @@ class InMemoryConversationRuntimeStoresTest {
         val claimedSteering = assertNotNull(
             coordinator.claimAsEligibleWorker(steering, worker("resumed-worker"))
         )
-        val interruptInstruction = claimedSteering.requireUserTurn().userMessage.instructions
+        val interruptInstruction = claimedSteering.requireAgentInvocation().userMessage.instructions
             .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
             .single()
         assertEquals(active.turnId.value, interruptInstruction.turnId)
@@ -1162,7 +1162,7 @@ class InMemoryConversationRuntimeStoresTest {
         return ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(messageId),
             conversationId = conversationId,
-            payload = ConversationRuntimeTask.Payload.UserTurn(
+            payload = ConversationRuntimeTask.Payload.AgentInvocation(
                 userMessage = message,
                 agentDefinitionId = agentDefinitionId,
             ),

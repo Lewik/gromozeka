@@ -1,6 +1,5 @@
 package com.gromozeka.domain.presentation.desktop.component
 
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.Project
@@ -14,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
  * ## UI Layout (Conversation Tab)
  * ```
  * ┌─────────────────────────────────────────────────────────────────┐
- * │ Tab Header: [Project Name] | Agent: [Name] | 1.2K               │
+ * │ Tab Header: [Project Name] | 1.2K                               │
  * ├─────────────────────────────────────────────────────────────────┤
  * │                                                                 │ ↑
  * │  ┌──────────────────────────────────────────────────────────┐  │ │
@@ -152,8 +151,7 @@ interface TabComponentVM {
     fun updateUserInput(input: String)
     
     /**
-     * Send user message to AI.
-     * This is a TRANSACTIONAL operation - saves user message AND streams AI response atomically.
+     * Send user message to the conversation.
      *
      * Message sending flow:
      * 1. Collect selected message instructions from [activeMessageInstructionIds]
@@ -192,15 +190,6 @@ interface TabComponentVM {
      * @param controlIndex index of control to activate in group
      */
     fun selectMessageInstruction(group: MessageInstructionGroup, controlIndex: Int)
-    
-    // Actions - Agent Management
-    /**
-     * Change agent for this conversation.
-     * NOT TRANSACTIONAL - only updates UI state, doesn't save to repository.
-     *
-     * @param agent new agent to handle this conversation
-     */
-    fun updateAgent(agent: AgentDefinition)
     
     // Actions - Edit Mode & Selection
     /**
@@ -369,7 +358,6 @@ interface TabComponentVM {
      * @property isWaitingForResponse whether AI is currently responding
      * @property tabId stable tab identifier for MCP
      * @property parentTabId ID of tab that spawned this tab (null if user-created)
-     * @property agent agent handling this conversation
      * @property editMode whether bulk editing UI is visible
      * @property selectedMessageIds IDs of messages selected for bulk operations
      * @property collapsedMessageIds IDs of messages with collapsed thinking blocks
@@ -384,7 +372,6 @@ interface TabComponentVM {
         val isWaitingForResponse: Boolean,
         val tabId: String,
         val parentTabId: String?,
-        val agent: AgentDefinition,
         val editMode: Boolean,
         val selectedMessageIds: Set<Conversation.Message.Id>,
         val collapsedMessageIds: Set<Conversation.Message.Id>,

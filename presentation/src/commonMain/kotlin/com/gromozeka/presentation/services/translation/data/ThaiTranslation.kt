@@ -255,7 +255,7 @@ data class ThaiTranslation(
         pauseButton = "หยุดชั่วคราว",
         resumeButton = "ทำต่อ",
         stopButton = "หยุด",
-        userTurnTask = "รอบของผู้ใช้",
+        agentInvocationTask = "รอบของผู้ใช้",
         llmCallTask = "การเรียก LLM",
         toolExecutionTask = "การทำงานของเครื่องมือ",
         toolResultProcessingTask = "ประมวลผลผลลัพธ์เครื่องมือ",

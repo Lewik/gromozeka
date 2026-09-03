@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -25,6 +26,7 @@ class SuggestedRepliesGenerationService(
         conversation: Conversation,
         messages: List<Conversation.Message>,
         sourceMessage: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id,
         runtimeSelection: AiRuntimeSelection,
         actorUserId: User.Id?,
         usageId: String,
@@ -53,7 +55,7 @@ class SuggestedRepliesGenerationService(
                         put("conversationId", conversation.id.value)
                         put("threadId", conversation.currentThread.value)
                         put("projectId", conversation.projectId.value)
-                        put("agentDefinitionId", conversation.agentDefinitionId.value)
+                        put("agentDefinitionId", agentDefinitionId.value)
                         put("targetMessageId", sourceMessage.id.value)
                         put("suggestedRepliesSourceMessageId", sourceMessage.id.value)
                         actorUserId?.let { put("userId", it.value) }

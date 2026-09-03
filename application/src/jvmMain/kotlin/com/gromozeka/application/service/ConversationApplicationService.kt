@@ -1,23 +1,25 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.repository.ConversationRepository
+import com.gromozeka.domain.repository.MessageRepository
+import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.DeclarativeStateChangePublisher
 import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
+import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
-import com.gromozeka.domain.repository.MessageRepository
-import com.gromozeka.domain.repository.ThreadMessageRepository
-import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
@@ -46,14 +48,16 @@ class ConversationApplicationService(
     private val messageRepo: MessageRepository,
     private val threadMessageRepo: ThreadMessageRepository,
     private val projectService: ProjectDomainService,
+    private val projectAccessService: ProjectAccessService,
     private val agentService: AgentDomainService,
     private val toolCallPairingService: ToolCallPairingService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
+    private val conversationUnreadStateService: ConversationUnreadStateApplicationService,
     private val artifactService: ConversationArtifactApplicationService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val settingsProvider: SettingsProvider,
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
-) : ConversationDomainService {
+) : ConversationDomainService, ConversationRuntimeMessageAppender {
     private val log = KLoggers.logger(this)
 
     /**
@@ -61,19 +65,19 @@ class ConversationApplicationService(
      *
      * Validates the project, then creates a conversation with an empty initial thread.
      *
+     * @param participants users and agents initially connected to the conversation
      * @param displayName optional conversation title (empty uses auto-generated name)
-     * @param agentDefinitionId agent definition to use for this conversation
      * @return created conversation with new thread
      */
     @Transactional
     override suspend fun create(
         projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
         displayName: String,
-        agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation {
         val project = projectService.findById(projectId)
             ?: error("Project not found: ${projectId.value}")
-        requireAgentAvailableToProject(agentDefinitionId, project.id)
+        validateParticipants(project.id, participants)
         val now = Clock.System.now()
 
         val conversationId = Conversation.Id(uuid7())
@@ -89,7 +93,7 @@ class ConversationApplicationService(
         val conversation = Conversation(
             id = conversationId,
             projectId = project.id,
-            agentDefinitionId = agentDefinitionId,
+            participants = participants,
             displayName = displayName,
             currentThread = initialThread.id,
             createdAt = now,
@@ -123,14 +127,16 @@ class ConversationApplicationService(
         require(sourceMessage.role == Conversation.Message.Role.ASSISTANT) {
             "Suggested replies require an assistant source message"
         }
+        val sourceAgentId = (sourceMessage.author as? Conversation.Message.Author.Agent)?.agentDefinitionId
+            ?: error("Suggested reply source message has no agent author")
         val mode = settingsProvider.userProfile.suggestedRepliesSettings.mode
         require(mode != UserProfile.SuggestedRepliesSettings.Mode.DISABLED) {
             "Suggested replies are disabled"
         }
         val runtimeSelection = when (mode) {
             UserProfile.SuggestedRepliesSettings.Mode.INLINE -> {
-                val agent = agentService.findById(conversation.agentDefinitionId)
-                    ?: error("Agent not found: ${conversation.agentDefinitionId.value}")
+                val agent = agentService.findById(sourceAgentId)
+                    ?: error("Agent not found: ${sourceAgentId.value}")
                 agent.runtimeSelection
             }
 
@@ -143,6 +149,7 @@ class ConversationApplicationService(
             conversation = conversation,
             messages = messages.takeWhile { it.id != sourceMessageId } + sourceMessage,
             sourceMessage = sourceMessage,
+            agentDefinitionId = sourceAgentId,
             runtimeSelection = runtimeSelection,
             actorUserId = actorUserId,
             usageId = "suggested-replies:${sourceMessageId.value}:${uuid7()}",
@@ -180,6 +187,11 @@ class ConversationApplicationService(
         conversationTabLayoutService.removeConversation(id)
         conversationRepo.delete(id)
         publishConversationList(conversation)
+        publishUnreadState(
+            conversation.participants
+                .filterIsInstance<Conversation.Participant.User>()
+                .map { it.userId },
+        )
     }
 
     /**
@@ -200,14 +212,38 @@ class ConversationApplicationService(
     }
 
     @Transactional
-    override suspend fun updateAgentDefinition(
+    override suspend fun updateParticipants(
         conversationId: Conversation.Id,
-        agentDefinitionId: AgentDefinition.Id,
+        participants: Set<Conversation.Participant>,
     ): Conversation? {
         val conversation = conversationRepo.findById(conversationId) ?: return null
-        requireAgentAvailableToProject(agentDefinitionId, conversation.projectId)
-        conversationRepo.updateAgentDefinition(conversationId, agentDefinitionId)
+        validateParticipants(conversation.projectId, participants)
+        conversationRepo.updateParticipants(conversationId, participants)
+        val previousUserIds = conversation.participants
+            .filterIsInstance<Conversation.Participant.User>()
+            .mapTo(mutableSetOf()) { it.userId }
+        val updatedUserIds = participants
+            .filterIsInstance<Conversation.Participant.User>()
+            .mapTo(mutableSetOf()) { it.userId }
+        publishUnreadState(previousUserIds xor updatedUserIds)
         return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
+    }
+
+    private suspend fun validateParticipants(
+        projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
+    ) {
+        require(participants.any { it is Conversation.Participant.User }) {
+            "Conversation must have at least one user participant"
+        }
+        participants.forEach { participant ->
+            when (participant) {
+                is Conversation.Participant.User ->
+                    projectAccessService.requirePermission(participant.userId, projectId, ProjectPermission.READ)
+                is Conversation.Participant.Agent ->
+                    requireAgentAvailableToProject(participant.agentDefinitionId, projectId)
+            }
+        }
     }
 
     private suspend fun requireAgentAvailableToProject(
@@ -255,7 +291,7 @@ class ConversationApplicationService(
         val newConversation = Conversation(
             id = newConversationId,
             projectId = sourceConversation.projectId,
-            agentDefinitionId = sourceConversation.agentDefinitionId,
+            participants = sourceConversation.participants,
             displayName = sourceConversation.displayName + " (fork)",
             currentThread = newThread.id,
             createdAt = now,
@@ -265,12 +301,16 @@ class ConversationApplicationService(
         conversationRepo.create(newConversation)
         threadRepo.save(newThread)
         
+        val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
+        val sourceMessagesById = messageRepo.findByIds(sourceLinks.map { it.messageId }).associateBy { it.id }
         val sourceMessages = artifactService.cloneReferences(
             sourceConversationId = sourceConversation.id,
             targetConversation = newConversation,
-            messages = threadMessageRepo.getMessagesByThread(sourceConversation.currentThread),
+            messages = sourceLinks.map { link ->
+                sourceMessagesById[link.messageId]
+                    ?: error("Message ${link.messageId.value} disappeared while forking conversation")
+            },
         )
-        val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
         
         val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
         
@@ -313,7 +353,7 @@ class ConversationApplicationService(
      * @throws IllegalStateException if conversation doesn't exist
      */
     @Transactional
-    override suspend fun addMessage(
+    override suspend fun appendRuntimeMessage(
         conversationId: Conversation.Id,
         message: Conversation.Message
     ): Conversation? {
@@ -346,6 +386,7 @@ class ConversationApplicationService(
 
         threadRepo.updateTimestamp(currentThread.id, Clock.System.now())
         conversationRepo.touch(conversationId)
+        conversationUnreadStateService.recordMessage(conversation, message)
 
         log.debug("Appended message ${message.id} to thread ${currentThread.id} at position ${lastPosition + 1}")
 
@@ -376,6 +417,7 @@ class ConversationApplicationService(
             originalIds == other.originalIds &&
             replyTo == other.replyTo &&
             role == other.role &&
+            author == other.author &&
             content == other.content &&
             instructions == other.instructions &&
             providerMetadata == other.providerMetadata &&
@@ -410,7 +452,7 @@ class ConversationApplicationService(
      * @throws IllegalArgumentException if message not found in current thread
      */
     @Transactional
-    override suspend fun editMessage(
+    internal suspend fun editRuntimeHistory(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
         newContent: List<Conversation.Message.ContentItem>
@@ -433,6 +475,7 @@ class ConversationApplicationService(
             conversationId = conversationId,
             originalIds = listOf(messageId),
             role = targetMessage.role,
+            author = targetMessage.author,
             content = newContent,
             instructions = targetMessage.instructions,
             createdAt = Clock.System.now()
@@ -480,7 +523,7 @@ class ConversationApplicationService(
      * @throws IllegalStateException if conversation doesn't exist
      */
     @Transactional
-    override suspend fun deleteMessages(
+    internal suspend fun deleteRuntimeHistory(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>
     ): Conversation? {
@@ -565,4 +608,10 @@ class ConversationApplicationService(
     private fun publishConversationList(conversation: Conversation) {
         stateChanges.publish(DeclarativeStateKey.projectConversations(conversation.projectId))
     }
+
+    private fun publishUnreadState(userIds: Iterable<User.Id>) {
+        stateChanges.publish(*userIds.map(DeclarativeStateKey::conversationUnreadState).toTypedArray())
+    }
 }
+
+private infix fun <T> Set<T>.xor(other: Set<T>): Set<T> = (this - other) + (other - this)

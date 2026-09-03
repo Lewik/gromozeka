@@ -9,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +21,7 @@ fun CustomTabRow(
     isCompactLayout: Boolean = false,
     tabs: List<TabViewModel>,
     conversations: Map<Conversation.Id, Conversation>,
+    unreadConversationIds: Set<Conversation.Id>,
     hoveredTabIndex: Int,
     onTabSelect: (Int?) -> Unit,
     onTabHover: (Int) -> Unit,
@@ -125,9 +125,8 @@ fun CustomTabRow(
             // Session tabs with loading indicators and edit button (index 4+)
             tabs.forEachIndexed { index, tab ->
                 val isLoading = tab.isWaitingForResponse.collectAsState().value
-                val tabUiState = tab.uiState.collectAsState().value
                 val conversation = conversations[tab.conversationId]
-                val tabTitle = conversation?.effectiveDisplayName() ?: tabUiState.agent.name
+                val tabTitle = conversation?.effectiveDisplayName() ?: "Conversation"
                 val tabIndex = index + 4
 
                 Tab(
@@ -153,13 +152,18 @@ fun CustomTabRow(
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = when (val type = tabUiState.agent.type) {
-                                        is AgentDefinition.Type.Project -> Icons.Default.Folder
-                                        is AgentDefinition.Type.Global -> Icons.Default.Home
-                                    },
+                                    imageVector = Icons.Default.ChatBubbleOutline,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
+                                if (tab.conversationId in unreadConversationIds) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Badge(
+                                        modifier = Modifier.testTag(
+                                            UiTestTag.ConversationUnread(tab.conversationId.value).value
+                                        )
+                                    )
+                                }
                                 if (!isCompactLayout) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(tabTitle)

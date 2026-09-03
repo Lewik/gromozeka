@@ -1,5 +1,6 @@
 package com.gromozeka.client
 
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
@@ -7,12 +8,13 @@ import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.AiUsageReportService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
+import com.gromozeka.domain.service.ConversationUnreadStateService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.QuickTextActionService
@@ -35,7 +37,10 @@ class GromozekaRemoteServices(
     clientHomeDirectory: String,
     clientPlatform: RemoteClientPlatform,
     clientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
+    authenticatedUserId: User.Id,
+    authenticatedUserRole: User.Role,
 ) {
+    private val canManageRuntimeSettings = authenticatedUserRole == User.Role.OWNER
     private val initialClientSettings = (clientSettingsStore.load() ?: RemoteClientSettings()).let { loaded ->
         val persisted = loaded.copy(
             clientInstanceId = loaded.clientInstanceId ?: ClientInstanceId(uuid7()),
@@ -67,7 +72,12 @@ class GromozekaRemoteServices(
     val clientSettingsService: RemoteClientSettingsService =
         RemoteClientSettingsService(client, clientSettingsStore, initialClientSettings)
     val connectionState: StateFlow<RemoteConnectionState> = client.connectionState
-    private val remoteSettingsService = RemoteSettingsService(client, scope, clientHomeDirectory)
+    private val remoteSettingsService = RemoteSettingsService(
+        client = client,
+        scope = scope,
+        homeDirectory = clientHomeDirectory,
+        persistToServer = canManageRuntimeSettings,
+    )
     private val remoteAiConfigurationService = RemoteAiConfigurationService(client, scope)
     private val remoteRuntimeCatalogTemplateService = RemoteRuntimeCatalogTemplateService(client)
     private val remoteAgentService = RemoteAgentService(client)
@@ -86,12 +96,14 @@ class GromozekaRemoteServices(
     val workspaceManagementService: WorkspaceManagementService = remoteWorkspaceService
     val workerCatalogService: WorkerCatalogService = RemoteWorkerCatalogService(client)
     val conversationService: ConversationDomainService = RemoteConversationService(client)
+    val conversationHistoryService: ConversationHistoryService = RemoteConversationHistoryService(client)
     val conversationTabLayoutService: ConversationTabLayoutService = RemoteConversationTabLayoutService(client)
+    val conversationUnreadStateService: ConversationUnreadStateService =
+        RemoteConversationUnreadStateService(client, authenticatedUserId)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
     val conversationSearchService: ConversationSearchService = RemoteConversationSearchService(client)
     val conversationTokenStatsService: ConversationTokenStatsService = RemoteConversationTokenStatsService(client)
     val aiUsageReportService: AiUsageReportService = RemoteAiUsageReportService(client)
-    val messageSquashService: MessageSquashService = RemoteMessageSquashService(client)
     val quickTextActionService: QuickTextActionService = RemoteQuickTextActionService(client)
     val audioTranscriptionService: RemoteAudioTranscriptionService = RemoteAudioTranscriptionService(client)
     val artifactTransferService: ArtifactTransferService = RemoteArtifactTransferService(client)
@@ -119,10 +131,14 @@ class GromozekaRemoteServices(
         RemoteProjectMembershipService(client)
 
     suspend fun initialize() {
-        remoteSettingsService.refreshFromServer()
+        if (canManageRuntimeSettings) {
+            remoteSettingsService.refreshFromServer()
+        }
         remoteAiConfigurationService.reload()
         remoteRuntimeCatalogTemplateService.reload()
-        remoteSettingsService.startSync()
+        if (canManageRuntimeSettings) {
+            remoteSettingsService.startSync()
+        }
         remoteAiConfigurationService.startSync()
     }
 

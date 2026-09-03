@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationSearchPage
 import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.ConversationTabLayout
+import com.gromozeka.domain.model.ConversationUnreadState
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.NamedSecret
 import com.gromozeka.domain.model.PersonalAccessToken
@@ -48,6 +49,7 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -496,7 +498,7 @@ data class UpdateProjectLastUsedRequest(
 @SerialName("create_conversation")
 data class CreateConversationRequest(
     val projectId: Project.Id,
-    val agentDefinitionId: AgentDefinition.Id,
+    val participants: Set<Conversation.Participant>,
     val displayName: String = "",
 ) : ClientRequest
 
@@ -606,23 +608,26 @@ data class UpdateConversationDisplayNameRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("update_conversation_agent")
-data class UpdateConversationAgentRequest(
+@SerialName("update_conversation_participants")
+data class UpdateConversationParticipantsRequest(
     val conversationId: Conversation.Id,
-    val agentDefinitionId: AgentDefinition.Id,
+    val participants: Set<Conversation.Participant>,
+) : ClientRequest
+
+@Serializable
+@SerialName("get_conversation_unread_state")
+data object GetConversationUnreadStateRequest : ClientRequest
+
+@Serializable
+@SerialName("mark_conversation_read")
+data class MarkConversationReadRequest(
+    val conversationId: Conversation.Id,
 ) : ClientRequest
 
 @Serializable
 @SerialName("fork_conversation")
 data class ForkConversationRequest(
     val conversationId: Conversation.Id,
-) : ClientRequest
-
-@Serializable
-@SerialName("add_message")
-data class AddMessageRequest(
-    val conversationId: Conversation.Id,
-    val message: Conversation.Message,
 ) : ClientRequest
 
 @Serializable
@@ -653,6 +658,7 @@ data class GetAiUsageReportRequest(
 @Serializable
 @SerialName("edit_message")
 data class EditMessageRequest(
+    val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageId: Conversation.Message.Id,
     val newContent: List<Conversation.Message.ContentItem>,
@@ -661,6 +667,7 @@ data class EditMessageRequest(
 @Serializable
 @SerialName("delete_messages")
 data class DeleteMessagesRequest(
+    val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
 ) : ClientRequest
@@ -668,6 +675,7 @@ data class DeleteMessagesRequest(
 @Serializable
 @SerialName("compact_messages")
 data class CompactMessagesRequest(
+    val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
     val strategy: SquashType,
@@ -868,6 +876,7 @@ data object ConversationTabLayoutStateQuery : RemoteStateSyncQuery
 enum class RemoteDeclarativeStateResource {
     PROJECTS,
     PROJECT_CONVERSATIONS,
+    CONVERSATION_UNREAD_STATE,
     PROJECT_WORKSPACES,
     WORKSPACE_MOUNTS,
     AGENTS,
@@ -958,16 +967,23 @@ data class StopObserveConversationCommand(
 ) : ClientPayload
 
 @Serializable
-@SerialName("submit_message")
-data class SubmitMessageRequest(
+@SerialName("post_message")
+data class PostMessageRequest(
+    val conversationId: Conversation.Id,
+    val userMessage: Conversation.Message,
+) : ClientRequest
+
+@Serializable
+@SerialName("invoke_agent")
+data class InvokeAgentRequest(
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id,
 ) : ClientRequest
 
 @Serializable
-@SerialName("enqueue_message")
-data class EnqueueMessageRequest(
+@SerialName("enqueue_agent_invocation")
+data class EnqueueAgentInvocationRequest(
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id,
@@ -1390,6 +1406,12 @@ data class ConversationTabLayoutResponse(
 ) : ServerResponse
 
 @Serializable
+@SerialName("conversation_unread_state")
+data class ConversationUnreadStateResponse(
+    val state: ConversationUnreadState,
+) : ServerResponse
+
+@Serializable
 @SerialName("conversation_search_page")
 data class ConversationSearchPageResponse(
     val page: ConversationSearchPage,
@@ -1599,6 +1621,17 @@ data object StopTtsDirective : ClientPresentationDirective
 data class ConversationExecutionCompletedEvent(
     val subscriptionId: String,
     val conversationId: Conversation.Id,
+    val shouldNotifyUser: Boolean = true,
+    val cursorSequence: Long? = null,
+) : ServerPayload
+
+@Serializable
+@SerialName("conversation_history_changed")
+data class ConversationHistoryChangedEvent(
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
+    val taskId: ConversationRuntimeTask.Id,
+    val kind: ConversationHistoryMutationKind,
     val cursorSequence: Long? = null,
 ) : ServerPayload
 

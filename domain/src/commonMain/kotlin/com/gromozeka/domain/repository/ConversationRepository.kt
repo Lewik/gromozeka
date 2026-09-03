@@ -6,8 +6,7 @@ import com.gromozeka.domain.model.Project
 /**
  * Repository for managing conversation entities.
  *
- * Conversation is the top-level aggregate containing threads, messages, and metadata.
- * Each conversation belongs to a project and tracks AI provider/model configuration.
+ * Conversation is the top-level aggregate containing participants, threads, messages, and metadata.
  *
  * @see Conversation for domain model
  */
@@ -80,18 +79,7 @@ interface ConversationRepository {
      */
     suspend fun updateDisplayName(id: Conversation.Id, displayName: String)
 
-    /**
-     * Updates conversation's agent definition.
-     *
-     * This operation is NOT transactional - caller must handle transaction boundaries.
-     *
-     * Side effect: Updates conversation.updatedAt to current timestamp.
-     *
-     * @param id conversation to update
-     * @param agentDefinitionId new agent definition ID
-     * @throws IllegalStateException if conversation doesn't exist
-     */
-    suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id)
+    suspend fun updateParticipants(id: Conversation.Id, participants: Set<Conversation.Participant>)
 
     suspend fun touch(id: Conversation.Id)
 

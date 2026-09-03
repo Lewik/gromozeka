@@ -7,6 +7,10 @@ import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
 import com.gromozeka.presentation.services.TurnCompletionNotificationService
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.presentation.ui.AgentMentionCandidate
+import com.gromozeka.presentation.ui.AgentMentionResolution
+import com.gromozeka.presentation.ui.buildAgentMentionCandidates
+import com.gromozeka.presentation.ui.resolveAgentMention
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.ArtifactLimits
@@ -19,19 +23,20 @@ import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationTokenStatsService
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.shared.uuid.uuid7
@@ -49,9 +54,11 @@ import kotlin.time.Clock
 class TabViewModel(
     val conversationId: Conversation.Id,
     val projectId: Project.Id,
+    private val currentUserAuthor: Conversation.Message.Author.User,
+    private val agentService: AgentDomainService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
-    private val messageSquashService: MessageSquashService,
+    private val conversationHistoryService: ConversationHistoryService,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
@@ -122,6 +129,20 @@ class TabViewModel(
 
     private val _allMessages = MutableStateFlow<List<Conversation.Message>>(emptyList())
     val allMessages: StateFlow<List<Conversation.Message>> = _allMessages.asStateFlow()
+
+    val agentMentionCandidates: StateFlow<List<AgentMentionCandidate>> = combine(
+        agentService.observeByProject(projectId),
+        conversationService.observeByProject(projectId),
+    ) { agents, conversations ->
+        val connectedAgentIds = conversations
+            .firstOrNull { it.id == conversationId }
+            ?.connectedAgentIds()
+            .orEmpty()
+        buildAgentMentionCandidates(agents, connectedAgentIds)
+    }.stateIn(scope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _messageSubmissionError = MutableStateFlow<String?>(null)
+    val messageSubmissionError: StateFlow<String?> = _messageSubmissionError.asStateFlow()
 
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
@@ -261,14 +282,16 @@ class TabViewModel(
                 _uiState.update { it.copy(isWaitingForResponse = true) }
                 upsertRuntimeMessage(event.message)
             }
+            is ConversationRuntimeEvent.HistoryChanged -> loadMessages()
             is ConversationRuntimeEvent.ExecutionCompleted -> {
                 finishRuntimeExecution()
-                if (runtimeReplayCompleted) {
+                if (runtimeReplayCompleted && event.shouldNotifyUser) {
                     turnCompletionNotificationService.notifyTurnCompleted()
                 }
             }
             is ConversationRuntimeEvent.ExecutionFailed -> {
                 log.error { "Conversation runtime failed: ${event.failureType ?: "unknown"} ${event.message}" }
+                _messageSubmissionError.value = event.message
                 finishRuntimeExecution()
             }
         }
@@ -416,6 +439,7 @@ class TabViewModel(
     }
 
     fun updateUserInput(input: String) {
+        _messageSubmissionError.value = null
         val claimedInput = claimedUserInput
         if (claimedInput != null) {
             if (input.isBlank() || input.trimEnd() == claimedInput.trimEnd()) {
@@ -450,25 +474,12 @@ class TabViewModel(
         if (appendedText.isEmpty()) return
 
         claimedUserInput = null
+        _messageSubmissionError.value = null
         _uiState.update { currentState ->
             currentState.copy(
                 userInput = appendComposerText(currentState.userInput, appendedText),
                 composerMessageInputContext = messageInputContext ?: currentState.composerMessageInputContext,
             )
-        }
-    }
-
-    fun updateAgent(agent: AgentDefinition) {
-        scope.launch {
-            val updatedConversation = conversationService.updateAgentDefinition(conversationId, agent.id)
-                ?: error("Conversation not found: ${conversationId.value}")
-            _uiState.update { currentState ->
-                currentState.copy(agent = agent)
-            }
-            log.info {
-                "Updated conversation agent: conversation=${conversationId.value} " +
-                    "agent=${updatedConversation.agentDefinitionId.value}"
-            }
         }
     }
 
@@ -481,12 +492,41 @@ class TabViewModel(
             return
         }
 
+        val agentDefinitionId = when (val resolution = resolveCurrentAgentMention(message)) {
+            AgentMentionResolution.None -> null
+            is AgentMentionResolution.Target -> resolution.candidate.agentDefinitionId
+            is AgentMentionResolution.Invalid -> {
+                _messageSubmissionError.value = resolution.message
+                return
+            }
+        }
+
         val queuedMessage = createPendingUserMessage(
             message = message,
             additionalInstructions = additionalInstructions,
             messageInputContext = messageInputContext,
+            agentDefinitionId = agentDefinitionId,
         )
+        _messageSubmissionError.value = null
         sendPendingUserMessage(queuedMessage)
+    }
+
+    suspend fun invokeAgent(
+        message: String,
+        additionalInstructions: List<Conversation.Message.Instruction>,
+        agentDefinitionId: AgentDefinition.Id,
+        messageInputContext: MessageInputContext? = null,
+    ) {
+        if (message.isBlank()) return
+
+        _messageSubmissionError.value = null
+        val pendingMessage = createPendingUserMessage(
+            message = message,
+            additionalInstructions = additionalInstructions,
+            messageInputContext = messageInputContext,
+            agentDefinitionId = agentDefinitionId,
+        )
+        sendPendingUserMessage(pendingMessage)
     }
 
     suspend fun submitUserInputToSession() {
@@ -530,16 +570,26 @@ class TabViewModel(
         sendPendingMessageToSession(queuedMessage)
     }
 
-    private fun claimUserInput(): PendingUserMessage? {
+    private suspend fun claimUserInput(): PendingUserMessage? {
         while (true) {
             val currentState = _uiState.value
             if (currentState.userInput.isBlank() && currentState.composerArtifacts.isEmpty()) return null
+
+            val agentDefinitionId = when (val resolution = resolveCurrentAgentMention(currentState.userInput)) {
+                AgentMentionResolution.None -> null
+                is AgentMentionResolution.Target -> resolution.candidate.agentDefinitionId
+                is AgentMentionResolution.Invalid -> {
+                    _messageSubmissionError.value = resolution.message
+                    return null
+                }
+            }
 
             val pendingMessage = createPendingUserMessage(
                 message = currentState.userInput,
                 additionalInstructions = emptyList(),
                 messageInputContext = currentState.composerMessageInputContext ?: textMessageInputContext,
                 currentState = currentState,
+                agentDefinitionId = agentDefinitionId,
             )
             val clearedState = currentState.copy(
                 userInput = "",
@@ -549,9 +599,24 @@ class TabViewModel(
             )
             if (_uiState.compareAndSet(currentState, clearedState)) {
                 claimedUserInput = currentState.userInput
+                _messageSubmissionError.value = null
                 return pendingMessage
             }
         }
+    }
+
+    private suspend fun resolveCurrentAgentMention(message: String): AgentMentionResolution = try {
+        val agents = agentService.findByProject(projectId)
+        val conversation = conversationService.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+        resolveAgentMention(
+            message = message,
+            candidates = buildAgentMentionCandidates(agents, conversation.connectedAgentIds()),
+        )
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        AgentMentionResolution.Invalid(error.message ?: "Failed to resolve agent mention")
     }
 
     private fun restoreComposerMessage(pendingMessage: PendingUserMessage) {
@@ -607,7 +672,8 @@ class TabViewModel(
 
     fun sendPendingMessageInCurrentTurn(messageId: String) {
         val pendingMessage = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
-        if (pendingMessage.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+        val agentDefinitionId = pendingMessage.agentDefinitionId
+        if (agentDefinitionId == null || pendingMessage.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
             return
         }
 
@@ -619,10 +685,10 @@ class TabViewModel(
         }
         scope.launch {
             val runtimeAccepted = runCatching {
-                conversationRuntimeService.enqueueMessage(
+                conversationRuntimeService.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = steeredMessage.userMessage,
-                    agentDefinitionId = steeredMessage.agentDefinitionId,
+                    agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
                 )
             }.onFailure { error ->
@@ -651,6 +717,7 @@ class TabViewModel(
         additionalInstructions: List<Conversation.Message.Instruction>,
         messageInputContext: MessageInputContext? = null,
         currentState: UIState.Tab = _uiState.value,
+        agentDefinitionId: AgentDefinition.Id? = null,
     ): PendingUserMessage {
         val activeInstructions = messageInstructionGroups.mapNotNull { group ->
             val activeControlIndex = group.controls.indexOfFirst { control ->
@@ -697,6 +764,11 @@ class TabViewModel(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
+            author = currentUserAuthor.takeUnless {
+                instructions.any { instruction ->
+                    instruction is Conversation.Message.Instruction.Source.Agent
+                }
+            },
             content = content,
             createdAt = Clock.System.now(),
             instructions = instructions
@@ -704,7 +776,7 @@ class TabViewModel(
 
         return PendingUserMessage(
             userMessage = userMessage,
-            agentDefinitionId = currentState.agent.id,
+            agentDefinitionId = agentDefinitionId,
             placement = QueuedMessagePlacement.END_OF_TURN,
         )
     }
@@ -739,11 +811,7 @@ class TabViewModel(
         currentRequestJob = scope.launch {
             try {
                 log.debug { "Submitting message to conversation $conversationId" }
-                val accepted = conversationRuntimeService.submitMessage(
-                    conversationId,
-                    userMessage,
-                    pendingMessage.agentDefinitionId,
-                )
+                val accepted = submitPendingMessage(pendingMessage)
                 if (!accepted) {
                     _allMessages.update { messages ->
                         messages.filterNot { it.id == userMessage.id }
@@ -767,18 +835,31 @@ class TabViewModel(
         }
     }
 
-    private suspend fun submitPendingMessage(pendingMessage: PendingUserMessage): Boolean =
-        runCatching {
-            conversationRuntimeService.submitMessage(
+    private suspend fun submitPendingMessage(pendingMessage: PendingUserMessage): Boolean = try {
+        val accepted =
+            pendingMessage.agentDefinitionId?.let { agentDefinitionId ->
+                conversationRuntimeService.invokeAgent(
+                    conversationId = conversationId,
+                    userMessage = pendingMessage.userMessage,
+                    agentDefinitionId = agentDefinitionId,
+                )
+            } ?: conversationRuntimeService.postMessage(
                 conversationId = conversationId,
                 userMessage = pendingMessage.userMessage,
-                agentDefinitionId = pendingMessage.agentDefinitionId,
             )
-        }.onFailure { error ->
-            log.warn(error) {
-                "Runtime queue request failed for conversation $conversationId: ${error.message}"
-            }
-        }.getOrDefault(false)
+        if (!accepted) {
+            _messageSubmissionError.value = "Conversation runtime rejected the message"
+        }
+        accepted
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        _messageSubmissionError.value = error.message ?: "Failed to submit message"
+        log.warn(error) {
+            "Runtime queue request failed for conversation $conversationId: ${error.message}"
+        }
+        false
+    }
 
     private fun showPendingMessage(pendingMessage: PendingUserMessage) {
         _pendingMessages.update { messages ->
@@ -806,6 +887,10 @@ class TabViewModel(
             placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
         )
     }
+
+    private fun Conversation.connectedAgentIds(): Set<AgentDefinition.Id> =
+        participants.filterIsInstance<Conversation.Participant.Agent>()
+            .mapTo(mutableSetOf(), Conversation.Participant.Agent::agentDefinitionId)
 
     fun notifyMemoryActionItemsMayHaveChanged() {
         _memoryActionItemsRefreshKey.update { it + 1 }
@@ -1243,7 +1328,7 @@ class TabViewModel(
                 ?: error("Message $editingId is no longer available")
             val newContent = message.withEditedText(newText)
 
-            conversationService.editMessage(conversationId, editingId, newContent)
+            conversationHistoryService.editMessage(conversationId, editingId, newContent)
 
             cancelEditMessage()
             clearMessageSelection()
@@ -1257,7 +1342,7 @@ class TabViewModel(
 
     suspend fun deleteMessage(messageId: Conversation.Message.Id) {
         try {
-            conversationService.deleteMessages(conversationId, listOf(messageId))
+            conversationHistoryService.deleteMessages(conversationId, listOf(messageId))
             loadMessages()
             log.debug { "Message $messageId deleted successfully" }
         } catch (e: Exception) {
@@ -1292,7 +1377,7 @@ class TabViewModel(
 
         _messageSquashState.value = MessageSquashUiState.Running(squashType)
         try {
-            messageSquashService.squash(conversationId, selectedIds.toList(), squashType)
+            conversationHistoryService.compactMessages(conversationId, selectedIds.toList(), squashType)
             clearMessageSelection()
             loadMessages()
             val succeededState = MessageSquashUiState.Succeeded(squashType)
@@ -1322,7 +1407,7 @@ class TabViewModel(
         }
 
         try {
-            conversationService.deleteMessages(
+            conversationHistoryService.deleteMessages(
                 conversationId,
                 selectedIds.toList()
             )
@@ -1365,7 +1450,7 @@ private fun UIState.Tab.withSelectedMessageInstruction(
 
 data class PendingUserMessage(
     val userMessage: Conversation.Message,
-    val agentDefinitionId: AgentDefinition.Id,
+    val agentDefinitionId: AgentDefinition.Id?,
     val placement: QueuedMessagePlacement,
 ) {
     val id: String get() = userMessage.id.value
@@ -1393,10 +1478,18 @@ data class PendingUserMessage(
 }
 
 private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMessage? =
-    userTurnOrNull()?.let { userTurn ->
-        PendingUserMessage(
-            userMessage = userTurn.userMessage,
-            agentDefinitionId = userTurn.agentDefinitionId,
+    when (val taskPayload = payload) {
+        is ConversationRuntimeTask.Payload.AgentInvocation -> PendingUserMessage(
+            userMessage = taskPayload.userMessage,
+            agentDefinitionId = taskPayload.agentDefinitionId,
             placement = placement,
         )
+
+        is ConversationRuntimeTask.Payload.PostMessage -> PendingUserMessage(
+            userMessage = taskPayload.userMessage,
+            agentDefinitionId = null,
+            placement = placement,
+        )
+
+        else -> null
     }

@@ -14,7 +14,7 @@ class ConversationRuntimeTaskTest {
     @Test
     fun `task rejects requirements that cannot execute its payload`() {
         assertFailsWith<IllegalArgumentException> {
-            userTurnTask(
+            agentInvocationTask(
                 requirements = ConversationRuntimeTaskRequirements(
                     capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
                     target = ConversationRuntimeTaskTarget.Server,
@@ -24,11 +24,35 @@ class ConversationRuntimeTaskTest {
     }
 
     @Test
-    fun `user turn task rejects a message from another conversation`() {
+    fun `plain message post only requires serialized conversation access`() {
+        val message = Conversation.Message(
+            id = Conversation.Message.Id("message-post"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Test")),
+            createdAt = Clock.System.now(),
+        )
+
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(message.id.value),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.PostMessage(message),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "test:${message.id.value}",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                target = ConversationRuntimeTaskTarget.Server,
+            ),
+            createdAt = Clock.System.now(),
+        )
+    }
+
+    @Test
+    fun `agent invocation rejects a message from another conversation`() {
         assertFailsWith<IllegalArgumentException> {
-            userTurnTask(
+            agentInvocationTask(
                 messageConversationId = Conversation.Id("conversation-2"),
-                requirements = userTurnRequirements(),
+                requirements = agentInvocationRequirements(),
             )
         }
     }
@@ -72,7 +96,7 @@ class ConversationRuntimeTaskTest {
         }
     }
 
-    private fun userTurnTask(
+    private fun agentInvocationTask(
         messageConversationId: Conversation.Id = conversationId,
         requirements: ConversationRuntimeTaskRequirements,
     ): ConversationRuntimeTask {
@@ -86,7 +110,7 @@ class ConversationRuntimeTaskTest {
         return ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(message.id.value),
             conversationId = conversationId,
-            payload = ConversationRuntimeTask.Payload.UserTurn(message, agentDefinitionId),
+            payload = ConversationRuntimeTask.Payload.AgentInvocation(message, agentDefinitionId),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "test:${message.id.value}",
             requirements = requirements,
@@ -94,7 +118,7 @@ class ConversationRuntimeTaskTest {
         )
     }
 
-    private fun userTurnRequirements(): ConversationRuntimeTaskRequirements =
+    private fun agentInvocationRequirements(): ConversationRuntimeTaskRequirements =
         ConversationRuntimeTaskRequirements(
             capabilities = setOf(
                 ConversationRuntimeCapability.CONVERSATION_TURN,

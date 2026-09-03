@@ -42,26 +42,32 @@ class ConversationRuntimeApplicationService(
 ) : ConversationRuntimeService, ConversationRuntimeIngressService {
     private val log = KLoggers.logger(this)
 
-    override suspend fun enqueueMessage(
+    override suspend fun enqueueAgentInvocation(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
-    ): Boolean = runtimeDispatcher.enqueueMessage(conversationId, userMessage, agentDefinitionId, placement)
+    ): Boolean {
+        requireConnectedAgent(conversationId, agentDefinitionId)
+        return runtimeDispatcher.enqueueAgentInvocation(conversationId, userMessage, agentDefinitionId, placement)
+    }
 
-    override suspend fun enqueueMessage(
-        actorUserId: User.Id,
+    override suspend fun enqueueAgentInvocation(
+        actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
-    ): Boolean = runtimeDispatcher.enqueueMessage(
-        conversationId = conversationId,
-        userMessage = userMessage,
-        agentDefinitionId = agentDefinitionId,
-        placement = placement,
-        actorUserId = actorUserId,
-    )
+    ): Boolean {
+        requireConnectedAgent(conversationId, agentDefinitionId)
+        return runtimeDispatcher.enqueueAgentInvocation(
+            conversationId = conversationId,
+            userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
+            agentDefinitionId = agentDefinitionId,
+            placement = placement,
+            actorUserId = actorUser.id,
+        )
+    }
 
     override suspend fun cancelQueuedMessage(
         conversationId: Conversation.Id,
@@ -83,23 +89,55 @@ class ConversationRuntimeApplicationService(
         monitorId: CommandMonitor.Id,
     ): Boolean = runtimeDispatcher.cancelCommandMonitor(conversationId, monitorId)
 
-    override suspend fun submitMessage(
+    override suspend fun postMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-    ): Boolean = runtimeDispatcher.submitMessage(conversationId, userMessage, agentDefinitionId)
+    ): Boolean = runtimeDispatcher.postMessage(conversationId, userMessage)
 
-    override suspend fun submitMessage(
-        actorUserId: User.Id,
+    override suspend fun postMessage(
+        actorUser: User,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+    ): Boolean = runtimeDispatcher.postMessage(
+        conversationId = conversationId,
+        userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
+        actorUserId = actorUser.id,
+    )
+
+    override suspend fun invokeAgent(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
-    ): Boolean = runtimeDispatcher.submitMessage(
-        conversationId = conversationId,
-        userMessage = userMessage,
-        agentDefinitionId = agentDefinitionId,
-        actorUserId = actorUserId,
-    )
+    ): Boolean {
+        requireConnectedAgent(conversationId, agentDefinitionId)
+        return runtimeDispatcher.invokeAgent(conversationId, userMessage, agentDefinitionId)
+    }
+
+    override suspend fun invokeAgent(
+        actorUser: User,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id,
+    ): Boolean {
+        requireConnectedAgent(conversationId, agentDefinitionId)
+        return runtimeDispatcher.invokeAgent(
+            conversationId = conversationId,
+            userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
+            agentDefinitionId = agentDefinitionId,
+            actorUserId = actorUser.id,
+        )
+    }
+
+    private suspend fun requireConnectedAgent(
+        conversationId: Conversation.Id,
+        agentDefinitionId: AgentDefinition.Id,
+    ) {
+        val conversation = conversationService.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+        require(Conversation.Participant.Agent(agentDefinitionId) in conversation.participants) {
+            "Agent ${agentDefinitionId.value} is not connected to conversation ${conversationId.value}"
+        }
+    }
 
     override fun observeConversation(
         conversationId: Conversation.Id,

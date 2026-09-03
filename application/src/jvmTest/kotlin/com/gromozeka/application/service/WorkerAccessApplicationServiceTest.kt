@@ -44,6 +44,7 @@ class WorkerAccessApplicationServiceTest {
     private val projectAccessService = ProjectAccessApplicationService(
         projectService = WorkerTestProjectService(project),
         membershipRepository = membershipRepository,
+        conversationRepository = FakeConversationRepository(),
         identityRepository = identityRepository,
         securityAuditRecorder = FakeSecurityAuditRecorder(),
     )

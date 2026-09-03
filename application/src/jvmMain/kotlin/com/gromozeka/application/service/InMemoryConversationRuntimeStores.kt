@@ -88,10 +88,10 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             true
         }
 
-    override suspend fun updatePendingUserTurn(task: ConversationRuntimeTask): Boolean =
+    override suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean =
         mutex.withLock {
             val current = schedulingByConversation[task.conversationId] ?: return@withLock false
-            val transition = current.updatePendingUserTurn(task)
+            val transition = current.updatePendingMessageSubmission(task)
             if (!transition.result) return@withLock false
             schedulingByConversation[task.conversationId] = transition.state
             appendTrace(
@@ -99,7 +99,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 taskId = task.id,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.UPDATED,
-                message = "Queued user turn updated: placement=${task.placement}",
+                message = "Queued message submission updated: placement=${task.placement}",
             )
             scheduleNextRunnableTaskIfReady(task.conversationId)
             bumpRevision(task.conversationId)
@@ -775,7 +775,11 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             }
             appendTrace(
                 conversationId = event.conversationId,
-                taskId = (event as? ConversationRuntimeEvent.MessageEmitted)?.taskId,
+                taskId = when (event) {
+                    is ConversationRuntimeEvent.MessageEmitted -> event.taskId
+                    is ConversationRuntimeEvent.HistoryChanged -> event.taskId
+                    else -> null
+                },
                 kind = ConversationRuntimeTraceEntry.Kind.EVENT_PUBLISHED,
                 status = ConversationRuntimeTraceEntry.Status.COMPLETED,
                 message = "${event::class.simpleName ?: "RuntimeEvent"}#$eventSequence",

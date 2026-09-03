@@ -269,13 +269,38 @@ internal object AgentSkillFiles : Table("agent_skill_files") {
 internal object Conversations : Table("conversations") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
-    val agentDefinitionId = varchar("agent_definition_id", 255).references(Agents.id)
     val displayName = varchar("display_name", 255)
     val currentThreadId = varchar("current_thread_id", 255)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 
     override val primaryKey = PrimaryKey(id)
+}
+
+internal object ConversationUserParticipants : Table("conversation_user_participants") {
+    val conversationId = varchar("conversation_id", 255)
+        .references(Conversations.id, onDelete = ReferenceOption.CASCADE)
+    val userId = varchar("user_id", 255)
+        .references(Users.id)
+
+    override val primaryKey = PrimaryKey(conversationId, userId)
+}
+
+internal object ConversationAgentParticipants : Table("conversation_agent_participants") {
+    val conversationId = varchar("conversation_id", 255)
+        .references(Conversations.id, onDelete = ReferenceOption.CASCADE)
+    val agentDefinitionId = varchar("agent_definition_id", 255)
+        .references(Agents.id)
+
+    override val primaryKey = PrimaryKey(conversationId, agentDefinitionId)
+}
+
+internal object ConversationUnreadStates : Table("conversation_unread_states") {
+    val conversationId = varchar("conversation_id", 255)
+    val userId = varchar("user_id", 255)
+    val createdAt = timestamp("created_at")
+
+    override val primaryKey = PrimaryKey(conversationId, userId)
 }
 
 internal object Artifacts : Table("artifacts") {

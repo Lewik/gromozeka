@@ -46,6 +46,7 @@ import org.springframework.stereotype.Service
 @Service
 class ConversationToolExecutionTaskService(
     private val conversationService: ConversationDomainService,
+    private val conversationMessageAppender: ConversationRuntimeMessageAppender,
     private val workspaceService: WorkspaceDomainService,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
@@ -428,7 +429,7 @@ class ConversationToolExecutionTaskService(
             }
             return false
         }
-        conversationService.addMessage(conversationId, message)
+        conversationMessageAppender.appendRuntimeMessage(conversationId, message)
         return true
     }
 

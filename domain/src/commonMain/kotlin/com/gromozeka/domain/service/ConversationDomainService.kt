@@ -12,13 +12,12 @@ import kotlinx.coroutines.flow.flow
  * Orchestrates complex operations spanning multiple entities:
  * - Conversation: top-level container for AI interactions
  * - Thread: append-only message sequence (immutable by default)
- * - Message: individual user/assistant/system messages
  * - ThreadMessageLink: position-based message ordering
  *
  * Key patterns:
  * - Threads are immutable: edit/delete/squash creates new thread
  * - Fork creates independent conversation copy
- * - Atomic operations: conversation+thread creation, message appending
+ * - Atomic operations: conversation+thread creation and history branching
  *
  * @see Conversation for domain model hierarchy
  * @see ConversationRepository for conversation persistence
@@ -34,14 +33,14 @@ interface ConversationDomainService {
      * This is a TRANSACTIONAL operation - creates conversation AND initial thread atomically.
      *
      * @param projectId logical project containing the conversation
+     * @param participants users and agents initially connected to the conversation
      * @param displayName human-readable conversation title (default: empty)
-     * @param agentDefinitionId agent definition to use for this conversation
      * @return created conversation with assigned IDs
      */
     suspend fun create(
         projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
         displayName: String = "",
-        agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation
 
     /**
@@ -97,9 +96,9 @@ interface ConversationDomainService {
         displayName: String
     ): Conversation?
 
-    suspend fun updateAgentDefinition(
+    suspend fun updateParticipants(
         conversationId: Conversation.Id,
-        agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id,
+        participants: Set<Conversation.Participant>,
     ): Conversation?
 
     /**
@@ -122,28 +121,6 @@ interface ConversationDomainService {
     suspend fun fork(conversationId: Conversation.Id): Conversation
 
     /**
-     * Appends message to current thread.
-     *
-     * Validates message belongs to conversation.
-     * Updates thread timestamp and position counter.
-     *
-     * This is a TRANSACTIONAL operation:
-     * 1. Save message
-     * 2. Add thread-message link with next position
-     * 3. Update thread timestamp
-     *
-     * @param conversationId conversation identifier
-     * @param message message to append (must have matching conversationId)
-     * @return updated conversation, or null if conversation not found
-     * @throws IllegalArgumentException if message.conversationId != conversationId
-     * @throws IllegalStateException if conversation not found
-     */
-    suspend fun addMessage(
-        conversationId: Conversation.Id,
-        message: Conversation.Message
-    ): Conversation?
-
-    /**
      * Loads messages from current thread.
      *
      * Messages returned in thread order (by position).
@@ -159,52 +136,5 @@ interface ConversationDomainService {
         sourceMessageId: Conversation.Message.Id,
         actorUserId: User.Id? = null,
     ): List<String>
-
-    /**
-     * Creates new thread with edited message.
-     *
-     * Immutable thread pattern: original thread preserved, new thread created.
-     *
-     * This is a COMPLEX TRANSACTIONAL operation:
-     * 1. Create edited message (originalIds = [messageId])
-     * 2. Create new thread (originalThread = currentThread)
-     * 3. Copy thread-message links, replacing target message with edited
-     * 4. Update conversation.currentThread
-     *
-     * @param conversationId conversation identifier
-     * @param messageId message to edit
-     * @param newContent replacement content
-     * @return updated conversation with new current thread
-     * @throws IllegalStateException if conversation not found
-     * @throws IllegalArgumentException if message not found in current thread
-     */
-    suspend fun editMessage(
-        conversationId: Conversation.Id,
-        messageId: Conversation.Message.Id,
-        newContent: List<Conversation.Message.ContentItem>
-    ): Conversation?
-
-    /**
-     * Creates new thread without specified messages (batch delete).
-     *
-     * Immutable thread pattern: original thread preserved, new thread created.
-     *
-     * This is a COMPLEX TRANSACTIONAL operation:
-     * 1. Validate all messages exist in current thread
-     * 2. Create new thread (originalThread = currentThread)
-     * 3. Copy thread-message links, filtering out target messages
-     * 4. Reindex positions (close gaps)
-     * 5. Update conversation.currentThread
-     *
-     * @param conversationId conversation identifier
-     * @param messageIds messages to remove (must be non-empty)
-     * @return updated conversation with new current thread
-     * @throws IllegalArgumentException if messageIds empty or messages not found
-     * @throws IllegalStateException if conversation not found
-     */
-    suspend fun deleteMessages(
-        conversationId: Conversation.Id,
-        messageIds: List<Conversation.Message.Id>
-    ): Conversation?
 
 }

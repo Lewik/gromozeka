@@ -16,17 +16,14 @@ import kotlin.jvm.JvmInline
 /**
  * Conversation containing threads and messages.
  *
- * Conversation is the top-level organizational unit for AI interaction.
+ * Conversation is the top-level organizational unit for human and AI interaction.
  * Each conversation belongs to a project and contains multiple threads (versions).
- * 
- * AI provider/model configuration is in AgentDefinition - switching agent switches the model.
- * Conversation tracks which agent definition is currently used.
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
  * @property id unique conversation identifier (UUIDv7)
  * @property projectId project this conversation belongs to
- * @property agentDefinitionId agent definition used for this conversation
+ * @property participants users and agents currently connected to this conversation
  * @property displayName human-readable conversation title (can be blank)
  * @property currentThread currently active thread ID (conversation can switch threads)
  * @property createdAt timestamp when conversation was created
@@ -36,18 +33,40 @@ import kotlin.jvm.JvmInline
 data class Conversation(
     val id: Id,
     val projectId: Project.Id,
-    val agentDefinitionId: AgentDefinition.Id,
+    val participants: Set<Participant>,
     val displayName: String = "",
     val currentThread: Thread.Id,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
+    init {
+        require(participants.any { it is Participant.User }) {
+            "Conversation must have at least one user participant"
+        }
+    }
+
     /**
      * Unique conversation identifier (UUIDv7).
      */
     @Serializable
     @JvmInline
     value class Id(val value: String)
+
+    @Serializable
+    @JsonClassDiscriminator("type")
+    sealed interface Participant {
+        @Serializable
+        @SerialName("user")
+        data class User(
+            val userId: com.gromozeka.domain.model.User.Id,
+        ) : Participant
+
+        @Serializable
+        @SerialName("agent")
+        data class Agent(
+            val agentDefinitionId: AgentDefinition.Id,
+        ) : Participant
+    }
 
     @Serializable
     enum class TurnTerminationReason {
@@ -102,7 +121,8 @@ data class Conversation(
      * @property conversationId parent conversation
      * @property originalIds messages this immutable version was derived from
      * @property replyTo if not null, this message is a response to another message
-     * @property role message author (USER, ASSISTANT, SYSTEM)
+     * @property role provider-facing message role (USER, ASSISTANT, SYSTEM)
+     * @property author actor that created the message, when known
      * @property content list of content items (text, tool calls, images, thinking blocks, etc.)
      * @property instructions list of instructions attached to this message (user instructions, response expected tags, source metadata)
      * @property providerMetadata provider-specific metadata preserved for replay/debugging
@@ -117,6 +137,7 @@ data class Conversation(
         val replyTo: Id? = null,
 
         val role: Role,
+        val author: Author? = null,
         val content: List<ContentItem>,
         val instructions: List<Instruction> = emptyList(),
         val providerMetadata: JsonObject = JsonObject(emptyMap()),
@@ -145,7 +166,7 @@ data class Conversation(
         value class Id(val value: String)
 
         /**
-         * Message author role.
+         * Provider-facing message role.
          */
         @Serializable
         enum class Role {
@@ -157,6 +178,26 @@ data class Conversation(
 
             /** System notification or instruction */
             SYSTEM
+        }
+
+        @Serializable
+        @JsonClassDiscriminator("type")
+        sealed class Author {
+            abstract val displayName: String
+
+            @Serializable
+            @SerialName("user")
+            data class User(
+                val userId: com.gromozeka.domain.model.User.Id,
+                override val displayName: String,
+            ) : Author()
+
+            @Serializable
+            @SerialName("agent")
+            data class Agent(
+                val agentDefinitionId: AgentDefinition.Id,
+                override val displayName: String,
+            ) : Author()
         }
 
         /**

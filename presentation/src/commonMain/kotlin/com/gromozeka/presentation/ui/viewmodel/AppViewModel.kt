@@ -2,13 +2,14 @@ package com.gromozeka.presentation.ui.viewmodel
 
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.TabManager
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
+import com.gromozeka.domain.service.ConversationUnreadStateService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
-import com.gromozeka.domain.service.AgentDomainService
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
@@ -17,22 +18,25 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 open class AppViewModel(
+    private val currentUserAuthor: Conversation.Message.Author.User,
+    private val agentService: AgentDomainService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
-    private val messageSquashService: MessageSquashService,
+    private val conversationHistoryService: ConversationHistoryService,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     internal val attachmentAcquisitionController: AttachmentAcquisitionController,
     private val artifactTransferService: ArtifactTransferService,
     private val defaultAgentProvider: DefaultAgentProvider,
-    private val agentService: AgentDomainService,
     private val tokenStatsService: ConversationTokenStatsService,
     private val conversationTabLayoutService: ConversationTabLayoutService,
+    private val conversationUnreadStateService: ConversationUnreadStateService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
 ) : TabManager {
@@ -48,9 +52,44 @@ open class AppViewModel(
     private val _currentTabIndex = MutableStateFlow<Int?>(null)
     val currentTabIndex: StateFlow<Int?> = _currentTabIndex.asStateFlow()
 
+    private val _unreadConversationIds = MutableStateFlow<Set<Conversation.Id>>(emptySet())
+    val unreadConversationIds: StateFlow<Set<Conversation.Id>> = _unreadConversationIds.asStateFlow()
+    private val windowFocused = MutableStateFlow(false)
+
     val currentTab: StateFlow<TabViewModel?> = combine(tabs, currentTabIndex) { tabList, index ->
         index?.let { tabList.getOrNull(it) }
     }.stateIn(scope, SharingStarted.Eagerly, null)
+
+    init {
+        scope.launch {
+            conversationUnreadStateService.observe()
+                .catch { error -> log.warn(error) { "Conversation unread state observation failed" } }
+                .collect { state -> _unreadConversationIds.value = state.conversationIds }
+        }
+        scope.launch {
+            combine(currentTab, windowFocused) { tab, focused -> tab.takeIf { focused } }
+                .distinctUntilChanged()
+                .flatMapLatest { tab ->
+                    tab?.allMessages
+                        ?.map { messages -> tab.conversationId to messages.lastOrNull()?.id }
+                        ?: emptyFlow()
+                }
+                .distinctUntilChanged()
+                .collect { (conversationId) ->
+                    runCatching { conversationUnreadStateService.markRead(conversationId) }
+                        .onSuccess { state -> _unreadConversationIds.value = state.conversationIds }
+                        .onFailure { error ->
+                            log.warn(error) {
+                                "Failed to mark conversation ${conversationId.value} read: ${error.message}"
+                            }
+                        }
+                }
+        }
+    }
+
+    fun reportWindowFocus(focused: Boolean) {
+        windowFocused.value = focused
+    }
 
     override suspend fun createTab(
         projectId: Project.Id,
@@ -68,7 +107,7 @@ open class AppViewModel(
                     _currentTabIndex.value = existingIndex
                 }
                 initialMessage?.let { message ->
-                    _tabs.value[existingIndex].sendInitialMessage(message)
+                    _tabs.value[existingIndex].sendInitialMessage(message, agent?.id)
                 }
                 return existingIndex
             }
@@ -76,29 +115,27 @@ open class AppViewModel(
 
         val tabId = Tab.Id(uuid7())
 
-        val conversation = if (conversationId != null) {
+        val (conversation, initialAgentId) = if (conversationId != null) {
             val existing = conversationService.findById(conversationId)
                 ?: error("Conversation not found: $conversationId")
             require(existing.projectId == projectId) {
                 "Conversation ${conversationId.value} belongs to project ${existing.projectId.value}, not ${projectId.value}"
             }
-            existing
+            agent?.let {
+                require(Conversation.Participant.Agent(it.id) in existing.participants) {
+                    "Agent ${it.id.value} is not connected to conversation ${existing.id.value}"
+                }
+            }
+            existing to agent?.id
         } else {
             val newConversationAgent = agent ?: defaultAgentProvider.getDefault()
             conversationService.create(
                 projectId = projectId,
-                agentDefinitionId = newConversationAgent.id,
-            )
-        }
-        val tabAgent = agentService.findById(conversation.agentDefinitionId)
-            ?: error(
-                "Agent not found for conversation ${conversation.id.value}: " +
-                    conversation.agentDefinitionId.value
-            )
-        if (agent != null) {
-            require(agent.id == tabAgent.id) {
-                "Conversation ${conversation.id.value} uses agent ${tabAgent.id.value}, not ${agent.id.value}"
-            }
+                participants = setOf(
+                    Conversation.Participant.User(currentUserAuthor.userId),
+                    Conversation.Participant.Agent(newConversationAgent.id),
+                ),
+            ) to agent?.id
         }
         mergeConversationSnapshots(listOf(conversation))
 
@@ -108,7 +145,6 @@ open class AppViewModel(
 
         val initialTabUiState = newTabUiState(
             conversation = conversation,
-            agent = tabAgent,
             tabId = tabId.value,
             parentTabId = parentTabId,
             initiator = initiator,
@@ -129,7 +165,7 @@ open class AppViewModel(
         }
 
         if (initialMessage != null) {
-            tabViewModel.sendInitialMessage(initialMessage)
+            tabViewModel.sendInitialMessage(initialMessage, initialAgentId)
         }
 
         return newTabIndex
@@ -183,7 +219,7 @@ open class AppViewModel(
         return TabManager.TabInfo(
             tabId = Tab.Id(uiState.tabId),
             conversationId = this.conversationId,
-            agentId = uiState.agent.id,
+            agentIds = requireConversation().connectedAgentIds(),
             projectId = this.projectId,
             isWaitingForResponse = uiState.isWaitingForResponse,
             parentTabId = uiState.parentTabId?.let { Tab.Id(it) }
@@ -202,7 +238,9 @@ open class AppViewModel(
     ) {
         val tab = findTabByTabId(tabId)
             ?: throw IllegalArgumentException("Tab not found: ${tabId.value}")
-        tab.sendMessageToSession(message, instructions)
+        val targetAgentId = tab.requireConversation().connectedAgentIds().singleOrNull()
+            ?: error("Sending to a tab requires exactly one connected agent")
+        tab.invokeAgent(message, instructions, targetAgentId)
     }
 
     override suspend fun listTabs(): List<TabManager.TabInfo> {
@@ -259,16 +297,12 @@ open class AppViewModel(
     ): TabViewModel? = runCatching {
         val conversation = conversationService.findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
-        val agent = agentService.findById(conversation.agentDefinitionId)
-            ?: error("Agent not found for conversation ${conversation.id.value}: ${conversation.agentDefinitionId.value}")
         mergeConversationSnapshots(listOf(conversation))
         val uiState = savedTab?.copy(
             projectId = conversation.projectId,
             conversationId = conversation.id,
-            agent = agent,
         ) ?: newTabUiState(
             conversation = conversation,
-            agent = agent,
             tabId = uuid7(),
             parentTabId = null,
             initiator = ConversationInitiator.User,
@@ -280,7 +314,6 @@ open class AppViewModel(
 
     private fun newTabUiState(
         conversation: Conversation,
-        agent: AgentDefinition,
         tabId: String,
         parentTabId: String?,
         initiator: ConversationInitiator,
@@ -292,7 +325,6 @@ open class AppViewModel(
             .toSet(),
         tabId = tabId,
         parentTabId = parentTabId,
-        agent = agent,
         initiator = initiator,
     )
 
@@ -302,9 +334,11 @@ open class AppViewModel(
     ): TabViewModel = TabViewModel(
         conversationId = conversation.id,
         projectId = conversation.projectId,
+        currentUserAuthor = currentUserAuthor,
+        agentService = agentService,
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
-        messageSquashService = messageSquashService,
+        conversationHistoryService = conversationHistoryService,
         settingsService = settingsService,
         scope = scope,
         initialTabUiState = initialTabUiState,
@@ -315,17 +349,32 @@ open class AppViewModel(
         turnCompletionNotificationService = turnCompletionNotificationService,
     )
 
-    private suspend fun TabViewModel.sendInitialMessage(message: Conversation.Message) {
+    private suspend fun TabViewModel.sendInitialMessage(
+        message: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id?,
+    ) {
         val messageContent = message.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
             .firstOrNull()?.text ?: "Ready to work on this project"
         log.debug("Sending initial message with ${messageContent.length} characters")
         try {
-            sendMessageToSession(messageContent, message.instructions)
+            if (agentDefinitionId == null) {
+                sendMessageToSession(messageContent, message.instructions)
+            } else {
+                invokeAgent(messageContent, message.instructions, agentDefinitionId)
+            }
             log.info("Initial message sent successfully")
         } catch (error: Exception) {
             log.warn(error, "Failed to send initial message: ${error.message}")
         }
     }
+
+    private suspend fun TabViewModel.requireConversation(): Conversation =
+        conversationService.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+
+    private fun Conversation.connectedAgentIds(): Set<AgentDefinition.Id> =
+        participants.filterIsInstance<Conversation.Participant.Agent>()
+            .mapTo(mutableSetOf(), Conversation.Participant.Agent::agentDefinitionId)
 
     private fun removeLocalTab(conversationId: Conversation.Id) {
         val tabList = _tabs.value
@@ -439,6 +488,7 @@ open class AppViewModel(
             _tabs.value = emptyList()
             _conversations.value = emptyMap()
             _currentTabIndex.value = null
+            _unreadConversationIds.value = emptySet()
         }
     }
 

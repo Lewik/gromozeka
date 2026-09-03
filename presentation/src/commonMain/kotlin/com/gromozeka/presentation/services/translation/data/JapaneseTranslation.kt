@@ -255,7 +255,7 @@ data class JapaneseTranslation(
         pauseButton = "一時停止",
         resumeButton = "再開",
         stopButton = "停止",
-        userTurnTask = "ユーザーターン",
+        agentInvocationTask = "ユーザーターン",
         llmCallTask = "LLM 呼び出し",
         toolExecutionTask = "ツール実行",
         toolResultProcessingTask = "ツール結果の処理",

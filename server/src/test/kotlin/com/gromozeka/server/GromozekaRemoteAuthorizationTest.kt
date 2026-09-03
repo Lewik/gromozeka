@@ -163,6 +163,16 @@ class GromozekaRemoteAuthorizationTest {
                 cursor,
             ),
         )
+        authorization.authorize(
+            member,
+            PullStateSyncRequest(
+                DeclarativeStateRevisionQuery(
+                    RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
+                    member.id.value,
+                ),
+                cursor,
+            ),
+        )
 
         Mockito.verify(projectAccessService).requirePermission(
             member.id,
@@ -174,6 +184,18 @@ class GromozekaRemoteAuthorizationTest {
                 member,
                 PullStateSyncRequest(
                     DeclarativeStateRevisionQuery(RemoteDeclarativeStateResource.MCP_SERVERS),
+                    cursor,
+                ),
+            )
+        }
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(
+                member,
+                PullStateSyncRequest(
+                    DeclarativeStateRevisionQuery(
+                        RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
+                        owner.id.value,
+                    ),
                     cursor,
                 ),
             )
@@ -203,6 +225,22 @@ class GromozekaRemoteAuthorizationTest {
             conversation.projectId,
             ProjectPermission.WRITE,
         )
+    }
+
+    @Test
+    fun `project membership does not grant access to a disconnected conversation`() = runBlocking {
+        val user = testUser()
+        val conversation = testConversation().copy(
+            participants = setOf(
+                Conversation.Participant.User(User.Id("another-user")),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+            ),
+        )
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation)
+
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(user, FindConversationRequest(conversation.id))
+        }
     }
 
     @Test
@@ -268,7 +306,10 @@ private fun testConversation(): Conversation =
     Conversation(
         id = Conversation.Id("conversation"),
         projectId = Project.Id("project"),
-        agentDefinitionId = AgentDefinition.Id("agent"),
+        participants = setOf(
+            Conversation.Participant.User(User.Id("remote-authorization-user")),
+            Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+        ),
         currentThread = Conversation.Thread.Id("thread"),
         createdAt = Instant.fromEpochMilliseconds(1),
         updatedAt = Instant.fromEpochMilliseconds(1),

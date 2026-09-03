@@ -101,7 +101,10 @@ credentials, raw authorization headers, or exact device locations.
 ## Runtime Language
 
 - A **Project** is a logical working context.
-- A **Conversation** belongs to a Project and is not bound to a Workspace.
+- A **Conversation** belongs to a Project, is not bound to a Workspace, and has
+  an explicit set of connected User and Agent participants. Project membership
+  makes a User eligible to join; a connected User participant is required to
+  access that Conversation.
 - An **Agent** is a server-managed model, prompt, and behavior configuration. It
   is not an executor.
 - A **Worker** is a named execution process. The Server is not a Worker.
@@ -118,6 +121,11 @@ call, or retry work automatically.
 Conversation turns and memory pipelines always run on the Server. A Worker can
 execute configured tools and finite AI request-response operations, but it does
 not own conversation or memory orchestration.
+
+Posting a User message and invoking an Agent are separate operations. A plain
+post only appends the message through the serialized Conversation runtime. An
+Agent invocation appends the User message and starts that connected Agent's AI
+and memory pipeline.
 
 Every AI connection has an exact execution target: the Server or one named
 Worker. Finite LLM calls, embeddings, speech transcription, and speech synthesis

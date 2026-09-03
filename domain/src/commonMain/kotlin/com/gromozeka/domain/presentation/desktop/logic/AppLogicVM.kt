@@ -65,15 +65,16 @@ interface AppLogicVM {
      * This is a TRANSACTIONAL operation - creates Conversation (if needed) AND tab atomically.
      *
      * Tab creation logic:
-     * 1. Resolve agent (use provided or default)
-     * 2. Load existing conversation OR create new one
+     * 1. Resolve the optional explicit agent for the initial invocation
+     * 2. Load existing conversation OR create new one and connect that agent or the default agent
      * 3. Create TabComponentVM instance
      * 4. Add to tabs list
      * 5. Optionally switch to new tab (if setAsCurrent = true)
      * 6. Send initial message if provided
      *
      * @param projectId Logical project containing the conversation
-     * @param agent Agent to handle this tab (null = use default agent)
+     * @param agent Explicit agent to connect and invoke for the initial message;
+     * null connects the default agent without invoking it
      * @param conversationId Existing conversation to load (null = create new)
      * @param initialMessage First message to send after tab creation (null = no message)
      * @param setAsCurrent Whether to switch to this tab immediately (default: true)
@@ -210,7 +211,6 @@ interface AppLogicVM {
          * @property userInput Unsent text in input field
          * @property tabId Stable tab identifier for MCP
          * @property parentTabId ID of tab that spawned this tab (null = user created)
-         * @property agent Agent handling this conversation
          * @property initiator Who created this tab
          * @property editMode Whether message editing mode is active
          * @property selectedMessageIds IDs of messages selected for bulk operations
@@ -223,7 +223,6 @@ interface AppLogicVM {
             val userInput: String,
             val tabId: String,
             val parentTabId: String?,
-            val agent: AgentDefinition,
             val initiator: ConversationInitiator,
             val editMode: Boolean,
             val selectedMessageIds: Set<Conversation.Message.Id>,

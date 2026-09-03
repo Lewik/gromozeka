@@ -14,7 +14,8 @@ object AiConversationMessageMapper {
 
     fun toConversationMessages(
         conversationId: Conversation.Id,
-        response: AiRuntimeResponse
+        response: AiRuntimeResponse,
+        author: Conversation.Message.Author.Agent,
     ): List<Conversation.Message> {
         val responseMetadata = toJsonObject(response.providerMetadata)
         val messages = mutableListOf<Conversation.Message>()
@@ -31,6 +32,7 @@ object AiConversationMessageMapper {
                 id = Conversation.Message.Id(uuid7()),
                 conversationId = conversationId,
                 role = Conversation.Message.Role.ASSISTANT,
+                author = author,
                 content = assistantMessage.content,
                 providerMetadata = mergeJsonObjects(
                     responseMetadata,

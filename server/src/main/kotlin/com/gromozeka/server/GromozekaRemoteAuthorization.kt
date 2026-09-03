@@ -68,6 +68,7 @@ class GromozekaRemoteAuthorization(
             is FindRecentProjectsRequest,
             FindProjectsRequest,
             GetConversationTabLayoutRequest,
+            GetConversationUnreadStateRequest,
             is SearchConversationsRequest,
             ListQuickTextActionsRequest,
             is RunQuickTextActionRequest,
@@ -230,6 +231,7 @@ class GromozekaRemoteAuthorization(
             is GetProjectRequest,
             is OpenConversationTabRequest,
             is CloseConversationTabRequest,
+            is MarkConversationReadRequest,
             is LoadCurrentMessagesRequest,
             is GetTokenStatsRequest,
             is GetMemoryActionItemsRequest,
@@ -241,16 +243,16 @@ class GromozekaRemoteAuthorization(
 
             is DeleteConversationRequest,
             is UpdateConversationDisplayNameRequest,
-            is UpdateConversationAgentRequest,
+            is UpdateConversationParticipantsRequest,
             is ForkConversationRequest,
-            is AddMessageRequest,
             is RegenerateSuggestedRepliesRequest,
             is EditMessageRequest,
             is DeleteMessagesRequest,
             is CompactMessagesRequest,
             is MemoryActionRequest,
-            is SubmitMessageRequest,
-            is EnqueueMessageRequest,
+            is PostMessageRequest,
+            is InvokeAgentRequest,
+            is EnqueueAgentInvocationRequest,
             is CancelQueuedMessageRequest,
             is ControlConversationRuntimeRequest,
             is CancelCommandTaskRequest,
@@ -289,6 +291,9 @@ class GromozekaRemoteAuthorization(
         val conversation = conversationService.findById(conversationId)
             ?: throw ProjectAccessDeniedException()
         projectAccessService.requirePermission(user.id, conversation.projectId, permission)
+        if (Conversation.Participant.User(user.id) !in conversation.participants) {
+            throw ProjectAccessDeniedException()
+        }
         return conversation
     }
 
@@ -328,6 +333,9 @@ class GromozekaRemoteAuthorization(
                 Project.Id(requireNotNull(query.scopeId)),
                 ProjectPermission.READ,
             )
+
+            RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE ->
+                if (query.scopeId != user.id.value) throw ProjectAccessDeniedException()
 
             RemoteDeclarativeStateResource.WORKSPACE_MOUNTS -> requireWorkspace(
                 user,
@@ -417,11 +425,11 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is GetProjectRequest -> conversationId
     is OpenConversationTabRequest -> conversationId
     is CloseConversationTabRequest -> conversationId
+    is MarkConversationReadRequest -> conversationId
     is DeleteConversationRequest -> conversationId
     is UpdateConversationDisplayNameRequest -> conversationId
-    is UpdateConversationAgentRequest -> conversationId
+    is UpdateConversationParticipantsRequest -> conversationId
     is ForkConversationRequest -> conversationId
-    is AddMessageRequest -> conversationId
     is LoadCurrentMessagesRequest -> conversationId
     is RegenerateSuggestedRepliesRequest -> conversationId
     is GetTokenStatsRequest -> conversationId
@@ -430,8 +438,9 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is CompactMessagesRequest -> conversationId
     is MemoryActionRequest -> conversationId
     is GetMemoryActionItemsRequest -> conversationId
-    is SubmitMessageRequest -> conversationId
-    is EnqueueMessageRequest -> conversationId
+    is PostMessageRequest -> conversationId
+    is InvokeAgentRequest -> conversationId
+    is EnqueueAgentInvocationRequest -> conversationId
     is CancelQueuedMessageRequest -> conversationId
     is ControlConversationRuntimeRequest -> conversationId
     is CancelCommandTaskRequest -> conversationId

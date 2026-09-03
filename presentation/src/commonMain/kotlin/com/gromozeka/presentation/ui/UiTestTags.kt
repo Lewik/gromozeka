@@ -34,6 +34,8 @@ sealed interface UiTestTag {
     data object EditMessageSaveButton : UiTestTag
     data object UnreadMessagesButton : UiTestTag
     data object MessageInput : UiTestTag
+    data object AgentMentionSuggestions : UiTestTag
+    data object MessageSubmissionError : UiTestTag
     data object SendButton : UiTestTag
     data object ConnectionStatus : UiTestTag
     data object ConversationProgressStrip : UiTestTag
@@ -41,12 +43,12 @@ sealed interface UiTestTag {
     data object PendingMessagesPanel : UiTestTag
     data object RuntimePanel : UiTestTag
     data object RuntimeButton : UiTestTag
+    data object ParticipantsPanel : UiTestTag
+    data object ParticipantsButton : UiTestTag
     data object PttButton : UiTestTag
     data object VoiceCaptureStatus : UiTestTag
     data object LiveVoiceButton : UiTestTag
     data object LiveVoiceStatus : UiTestTag
-    data object PromptsPanel : UiTestTag
-    data object AgentButton : UiTestTag
     data object MemoryActionItemsButton : UiTestTag
     data object MemoryActionItemsPanel : UiTestTag
     data object MemoryMenuButton : UiTestTag
@@ -70,6 +72,18 @@ sealed interface UiTestTag {
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)
+    }
+
+    data class ConversationUnread(val conversationId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(conversationId)
+    }
+
+    data class ParticipantToggle(val kind: String, val id: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(kind, id)
+    }
+
+    data class AgentMentionOption(val agentDefinitionId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(agentDefinitionId)
     }
 
     data class ProjectItem(val projectId: String) : UiTestTag {

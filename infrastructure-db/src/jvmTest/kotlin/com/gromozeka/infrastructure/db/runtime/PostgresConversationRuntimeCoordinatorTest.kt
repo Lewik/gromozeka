@@ -60,12 +60,12 @@ class PostgresConversationRuntimeCoordinatorTest {
                 },
             )
             val conversationId = Conversation.Id("fenced-conversation")
-            val claimedTask = userTurnTask(
+            val claimedTask = agentInvocationTask(
                 conversationId = conversationId,
                 messageId = "claimed-message",
                 createdAt = Instant.fromEpochMilliseconds(1_000),
             )
-            val queuedTask = userTurnTask(
+            val queuedTask = agentInvocationTask(
                 conversationId = conversationId,
                 messageId = "queued-message",
                 createdAt = Instant.fromEpochMilliseconds(2_000),
@@ -160,7 +160,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                     ConversationRuntimeSchedulingSignal.ListenerReady,
                     withTimeout(5_000) { signals.receive() },
                 )
-                val task = userTurnTask(
+                val task = agentInvocationTask(
                     conversationId = Conversation.Id("notified-conversation"),
                     messageId = "notified-message",
                     createdAt = Instant.fromEpochMilliseconds(1_000),
@@ -215,13 +215,13 @@ class PostgresConversationRuntimeCoordinatorTest {
                 },
             )
             val conversationId = Conversation.Id("continued-conversation")
-            val root = userTurnTask(
+            val root = agentInvocationTask(
                 conversationId = conversationId,
                 messageId = "root-message",
                 createdAt = Instant.fromEpochMilliseconds(1_000),
             )
             val continuation = llmTask(root, Instant.fromEpochMilliseconds(2_000))
-            val laterRoot = userTurnTask(
+            val laterRoot = agentInvocationTask(
                 conversationId = conversationId,
                 messageId = "later-message",
                 createdAt = Instant.fromEpochMilliseconds(3_000),
@@ -359,12 +359,12 @@ class PostgresConversationRuntimeCoordinatorTest {
                     ignoreUnknownKeys = true
                 },
             )
-            val lockedTask = userTurnTask(
+            val lockedTask = agentInvocationTask(
                 conversationId = Conversation.Id("conversation-a"),
                 messageId = "message-a",
                 createdAt = Instant.fromEpochMilliseconds(1_000),
             )
-            val availableTask = userTurnTask(
+            val availableTask = agentInvocationTask(
                 conversationId = Conversation.Id("conversation-b"),
                 messageId = "message-b",
                 createdAt = Instant.fromEpochMilliseconds(2_000),
@@ -546,7 +546,7 @@ class PostgresConversationRuntimeCoordinatorTest {
         }
     }
 
-    private fun userTurnTask(
+    private fun agentInvocationTask(
         conversationId: Conversation.Id,
         messageId: String,
         createdAt: Instant,
@@ -561,7 +561,7 @@ class PostgresConversationRuntimeCoordinatorTest {
         return ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(messageId),
             conversationId = conversationId,
-            payload = ConversationRuntimeTask.Payload.UserTurn(message, AGENT_DEFINITION_ID),
+            payload = ConversationRuntimeTask.Payload.AgentInvocation(message, AGENT_DEFINITION_ID),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "test:$messageId",
             requirements = ConversationRuntimeTaskRequirements(
@@ -587,7 +587,7 @@ class PostgresConversationRuntimeCoordinatorTest {
             turnId = parent.turnId,
             parentTaskId = parent.id,
             payload = ConversationRuntimeTask.Payload.LlmCall(
-                rootUserMessageId = parent.requireUserTurn().userMessage.id,
+                rootUserMessageId = parent.requireAgentInvocation().userMessage.id,
                 agentDefinitionId = AGENT_DEFINITION_ID,
                 iteration = 1,
             ),

@@ -64,11 +64,10 @@ fun SessionScreen(
     onShowSettingsPanelChange: (Boolean) -> Unit,
     showMemoryActionItemsPanel: Boolean,
     onShowMemoryActionItemsPanelChange: (Boolean) -> Unit,
+    showParticipantsPanel: Boolean,
+    onShowParticipantsPanelChange: (Boolean) -> Unit,
     showRuntimePanel: Boolean,
     onShowRuntimePanelChange: (Boolean) -> Unit,
-
-    // Tab Settings Panel
-    onShowPromptsPanelChange: (Boolean) -> Unit,
 
     // Context extraction
     onExtractContexts: (() -> Unit)? = null,
@@ -95,6 +94,8 @@ fun SessionScreen(
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
+    val agentMentionCandidates by viewModel.agentMentionCandidates.collectAsState()
+    val messageSubmissionError by viewModel.messageSubmissionError.collectAsState()
     val messageSquashState by viewModel.messageSquashState.collectAsState()
     val suggestedRepliesOverride by viewModel.suggestedRepliesOverride.collectAsState()
     val suggestedRepliesRegeneratingFor by viewModel.suggestedRepliesRegeneratingFor.collectAsState()
@@ -207,13 +208,12 @@ fun SessionScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
-                        // Agent button
                         CompactButton(
-                            onClick = { onShowPromptsPanelChange(true) },
-                            modifier = Modifier.testTag(UiTestTag.AgentButton.value),
-                            tooltip = "Select agent",
+                            onClick = { onShowParticipantsPanelChange(!showParticipantsPanel) },
+                            modifier = Modifier.testTag(UiTestTag.ParticipantsButton.value),
+                            tooltip = if (showParticipantsPanel) "Hide participants" else "Show participants",
                         ) {
-                            Icon(Icons.Default.Psychology, contentDescription = "Select agent")
+                            Icon(Icons.Default.Person, contentDescription = "Participants")
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -597,6 +597,8 @@ fun SessionScreen(
                         onUserInputChange = { viewModel.updateUserInput(it) },
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessagesCount = pendingMessagesCount,
+                        agentMentionCandidates = agentMentionCandidates,
+                        messageSubmissionError = messageSubmissionError,
                         suggestedReplies = suggestedReplies,
                         suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor ==
                             suggestedReplies?.sourceMessageId,

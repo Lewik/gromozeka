@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
@@ -24,12 +26,14 @@ class ProjectAccessApplicationServiceTest {
         users += listOf(owner, editor, viewer, outsider)
     }
     private val membershipRepository = FakeProjectMembershipRepository()
+    private val conversationRepository = FakeConversationRepository()
     private val projectService = FakeProjectDomainService()
     private val securityAuditRecorder = FakeSecurityAuditRecorder()
     private val stateChanges = RecordingDeclarativeStateChangePublisher()
     private val service = ProjectAccessApplicationService(
         projectService = projectService,
         membershipRepository = membershipRepository,
+        conversationRepository = conversationRepository,
         identityRepository = identityRepository,
         securityAuditRecorder = securityAuditRecorder,
         stateChanges = stateChanges,
@@ -85,6 +89,41 @@ class ProjectAccessApplicationServiceTest {
     }
 
     @Test
+    fun `removing member disconnects them from project conversations`() = runSuspend {
+        val project = service.create(owner.id, "Shared project")
+        service.setMembership(owner.id, project.id, editor.id, ProjectMembership.Role.EDITOR)
+        val conversation = conversation(project.id, listOf(owner.id, editor.id))
+        conversationRepository.create(conversation)
+
+        assertTrue(service.removeMembership(owner.id, project.id, editor.id))
+
+        assertEquals(
+            setOf(
+                Conversation.Participant.User(owner.id),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+            ),
+            conversationRepository.findById(conversation.id)?.participants,
+        )
+        assertEquals(null, membershipRepository.find(project.id, editor.id))
+    }
+
+    @Test
+    fun `member cannot be removed while they are the last user in a conversation`() = runSuspend {
+        val project = service.create(owner.id, "Shared project")
+        service.setMembership(owner.id, project.id, editor.id, ProjectMembership.Role.EDITOR)
+        val conversation = conversation(project.id, listOf(editor.id))
+        conversationRepository.create(conversation)
+
+        val error = assertFailsWith<IllegalStateException> {
+            service.removeMembership(owner.id, project.id, editor.id)
+        }
+
+        assertEquals("Cannot remove the last user participant from a conversation", error.message)
+        assertEquals(conversation.participants, conversationRepository.findById(conversation.id)?.participants)
+        assertEquals(ProjectMembership.Role.EDITOR, membershipRepository.find(project.id, editor.id)?.role)
+    }
+
+    @Test
     fun `project listings contain only memberships`() = runSuspend {
         val owned = service.create(owner.id, "Owned")
         val shared = service.create(outsider.id, "Shared")
@@ -118,6 +157,22 @@ class ProjectAccessApplicationServiceTest {
             stateChanges.publishedKeys.toSet(),
         )
     }
+}
+
+private fun conversation(
+    projectId: Project.Id,
+    userIds: List<User.Id>,
+): Conversation {
+    val now = Clock.System.now()
+    return Conversation(
+        id = Conversation.Id("conversation-${userIds.joinToString("-") { it.value }}"),
+        projectId = projectId,
+        participants = userIds.mapTo(mutableSetOf()) { Conversation.Participant.User(it) } +
+            Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+        currentThread = Conversation.Thread.Id("thread"),
+        createdAt = now,
+        updatedAt = now,
+    )
 }
 
 private class FakeProjectDomainService : ProjectDomainService {

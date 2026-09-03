@@ -3,6 +3,7 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryRun
@@ -43,8 +44,8 @@ data class ConversationRuntimeTask(
         require(requirements.capabilities.containsAll(payload.requiredCapabilities())) {
             "Conversation runtime task ${id.value} requirements do not satisfy ${payload::class.simpleName}"
         }
-        if (payload is Payload.UserTurn) {
-            require(payload.userMessage.conversationId == conversationId) {
+        userMessageOrNull()?.let { message ->
+            require(message.conversationId == conversationId) {
                 "Conversation runtime task ${id.value} user message belongs to another conversation"
             }
         }
@@ -62,10 +63,22 @@ data class ConversationRuntimeTask(
     @Serializable
     sealed interface Payload {
         @Serializable
-        @SerialName("user_turn")
-        data class UserTurn(
+        @SerialName("post_message")
+        data class PostMessage(
+            val userMessage: Conversation.Message,
+        ) : Payload
+
+        @Serializable
+        @SerialName("agent_invocation")
+        data class AgentInvocation(
             val userMessage: Conversation.Message,
             val agentDefinitionId: AgentDefinition.Id,
+        ) : Payload
+
+        @Serializable
+        @SerialName("history_mutation")
+        data class HistoryMutation(
+            val mutation: ConversationHistoryMutation,
         ) : Payload
 
         @Serializable
@@ -165,13 +178,17 @@ data class ConversationRuntimeTask(
         ) : Payload
     }
 
-    fun requireUserTurn(): Payload.UserTurn =
-        payload as? Payload.UserTurn
-            ?: error("Conversation runtime task ${id.value} is not a user-turn task: ${payload::class.simpleName}")
+    fun requireAgentInvocation(): Payload.AgentInvocation =
+        payload as? Payload.AgentInvocation
+            ?: error("Conversation runtime task ${id.value} is not an agent invocation: ${payload::class.simpleName}")
 
-    fun userTurnOrNull(): Payload.UserTurn? = payload as? Payload.UserTurn
+    fun userMessageOrNull(): Conversation.Message? = when (val payload = payload) {
+        is Payload.PostMessage -> payload.userMessage
+        is Payload.AgentInvocation -> payload.userMessage
+        else -> null
+    }
 
-    fun userMessageIdOrNull(): Conversation.Message.Id? = userTurnOrNull()?.userMessage?.id
+    fun userMessageIdOrNull(): Conversation.Message.Id? = userMessageOrNull()?.id
 
     fun isRootInput(): Boolean = payload.isRootInput()
 
@@ -179,7 +196,9 @@ data class ConversationRuntimeTask(
 
     private fun Payload.isRootInput(): Boolean =
         when (this) {
-            is Payload.UserTurn,
+            is Payload.PostMessage,
+            is Payload.AgentInvocation,
+            is Payload.HistoryMutation,
             is Payload.MemoryRunCompletion,
             is Payload.BackgroundActivityCompletion,
             is Payload.ExecutionIncident -> true
@@ -192,10 +211,25 @@ data class ConversationRuntimeTask(
 
     private fun Payload.requiredCapabilities(): Set<ConversationRuntimeCapability> =
         when (this) {
-            is Payload.UserTurn -> setOf(
+            is Payload.PostMessage -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+            is Payload.AgentInvocation -> setOf(
                 ConversationRuntimeCapability.CONVERSATION_TURN,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
+            is Payload.HistoryMutation -> when (mutation) {
+                is ConversationHistoryMutation.Compact ->
+                    if (mutation.strategy == SquashType.CONCATENATE) {
+                        setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+                    } else {
+                        setOf(
+                            ConversationRuntimeCapability.CONVERSATION_TURN,
+                            ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                        )
+                    }
+                is ConversationHistoryMutation.Edit,
+                is ConversationHistoryMutation.Delete,
+                -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+            }
             is Payload.LlmCall -> setOf(
                 ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
@@ -226,6 +260,12 @@ value class ConversationRuntimeTurnId(val value: String) {
 sealed interface ConversationRuntimeTaskOutcome {
     data object CompleteTurn : ConversationRuntimeTaskOutcome
 
+    data object CompleteWithoutNotification : ConversationRuntimeTaskOutcome
+
+    data class HistoryChanged(
+        val kind: ConversationHistoryMutationKind,
+    ) : ConversationRuntimeTaskOutcome
+
     data class Continue(
         val nextTask: ConversationRuntimeTask,
     ) : ConversationRuntimeTaskOutcome {
@@ -235,6 +275,37 @@ sealed interface ConversationRuntimeTaskOutcome {
             }
         }
     }
+}
+
+@Serializable
+@JsonClassDiscriminator("mutationType")
+sealed interface ConversationHistoryMutation {
+    @Serializable
+    @SerialName("edit")
+    data class Edit(
+        val messageId: Conversation.Message.Id,
+        val newContent: List<Conversation.Message.ContentItem>,
+    ) : ConversationHistoryMutation
+
+    @Serializable
+    @SerialName("delete")
+    data class Delete(
+        val messageIds: List<Conversation.Message.Id>,
+    ) : ConversationHistoryMutation
+
+    @Serializable
+    @SerialName("compact")
+    data class Compact(
+        val messageIds: List<Conversation.Message.Id>,
+        val strategy: SquashType,
+    ) : ConversationHistoryMutation
+}
+
+@Serializable
+enum class ConversationHistoryMutationKind {
+    EDIT,
+    DELETE,
+    COMPACT,
 }
 
 /**
@@ -681,8 +752,17 @@ sealed interface ConversationRuntimeEvent {
     ) : ConversationRuntimeEvent
 
     @Serializable
+    data class HistoryChanged(
+        override val conversationId: Conversation.Id,
+        val taskId: ConversationRuntimeTask.Id,
+        val kind: ConversationHistoryMutationKind,
+        override val cursorSequence: Long? = null,
+    ) : ConversationRuntimeEvent
+
+    @Serializable
     data class ExecutionCompleted(
         override val conversationId: Conversation.Id,
+        val shouldNotifyUser: Boolean = true,
         override val cursorSequence: Long? = null,
     ) : ConversationRuntimeEvent
 
@@ -725,7 +805,7 @@ interface ConversationRuntimeCoordinator {
 
     suspend fun submit(task: ConversationRuntimeTask): Boolean
 
-    suspend fun updatePendingUserTurn(task: ConversationRuntimeTask): Boolean
+    suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
 
     /**
      * Atomically assigns a pending task to one executor session.
