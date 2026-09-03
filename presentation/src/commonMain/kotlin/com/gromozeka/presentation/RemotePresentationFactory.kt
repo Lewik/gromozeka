@@ -110,7 +110,7 @@ suspend fun createRemoteAppComponents(
         ),
         conversationRuntimeService = remoteServices.conversationRuntimeService,
         conversationService = remoteServices.conversationService,
-        messageSquashService = remoteServices.messageSquashService,
+        conversationHistoryService = remoteServices.conversationHistoryService,
         settingsService = remoteServices.settingsService,
         scope = scope,
         attachmentAcquisitionController = attachmentAcquisitionController,

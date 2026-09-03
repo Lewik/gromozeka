@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.WorkspaceDomainService
 import klog.KLoggers
@@ -311,10 +312,24 @@ class ConversationRuntimeExecutor(
                         "conversation=${task.conversationId.value} task=${task.id.value} executor=$executor"
                 )
             }
+            if (outcome is ConversationRuntimeTaskOutcome.HistoryChanged) {
+                publishRuntimeEvent(
+                    ConversationRuntimeEvent.HistoryChanged(
+                        conversationId = task.conversationId,
+                        taskId = task.id,
+                        kind = outcome.kind,
+                    )
+                )
+            }
             publishRuntimeSnapshot(task.conversationId)
 
             if (finishRuntimeIfIdle(task.conversationId)) {
-                publishRuntimeEvent(ConversationRuntimeEvent.ExecutionCompleted(task.conversationId))
+                publishRuntimeEvent(
+                    ConversationRuntimeEvent.ExecutionCompleted(
+                        conversationId = task.conversationId,
+                        shouldNotifyUser = outcome !is ConversationRuntimeTaskOutcome.HistoryChanged,
+                    )
+                )
             }
         } catch (error: CancellationException) {
             val interrupted = withContext(NonCancellable) {
@@ -511,6 +526,7 @@ class ConversationRuntimeExecutor(
             is ConversationRuntimeEvent.SnapshotUpdated -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ReplayCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.MessageEmitted -> copy(cursorSequence = sequence)
+            is ConversationRuntimeEvent.HistoryChanged -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionFailed -> copy(cursorSequence = sequence)
         }

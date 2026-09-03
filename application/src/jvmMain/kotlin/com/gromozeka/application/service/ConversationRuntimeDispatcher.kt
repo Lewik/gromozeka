@@ -8,6 +8,7 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.ConversationExecutionState
+import com.gromozeka.domain.service.ConversationHistoryMutation
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -184,6 +185,44 @@ class ConversationRuntimeDispatcher(
         return submitRuntimeTask(task)
     }
 
+    internal suspend fun submitHistoryMutation(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        mutation: ConversationHistoryMutation,
+        actorUserId: User.Id,
+    ): Boolean {
+        val capabilities = when (mutation) {
+            is ConversationHistoryMutation.Edit,
+            is ConversationHistoryMutation.Delete,
+            -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+
+            is ConversationHistoryMutation.Compact ->
+                if (mutation.strategy == com.gromozeka.domain.model.SquashType.CONCATENATE) {
+                    setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+                } else {
+                    setOf(
+                        ConversationRuntimeCapability.CONVERSATION_TURN,
+                        ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                    )
+                }
+        }
+        return submitRuntimeTask(
+            ConversationRuntimeTask(
+                id = taskId,
+                conversationId = conversationId,
+                actorUserId = actorUserId,
+                payload = ConversationRuntimeTask.Payload.HistoryMutation(mutation),
+                placement = QueuedMessagePlacement.END_OF_TURN,
+                idempotencyKey = "conversation:${conversationId.value}:history:${taskId.value}",
+                requirements = ConversationRuntimeTaskRequirements(
+                    capabilities = capabilities,
+                    target = ConversationRuntimeTaskTarget.Server,
+                ),
+                createdAt = Clock.System.now(),
+            )
+        )
+    }
+
     suspend fun submitMemoryRunCompletion(
         conversationId: Conversation.Id,
         runId: MemoryRun.Id,
@@ -343,6 +382,7 @@ class ConversationRuntimeDispatcher(
             is ConversationRuntimeEvent.SnapshotUpdated -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ReplayCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.MessageEmitted -> copy(cursorSequence = sequence)
+            is ConversationRuntimeEvent.HistoryChanged -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionFailed -> copy(cursorSequence = sequence)
         }

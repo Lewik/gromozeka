@@ -6,13 +6,14 @@ import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.QuickTextActionResult
 import com.gromozeka.domain.model.SquashType
+import com.gromozeka.domain.service.ConversationHistoryService
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.AiUsageReportService
 import com.gromozeka.remote.protocol.AiUsageReportResponse
 import com.gromozeka.remote.protocol.GetAiUsageReportRequest
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.QuickTextActionService
 import com.gromozeka.remote.protocol.ConversationSearchPageResponse
 import com.gromozeka.remote.protocol.GetTokenStatsRequest
@@ -22,10 +23,13 @@ import com.gromozeka.remote.protocol.QuickTextActionsResponse
 import com.gromozeka.remote.protocol.RunQuickTextActionRequest
 import com.gromozeka.remote.protocol.SearchConversationsRequest
 import com.gromozeka.remote.protocol.CompactMessagesRequest
+import com.gromozeka.remote.protocol.DeleteMessagesRequest
+import com.gromozeka.remote.protocol.EditMessageRequest
 import com.gromozeka.remote.protocol.ConversationResponse
 import com.gromozeka.remote.protocol.TokenStatsResponse
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.flow.Flow
+import com.gromozeka.shared.uuid.uuid7
 
 internal class RemoteConversationSearchService(
     private val client: GromozekaWsClient,
@@ -52,16 +56,47 @@ internal class RemoteAiUsageReportService(
         ).report
 }
 
-internal class RemoteMessageSquashService(
+internal class RemoteConversationHistoryService(
     private val client: GromozekaWsClient,
-) : MessageSquashService {
-    override suspend fun squash(
+) : ConversationHistoryService {
+    override suspend fun editMessage(
+        conversationId: Conversation.Id,
+        messageId: Conversation.Message.Id,
+        newContent: List<Conversation.Message.ContentItem>,
+    ): Conversation? = client.requestTyped<EditMessageRequest, ConversationResponse>(
+        EditMessageRequest(
+            taskId = newHistoryTaskId(),
+            conversationId = conversationId,
+            messageId = messageId,
+            newContent = newContent,
+        )
+    ).conversation
+
+    override suspend fun deleteMessages(
+        conversationId: Conversation.Id,
+        messageIds: List<Conversation.Message.Id>,
+    ): Conversation? = client.requestTyped<DeleteMessagesRequest, ConversationResponse>(
+        DeleteMessagesRequest(
+            taskId = newHistoryTaskId(),
+            conversationId = conversationId,
+            messageIds = messageIds,
+        )
+    ).conversation
+
+    override suspend fun compactMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
         strategy: SquashType,
     ): Conversation = client.requestTyped<CompactMessagesRequest, ConversationResponse>(
-        CompactMessagesRequest(conversationId, messageIds, strategy)
+        CompactMessagesRequest(
+            taskId = newHistoryTaskId(),
+            conversationId = conversationId,
+            messageIds = messageIds,
+            strategy = strategy,
+        )
     ).conversation ?: error("Server returned null conversation after compaction")
+
+    private fun newHistoryTaskId(): ConversationRuntimeTask.Id = ConversationRuntimeTask.Id(uuid7())
 }
 
 internal class RemoteQuickTextActionService(

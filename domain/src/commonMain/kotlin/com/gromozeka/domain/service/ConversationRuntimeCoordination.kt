@@ -3,6 +3,7 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryRun
@@ -66,6 +67,12 @@ data class ConversationRuntimeTask(
         data class UserTurn(
             val userMessage: Conversation.Message,
             val agentDefinitionId: AgentDefinition.Id,
+        ) : Payload
+
+        @Serializable
+        @SerialName("history_mutation")
+        data class HistoryMutation(
+            val mutation: ConversationHistoryMutation,
         ) : Payload
 
         @Serializable
@@ -173,6 +180,7 @@ data class ConversationRuntimeTask(
     private fun Payload.isRootInput(): Boolean =
         when (this) {
             is Payload.UserTurn,
+            is Payload.HistoryMutation,
             is Payload.MemoryRunCompletion,
             is Payload.BackgroundActivityCompletion,
             is Payload.ExecutionIncident -> true
@@ -189,6 +197,20 @@ data class ConversationRuntimeTask(
                 ConversationRuntimeCapability.CONVERSATION_TURN,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
+            is Payload.HistoryMutation -> when (mutation) {
+                is ConversationHistoryMutation.Compact ->
+                    if (mutation.strategy == SquashType.CONCATENATE) {
+                        setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+                    } else {
+                        setOf(
+                            ConversationRuntimeCapability.CONVERSATION_TURN,
+                            ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                        )
+                    }
+                is ConversationHistoryMutation.Edit,
+                is ConversationHistoryMutation.Delete,
+                -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+            }
             is Payload.LlmCall -> setOf(
                 ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
@@ -219,6 +241,10 @@ value class ConversationRuntimeTurnId(val value: String) {
 sealed interface ConversationRuntimeTaskOutcome {
     data object CompleteTurn : ConversationRuntimeTaskOutcome
 
+    data class HistoryChanged(
+        val kind: ConversationHistoryMutationKind,
+    ) : ConversationRuntimeTaskOutcome
+
     data class Continue(
         val nextTask: ConversationRuntimeTask,
     ) : ConversationRuntimeTaskOutcome {
@@ -228,6 +254,37 @@ sealed interface ConversationRuntimeTaskOutcome {
             }
         }
     }
+}
+
+@Serializable
+@JsonClassDiscriminator("mutationType")
+sealed interface ConversationHistoryMutation {
+    @Serializable
+    @SerialName("edit")
+    data class Edit(
+        val messageId: Conversation.Message.Id,
+        val newContent: List<Conversation.Message.ContentItem>,
+    ) : ConversationHistoryMutation
+
+    @Serializable
+    @SerialName("delete")
+    data class Delete(
+        val messageIds: List<Conversation.Message.Id>,
+    ) : ConversationHistoryMutation
+
+    @Serializable
+    @SerialName("compact")
+    data class Compact(
+        val messageIds: List<Conversation.Message.Id>,
+        val strategy: SquashType,
+    ) : ConversationHistoryMutation
+}
+
+@Serializable
+enum class ConversationHistoryMutationKind {
+    EDIT,
+    DELETE,
+    COMPACT,
 }
 
 /**
@@ -674,8 +731,17 @@ sealed interface ConversationRuntimeEvent {
     ) : ConversationRuntimeEvent
 
     @Serializable
+    data class HistoryChanged(
+        override val conversationId: Conversation.Id,
+        val taskId: ConversationRuntimeTask.Id,
+        val kind: ConversationHistoryMutationKind,
+        override val cursorSequence: Long? = null,
+    ) : ConversationRuntimeEvent
+
+    @Serializable
     data class ExecutionCompleted(
         override val conversationId: Conversation.Id,
+        val shouldNotifyUser: Boolean = true,
         override val cursorSequence: Long? = null,
     ) : ConversationRuntimeEvent
 

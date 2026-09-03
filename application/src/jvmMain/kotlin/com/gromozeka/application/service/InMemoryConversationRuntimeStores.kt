@@ -775,7 +775,11 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             }
             appendTrace(
                 conversationId = event.conversationId,
-                taskId = (event as? ConversationRuntimeEvent.MessageEmitted)?.taskId,
+                taskId = when (event) {
+                    is ConversationRuntimeEvent.MessageEmitted -> event.taskId
+                    is ConversationRuntimeEvent.HistoryChanged -> event.taskId
+                    else -> null
+                },
                 kind = ConversationRuntimeTraceEntry.Kind.EVENT_PUBLISHED,
                 status = ConversationRuntimeTraceEntry.Status.COMPLETED,
                 message = "${event::class.simpleName ?: "RuntimeEvent"}#$eventSequence",

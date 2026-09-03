@@ -725,7 +725,11 @@ class PostgresConversationRuntimeCoordinator(
             record.eventLog = (record.eventLog + entry).takeLast(EVENT_LOG_RETENTION_LIMIT)
             record.appendTrace(
                 conversationId = event.conversationId,
-                taskId = (event as? ConversationRuntimeEvent.MessageEmitted)?.taskId,
+                taskId = when (event) {
+                    is ConversationRuntimeEvent.MessageEmitted -> event.taskId
+                    is ConversationRuntimeEvent.HistoryChanged -> event.taskId
+                    else -> null
+                },
                 kind = ConversationRuntimeTraceEntry.Kind.EVENT_PUBLISHED,
                 status = ConversationRuntimeTraceEntry.Status.COMPLETED,
                 message = "${event::class.simpleName ?: "RuntimeEvent"}#$sequence",

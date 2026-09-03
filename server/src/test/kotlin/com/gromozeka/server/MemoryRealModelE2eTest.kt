@@ -1444,6 +1444,7 @@ class MemoryRealModelE2eTest {
                     is ConversationRuntimeEvent.SnapshotUpdated -> Unit
                     is ConversationRuntimeEvent.ReplayCompleted -> Unit
                     is ConversationRuntimeEvent.MessageEmitted -> emittedMessages.add(event.message)
+                    is ConversationRuntimeEvent.HistoryChanged -> Unit
                     is ConversationRuntimeEvent.ExecutionCompleted -> completed.complete(Unit)
                     is ConversationRuntimeEvent.ExecutionFailed -> completed.completeExceptionally(
                         IllegalStateException("${event.failureType ?: "ConversationRuntimeError"}: ${event.message}")

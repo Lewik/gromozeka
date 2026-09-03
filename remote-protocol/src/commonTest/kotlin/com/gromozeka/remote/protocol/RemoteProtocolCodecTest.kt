@@ -31,6 +31,7 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.CommandTask
@@ -841,12 +842,48 @@ class RemoteProtocolCodecTest {
         assertEquals("message-submit-1", decodedMessage.message.id.value)
         assertEquals(42, decodedMessage.cursorSequence)
 
+        val historyTaskId = ConversationRuntimeTask.Id("history-edit-1")
+        val editEnvelope = GromozekaClientEnvelope(
+            id = "edit-1",
+            payload = EditMessageRequest(
+                taskId = historyTaskId,
+                conversationId = Conversation.Id("conversation-submit-1"),
+                messageId = userMessage.id,
+                newContent = listOf(Conversation.Message.ContentItem.UserMessage("Edited")),
+            )
+        )
+        val decodedEdit = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(editEnvelope)
+        ).payload as EditMessageRequest
+
+        assertEquals(historyTaskId, decodedEdit.taskId)
+        assertEquals(userMessage.id, decodedEdit.messageId)
+
+        val historyChangedEnvelope = GromozekaServerEnvelope(
+            id = "subscription-1",
+            payload = ConversationHistoryChangedEvent(
+                subscriptionId = "subscription-1",
+                conversationId = Conversation.Id("conversation-submit-1"),
+                taskId = historyTaskId,
+                kind = ConversationHistoryMutationKind.EDIT,
+                cursorSequence = 43,
+            )
+        )
+        val decodedHistoryChanged = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(historyChangedEnvelope)
+        ).payload as ConversationHistoryChangedEvent
+
+        assertEquals(historyTaskId, decodedHistoryChanged.taskId)
+        assertEquals(ConversationHistoryMutationKind.EDIT, decodedHistoryChanged.kind)
+        assertEquals(43, decodedHistoryChanged.cursorSequence)
+
         val completedEnvelope = GromozekaServerEnvelope(
             id = "subscription-1",
             payload = ConversationExecutionCompletedEvent(
                 subscriptionId = "subscription-1",
                 conversationId = Conversation.Id("conversation-submit-1"),
-                cursorSequence = 43,
+                shouldNotifyUser = false,
+                cursorSequence = 44,
             )
         )
         val decodedCompleted = RemoteProtocolCodec.decodeServerBinary(
@@ -855,14 +892,15 @@ class RemoteProtocolCodecTest {
 
         assertEquals("subscription-1", decodedCompleted.subscriptionId)
         assertEquals("conversation-submit-1", decodedCompleted.conversationId.value)
-        assertEquals(43, decodedCompleted.cursorSequence)
+        assertEquals(false, decodedCompleted.shouldNotifyUser)
+        assertEquals(44, decodedCompleted.cursorSequence)
 
         val replayCompletedEnvelope = GromozekaServerEnvelope(
             id = "subscription-1",
             payload = ConversationReplayCompletedEvent(
                 subscriptionId = "subscription-1",
                 conversationId = Conversation.Id("conversation-submit-1"),
-                cursorSequence = 43,
+                cursorSequence = 44,
             )
         )
         val decodedReplayCompleted = RemoteProtocolCodec.decodeServerBinary(
@@ -871,7 +909,7 @@ class RemoteProtocolCodecTest {
 
         assertEquals("subscription-1", decodedReplayCompleted.subscriptionId)
         assertEquals("conversation-submit-1", decodedReplayCompleted.conversationId.value)
-        assertEquals(43, decodedReplayCompleted.cursorSequence)
+        assertEquals(44, decodedReplayCompleted.cursorSequence)
     }
 
     @Test

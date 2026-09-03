@@ -8,8 +8,6 @@ import com.gromozeka.remote.protocol.ConversationResponse
 import com.gromozeka.remote.protocol.ConversationsResponse
 import com.gromozeka.remote.protocol.CreateConversationRequest
 import com.gromozeka.remote.protocol.DeleteConversationRequest
-import com.gromozeka.remote.protocol.DeleteMessagesRequest
-import com.gromozeka.remote.protocol.EditMessageRequest
 import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.FindConversationsByProjectRequest
 import com.gromozeka.remote.protocol.ForkConversationRequest
@@ -87,20 +85,5 @@ internal class RemoteConversationService(
         client.requestTyped<RegenerateSuggestedRepliesRequest, SuggestedRepliesResponse>(
             RegenerateSuggestedRepliesRequest(conversationId, sourceMessageId)
         ).replies
-
-    override suspend fun editMessage(
-        conversationId: Conversation.Id,
-        messageId: Conversation.Message.Id,
-        newContent: List<Conversation.Message.ContentItem>,
-    ): Conversation? = client.requestTyped<EditMessageRequest, ConversationResponse>(
-        EditMessageRequest(conversationId, messageId, newContent)
-    ).conversation
-
-    override suspend fun deleteMessages(
-        conversationId: Conversation.Id,
-        messageIds: List<Conversation.Message.Id>,
-    ): Conversation? = client.requestTyped<DeleteMessagesRequest, ConversationResponse>(
-        DeleteMessagesRequest(conversationId, messageIds)
-    ).conversation
 
 }

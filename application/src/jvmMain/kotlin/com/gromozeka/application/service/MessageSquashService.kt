@@ -9,7 +9,6 @@ import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntimeProvider
-import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
 import klog.KLoggers
 import org.springframework.stereotype.Service
 
@@ -21,10 +20,10 @@ class MessageSquashService internal constructor(
     private val threadMessageRepository: ThreadMessageRepository,
     private val toolCallPairingService: ToolCallPairingService,
     private val compactionCommitter: ContextCompactionCommitter,
-) : MessageSquashServiceSpec {
+) {
     private val log = KLoggers.logger(this)
 
-    override suspend fun squash(
+    internal suspend fun compactRuntimeHistory(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
         strategy: SquashType,

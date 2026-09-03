@@ -31,6 +31,8 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationHistoryMutation
+import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
@@ -90,6 +92,7 @@ class ConversationEngineService(
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
     private val conversationService: ConversationDomainService,
     private val conversationMessageAppender: ConversationRuntimeMessageAppender,
+    private val historyMutationExecutor: ConversationRuntimeHistoryMutationExecutor,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryToolApplicationService: MemoryToolApplicationService,
     private val backgroundActivityCompletionApplicationService: BackgroundActivityCompletionApplicationService,
@@ -120,6 +123,8 @@ class ConversationEngineService(
     ): ConversationRuntimeTaskOutcome =
         when (val payload = task.payload) {
             is ConversationRuntimeTask.Payload.UserTurn -> runUserTurnStep(task, executor, payload, emitMessage)
+            is ConversationRuntimeTask.Payload.HistoryMutation ->
+                runHistoryMutationStep(task, executor, payload)
             is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.ToolExecution ->
                 toolExecutionTaskService.run(task, executor, payload, emitMessage)
@@ -133,6 +138,21 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ExecutionIncident ->
                 runExecutionIncidentStep(task, executor, payload, emitMessage)
         }
+
+    private suspend fun runHistoryMutationStep(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        payload: ConversationRuntimeTask.Payload.HistoryMutation,
+    ): ConversationRuntimeTaskOutcome {
+        ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        historyMutationExecutor.execute(task.conversationId, payload.mutation)
+        val kind = when (payload.mutation) {
+            is ConversationHistoryMutation.Edit -> ConversationHistoryMutationKind.EDIT
+            is ConversationHistoryMutation.Delete -> ConversationHistoryMutationKind.DELETE
+            is ConversationHistoryMutation.Compact -> ConversationHistoryMutationKind.COMPACT
+        }
+        return ConversationRuntimeTaskOutcome.HistoryChanged(kind)
+    }
 
     private suspend fun runUserTurnStep(
         task: ConversationRuntimeTask,

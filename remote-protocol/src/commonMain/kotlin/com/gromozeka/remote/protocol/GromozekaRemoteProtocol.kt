@@ -48,6 +48,7 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -646,6 +647,7 @@ data class GetAiUsageReportRequest(
 @Serializable
 @SerialName("edit_message")
 data class EditMessageRequest(
+    val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageId: Conversation.Message.Id,
     val newContent: List<Conversation.Message.ContentItem>,
@@ -654,6 +656,7 @@ data class EditMessageRequest(
 @Serializable
 @SerialName("delete_messages")
 data class DeleteMessagesRequest(
+    val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
 ) : ClientRequest
@@ -661,6 +664,7 @@ data class DeleteMessagesRequest(
 @Serializable
 @SerialName("compact_messages")
 data class CompactMessagesRequest(
+    val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
     val strategy: SquashType,
@@ -1592,6 +1596,17 @@ data object StopTtsDirective : ClientPresentationDirective
 data class ConversationExecutionCompletedEvent(
     val subscriptionId: String,
     val conversationId: Conversation.Id,
+    val shouldNotifyUser: Boolean = true,
+    val cursorSequence: Long? = null,
+) : ServerPayload
+
+@Serializable
+@SerialName("conversation_history_changed")
+data class ConversationHistoryChangedEvent(
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
+    val taskId: ConversationRuntimeTask.Id,
+    val kind: ConversationHistoryMutationKind,
     val cursorSequence: Long? = null,
 ) : ServerPayload
 

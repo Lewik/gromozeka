@@ -18,6 +18,8 @@ import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationExecutionState
+import com.gromozeka.domain.service.ConversationHistoryMutation
+import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
@@ -42,6 +44,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,6 +71,125 @@ private val acceptingArtifactReferenceValidator = ArtifactReferenceValidator { _
 class ConversationRuntimeDispatcherTest {
     private val conversationId = Conversation.Id("conversation-runtime-dispatcher-test")
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
+
+    @Test
+    fun `history mutation runs after active conversation task and publishes completion`() = runBlocking {
+        val runner = ControllableTaskRunner { task ->
+            if (task.payload is ConversationRuntimeTask.Payload.HistoryMutation) {
+                ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.EDIT)
+            } else {
+                ConversationRuntimeTaskOutcome.CompleteTurn
+            }
+        }
+        val harness = dispatcherHarness(runner = runner)
+        try {
+            val activeMessage = userMessage("active-message")
+            assertTrue(harness.dispatcher.submitMessage(conversationId, activeMessage, agentDefinitionId))
+            assertEquals(activeMessage.id.value, harness.runner.awaitStarted().id.value)
+
+            val mutationTaskId = ConversationRuntimeTask.Id("history-edit-1")
+            assertTrue(
+                harness.dispatcher.submitHistoryMutation(
+                    conversationId = conversationId,
+                    taskId = mutationTaskId,
+                    mutation = ConversationHistoryMutation.Edit(
+                        messageId = activeMessage.id,
+                        newContent = listOf(Conversation.Message.ContentItem.UserMessage("Edited")),
+                    ),
+                    actorUserId = User.Id("user-1"),
+                )
+            )
+            assertNull(withTimeoutOrNull(350) { harness.runner.awaitStarted() })
+
+            harness.runner.releaseCurrentTask()
+            assertEquals(mutationTaskId, harness.runner.awaitStarted().id)
+            harness.runner.releaseCurrentTask()
+            waitUntil { harness.coordinator.find(conversationId) == null }
+
+            val events = harness.coordinator.listEventLogEntries(conversationId, null, 100).map { it.event }
+            assertTrue(
+                events.any {
+                    it is ConversationRuntimeEvent.HistoryChanged &&
+                        it.taskId == mutationTaskId &&
+                        it.kind == ConversationHistoryMutationKind.EDIT
+                }
+            )
+            assertEquals(false, events.filterIsInstance<ConversationRuntimeEvent.ExecutionCompleted>().last().shouldNotifyUser)
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `history mutation application waits for durable actor result`() = runBlocking {
+        val runner = ControllableTaskRunner {
+            ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE)
+        }
+        val harness = dispatcherHarness(runner = runner)
+        val historyService = ConversationHistoryRuntimeApplicationService(
+            runtimeDispatcher = harness.dispatcher,
+            runtimeCoordinator = harness.coordinator,
+        )
+        try {
+            val taskId = ConversationRuntimeTask.Id("history-delete-1")
+            val result = async {
+                historyService.deleteMessages(
+                    actorUser = actorUser(),
+                    taskId = taskId,
+                    conversationId = conversationId,
+                    messageIds = listOf(Conversation.Message.Id("message-1")),
+                )
+            }
+
+            assertEquals(taskId, harness.runner.awaitStarted().id)
+            assertFalse(result.isCompleted)
+            harness.runner.releaseCurrentTask()
+            result.await()
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `history mutation application waits for an already accepted task with the same id`() = runBlocking {
+        val runner = ControllableTaskRunner {
+            ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE)
+        }
+        val harness = dispatcherHarness(runner = runner)
+        val historyService = ConversationHistoryRuntimeApplicationService(
+            runtimeDispatcher = harness.dispatcher,
+            runtimeCoordinator = harness.coordinator,
+        )
+        try {
+            val taskId = ConversationRuntimeTask.Id("history-delete-retry-1")
+            assertTrue(
+                harness.dispatcher.submitHistoryMutation(
+                    conversationId = conversationId,
+                    taskId = taskId,
+                    mutation = ConversationHistoryMutation.Delete(
+                        messageIds = listOf(Conversation.Message.Id("message-1")),
+                    ),
+                    actorUserId = User.Id("user-1"),
+                )
+            )
+            assertEquals(taskId, harness.runner.awaitStarted().id)
+
+            val retriedResult = async {
+                historyService.deleteMessages(
+                    actorUser = actorUser(),
+                    taskId = taskId,
+                    conversationId = conversationId,
+                    messageIds = listOf(Conversation.Message.Id("message-1")),
+                )
+            }
+            assertFalse(retriedResult.isCompleted)
+
+            harness.runner.releaseCurrentTask()
+            retriedResult.await()
+        } finally {
+            harness.close()
+        }
+    }
 
     @Test
     fun `dispatcher starts idle conversation for after tool result message`() = runBlocking {
@@ -777,6 +899,16 @@ class ConversationRuntimeDispatcherTest {
             content = listOf(Conversation.Message.ContentItem.UserMessage("Text $id")),
             createdAt = Clock.System.now(),
         )
+
+    private fun actorUser(): User = User(
+        id = User.Id("user-1"),
+        username = "user-1",
+        displayName = "User One",
+        status = User.Status.ACTIVE,
+        role = User.Role.MEMBER,
+        createdAt = Clock.System.now(),
+        updatedAt = Clock.System.now(),
+    )
 
     private fun runtimeUserTurnTask(
         userMessage: Conversation.Message,

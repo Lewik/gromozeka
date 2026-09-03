@@ -3,12 +3,12 @@ package com.gromozeka.presentation.ui.viewmodel
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.AgentDomainService
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
@@ -25,7 +25,7 @@ open class AppViewModel(
     private val currentUserAuthor: Conversation.Message.Author.User,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
-    private val messageSquashService: MessageSquashService,
+    private val conversationHistoryService: ConversationHistoryService,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     internal val attachmentAcquisitionController: AttachmentAcquisitionController,
@@ -306,7 +306,7 @@ open class AppViewModel(
         currentUserAuthor = currentUserAuthor,
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
-        messageSquashService = messageSquashService,
+        conversationHistoryService = conversationHistoryService,
         settingsService = settingsService,
         scope = scope,
         initialTabUiState = initialTabUiState,

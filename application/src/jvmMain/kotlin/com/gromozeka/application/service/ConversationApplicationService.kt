@@ -265,12 +265,16 @@ class ConversationApplicationService(
         conversationRepo.create(newConversation)
         threadRepo.save(newThread)
         
+        val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
+        val sourceMessagesById = messageRepo.findByIds(sourceLinks.map { it.messageId }).associateBy { it.id }
         val sourceMessages = artifactService.cloneReferences(
             sourceConversationId = sourceConversation.id,
             targetConversation = newConversation,
-            messages = threadMessageRepo.getMessagesByThread(sourceConversation.currentThread),
+            messages = sourceLinks.map { link ->
+                sourceMessagesById[link.messageId]
+                    ?: error("Message ${link.messageId.value} disappeared while forking conversation")
+            },
         )
-        val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
         
         val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
         
@@ -411,7 +415,7 @@ class ConversationApplicationService(
      * @throws IllegalArgumentException if message not found in current thread
      */
     @Transactional
-    override suspend fun editMessage(
+    internal suspend fun editRuntimeHistory(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
         newContent: List<Conversation.Message.ContentItem>
@@ -482,7 +486,7 @@ class ConversationApplicationService(
      * @throws IllegalStateException if conversation doesn't exist
      */
     @Transactional
-    override suspend fun deleteMessages(
+    internal suspend fun deleteRuntimeHistory(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>
     ): Conversation? {

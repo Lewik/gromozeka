@@ -48,7 +48,7 @@ class MessageSquashServiceTest {
             val fixture = Fixture()
             val service = fixture.service()
 
-            val updated = service.squash(
+            val updated = service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.third.id, fixture.first.id),
                 strategy = strategy,
@@ -94,7 +94,7 @@ class MessageSquashServiceTest {
         val service = fixture.service()
 
         assertFailsWith<IllegalStateException> {
-            service.squash(
+            service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
                 strategy = SquashType.SUMMARIZE,
@@ -112,7 +112,7 @@ class MessageSquashServiceTest {
         val fixture = Fixture(commitConflict = true)
 
         assertFailsWith<IllegalStateException> {
-            fixture.service().squash(
+            fixture.service().compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
                 strategy = SquashType.CONCATENATE,
@@ -127,7 +127,7 @@ class MessageSquashServiceTest {
     fun `repeating a committed request does not create duplicate state`() = runBlocking {
         val fixture = Fixture()
         val service = fixture.service()
-        service.squash(
+        service.compactRuntimeHistory(
             conversationId = fixture.conversation.id,
             messageIds = listOf(fixture.first.id, fixture.third.id),
             strategy = SquashType.CONCATENATE,
@@ -135,7 +135,7 @@ class MessageSquashServiceTest {
         val countsAfterFirst = fixture.storageCounts()
 
         assertFailsWith<IllegalArgumentException> {
-            service.squash(
+            service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
                 strategy = SquashType.CONCATENATE,

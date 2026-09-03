@@ -3,6 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.application.service.AiUserCredentialApplicationService
 import com.gromozeka.application.service.AiSubscriptionQuotaApplicationService
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
+import com.gromozeka.application.service.ConversationHistoryRuntimeApplicationService
 import com.gromozeka.application.service.McpServerManagementService
 import com.gromozeka.application.service.NamedSecretApplicationService
 import com.gromozeka.domain.model.MemoryAction
@@ -36,7 +37,6 @@ import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.DeclarativeStateResource
 import com.gromozeka.domain.service.DeclarativeStateSyncService
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.QuickTextActionService
@@ -95,6 +95,7 @@ class GromozekaRemoteServer(
     private val agentSkillDomainService: AgentSkillDomainService,
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
+    private val conversationHistoryRuntimeService: ConversationHistoryRuntimeApplicationService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
     private val projectAccessService: ProjectAccessService,
     private val workspaceCatalogService: WorkspaceCatalogService,
@@ -110,7 +111,6 @@ class GromozekaRemoteServer(
     private val conversationRuntimeIngressService: ConversationRuntimeIngressService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val aiUsageReportService: com.gromozeka.domain.service.AiUsageReportService,
-    private val messageSquashService: MessageSquashService,
     private val quickTextActionService: QuickTextActionService,
     private val conversationSearchService: ConversationSearchApplicationService,
     private val sttService: SttService,
@@ -157,7 +157,7 @@ class GromozekaRemoteServer(
             connectionId = connectionId,
         )
         coroutineScope {
-            val concurrentSpeechRequests = mutableListOf<Job>()
+            val concurrentRequests = mutableListOf<Job>()
             val authenticationMonitor = launch {
                 while (isActive) {
                     delay(AUTHENTICATION_RECHECK_INTERVAL_MILLIS)
@@ -217,9 +217,9 @@ class GromozekaRemoteServer(
                                         speechCaptureOwner = speechCaptureOwner,
                                     )
                                 }
-                                if (payload.isConcurrentSpeechRequest()) {
-                                    concurrentSpeechRequests.removeAll(Job::isCompleted)
-                                    concurrentSpeechRequests += launch { handle() }
+                                if (payload.isConcurrentRequest()) {
+                                    concurrentRequests.removeAll(Job::isCompleted)
+                                    concurrentRequests += launch { handle() }
                                 } else {
                                     handle()
                                 }
@@ -272,8 +272,8 @@ class GromozekaRemoteServer(
                 throw error
             } finally {
                 authenticationMonitor.cancel()
-                concurrentSpeechRequests.forEach(Job::cancel)
-                concurrentSpeechRequests.joinAll()
+                concurrentRequests.forEach(Job::cancel)
+                concurrentRequests.joinAll()
                 conversationSubscriptions.values.forEach { it.cancel() }
                 conversationSubscriptions.clear()
                 stateSubscriptions.values.forEach { it.cancel() }
@@ -286,12 +286,15 @@ class GromozekaRemoteServer(
         }
     }
 
-    private fun ClientRequest.isConcurrentSpeechRequest(): Boolean =
+    private fun ClientRequest.isConcurrentRequest(): Boolean =
         this is GetSpeechCaptureAvailabilityRequest ||
             this is StartSpeechCaptureRequest ||
             this is StopSpeechCaptureRequest ||
             this is CancelSpeechCaptureRequest ||
-            this is StartLiveVoiceProviderVadRequest
+            this is StartLiveVoiceProviderVadRequest ||
+            this is EditMessageRequest ||
+            this is DeleteMessagesRequest ||
+            this is CompactMessagesRequest
 
     private suspend fun handleRequest(
         sender: RemoteSessionSender,
@@ -691,19 +694,35 @@ class GromozekaRemoteServer(
                     require(user.role == User.Role.OWNER) { "Only Runtime Owners can inspect installation AI usage" }
                     AiUsageReportResponse(aiUsageReportService.getReport(request.query))
                 }
-                is EditMessageRequest -> ConversationResponse(
-                    conversationDomainService.editMessage(request.conversationId, request.messageId, request.newContent)
-                )
-                is DeleteMessagesRequest -> ConversationResponse(
-                    conversationDomainService.deleteMessages(request.conversationId, request.messageIds)
-                )
-                is CompactMessagesRequest -> ConversationResponse(
-                    messageSquashService.squash(
-                        request.conversationId,
-                        request.messageIds,
-                        request.strategy,
+                is EditMessageRequest -> {
+                    conversationHistoryRuntimeService.editMessage(
+                        actorUser = user,
+                        taskId = request.taskId,
+                        conversationId = request.conversationId,
+                        messageId = request.messageId,
+                        newContent = request.newContent,
                     )
-                )
+                    ConversationResponse(conversationDomainService.findById(request.conversationId))
+                }
+                is DeleteMessagesRequest -> {
+                    conversationHistoryRuntimeService.deleteMessages(
+                        actorUser = user,
+                        taskId = request.taskId,
+                        conversationId = request.conversationId,
+                        messageIds = request.messageIds,
+                    )
+                    ConversationResponse(conversationDomainService.findById(request.conversationId))
+                }
+                is CompactMessagesRequest -> {
+                    conversationHistoryRuntimeService.compactMessages(
+                        actorUser = user,
+                        taskId = request.taskId,
+                        conversationId = request.conversationId,
+                        messageIds = request.messageIds,
+                        strategy = request.strategy,
+                    )
+                    ConversationResponse(conversationDomainService.findById(request.conversationId))
+                }
 
                 ListQuickTextActionsRequest -> QuickTextActionsResponse(
                     quickTextActionService.listActions()
@@ -840,9 +859,25 @@ class GromozekaRemoteServer(
                                 }
                             }
                         }
+                        is ConversationRuntimeEvent.HistoryChanged -> sender.send(
+                            command.subscriptionId,
+                            ConversationHistoryChangedEvent(
+                                subscriptionId = command.subscriptionId,
+                                conversationId = event.conversationId,
+                                taskId = event.taskId,
+                                kind = event.kind,
+                                cursorSequence = event.cursorSequence,
+                            ),
+                            encoding,
+                        )
                         is ConversationRuntimeEvent.ExecutionCompleted -> sender.send(
                             command.subscriptionId,
-                            ConversationExecutionCompletedEvent(command.subscriptionId, event.conversationId, event.cursorSequence),
+                            ConversationExecutionCompletedEvent(
+                                subscriptionId = command.subscriptionId,
+                                conversationId = event.conversationId,
+                                shouldNotifyUser = event.shouldNotifyUser,
+                                cursorSequence = event.cursorSequence,
+                            ),
                             encoding,
                         )
                         is ConversationRuntimeEvent.ExecutionFailed -> {

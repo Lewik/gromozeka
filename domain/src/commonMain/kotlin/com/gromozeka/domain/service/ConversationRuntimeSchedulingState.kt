@@ -272,7 +272,7 @@ data class ConversationRuntimeSchedulingState(
         }
         val terminal = completedControlState == ConversationExecutionState.ControlState.STOPPING ||
             completedControlState == ConversationExecutionState.ControlState.INTERRUPTING
-        val promotedPendingTasks = if (outcome is ConversationRuntimeTaskOutcome.CompleteTurn || terminal) {
+        val promotedPendingTasks = if (outcome !is ConversationRuntimeTaskOutcome.Continue || terminal) {
             pendingTasks
                 .filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
                 .map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +

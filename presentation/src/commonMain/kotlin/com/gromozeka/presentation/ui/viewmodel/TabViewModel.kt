@@ -19,6 +19,7 @@ import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -31,7 +32,6 @@ import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationTokenStatsService
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.shared.uuid.uuid7
@@ -52,7 +52,7 @@ class TabViewModel(
     private val currentUserAuthor: Conversation.Message.Author.User,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
-    private val messageSquashService: MessageSquashService,
+    private val conversationHistoryService: ConversationHistoryService,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
@@ -262,9 +262,10 @@ class TabViewModel(
                 _uiState.update { it.copy(isWaitingForResponse = true) }
                 upsertRuntimeMessage(event.message)
             }
+            is ConversationRuntimeEvent.HistoryChanged -> loadMessages()
             is ConversationRuntimeEvent.ExecutionCompleted -> {
                 finishRuntimeExecution()
-                if (runtimeReplayCompleted) {
+                if (runtimeReplayCompleted && event.shouldNotifyUser) {
                     turnCompletionNotificationService.notifyTurnCompleted()
                 }
             }
@@ -1249,7 +1250,7 @@ class TabViewModel(
                 ?: error("Message $editingId is no longer available")
             val newContent = message.withEditedText(newText)
 
-            conversationService.editMessage(conversationId, editingId, newContent)
+            conversationHistoryService.editMessage(conversationId, editingId, newContent)
 
             cancelEditMessage()
             clearMessageSelection()
@@ -1263,7 +1264,7 @@ class TabViewModel(
 
     suspend fun deleteMessage(messageId: Conversation.Message.Id) {
         try {
-            conversationService.deleteMessages(conversationId, listOf(messageId))
+            conversationHistoryService.deleteMessages(conversationId, listOf(messageId))
             loadMessages()
             log.debug { "Message $messageId deleted successfully" }
         } catch (e: Exception) {
@@ -1298,7 +1299,7 @@ class TabViewModel(
 
         _messageSquashState.value = MessageSquashUiState.Running(squashType)
         try {
-            messageSquashService.squash(conversationId, selectedIds.toList(), squashType)
+            conversationHistoryService.compactMessages(conversationId, selectedIds.toList(), squashType)
             clearMessageSelection()
             loadMessages()
             val succeededState = MessageSquashUiState.Succeeded(squashType)
@@ -1328,7 +1329,7 @@ class TabViewModel(
         }
 
         try {
-            conversationService.deleteMessages(
+            conversationHistoryService.deleteMessages(
                 conversationId,
                 selectedIds.toList()
             )

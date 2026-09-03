@@ -7,12 +7,12 @@ import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.AiUsageReportService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
-import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.QuickTextActionService
@@ -86,12 +86,12 @@ class GromozekaRemoteServices(
     val workspaceManagementService: WorkspaceManagementService = remoteWorkspaceService
     val workerCatalogService: WorkerCatalogService = RemoteWorkerCatalogService(client)
     val conversationService: ConversationDomainService = RemoteConversationService(client)
+    val conversationHistoryService: ConversationHistoryService = RemoteConversationHistoryService(client)
     val conversationTabLayoutService: ConversationTabLayoutService = RemoteConversationTabLayoutService(client)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
     val conversationSearchService: ConversationSearchService = RemoteConversationSearchService(client)
     val conversationTokenStatsService: ConversationTokenStatsService = RemoteConversationTokenStatsService(client)
     val aiUsageReportService: AiUsageReportService = RemoteAiUsageReportService(client)
-    val messageSquashService: MessageSquashService = RemoteMessageSquashService(client)
     val quickTextActionService: QuickTextActionService = RemoteQuickTextActionService(client)
     val audioTranscriptionService: RemoteAudioTranscriptionService = RemoteAudioTranscriptionService(client)
     val artifactTransferService: ArtifactTransferService = RemoteArtifactTransferService(client)
