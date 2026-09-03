@@ -337,7 +337,9 @@ resource never silently changes an existing runtime entity.
   `<workspace>/.gromozeka/skills/<name>` on the selected Worker
   mount. It accepts the same immutable handle returned by `grz_skill_activate`;
   materialization does not execute files, install dependencies, or grant
-  permissions. It is for runtime use, not editing.
+  permissions. It is effectively read-only because it is managed runtime setup
+  and may be required for otherwise read-only operations. Behavioral `Readonly`
+  mode still forbids editing that copy, the Skill package, or project files.
 
 ## Repository Checkouts
 

@@ -76,6 +76,7 @@ class AgentSkillRuntimeTest {
         assertFalse(prepared.systemPrompt.contains(skill.instructions))
         assertTrue(prepared.systemPrompt.contains("Activation loads Skill instructions"))
         assertTrue(prepared.systemPrompt.contains("Use a catalog skill_id and content_hash directly"))
+        assertTrue(prepared.systemPrompt.contains("Managed Skill materialization is effectively read-only"))
         assertTrue(prepared.systemPrompt.contains("To edit a Skill, export it with"))
         assertTrue(prepared.systemPrompt.contains("Do not edit or import a materialized runtime directory"))
         val activation = prepared.toolCatalog.tools

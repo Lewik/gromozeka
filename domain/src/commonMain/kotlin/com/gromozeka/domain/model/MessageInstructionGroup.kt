@@ -58,7 +58,7 @@ data class MessageInstructionGroup(
                         data = Conversation.Message.Instruction.UserInstruction(
                             id = "mode_readonly",
                             title = "Readonly",
-                            description = "Режим readonly - никаких изменений кода или команд применяющих изменения",
+                            description = "Readonly mode - do not modify code or run commands that make changes",
                         ),
                         shortLabel = "R",
                     ),
@@ -66,7 +66,7 @@ data class MessageInstructionGroup(
                         data = Conversation.Message.Instruction.UserInstruction(
                             id = "mode_writable",
                             title = "Writable",
-                            description = "Разрешено исправление файлов",
+                            description = "File changes are allowed",
                         ),
                         shortLabel = "W",
                     ),

@@ -37,8 +37,9 @@ interface MaterializeAgentSkillTool : Tool<MaterializeAgentSkillRequest, Map<Str
         get() = PreloadedWorkspaceToolMetadata
 
     override val description: String
-        get() = "Copy an assigned Skill package to the selected workspace for runtime use. " +
-            "Returns its directory path and does not execute files."
+        get() = "Copy an assigned Skill package to the selected workspace's managed .gromozeka/skills directory " +
+            "for runtime use. Materialization is effectively read-only because it is runtime setup and may be " +
+            "required for otherwise read-only operations. It does not edit project source files or execute package files."
 
     override val requestType: Class<MaterializeAgentSkillRequest>
         get() = MaterializeAgentSkillRequest::class.java

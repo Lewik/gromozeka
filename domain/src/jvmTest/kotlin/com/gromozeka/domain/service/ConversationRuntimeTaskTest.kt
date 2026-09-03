@@ -83,6 +83,19 @@ class ConversationRuntimeTaskTest {
         }
     }
 
+    @Test
+    fun `tool execution task requires one target for every call`() {
+        assertFailsWith<IllegalArgumentException> {
+            toolExecutionTask(
+                requirements = ConversationRuntimeTaskRequirements(
+                    capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
+                    target = ConversationRuntimeTaskTarget.Server,
+                ),
+                executionTargetsByCallId = emptyMap(),
+            )
+        }
+    }
+
     private fun agentInvocationTask(
         messageConversationId: Conversation.Id = conversationId,
         requirements: ConversationRuntimeTaskRequirements,
@@ -116,6 +129,8 @@ class ConversationRuntimeTaskTest {
 
     private fun toolExecutionTask(
         requirements: ConversationRuntimeTaskRequirements,
+        executionTargetsByCallId: Map<String, ConversationRuntimeTaskTarget> =
+            mapOf("tool-call-1" to requirements.target),
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("tool-task-1"),
@@ -134,7 +149,7 @@ class ConversationRuntimeTaskTest {
                     )
                 ),
                 returnDirect = false,
-                executionTarget = requirements.target,
+                executionTargetsByCallId = executionTargetsByCallId,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "test:tool-task-1",

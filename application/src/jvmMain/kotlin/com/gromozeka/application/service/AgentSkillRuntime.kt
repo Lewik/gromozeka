@@ -393,6 +393,8 @@ private fun buildAgentSkillCatalogPrompt(
             append("For workspace files, call `")
             append(materializeTool.modelName)
             append("` with the exact skill handle and intended workspace execution target. ")
+            append("Managed Skill materialization is effectively read-only: it is runtime setup and may be required ")
+            append("for otherwise read-only operations. It does not authorize editing the Skill or other workspace files. ")
         } else {
             append("Workspace materialization is currently unavailable; report that limitation instead of inventing a tool. ")
         }

@@ -101,12 +101,19 @@ data class ConversationRuntimeTask(
             val iteration: Int,
             val toolCalls: List<ContentItem.ToolCall>,
             val returnDirect: Boolean,
-            val executionTarget: ConversationRuntimeTaskTarget,
+            val executionTargetsByCallId: Map<String, ConversationRuntimeTaskTarget>,
             val executionToolNamesByCallId: Map<String, String> = emptyMap(),
         ) : Payload {
             init {
                 require(iteration >= 1) { "Conversation tool execution iteration must be positive" }
                 require(toolCalls.isNotEmpty()) { "Conversation tool execution task must contain at least one tool call" }
+                val toolCallIds = toolCalls.map { it.id.value }
+                require(toolCallIds.distinct().size == toolCallIds.size) {
+                    "Conversation tool execution task must contain unique tool call ids"
+                }
+                require(executionTargetsByCallId.keys == toolCallIds.toSet()) {
+                    "Conversation tool execution targets must match every tool call exactly"
+                }
                 require(executionToolNamesByCallId.keys.all { callId ->
                     toolCalls.any { it.id.value == callId }
                 }) {
@@ -304,7 +311,7 @@ enum class ConversationHistoryMutationKind {
 /**
  * Exact execution contract for conversation orchestration.
  *
- * Worker-side effects are represented by [ConversationRuntimeTask.Payload.ToolExecution.executionTarget];
+ * Worker-side effects are represented by [ConversationRuntimeTask.Payload.ToolExecution.executionTargetsByCallId];
  * the durable conversation task itself remains Server-owned.
  */
 @Serializable
