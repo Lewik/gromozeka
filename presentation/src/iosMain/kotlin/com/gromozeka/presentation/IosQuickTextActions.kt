@@ -47,7 +47,7 @@ private suspend fun executeIosQuickTextAction(
     var services: GromozekaRemoteServices? = null
     try {
         val status = authConnection.status()
-        check(status.authenticatedUser != null) { "Gromozeka is not signed in" }
+        val authenticatedUser = checkNotNull(status.authenticatedUser) { "Gromozeka is not signed in" }
         services = GromozekaRemoteServices(
             url = remoteUrl,
             httpClient = authConnection.httpClient,
@@ -55,6 +55,7 @@ private suspend fun executeIosQuickTextAction(
             clientHomeDirectory = "ios",
             clientPlatform = RemoteClientPlatform.IOS,
             clientSettingsStore = settingsStore,
+            authenticatedUserRole = authenticatedUser.role,
         )
         services.initialize()
         return services.quickTextActionService.runAction(QuickTextAction.Id(actionId), text).text

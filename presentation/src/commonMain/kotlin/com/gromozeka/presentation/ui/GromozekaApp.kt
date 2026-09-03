@@ -53,6 +53,7 @@ import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.HoldToTalkShortcutController
 import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
+import com.gromozeka.presentation.ui.session.ConversationParticipantsPanel
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
 import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.shared.uuid.uuid7
@@ -101,6 +102,7 @@ fun GromozekaAppContent(
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
+    var showParticipantsPanel by remember { mutableStateOf(false) }
     var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var hoveredTabIndex by remember { mutableStateOf(-1) }
@@ -280,11 +282,25 @@ fun GromozekaAppContent(
                             showSettingsPanel = visible
                             if (visible && isCompactLayout) {
                                 showRuntimePanel = false
+                                showParticipantsPanel = false
                                 showMemoryActionItemsPanel = false
                             }
                         }
                         val setRuntimePanel: (Boolean) -> Unit = { visible ->
                             showRuntimePanel = visible
+                            if (visible) {
+                                showParticipantsPanel = false
+                            }
+                            if (visible && isCompactLayout) {
+                                showSettingsPanel = false
+                                showMemoryActionItemsPanel = false
+                            }
+                        }
+                        val setParticipantsPanel: (Boolean) -> Unit = { visible ->
+                            showParticipantsPanel = visible
+                            if (visible) {
+                                showRuntimePanel = false
+                            }
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
                                 showMemoryActionItemsPanel = false
@@ -295,6 +311,13 @@ fun GromozekaAppContent(
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
                                 showRuntimePanel = false
+                                showParticipantsPanel = false
+                            }
+                        }
+                        val leaveDisconnectedConversation: () -> Unit = {
+                            setParticipantsPanel(false)
+                            coroutineScope.launch {
+                                appComponents.appViewModel.selectTab(null)
                             }
                         }
 
@@ -302,13 +325,17 @@ fun GromozekaAppContent(
                             isCompactLayout,
                             showSettingsPanel,
                             showRuntimePanel,
+                            showParticipantsPanel,
                             showMemoryActionItemsPanel,
                         ) {
                             if (isCompactLayout) {
                                 when {
                                     showSettingsPanel && showRuntimePanel -> showRuntimePanel = false
+                                    showSettingsPanel && showParticipantsPanel -> showParticipantsPanel = false
                                     showSettingsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
+                                    showRuntimePanel && showParticipantsPanel -> showParticipantsPanel = false
                                     showRuntimePanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
+                                    showParticipantsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
                                 }
                             }
                         }
@@ -418,6 +445,8 @@ fun GromozekaAppContent(
                                                         onShowSettingsPanelChange = setSettingsPanel,
                                                         showMemoryActionItemsPanel = showMemoryActionItemsPanel,
                                                         onShowMemoryActionItemsPanelChange = setMemoryActionItemsPanel,
+                                                        showParticipantsPanel = showParticipantsPanel,
+                                                        onShowParticipantsPanelChange = setParticipantsPanel,
                                                         showRuntimePanel = showRuntimePanel,
                                                         onShowRuntimePanelChange = setRuntimePanel,
                                                         onRememberThread = {
@@ -587,6 +616,25 @@ fun GromozekaAppContent(
                                         }
 
                                         if (!isCompactLayout) currentTab?.let { tabViewModel ->
+                                            conversations[tabViewModel.conversationId]?.let { conversation ->
+                                                Box(modifier = Modifier.testTag(UiTestTag.ParticipantsPanel.value)) {
+                                                    ConversationParticipantsPanel(
+                                                        isVisible = showParticipantsPanel,
+                                                        initialConversation = conversation,
+                                                        currentUserId = appComponents.authenticatedUser.id,
+                                                        conversationService = appComponents.conversationService,
+                                                        agentService = appComponents.agentService,
+                                                        projectMembershipService = appComponents.projectMembershipService,
+                                                        userDirectoryService = appComponents.userDirectoryService,
+                                                        onConversationUpdated = {
+                                                            appComponents.appViewModel.mergeConversationSnapshots(listOf(it))
+                                                        },
+                                                        onCurrentUserDisconnected = leaveDisconnectedConversation,
+                                                        onClose = { setParticipantsPanel(false) },
+                                                    )
+                                                }
+                                            }
+
                                             val tokenStats by tabViewModel.tokenStats.collectAsState()
                                             val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
                                             val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
@@ -683,6 +731,34 @@ fun GromozekaAppContent(
                         }
 
                         if (isCompactLayout) {
+                            currentTab?.let { tabViewModel ->
+                                conversations[tabViewModel.conversationId]?.let { conversation ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .zIndex(3f)
+                                            .testTag(UiTestTag.ParticipantsPanel.value)
+                                    ) {
+                                        ConversationParticipantsPanel(
+                                            isVisible = showParticipantsPanel,
+                                            initialConversation = conversation,
+                                            currentUserId = appComponents.authenticatedUser.id,
+                                            conversationService = appComponents.conversationService,
+                                            agentService = appComponents.agentService,
+                                            projectMembershipService = appComponents.projectMembershipService,
+                                            userDirectoryService = appComponents.userDirectoryService,
+                                            onConversationUpdated = {
+                                                appComponents.appViewModel.mergeConversationSnapshots(listOf(it))
+                                            },
+                                            onCurrentUserDisconnected = leaveDisconnectedConversation,
+                                            onClose = { setParticipantsPanel(false) },
+                                            fullScreen = true,
+                                            slideFromRight = true,
+                                        )
+                                    }
+                                }
+                            }
+
                             currentTab?.let { tabViewModel ->
                                 val tokenStats by tabViewModel.tokenStats.collectAsState()
                                 val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()

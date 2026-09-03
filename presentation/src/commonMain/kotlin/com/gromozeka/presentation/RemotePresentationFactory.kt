@@ -81,6 +81,7 @@ suspend fun createRemoteAppComponents(
         clientPlatform = clientPlatform.toRemoteClientPlatform(),
         clientSettingsStore = remoteClientSettingsStore,
         httpClient = httpClient,
+        authenticatedUserRole = authenticatedUser.role,
     )
 
     try {

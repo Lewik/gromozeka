@@ -1,5 +1,6 @@
 package com.gromozeka.client
 
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
@@ -35,7 +36,9 @@ class GromozekaRemoteServices(
     clientHomeDirectory: String,
     clientPlatform: RemoteClientPlatform,
     clientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
+    authenticatedUserRole: User.Role,
 ) {
+    private val canManageRuntimeSettings = authenticatedUserRole == User.Role.OWNER
     private val initialClientSettings = (clientSettingsStore.load() ?: RemoteClientSettings()).let { loaded ->
         val persisted = loaded.copy(
             clientInstanceId = loaded.clientInstanceId ?: ClientInstanceId(uuid7()),
@@ -67,7 +70,12 @@ class GromozekaRemoteServices(
     val clientSettingsService: RemoteClientSettingsService =
         RemoteClientSettingsService(client, clientSettingsStore, initialClientSettings)
     val connectionState: StateFlow<RemoteConnectionState> = client.connectionState
-    private val remoteSettingsService = RemoteSettingsService(client, scope, clientHomeDirectory)
+    private val remoteSettingsService = RemoteSettingsService(
+        client = client,
+        scope = scope,
+        homeDirectory = clientHomeDirectory,
+        persistToServer = canManageRuntimeSettings,
+    )
     private val remoteAiConfigurationService = RemoteAiConfigurationService(client, scope)
     private val remoteRuntimeCatalogTemplateService = RemoteRuntimeCatalogTemplateService(client)
     private val remoteAgentService = RemoteAgentService(client)
@@ -119,10 +127,14 @@ class GromozekaRemoteServices(
         RemoteProjectMembershipService(client)
 
     suspend fun initialize() {
-        remoteSettingsService.refreshFromServer()
+        if (canManageRuntimeSettings) {
+            remoteSettingsService.refreshFromServer()
+        }
         remoteAiConfigurationService.reload()
         remoteRuntimeCatalogTemplateService.reload()
-        remoteSettingsService.startSync()
+        if (canManageRuntimeSettings) {
+            remoteSettingsService.startSync()
+        }
         remoteAiConfigurationService.startSync()
     }
 

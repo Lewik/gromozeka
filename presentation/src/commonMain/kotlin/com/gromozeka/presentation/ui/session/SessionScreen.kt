@@ -64,6 +64,8 @@ fun SessionScreen(
     onShowSettingsPanelChange: (Boolean) -> Unit,
     showMemoryActionItemsPanel: Boolean,
     onShowMemoryActionItemsPanelChange: (Boolean) -> Unit,
+    showParticipantsPanel: Boolean,
+    onShowParticipantsPanelChange: (Boolean) -> Unit,
     showRuntimePanel: Boolean,
     onShowRuntimePanelChange: (Boolean) -> Unit,
 
@@ -203,6 +205,16 @@ fun SessionScreen(
 
                             Spacer(modifier = Modifier.width(8.dp))
                         }
+
+                        CompactButton(
+                            onClick = { onShowParticipantsPanelChange(!showParticipantsPanel) },
+                            modifier = Modifier.testTag(UiTestTag.ParticipantsButton.value),
+                            tooltip = if (showParticipantsPanel) "Hide participants" else "Show participants",
+                        ) {
+                            Icon(Icons.Default.Person, contentDescription = "Participants")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         CompactButton(
                             onClick = { onShowRuntimePanelChange(!showRuntimePanel) },

@@ -41,6 +41,8 @@ sealed interface UiTestTag {
     data object PendingMessagesPanel : UiTestTag
     data object RuntimePanel : UiTestTag
     data object RuntimeButton : UiTestTag
+    data object ParticipantsPanel : UiTestTag
+    data object ParticipantsButton : UiTestTag
     data object PttButton : UiTestTag
     data object VoiceCaptureStatus : UiTestTag
     data object LiveVoiceButton : UiTestTag
@@ -68,6 +70,10 @@ sealed interface UiTestTag {
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)
+    }
+
+    data class ParticipantToggle(val kind: String, val id: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(kind, id)
     }
 
     data class ProjectItem(val projectId: String) : UiTestTag {
