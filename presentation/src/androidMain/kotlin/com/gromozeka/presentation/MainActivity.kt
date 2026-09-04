@@ -27,12 +27,13 @@ import androidx.compose.ui.platform.LocalContext
 import com.gromozeka.device.telemetry.AndroidDeviceLocationService
 import com.gromozeka.device.telemetry.AndroidLocationPermissionRequester
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
+import com.gromozeka.presentation.services.AndroidClientAudioRecorder
 import com.gromozeka.presentation.services.AndroidRemoteClientSettingsStore
 import com.gromozeka.presentation.services.AndroidRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.AndroidClientAudioPlayer
 import com.gromozeka.presentation.services.AndroidAttachmentAcquisitionController
+import com.gromozeka.presentation.services.AndroidMicrophonePermissionRequester
 import com.gromozeka.presentation.services.InMemoryUIStateStore
-import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
@@ -97,7 +98,17 @@ private fun GromozekaAndroidApp(
     var remoteApp by remember { mutableStateOf<RemoteAppComponents?>(null) }
     val currentRemoteApp by rememberUpdatedState(remoteApp)
     val context = LocalContext.current.applicationContext
+    val microphonePermissionRequester = remember { ComposeMicrophonePermissionRequester() }
+    val audioRecorder = remember { AndroidClientAudioRecorder(context, microphonePermissionRequester) }
     val audioPlayer = remember { AndroidClientAudioPlayer(context) }
+    val microphonePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        microphonePermissionRequester.onPermissionResult(granted)
+    }
+    microphonePermissionRequester.launchRequest = {
+        microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
     val attachmentController = remember { AndroidAttachmentAcquisitionController(context.contentResolver) }
     val attachmentPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -168,7 +179,7 @@ private fun GromozekaAndroidApp(
                     clientPlatform = ClientPlatform.ANDROID,
                     uiStateStore = InMemoryUIStateStore(),
                     remoteClientSettingsStore = settingsStore,
-                    audioRecorder = NoOpClientAudioRecorder,
+                    audioRecorder = audioRecorder,
                     audioPlayer = audioPlayer,
                     attachmentAcquisitionController = attachmentController,
                     deviceLocationService = if (enableLocationTelemetry) {
@@ -193,6 +204,8 @@ private fun GromozekaAndroidApp(
         onDispose {
             currentRemoteApp?.close()
             authenticationConnection?.close()
+            audioRecorder.shutdown()
+            audioPlayer.stop()
             attachmentController.close()
         }
     }
@@ -233,7 +246,7 @@ private fun GromozekaAndroidApp(
                                     clientPlatform = ClientPlatform.ANDROID,
                                     uiStateStore = InMemoryUIStateStore(),
                                     remoteClientSettingsStore = settingsStore,
-                                    audioRecorder = NoOpClientAudioRecorder,
+                                    audioRecorder = audioRecorder,
                                     audioPlayer = audioPlayer,
                                     attachmentAcquisitionController = attachmentController,
                                     deviceLocationService = if (enableLocationTelemetry) {
@@ -279,6 +292,34 @@ private fun GromozekaAndroidApp(
             )
 
             else -> StartupLoading()
+        }
+    }
+}
+
+private class ComposeMicrophonePermissionRequester : AndroidMicrophonePermissionRequester {
+    var launchRequest: (() -> Unit)? = null
+    private var pendingContinuation: CancellableContinuation<Boolean>? = null
+
+    override suspend fun requestMicrophonePermission(): Boolean =
+        suspendCancellableCoroutine { continuation ->
+            val launcher = launchRequest
+            if (launcher == null || pendingContinuation != null) {
+                continuation.resume(false)
+                return@suspendCancellableCoroutine
+            }
+            pendingContinuation = continuation
+            continuation.invokeOnCancellation {
+                if (pendingContinuation === continuation) {
+                    pendingContinuation = null
+                }
+            }
+            launcher()
+        }
+
+    fun onPermissionResult(granted: Boolean) {
+        pendingContinuation?.let { continuation ->
+            pendingContinuation = null
+            if (continuation.isActive) continuation.resume(granted)
         }
     }
 }
