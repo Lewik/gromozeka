@@ -127,6 +127,11 @@ tasks.named("processTestResources") {
 tasks.withType<Test> {
     useJUnitPlatform()
 
+    if (providers.environmentVariable("GROMOZEKA_ANDROID_LIFECYCLE_TEST").orNull == "true") {
+        outputs.upToDateWhen { false }
+        testLogging.showStandardStreams = true
+    }
+
     val isLongMemEvalRun = providers.systemProperty("gromozeka.longmemeval")
         .map { it == "true" }
         .orElse(false)

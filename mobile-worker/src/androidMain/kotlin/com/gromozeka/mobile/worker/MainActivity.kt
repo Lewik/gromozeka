@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
     private var foregroundHeartbeat: Job? = null
     private var statusChanged: ((MobileWorkerStatus) -> Unit)? = null
     private var errorChanged: ((String?) -> Unit)? = null
+    private var backgroundAccess by mutableStateOf(AndroidWorkerBackgroundAccess(false, false))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,6 +77,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
         setContent {
             MobileWorkerApp(
                 runtime = runtime,
+                backgroundAccess = backgroundAccess,
                 onStatusListener = { statusChanged = it },
                 onErrorListener = { errorChanged = it },
                 onEnableLocation = ::requestBackgroundLocation,
@@ -86,6 +88,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
 
     override fun onResume() {
         super.onResume()
+        backgroundAccess = AndroidWorkerBackgroundAccess.read(applicationContext)
         activityScope.launch {
             runCatching { AndroidWorkerSoundOutput.recoverVolume(applicationContext) }
                 .onFailure { errorChanged?.invoke("Previous alarm volume could not be restored: ${it::class.simpleName}") }
@@ -210,6 +213,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
 @Composable
 private fun MainActivity.MobileWorkerApp(
     runtime: MobileWorkerRuntime,
+    backgroundAccess: AndroidWorkerBackgroundAccess,
     onStatusListener: (((MobileWorkerStatus) -> Unit)?) -> Unit,
     onErrorListener: (((String?) -> Unit)?) -> Unit,
     onEnableLocation: () -> Unit,
@@ -392,6 +396,23 @@ private fun MainActivity.MobileWorkerApp(
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } else enableGateway()
                     }) { Text(if (enrolled.gatewayEnabled) "Disable remote commands" else "Enable remote commands") }
+                    Text(when {
+                        backgroundAccess.backgroundRestricted -> "Background work: restricted by Android"
+                        backgroundAccess.batteryOptimizationExempt -> "Background work: battery optimization exemption enabled"
+                        else -> "Background work: battery optimized"
+                    }, fontWeight = FontWeight.Bold)
+                    Text(when {
+                        backgroundAccess.backgroundRestricted -> "Android can stop the connection and block restart after reboot. Allow background work in the app's battery settings if you want remote commands to stay available."
+                        backgroundAccess.batteryOptimizationExempt -> "Android allows network access during device sleep. Force-stop, lost connectivity and manufacturer restrictions can still interrupt delivery."
+                        else -> "Battery optimizations can delay background work. You can request an exemption to reduce these restrictions. This can use more battery and does not guarantee delivery; Android will ask you to confirm."
+                    }, color = workerColors.onSurfaceVariant)
+                    TextButton(onClick = {
+                        runCatching { startActivity(backgroundAccess.settingsIntent(packageName)) }
+                            .onFailure { error = "Open this app's battery settings in Android and allow background work." }
+                    }) {
+                        Text(if (backgroundAccess.backgroundRestricted || backgroundAccess.batteryOptimizationExempt)
+                            "Android app battery settings" else "Allow background connection")
+                    }
                     Text("Loud sound: ${if (enrolled.soundEnabled) "allowed" else "disabled"}", fontWeight = FontWeight.Bold)
                     Text("Allow this server to play an alert on the built-in speaker for up to 60 seconds, temporarily raising alarm volume to maximum, even with a silent ringer. You can stop it here or in the notification. Do Not Disturb must allow alarms; disconnect headphones and external audio first. No administrator access is needed.",
                         color = workerColors.onSurfaceVariant)

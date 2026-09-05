@@ -22,9 +22,23 @@ invisible service inside the chat Client.
 Startup occurs from the visible app or, if already enabled, boot/package-replaced
 receivers. The service is sticky, but an explicit disable is durable. Force-stop,
 Doze, network restrictions and vendor battery policies can still make the Worker
-unavailable. No battery-policy bypass, push wakeup or guaranteed
-immediate delivery is introduced. Delivery TTL continues to govern queued requests.
+unavailable. No push wakeup or guaranteed immediate delivery is introduced.
+Delivery TTL continues to govern queued requests.
 Only a running loud alert holds a bounded partial wake lock; an idle Gateway does not.
+
+The app shows battery optimization exemption and user-imposed background
+restriction separately, refreshing them when returning from Android settings.
+**Allow background connection** opens Android's explicit battery exemption
+confirmation; it never changes the setting silently or makes it a prerequisite
+for enrollment. The `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` manifest permission
+only permits showing this request. If background work is restricted, the app
+instead opens its system settings so the user can remove that restriction.
+Exemption allows network access in Doze but does not guarantee CPU wakeups,
+delivery through a lost network, or survival of force-stop/vendor policies.
+It can increase battery usage. This is an optional user-controlled setting for the
+remote automation use case, not a Worker desired-state enforcement loop.
+See [Android Doze behavior and exemption use cases](https://developer.android.com/training/monitoring-device-state/doze-standby)
+and [user-imposed background restrictions](https://developer.android.com/topic/performance/background-optimization).
 
 The choice of service type follows the
 [Android foreground service types reference](https://developer.android.com/develop/background-work/services/fgs/service-types#special-use).
@@ -33,6 +47,13 @@ Background restart remains subject to the
 Play Store approval of this use case is not implied by sideloading support.
 
 ## Execution and persistence
+
+The Android transport uses OkHttp's engine-level connection timeout and ping
+interval. Do not set Ktor `WebSockets.maxFrameSize` with this engine: Ktor 3.5.2
+tries to mutate the OkHttp session's unsupported property and throws before
+registration. The shared transport instead rejects messages over 1 MiB before
+CBOR decoding on Android. This is a decode boundary, not a wire-level allocation
+limit: OkHttp has already buffered the received message.
 
 The Worker advertises only `TOOL_EXECUTION` and the tools it actually implements.
 `WorkerToolRequestHandler` validates the stable Worker target, rejects Workspace
@@ -156,9 +177,47 @@ adb -s <test-emulator> install mobile-worker-android/build/outputs/apk/androidTe
 adb -s <test-emulator> shell am instrument -w com.gromozeka.mobile.worker.test/com.gromozeka.mobile.worker.GatewaySmokeInstrumentation
 ```
 
-Modern Android service restrictions, vendor power policies, reboot recovery,
-long offline intervals and real network switching still require physical-device
-or matching modern-emulator validation before family deployment.
-The Gateway/sound smoke run and enable/play/stop UI checks passed on an isolated
-API 29 emulator; Android 14+ foreground-service behavior has not yet been
-runtime-tested, and audible output has not been verified on a physical device.
+### Modern Android lifecycle test
+
+`AndroidWorkerLifecycleTest` is an opt-in host JUnit test controlling one explicitly
+selected, disposable API 35+ emulator. It validates APK package identities before
+installation and uses only `com.gromozeka.mobile.worker.lifecycle`, clearing that
+test application's data. It never selects a default ADB device or uses real
+enrollment credentials. The fixture is an actual TLS endpoint and CBOR Worker
+Gateway with fake catalog/event ACKs; it needs neither PostgreSQL nor AI services.
+It occupies loopback ports 18876 and 18877, which must be free.
+
+```bash
+ANDROID_HOME=/path/to/sdk bash scripts/test-android-worker-lifecycle.sh emulator-5582
+```
+
+The script creates a throwaway two-day TLS certificate, builds an opt-in
+`lifecycle` variant, and runs the test. Only that variant trusts the test CA for
+`10.0.2.2`; normal debug/release trust and HTTPS enforcement remain unchanged.
+The printed temporary directory retains the small disposable certificate fixture
+for diagnosis. The emulator must already be running; the script does not start
+or modify other AVDs. The test changes power/network state and alarm volume,
+updates its isolated APK, and reboots the emulator twice. Run it on no other
+environment. It restores its power/network test overrides in `finally`.
+
+The matrix covers screen-off commands/sound, offline queued requests and TTL,
+emulated cellular/Wi-Fi handover, package replacement, reboot without app launch,
+Doze/wake recovery, explicit battery exemption, force-stop/manual launch, and
+durable user disable across reboot. The ordinary Doze scenario removes the
+temporary `BOOT_COMPLETED` exemption and records the actual UID network policy
+and whether delivery occurred before wake. On the Android 16 image tested here,
+the running foreground service itself retained network access without a battery
+exemption (`allowed=FOREGROUND`, `effective=NONE`). A forced-idle emulator does not
+fully reproduce physical CPU suspend or manufacturer power policies. The test
+therefore checks recovery without assuming every Android build must delay delivery.
+
+Physical speaker output, long-term battery consumption, real mobile networks
+and manufacturer-specific policies still require checks on the actual phones
+before family deployment. Emulator success does not certify those behaviors.
+
+The full lifecycle matrix passed on 2026-09-05 on an isolated Google APIs ARM64
+Android 16/API 36 emulator with the application's current target SDK 35.
+Native UI checks also verified battery exemption denial/approval, status refresh
+on return from settings, and the separate background-restricted state.
+`GatewaySmokeInstrumentation` also passed on the normal debug APK on that image,
+including native sound playback state, stop and volume restoration.

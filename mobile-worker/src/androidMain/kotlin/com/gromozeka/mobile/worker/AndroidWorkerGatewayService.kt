@@ -102,7 +102,7 @@ class AndroidWorkerGatewayService : Service() {
                                         pingInterval(20, TimeUnit.SECONDS)
                                     }
                                 }
-                                install(WebSockets) { maxFrameSize = 1024 * 1024 }
+                                install(WebSockets)
                             }
                             try {
                                 val device = AndroidWorkerDevice(applicationContext, runtime)
@@ -131,7 +131,8 @@ class AndroidWorkerGatewayService : Service() {
                                 val alertTool = WorkerSoundTool(sound).also { soundTool = it }
                                 MobileWorkerGateway(
                                     enrollment = enrollment,
-                                    transport = KtorWorkerGatewayTransport(client, enrollment.gatewayUrl, enrollment.credential),
+                                    transport = KtorWorkerGatewayTransport(client, enrollment.gatewayUrl, enrollment.credential,
+                                        maxIncomingMessageBytes = 1024 * 1024),
                                     journal = persistence.journal,
                                     profile = device.profile(),
                                     version = applicationContext.applicationVersion(),

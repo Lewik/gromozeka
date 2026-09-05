@@ -25,7 +25,10 @@ class KtorWorkerGatewayTransport(
     private val client: HttpClient,
     private val gatewayUrl: String,
     private val credential: String,
+    private val maxIncomingMessageBytes: Int = Int.MAX_VALUE,
 ) : WorkerGatewayTransport {
+    init { require(maxIncomingMessageBytes > 0) }
+
     override suspend fun connect(): WorkerGatewayConnection {
         val socket = client.webSocketSession {
             url(gatewayUrl)
@@ -44,6 +47,7 @@ class KtorWorkerGatewayTransport(
                 }
                 val frame = received.getOrThrow()
                 require(frame is Frame.Binary) { "Worker Gateway Server sent a non-binary frame" }
+                require(frame.data.size <= maxIncomingMessageBytes) { "Worker Gateway Server message is too large" }
                 return WorkerGatewayCodec.decode(frame.readBytes())
             }
 
