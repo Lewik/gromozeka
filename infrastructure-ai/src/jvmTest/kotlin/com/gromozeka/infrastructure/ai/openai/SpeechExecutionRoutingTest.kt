@@ -215,6 +215,11 @@ class SpeechExecutionRoutingTest {
     ) : ConversationRuntimeWorkerTargetResolver {
         val requests = mutableListOf<Pair<ConversationRuntimeWorkerId, ConversationRuntimeCapability>>()
 
+        override suspend fun requireRegistered(
+            workerId: ConversationRuntimeWorkerId,
+            capability: ConversationRuntimeCapability,
+        ): ConversationRuntimeWorkerIdentity = requireOnline(workerId, capability)
+
         override suspend fun requireOnline(
             workerId: ConversationRuntimeWorkerId,
             capability: ConversationRuntimeCapability,

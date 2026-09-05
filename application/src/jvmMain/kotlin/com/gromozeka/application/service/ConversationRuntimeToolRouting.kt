@@ -170,11 +170,11 @@ class ConversationRuntimeToolRoutingService(
         }
         if (entry.workers.none { it.workerId == workerId }) {
             errors += toolCall.routingError(
-                "Worker '${workerId.value}' is not online or does not advertise tool '${toolCall.call.name}'."
+                "Worker '${workerId.value}' does not advertise tool '${toolCall.call.name}'."
             )
             return null
         }
-        return ConversationRuntimeTaskTarget.Worker(workerId = workerId)
+        return ConversationRuntimeTaskTarget.Worker(workerId = workerId, requestPolicy = requested.requestPolicy)
     }
 
     private suspend fun resolveMountTarget(
@@ -202,7 +202,7 @@ class ConversationRuntimeToolRoutingService(
         }
         if (!advertised) {
             errors += toolCall.routingError(
-                "Workspace mount '${mountId.value}' is offline or its worker does not advertise " +
+                "Workspace mount '${mountId.value}' does not advertise " +
                     "tool '${toolCall.call.name}'."
             )
             return null
@@ -211,6 +211,7 @@ class ConversationRuntimeToolRoutingService(
         return ConversationRuntimeTaskTarget.Worker(
             workerId = com.gromozeka.domain.service.ConversationRuntimeWorkerId(mount.workerId),
             workspaceMountId = mount.id,
+            requestPolicy = requested.requestPolicy,
         )
     }
 
@@ -256,7 +257,7 @@ class ConversationRuntimeToolRoutingService(
         }
         if (entry.workers.none { it.workerId == commandTask.workerId }) {
             errors += toolCall.routingError(
-                "Worker '${commandTask.workerId.value}' that owns command task '$taskId' is offline or does not " +
+                "Worker '${commandTask.workerId.value}' that owns command task '$taskId' is unavailable or does not " +
                     "advertise tool '${toolCall.call.name}'."
             )
             return null
@@ -310,7 +311,7 @@ class ConversationRuntimeToolRoutingService(
         }
         if (entry.workers.none { it.workerId == monitor.workerId }) {
             errors += toolCall.routingError(
-                "Worker '${monitor.workerId.value}' that owns command monitor '$monitorId' is offline or does not " +
+                "Worker '${monitor.workerId.value}' that owns command monitor '$monitorId' is unavailable or does not " +
                     "advertise tool '${toolCall.call.name}'."
             )
             return null
@@ -384,7 +385,24 @@ fun JsonElement.parseExecutionTarget(): AiToolExecutionTarget {
     return AiToolExecutionTarget(
         workerId = workerId,
         workspaceMountId = workspaceMountId,
+        requestPolicy = target.workerRequestPolicy(),
     )
+}
+
+private fun JsonObject.workerRequestPolicy(): com.gromozeka.domain.service.WorkerRequestPolicy? {
+    val fields = setOf("delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds")
+    if (keys.none { it in fields }) return null
+    fun seconds(name: String, fallback: Long): Long {
+        val value = get(name) ?: return fallback
+        val primitive = value as? JsonPrimitive
+        require(primitive != null && !primitive.isString) { "$name must be an integer" }
+        val number = requireNotNull(primitive.content.toLongOrNull()) { "$name must be an integer" }
+        require(number in 1..604_800) { "$name must be between 1 and 604800 seconds" }
+        return number * 1_000
+    }
+    val ttl = seconds("delivery_ttl_seconds", 30_000)
+    val execution = seconds("execution_timeout_seconds", 1_800_000)
+    return com.gromozeka.domain.service.WorkerRequestPolicy(ttl, execution, seconds("wait_timeout_seconds", minOf(ttl + execution, 604_800_000)))
 }
 
 fun JsonElement.withoutExecutionTarget(): JsonObject {

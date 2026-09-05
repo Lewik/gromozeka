@@ -27,7 +27,7 @@ class TargetedAiSubscriptionQuotaProvider(
         when (val target = request.connection.executionTarget) {
             AiExecutionTarget.Server -> directProvider(request).read(request)
             is AiExecutionTarget.Worker -> remoteClient().readSubscriptionQuota(
-                target = workerTargetResolver.requireOnline(
+                target = workerTargetResolver.requireRegistered(
                     ConversationRuntimeWorkerId(target.workerId),
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),

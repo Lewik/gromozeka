@@ -106,6 +106,7 @@ data class AiToolDescriptor(
 data class AiToolExecutionTarget(
     val workerId: ConversationRuntimeWorkerId? = null,
     val workspaceMountId: WorkspaceMount.Id? = null,
+    val requestPolicy: com.gromozeka.domain.service.WorkerRequestPolicy? = null,
 ) {
     init {
         require((workerId == null) != (workspaceMountId == null)) {

@@ -28,6 +28,17 @@ class WorkerGatewayProtocolTest {
     }
 
     @Test
+    fun `durable request metadata and result acknowledgement round trip`() {
+        val request = WorkerGatewayMessage.Request(
+            "request-1", WorkerGatewayOperation.TOOL_EXECUTION, byteArrayOf(1, 2),
+            com.gromozeka.domain.service.WorkerRequestDelivery(kotlin.time.Instant.parse("2026-09-06T00:00:00Z"), 60_000, true),
+        )
+        assertEquals(request, WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(request)))
+        val acknowledged = WorkerGatewayMessage.ResponseAcknowledged(request.id)
+        assertEquals(acknowledged, WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(acknowledged)))
+    }
+
+    @Test
     fun `tool loading policy round trips through worker catalog`() {
         val expected = WorkerGatewayMessage.Ready(
             tools = listOf(

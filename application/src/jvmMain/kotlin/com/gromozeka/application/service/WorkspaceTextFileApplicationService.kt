@@ -57,7 +57,7 @@ class WorkspaceTextFileApplicationService(
             workerAccessService.requireProjectAccess(workerId, execution.project.id)
         }
 
-        val target = workerTargetResolver.requireOnline(
+        val target = workerTargetResolver.requireRegistered(
             workerId,
             ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
         )
@@ -67,7 +67,8 @@ class WorkspaceTextFileApplicationService(
                 reference = reference,
                 workspaceRootPath = execution.mount.rootPath,
                 maxBytes = maxBytes,
-            )
+            ),
+            access = access.copy(expectedProjectId = execution.project.id),
         )
     }
 }

@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.mcp.McpServer
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.service.WorkerRequestDelivery
 import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlin.time.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -74,6 +75,7 @@ sealed interface WorkerGatewayMessage {
         val id: String,
         val operation: WorkerGatewayOperation,
         val payload: ByteArray,
+        val delivery: WorkerRequestDelivery? = null,
     ) : WorkerGatewayMessage {
         init {
             require(id.isNotBlank()) { "Worker Gateway request id must not be blank" }
@@ -83,10 +85,10 @@ sealed interface WorkerGatewayMessage {
             other is Request &&
                 id == other.id &&
                 operation == other.operation &&
-                payload.contentEquals(other.payload)
+                payload.contentEquals(other.payload) && delivery == other.delivery
 
         override fun hashCode(): Int =
-            31 * (31 * id.hashCode() + operation.hashCode()) + payload.contentHashCode()
+            31 * (31 * (31 * id.hashCode() + operation.hashCode()) + payload.contentHashCode()) + (delivery?.hashCode() ?: 0)
     }
 
     @Serializable
@@ -153,6 +155,10 @@ sealed interface WorkerGatewayMessage {
         val code: String,
         val message: String,
     ) : WorkerGatewayMessage
+
+    @Serializable
+    @SerialName("response_acknowledged")
+    data class ResponseAcknowledged(val requestId: String) : WorkerGatewayMessage
 }
 
 @Serializable
@@ -168,7 +174,7 @@ enum class WorkerGatewayOperation {
     AGENT_SKILL_IMPORT,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 12
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 13
 
 @OptIn(ExperimentalSerializationApi::class)
 object WorkerGatewayCodec {

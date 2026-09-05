@@ -78,18 +78,17 @@ class DistributedAiToolCatalog(
         val knownRegistrations = workerRegistry.list()
             .filter { it.identity.workerId in availableWorkerIds }
             .sortedBy { it.identity.workerId.value }
-        val onlineRegistrations = knownRegistrations.filter { it.isOnline(staleBefore) }
         val projectWorkspaces = workspaceService.findByProject(project.id)
             .associateBy { it.id }
         val projectMounts = projectWorkspaces.keys
             .flatMap { workspaceService.findMounts(it) }
             .filter { ConversationRuntimeWorkerId(it.workerId) in availableWorkerIds }
             .sortedBy { it.id.value }
-        val mountsByOnlineWorker = onlineRegistrations.associate { registration ->
+        val mountsByWorker = knownRegistrations.associate { registration ->
             registration.identity.workerId to projectMounts
                 .filter { it.workerId == registration.identity.workerId.value }
         }
-        val workerAdvertisements = onlineRegistrations
+        val workerAdvertisements = knownRegistrations
             .flatMap { registration ->
                 registration.tools
                     .filter { it.metadata.executionScope != AiToolExecutionScope.SERVER }
@@ -115,7 +114,7 @@ class DistributedAiToolCatalog(
                     .map { (registration, _) ->
                         DistributedAiToolWorker(
                             workerId = registration.identity.workerId,
-                            workspaceMounts = mountsByOnlineWorker.getValue(registration.identity.workerId),
+                            workspaceMounts = mountsByWorker.getValue(registration.identity.workerId),
                         )
                     }
                     .filter {
@@ -178,7 +177,7 @@ class DistributedAiToolCatalog(
         return DistributedAiToolCatalogSnapshot(
             tools = callbacks,
             entries = entries,
-            registrations = onlineRegistrations,
+            registrations = knownRegistrations,
             environmentRevision = environmentRevision,
             environmentPrompt = buildEnvironmentPrompt(
                 revision = environmentRevision,
@@ -217,9 +216,9 @@ class DistributedAiToolCatalog(
         val targetDescription = when (scope) {
             AiToolExecutionScope.SERVER -> return this
             AiToolExecutionScope.WORKER ->
-                "Select an exact compatible online worker from the current execution environment in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
+                "Select an exact compatible worker from the current execution environment in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.WORKSPACE ->
-                "Select the exact online filesystem mount in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
+                "Select the exact filesystem mount in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.COMMAND_TASK_OWNER ->
                 "The command task ID routes this call to the worker and mount that own the task."
             AiToolExecutionScope.COMMAND_MONITOR_OWNER ->
@@ -262,6 +261,24 @@ class DistributedAiToolCatalog(
                 }
             )
             putJsonObject("properties") {
+                putJsonObject("delivery_ttl_seconds") {
+                    put("type", "integer")
+                    put("minimum", 1)
+                    put("maximum", 604800)
+                    put("description", "Time allowed before execution starts, including offline delivery. Default 30 seconds. Expired requests never start.")
+                }
+                putJsonObject("execution_timeout_seconds") {
+                    put("type", "integer")
+                    put("minimum", 1)
+                    put("maximum", 86400)
+                    put("description", "Execution limit after starting, independent of delivery TTL. Default 1800 seconds.")
+                }
+                putJsonObject("wait_timeout_seconds") {
+                    put("type", "integer")
+                    put("minimum", 1)
+                    put("maximum", 604800)
+                    put("description", "How long this call waits. Default delivery TTL plus execution timeout, capped at 7 days. Ending the wait does not cancel execution; use grz_worker_request_get or grz_worker_request_cancel with the returned request ID.")
+                }
                 if (workspaceRequired) {
                     putJsonObject(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD) {
                         put("type", "string")
@@ -406,8 +423,8 @@ class DistributedAiToolCatalog(
             append("\n")
             append("Worker-scoped and workspace-scoped tool calls must include `$AI_TOOL_EXECUTION_TARGET_FIELD`; ")
             append("command-task operations route by task_id. ")
-            append("Use only online worker IDs and online workspace mount IDs shown by this environment. ")
-            append("If a required target is absent, offline, or ambiguous, explain that instead of guessing. ")
+            append("Use only worker IDs and workspace mount IDs shown by this environment. Offline workers can receive queued requests within delivery_ttl_seconds. ")
+            append("If a required target is absent or ambiguous, explain that instead of guessing. Waiting can end before execution; query the returned request ID instead of resubmitting an action. ")
             append("Never infer that equal paths on different workers are the same workspace. ")
             append("Independent tool calls may target different workers or workspace mounts in one assistant response and execute concurrently. ")
             append("Dependent tool calls must be issued in later assistant responses after observing prerequisite results. ")

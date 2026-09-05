@@ -15,7 +15,7 @@ import kotlin.test.assertFailsWith
 
 class WorkerWorkspaceTextFileGatewayCodecTest {
     @Test
-    fun `codec preserves exact Worker identity and workspace path reference`() = runBlocking {
+    fun `codec preserves workspace reference and permits the same Worker after process restart`() = runBlocking {
         val identity = workerIdentity("session-1")
         val reference = WorkspacePathReference(WorkspaceMount.Id("mount-1"), "docs/memory.md")
         val request = WorkerWorkspaceTextFileReadRequest(
@@ -39,7 +39,7 @@ class WorkerWorkspaceTextFileGatewayCodecTest {
 
         val response = WorkerWorkspaceTextFileGatewayCodec.execute(
             payload = WorkerWorkspaceTextFileGatewayCodec.encodeRequest(request),
-            identity = identity,
+            identity = workerIdentity("replacement-process"),
             handler = handler,
         )
 
@@ -47,7 +47,7 @@ class WorkerWorkspaceTextFileGatewayCodecTest {
     }
 
     @Test
-    fun `codec rejects a request for another Worker session`() = runBlocking {
+    fun `codec rejects a request for another Worker`() = runBlocking {
         val request = WorkerWorkspaceTextFileReadRequest(
             target = workerIdentity("session-1"),
             reference = WorkspacePathReference(WorkspaceMount.Id("mount-1"), "memory.md"),
@@ -58,7 +58,7 @@ class WorkerWorkspaceTextFileGatewayCodecTest {
         assertFailsWith<IllegalArgumentException> {
             WorkerWorkspaceTextFileGatewayCodec.execute(
                 payload = WorkerWorkspaceTextFileGatewayCodec.encodeRequest(request),
-                identity = workerIdentity("session-2"),
+                identity = workerIdentity("session-2").copy(workerId = ConversationRuntimeWorkerId("another-worker")),
                 handler = object : WorkerWorkspaceTextFileHandler {
                     override suspend fun read(
                         request: WorkerWorkspaceTextFileReadRequest,

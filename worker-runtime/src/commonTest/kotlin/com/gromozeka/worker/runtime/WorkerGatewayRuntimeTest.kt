@@ -45,14 +45,14 @@ class WorkerGatewayRuntimeTest {
     fun `registration heartbeat and request response use the common runtime`() = runTest {
         val connection = TestConnection()
         val runtime = runtime(connection)
-        val job = launch { runtime.connect() }
+        val job = launch { runtime.run() }
         handshake(connection)
         connection.received.send(request("first"))
         assertEquals("first", assertIs<WorkerGatewayMessage.Response>(connection.sent.receive()).requestId)
         advanceTimeBy(1_001)
         assertIs<WorkerGatewayMessage.Heartbeat>(connection.sent.receive())
         connection.received.close()
-        job.join()
+        job.cancelAndJoin()
         assertTrue(connection.closed)
     }
 
@@ -78,6 +78,53 @@ class WorkerGatewayRuntimeTest {
     }
 
     @Test
+    fun `active request survives reconnect and saved response is replayed until acknowledged`() = runTest {
+        val connections = Channel<TestConnection>(Channel.UNLIMITED)
+        val started = CompletableDeferred<Unit>()
+        val finish = CompletableDeferred<Unit>()
+        var executions = 0
+        val runtime = runtime(
+            transport = WorkerGatewayTransport { TestConnection().also { connections.send(it) } },
+            handler = WorkerRequestHandler {
+                executions++
+                started.complete(Unit)
+                finish.await()
+                success(it)
+            },
+        )
+        val job = launch { runtime.run() }
+        try {
+            val first = connections.receive()
+            handshake(first)
+            val request = request("survive-reconnect")
+            first.received.send(request)
+            started.await()
+            first.received.close()
+            runCurrent()
+            advanceTimeBy(1_001)
+            val second = connections.receive()
+            handshake(second)
+            second.received.send(request)
+            runCurrent()
+            assertEquals(1, executions)
+            finish.complete(Unit)
+            assertEquals(success(request), second.sent.receive())
+            second.received.close()
+            runCurrent()
+            advanceTimeBy(1_001)
+            val third = connections.receive()
+            handshake(third)
+            assertEquals(success(request), third.sent.receive())
+            third.received.send(WorkerGatewayMessage.ResponseAcknowledged(request.id))
+            runCurrent()
+            advanceTimeBy(1_001)
+            assertIs<WorkerGatewayMessage.Heartbeat>(third.sent.receive())
+            assertTrue(third.sent.tryReceive().isFailure)
+            assertEquals(1, executions)
+        } finally { job.cancelAndJoin() }
+    }
+
+    @Test
     fun `handshake timeout reconnects while parent cancellation stops the loop`() = runTest {
         val connections = Channel<TestConnection>(Channel.UNLIMITED)
         val runtime = runtime(transport = WorkerGatewayTransport {
@@ -99,8 +146,8 @@ class WorkerGatewayRuntimeTest {
     fun `different workers can run the same request id independently`() = runTest {
         val first = TestConnection()
         val second = TestConnection()
-        val firstJob = launch { runtime(first, id = "first-worker").connect() }
-        val secondJob = launch { runtime(second, id = "second-worker").connect() }
+        val firstJob = launch { runtime(first, id = "first-worker").run() }
+        val secondJob = launch { runtime(second, id = "second-worker").run() }
         assertEquals("first-worker", handshake(first).registration.identity.workerId.value)
         assertEquals("second-worker", handshake(second).registration.identity.workerId.value)
         connectionRequest(first, "same-id")
@@ -122,19 +169,20 @@ class WorkerGatewayRuntimeTest {
                     try { awaitCancellation() } finally { cancelled.complete(Unit) }
                 }
                 success(it)
-            }).connect()
+            }).run()
         }
         handshake(connection)
         connection.received.send(request("slow"))
         started.await()
         connection.received.send(WorkerGatewayMessage.CancelRequest("slow"))
         cancelled.await()
+        assertEquals("slow", assertIs<WorkerGatewayMessage.Response>(connection.sent.receive()).requestId)
         connectionRequest(connection, "fast")
         job.cancelAndJoin()
     }
 
     @Test
-    fun `disconnect cancels execution and fails pending outbound calls without retry`() = runTest {
+    fun `disconnect preserves execution and fails only connection scoped outbound calls`() = runTest {
         val connection = TestConnection()
         val outbound = WorkerGatewayOutbound(capabilities)
         val started = CompletableDeferred<Unit>()
@@ -143,7 +191,7 @@ class WorkerGatewayRuntimeTest {
             runtime(connection, outbound = outbound, handler = WorkerRequestHandler {
                 started.complete(Unit)
                 try { awaitCancellation() } finally { cancelled.complete(Unit) }
-            }).connect()
+            }).run()
         }
         handshake(connection)
         connection.received.send(request("slow"))
@@ -153,20 +201,12 @@ class WorkerGatewayRuntimeTest {
         }
         assertIs<WorkerGatewayMessage.Request>(connection.sent.receive())
         connection.received.close()
-        job.join()
+        runCurrent()
+        assertFalse(cancelled.isCompleted)
+        job.cancelAndJoin()
         cancelled.await()
         assertTrue(response.await().isFailure)
         assertFailsWith<IllegalStateException> { outbound.execute(WorkerGatewayOperation.WORKSPACE_STATE, byteArrayOf()) }
-    }
-
-    @Test
-    fun `failed handshakes close the transport and never become ready`() = runTest {
-        val connection = TestConnection()
-        connection.received.send(welcome.copy(protocolVersion = -1))
-        assertFailsWith<IllegalArgumentException> { runtime(connection).connect() }
-        assertIs<WorkerGatewayMessage.Hello>(connection.sent.receive())
-        assertTrue(connection.sent.tryReceive().isFailure)
-        assertTrue(connection.closed)
     }
 
     @Test
@@ -228,6 +268,7 @@ class WorkerGatewayRuntimeTest {
         handler: WorkerRequestHandler = WorkerRequestHandler(::success),
     ) = WorkerGatewayRuntime(
         transport = transport,
+        journal = TestWorkerRequestJournal(),
         registration = { registration(id) },
         outbound = outbound,
         handler = handler,
@@ -268,7 +309,10 @@ class WorkerGatewayRuntimeTest {
         override suspend fun close() { closed = true }
     }
 
-    private fun request(id: String) = WorkerGatewayMessage.Request(id, WorkerGatewayOperation.WORKER_CONTROL, byteArrayOf())
+    private fun request(id: String) = WorkerGatewayMessage.Request(
+        id, WorkerGatewayOperation.WORKER_CONTROL, byteArrayOf(),
+        com.gromozeka.domain.service.WorkerRequestDelivery(kotlin.time.Clock.System.now() + 30.seconds, 10_000),
+    )
     private fun success(request: WorkerGatewayMessage.Request) = WorkerGatewayMessage.Response(
         requestId = request.id,
         status = WorkerGatewayMessage.Response.Status.SUCCEEDED,

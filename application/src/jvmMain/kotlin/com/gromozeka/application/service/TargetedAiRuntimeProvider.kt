@@ -86,7 +86,7 @@ class TargetedAiRuntimeProvider(
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
             runtime.modelSpec.requireSupportsInputs(request.messages)
             return remoteClient().call(
-                target = workerTargetResolver.requireOnline(
+                target = workerTargetResolver.requireRegistered(
                     workerId,
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),

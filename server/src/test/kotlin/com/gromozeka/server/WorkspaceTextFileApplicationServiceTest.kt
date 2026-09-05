@@ -29,7 +29,7 @@ import kotlin.test.assertEquals
 
 class WorkspaceTextFileApplicationServiceTest {
     @Test
-    fun `resolves mount authorizes actor and reads on its exact online Worker`() = runBlocking {
+    fun `resolves mount and preserves authorization context for delayed Worker file read`() = runBlocking {
         val now = Instant.parse("2026-08-03T00:00:00Z")
         val project = Project(Project.Id("project-1"), "Project", createdAt = now, lastUsedAt = now)
         val workspace = Workspace(
@@ -78,7 +78,7 @@ class WorkspaceTextFileApplicationServiceTest {
             )
         ).thenReturn(mock<WorkerResource>())
         Mockito.`when`(
-            targetResolver.requireOnline(identity.workerId, ConversationRuntimeCapability.LOCAL_AGENT_TOOL)
+            targetResolver.requireRegistered(identity.workerId, ConversationRuntimeCapability.LOCAL_AGENT_TOOL)
         ).thenReturn(identity)
 
         val result = WorkspaceTextFileApplicationService(
@@ -100,13 +100,16 @@ class WorkspaceTextFileApplicationServiceTest {
         assertEquals(identity, workerClient.request?.target)
         assertEquals(reference, workerClient.request?.reference)
         assertEquals("/workspace", workerClient.request?.workspaceRootPath)
+        assertEquals(WorkspacePathAccessContext(actor.id, project.id), workerClient.access)
     }
 
     private class RecordingWorkerWorkspaceTextFileClient : WorkerWorkspaceTextFileClient {
         var request: WorkerWorkspaceTextFileReadRequest? = null
+        var access: WorkspacePathAccessContext? = null
 
-        override suspend fun read(request: WorkerWorkspaceTextFileReadRequest): WorkspaceTextFile {
+        override suspend fun read(request: WorkerWorkspaceTextFileReadRequest, access: WorkspacePathAccessContext): WorkspaceTextFile {
             this.request = request
+            this.access = access
             return WorkspaceTextFile(
                 reference = request.reference,
                 resolvedPath = "/workspace/docs/memory.md",

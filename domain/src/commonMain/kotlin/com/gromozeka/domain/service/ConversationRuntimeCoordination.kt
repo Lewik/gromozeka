@@ -360,6 +360,7 @@ sealed interface ConversationRuntimeTaskTarget {
     data class Worker(
         val workerId: ConversationRuntimeWorkerId,
         val workspaceMountId: WorkspaceMount.Id? = null,
+        val requestPolicy: WorkerRequestPolicy? = null,
     ) : ConversationRuntimeTaskTarget
 }
 
@@ -513,6 +514,11 @@ interface ConversationRuntimeWorkerRegistry {
 }
 
 interface ConversationRuntimeWorkerTargetResolver {
+    suspend fun requireRegistered(
+        workerId: ConversationRuntimeWorkerId,
+        capability: ConversationRuntimeCapability,
+    ): ConversationRuntimeWorkerIdentity
+
     suspend fun requireOnline(
         workerId: ConversationRuntimeWorkerId,
         capability: ConversationRuntimeCapability,

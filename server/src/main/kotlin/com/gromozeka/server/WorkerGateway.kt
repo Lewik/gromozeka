@@ -13,7 +13,6 @@ import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
-import com.gromozeka.shared.uuid.uuid7
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -28,7 +27,8 @@ import io.ktor.websocket.readBytes
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -46,7 +46,6 @@ import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import java.time.Duration
-import java.util.LinkedHashSet
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
@@ -100,142 +99,19 @@ class WorkerGatewaySessionRegistry : WorkerConnectionRevocationService {
         sessions[workerId]?.requestDisconnect("Worker access was revoked")
     }
 
-    suspend fun execute(
-        target: ConversationRuntimeWorkerIdentity,
-        operation: WorkerGatewayOperation,
-        payload: ByteArray,
-        timeout: Duration,
-    ): ByteArray {
-        val session = sessions[target.workerId]
-            ?: error("Worker Gateway is offline: ${target.workerId.value}")
-        require(session.identity == target) {
-            "Worker Gateway session changed before request dispatch: expected=$target actual=${session.identity}"
-        }
-        return session.execute(operation, payload, timeout)
-    }
 }
 
 class WorkerGatewaySession(
     val identity: ConversationRuntimeWorkerIdentity,
 ) {
-    private val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
-    private val pending = ConcurrentHashMap<String, CompletableDeferred<WorkerGatewayMessage.Response>>()
-    private val recentlyClosedRequestIds = LinkedHashSet<String>()
-    private val recentlyClosedRequestIdsLock = Any()
-    private val inFlight = Semaphore(MAX_IN_FLIGHT_REQUESTS)
+    private val outgoing = Channel<WorkerGatewayMessage>(256)
     private val requestedDisconnect = CompletableDeferred<String>()
 
-    suspend fun execute(
-        operation: WorkerGatewayOperation,
-        payload: ByteArray,
-        timeout: Duration,
-    ): ByteArray =
-        inFlight.withPermit {
-            require(payload.size <= MAX_GATEWAY_PAYLOAD_BYTES) {
-                "Worker Gateway request exceeds the configured limit: ${payload.size} > $MAX_GATEWAY_PAYLOAD_BYTES bytes"
-            }
-            val request = WorkerGatewayMessage.Request(
-                id = uuid7(),
-                operation = operation,
-                payload = payload,
-            )
-            val response = CompletableDeferred<WorkerGatewayMessage.Response>()
-            check(pending.putIfAbsent(request.id, response) == null) {
-                "Duplicate Worker Gateway request id: ${request.id}"
-            }
-            try {
-                outgoing.send(request)
-                val result = try {
-                    withTimeout(timeout.toMillis()) {
-                        response.await()
-                    }
-                } catch (error: CancellationException) {
-                    requestCancellation(request.id)
-                    if (error !is TimeoutCancellationException) throw error
-                    throw IllegalStateException(
-                        "Worker Gateway request ${request.id} timed out; the outcome is unknown and " +
-                            "Gromozeka will not retry it automatically",
-                        error,
-                    )
-                } catch (error: Throwable) {
-                    requestCancellation(request.id)
-                    throw IllegalStateException(
-                        "Worker Gateway request ${request.id} failed before a response was received; " +
-                            "the outcome is unknown and Gromozeka will not retry it automatically",
-                        error,
-                    )
-                }
-                if (result.status == WorkerGatewayMessage.Response.Status.FAILED) {
-                    error("Worker operation failed [${result.errorCode}]: ${result.errorMessage}")
-                }
-                requireNotNull(result.payload)
-            } finally {
-                rememberClosed(request.id)
-                pending.remove(request.id, response)
-            }
-        }
-
-    private fun requestCancellation(requestId: String) {
-        outgoing.trySend(WorkerGatewayMessage.CancelRequest(requestId))
-    }
-
-    suspend fun send(message: WorkerGatewayMessage) {
-        outgoing.send(message)
-    }
-
+    suspend fun send(message: WorkerGatewayMessage) { outgoing.send(message) }
     fun outgoingMessages(): Channel<WorkerGatewayMessage> = outgoing
-
-    internal fun accept(response: WorkerGatewayMessage.Response): WorkerGatewayResponseAcceptance {
-        pending[response.requestId]?.let { pendingResponse ->
-            return if (pendingResponse.complete(response)) {
-                WorkerGatewayResponseAcceptance.ACCEPTED
-            } else {
-                WorkerGatewayResponseAcceptance.LATE
-            }
-        }
-        return synchronized(recentlyClosedRequestIdsLock) {
-            if (response.requestId in recentlyClosedRequestIds) {
-                WorkerGatewayResponseAcceptance.LATE
-            } else {
-                WorkerGatewayResponseAcceptance.UNKNOWN
-            }
-        }
-    }
-
-    fun requestDisconnect(reason: String) {
-        requestedDisconnect.complete(reason)
-    }
-
+    fun requestDisconnect(reason: String) { requestedDisconnect.complete(reason) }
     suspend fun awaitRequestedDisconnect(): String = requestedDisconnect.await()
-
-    fun close(cause: Throwable) {
-        outgoing.close(cause)
-        pending.values.forEach { it.completeExceptionally(cause) }
-        pending.clear()
-    }
-
-    private fun rememberClosed(requestId: String) = synchronized(recentlyClosedRequestIdsLock) {
-        recentlyClosedRequestIds += requestId
-        while (recentlyClosedRequestIds.size > MAX_RECENTLY_CLOSED_REQUESTS) {
-            recentlyClosedRequestIds.iterator().also { iterator ->
-                iterator.next()
-                iterator.remove()
-            }
-        }
-    }
-
-    private companion object {
-        const val OUTGOING_BUFFER_SIZE = 256
-        const val MAX_IN_FLIGHT_REQUESTS = 64
-        const val MAX_RECENTLY_CLOSED_REQUESTS = 1_024
-        const val MAX_GATEWAY_PAYLOAD_BYTES = 64 * 1024 * 1024
-    }
-}
-
-internal enum class WorkerGatewayResponseAcceptance {
-    ACCEPTED,
-    LATE,
-    UNKNOWN,
+    fun close(cause: Throwable) { outgoing.close(cause) }
 }
 
 @Service
@@ -246,6 +122,7 @@ class WorkerGatewayService(
     serverRequestHandlers: List<WorkerGatewayServerRequestHandler>,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val authenticationService: WorkerGatewayAuthenticationService,
+    private val requests: WorkerRequestService,
 ) {
     private val log = KLoggers.logger(this)
     private val serverRequestHandlersByOperation =
@@ -336,6 +213,7 @@ class WorkerGatewayService(
                         socket.sendMessage(message)
                     }
                 }
+                val delivery = launch { requests.deliver(gatewaySession) }
                 val authenticationMonitor = launch {
                     while (isActive) {
                         delay(AUTHENTICATION_RECHECK_INTERVAL.toMillis())
@@ -390,19 +268,10 @@ class WorkerGatewayService(
                             }
 
                             is WorkerGatewayMessage.Response -> {
-                                when (gatewaySession.accept(message)) {
-                                    WorkerGatewayResponseAcceptance.ACCEPTED -> Unit
-                                    WorkerGatewayResponseAcceptance.LATE -> log.info {
-                                        "Ignoring late Worker response: worker=${registration.identity.workerId.value} " +
-                                            "request=${message.requestId}"
-                                    }
-                                    WorkerGatewayResponseAcceptance.UNKNOWN -> {
-                                        return@coroutineScope socket.fail(
-                                            "UNKNOWN_RESPONSE",
-                                            "Worker returned a response for an unknown request",
-                                        )
-                                    }
+                                if (!requests.accept(registration.identity.workerId, message)) {
+                                    return@coroutineScope socket.fail("UNKNOWN_RESPONSE", "Worker returned an unknown request result")
                                 }
+                                gatewaySession.send(WorkerGatewayMessage.ResponseAcknowledged(message.requestId))
                             }
 
                             is WorkerGatewayMessage.Request -> launch {
@@ -449,6 +318,7 @@ class WorkerGatewayService(
                                     "Worker Gateway hello was already accepted",
                                 )
 
+                            is WorkerGatewayMessage.ResponseAcknowledged,
                             is WorkerGatewayMessage.Welcome,
                             is WorkerGatewayMessage.AiCatalogUpdated,
                             is WorkerGatewayMessage.Ready,
@@ -460,21 +330,24 @@ class WorkerGatewayService(
                         }
                     }
                 } finally {
-                    gatewaySession.close(
-                        IllegalStateException(
-                            "Worker Gateway disconnected: worker=${registration.identity.workerId.value}"
+                    withContext(NonCancellable) {
+                        gatewaySession.close(
+                            IllegalStateException(
+                                "Worker Gateway disconnected: worker=${registration.identity.workerId.value}"
+                            )
                         )
-                    )
-                    authenticationMonitor.cancelAndJoin()
-                    requestedDisconnectMonitor.cancelAndJoin()
-                    aiCatalogUpdates.cancelAndJoin()
-                    writer.cancelAndJoin()
+                        delivery.cancelAndJoin()
+                        authenticationMonitor.cancelAndJoin()
+                        requestedDisconnectMonitor.cancelAndJoin()
+                        aiCatalogUpdates.cancelAndJoin()
+                        writer.cancelAndJoin()
+                    }
                 }
             }
         } finally {
             sessionRegistry.detach(gatewaySession)
             if (registered) {
-                workerRegistry.unregister(registration.identity, Clock.System.now())
+                withContext(NonCancellable) { workerRegistry.unregister(registration.identity, Clock.System.now()) }
             }
             log.info {
                 "Worker Gateway disconnected: worker=${registration.identity.workerId.value} " +

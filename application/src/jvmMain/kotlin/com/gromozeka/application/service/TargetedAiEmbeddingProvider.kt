@@ -32,7 +32,7 @@ class TargetedAiEmbeddingProvider(
         return when (val target = runtime.connection.executionTarget) {
             AiExecutionTarget.Server -> directProvider.embed(runtime, request)
             is AiExecutionTarget.Worker -> remoteClient().embed(
-                target = workerTargetResolver.requireOnline(
+                target = workerTargetResolver.requireRegistered(
                     ConversationRuntimeWorkerId(target.workerId),
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service
 @Service
 @Primary
 class GatewayWorkerAudioCaptureClient(
-    private val sessionRegistry: WorkerGatewaySessionRegistry,
+    private val requests: WorkerRequestService,
     @Value("\${gromozeka.runtime.audio-capture.timeout-millis:300000}")
     timeoutMillis: Long,
 ) : WorkerAudioCaptureClient {
@@ -24,10 +24,10 @@ class GatewayWorkerAudioCaptureClient(
     }
 
     override suspend fun execute(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult =
-        sessionRegistry.execute(
-            target = request.target,
+        requests.execute(
+            workerId = request.target.workerId,
             operation = WorkerGatewayOperation.AUDIO_CAPTURE,
             payload = WorkerAudioCaptureGatewayCodec.encodeRequest(request),
-            timeout = timeout,
+            policy = com.gromozeka.domain.service.WorkerRequestPolicy(executionTimeoutMillis = timeout.toMillis()),
         ).let(WorkerAudioCaptureGatewayCodec::decodeResult)
 }

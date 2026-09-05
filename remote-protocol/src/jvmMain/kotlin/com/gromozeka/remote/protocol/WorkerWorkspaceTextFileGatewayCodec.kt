@@ -28,8 +28,8 @@ object WorkerWorkspaceTextFileGatewayCodec {
         handler: WorkerWorkspaceTextFileHandler,
     ): ByteArray {
         val request = cbor.decodeFromByteArray<WorkerWorkspaceTextFileReadRequest>(payload)
-        require(request.target == identity) {
-            "Workspace text file request targets another Worker session"
+        require(request.target.workerId == identity.workerId) {
+            "Workspace text file request targets another Worker"
         }
         return cbor.encodeToByteArray(handler.read(request))
     }

@@ -122,6 +122,7 @@ class WorkerGatewayTest {
         val runtimeRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val sessionRegistry = WorkerGatewaySessionRegistry()
         val authenticationService = WorkerGatewayAuthenticationService(repository)
+        val requests = WorkerRequestService(TestWorkerRequestRepository(), WorkerRequestAuthorization {})
         val gatewayService = WorkerGatewayService(
             runtimeRegistry,
             sessionRegistry,
@@ -129,6 +130,7 @@ class WorkerGatewayTest {
             emptyList(),
             TestAiConfigurationProvider,
             authenticationService,
+            requests,
         )
 
         application {
@@ -168,6 +170,12 @@ class WorkerGatewayTest {
         kotlinx.coroutines.coroutineScope {
             val outbound = com.gromozeka.worker.runtime.WorkerGatewayOutbound(registration.capabilities)
             val runtime = com.gromozeka.worker.runtime.WorkerGatewayRuntime(
+                journal = object : com.gromozeka.worker.runtime.WorkerRequestJournal {
+                    private val receipts = mutableMapOf<String, com.gromozeka.worker.runtime.WorkerRequestReceipt>()
+                    override suspend fun load() = receipts.values.toList()
+                    override suspend fun save(receipt: com.gromozeka.worker.runtime.WorkerRequestReceipt) { receipts[receipt.id] = receipt }
+                    override suspend fun delete(id: String) { receipts.remove(id) }
+                },
                 transport = com.gromozeka.worker.runtime.KtorWorkerGatewayTransport(client, "/worker/ws", credential),
                 registration = { registration },
                 outbound = outbound,
@@ -194,11 +202,11 @@ class WorkerGatewayTest {
                 }
                 assertEquals(
                     "response",
-                    sessionRegistry.execute(
-                        target = identity,
+                    requests.execute(
+                        workerId = identity.workerId,
                         operation = WorkerGatewayOperation.WORKER_CONTROL,
                         payload = "request".encodeToByteArray(),
-                        timeout = Duration.ofSeconds(5),
+                        policy = com.gromozeka.domain.service.WorkerRequestPolicy(executionTimeoutMillis = 5_000),
                     ).decodeToString(),
                 )
             } finally {
@@ -250,58 +258,6 @@ class WorkerGatewayTest {
             "Worker access was revoked",
             withTimeout(1_000) { session.awaitRequestedDisconnect() },
         )
-    }
-
-    @Test
-    fun `late response after cancelled request is ignored without accepting unknown responses`() = runBlocking {
-        val session = session("worker-1", "session-1")
-        val request = async {
-            session.execute(
-                operation = WorkerGatewayOperation.WORKER_CONTROL,
-                payload = "request".encodeToByteArray(),
-                timeout = Duration.ofSeconds(5),
-            )
-        }
-        val dispatched = session.outgoingMessages().receive() as WorkerGatewayMessage.Request
-
-        request.cancel()
-        request.join()
-        val cancellation = session.outgoingMessages().receive() as WorkerGatewayMessage.CancelRequest
-        assertEquals(dispatched.id, cancellation.requestId)
-
-        val response = WorkerGatewayMessage.Response(
-            requestId = dispatched.id,
-            status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
-            payload = "response".encodeToByteArray(),
-        )
-        assertEquals(WorkerGatewayResponseAcceptance.LATE, session.accept(response))
-        assertEquals(
-            WorkerGatewayResponseAcceptance.UNKNOWN,
-            session.accept(response.copy(requestId = "never-dispatched")),
-        )
-    }
-
-    @Test
-    fun `timed out request is cancelled without retry`() = runBlocking {
-        val session = session("worker-1", "session-1")
-        val request = async {
-            runCatching {
-                session.execute(
-                    operation = WorkerGatewayOperation.WORKER_CONTROL,
-                    payload = "request".encodeToByteArray(),
-                    timeout = Duration.ofMillis(25),
-                )
-            }
-        }
-        val dispatched = session.outgoingMessages().receive() as WorkerGatewayMessage.Request
-
-        val error = request.await().exceptionOrNull()
-        assertTrue(error is IllegalStateException)
-        val cancellation = session.outgoingMessages().receive() as WorkerGatewayMessage.CancelRequest
-
-        assertEquals(dispatched.id, cancellation.requestId)
-        assertTrue(error.message.orEmpty().contains("outcome is unknown"))
-        assertEquals(WorkerGatewayResponseAcceptance.LATE, session.accept(success(dispatched.id)))
     }
 
     private fun session(workerId: String, sessionId: String): WorkerGatewaySession =

@@ -143,7 +143,7 @@ class ConversationToolExecutionTaskService(
                             toolCalls = modelToolCalls,
                         )
                         try {
-                            val targetIdentity = workerTargetResolver.requireOnline(
+                            val targetIdentity = workerTargetResolver.requireRegistered(
                                 target.workerId,
                                 ConversationRuntimeCapability.TOOL_EXECUTION,
                             )

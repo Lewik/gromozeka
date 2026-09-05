@@ -30,6 +30,10 @@ open class WorkerGatewayOutbound(
 
     fun currentTools(): List<AiToolDescriptor> = tools.value
 
+    suspend fun tryPublish(message: WorkerGatewayMessage): Boolean = mutex.withLock {
+        activeOutgoing?.trySend(message)?.isSuccess == true
+    }
+
     suspend fun replaceBeforeReady(tools: List<AiToolDescriptor>) = mutex.withLock {
         validate(tools)
         check(activeOutgoing == null) { "Worker Gateway is already ready" }

@@ -18,7 +18,7 @@ import java.time.Duration
 
 @Service
 class GatewayWorkerToolExecutionClient(
-    private val sessionRegistry: WorkerGatewaySessionRegistry,
+    private val requests: WorkerRequestService,
     @Value("\${gromozeka.runtime.tool-execution.timeout-millis:1800000}")
     timeoutMillis: Long,
 ) : WorkerToolExecutionClient {
@@ -50,11 +50,13 @@ class GatewayWorkerToolExecutionClient(
             },
             resolvedSecretsByToolCallId = resolvedSecretsByToolCallId,
         )
-        val response = sessionRegistry.execute(
-            target = target,
+        val response = requests.execute(
+            workerId = target.workerId,
             operation = WorkerGatewayOperation.TOOL_EXECUTION,
             payload = json.encodeToString(request).encodeToByteArray(),
-            timeout = timeout,
+            policy = executionTarget.requestPolicy ?: com.gromozeka.domain.service.WorkerRequestPolicy(executionTimeoutMillis = timeout.toMillis()),
+            actorUserId = toolContext.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID)?.let(com.gromozeka.domain.model.User::Id),
+            projectId = toolContext.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID)?.let(com.gromozeka.domain.model.Project::Id),
         ).let {
             json.decodeFromString<WorkerToolExecutionResponse>(it.decodeToString())
         }

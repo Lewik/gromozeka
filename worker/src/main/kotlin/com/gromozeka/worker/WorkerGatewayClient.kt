@@ -80,6 +80,7 @@ class WorkerGatewayClient(
     private val mcpConfigurationService: McpConfigurationService,
     private val workerToolCatalog: WorkerToolCatalog,
     private val outbound: WorkerGatewayOutbound,
+    private val requestJournal: JvmWorkerRequestJournal,
     @Qualifier("applicationScope") private val scope: CoroutineScope,
 ) : SmartLifecycle {
     private val log = KLoggers.logger(this)
@@ -165,6 +166,7 @@ class WorkerGatewayClient(
 
     private val runtime by lazy {
         WorkerGatewayRuntime(
+            journal = requestJournal,
             transport = KtorWorkerGatewayTransport(client, gatewayUrl, properties.credential),
             registration = {
                 ConversationRuntimeWorkerRegistration(
@@ -246,8 +248,8 @@ class WorkerGatewayOperationHandler(
                     val controlRequest = json.decodeFromString<WorkerControlRequest>(
                         request.payload.decodeToString()
                     )
-                    require(controlRequest.target == identity) {
-                        "Worker control request targets another Worker session"
+                    require(controlRequest.target.workerId == identity.workerId) {
+                        "Worker control request targets another Worker"
                     }
                     json.encodeToString<WorkerControlResult>(
                         workerControlHandler.handle(controlRequest)

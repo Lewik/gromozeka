@@ -58,7 +58,7 @@ data class WorkerWorkspaceTextFileReadRequest(
 }
 
 interface WorkerWorkspaceTextFileClient {
-    suspend fun read(request: WorkerWorkspaceTextFileReadRequest): WorkspaceTextFile
+    suspend fun read(request: WorkerWorkspaceTextFileReadRequest, access: WorkspacePathAccessContext): WorkspaceTextFile
 }
 
 interface WorkerWorkspaceTextFileHandler {

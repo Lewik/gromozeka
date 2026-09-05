@@ -15,7 +15,7 @@ import java.time.Duration
 @Service
 @Primary
 class GatewayWorkerControlClient(
-    private val sessionRegistry: WorkerGatewaySessionRegistry,
+    private val requests: WorkerRequestService,
     @Value("\${gromozeka.runtime.worker-control.timeout-millis:120000}")
     timeoutMillis: Long,
 ) : WorkerControlClient {
@@ -30,11 +30,11 @@ class GatewayWorkerControlClient(
     }
 
     override suspend fun execute(request: WorkerControlRequest): WorkerControlResult {
-        val response = sessionRegistry.execute(
-            target = request.target,
+        val response = requests.execute(
+            workerId = request.target.workerId,
             operation = WorkerGatewayOperation.WORKER_CONTROL,
             payload = json.encodeToString(request).encodeToByteArray(),
-            timeout = timeout,
+            policy = com.gromozeka.domain.service.WorkerRequestPolicy(executionTimeoutMillis = timeout.toMillis()),
         )
         return json.decodeFromString(response.decodeToString())
     }

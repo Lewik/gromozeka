@@ -173,10 +173,11 @@ class DistributedAiToolRoutingTest {
     }
 
     @Test
-    fun `worker inspection routes to the exact selected worker`() = runBlocking {
+    fun `worker inspection routes to the exact selected offline worker with independent timing policy`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(workerEnvironmentTool))
         registerWorker(workerRegistry, "worker-b", listOf(workerEnvironmentTool))
+        workerRegistry.unregister(workerRegistry.list().single { it.identity.workerId.value == "worker-b" }.identity, Clock.System.now())
         val workspaceService = TestWorkspaceDomainService(
             projects = listOf(project),
             workspaces = emptyList(),
@@ -190,6 +191,9 @@ class DistributedAiToolRoutingTest {
                 input = buildJsonObject {
                     putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
                         put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
+                        put("delivery_ttl_seconds", 600)
+                        put("execution_timeout_seconds", 15)
+                        put("wait_timeout_seconds", 1)
                     }
                 },
             ),
@@ -212,13 +216,14 @@ class DistributedAiToolRoutingTest {
         )
         assertEquals(ConversationRuntimeWorkerId("worker-b"), target.workerId)
         assertEquals(null, target.workspaceMountId)
+        assertEquals(com.gromozeka.domain.service.WorkerRequestPolicy(600_000, 15_000, 1_000), target.requestPolicy)
         val schema = Json.parseToJsonElement(
             catalog.tools.single().definition.inputSchema
         ).jsonObject
         val targetSchema = schema.getValue("properties").jsonObject
             .getValue(AI_TOOL_EXECUTION_TARGET_FIELD).jsonObject
         assertEquals(
-            setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD),
+            setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds"),
             targetSchema.getValue("properties").jsonObject.keys,
         )
         val entry = catalog.entries.getValue(workerEnvironmentTool.definition.name)
@@ -229,6 +234,23 @@ class DistributedAiToolRoutingTest {
         )
         assertFalse(entry.descriptor.definition.description.contains("worker-a"))
         assertTrue(catalog.environmentPrompt.contains("\"compatible_worker_ids\":[\"worker-a\",\"worker-b\"]"))
+    }
+
+    @Test
+    fun `request timing policy rejects invalid values and supports maximum TTL without explicit wait`() {
+        val valid = Json.parseToJsonElement("""{"execution_target":{"worker_id":"worker-a","delivery_ttl_seconds":604800}}""")
+            .parseExecutionTarget().requestPolicy!!
+        assertEquals(604_800_000L, valid.deliveryTtlMillis)
+        assertEquals(604_800_000L, valid.waitTimeoutMillis)
+        for ((field, value) in listOf(
+            "delivery_ttl_seconds" to "0", "delivery_ttl_seconds" to "-1", "delivery_ttl_seconds" to "604801",
+            "execution_timeout_seconds" to "86401", "wait_timeout_seconds" to "1.5",
+            "wait_timeout_seconds" to "\"5\"", "wait_timeout_seconds" to "9223372036854775807",
+        )) {
+            kotlin.test.assertFailsWith<IllegalArgumentException>("$field=$value") {
+                Json.parseToJsonElement("""{"execution_target":{"worker_id":"worker-a","$field":$value}}""").parseExecutionTarget()
+            }
+        }
     }
 
     @Test
@@ -432,7 +454,7 @@ class DistributedAiToolRoutingTest {
             ?.jsonObject
             ?: error("Execution target schema is missing")
         assertEquals(
-            setOf(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD),
+            setOf(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD, "delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds"),
             targetSchema.getValue("properties").jsonObject.keys,
         )
         assertFalse(targetSchema.toString().contains("mount-workspace-a-worker-a"))
@@ -522,7 +544,7 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
-        assertTrue(rejected.errors.single().message.contains("offline"))
+        assertTrue(rejected.errors.single().message.contains("does not advertise"))
 
         val accepted = routing.route(
             conversation = conversation,
@@ -658,7 +680,7 @@ class DistributedAiToolRoutingTest {
     }
 
     @Test
-    fun `command monitor owner tool fails when its worker is offline`() = runBlocking {
+    fun `command monitor owner tool fails when its worker was never registered`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(getCommandMonitorTool))
         val mountA = mount(workspaceA.id, "worker-a", "/checkout/a")
@@ -688,7 +710,7 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(result)
-        assertTrue(result.errors.single().message.contains("offline"))
+        assertTrue(result.errors.single().message.contains("unavailable"))
     }
 
     @Test
@@ -714,7 +736,7 @@ class DistributedAiToolRoutingTest {
         val offline = catalog.snapshot(project)
 
         assertNotEquals(online.environmentRevision, offline.environmentRevision)
-        assertTrue(offline.entries.isEmpty())
+        assertEquals(online.entries.keys, offline.entries.keys)
         assertTrue(offline.environmentPrompt.contains("\"status\":\"offline\""))
         assertTrue(offline.environmentPrompt.contains("mount-workspace-a-worker-a"))
     }

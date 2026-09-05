@@ -125,8 +125,9 @@ credentials, raw authorization headers, or exact device locations.
 
 Worker-scoped operations select an exact Worker. Workspace-scoped operations,
 including shell, filesystem, and Git tools, select an exact Workspace Mount.
-The Server does not inspect a Worker's filesystem, guess a target, reassign a
-call, or retry work automatically.
+The Server does not inspect a Worker's filesystem, guess a target, or reassign a
+call. It may redeliver the same persisted request ID, never automatically repeat
+an action with an uncertain outcome. See [Worker request delivery](worker-request-delivery.md).
 
 Conversation turns and memory pipelines always run on the Server. A Worker can
 execute configured tools and finite AI request-response operations, but it does
@@ -149,9 +150,10 @@ that Server's CLI login or an encrypted per-user GitHub token. Worker-targeted
 connections use only that Worker's local CLI login; user tokens are never sent
 to Workers. A connection never falls back between auth modes, execution targets,
 Workers, or models.
-An unavailable or incompatible target fails explicitly; Gromozeka does not fall
-back to another Worker or to the Server and does not automatically retry an
-operation whose outcome may be unknown.
+A known offline target can receive a queued finite request within its delivery
+TTL. Missing or incompatible targets fail explicitly; Gromozeka does not fall
+back to another Worker or to the Server. Live audio stream operations still
+require an online target and retain process-local identity checks.
 
 Each Worker registration advertises a stable environment profile collected at
 startup. The execution topology uses that profile without changing on every
@@ -182,13 +184,15 @@ Worker process that captured it, but it does not claim that the visible desktop
 has remained unchanged. Calls on the same display are serialized only while
 they execute.
 
-Desktop actions are never retried or reassigned. If a timeout or disconnect
-happens after dispatch, the outcome is reported as unknown and the model must
-observe again before deciding what to do. Cancelling the turn sends a
-request-scoped cancellation signal through the Worker Gateway; the backend
+Desktop actions are never repeated or reassigned automatically. A Gateway
+disconnect leaves execution running and its result is saved until Server
+acknowledgement. A Worker process crash after execution starts but before the
+result is saved produces `OUTCOME_UNKNOWN`; the model must observe again before
+deciding what to do. Delivery TTL limits when an action may start, independently
+of its execution timeout and the caller's wait. Cancelling the turn persists a
+request-scoped cancellation, delivered on reconnect if necessary; the backend
 checks it between actions and releases any pressed keys or mouse buttons in a
-`finally` block. A Gateway disconnect cancels every request still executing on
-that connection.
+`finally` block. Cancellation and execution timeout can leave partial effects.
 
 Screenshots are ordinary tool-result Artifacts. Only the three latest Computer
 Use screenshots are materialized into an LLM request; older images remain

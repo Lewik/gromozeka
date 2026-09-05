@@ -23,7 +23,7 @@ import java.time.Duration
 @Service
 @Primary
 class GatewayAiRequestResponseExecutionClient(
-    private val sessionRegistry: WorkerGatewaySessionRegistry,
+    private val requests: WorkerRequestService,
     @Value("\${gromozeka.runtime.ai-request-response.timeout-millis:1800000}")
     timeoutMillis: Long,
 ) : AiRequestResponseExecutionClient {
@@ -87,10 +87,10 @@ class GatewayAiRequestResponseExecutionClient(
         target: ConversationRuntimeWorkerIdentity,
         payload: ByteArray,
     ): ByteArray =
-        sessionRegistry.execute(
-            target = target,
+        requests.execute(
+            workerId = target.workerId,
             operation = WorkerGatewayOperation.AI_REQUEST_RESPONSE,
             payload = payload,
-            timeout = timeout,
+            policy = com.gromozeka.domain.service.WorkerRequestPolicy(executionTimeoutMillis = timeout.toMillis()),
         )
 }
