@@ -215,6 +215,23 @@ internal class MobileWorkerRuntime(
         readState().toStatus(storage.readCredential() != null)
     }
 
+    suspend fun setGatewayEnabled(enabled: Boolean) = mobileWorkerStorageMutex.withLock {
+        val state = readState()
+        check(state.enrolled || !enabled) { "Worker must be enrolled before enabling remote commands" }
+        writeState(state.copy(gatewayEnabled = enabled))
+    }
+
+    suspend fun gatewayEnrollment(): MobileWorkerGatewayEnrollment? = mobileWorkerStorageMutex.withLock {
+        val state = readState()
+        if (!state.enrolled || !state.gatewayEnabled) return@withLock null
+        MobileWorkerGatewayEnrollment(
+            serverUrl = requireNotNull(state.serverUrl),
+            workerId = requireNotNull(state.workerId),
+            streamId = requireNotNull(state.outbox).streamId,
+            credential = requireNotNull(storage.readCredential()) { "Worker credential is missing" },
+        )
+    }
+
     suspend fun synchronize(
         appState: WorkerAppState = WorkerAppState.UNKNOWN,
         heartbeatWhenIdle: Boolean = false,
@@ -450,6 +467,7 @@ data class MobileWorkerStatus(
     val pendingEventCount: Int,
     val lastSynchronizedAt: Instant?,
     val credentialAvailable: Boolean,
+    val gatewayEnabled: Boolean = false,
 )
 
 data class MobileWorkerConnectionChallenge(
@@ -479,6 +497,7 @@ private data class PersistedMobileWorkerState(
     val serverUrl: String? = null,
     val workerId: String? = null,
     val outbox: WorkerEventOutboxState? = null,
+    val gatewayEnabled: Boolean = false,
 ) {
     val enrolled: Boolean
         get() = !serverUrl.isNullOrBlank() && !workerId.isNullOrBlank() && outbox != null
@@ -491,6 +510,7 @@ private data class PersistedMobileWorkerState(
             pendingEventCount = outbox?.pending?.size ?: 0,
             lastSynchronizedAt = outbox?.lastAcknowledgedAt,
             credentialAvailable = hasCredential,
+            gatewayEnabled = gatewayEnabled,
         )
 }
 

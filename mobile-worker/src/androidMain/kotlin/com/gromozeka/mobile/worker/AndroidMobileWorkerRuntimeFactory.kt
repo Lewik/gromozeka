@@ -16,7 +16,7 @@ internal object AndroidMobileWorkerRuntimeFactory {
         )
 }
 
-private fun Context.applicationVersion(): String {
+internal fun Context.applicationVersion(): String {
     val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
     } else {

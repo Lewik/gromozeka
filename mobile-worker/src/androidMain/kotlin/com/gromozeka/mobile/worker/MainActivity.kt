@@ -2,6 +2,7 @@ package com.gromozeka.mobile.worker
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.Tag
@@ -39,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -149,6 +151,10 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
             val status = runCatching { runtime.status() }.getOrNull() ?: return@launch
             statusChanged?.invoke(status)
             if (!status.enrolled) return@launch
+            if (status.gatewayEnabled) {
+                runCatching { AndroidWorkerGatewayService.start(applicationContext) }
+                    .onFailure { errorChanged?.invoke("Android could not start remote commands: ${it::class.simpleName}") }
+            }
             MobileWorkerSyncJobService.schedule(applicationContext)
             val sensors = AndroidMobileWorkerSensors(applicationContext)
             runCatching {
@@ -217,6 +223,24 @@ private fun MainActivity.MobileWorkerApp(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var locationMessage by remember { mutableStateOf<String?>(null) }
+    val gatewayState by AndroidWorkerGatewayService.state.collectAsState()
+    LaunchedEffect(gatewayState) {
+        runCatching { runtime.status() }.onSuccess { status = it }
+    }
+    val enableGateway: () -> Unit = {
+        scope.launch {
+            runCatching {
+                runtime.setGatewayEnabled(true)
+                AndroidWorkerGatewayService.start(applicationContext)
+                runtime.status()
+            }.onSuccess { status = it }
+                .onFailure { error = "Remote commands could not be started: ${it::class.simpleName}" }
+        }
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) enableGateway()
+        else error = "Allow notifications so the active Worker connection stays visible."
+    }
     val sensors = remember { AndroidMobileWorkerSensors(applicationContext) }
     val configurationStore = remember { AndroidMobileWorkerConfigurationStore(applicationContext) }
     var configuration by remember { mutableStateOf(configurationStore.read()) }
@@ -346,6 +370,22 @@ private fun MainActivity.MobileWorkerApp(
 
                 status?.takeIf { it.enrolled }?.let { enrolled ->
                     StatusCard(enrolled)
+                    Text("Remote commands: ${gatewayState.name.lowercase()}")
+                    Text("When enabled, this device accepts supported commands from its server. Currently: read device status. A persistent notification lets you disable the connection.",
+                        color = workerColors.onSurfaceVariant)
+                    OutlinedButton(onClick = {
+                        if (enrolled.gatewayEnabled) {
+                            scope.launch {
+                                runCatching {
+                                    runtime.setGatewayEnabled(false)
+                                    AndroidWorkerGatewayService.stop(applicationContext)
+                                    runtime.status()
+                                }.onSuccess { status = it }.onFailure { error = it.message }
+                            }
+                        } else if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else enableGateway()
+                    }) { Text(if (enrolled.gatewayEnabled) "Disable remote commands" else "Enable remote commands") }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(
                             enabled = !busy,
@@ -440,6 +480,8 @@ private fun MainActivity.MobileWorkerApp(
                         onClick = {
                             scope.launch {
                                 runCatching {
+                                    runtime.setGatewayEnabled(false)
+                                    AndroidWorkerGatewayService.stop(applicationContext)
                                     sensors.disableBackgroundSignals()
                                     MobileWorkerSyncJobService.cancel(applicationContext)
                                     runtime.reset()

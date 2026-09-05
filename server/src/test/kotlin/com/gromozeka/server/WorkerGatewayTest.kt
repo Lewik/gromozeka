@@ -4,6 +4,21 @@ import com.gromozeka.application.service.InMemoryConversationRuntimeWorkerRegist
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult
+import com.gromozeka.domain.model.DeviceStateEvent
+import com.gromozeka.domain.model.WorkerPlatform
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
+import com.gromozeka.remote.protocol.WorkerToolExecutionRequest
+import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
+import com.gromozeka.worker.runtime.WorkerDeviceStatus
+import com.gromozeka.worker.runtime.WorkerDeviceStatusTool
+import com.gromozeka.worker.runtime.WorkerToolRequestHandler
+import com.gromozeka.worker.runtime.SnapshotWorkerRequestJournal
+import com.gromozeka.worker.runtime.WorkerRequestSnapshotStore
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
@@ -157,10 +172,14 @@ class WorkerGatewayTest {
             sessionId = ConversationRuntimeWorkerSessionId("session-1"),
         )
         val startedAt = Instant.parse("2026-07-30T00:00:00Z")
+        val deviceTool = WorkerDeviceStatusTool {
+            WorkerDeviceStatus(kotlin.time.Clock.System.now(), DeviceStateEvent.DeviceInfo(WorkerPlatform.ANDROID, "Phone", "Android", "test"),
+                DeviceStateEvent.Battery(50, false), false, null, 1024, 0)
+        }
         val registration = ConversationRuntimeWorkerRegistration(
             identity = identity,
             capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
-            tools = emptyList(),
+            tools = listOf(deviceTool.descriptor),
             environmentProfile = workerEnvironment(startedAt),
             version = "test",
             startedAt = startedAt,
@@ -170,28 +189,19 @@ class WorkerGatewayTest {
         kotlinx.coroutines.coroutineScope {
             val outbound = com.gromozeka.worker.runtime.WorkerGatewayOutbound(registration.capabilities)
             val runtime = com.gromozeka.worker.runtime.WorkerGatewayRuntime(
-                journal = object : com.gromozeka.worker.runtime.WorkerRequestJournal {
-                    private val receipts = mutableMapOf<String, com.gromozeka.worker.runtime.WorkerRequestReceipt>()
-                    override suspend fun load() = receipts.values.toList()
-                    override suspend fun save(receipt: com.gromozeka.worker.runtime.WorkerRequestReceipt) { receipts[receipt.id] = receipt }
-                    override suspend fun delete(id: String) { receipts.remove(id) }
-                },
+                journal = SnapshotWorkerRequestJournal(object : WorkerRequestSnapshotStore {
+                    private var snapshot: String? = null
+                    override suspend fun read() = snapshot
+                    override suspend fun write(snapshot: String) { this.snapshot = snapshot }
+                }),
                 transport = com.gromozeka.worker.runtime.KtorWorkerGatewayTransport(client, "/worker/ws", credential),
                 registration = { registration },
                 outbound = outbound,
-                handler = com.gromozeka.worker.runtime.WorkerRequestHandler { request ->
-                    assertEquals(WorkerGatewayOperation.WORKER_CONTROL, request.operation)
-                    assertEquals("request", request.payload.decodeToString())
-                    WorkerGatewayMessage.Response(
-                        requestId = request.id,
-                        status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
-                        payload = "response".encodeToByteArray(),
-                    )
-                },
+                handler = WorkerToolRequestHandler(identity.workerId, listOf(deviceTool)),
                 prepare = { welcome ->
                     assertTrue(welcome.mcpServers.isEmpty())
                     assertEquals(TestAiConfigurationProvider.snapshot, welcome.aiCatalogSnapshot)
-                    WorkerGatewayMessage.Ready(emptyList())
+                    WorkerGatewayMessage.Ready(listOf(deviceTool.descriptor))
                 },
                 updateCatalog = {},
             )
@@ -200,15 +210,23 @@ class WorkerGatewayTest {
                 withTimeout(5_000) {
                     while (sessionRegistry.find(identity.workerId) == null) delay(10)
                 }
-                assertEquals(
-                    "response",
-                    requests.execute(
+                val payload = Json.encodeToString(WorkerToolExecutionRequest(
+                    ConversationRuntimeTaskTarget.Worker(identity.workerId),
+                    listOf(ToolCall(ToolCall.Id("device-status"), ToolCall.Data(deviceTool.descriptor.definition.name, JsonObject(emptyMap())))),
+                    emptyMap(),
+                )).encodeToByteArray()
+                val response = requests.execute(
                         workerId = identity.workerId,
-                        operation = WorkerGatewayOperation.WORKER_CONTROL,
-                        payload = "request".encodeToByteArray(),
+                        operation = WorkerGatewayOperation.TOOL_EXECUTION,
+                        payload = payload,
                         policy = com.gromozeka.domain.service.WorkerRequestPolicy(executionTimeoutMillis = 5_000),
-                    ).decodeToString(),
-                )
+                    )
+                val result = Json.decodeFromString<WorkerToolExecutionResponse>(response.decodeToString()).results.single()
+                assertEquals("device-status", result.toolUseId.value)
+                assertFalse(result.isError)
+                val status = Json.decodeFromString<WorkerDeviceStatus>((result.result.single() as ToolResult.Data.Text).content)
+                assertEquals(WorkerPlatform.ANDROID, status.device.platform)
+                assertEquals(50, status.battery?.levelPercent)
             } finally {
                 job.cancel()
                 job.join()

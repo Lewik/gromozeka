@@ -18,6 +18,13 @@ class MobileWorkerBootReceiver : BroadcastReceiver() {
             val runtime = AndroidMobileWorkerRuntimeFactory.create(applicationContext)
             try {
                 if (runtime.status().enrolled) {
+                    if (runtime.gatewayEnrollment() != null) {
+                        try {
+                            AndroidWorkerGatewayService.start(applicationContext)
+                        } catch (error: IllegalStateException) {
+                            androidMobileWorkerLog.warn { "Android deferred Worker Gateway startup; open the app to reconnect" }
+                        }
+                    }
                     val sensors = AndroidMobileWorkerSensors(applicationContext)
                     sensors.enableSignificantLocationUpdates()
                     sensors.enableBlePresenceUpdates()

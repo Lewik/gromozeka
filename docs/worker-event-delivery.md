@@ -81,7 +81,9 @@ documented lost-wakeup race. [Android JobParameters reference](https://developer
 Android decides when background jobs may run; network availability is a scheduling
 constraint, not a promise of immediate execution. Foreground/manual sync remains
 available. There is no foreground tracking service, new sensor permission flow,
-push delivery, or Android command handler in this change.
+or push delivery in the observation path. Android command execution uses the
+[separate foreground Gateway lifecycle](android-worker-gateway.md) and the shared
+request protocol, not the observation outbox.
 
 The core can be reused by a desktop observation producer. This step does not add
 desktop sensors or convert existing Worker-to-Server state RPC into events.

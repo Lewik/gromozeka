@@ -13,6 +13,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = rootProject.version.toString()
+        testInstrumentationRunner = "com.gromozeka.mobile.worker.GatewaySmokeInstrumentation"
     }
 }
 

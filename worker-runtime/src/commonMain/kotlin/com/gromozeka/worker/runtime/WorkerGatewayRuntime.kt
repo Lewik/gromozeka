@@ -52,7 +52,6 @@ class WorkerGatewayRuntime(
                     connect(executor)
                     failures = 0
                     lastFailure = null
-                    onDisconnected()
                 } catch (error: Exception) {
                     currentCoroutineContext().ensureActive()
                     failures++
@@ -89,7 +88,11 @@ class WorkerGatewayRuntime(
             onConnected()
             serve(connection, welcome.heartbeatIntervalSeconds.seconds, executor)
         } finally {
-            withContext(NonCancellable) { connection.close() }
+            try {
+                withContext(NonCancellable) { connection.close() }
+            } finally {
+                onDisconnected()
+            }
         }
     }
 

@@ -24,8 +24,9 @@ for external effects. Keep the Worker's journal and identity together; deleting 
 state is not an ordinary restart.
 
 The common executor and Gateway runtime live in `:worker-runtime`. Desktop supplies
-an encrypted, atomic filesystem journal with an exclusive process lock. A future
-mobile runtime supplies its own persistent adapter and OS lifecycle integration.
+an encrypted, atomic filesystem journal with an exclusive process lock. Android
+uses the common snapshot journal with its Keystore/atomic-file adapter and an
+[explicit foreground-service lifecycle](android-worker-gateway.md).
 There is no new Worker session domain or desired-state reconciler.
 
 ## Timing and cancellation
@@ -70,7 +71,8 @@ Gateway retries do not create another shell task.
 
 Worker-to-Server state RPC remains connection-scoped. Device observation events
 use the [shared durable event outbox](worker-event-delivery.md), now adopted by the
-mobile runtime. Android command execution through the Gateway is a separate step.
+mobile runtime. Android now receives device commands through the same Gateway;
+individual device capabilities are added independently.
 
 ## Verification
 

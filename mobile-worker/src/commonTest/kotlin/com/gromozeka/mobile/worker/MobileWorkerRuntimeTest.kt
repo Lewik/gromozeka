@@ -124,6 +124,33 @@ class MobileWorkerRuntimeTest {
     }
 
     @Test
+    fun `Gateway opt in persists and is reset with the enrollment`() = test {
+        val storage = Storage()
+        val http = HttpClient(MockEngine {
+            respond("""{"workerId":"worker","gatewayCredential":"secret","capabilities":[],"subjectUserId":"user"}""")
+        })
+        val runtime = runtime(storage, http)
+        try {
+            assertTrue(runCatching { runtime.setGatewayEnabled(true) }.isFailure)
+            runtime.enroll("https://server.test:8443", "token", "worker")
+            assertEquals(null, runtime.gatewayEnrollment())
+            runtime.setGatewayEnabled(true)
+            val original = requireNotNull(runtime.gatewayEnrollment())
+            assertEquals("wss://server.test:8443/worker/ws", original.gatewayUrl)
+            assertEquals("secret", original.credential)
+            assertEquals(original.streamId, runtime(storage, http).gatewayEnrollment()?.streamId)
+            runtime.setGatewayEnabled(false)
+            assertEquals(null, runtime.gatewayEnrollment())
+            assertEquals(1, runtime.status().pendingEventCount)
+            runtime.reset()
+            runtime.enroll("https://second.test", "token", "worker")
+            assertEquals(null, runtime.gatewayEnrollment())
+            runtime.setGatewayEnabled(true)
+            assertTrue(original.streamId != runtime.gatewayEnrollment()?.streamId)
+        } finally { runtime.close() }
+    }
+
+    @Test
     fun `full backlog can drain after app version changes`() = test {
         val http = HttpClient(MockEngine { request ->
             if (request.url.encodedPath.endsWith("consume")) {
