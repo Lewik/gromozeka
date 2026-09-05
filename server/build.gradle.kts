@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.bouncycastle.provider)
 
     testImplementation(project(":remote-client"))
+    testImplementation(project(":worker-runtime"))
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlinx.datetime)

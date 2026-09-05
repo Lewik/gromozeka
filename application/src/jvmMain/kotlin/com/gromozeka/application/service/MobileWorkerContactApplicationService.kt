@@ -24,8 +24,8 @@ class MobileWorkerContactApplicationService(
         pendingEventCount: Int?,
         receivedAt: Instant = Clock.System.now(),
     ): Instant {
-        require(worker.kind == WorkerResource.Kind.MOBILE_DEVICE) {
-            "Only a mobile device Worker can report contact observations"
+        require(worker.subjectUserId != null) {
+            "Worker must be bound to a user to report contact observations"
         }
         repository.record(
             MobileWorkerContactObservation(

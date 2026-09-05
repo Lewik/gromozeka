@@ -1,7 +1,7 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.service.ConversationRuntimeCapability
-import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.User
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -20,7 +20,8 @@ data class WorkerEnrollmentToken(
 data class WorkerEnrollmentConsumeRequest(
     val token: String,
     val workerId: String,
-    val kind: WorkerResource.Kind = WorkerResource.Kind.EXECUTION,
+    val platform: String? = null,
+    val bindToUser: Boolean = false,
 )
 
 @Serializable
@@ -28,5 +29,5 @@ data class WorkerEnrollmentBootstrap(
     val workerId: String,
     val gatewayCredential: String,
     val capabilities: Set<ConversationRuntimeCapability>,
-    val kind: WorkerResource.Kind = WorkerResource.Kind.EXECUTION,
+    val subjectUserId: User.Id? = null,
 )

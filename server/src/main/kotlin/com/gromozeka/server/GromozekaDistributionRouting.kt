@@ -123,7 +123,7 @@ internal fun Routing.gromozekaDistributions(
         }
         runCatching {
             val request = Json.decodeFromString<WorkerEnrollmentConsumeRequest>(requestText)
-            workerEnrollmentService.consume(request.token, request.workerId, request.kind)
+            workerEnrollmentService.consume(request.token, request.workerId, request.platform, request.bindToUser)
         }.onSuccess {
             call.respondText(Json.encodeToString(it), ContentType.Application.Json)
         }.onFailure {

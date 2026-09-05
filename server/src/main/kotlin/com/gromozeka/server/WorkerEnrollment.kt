@@ -1,7 +1,6 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.User
-import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
@@ -44,13 +43,13 @@ data class WorkerEnrollmentProperties(
     fun bootstrap(
         workerId: String,
         gatewayCredential: String,
-        kind: WorkerResource.Kind,
+        subjectUserId: User.Id?,
     ): WorkerEnrollmentBootstrap =
         WorkerEnrollmentBootstrap(
             workerId = workerId,
             gatewayCredential = gatewayCredential,
-            capabilities = if (kind == WorkerResource.Kind.EXECUTION) capabilities else emptySet(),
-            kind = kind,
+            capabilities = capabilities,
+            subjectUserId = subjectUserId,
         )
 }
 
@@ -108,13 +107,17 @@ class WorkerEnrollmentService(
     suspend fun consume(
         token: String,
         workerId: String,
-        kind: WorkerResource.Kind = WorkerResource.Kind.EXECUTION,
+        platform: String? = null,
+        bindToUser: Boolean = false,
     ): WorkerEnrollmentBootstrap {
         properties.unavailableReason()?.let { error(it) }
         require(workerId.matches(workerIdPattern)) {
             "Worker ID must start with a letter or digit and contain at most 64 letters, digits, dots, dashes, or underscores"
         }
         require(token.length in 40..128) { "Worker enrollment token is invalid or expired" }
+        require(platform == null || platform.isNotBlank() && platform.length <= 64) {
+            "Worker platform must contain between 1 and 64 characters"
+        }
 
         val gatewayCredential = randomToken()
         val worker = repository.consume(
@@ -123,7 +126,8 @@ class WorkerEnrollmentService(
             workerId = ConversationRuntimeWorkerId(workerId),
             displayName = workerId,
             consumedAt = clock.instant().toKotlinInstant(),
-            kind = kind,
+            platform = platform,
+            bindToUser = bindToUser,
         )
         require(worker != null) { "Worker enrollment token is invalid or expired" }
         securityAuditRecorder.record(
@@ -134,7 +138,7 @@ class WorkerEnrollmentService(
                 targetId = worker.id.value,
             )
         )
-        return properties.bootstrap(worker.id.value, gatewayCredential, worker.kind)
+        return properties.bootstrap(worker.id.value, gatewayCredential, worker.subjectUserId)
     }
 
     private fun randomToken(): String =

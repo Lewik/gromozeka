@@ -26,6 +26,7 @@ java {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":remote-protocol"))
+    implementation(project(":worker-runtime"))
     implementation(project(":application"))
     implementation(project(":infrastructure-ai"))
     implementation(project(":infrastructure-ai:openai-subscription"))

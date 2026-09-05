@@ -9,7 +9,7 @@ data class WorkerResource(
     val id: ConversationRuntimeWorkerId,
     val displayName: String,
     val ownerUserId: User.Id,
-    val kind: Kind = Kind.EXECUTION,
+    val platform: String? = null,
     val subjectUserId: User.Id? = null,
     val runtimeWideAccess: Boolean,
     val status: Status,
@@ -18,15 +18,9 @@ data class WorkerResource(
 ) {
     init {
         require(displayName.isNotBlank()) { "Worker display name must not be blank" }
-        require((kind == Kind.MOBILE_DEVICE) == (subjectUserId != null)) {
-            "Only mobile device Workers must have a subject user"
+        require(platform == null || platform.isNotBlank() && platform.length <= 64) {
+            "Worker platform must contain between 1 and 64 characters"
         }
-    }
-
-    @Serializable
-    enum class Kind {
-        EXECUTION,
-        MOBILE_DEVICE,
     }
 
     @Serializable

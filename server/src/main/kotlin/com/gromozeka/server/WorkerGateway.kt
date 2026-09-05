@@ -260,9 +260,6 @@ class WorkerGatewayService(
         authenticatedWorker: AuthenticatedWorkerGateway,
     ) {
         val worker = authenticatedWorker.worker
-        if (worker.kind != WorkerResource.Kind.EXECUTION) {
-            return socket.fail("UNSUPPORTED_WORKER_KIND", "Only execution Workers can open a Gateway session")
-        }
         val hello = try {
             withTimeout(HELLO_TIMEOUT.toMillis()) {
                 socket.receiveMessage()

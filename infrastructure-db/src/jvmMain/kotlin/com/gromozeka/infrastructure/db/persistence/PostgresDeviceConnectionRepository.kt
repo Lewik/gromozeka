@@ -36,7 +36,7 @@ class PostgresDeviceConnectionRepository(
                         request_client,
                         client_label,
                         worker_id,
-                        worker_kind,
+                        worker_bind_to_user,
                         status,
                         authorized_user_id,
                         decided_by_user_id,
@@ -57,7 +57,7 @@ class PostgresDeviceConnectionRepository(
                     statement.setBoolean(6, DeviceConnection.Component.CLIENT in connection.components)
                     statement.setString(7, connection.clientLabel)
                     statement.setString(8, connection.worker?.workerId?.value)
-                    statement.setString(9, connection.worker?.kind?.name)
+                    statement.setBoolean(9, connection.worker?.bindToUser == true)
                     statement.setString(10, connection.status.name)
                     statement.setTimestamp(11, connection.createdAt.toTimestamp())
                     statement.setTimestamp(12, connection.expiresAt.toTimestamp())
@@ -181,7 +181,7 @@ class PostgresDeviceConnectionRepository(
                 val worker = connection.worker?.let { request ->
                     val credentialHash = requireNotNull(workerCredentialHash)
                     if (newlyConsumed) {
-                        database.enrollWorker(ownerUserId, request, credentialHash, consumedAt)
+                        database.enrollWorker(ownerUserId, request, credentialHash, consumedAt, connection.platform)
                     } else {
                         require(database.workerCredentialMatches(request.workerId, credentialHash)) {
                             "Device connection Worker credential has been rotated"
@@ -386,6 +386,7 @@ class PostgresDeviceConnectionRepository(
         request: DeviceConnection.WorkerRequest,
         credentialHash: String,
         enrolledAt: Instant,
+        platform: String,
     ) {
         require(credentialHash.length == 64) { "Worker gateway credential hash must contain 64 characters" }
         val existing = findWorkerForUpdate(request.workerId)
@@ -395,8 +396,8 @@ class PostgresDeviceConnectionRepository(
                     id = request.workerId,
                     displayName = request.workerId.value,
                     ownerUserId = ownerUserId,
-                    kind = request.kind,
-                    subjectUserId = ownerUserId.takeIf { request.kind == WorkerResource.Kind.MOBILE_DEVICE },
+                    platform = platform,
+                    subjectUserId = ownerUserId.takeIf { request.bindToUser },
                     runtimeWideAccess = false,
                     status = WorkerResource.Status.ACTIVE,
                     createdAt = enrolledAt,
@@ -405,7 +406,9 @@ class PostgresDeviceConnectionRepository(
             )
         } else {
             require(existing.ownerUserId == ownerUserId) { "Worker ID is already registered" }
-            require(existing.kind == request.kind) { "Worker ID is already registered with another kind" }
+            require(existing.subjectUserId == ownerUserId.takeIf { request.bindToUser }) {
+                "Worker ID is already registered with another user binding"
+            }
             require(existing.status == WorkerResource.Status.ACTIVE) { "Worker is revoked" }
         }
         rotateWorkerCredential(request.workerId, credentialHash, enrolledAt)
@@ -414,7 +417,7 @@ class PostgresDeviceConnectionRepository(
     private fun Connection.findWorkerForUpdate(workerId: ConversationRuntimeWorkerId): WorkerResource? =
         prepareStatement(
             """
-            SELECT id, display_name, owner_user_id, kind, subject_user_id,
+            SELECT id, display_name, owner_user_id, platform, subject_user_id,
                    runtime_wide_access, status, created_at, updated_at
             FROM workers
             WHERE id = ?
@@ -431,7 +434,7 @@ class PostgresDeviceConnectionRepository(
         prepareStatement(
             """
             INSERT INTO workers(
-                id, display_name, owner_user_id, kind, subject_user_id,
+                id, display_name, owner_user_id, platform, subject_user_id,
                 runtime_wide_access, status, created_at, updated_at
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -440,7 +443,7 @@ class PostgresDeviceConnectionRepository(
             statement.setString(1, worker.id.value)
             statement.setString(2, worker.displayName)
             statement.setString(3, worker.ownerUserId.value)
-            statement.setString(4, worker.kind.name)
+            statement.setString(4, worker.platform)
             statement.setString(5, worker.subjectUserId?.value)
             statement.setBoolean(6, worker.runtimeWideAccess)
             statement.setString(7, worker.status.name)
@@ -524,7 +527,7 @@ class PostgresDeviceConnectionRepository(
             worker = workerId?.let {
                 DeviceConnection.WorkerRequest(
                     workerId = ConversationRuntimeWorkerId(it),
-                    kind = WorkerResource.Kind.valueOf(getString("worker_kind")),
+                    bindToUser = getBoolean("worker_bind_to_user"),
                 )
             },
             status = DeviceConnection.Status.valueOf(getString("status")),
@@ -541,7 +544,7 @@ class PostgresDeviceConnectionRepository(
         id = ConversationRuntimeWorkerId(getString("id")),
         displayName = getString("display_name"),
         ownerUserId = User.Id(getString("owner_user_id")),
-        kind = WorkerResource.Kind.valueOf(getString("kind")),
+        platform = getString("platform"),
         subjectUserId = getString("subject_user_id")?.let(User::Id),
         runtimeWideAccess = getBoolean("runtime_wide_access"),
         status = WorkerResource.Status.valueOf(getString("status")),

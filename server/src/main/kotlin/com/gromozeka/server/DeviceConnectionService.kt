@@ -95,7 +95,7 @@ class DeviceConnectionService(
             }
             DeviceConnection.WorkerRequest(
                 workerId = ConversationRuntimeWorkerId(workerRequest.workerId),
-                kind = workerRequest.kind,
+                bindToUser = workerRequest.bindToUser,
             )
         } else {
             require(request.worker == null) { "Worker details require the Worker component" }
@@ -264,7 +264,7 @@ class DeviceConnectionService(
                     workerEnrollmentProperties.bootstrap(
                         workerId = worker.id.value,
                         gatewayCredential = requireNotNull(workerToken),
-                        kind = worker.kind,
+                        subjectUserId = worker.subjectUserId,
                     )
                 }
                 if (consumption.newlyConsumed) {
@@ -320,7 +320,7 @@ class DeviceConnectionService(
             platform = platform,
             components = components,
             workerId = worker?.workerId?.value,
-            workerKind = worker?.kind,
+            workerBindsToUser = worker?.bindToUser == true,
             userCode = userCode,
             expiresAt = expiresAt,
         )
@@ -331,7 +331,7 @@ class DeviceConnectionService(
         put("components", components.sortedBy { it.name }.joinToString(",") { it.name })
         worker?.let {
             put("workerId", it.workerId.value)
-            put("workerKind", it.kind.name)
+            put("workerBindsToUser", it.bindToUser.toString())
         }
     }
 

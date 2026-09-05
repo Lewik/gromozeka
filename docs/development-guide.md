@@ -23,6 +23,11 @@ Server, and standalone Workers.
 - `:remote-protocol` and `:remote-client` define the client-to-Server boundary.
 - `:server` is the control plane and web endpoint.
 - `:worker` is a trusted standalone executor.
+- `:worker-runtime` contains the shared KMP Worker registration client and
+  Gateway runtime: handshake, reconnect, heartbeat, request/response routing,
+  cancellation, and capability/tool publication. JVM/Spring lifecycle, TLS
+  configuration, and tool implementations stay in `:worker`; mobile lifecycle
+  and storage stay in `:mobile-worker`.
 - `:presentation` contains the shared Compose clients and presentation state.
 - `:presentation-android` packages the Android client application.
 - `:mobile-worker` contains the shared mobile Worker runtime.
@@ -108,6 +113,11 @@ credentials, raw authorization headers, or exact device locations.
 - An **Agent** is a server-managed model, prompt, and behavior configuration. It
   is not an executor.
 - A **Worker** is a named execution process. The Server is not a Worker.
+- Workers have one resource model. Platform, advertised capabilities, ownership,
+  and optional user-context binding are independent properties. A user-bound
+  Worker can both report context and execute supported operations. Context
+  ingestion requires a binding established during approved registration, not a
+  particular platform or Worker kind.
 - A **Workspace** is a logical Project resource. The only current kind is a
   filesystem tree.
 - A **Workspace Mount** records that one Worker sees one Workspace at a

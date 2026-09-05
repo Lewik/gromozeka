@@ -1,20 +1,16 @@
 package com.gromozeka.worker
 
+import com.gromozeka.worker.runtime.WorkerRegistrationClient
+import kotlinx.coroutines.runBlocking
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermission
-import java.time.Duration
 
 internal class WorkerEnrollmentClient(
     private val json: Json = Json {
@@ -24,34 +20,18 @@ internal class WorkerEnrollmentClient(
 ) {
     fun enroll(arguments: List<String>): Path {
         val options = WorkerEnrollmentOptions.parse(arguments)
-        val endpoint = enrollmentEndpoint(options.server)
-        val body = json.encodeToString(
-            WorkerEnrollmentConsumeRequest(
-                token = options.token,
-                workerId = options.workerId,
-            )
-        )
-        val request = HttpRequest.newBuilder(endpoint)
-            .timeout(Duration.ofSeconds(30))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build()
-        val response = httpClient(options.caCertificatePath).send(
-            request,
-            HttpResponse.BodyHandlers.ofString(),
-        )
-        if (response.statusCode() !in 200..299) {
-            val message = runCatching {
-                json.parseToJsonElement(response.body())
-                    .jsonObject["error"]
-                    ?.jsonPrimitive
-                    ?.content
-            }.getOrNull()
-            error(message ?: "Worker enrollment failed with HTTP ${response.statusCode()}")
+        val bootstrap = workerRegistrationHttpClient(options.caCertificatePath).use { client ->
+            runBlocking {
+                WorkerRegistrationClient(client).enroll(
+                    workerServerBaseUri(options.server).toString(),
+                    WorkerEnrollmentConsumeRequest(
+                        token = options.token,
+                        workerId = options.workerId,
+                        platform = System.getProperty("os.name"),
+                    ),
+                )
+            }
         }
-
-        val bootstrap = json.decodeFromString<WorkerEnrollmentBootstrap>(response.body())
         return persistConfiguration(
             server = options.server,
             bootstrap = bootstrap,
@@ -117,15 +97,6 @@ internal class WorkerEnrollmentClient(
         }
     }
 
-    private fun httpClient(caCertificatePath: Path?): HttpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(20))
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .apply {
-                workerSslContext(caCertificatePath?.toString())?.let(::sslContext)
-            }
-            .build()
-
     private fun persistCaCertificate(source: Path, configPath: Path): Path {
         val normalizedSource = source.toAbsolutePath().normalize()
         workerTrustManager(normalizedSource.toString())
@@ -136,19 +107,6 @@ internal class WorkerEnrollmentClient(
             Files.copy(normalizedSource, destination, StandardCopyOption.REPLACE_EXISTING)
         }
         return destination
-    }
-
-    private fun enrollmentEndpoint(server: String): URI {
-        val base = workerServerBaseUri(server)
-        return URI(
-            base.scheme,
-            null,
-            base.host,
-            base.port,
-            "/api/worker-enrollments/consume",
-            null,
-            null,
-        )
     }
 
     private fun WorkerEnrollmentBootstrap.toYaml(

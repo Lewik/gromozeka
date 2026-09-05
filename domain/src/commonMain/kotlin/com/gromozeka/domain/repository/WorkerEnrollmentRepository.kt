@@ -19,7 +19,8 @@ interface WorkerEnrollmentRepository {
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: Instant,
-        kind: WorkerResource.Kind = WorkerResource.Kind.EXECUTION,
+        platform: String? = null,
+        bindToUser: Boolean = false,
     ): WorkerResource?
 
     suspend fun authenticateGatewayCredential(

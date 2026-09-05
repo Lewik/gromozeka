@@ -1,79 +1,70 @@
 package com.gromozeka.worker
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
+import com.gromozeka.worker.runtime.WorkerRegistrationClient
 import com.gromozeka.domain.model.DeviceConnection
-import com.gromozeka.remote.protocol.AuthenticationErrorResponse
 import com.gromozeka.remote.protocol.DeviceConnectionChallenge
-import com.gromozeka.remote.protocol.DeviceConnectionConsumeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
 import com.gromozeka.remote.protocol.DeviceConnectionPasswordRequest
 import com.gromozeka.remote.protocol.DeviceConnectionStartRequest
 import com.gromozeka.remote.protocol.DeviceConnectionWorkerRequest
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.Duration
 
 internal class WorkerDeviceConnectionClient(
-    private val json: Json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    },
     private val enrollmentClient: WorkerEnrollmentClient = WorkerEnrollmentClient(),
 ) {
-    fun connect(arguments: List<String>): Path {
+    fun connect(arguments: List<String>): Path = runBlocking {
         val options = WorkerDeviceConnectionOptions.parse(arguments)
         require(options.replaceExisting || !Files.exists(options.configPath)) {
             "Worker configuration already exists at ${options.configPath}; pass --force to replace it"
         }
         val base = workerServerBaseUri(options.server)
-        val client = httpClient(options.caCertificatePath)
-        val challenge = post<DeviceConnectionStartRequest, DeviceConnectionChallenge>(
-            client = client,
-            endpoint = base.endpoint("/auth/device-connections"),
-            payload = DeviceConnectionStartRequest(
-                deviceLabel = options.workerId,
-                platform = System.getProperty("os.name"),
-                components = setOf(DeviceConnection.Component.WORKER),
-                worker = DeviceConnectionWorkerRequest(workerId = options.workerId),
-            ),
-        )
-        val response = options.username?.let { username ->
-            val password = requireNotNull(System.console()) {
-                "Password authentication requires an interactive terminal"
-            }.readPassword("Password for %s: ", username)
-            try {
-                post<DeviceConnectionPasswordRequest, DeviceConnectionConsumeResponse>(
-                    client = client,
-                    endpoint = base.endpoint("/auth/device-connections/password"),
-                    payload = DeviceConnectionPasswordRequest(
-                        deviceToken = challenge.deviceToken,
-                        username = username,
-                        password = password.concatToString(),
-                    ),
-                )
-            } finally {
-                password.fill('\u0000')
+        workerRegistrationHttpClient(options.caCertificatePath).use { httpClient ->
+            val client = WorkerRegistrationClient(httpClient)
+            val challenge = client.start(
+                serverUrl = base.toString(),
+                request = DeviceConnectionStartRequest(
+                    deviceLabel = options.workerId,
+                    platform = System.getProperty("os.name"),
+                    components = setOf(DeviceConnection.Component.WORKER),
+                    worker = DeviceConnectionWorkerRequest(workerId = options.workerId),
+                ),
+            )
+            val response = options.username?.let { username ->
+                val password = requireNotNull(System.console()) {
+                    "Password authentication requires an interactive terminal"
+                }.readPassword("Password for %s: ", username)
+                try {
+                    client.authenticate(
+                        serverUrl = base.toString(),
+                        request = DeviceConnectionPasswordRequest(
+                            deviceToken = challenge.deviceToken,
+                            username = username,
+                            password = password.concatToString(),
+                        ),
+                    )
+                } finally {
+                    password.fill('\u0000')
+                }
+            } ?: waitForApproval(client, base, challenge)
+            val bootstrap = requireNotNull(response.worker) {
+                "Connected Worker response has no Worker credential"
             }
-        } ?: waitForApproval(client, base, challenge)
-        val bootstrap = requireNotNull(response.worker) {
-            "Connected Worker response has no Worker credential"
+            enrollmentClient.persistConfiguration(
+                server = options.server,
+                bootstrap = bootstrap,
+                configPath = options.configPath,
+                caCertificatePath = options.caCertificatePath,
+                replaceExisting = options.replaceExisting,
+            )
         }
-        return enrollmentClient.persistConfiguration(
-            server = options.server,
-            bootstrap = bootstrap,
-            configPath = options.configPath,
-            caCertificatePath = options.caCertificatePath,
-            replaceExisting = options.replaceExisting,
-        )
     }
 
-    private fun waitForApproval(
-        client: HttpClient,
+    private suspend fun waitForApproval(
+        client: WorkerRegistrationClient,
         base: URI,
         challenge: DeviceConnectionChallenge,
     ): DeviceConnectionConsumeResponse {
@@ -82,12 +73,8 @@ internal class WorkerDeviceConnectionClient(
         println("Waiting for approval...")
         var delaySeconds = challenge.pollIntervalSeconds
         while (System.currentTimeMillis() < challenge.expiresAt.toEpochMilliseconds()) {
-            Thread.sleep(delaySeconds * 1_000L)
-            val response = post<DeviceConnectionConsumeRequest, DeviceConnectionConsumeResponse>(
-                client = client,
-                endpoint = base.endpoint("/auth/device-connections/consume"),
-                payload = DeviceConnectionConsumeRequest(challenge.deviceToken),
-            )
+            delay(delaySeconds * 1_000L)
+            val response = client.consume(base.toString(), challenge.deviceToken)
             when (response.status) {
                 DeviceConnectionConsumeResponse.Status.PENDING -> {
                     delaySeconds = response.retryAfterSeconds ?: challenge.pollIntervalSeconds
@@ -101,35 +88,6 @@ internal class WorkerDeviceConnectionClient(
         error("Device connection code expired")
     }
 
-    private inline fun <reified TRequest, reified TResponse> post(
-        client: HttpClient,
-        endpoint: URI,
-        payload: TRequest,
-    ): TResponse {
-        val request = HttpRequest.newBuilder(endpoint)
-            .timeout(Duration.ofSeconds(30))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json.encodeToString(payload)))
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        if (response.statusCode() !in 200..299) {
-            val message = runCatching {
-                json.decodeFromString<AuthenticationErrorResponse>(response.body()).message
-            }.getOrNull()
-            error(message ?: "Device connection failed with HTTP ${response.statusCode()}")
-        }
-        return json.decodeFromString(response.body())
-    }
-
-    private fun httpClient(caCertificatePath: Path?): HttpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(20))
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .apply {
-                workerSslContext(caCertificatePath?.toString())?.let(::sslContext)
-            }
-            .build()
 }
 
 internal data class WorkerDeviceConnectionOptions(
@@ -181,9 +139,6 @@ internal data class WorkerDeviceConnectionOptions(
         }
     }
 }
-
-private fun URI.endpoint(path: String): URI =
-    URI(scheme, null, host, port, path, null, null)
 
 private fun Map<String, String>.requiredConnectionOption(name: String): String =
     get(name)?.takeIf(String::isNotBlank) ?: error("$name is required")

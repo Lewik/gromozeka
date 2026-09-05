@@ -1,5 +1,8 @@
 package com.gromozeka.worker
 
+import com.gromozeka.worker.runtime.WorkerGatewayRuntime
+import com.gromozeka.worker.runtime.KtorWorkerGatewayTransport
+import com.gromozeka.worker.runtime.WorkerRequestHandler
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
@@ -10,8 +13,6 @@ import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
 import com.gromozeka.domain.service.WorkerAudioCaptureHandler
 import com.gromozeka.domain.service.WorkerWorkspaceTextFileHandler
-import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
-import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WorkerAudioCaptureGatewayCodec
@@ -25,30 +26,14 @@ import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocketSession
-import io.ktor.client.request.header
-import io.ktor.client.request.url
-import io.ktor.http.HttpHeaders
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Clock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -60,8 +45,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.SmartLifecycle
 import org.springframework.stereotype.Service
 import java.net.URI
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @ConfigurationProperties("gromozeka.worker-gateway")
@@ -137,49 +120,7 @@ class WorkerGatewayClient(
             check(!termination.isCompleted) { "Worker Gateway cannot restart after termination" }
             running = true
             connectionJob = scope.launch {
-                var consecutiveFailures = 0L
-                var lastFailureLogAtNanos: Long? = null
-                while (isActive) {
-                    try {
-                        connect()
-                        consecutiveFailures = 0
-                        lastFailureLogAtNanos = null
-                        if (isActive) {
-                            log.warn {
-                                "Worker Gateway disconnected; reconnecting: " +
-                                    "worker=${identity.workerId.value}"
-                            }
-                        }
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Throwable) {
-                        consecutiveFailures += 1
-                        val now = System.nanoTime()
-                        if (
-                            lastFailureLogAtNanos == null ||
-                            now - lastFailureLogAtNanos >= FAILURE_LOG_INTERVAL.inWholeNanoseconds
-                        ) {
-                            lastFailureLogAtNanos = now
-                            if (error.isExpectedConnectionFailure()) {
-                                log.warn {
-                                    "Worker Gateway is unavailable " +
-                                        "(attempt $consecutiveFailures): " +
-                                        "worker=${identity.workerId.value} " +
-                                        "error=${error::class.simpleName}: ${error.message}"
-                                }
-                            } else {
-                                log.warn(error) {
-                                    "Worker Gateway connection failed " +
-                                        "(attempt $consecutiveFailures): " +
-                                        "worker=${identity.workerId.value} error=${error.message}"
-                                }
-                            }
-                        }
-                    }
-                    if (isActive) {
-                        delay(properties.reconnectDelaySeconds.seconds)
-                    }
-                }
+                runtime.run()
             }.also { job ->
                 job.invokeOnCompletion { error ->
                     if (running) {
@@ -222,143 +163,50 @@ class WorkerGatewayClient(
 
     suspend fun awaitTermination(): Throwable? = termination.await()
 
-    private suspend fun connect() {
-        val socket = client.webSocketSession {
-            url(gatewayUrl)
-            header(HttpHeaders.Authorization, "Bearer ${properties.credential}")
-        }
-        try {
-            val connectedAt = Clock.System.now()
-            socket.sendMessage(
-                WorkerGatewayMessage.Hello(
-                    ConversationRuntimeWorkerRegistration(
-                        identity = identity,
-                        capabilities = capabilities,
-                        tools = outbound.currentTools(),
-                        environmentProfile = environmentProfile,
-                        version = currentWorkerVersion(),
-                        startedAt = startedAt,
-                        lastHeartbeatAt = connectedAt,
-                    )
+    private val runtime by lazy {
+        WorkerGatewayRuntime(
+            transport = KtorWorkerGatewayTransport(client, gatewayUrl, properties.credential),
+            registration = {
+                ConversationRuntimeWorkerRegistration(
+                    identity = identity,
+                    capabilities = capabilities,
+                    tools = outbound.currentTools(),
+                    environmentProfile = environmentProfile,
+                    version = currentWorkerVersion(),
+                    startedAt = startedAt,
+                    lastHeartbeatAt = Clock.System.now(),
                 )
-            )
-            val welcome = withTimeout(HANDSHAKE_TIMEOUT) {
-                socket.receiveMessage()
-            }
-            when (welcome) {
-                is WorkerGatewayMessage.Welcome -> {
-                    require(welcome.protocolVersion == WORKER_GATEWAY_PROTOCOL_VERSION) {
-                        "Server selected unsupported Worker Gateway protocol ${welcome.protocolVersion}"
+            },
+            outbound = outbound,
+            handler = WorkerRequestHandler { operationHandler.execute(identity, it) },
+            prepare = { welcome ->
+                aiConfigurationProvider.synchronize(welcome.aiCatalogSnapshot)
+                val refreshAvailable = mcpConfigurationService.synchronize(welcome.mcpServers)
+                WorkerGatewayMessage.Ready(workerToolCatalog.snapshot(), refreshAvailable)
+            },
+            updateCatalog = { message ->
+                aiConfigurationProvider.synchronize(message.snapshot)
+                outbound.updateAdvertisedTools(workerToolCatalog.snapshot())
+            },
+            reconnectDelay = properties.reconnectDelaySeconds.seconds,
+            onConnected = {
+                log.info { "Worker Gateway connected: worker=${identity.workerId.value} url=$gatewayUrl" }
+            },
+            onDisconnected = {
+                log.warn { "Worker Gateway disconnected; reconnecting: worker=${identity.workerId.value}" }
+            },
+            onFailure = { error, attempts ->
+                if (error.isExpectedConnectionFailure()) {
+                    log.warn {
+                        "Worker Gateway is unavailable (attempt $attempts): " +
+                            "worker=${identity.workerId.value} error=${error::class.simpleName}: ${error.message}"
                     }
-                    aiConfigurationProvider.synchronize(welcome.aiCatalogSnapshot)
-                    val refreshAvailable = mcpConfigurationService.synchronize(welcome.mcpServers)
-                    val runtimeTools = workerToolCatalog.snapshot()
-                    outbound.replaceBeforeReady(runtimeTools)
-                    socket.sendMessage(
-                        WorkerGatewayMessage.Ready(
-                            tools = runtimeTools,
-                            refreshAvailableMcpServers = refreshAvailable,
-                        )
-                    )
+                } else {
+                    log.warn(error) { "Worker Gateway connection failed (attempt $attempts): worker=${identity.workerId.value}" }
                 }
-
-                is WorkerGatewayMessage.Failure ->
-                    error("Worker Gateway rejected connection: ${welcome.code}: ${welcome.message}")
-
-                else -> error("Worker Gateway did not return welcome")
-            }
-            log.info {
-                "Worker Gateway connected: worker=${identity.workerId.value} url=$gatewayUrl"
-            }
-            coroutineScope {
-                val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
-                outbound.attach(outgoing)
-                val writer = launch {
-                    for (message in outgoing) {
-                        socket.sendMessage(message)
-                    }
-                }
-                val heartbeatJob = launch {
-                    while (isActive && socket.isActive) {
-                        delay(welcome.heartbeatIntervalSeconds.seconds)
-                        outgoing.send(WorkerGatewayMessage.Heartbeat(Clock.System.now()))
-                    }
-                }
-                val requestJobs = ConcurrentHashMap<String, Job>()
-                try {
-                    for (frame in socket.incoming) {
-                        val message = frame.decodeMessage()
-                            ?: error("Worker Gateway Server sent a non-binary frame")
-                        when (message) {
-                            is WorkerGatewayMessage.Request -> {
-                                val requestJob = launch(start = CoroutineStart.LAZY) {
-                                    requestConcurrency.withPermit {
-                                        outgoing.send(operationHandler.execute(identity, message))
-                                    }
-                                }
-                                check(requestJobs.putIfAbsent(message.id, requestJob) == null) {
-                                    "Worker Gateway Server reused request id ${message.id}"
-                                }
-                                requestJob.invokeOnCompletion { requestJobs.remove(message.id, requestJob) }
-                                requestJob.start()
-                            }
-
-                            is WorkerGatewayMessage.CancelRequest ->
-                                requestJobs[message.requestId]?.cancel(
-                                    CancellationException(
-                                        "Worker Gateway request ${message.requestId} was cancelled by Server"
-                                    )
-                                )
-
-                            is WorkerGatewayMessage.Response -> {
-                                if (!outbound.accept(message)) {
-                                    error("Worker Gateway Server returned a response for an unknown request")
-                                }
-                            }
-
-                            is WorkerGatewayMessage.AiCatalogUpdated -> {
-                                aiConfigurationProvider.synchronize(message.snapshot)
-                                outbound.updateAdvertisedTools(workerToolCatalog.snapshot())
-                            }
-
-                            is WorkerGatewayMessage.Failure ->
-                                error("Worker Gateway failed: ${message.code}: ${message.message}")
-
-                            else -> error(
-                                "Worker Gateway Server sent an unexpected ${message::class.simpleName}"
-                            )
-                        }
-                    }
-                } finally {
-                    outbound.detach(outgoing)
-                    val activeRequests = requestJobs.values.toList()
-                    activeRequests.forEach { it.cancel() }
-                    activeRequests.joinAll()
-                    outgoing.close()
-                    heartbeatJob.cancelAndJoin()
-                    writer.cancelAndJoin()
-                }
-            }
-        } finally {
-            socket.close()
-        }
+            },
+        )
     }
-
-    private suspend fun io.ktor.client.plugins.websocket.DefaultClientWebSocketSession.sendMessage(
-        message: WorkerGatewayMessage,
-    ) {
-        send(Frame.Binary(true, WorkerGatewayCodec.encode(message)))
-    }
-
-    private suspend fun io.ktor.client.plugins.websocket.DefaultClientWebSocketSession.receiveMessage():
-        WorkerGatewayMessage {
-        val frame = incoming.receive()
-        return frame.decodeMessage()
-            ?: error("Worker Gateway Server sent a non-binary frame")
-    }
-
-    private fun Frame.decodeMessage(): WorkerGatewayMessage? =
-        (this as? Frame.Binary)?.let { WorkerGatewayCodec.decode(it.readBytes()) }
 
     private fun Throwable.isExpectedConnectionFailure(): Boolean =
         generateSequence(this, Throwable::cause).any {
@@ -369,12 +217,6 @@ class WorkerGatewayClient(
                 it is java.nio.channels.UnresolvedAddressException
         }
 
-    private companion object {
-        val HANDSHAKE_TIMEOUT = 15.seconds
-        val FAILURE_LOG_INTERVAL = 1.minutes
-        const val OUTGOING_BUFFER_SIZE = 256
-        val requestConcurrency = Semaphore(64)
-    }
 }
 
 @Service

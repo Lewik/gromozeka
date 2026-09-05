@@ -47,6 +47,7 @@ import io.ktor.server.websocket.WebSockets as ServerWebSockets
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readBytes
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -111,8 +112,8 @@ class WorkerGatewayTest {
     }
 
     @Test
-    fun `authenticated worker completes gateway handshake`() = testApplication {
-        val worker = worker("worker-1")
+    fun `user bound Android worker runs through the common gateway runtime`() = testApplication {
+        val worker = worker("worker-1").copy(platform = "android", subjectUserId = User.Id("owner"))
         val credential = "gateway-credential-that-is-long-enough-for-validation"
         val repository = GatewayAuthenticationRepository(
             credentialHash = sha256(credential),
@@ -164,56 +165,49 @@ class WorkerGatewayTest {
             lastHeartbeatAt = startedAt,
         )
 
-        client.webSocket("/worker/ws", request = {
-            header(HttpHeaders.Authorization, "Bearer $credential")
-        }) {
-            send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Hello(registration))))
-            val welcome = WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
-            assertTrue(welcome is WorkerGatewayMessage.Welcome)
-            assertTrue(welcome.mcpServers.isEmpty())
-            assertEquals(TestAiConfigurationProvider.snapshot, welcome.aiCatalogSnapshot)
-            send(
-                Frame.Binary(
-                    true,
-                    WorkerGatewayCodec.encode(WorkerGatewayMessage.Ready(tools = emptyList())),
-                )
+        kotlinx.coroutines.coroutineScope {
+            val outbound = com.gromozeka.worker.runtime.WorkerGatewayOutbound(registration.capabilities)
+            val runtime = com.gromozeka.worker.runtime.WorkerGatewayRuntime(
+                transport = com.gromozeka.worker.runtime.KtorWorkerGatewayTransport(client, "/worker/ws", credential),
+                registration = { registration },
+                outbound = outbound,
+                handler = com.gromozeka.worker.runtime.WorkerRequestHandler { request ->
+                    assertEquals(WorkerGatewayOperation.WORKER_CONTROL, request.operation)
+                    assertEquals("request", request.payload.decodeToString())
+                    WorkerGatewayMessage.Response(
+                        requestId = request.id,
+                        status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
+                        payload = "response".encodeToByteArray(),
+                    )
+                },
+                prepare = { welcome ->
+                    assertTrue(welcome.mcpServers.isEmpty())
+                    assertEquals(TestAiConfigurationProvider.snapshot, welcome.aiCatalogSnapshot)
+                    WorkerGatewayMessage.Ready(emptyList())
+                },
+                updateCatalog = {},
             )
-            withTimeout(5_000) {
-                while (sessionRegistry.find(identity.workerId) == null) {
-                    delay(10)
+            val job = launch { runtime.run() }
+            try {
+                withTimeout(5_000) {
+                    while (sessionRegistry.find(identity.workerId) == null) delay(10)
                 }
+                assertEquals(
+                    "response",
+                    sessionRegistry.execute(
+                        target = identity,
+                        operation = WorkerGatewayOperation.WORKER_CONTROL,
+                        payload = "request".encodeToByteArray(),
+                        timeout = Duration.ofSeconds(5),
+                    ).decodeToString(),
+                )
+            } finally {
+                job.cancel()
+                job.join()
             }
-            val response = async {
-                sessionRegistry.execute(
-                    target = identity,
-                    operation = WorkerGatewayOperation.WORKER_CONTROL,
-                    payload = "request".encodeToByteArray(),
-                    timeout = Duration.ofSeconds(5),
-                )
+            withTimeout(5_000) {
+                while (sessionRegistry.find(identity.workerId) != null) delay(10)
             }
-            val request = WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
-                as WorkerGatewayMessage.Request
-            assertEquals(WorkerGatewayOperation.WORKER_CONTROL, request.operation)
-            assertEquals("request", request.payload.decodeToString())
-            send(
-                Frame.Binary(
-                    true,
-                    WorkerGatewayCodec.encode(
-                        WorkerGatewayMessage.Response(
-                            requestId = request.id,
-                            status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
-                            payload = "response".encodeToByteArray(),
-                        )
-                    ),
-                )
-            )
-            assertEquals("response", response.await().decodeToString())
-            send(
-                Frame.Binary(
-                    true,
-                    WorkerGatewayCodec.encode(WorkerGatewayMessage.Heartbeat(startedAt)),
-                )
-            )
         }
     }
 
@@ -449,7 +443,8 @@ private class GatewayAuthenticationRepository(
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: Instant,
-        kind: WorkerResource.Kind,
+        platform: String?,
+        bindToUser: Boolean,
     ): WorkerResource? = error("Not used")
 
     override suspend fun authenticateGatewayCredential(

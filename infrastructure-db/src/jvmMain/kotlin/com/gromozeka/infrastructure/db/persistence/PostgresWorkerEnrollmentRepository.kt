@@ -66,7 +66,8 @@ class PostgresWorkerEnrollmentRepository(
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: Instant,
-        kind: WorkerResource.Kind,
+        platform: String?,
+        bindToUser: Boolean,
     ): WorkerResource? =
         withContext(Dispatchers.IO) {
             require(gatewayCredentialHash.length == 64) {
@@ -85,8 +86,8 @@ class PostgresWorkerEnrollmentRepository(
                             require(existing.ownerUserId == ownerUserId) {
                                 "Worker ID is already registered"
                             }
-                            require(existing.kind == kind) {
-                                "Worker ID is already registered with another kind"
+                            require(existing.subjectUserId == ownerUserId.takeIf { bindToUser }) {
+                                "Worker ID is already registered with another user binding"
                             }
                             require(existing.status == WorkerResource.Status.ACTIVE) {
                                 "Worker is revoked"
@@ -96,8 +97,8 @@ class PostgresWorkerEnrollmentRepository(
                             id = workerId,
                             displayName = displayName,
                             ownerUserId = ownerUserId,
-                            kind = kind,
-                            subjectUserId = ownerUserId.takeIf { kind == WorkerResource.Kind.MOBILE_DEVICE },
+                            platform = platform,
+                            subjectUserId = ownerUserId.takeIf { bindToUser },
                             runtimeWideAccess = false,
                             status = WorkerResource.Status.ACTIVE,
                             createdAt = consumedAt,
@@ -131,7 +132,7 @@ class PostgresWorkerEnrollmentRepository(
                     SELECT w.id,
                            w.display_name,
                            w.owner_user_id,
-                           w.kind,
+                           w.platform,
                            w.subject_user_id,
                            w.runtime_wide_access,
                            w.status,
@@ -183,7 +184,7 @@ class PostgresWorkerEnrollmentRepository(
     ): WorkerResource? =
         prepareStatement(
             """
-            SELECT id, display_name, owner_user_id, kind, subject_user_id,
+            SELECT id, display_name, owner_user_id, platform, subject_user_id,
                    runtime_wide_access, status, created_at, updated_at
             FROM workers
             WHERE id = ?
@@ -203,7 +204,7 @@ class PostgresWorkerEnrollmentRepository(
                 id,
                 display_name,
                 owner_user_id,
-                kind,
+                platform,
                 subject_user_id,
                 runtime_wide_access,
                 status,
@@ -216,7 +217,7 @@ class PostgresWorkerEnrollmentRepository(
             statement.setString(1, worker.id.value)
             statement.setString(2, worker.displayName)
             statement.setString(3, worker.ownerUserId.value)
-            statement.setString(4, worker.kind.name)
+            statement.setString(4, worker.platform)
             statement.setString(5, worker.subjectUserId?.value)
             statement.setBoolean(6, worker.runtimeWideAccess)
             statement.setString(7, worker.status.name)
@@ -283,7 +284,7 @@ class PostgresWorkerEnrollmentRepository(
             id = ConversationRuntimeWorkerId(getString("id")),
             displayName = getString("display_name"),
             ownerUserId = User.Id(getString("owner_user_id")),
-            kind = WorkerResource.Kind.valueOf(getString("kind")),
+            platform = getString("platform"),
             subjectUserId = getString("subject_user_id")?.let(User::Id),
             runtimeWideAccess = getBoolean("runtime_wide_access"),
             status = WorkerResource.Status.valueOf(getString("status")),

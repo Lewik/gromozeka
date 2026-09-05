@@ -46,7 +46,7 @@ internal object Workers : Table("workers") {
     val displayName = varchar("display_name", 255)
     val ownerUserId = varchar("owner_user_id", 255)
         .references(Users.id, onDelete = ReferenceOption.RESTRICT)
-    val kind = varchar("kind", 32)
+    val platform = varchar("platform", 64).nullable()
     val subjectUserId = varchar("subject_user_id", 255)
         .references(Users.id, onDelete = ReferenceOption.RESTRICT)
         .nullable()

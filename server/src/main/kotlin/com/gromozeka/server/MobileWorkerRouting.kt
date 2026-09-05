@@ -5,7 +5,6 @@ import com.gromozeka.application.service.MobileWorkerContactApplicationService
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.MobileWorkerAppState
 import com.gromozeka.domain.model.MobileWorkerContactKind
-import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.remote.protocol.MobileWorkerEventBatchRequest
 import com.gromozeka.remote.protocol.MobileWorkerEventBatchResponse
 import com.gromozeka.remote.protocol.MobileWorkerHeartbeatRequest
@@ -139,8 +138,8 @@ private suspend fun io.ktor.server.application.ApplicationCall.authenticateMobil
         respondMobileWorkerError("Mobile Worker authentication required", HttpStatusCode.Unauthorized)
         return null
     }
-    if (authenticated.worker.kind != WorkerResource.Kind.MOBILE_DEVICE) {
-        respondMobileWorkerError("Credential does not belong to a mobile device Worker", HttpStatusCode.Forbidden)
+    if (authenticated.worker.subjectUserId == null) {
+        respondMobileWorkerError("Worker is not bound to a user for context reporting", HttpStatusCode.Forbidden)
         return null
     }
     return authenticated

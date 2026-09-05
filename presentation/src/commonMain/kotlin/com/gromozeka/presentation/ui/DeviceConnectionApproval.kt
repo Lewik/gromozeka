@@ -223,6 +223,9 @@ private fun DeviceConnectionApprovalContent(
             Text("Platform: ${current.platform}")
             Text("Access: ${current.components.displayNames()}")
             current.workerId?.let { Text("Worker: $it") }
+            if (current.workerBindsToUser) {
+                Text("This Worker will report device context for your user, including location when enabled on the device.")
+            }
             Text("Code: ${current.userCode}")
         }
     }

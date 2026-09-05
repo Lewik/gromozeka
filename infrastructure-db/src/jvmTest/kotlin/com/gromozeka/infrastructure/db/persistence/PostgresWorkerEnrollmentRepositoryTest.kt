@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.DeviceConnection
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant
@@ -51,9 +52,13 @@ class PostgresWorkerEnrollmentRepositoryTest {
                 ConversationRuntimeWorkerId("worker-1"),
                 "Worker 1",
                 consumedAt,
+                platform = "macos",
+                bindToUser = true,
             )
 
             assertEquals(owner, worker?.ownerUserId)
+            assertEquals(owner, worker?.subjectUserId)
+            assertEquals("macos", worker?.platform)
             assertEquals(
                 ConversationRuntimeWorkerId("worker-1"),
                 repository.authenticateGatewayCredential(firstCredentialHash)?.id,
@@ -96,12 +101,48 @@ class PostgresWorkerEnrollmentRepositoryTest {
                 ConversationRuntimeWorkerId("worker-1"),
                 "Worker 1",
                 consumedAt,
+                platform = "macos",
+                bindToUser = true,
             )
             assertNull(repository.authenticateGatewayCredential(firstCredentialHash))
             assertEquals(
                 ConversationRuntimeWorkerId("worker-1"),
                 repository.authenticateGatewayCredential(rotatedCredentialHash)?.id,
             )
+
+            val connections = PostgresDeviceConnectionRepository(repositoryDataSource)
+            val deviceConnection = DeviceConnection(
+                id = DeviceConnection.Id("phone-connection"),
+                secretHash = "2".repeat(64),
+                userCode = "PHONE-CODE",
+                deviceLabel = "Phone",
+                platform = "android",
+                components = setOf(DeviceConnection.Component.WORKER),
+                clientLabel = null,
+                worker = DeviceConnection.WorkerRequest(ConversationRuntimeWorkerId("phone"), bindToUser = true),
+                status = DeviceConnection.Status.PENDING,
+                authorizedUserId = null,
+                decidedByUserId = null,
+                createdAt = createdAt,
+                expiresAt = expiresAt,
+                decidedAt = null,
+                consumedAt = null,
+            )
+            kotlin.test.assertTrue(connections.create(deviceConnection))
+            assertEquals(deviceConnection, connections.findPendingByUserCode(deviceConnection.userCode, consumedAt))
+            connections.approve(deviceConnection.userCode, owner, consumedAt)
+            val consumption = requireNotNull(connections.consume(deviceConnection.secretHash, consumedAt, null, "3".repeat(64)))
+            assertEquals(owner, consumption.worker?.subjectUserId)
+            assertEquals("android", consumption.worker?.platform)
+            val replay = requireNotNull(connections.consume(deviceConnection.secretHash, consumedAt, null, "3".repeat(64)))
+            kotlin.test.assertFalse(replay.newlyConsumed)
+            assertEquals(consumption.worker, replay.worker)
+
+            repository.issue("4".repeat(64), owner, createdAt, expiresAt)
+            assertFailsWith<IllegalArgumentException> {
+                repository.consume("4".repeat(64), "5".repeat(64), worker!!.id, "Worker 1", consumedAt, bindToUser = false)
+            }
+            assertEquals(owner, repository.authenticateGatewayCredential(rotatedCredentialHash)?.subjectUserId)
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->
@@ -122,7 +163,7 @@ class PostgresWorkerEnrollmentRepositoryTest {
     private fun createSchema(dataSource: DataSource) {
         dataSource.connection.use { connection ->
             connection.createStatement().use { statement ->
-                statement.execute("CREATE TABLE users (id VARCHAR(255) PRIMARY KEY)")
+                statement.execute("CREATE TABLE users (id VARCHAR(255) PRIMARY KEY, status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE')")
                 statement.execute("CREATE TABLE projects (id VARCHAR(255) PRIMARY KEY)")
                 statement.execute("INSERT INTO users(id) VALUES ('owner'), ('other-owner')")
                 listOf(
@@ -130,6 +171,8 @@ class PostgresWorkerEnrollmentRepositoryTest {
                     "db/migration/postgres/V28__worker_gateway_credentials.sql",
                     "db/migration/postgres/V29__rename_worker_runtime_wide_access.sql",
                     "db/migration/postgres/V37__context_state_and_mobile_workers.sql",
+                    "db/migration/postgres/V38__device_connections.sql",
+                    "db/migration/postgres/V49__unify_workers.sql",
                 ).map { resource ->
                     checkNotNull(javaClass.classLoader.getResource(resource)).readText()
                 }.forEach { script ->

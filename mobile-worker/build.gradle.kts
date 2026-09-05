@@ -38,6 +38,7 @@ kotlin {
             dependencies {
                 implementation(project(":domain"))
                 implementation(project(":remote-protocol"))
+                implementation(project(":worker-runtime"))
                 implementation(compose.runtime)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)

@@ -1,5 +1,6 @@
 package com.gromozeka.mobile.worker
 
+import com.gromozeka.worker.runtime.WorkerRegistrationClient
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.LocationCause
@@ -7,7 +8,6 @@ import com.gromozeka.domain.model.MobileWorkerAppState
 import com.gromozeka.domain.model.MobileWorkerPlatform
 import com.gromozeka.domain.model.SleepState
 import com.gromozeka.domain.model.VehicleSystem
-import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.domain.model.DeviceConnection
 import com.gromozeka.domain.model.projectionKey
 import com.gromozeka.remote.protocol.MobileWorkerEventBatchRequest
@@ -19,8 +19,6 @@ import com.gromozeka.remote.protocol.MobileWorkerHeartbeatResponse
 import com.gromozeka.shared.logging.GromozekaLogging
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
-import com.gromozeka.remote.protocol.DeviceConnectionChallenge
-import com.gromozeka.remote.protocol.DeviceConnectionConsumeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
 import com.gromozeka.remote.protocol.DeviceConnectionPasswordRequest
 import com.gromozeka.remote.protocol.DeviceConnectionStartRequest
@@ -56,6 +54,7 @@ internal class MobileWorkerRuntime(
     private val appVersion: String,
     private val httpClient: HttpClient = createMobileWorkerHttpClient(),
 ) {
+    private val registrationClient = WorkerRegistrationClient(httpClient)
     private val log = GromozekaLogging.logger("MobileWorkerRuntime")
 
     init {
@@ -73,22 +72,17 @@ internal class MobileWorkerRuntime(
             "Mobile Worker is already enrolled; remove the existing enrollment first"
         }
         val baseUrl = normalizeServerUrl(serverUrl)
-        val response = httpClient.post("$baseUrl/api/worker-enrollments/consume") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                WorkerEnrollmentConsumeRequest(
-                    token = enrollmentToken,
-                    workerId = workerId,
-                    kind = WorkerResource.Kind.MOBILE_DEVICE,
-                )
-            )
-        }
-        if (!response.status.isSuccess()) {
-            error(response.mobileWorkerError("Enrollment failed"))
-        }
-        val bootstrap = response.body<WorkerEnrollmentBootstrap>()
-        require(bootstrap.kind == WorkerResource.Kind.MOBILE_DEVICE) {
-            "Server enrolled an unexpected Worker kind"
+        val bootstrap = registrationClient.enroll(
+            baseUrl,
+            WorkerEnrollmentConsumeRequest(
+                token = enrollmentToken,
+                workerId = workerId,
+                platform = platform.name.lowercase(),
+                bindToUser = true,
+            ),
+        )
+        require(bootstrap.subjectUserId != null) {
+            "Server did not bind the Worker to a user for context reporting"
         }
         persistEnrollment(baseUrl, bootstrap).also {
             log.info { "Enrollment completed platform=${platform.name}" }
@@ -103,16 +97,15 @@ internal class MobileWorkerRuntime(
             "Mobile Worker is already enrolled; remove the existing enrollment first"
         }
         val baseUrl = normalizeServerUrl(serverUrl)
-        val response = postDeviceConnection<DeviceConnectionStartRequest, DeviceConnectionChallenge>(
-            baseUrl = baseUrl,
-            path = "/auth/device-connections",
-            payload = DeviceConnectionStartRequest(
+        val response = registrationClient.start(
+            serverUrl = baseUrl,
+            request = DeviceConnectionStartRequest(
                 deviceLabel = deviceName,
                 platform = platform.name.lowercase(),
                 components = setOf(DeviceConnection.Component.WORKER),
                 worker = DeviceConnectionWorkerRequest(
                     workerId = workerId,
-                    kind = WorkerResource.Kind.MOBILE_DEVICE,
+                    bindToUser = true,
                 ),
             ),
         )
@@ -135,11 +128,7 @@ internal class MobileWorkerRuntime(
         val baseUrl = normalizeServerUrl(serverUrl)
         completeDeviceConnection(
             baseUrl,
-            postDeviceConnection<DeviceConnectionConsumeRequest, DeviceConnectionConsumeResponse>(
-                baseUrl = baseUrl,
-                path = "/auth/device-connections/consume",
-                payload = DeviceConnectionConsumeRequest(deviceToken),
-            ),
+            registrationClient.consume(baseUrl, deviceToken),
         )
     }
 
@@ -155,10 +144,9 @@ internal class MobileWorkerRuntime(
         val baseUrl = normalizeServerUrl(serverUrl)
         completeDeviceConnection(
             baseUrl,
-            postDeviceConnection<DeviceConnectionPasswordRequest, DeviceConnectionConsumeResponse>(
-                baseUrl = baseUrl,
-                path = "/auth/device-connections/password",
-                payload = DeviceConnectionPasswordRequest(
+            registrationClient.authenticate(
+                serverUrl = baseUrl,
+                request = DeviceConnectionPasswordRequest(
                     deviceToken = deviceToken,
                     username = username,
                     password = password,
@@ -198,8 +186,8 @@ internal class MobileWorkerRuntime(
         baseUrl: String,
         bootstrap: WorkerEnrollmentBootstrap,
     ): MobileWorkerStatus {
-        require(bootstrap.kind == WorkerResource.Kind.MOBILE_DEVICE) {
-            "Server enrolled an unexpected Worker kind"
+        require(bootstrap.subjectUserId != null) {
+            "Server did not bind the Worker to a user for context reporting"
         }
         storage.writeCredential(bootstrap.gatewayCredential)
         check(storage.readCredential() == bootstrap.gatewayCredential) {
@@ -220,21 +208,6 @@ internal class MobileWorkerRuntime(
         )
         writeState(state)
         return state.toStatus(hasCredential = true)
-    }
-
-    private suspend inline fun <reified TRequest, reified TResponse> postDeviceConnection(
-        baseUrl: String,
-        path: String,
-        payload: TRequest,
-    ): TResponse {
-        val response = httpClient.post("$baseUrl$path") {
-            contentType(ContentType.Application.Json)
-            setBody(payload)
-        }
-        if (!response.status.isSuccess()) {
-            error(response.mobileWorkerError("Device connection failed"))
-        }
-        return response.body()
     }
 
     suspend fun status(): MobileWorkerStatus = mobileWorkerStorageMutex.withLock {
@@ -606,6 +579,7 @@ private fun normalizeServerUrl(value: String): String {
 }
 
 private fun createMobileWorkerHttpClient(): HttpClient = HttpClient {
+    followRedirects = false
     install(HttpTimeout) {
         connectTimeoutMillis = MOBILE_WORKER_CONNECT_TIMEOUT_MILLIS
         requestTimeoutMillis = MOBILE_WORKER_REQUEST_TIMEOUT_MILLIS

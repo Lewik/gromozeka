@@ -22,6 +22,22 @@ class WorkerEnrollmentServiceTest {
     private val clock = Clock.fixed(Instant.parse("2026-07-28T19:00:00Z"), ZoneOffset.UTC)
 
     @Test
+    fun `user binding is explicit and independent of platform`() = runBlocking {
+        for (platform in listOf("android", "macos")) {
+            for (bindToUser in listOf(false, true)) {
+                val repository = TestWorkerEnrollmentRepository()
+                val service = workerEnrollmentService(configuredProperties(), repository)
+                val token = service.create(USER_ID)
+                val bootstrap = service.consume(token.token, "worker", platform, bindToUser)
+                assertEquals(platform, repository.worker?.platform)
+                assertEquals(USER_ID.takeIf { bindToUser }, bootstrap.subjectUserId)
+                assertEquals(bootstrap.subjectUserId, repository.worker?.subjectUserId)
+                assertEquals(configuredProperties().capabilities, bootstrap.capabilities)
+            }
+        }
+    }
+
+    @Test
     fun `token can bootstrap exactly one worker`() = runBlocking {
         val repository = TestWorkerEnrollmentRepository()
         val securityAuditRecorder = TestSecurityAuditRecorder()
@@ -129,7 +145,8 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: KotlinInstant,
-        kind: WorkerResource.Kind,
+        platform: String?,
+        bindToUser: Boolean,
     ): WorkerResource? {
         val issued = enrollment
             ?.takeIf { it.tokenHash == tokenHash && it.expiresAt > consumedAt }
@@ -140,8 +157,8 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
             id = workerId,
             displayName = displayName,
             ownerUserId = issued.ownerUserId,
-            kind = kind,
-            subjectUserId = issued.ownerUserId.takeIf { kind == WorkerResource.Kind.MOBILE_DEVICE },
+            platform = platform,
+            subjectUserId = issued.ownerUserId.takeIf { bindToUser },
             runtimeWideAccess = false,
             status = WorkerResource.Status.ACTIVE,
             createdAt = consumedAt,

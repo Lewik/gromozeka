@@ -123,7 +123,7 @@ internal class ContextStateToolContributor(
             workerId = ConversationRuntimeWorkerId(workerId),
             permission = WorkerPermission.USE,
         ).also {
-            require(it.kind == WorkerResource.Kind.MOBILE_DEVICE) { "Worker is not a mobile device" }
+            require(it.subjectUserId != null) { "Worker is not bound to a user for context reporting" }
         }
     }
 

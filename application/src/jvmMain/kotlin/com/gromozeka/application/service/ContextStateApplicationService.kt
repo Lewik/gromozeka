@@ -35,8 +35,8 @@ class ContextStateApplicationService(
         worker: WorkerResource,
         observations: List<DeviceObservation>,
     ): DeviceObservationAppendResult {
-        require(worker.kind == WorkerResource.Kind.MOBILE_DEVICE) {
-            "Only a mobile device Worker can submit device observations"
+        require(worker.subjectUserId != null) {
+            "Worker must be bound to a user to submit device observations"
         }
         require(observations.size <= MAX_DEVICE_OBSERVATION_BATCH_SIZE) {
             "Mobile Worker event batch exceeds $MAX_DEVICE_OBSERVATION_BATCH_SIZE events"

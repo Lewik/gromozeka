@@ -61,7 +61,7 @@ data class DeviceConnection(
 
     data class WorkerRequest(
         val workerId: ConversationRuntimeWorkerId,
-        val kind: WorkerResource.Kind,
+        val bindToUser: Boolean = false,
     )
 }
 

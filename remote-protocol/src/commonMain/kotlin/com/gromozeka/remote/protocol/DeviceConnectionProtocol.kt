@@ -1,7 +1,6 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.DeviceConnection
-import com.gromozeka.domain.model.WorkerResource
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
@@ -17,7 +16,7 @@ data class DeviceConnectionStartRequest(
 @Serializable
 data class DeviceConnectionWorkerRequest(
     val workerId: String,
-    val kind: WorkerResource.Kind = WorkerResource.Kind.EXECUTION,
+    val bindToUser: Boolean = false,
 )
 
 @Serializable
@@ -53,7 +52,7 @@ data class DeviceConnectionPreview(
     val platform: String,
     val components: Set<DeviceConnection.Component>,
     val workerId: String? = null,
-    val workerKind: WorkerResource.Kind? = null,
+    val workerBindsToUser: Boolean = false,
     val userCode: String,
     val expiresAt: Instant,
 )
