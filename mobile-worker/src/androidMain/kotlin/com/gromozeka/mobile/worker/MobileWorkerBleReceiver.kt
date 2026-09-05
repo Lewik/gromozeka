@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +39,6 @@ class MobileWorkerBleReceiver : BroadcastReceiver() {
                         runtime.recordBlePresence(target.id, target.displayName, present)
                     }
                 }
-                runtime.synchronize(MobileWorkerAppState.BACKGROUND)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {

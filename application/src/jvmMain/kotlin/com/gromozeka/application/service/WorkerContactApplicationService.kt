@@ -1,23 +1,23 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.MobileWorkerAppState
-import com.gromozeka.domain.model.MobileWorkerContactKind
-import com.gromozeka.domain.model.MobileWorkerContactObservation
+import com.gromozeka.domain.model.WorkerAppState
+import com.gromozeka.domain.model.WorkerContactKind
+import com.gromozeka.domain.model.WorkerContactObservation
 import com.gromozeka.domain.model.WorkerResource
-import com.gromozeka.domain.repository.MobileWorkerContactRepository
+import com.gromozeka.domain.repository.WorkerContactRepository
 import kotlin.time.Clock
 import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service
-class MobileWorkerContactApplicationService(
-    private val repository: MobileWorkerContactRepository,
+class WorkerContactApplicationService(
+    private val repository: WorkerContactRepository,
 ) {
     suspend fun record(
         worker: WorkerResource,
         requestId: String,
-        kind: MobileWorkerContactKind,
-        appState: MobileWorkerAppState,
+        kind: WorkerContactKind,
+        appState: WorkerAppState,
         appVersion: String?,
         workerSentAt: Instant?,
         eventCount: Int,
@@ -28,7 +28,7 @@ class MobileWorkerContactApplicationService(
             "Worker must be bound to a user to report contact observations"
         }
         repository.record(
-            MobileWorkerContactObservation(
+            WorkerContactObservation(
                 requestId = requestId,
                 workerId = worker.id,
                 subjectUserId = requireNotNull(worker.subjectUserId),

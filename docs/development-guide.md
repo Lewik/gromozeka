@@ -25,7 +25,8 @@ Server, and standalone Workers.
 - `:worker` is a trusted standalone executor.
 - `:worker-runtime` contains the shared KMP Worker registration client and
   Gateway runtime: handshake, reconnect, heartbeat, request/response routing,
-  cancellation, and capability/tool publication. JVM/Spring lifecycle, TLS
+  cancellation, capability/tool publication, and the durable event outbox with
+  bounded HTTP batch delivery. JVM/Spring lifecycle, TLS
   configuration, and tool implementations stay in `:worker`; mobile lifecycle
   and storage stay in `:mobile-worker`.
 - `:presentation` contains the shared Compose clients and presentation state.
@@ -304,7 +305,7 @@ Layer ownership for focused work:
 | External MCP definitions and accepted tool snapshots | Server database through `:infrastructure-db` |
 | Immutable AI tool contracts and stable model-facing names | Server database through `:infrastructure-db` |
 | Durable runtime scheduling | `:application` and `:infrastructure-db` |
-| Session-addressed Worker control | `:server`, `:remote-protocol`, and `:worker` |
+| Durable Worker requests and event delivery | `:worker-runtime`, `:server`, `:remote-protocol`, and platform storage |
 | Compose UI and presentation state | `:presentation` |
 | Android client packaging | `:presentation-android` |
 | Mobile Worker runtime | `:mobile-worker` |

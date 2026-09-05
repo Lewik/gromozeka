@@ -15,6 +15,7 @@ val nativePackageVersion = rootProject.version.toString()
 kotlin {
     jvmToolchain(javaVersion)
     applyDefaultHierarchyTemplate()
+    jvm()
 
     android {
         namespace = "com.gromozeka.mobile.worker"
@@ -52,6 +53,7 @@ kotlin {
             dependencies {
                 implementation(kotlin("test"))
                 implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.ktor.client.mock)
             }
         }
         val androidMain by getting {

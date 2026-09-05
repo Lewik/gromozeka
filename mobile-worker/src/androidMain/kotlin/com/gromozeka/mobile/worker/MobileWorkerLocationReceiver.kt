@@ -3,7 +3,6 @@ package com.gromozeka.mobile.worker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +18,6 @@ class MobileWorkerLocationReceiver : BroadcastReceiver() {
             try {
                 try {
                     AndroidMobileWorkerSensors.run { location.record(runtime) }
-                    runtime.synchronize(MobileWorkerAppState.BACKGROUND)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Throwable) {

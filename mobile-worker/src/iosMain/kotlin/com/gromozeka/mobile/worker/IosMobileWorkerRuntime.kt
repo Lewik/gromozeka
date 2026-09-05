@@ -2,8 +2,8 @@ package com.gromozeka.mobile.worker
 
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.LocationCause
-import com.gromozeka.domain.model.MobileWorkerAppState
-import com.gromozeka.domain.model.MobileWorkerPlatform
+import com.gromozeka.domain.model.WorkerAppState
+import com.gromozeka.domain.model.WorkerPlatform
 import com.gromozeka.domain.model.SleepState
 import com.gromozeka.shared.logging.IosDiagnosticLogging
 import kotlin.time.Instant
@@ -20,7 +20,7 @@ class IosMobileWorkerRuntime(
 
     private val runtime = MobileWorkerRuntime(
         storage = storage,
-        platform = MobileWorkerPlatform.IOS,
+        platform = WorkerPlatform.IOS,
         deviceName = deviceName,
         operatingSystemVersion = operatingSystemVersion,
         appVersion = appVersion,
@@ -67,7 +67,7 @@ class IosMobileWorkerRuntime(
         foreground: Boolean,
         heartbeatWhenIdle: Boolean,
     ): IosMobileWorkerStatus = runtime.synchronize(
-        appState = if (foreground) MobileWorkerAppState.FOREGROUND else MobileWorkerAppState.BACKGROUND,
+        appState = if (foreground) WorkerAppState.FOREGROUND else WorkerAppState.BACKGROUND,
         heartbeatWhenIdle = heartbeatWhenIdle,
     ).toIosStatus()
 

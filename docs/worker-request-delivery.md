@@ -68,8 +68,9 @@ Computer Use observation references still belong to their originating process.
 Shell process/task monitoring keeps its existing domain and recovery mechanisms;
 Gateway retries do not create another shell task.
 
-Worker-to-Server state RPC remains connection-scoped. Durable Worker-originated
-event batching/outbox and adoption by the Android worker are separate next steps.
+Worker-to-Server state RPC remains connection-scoped. Device observation events
+use the [shared durable event outbox](worker-event-delivery.md), now adopted by the
+mobile runtime. Android command execution through the Gateway is a separate step.
 
 ## Verification
 

@@ -280,7 +280,7 @@ class PostgresContextStateRepository(
 
     private fun ContextEvent.Source.kindName(): String =
         when (this) {
-            is ContextEvent.Source.MobileWorker -> "MOBILE_WORKER"
+            is ContextEvent.Source.Worker -> "WORKER"
             is ContextEvent.Source.Client -> "CLIENT"
             is ContextEvent.Source.UserDeclaration -> "USER"
             ContextEvent.Source.Server -> "SERVER"
@@ -288,7 +288,7 @@ class PostgresContextStateRepository(
 
     private fun ContextEvent.Source.idValue(): String =
         when (this) {
-            is ContextEvent.Source.MobileWorker -> workerId.value
+            is ContextEvent.Source.Worker -> workerId.value
             is ContextEvent.Source.Client -> instanceId
             is ContextEvent.Source.UserDeclaration -> userId.value
             ContextEvent.Source.Server -> "server"

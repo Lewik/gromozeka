@@ -9,17 +9,39 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 
 class AndroidMobileWorkerStorage(context: Context) : MobileWorkerStorage {
     private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+    private val statePath = File(context.applicationContext.noBackupFilesDir, "worker-state.enc").toPath()
 
     @Synchronized
-    override fun readState(): String? = preferences.getString(STATE_KEY, null)?.let(::decrypt)
+    override fun readState(): String? = try {
+        decrypt(Files.readAllBytes(statePath).decodeToString())
+    } catch (error: NoSuchFileException) {
+        null
+    }
 
     @Synchronized
     override fun writeState(value: String) {
-        check(preferences.edit().putString(STATE_KEY, encrypt(value)).commit()) {
-            "Mobile Worker state could not be persisted"
+        val bytes = encrypt(value).encodeToByteArray()
+        val temporary = statePath.resolveSibling("worker-state.next")
+        try {
+            FileChannel.open(temporary, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE).use { channel ->
+                val buffer = ByteBuffer.wrap(bytes)
+                while (buffer.hasRemaining()) channel.write(buffer)
+                channel.force(true)
+            }
+            Files.move(temporary, statePath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            FileChannel.open(statePath.parent, StandardOpenOption.READ).use { it.force(true) }
+        } finally {
+            Files.deleteIfExists(temporary)
         }
     }
 
@@ -82,7 +104,6 @@ class AndroidMobileWorkerStorage(context: Context) : MobileWorkerStorage {
 
     private companion object {
         const val PREFERENCES_NAME = "gromozeka_mobile_worker"
-        const val STATE_KEY = "state"
         const val CREDENTIAL_KEY = "credential"
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
         const val KEY_ALIAS = "gromozeka.mobile.worker.credential"

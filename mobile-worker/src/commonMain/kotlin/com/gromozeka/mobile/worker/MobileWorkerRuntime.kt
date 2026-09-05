@@ -1,21 +1,28 @@
 package com.gromozeka.mobile.worker
 
 import com.gromozeka.worker.runtime.WorkerRegistrationClient
+import com.gromozeka.worker.runtime.WorkerEventClient
+import com.gromozeka.worker.runtime.WorkerEventOutbox
+import com.gromozeka.worker.runtime.WorkerEventOutboxState
+import com.gromozeka.worker.runtime.WorkerEventOutboxStore
+import com.gromozeka.worker.runtime.WorkerEventOutboxReplacedException
+import com.gromozeka.worker.runtime.WorkerEventBatchSender
+import com.gromozeka.worker.runtime.WorkerEventOutboxFullException
+import com.gromozeka.worker.runtime.WorkerEventOutboxLimits
+import com.gromozeka.shared.uuid.uuid7
+import kotlinx.coroutines.CancellationException
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.LocationCause
-import com.gromozeka.domain.model.MobileWorkerAppState
-import com.gromozeka.domain.model.MobileWorkerPlatform
+import com.gromozeka.domain.model.WorkerAppState
+import com.gromozeka.domain.model.WorkerPlatform
 import com.gromozeka.domain.model.SleepState
 import com.gromozeka.domain.model.VehicleSystem
 import com.gromozeka.domain.model.DeviceConnection
 import com.gromozeka.domain.model.projectionKey
-import com.gromozeka.remote.protocol.MobileWorkerEventBatchRequest
-import com.gromozeka.remote.protocol.MobileWorkerEventBatchResponse
-import com.gromozeka.remote.protocol.MobileWorkerEventInput
-import com.gromozeka.remote.protocol.MobileWorkerContactMetadata
-import com.gromozeka.remote.protocol.MobileWorkerHeartbeatRequest
-import com.gromozeka.remote.protocol.MobileWorkerHeartbeatResponse
+import com.gromozeka.remote.protocol.WorkerEventBatchRequest
+import com.gromozeka.remote.protocol.WorkerEventInput
+import com.gromozeka.remote.protocol.WorkerContactMetadata
 import com.gromozeka.shared.logging.GromozekaLogging
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
@@ -24,17 +31,9 @@ import com.gromozeka.remote.protocol.DeviceConnectionPasswordRequest
 import com.gromozeka.remote.protocol.DeviceConnectionStartRequest
 import com.gromozeka.remote.protocol.DeviceConnectionWorkerRequest
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
 import io.ktor.http.Url
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -43,16 +42,16 @@ import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 internal class MobileWorkerRuntime(
     private val storage: MobileWorkerStorage,
-    private val platform: MobileWorkerPlatform,
+    private val platform: WorkerPlatform,
     private val deviceName: String,
     private val operatingSystemVersion: String,
     private val appVersion: String,
     private val httpClient: HttpClient = createMobileWorkerHttpClient(),
+    private val onEventsQueued: () -> Unit = {},
+    private val outboxLimits: WorkerEventOutboxLimits = WorkerEventOutboxLimits(),
 ) {
     private val registrationClient = WorkerRegistrationClient(httpClient)
     private val log = GromozekaLogging.logger("MobileWorkerRuntime")
@@ -193,20 +192,22 @@ internal class MobileWorkerRuntime(
         check(storage.readCredential() == bootstrap.gatewayCredential) {
             "Mobile Worker credential could not be persisted"
         }
-        val deviceInfo = MobileWorkerEventInput(
-            id = randomMobileWorkerEventId(),
+        val deviceInfo = WorkerEventInput(
+            id = uuid7(),
             observedAt = Clock.System.now(),
             payload = currentDeviceInfo(),
         )
         val state = PersistedMobileWorkerState(
             serverUrl = baseUrl,
             workerId = bootstrap.workerId,
-            pendingEvents = listOf(deviceInfo),
-            lastRecordedValues = deviceInfo.payload.projectionKey()
-                ?.let { mapOf(it to deviceInfo.payload) }
-                ?: emptyMap(),
+            outbox = WorkerEventOutboxState(
+                streamId = uuid7(),
+                pending = listOf(deviceInfo),
+                latest = mapOf(requireNotNull(deviceInfo.payload.projectionKey()) to deviceInfo),
+            ),
         )
         writeState(state)
+        onEventsQueued()
         return state.toStatus(hasCredential = true)
     }
 
@@ -215,17 +216,46 @@ internal class MobileWorkerRuntime(
     }
 
     suspend fun synchronize(
-        appState: MobileWorkerAppState = MobileWorkerAppState.UNKNOWN,
+        appState: WorkerAppState = WorkerAppState.UNKNOWN,
         heartbeatWhenIdle: Boolean = false,
-    ): MobileWorkerStatus = mobileWorkerStorageMutex.withLock {
-        val state = readState()
-        runCatching { synchronizeLocked(state, appState, heartbeatWhenIdle) }
-            .onFailure { error ->
-                log.warn(error) {
-                    "Synchronization failed appState=${appState.name} pendingEvents=${state.pendingEvents.size}"
+    ): MobileWorkerStatus {
+        val session = mobileWorkerStorageMutex.withLock {
+            val state = readState()
+            if (!state.enrolled) return state.toStatus(storage.readCredential() != null)
+            EventSession(state, requireNotNull(storage.readCredential()) { "Worker credential is missing" })
+        }
+        val streamId = requireNotNull(session.state.outbox).streamId
+        val outbox = eventOutbox(streamId)
+        try {
+            recordCurrentDeviceInfo(outbox)
+            val client = WorkerEventClient(httpClient, requireNotNull(session.state.serverUrl), session.credential)
+            try {
+                val sentCount = outbox.synchronize(WorkerEventBatchSender { batch, pendingCount ->
+                    client.send(WorkerEventBatchRequest(
+                        events = batch,
+                        contact = contactMetadata(uuid7(), appState, pendingCount),
+                    ))
+                })
+                recordCurrentDeviceInfo(outbox)
+                if (sentCount == 0 && heartbeatWhenIdle) {
+                    val pending = status().pendingEventCount
+                    val response = client.heartbeat(contactMetadata(uuid7(), appState, pending))
+                    mobileWorkerStorageMutex.withLock {
+                        val current = readState()
+                        val currentOutbox = requireNotNull(current.outbox)
+                        if (currentOutbox.streamId != streamId) throw WorkerEventOutboxReplacedException()
+                        writeState(current.copy(outbox = currentOutbox.copy(lastAcknowledgedAt = response.serverReceivedAt)))
+                    }
                 }
-            }
-            .getOrThrow()
+                log.info { "Synchronization acknowledged events=$sentCount appState=${appState.name}" }
+                return status()
+            } finally { client.close() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            log.warn { "Synchronization failed appState=${appState.name} error=${error::class.simpleName}" }
+            throw error
+        }
     }
 
     suspend fun reset() = mobileWorkerStorageMutex.withLock {
@@ -293,33 +323,13 @@ internal class MobileWorkerRuntime(
     suspend fun recordCompletedSleepSession(
         startedAt: Instant,
         endedAt: Instant,
-    ) = mobileWorkerStorageMutex.withLock {
+    ) {
         require(endedAt >= startedAt) { "Sleep session must not end before it starts" }
-        val state = readState()
-        check(state.enrolled) { "Mobile Worker must be enrolled before recording events" }
         val sessionId = "sleep-${startedAt.toEpochMilliseconds()}-${endedAt.toEpochMilliseconds()}"
-        val awake = DeviceStateEvent.Sleep(SleepState.AWAKE)
-        val pendingIds = state.pendingEvents.mapTo(hashSetOf()) { it.id }
-        val events = listOf(
-            MobileWorkerEventInput(
-                id = "$sessionId-asleep",
-                observedAt = startedAt,
-                payload = DeviceStateEvent.Sleep(SleepState.ASLEEP),
-            ),
-            MobileWorkerEventInput(
-                id = "$sessionId-awake",
-                observedAt = endedAt,
-                payload = awake,
-            ),
-        ).filterNot { it.id in pendingIds }
-        if (events.isEmpty()) return@withLock
-        writeState(
-            state.copy(
-                pendingEvents = state.pendingEvents + events,
-                lastRecordedValues = state.lastRecordedValues +
-                    (awake.projectionKey()!! to awake),
-            )
-        )
+        currentOutbox().append(listOf(
+            WorkerEventInput("${sessionId}-asleep", startedAt, DeviceStateEvent.Sleep(SleepState.ASLEEP)),
+            WorkerEventInput("${sessionId}-awake", endedAt, DeviceStateEvent.Sleep(SleepState.AWAKE)),
+        ), suppressUnchanged = false)
     }
 
     suspend fun recordWifiConnection(
@@ -349,113 +359,48 @@ internal class MobileWorkerRuntime(
         observedAt: Instant = Clock.System.now(),
     ) = enqueue(DeviceStateEvent.CustomTrigger(name, attributes), observedAt)
 
-    private suspend fun enqueue(payload: DeviceStateEvent, observedAt: Instant) = mobileWorkerStorageMutex.withLock {
-        val state = readState()
-        check(state.enrolled) { "Mobile Worker must be enrolled before recording events" }
-        val projectionKey = payload.projectionKey()
-        if (projectionKey != null && state.lastRecordedValues[projectionKey] == payload) return@withLock
-        writeState(
-            state.copy(
-                pendingEvents = state.pendingEvents + MobileWorkerEventInput(
-                    id = randomMobileWorkerEventId(),
-                    observedAt = observedAt,
-                    payload = payload,
-                ),
-                lastRecordedValues = projectionKey
-                    ?.let { state.lastRecordedValues + (it to payload) }
-                    ?: state.lastRecordedValues,
-            )
-        )
+    private suspend fun enqueue(payload: DeviceStateEvent, observedAt: Instant) {
+        currentOutbox().append(listOf(WorkerEventInput(uuid7(), observedAt, payload)))
         log.debug { "Queued event type=${payload::class.simpleName}" }
     }
 
-    private suspend fun synchronizeLocked(
-        initialState: PersistedMobileWorkerState,
-        appState: MobileWorkerAppState,
-        heartbeatWhenIdle: Boolean,
-    ): MobileWorkerStatus {
-        var state = ensureCurrentDeviceInfo(initialState)
-        if (!state.enrolled) return state.toStatus(storage.readCredential() != null)
-        val credential = storage.readCredential()
-            ?: error("Mobile Worker credential is missing; enroll the device again")
-        var sentEventBatch = false
-        var sentEventCount = 0
-        while (state.pendingEvents.isNotEmpty()) {
-            val batch = state.pendingEvents.take(MAX_SYNC_BATCH_SIZE)
-            val response = httpClient.post("${state.serverUrl}/api/mobile-worker/events") {
-                header("Authorization", "Bearer $credential")
-                contentType(ContentType.Application.Json)
-                setBody(
-                    MobileWorkerEventBatchRequest(
-                        events = batch,
-                        contact = contactMetadata(
-                            requestId = batch.first().id,
-                            appState = appState,
-                            pendingEventCount = state.pendingEvents.size,
-                        ),
-                    )
-                )
-            }
-            if (!response.status.isSuccess()) {
-                error(response.mobileWorkerError("Synchronization failed"))
-            }
-            val acknowledgement = response.body<MobileWorkerEventBatchResponse>()
-            val acknowledgedIds = acknowledgement.acceptedEventIds + acknowledgement.duplicateEventIds
-            val sentIds = batch.mapTo(linkedSetOf()) { it.id }
-            require(acknowledgedIds == sentIds) {
-                "Server acknowledgement does not match the submitted Mobile Worker batch"
-            }
-            state = state.copy(
-                pendingEvents = state.pendingEvents.drop(batch.size),
-                lastSynchronizedAt = acknowledgement.serverReceivedAt,
-            )
-            writeState(state)
-            sentEventBatch = true
-            sentEventCount += batch.size
-        }
-        if (heartbeatWhenIdle && !sentEventBatch) {
-            val response = httpClient.post("${state.serverUrl}/api/mobile-worker/heartbeat") {
-                header("Authorization", "Bearer $credential")
-                contentType(ContentType.Application.Json)
-                setBody(
-                    MobileWorkerHeartbeatRequest(
-                        contactMetadata(
-                            requestId = randomMobileWorkerEventId(),
-                            appState = appState,
-                            pendingEventCount = 0,
-                        )
-                    )
-                )
-            }
-            if (!response.status.isSuccess()) {
-                error(response.mobileWorkerError("Heartbeat failed"))
-            }
-            val acknowledgement = response.body<MobileWorkerHeartbeatResponse>()
-            state = state.copy(lastSynchronizedAt = acknowledgement.serverReceivedAt)
-            writeState(state)
-            log.info { "Heartbeat acknowledged appState=${appState.name}" }
-        }
-        if (sentEventCount > 0) {
-            log.info { "Synchronization acknowledged events=$sentEventCount appState=${appState.name}" }
-        }
-        return state.toStatus(hasCredential = true)
+    private suspend fun currentOutbox(): WorkerEventOutbox = mobileWorkerStorageMutex.withLock {
+        val state = readState()
+        check(state.enrolled) { "Worker must be enrolled before recording events" }
+        eventOutbox(requireNotNull(state.outbox).streamId)
     }
 
-    private fun ensureCurrentDeviceInfo(state: PersistedMobileWorkerState): PersistedMobileWorkerState {
-        if (!state.enrolled) return state
-        val deviceInfo = currentDeviceInfo()
-        val projectionKey = requireNotNull(deviceInfo.projectionKey())
-        if (state.lastRecordedValues[projectionKey] == deviceInfo) return state
-        val updated = state.copy(
-            pendingEvents = state.pendingEvents + MobileWorkerEventInput(
-                id = randomMobileWorkerEventId(),
-                observedAt = Clock.System.now(),
-                payload = deviceInfo,
-            ),
-            lastRecordedValues = state.lastRecordedValues + (projectionKey to deviceInfo),
-        )
-        writeState(updated)
-        return updated
+    private fun eventOutbox(streamId: String) = WorkerEventOutbox(
+        streamId = streamId,
+        limits = outboxLimits,
+        synchronization = mobileWorkerSynchronizationMutex,
+        store = object : WorkerEventOutboxStore {
+            override suspend fun read(): WorkerEventOutboxState = mobileWorkerStorageMutex.withLock {
+                readState().outbox ?: throw WorkerEventOutboxReplacedException()
+            }
+
+            override suspend fun update(transform: (WorkerEventOutboxState) -> WorkerEventOutboxState): WorkerEventOutboxState =
+                mobileWorkerStorageMutex.withLock {
+                    val state = readState()
+                    val outbox = state.outbox ?: throw WorkerEventOutboxReplacedException()
+                    val updated = transform(outbox)
+                    if (updated != outbox) {
+                        writeState(state.copy(outbox = updated))
+                        if (outbox.pending.isEmpty() && updated.pending.isNotEmpty()) onEventsQueued()
+                    }
+                    updated
+                }
+        },
+    )
+
+    private data class EventSession(val state: PersistedMobileWorkerState, val credential: String)
+
+    private suspend fun recordCurrentDeviceInfo(outbox: WorkerEventOutbox) {
+        try {
+            outbox.append(listOf(WorkerEventInput(uuid7(), Clock.System.now(), currentDeviceInfo())))
+        } catch (error: WorkerEventOutboxFullException) {
+            log.warn { "Device information update deferred until the event backlog drains" }
+        }
     }
 
     private fun currentDeviceInfo(): DeviceStateEvent.DeviceInfo =
@@ -468,10 +413,10 @@ internal class MobileWorkerRuntime(
 
     private fun contactMetadata(
         requestId: String,
-        appState: MobileWorkerAppState,
+        appState: WorkerAppState,
         pendingEventCount: Int,
-    ): MobileWorkerContactMetadata =
-        MobileWorkerContactMetadata(
+    ): WorkerContactMetadata =
+        WorkerContactMetadata(
             requestId = requestId,
             sentAt = Clock.System.now(),
             appState = appState,
@@ -495,13 +440,6 @@ internal class MobileWorkerRuntime(
         httpClient.close()
     }
 
-    private suspend fun io.ktor.client.statement.HttpResponse.mobileWorkerError(fallback: String): String =
-        runCatching {
-            mobileWorkerJson.parseToJsonElement(bodyAsText())
-                .jsonObject["error"]
-                ?.jsonPrimitive
-                ?.content
-        }.getOrNull() ?: "$fallback with HTTP ${status.value}"
 }
 
 @Serializable
@@ -540,20 +478,18 @@ enum class MobileWorkerConnectionStatus {
 private data class PersistedMobileWorkerState(
     val serverUrl: String? = null,
     val workerId: String? = null,
-    val pendingEvents: List<MobileWorkerEventInput> = emptyList(),
-    val lastRecordedValues: Map<String, DeviceStateEvent> = emptyMap(),
-    val lastSynchronizedAt: Instant? = null,
+    val outbox: WorkerEventOutboxState? = null,
 ) {
     val enrolled: Boolean
-        get() = !serverUrl.isNullOrBlank() && !workerId.isNullOrBlank()
+        get() = !serverUrl.isNullOrBlank() && !workerId.isNullOrBlank() && outbox != null
 
     fun toStatus(hasCredential: Boolean): MobileWorkerStatus =
         MobileWorkerStatus(
             enrolled = enrolled,
             serverUrl = serverUrl,
             workerId = workerId,
-            pendingEventCount = pendingEvents.size,
-            lastSynchronizedAt = lastSynchronizedAt,
+            pendingEventCount = outbox?.pending?.size ?: 0,
+            lastSynchronizedAt = outbox?.lastAcknowledgedAt,
             credentialAvailable = hasCredential,
         )
 }
@@ -590,14 +526,12 @@ private fun createMobileWorkerHttpClient(): HttpClient = HttpClient {
     }
 }
 
-internal expect fun randomMobileWorkerEventId(): String
-
 private val mobileWorkerJson = Json {
     encodeDefaults = true
     ignoreUnknownKeys = false
 }
 
 private val mobileWorkerStorageMutex = Mutex()
-private const val MAX_SYNC_BATCH_SIZE = 100
+private val mobileWorkerSynchronizationMutex = Mutex()
 private const val MOBILE_WORKER_CONNECT_TIMEOUT_MILLIS = 10_000L
 private const val MOBILE_WORKER_REQUEST_TIMEOUT_MILLIS = 20_000L

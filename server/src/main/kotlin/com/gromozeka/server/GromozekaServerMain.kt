@@ -4,7 +4,7 @@ import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.ConversationArtifactApplicationService
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.application.service.ContextStateApplicationService
-import com.gromozeka.application.service.MobileWorkerContactApplicationService
+import com.gromozeka.application.service.WorkerContactApplicationService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.service.AuthenticationService
@@ -69,7 +69,7 @@ fun main(args: Array<String>) {
     val workerGatewayAuthenticationService = context.getBean(WorkerGatewayAuthenticationService::class.java)
     val workerGatewayService = context.getBean(WorkerGatewayService::class.java)
     val contextStateService = context.getBean(ContextStateApplicationService::class.java)
-    val mobileWorkerContactService = context.getBean(MobileWorkerContactApplicationService::class.java)
+    val mobileWorkerContactService = context.getBean(WorkerContactApplicationService::class.java)
     val authenticationService = context.getBean(AuthenticationService::class.java)
     val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java)
     val authenticationAttemptLimiter = context.getBean(AuthenticationAttemptLimiter::class.java)
@@ -164,7 +164,7 @@ fun main(args: Array<String>) {
             }
             gromozekaMemoryHttp(memoryToolApplicationService, authenticationService)
             gromozekaDistributions(workerEnrollmentService, authenticationService)
-            gromozekaMobileWorkers(
+            gromozekaWorkerEvents(
                 authenticationService = workerGatewayAuthenticationService,
                 contextStateService = contextStateService,
                 contactService = mobileWorkerContactService,

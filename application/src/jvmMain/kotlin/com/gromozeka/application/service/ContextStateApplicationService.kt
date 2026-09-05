@@ -31,7 +31,7 @@ import kotlin.math.sqrt
 class ContextStateApplicationService(
     private val repository: ContextStateRepository,
 ) {
-    suspend fun ingestMobileWorker(
+    suspend fun ingestWorker(
         worker: WorkerResource,
         observations: List<DeviceObservation>,
     ): DeviceObservationAppendResult {
@@ -39,18 +39,18 @@ class ContextStateApplicationService(
             "Worker must be bound to a user to submit device observations"
         }
         require(observations.size <= MAX_DEVICE_OBSERVATION_BATCH_SIZE) {
-            "Mobile Worker event batch exceeds $MAX_DEVICE_OBSERVATION_BATCH_SIZE events"
+            "Worker event batch exceeds $MAX_DEVICE_OBSERVATION_BATCH_SIZE events"
         }
         require(observations.map { it.id }.distinct().size == observations.size) {
-            "Mobile Worker event batch contains duplicate IDs"
+            "Worker event batch contains duplicate IDs"
         }
         val subjectUserId = requireNotNull(worker.subjectUserId)
         val receivedAt = Clock.System.now()
         val eventsByLocalId = observations.associate { observation ->
             observation.id to ContextEvent(
-                id = mobileEventId(worker.id, observation.id),
+                id = workerEventId(worker.id, observation.id),
                 userId = subjectUserId,
-                source = ContextEvent.Source.MobileWorker(worker.id),
+                source = ContextEvent.Source.Worker(worker.id),
                 subject = ContextEvent.Subject.Device(worker.id),
                 payload = ContextEvent.Payload.Device(observation.payload),
                 observedAt = observation.observedAt,
@@ -249,8 +249,8 @@ class ContextStateApplicationService(
             is ContextEvent.Payload.UserDeclaration -> value
         }
 
-    private fun mobileEventId(workerId: ConversationRuntimeWorkerId, localId: String): ContextEventId =
-        ContextEventId("mobile:${workerId.value}:$localId")
+    private fun workerEventId(workerId: ConversationRuntimeWorkerId, localId: String): ContextEventId =
+        ContextEventId("worker:${workerId.value}:$localId")
 
     private companion object {
         const val ACTIVE_CLIENT_STATE_KEY = "active_client"

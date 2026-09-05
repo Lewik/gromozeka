@@ -8,7 +8,7 @@ import android.nfc.Tag
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import com.gromozeka.domain.model.MobileWorkerAppState
+import com.gromozeka.domain.model.WorkerAppState
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
             while (isActive) {
                 delay(FOREGROUND_HEARTBEAT_INTERVAL_MILLIS)
                 runCatching {
-                    runtime.synchronize(MobileWorkerAppState.FOREGROUND, heartbeatWhenIdle = true)
+                    runtime.synchronize(WorkerAppState.FOREGROUND, heartbeatWhenIdle = true)
                 }.onSuccess { statusChanged?.invoke(it) }
                     .onFailure { errorChanged?.invoke(it.message ?: it.toString()) }
             }
@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
         activityScope.launch {
             runCatching {
                 runtime.recordNfcTag(tagId)
-                runtime.synchronize(MobileWorkerAppState.FOREGROUND)
+                runtime.synchronize(WorkerAppState.FOREGROUND)
             }.onSuccess { statusChanged?.invoke(it) }
                 .onFailure { errorChanged?.invoke(it.message ?: it.toString()) }
         }
@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
                 AndroidSleepSignals(applicationContext).captureLatestSession(runtime)
                 sensors.enableSignificantLocationUpdates()
                 sensors.enableBlePresenceUpdates()
-                runtime.synchronize(MobileWorkerAppState.FOREGROUND, heartbeatWhenIdle = true)
+                runtime.synchronize(WorkerAppState.FOREGROUND, heartbeatWhenIdle = true)
             }.onSuccess { statusChanged?.invoke(it) }
                 .onFailure { errorChanged?.invoke(it.message ?: it.toString()) }
         }
@@ -228,7 +228,7 @@ private fun MainActivity.MobileWorkerApp(
             scope.launch {
                 runCatching {
                     sleep.captureLatestSession(runtime)
-                    runtime.synchronize(MobileWorkerAppState.FOREGROUND)
+                    runtime.synchronize(WorkerAppState.FOREGROUND)
                 }.onSuccess { status = it }
                     .onFailure { error = it.message ?: it.toString() }
             }
@@ -296,7 +296,7 @@ private fun MainActivity.MobileWorkerApp(
                         status = result.workerStatus
                         connectionChallenge = null
                         MobileWorkerSyncJobService.schedule(applicationContext)
-                        status = runtime.synchronize(MobileWorkerAppState.FOREGROUND)
+                        status = runtime.synchronize(WorkerAppState.FOREGROUND)
                         return@LaunchedEffect
                     }
                     MobileWorkerConnectionStatus.DENIED,
@@ -355,7 +355,7 @@ private fun MainActivity.MobileWorkerApp(
                                     error = null
                                     runCatching {
                                         runtime.synchronize(
-                                            MobileWorkerAppState.FOREGROUND,
+                                            WorkerAppState.FOREGROUND,
                                             heartbeatWhenIdle = true,
                                         )
                                     }
@@ -419,7 +419,7 @@ private fun MainActivity.MobileWorkerApp(
                             scope.launch {
                                 runCatching {
                                     sensors.captureConfiguredState(runtime)
-                                    runtime.synchronize(MobileWorkerAppState.FOREGROUND)
+                                    runtime.synchronize(WorkerAppState.FOREGROUND)
                                 }.onSuccess { status = it }
                                     .onFailure { error = it.message ?: it.toString() }
                             }
@@ -532,7 +532,7 @@ private fun MainActivity.MobileWorkerApp(
                                             status = requireNotNull(result.workerStatus)
                                             password = ""
                                             MobileWorkerSyncJobService.schedule(applicationContext)
-                                            status = runtime.synchronize(MobileWorkerAppState.FOREGROUND)
+                                            status = runtime.synchronize(WorkerAppState.FOREGROUND)
                                         }.onFailure { failure ->
                                             error = failure.message ?: failure.toString()
                                         }
@@ -590,7 +590,7 @@ private fun MainActivity.MobileWorkerApp(
                                         status = runtime.enroll(serverUrl, enrollmentToken, workerId)
                                         enrollmentToken = ""
                                         MobileWorkerSyncJobService.schedule(applicationContext)
-                                        status = runtime.synchronize(MobileWorkerAppState.FOREGROUND)
+                                        status = runtime.synchronize(WorkerAppState.FOREGROUND)
                                     }.onFailure { failure ->
                                         error = failure.message ?: failure.toString()
                                     }

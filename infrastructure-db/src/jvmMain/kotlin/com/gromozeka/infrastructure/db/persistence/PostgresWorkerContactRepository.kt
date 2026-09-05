@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.domain.model.MobileWorkerContactObservation
-import com.gromozeka.domain.repository.MobileWorkerContactRepository
+import com.gromozeka.domain.model.WorkerContactObservation
+import com.gromozeka.domain.repository.WorkerContactRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.time.Instant
@@ -12,10 +12,10 @@ import java.sql.Types
 import javax.sql.DataSource
 
 @Service
-class PostgresMobileWorkerContactRepository(
+class PostgresWorkerContactRepository(
     private val dataSource: DataSource,
-) : MobileWorkerContactRepository {
-    override suspend fun record(observation: MobileWorkerContactObservation) = withContext(Dispatchers.IO) {
+) : WorkerContactRepository {
+    override suspend fun record(observation: WorkerContactObservation) = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
             connection.autoCommit = false
             try {
@@ -29,10 +29,10 @@ class PostgresMobileWorkerContactRepository(
         }
     }
 
-    private fun Connection.insertObservation(observation: MobileWorkerContactObservation): Long =
+    private fun Connection.insertObservation(observation: WorkerContactObservation): Long =
         prepareStatement(
             """
-            INSERT INTO mobile_worker_contact_observations(
+            INSERT INTO worker_contact_observations(
                 worker_id, subject_user_id, request_id, contact_kind, app_state,
                 app_version, worker_sent_at, received_at, event_count, pending_event_count
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -50,18 +50,18 @@ class PostgresMobileWorkerContactRepository(
             statement.setInt(9, observation.eventCount)
             statement.setNullableInt(10, observation.pendingEventCount)
             statement.executeQuery().use { result ->
-                check(result.next()) { "Mobile Worker contact observation was not inserted" }
+                check(result.next()) { "Worker contact observation was not inserted" }
                 result.getLong("ingest_order")
             }
         }
 
     private fun Connection.updatePresence(
-        observation: MobileWorkerContactObservation,
+        observation: WorkerContactObservation,
         ingestOrder: Long,
     ) {
         prepareStatement(
             """
-            INSERT INTO mobile_worker_presence(
+            INSERT INTO worker_presence(
                 worker_id, subject_user_id, last_observation_order, last_request_id,
                 last_contact_kind, last_app_state, last_app_version, last_worker_sent_at,
                 last_received_at, last_event_count, last_pending_event_count
@@ -78,7 +78,7 @@ class PostgresMobileWorkerContactRepository(
                 last_event_count = EXCLUDED.last_event_count,
                 last_pending_event_count = EXCLUDED.last_pending_event_count
             WHERE (EXCLUDED.last_received_at, EXCLUDED.last_observation_order) >
-                  (mobile_worker_presence.last_received_at, mobile_worker_presence.last_observation_order)
+                  (worker_presence.last_received_at, worker_presence.last_observation_order)
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, observation.workerId.value)

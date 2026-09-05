@@ -8,10 +8,11 @@ internal object AndroidMobileWorkerRuntimeFactory {
     fun create(context: Context): MobileWorkerRuntime =
         MobileWorkerRuntime(
             storage = AndroidMobileWorkerStorage(context),
-            platform = com.gromozeka.domain.model.MobileWorkerPlatform.ANDROID,
+            platform = com.gromozeka.domain.model.WorkerPlatform.ANDROID,
             deviceName = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
             operatingSystemVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
             appVersion = context.applicationVersion(),
+            onEventsQueued = { MobileWorkerSyncJobService.requestSynchronization(context.applicationContext) },
         )
 }
 

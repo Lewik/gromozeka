@@ -27,14 +27,14 @@ data class ContextEvent(
     val receivedAt: Instant,
 ) {
     init {
-        require(receivedAt >= observedAt || source is Source.MobileWorker) {
+        require(receivedAt >= observedAt || source is Source.Worker) {
             "Server-originated context events cannot be received before they are observed"
         }
         require(subject !is Subject.UserState || subject.userId == userId) {
             "User context event subject must match its owner"
         }
-        require(source !is Source.MobileWorker || subject == Subject.Device(source.workerId)) {
-            "Mobile Worker context events must describe their own device"
+        require(source !is Source.Worker || subject == Subject.Device(source.workerId)) {
+            "Worker context events must describe their own device"
         }
         require(source !is Source.UserDeclaration || source.userId == userId) {
             "User declaration source must match its owner"
@@ -58,8 +58,8 @@ data class ContextEvent(
     @Serializable
     sealed interface Source {
         @Serializable
-        @SerialName("mobile_worker")
-        data class MobileWorker(val workerId: ConversationRuntimeWorkerId) : Source
+        @SerialName("worker")
+        data class Worker(val workerId: ConversationRuntimeWorkerId) : Source
 
         @Serializable
         @SerialName("client")
@@ -149,7 +149,7 @@ sealed interface DeviceStateEvent {
     @Serializable
     @SerialName("device_info")
     data class DeviceInfo(
-        val platform: MobileWorkerPlatform,
+        val platform: WorkerPlatform,
         val deviceName: String,
         val operatingSystemVersion: String,
         val appVersion: String,
@@ -157,12 +157,12 @@ sealed interface DeviceStateEvent {
         init {
             require(deviceName.isNotBlank()) { "Device name must not be blank" }
             require(operatingSystemVersion.isNotBlank()) { "Operating system version must not be blank" }
-            require(appVersion.isNotBlank()) { "Mobile Worker version must not be blank" }
+            require(appVersion.isNotBlank()) { "Worker version must not be blank" }
             require(deviceName.length <= MAX_CONTEXT_LABEL_LENGTH) { "Device name is too long" }
             require(operatingSystemVersion.length <= MAX_CONTEXT_LABEL_LENGTH) {
                 "Operating system version is too long"
             }
-            require(appVersion.length <= MAX_CONTEXT_LABEL_LENGTH) { "Mobile Worker version is too long" }
+            require(appVersion.length <= MAX_CONTEXT_LABEL_LENGTH) { "Worker version is too long" }
         }
     }
 
@@ -296,9 +296,13 @@ sealed interface DeviceStateEvent {
 }
 
 @Serializable
-enum class MobileWorkerPlatform {
+enum class WorkerPlatform {
     ANDROID,
     IOS,
+    MACOS,
+    WINDOWS,
+    LINUX,
+    OTHER,
 }
 
 @Serializable
@@ -377,7 +381,7 @@ data class DeviceObservation(
 ) {
     init {
         require(id.matches(eventIdPattern)) {
-            "Mobile event ID must contain 1-128 letters, digits, dots, dashes, or underscores"
+            "Worker event ID must contain 1-128 letters, digits, dots, dashes, or underscores"
         }
     }
 }

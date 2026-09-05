@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.car.app.connection.CarConnection
-import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,8 +17,8 @@ class MobileWorkerCarConnectionReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             val runtime = AndroidMobileWorkerRuntimeFactory.create(context.applicationContext)
             try {
-                if (runtime.status().enrolled && AndroidAutoSignals.capture(context, runtime)) {
-                    runtime.synchronize(MobileWorkerAppState.BACKGROUND)
+                if (runtime.status().enrolled) {
+                    AndroidAutoSignals.capture(context, runtime)
                 }
             } catch (error: CancellationException) {
                 throw error

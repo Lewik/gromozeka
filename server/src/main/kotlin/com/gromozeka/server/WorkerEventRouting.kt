@@ -1,19 +1,21 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.ContextStateApplicationService
-import com.gromozeka.application.service.MobileWorkerContactApplicationService
+import com.gromozeka.application.service.WorkerContactApplicationService
 import com.gromozeka.domain.model.DeviceStateEvent
-import com.gromozeka.domain.model.MobileWorkerAppState
-import com.gromozeka.domain.model.MobileWorkerContactKind
-import com.gromozeka.remote.protocol.MobileWorkerEventBatchRequest
-import com.gromozeka.remote.protocol.MobileWorkerEventBatchResponse
-import com.gromozeka.remote.protocol.MobileWorkerHeartbeatRequest
-import com.gromozeka.remote.protocol.MobileWorkerHeartbeatResponse
+import com.gromozeka.domain.model.WorkerAppState
+import com.gromozeka.domain.model.WorkerContactKind
+import com.gromozeka.remote.protocol.WorkerEventBatchRequest
+import com.gromozeka.remote.protocol.WorkerEventBatchResponse
+import com.gromozeka.remote.protocol.WorkerHeartbeatRequest
+import com.gromozeka.remote.protocol.WorkerHeartbeatResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.header
-import io.ktor.server.request.receiveText
+import io.ktor.server.request.receiveChannel
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.post
@@ -24,23 +26,23 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private val mobileWorkerLog = KLoggers.logger("MobileWorkerRouting")
+private val workerEventLog = KLoggers.logger("WorkerEventRouting")
 
-internal fun Routing.gromozekaMobileWorkers(
+internal fun Routing.gromozekaWorkerEvents(
     authenticationService: WorkerGatewayAuthenticationService,
     contextStateService: ContextStateApplicationService,
-    contactService: MobileWorkerContactApplicationService,
+    contactService: WorkerContactApplicationService,
 ) {
-    post("/api/mobile-worker/events") {
+    post("/api/worker/events") {
         call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        val authenticated = call.authenticateMobileWorker(authenticationService) ?: return@post
-        val request = call.receiveMobileWorkerRequest<MobileWorkerEventBatchRequest>(
-            invalidMessage = "Invalid Mobile Worker event batch",
-            unreadableMessage = "Mobile Worker event batch could not be read",
-            oversizedMessage = "Mobile Worker event batch is too large",
+        val authenticated = call.authenticateWorkerEvent(authenticationService) ?: return@post
+        val request = call.receiveWorkerEventRequest<WorkerEventBatchRequest>(
+            invalidMessage = "Invalid Worker event batch",
+            unreadableMessage = "Worker event batch could not be read",
+            oversizedMessage = "Worker event batch is too large",
         ) ?: return@post
         try {
-            val result = contextStateService.ingestMobileWorker(
+            val result = contextStateService.ingestWorker(
                 worker = authenticated.worker,
                 observations = request.events.map { it.toObservation() },
             )
@@ -48,8 +50,8 @@ internal fun Routing.gromozekaMobileWorkers(
             contactService.record(
                 worker = authenticated.worker,
                 requestId = contact?.requestId ?: request.events.first().id,
-                kind = MobileWorkerContactKind.EVENT_BATCH,
-                appState = contact?.appState ?: MobileWorkerAppState.UNKNOWN,
+                kind = WorkerContactKind.EVENT_BATCH,
+                appState = contact?.appState ?: WorkerAppState.UNKNOWN,
                 appVersion = contact?.appVersion ?: request.deviceInfoVersion(),
                 workerSentAt = contact?.sentAt,
                 eventCount = request.events.size,
@@ -57,8 +59,8 @@ internal fun Routing.gromozekaMobileWorkers(
                 receivedAt = result.receivedAt,
             )
             call.respondText(
-                mobileWorkerJson.encodeToString(
-                    MobileWorkerEventBatchResponse(
+                workerEventJson.encodeToString(
+                    WorkerEventBatchResponse(
                         acceptedEventIds = result.acceptedIds,
                         duplicateEventIds = result.duplicateIds,
                         serverReceivedAt = result.receivedAt,
@@ -67,36 +69,36 @@ internal fun Routing.gromozekaMobileWorkers(
                 ContentType.Application.Json,
             )
         } catch (error: IllegalArgumentException) {
-            call.respondMobileWorkerError(
-                error.message ?: "Mobile Worker synchronization failed",
+            call.respondWorkerEventError(
+                error.message ?: "Worker synchronization failed",
                 HttpStatusCode.BadRequest,
             )
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            mobileWorkerLog.error(error) {
-                "Mobile Worker synchronization failed: worker=${authenticated.worker.id.value} error=${error.message}"
+            workerEventLog.error {
+                "Worker synchronization failed: worker=${authenticated.worker.id.value} error=${error::class.simpleName}"
             }
-            call.respondMobileWorkerError(
-                "Mobile Worker synchronization failed",
+            call.respondWorkerEventError(
+                "Worker synchronization failed",
                 HttpStatusCode.InternalServerError,
             )
         }
     }
 
-    post("/api/mobile-worker/heartbeat") {
+    post("/api/worker/heartbeat") {
         call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        val authenticated = call.authenticateMobileWorker(authenticationService) ?: return@post
-        val request = call.receiveMobileWorkerRequest<MobileWorkerHeartbeatRequest>(
-            invalidMessage = "Invalid Mobile Worker heartbeat",
-            unreadableMessage = "Mobile Worker heartbeat could not be read",
-            oversizedMessage = "Mobile Worker heartbeat is too large",
+        val authenticated = call.authenticateWorkerEvent(authenticationService) ?: return@post
+        val request = call.receiveWorkerEventRequest<WorkerHeartbeatRequest>(
+            invalidMessage = "Invalid Worker heartbeat",
+            unreadableMessage = "Worker heartbeat could not be read",
+            oversizedMessage = "Worker heartbeat is too large",
         ) ?: return@post
         try {
             val receivedAt = contactService.record(
                 worker = authenticated.worker,
                 requestId = request.contact.requestId,
-                kind = MobileWorkerContactKind.HEARTBEAT,
+                kind = WorkerContactKind.HEARTBEAT,
                 appState = request.contact.appState,
                 appVersion = request.contact.appVersion,
                 workerSentAt = request.contact.sentAt,
@@ -104,102 +106,102 @@ internal fun Routing.gromozekaMobileWorkers(
                 pendingEventCount = request.contact.pendingEventCount,
             )
             call.respondText(
-                mobileWorkerJson.encodeToString(MobileWorkerHeartbeatResponse(receivedAt)),
+                workerEventJson.encodeToString(WorkerHeartbeatResponse(receivedAt)),
                 ContentType.Application.Json,
             )
         } catch (error: IllegalArgumentException) {
-            call.respondMobileWorkerError(
-                error.message ?: "Mobile Worker heartbeat failed",
+            call.respondWorkerEventError(
+                error.message ?: "Worker heartbeat failed",
                 HttpStatusCode.BadRequest,
             )
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            mobileWorkerLog.error(error) {
-                "Mobile Worker heartbeat failed: worker=${authenticated.worker.id.value} error=${error.message}"
+            workerEventLog.error {
+                "Worker heartbeat failed: worker=${authenticated.worker.id.value} error=${error::class.simpleName}"
             }
-            call.respondMobileWorkerError(
-                "Mobile Worker heartbeat failed",
+            call.respondWorkerEventError(
+                "Worker heartbeat failed",
                 HttpStatusCode.InternalServerError,
             )
         }
     }
 }
 
-private suspend fun io.ktor.server.application.ApplicationCall.authenticateMobileWorker(
+private suspend fun io.ktor.server.application.ApplicationCall.authenticateWorkerEvent(
     authenticationService: WorkerGatewayAuthenticationService,
 ): AuthenticatedWorkerGateway? {
     if (!isSecureTransport()) {
-        respondMobileWorkerError("Mobile Worker synchronization requires HTTPS", HttpStatusCode.UpgradeRequired)
+        respondWorkerEventError("Worker synchronization requires HTTPS", HttpStatusCode.UpgradeRequired)
         return null
     }
     val authenticated = authenticationService.authenticate(request.header(HttpHeaders.Authorization))
     if (authenticated == null) {
-        respondMobileWorkerError("Mobile Worker authentication required", HttpStatusCode.Unauthorized)
+        respondWorkerEventError("Worker authentication required", HttpStatusCode.Unauthorized)
         return null
     }
     if (authenticated.worker.subjectUserId == null) {
-        respondMobileWorkerError("Worker is not bound to a user for context reporting", HttpStatusCode.Forbidden)
+        respondWorkerEventError("Worker is not bound to a user for context reporting", HttpStatusCode.Forbidden)
         return null
     }
     return authenticated
 }
 
-private suspend inline fun <reified T> io.ktor.server.application.ApplicationCall.receiveMobileWorkerRequest(
+private suspend inline fun <reified T> io.ktor.server.application.ApplicationCall.receiveWorkerEventRequest(
     invalidMessage: String,
     unreadableMessage: String,
     oversizedMessage: String,
 ): T? {
     val contentLength = request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-    if (contentLength != null && contentLength > MAX_MOBILE_WORKER_REQUEST_BYTES) {
-        respondMobileWorkerError(oversizedMessage, HttpStatusCode.PayloadTooLarge)
+    if (contentLength != null && contentLength > MAX_WORKER_EVENT_REQUEST_BYTES) {
+        respondWorkerEventError(oversizedMessage, HttpStatusCode.PayloadTooLarge)
         return null
     }
-    val requestText = try {
-        receiveText()
+    val requestBytes = try {
+        receiveChannel().readRemaining((MAX_WORKER_EVENT_REQUEST_BYTES + 1).toLong()).readByteArray()
     } catch (error: CancellationException) {
         throw error
     } catch (error: Throwable) {
-        respondMobileWorkerError(unreadableMessage, HttpStatusCode.BadRequest)
+        respondWorkerEventError(unreadableMessage, HttpStatusCode.BadRequest)
         return null
     }
-    if (requestText.encodeToByteArray().size > MAX_MOBILE_WORKER_REQUEST_BYTES) {
-        respondMobileWorkerError(oversizedMessage, HttpStatusCode.PayloadTooLarge)
+    if (requestBytes.size > MAX_WORKER_EVENT_REQUEST_BYTES) {
+        respondWorkerEventError(oversizedMessage, HttpStatusCode.PayloadTooLarge)
         return null
     }
     return try {
-        mobileWorkerJson.decodeFromString<T>(requestText)
+        workerEventJson.decodeFromString<T>(requestBytes.decodeToString())
     } catch (error: SerializationException) {
-        respondMobileWorkerError(invalidMessage, HttpStatusCode.BadRequest)
+        respondWorkerEventError(invalidMessage, HttpStatusCode.BadRequest)
         null
     } catch (error: IllegalArgumentException) {
-        respondMobileWorkerError(invalidMessage, HttpStatusCode.BadRequest)
+        respondWorkerEventError(invalidMessage, HttpStatusCode.BadRequest)
         null
     }
 }
 
-private fun MobileWorkerEventBatchRequest.deviceInfoVersion(): String? =
+private fun WorkerEventBatchRequest.deviceInfoVersion(): String? =
     events.asSequence()
         .mapNotNull { (it.payload as? DeviceStateEvent.DeviceInfo)?.appVersion }
         .firstOrNull()
 
-private suspend fun io.ktor.server.application.ApplicationCall.respondMobileWorkerError(
+private suspend fun io.ktor.server.application.ApplicationCall.respondWorkerEventError(
     message: String,
     status: HttpStatusCode,
 ) {
     respondText(
-        mobileWorkerJson.encodeToString(MobileWorkerError(message)),
+        workerEventJson.encodeToString(WorkerEventError(message)),
         ContentType.Application.Json,
         status,
     )
 }
 
 @Serializable
-private data class MobileWorkerError(val error: String)
+private data class WorkerEventError(val error: String)
 
-private val mobileWorkerJson = Json {
+private val workerEventJson = Json {
     encodeDefaults = true
     ignoreUnknownKeys = false
 }
 
-private const val MAX_MOBILE_WORKER_REQUEST_BYTES = 256 * 1024
+private const val MAX_WORKER_EVENT_REQUEST_BYTES = 256 * 1024
