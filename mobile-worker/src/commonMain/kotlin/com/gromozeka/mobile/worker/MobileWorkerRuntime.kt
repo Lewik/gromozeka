@@ -221,6 +221,12 @@ internal class MobileWorkerRuntime(
         writeState(state.copy(gatewayEnabled = enabled))
     }
 
+    suspend fun setSoundEnabled(enabled: Boolean) = mobileWorkerStorageMutex.withLock {
+        val state = readState()
+        check(state.enrolled || !enabled) { "Worker must be enrolled before enabling loud sound" }
+        writeState(state.copy(soundEnabled = enabled))
+    }
+
     suspend fun gatewayEnrollment(): MobileWorkerGatewayEnrollment? = mobileWorkerStorageMutex.withLock {
         val state = readState()
         if (!state.enrolled || !state.gatewayEnabled) return@withLock null
@@ -468,6 +474,7 @@ data class MobileWorkerStatus(
     val lastSynchronizedAt: Instant?,
     val credentialAvailable: Boolean,
     val gatewayEnabled: Boolean = false,
+    val soundEnabled: Boolean = false,
 )
 
 data class MobileWorkerConnectionChallenge(
@@ -498,6 +505,7 @@ private data class PersistedMobileWorkerState(
     val workerId: String? = null,
     val outbox: WorkerEventOutboxState? = null,
     val gatewayEnabled: Boolean = false,
+    val soundEnabled: Boolean = false,
 ) {
     val enrolled: Boolean
         get() = !serverUrl.isNullOrBlank() && !workerId.isNullOrBlank() && outbox != null
@@ -511,6 +519,7 @@ private data class PersistedMobileWorkerState(
             lastSynchronizedAt = outbox?.lastAcknowledgedAt,
             credentialAvailable = hasCredential,
             gatewayEnabled = gatewayEnabled,
+            soundEnabled = soundEnabled,
         )
 }
 

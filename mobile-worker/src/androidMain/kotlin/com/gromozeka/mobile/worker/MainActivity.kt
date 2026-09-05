@@ -86,6 +86,10 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
 
     override fun onResume() {
         super.onResume()
+        activityScope.launch {
+            runCatching { AndroidWorkerSoundOutput.recoverVolume(applicationContext) }
+                .onFailure { errorChanged?.invoke("Previous alarm volume could not be restored: ${it::class.simpleName}") }
+        }
         NfcAdapter.getDefaultAdapter(this)?.enableReaderMode(
             this,
             this,
@@ -224,6 +228,8 @@ private fun MainActivity.MobileWorkerApp(
     var error by remember { mutableStateOf<String?>(null) }
     var locationMessage by remember { mutableStateOf<String?>(null) }
     val gatewayState by AndroidWorkerGatewayService.state.collectAsState()
+    val soundPlaying by AndroidWorkerGatewayService.soundPlaying.collectAsState()
+    val soundError by AndroidWorkerGatewayService.soundError.collectAsState()
     LaunchedEffect(gatewayState) {
         runCatching { runtime.status() }.onSuccess { status = it }
     }
@@ -371,7 +377,7 @@ private fun MainActivity.MobileWorkerApp(
                 status?.takeIf { it.enrolled }?.let { enrolled ->
                     StatusCard(enrolled)
                     Text("Remote commands: ${gatewayState.name.lowercase()}")
-                    Text("When enabled, this device accepts supported commands from its server. Currently: read device status. A persistent notification lets you disable the connection.",
+                    Text("When enabled, this device accepts supported commands from its server: device status and, with separate permission below, loud sound. A persistent notification lets you disable the connection.",
                         color = workerColors.onSurfaceVariant)
                     OutlinedButton(onClick = {
                         if (enrolled.gatewayEnabled) {
@@ -386,6 +392,28 @@ private fun MainActivity.MobileWorkerApp(
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } else enableGateway()
                     }) { Text(if (enrolled.gatewayEnabled) "Disable remote commands" else "Enable remote commands") }
+                    Text("Loud sound: ${if (enrolled.soundEnabled) "allowed" else "disabled"}", fontWeight = FontWeight.Bold)
+                    Text("Allow this server to play an alert on the built-in speaker for up to 60 seconds, temporarily raising alarm volume to maximum, even with a silent ringer. You can stop it here or in the notification. Do Not Disturb must allow alarms; disconnect headphones and external audio first. No administrator access is needed.",
+                        color = workerColors.onSurfaceVariant)
+                    OutlinedButton(onClick = {
+                        scope.launch {
+                            runCatching {
+                                runtime.setSoundEnabled(!enrolled.soundEnabled)
+                                if (enrolled.soundEnabled) AndroidWorkerGatewayService.stopSound(applicationContext)
+                                runtime.status()
+                            }.onSuccess { status = it }.onFailure { error = it.message }
+                        }
+                    }) { Text(if (enrolled.soundEnabled) "Disallow loud sound" else "Allow loud sound") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(enabled = enrolled.gatewayEnabled && enrolled.soundEnabled && !soundPlaying,
+                            onClick = { AndroidWorkerGatewayService.testSound(applicationContext) }) { Text("Test sound (3s)") }
+                        if (soundPlaying) Button(onClick = { AndroidWorkerGatewayService.stopSound(applicationContext) }) { Text("Stop sound") }
+                    }
+                    soundError?.let { Text(it, color = workerColors.error) }
+                    TextButton(onClick = {
+                        runCatching { startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) }
+                            .onFailure { error = "Open Do Not Disturb in Android settings and allow alarms." }
+                    }) { Text("Android sound / Do Not Disturb settings") }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(
                             enabled = !busy,

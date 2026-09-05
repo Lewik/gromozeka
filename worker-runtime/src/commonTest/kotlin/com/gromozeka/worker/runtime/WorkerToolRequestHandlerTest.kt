@@ -5,11 +5,15 @@ import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.WorkerPlatform
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.WorkerRequestDelivery
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WorkerToolExecutionRequest
 import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -21,6 +25,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 class WorkerToolRequestHandlerTest {
     private val worker = ConversationRuntimeWorkerId("android")
@@ -72,5 +77,40 @@ class WorkerToolRequestHandlerTest {
             WorkerToolRequestHandler(worker, listOf(WorkerDeviceStatusTool { throw CancellationException("Stopped") })).execute(request())
         }
         assertEquals(0, inspections)
+    }
+
+    @Test
+    fun `sound uses durable tool execution and duplicate deliveries never play it again`() = runTest {
+        var starts = 0
+        var stops = 0
+        val started = CompletableDeferred<Unit>()
+        val controller = WorkerSoundController(output = { _, onStarted ->
+            starts++
+            onStarted()
+            started.complete(Unit)
+            try { awaitCancellation() } finally { stops++ }
+        })
+        val sound = WorkerSoundTool(controller)
+        val call = execution.copy(toolCalls = listOf(ToolCall(ToolCall.Id("sound-call"),
+            ToolCall.Data(sound.descriptor.definition.name, JsonObject(emptyMap())))))
+        val message = request(call).copy(delivery = WorkerRequestDelivery(Clock.System.now() + 30.seconds, 15_000))
+        val journal = TestWorkerRequestJournal()
+        val responses = Channel<WorkerGatewayMessage.Response>(Channel.UNLIMITED)
+        val executor = WorkerRequestExecutor(journal, backgroundScope, WorkerToolRequestHandler(worker, listOf(sound)), responses::send)
+        executor.initialize()
+        executor.accept(message)
+        started.await()
+        executor.accept(message)
+        controller.stop()
+        val first = responses.receive()
+        val result = Json.decodeFromString<WorkerToolExecutionResponse>(requireNotNull(first.payload).decodeToString()).results.single()
+        assertFalse(result.isError)
+        assertTrue(Json.encodeToString(result).contains("STOPPED_LOCALLY"))
+        assertEquals(1, stops)
+        val recovered = WorkerRequestExecutor(journal, backgroundScope, WorkerToolRequestHandler(worker, listOf(sound)), responses::send)
+        recovered.initialize()
+        recovered.accept(message)
+        assertEquals(first, responses.receive())
+        assertEquals(1, starts)
     }
 }
