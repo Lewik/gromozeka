@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,11 +39,12 @@ internal fun ToolActivityGroupItem(
     group: MessageSegment.ToolActivityGroup,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     workspaceRootPath: String?,
+    onManualContentResize: () -> Unit = {},
     loadArtifactContent: suspend (Artifact.Id) -> ByteArray,
 ) {
     val translation = LocalTranslation.current.runtime
     val firstToolCallId = group.calls.first().content.id.value
-    var isExpanded by remember(firstToolCallId) { mutableStateOf(false) }
+    var isExpanded by rememberSaveable(firstToolCallId) { mutableStateOf(false) }
     val activities = group.calls
         .map { reference ->
             toolActivityCaption(
@@ -67,7 +69,10 @@ internal fun ToolActivityGroupItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(UiTestTag.ToolActivityGroup(firstToolCallId).value)
-                .clickable { isExpanded = !isExpanded }
+                .clickable {
+                    onManualContentResize()
+                    isExpanded = !isExpanded
+                }
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -125,6 +130,7 @@ internal fun ToolActivityGroupItem(
                             toolCall = reference.content.call,
                             toolResult = toolResultsMap[reference.content.id.value],
                             workspaceRootPath = workspaceRootPath,
+                            onManualContentResize = onManualContentResize,
                             loadArtifactContent = loadArtifactContent,
                         )
                     }

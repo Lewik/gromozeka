@@ -15,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -198,9 +199,10 @@ fun ToolCallItem(
     toolCall: Conversation.Message.ContentItem.ToolCall.Data,
     toolResult: Conversation.Message.ContentItem.ToolResult?,
     workspaceRootPath: String?,
+    onManualContentResize: () -> Unit = {},
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Determine status icon based on toolResult (no icon on success)
     val statusIcon = when {
@@ -227,6 +229,7 @@ fun ToolCallItem(
                 CompactButton(
                 onClick = {
                     if (toolResult != null) {
+                        onManualContentResize()
                         isExpanded = !isExpanded
                     }
                 },

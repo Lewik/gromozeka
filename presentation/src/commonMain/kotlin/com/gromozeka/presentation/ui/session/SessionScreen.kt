@@ -570,7 +570,7 @@ fun SessionScreen(
                             messageFocusRequest?.let(viewModel::consumeMessageFocus)
                         },
                         modifier = Modifier.weight(1f),
-                    ) { entry ->
+                    ) { entry, pauseFollowingLatest ->
                         MessageItem(
                             entry = entry,
                             toolResultsMap = toolResultsMap,
@@ -582,6 +582,7 @@ fun SessionScreen(
                             onToggleContentItemCollapse = { messageId, contentItemIndex ->
                                 viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
                             },
+                            onManualContentResize = pauseFollowingLatest,
                             loadArtifactContent = viewModel::loadArtifactContent,
                         )
                     }
