@@ -19,11 +19,13 @@ import java.nio.file.Files;
 
 public final class GatewaySmokeInstrumentation extends Instrumentation {
     private boolean lifecycleSetup;
+    private boolean locationSetup;
 
     @Override
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
         lifecycleSetup = arguments != null && "true".equals(arguments.getString("lifecycleSetup"));
+        locationSetup = arguments != null && "true".equals(arguments.getString("locationSetup"));
         start();
     }
 
@@ -38,6 +40,7 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
                 check(context.getPackageName().endsWith(".lifecycle"), "Lifecycle setup requires the isolated test application");
                 storage.writeCredential("android-lifecycle-fixture-credential");
                 storage.writeState("{\"serverUrl\":\"https://10.0.2.2:18876\",\"workerId\":\"android-lifecycle\","
+                        + (locationSetup ? "\"locationConfiguration\":{\"enabled\":false,\"intervalSeconds\":1,\"minimumDistanceMeters\":0}," : "")
                         + "\"gatewayEnabled\":true,\"soundEnabled\":true,\"outbox\":{\"streamId\":\"lifecycle-stream\",\"pending\":[],\"latest\":{},\"lastAcknowledgedAt\":null}}");
                 if (Build.VERSION.SDK_INT >= 33) shell("pm grant " + context.getPackageName() + " android.permission.POST_NOTIFICATIONS");
                 result.putString("stream", "Lifecycle fixture enrollment prepared.\n");

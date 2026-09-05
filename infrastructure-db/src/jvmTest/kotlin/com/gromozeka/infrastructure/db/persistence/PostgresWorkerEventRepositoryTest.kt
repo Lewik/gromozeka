@@ -59,7 +59,7 @@ class PostgresWorkerEventRepositoryTest {
             val worker = ConversationRuntimeWorkerId("worker")
             val subject = ContextEvent.Subject.Device(worker)
             assertEquals(ContextEvent.Source.Worker(worker), repository.history(user).single().source)
-            val now = Clock.System.now()
+            val now = kotlin.time.Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds())
             val event = ContextEvent(ContextEventId("worker:worker:sample"), user, ContextEvent.Source.Worker(worker), subject,
                 ContextEvent.Payload.Device(DeviceStateEvent.Battery(70, false)), now, now)
             assertEquals(setOf(event.id), repository.append(listOf(event)).acceptedEventIds)
@@ -72,6 +72,18 @@ class PostgresWorkerEventRepositoryTest {
             val rolledBack = event.copy(id = ContextEventId("rolled-back"))
             assertFailsWith<IllegalArgumentException> { restarted.append(listOf(rolledBack, event.copy(payload = older.payload))) }
             assertTrue(restarted.history(user).none { it.id == rolledBack.id })
+            val firstLocation = event.copy(id = ContextEventId("worker:worker:location-one"),
+                payload = ContextEvent.Payload.Device(DeviceStateEvent.Location(32.0, 34.8, 10.0, cause = com.gromozeka.domain.model.LocationCause.LIVE_TRACKING)), observedAt = now - 120.seconds)
+            val lastLocation = event.copy(id = ContextEventId("worker:worker:location-two"),
+                payload = ContextEvent.Payload.Device(DeviceStateEvent.Location(32.001, 34.8, 15.0, cause = com.gromozeka.domain.model.LocationCause.LIVE_TRACKING)), observedAt = now - 60.seconds)
+            restarted.append(listOf(lastLocation, firstLocation))
+            assertEquals(setOf(firstLocation.id), restarted.append(listOf(firstLocation)).duplicateEventIds)
+            val locations = restarted.history(user, subject).filter { (it.payload as? ContextEvent.Payload.Device)?.event is DeviceStateEvent.Location }
+            assertEquals(listOf(lastLocation, firstLocation), locations)
+            val latest = restarted.currentState(user, subject).single { (it.payload as? ContextEvent.Payload.Device)?.event is DeviceStateEvent.Location }
+            assertEquals(lastLocation.payload, latest.payload)
+            assertEquals(lastLocation.observedAt, latest.observedAt)
+            assertTrue(restarted.history(User.Id("another-user"), subject).isEmpty())
             PostgresWorkerContactRepository(db).record(WorkerContactObservation("contact", worker, user, WorkerContactKind.EVENT_BATCH,
                 WorkerAppState.BACKGROUND, "test", now, now, 1, 1))
             db.connection.use { connection ->

@@ -1,6 +1,9 @@
 package com.gromozeka.mobile.worker
 
 import com.gromozeka.domain.model.WorkerPlatform
+import com.gromozeka.domain.model.DeviceStateEvent
+import com.gromozeka.worker.runtime.WorkerLocationConfiguration
+import com.gromozeka.worker.runtime.WorkerLocationSample
 import com.gromozeka.remote.protocol.WorkerEventBatchRequest
 import com.gromozeka.remote.protocol.WorkerEventBatchResponse
 import io.ktor.client.HttpClient
@@ -19,9 +22,53 @@ import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 import kotlin.time.Clock
 
 class MobileWorkerRuntimeTest {
+    @Test
+    fun `location consent survives restart and is independent from commands but fences old callbacks`() = test {
+        val batches = mutableListOf<WorkerEventBatchRequest>()
+        val http = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.endsWith("consume")) {
+                respond("""{"workerId":"worker","gatewayCredential":"credential","capabilities":[],"subjectUserId":"user"}""")
+            } else {
+                val batch = Json.decodeFromString<WorkerEventBatchRequest>((request.body as TextContent).text)
+                batches += batch
+                respond(acknowledgement(batch))
+            }
+        })
+        val storage = Storage()
+        val runtime = runtime(storage, http)
+        try {
+            runtime.enroll("https://server.test", "token", "worker")
+            assertEquals(null, runtime.locationCollection())
+            val config = WorkerLocationConfiguration(enabled = true, intervalSeconds = 10, minimumDistanceMeters = 0)
+            runtime.configureLocation(config)
+            val collection = requireNotNull(runtime.locationCollection())
+            val restarted = runtime(storage, http)
+            assertEquals(collection, restarted.locationCollection())
+            runtime.setGatewayEnabled(false)
+            assertEquals(collection, runtime.locationCollection())
+            val sample = WorkerLocationSample(Clock.System.now(), DeviceStateEvent.Location(32.0, 34.0, 5.0, cause = com.gromozeka.domain.model.LocationCause.LIVE_TRACKING))
+            runtime.recordSharedLocation(collection, sample)
+            assertEquals(sample, runtime.status().lastLocation)
+            runtime.configureLocation(config.copy(enabled = false))
+            assertFailsWith<IllegalStateException> { restarted.recordSharedLocation(collection, sample) }
+            runtime.configureLocation(config)
+            assertFailsWith<IllegalStateException> { restarted.recordSharedLocation(collection, sample) }
+            val secondCollection = requireNotNull(runtime.locationCollection())
+            runtime.synchronize()
+            assertEquals(1, batches.flatMap { it.events }.count { it.payload is DeviceStateEvent.Location })
+            assertEquals(sample, runtime.status().lastLocation)
+            runtime.reset()
+            runtime.enroll("https://second.test", "token", "worker")
+            runtime.configureLocation(config)
+            assertFailsWith<IllegalStateException> { restarted.recordSharedLocation(secondCollection, sample) }
+            assertEquals(null, runtime.status().lastLocation)
+        } finally { runtime.close() }
+    }
+
     private class Storage : MobileWorkerStorage {
         private var state: String? = null
         private var credential: String? = null

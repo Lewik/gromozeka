@@ -70,6 +70,12 @@ contract and dispatch code are common Kotlin; only the device probe is Android.
 `grz_play_loud_sound` is the second common tool contract, backed by Android alarm
 playback. VPN, app management and other device tools remain separate additions.
 
+`grz_get_current_location` is also a common contract, backed by the independently
+enabled [Android location service](android-worker-location.md). It requires local
+sharing consent and active location permission; enabling remote commands alone
+does not start a location sensor. The Gateway service itself does not acquire
+the location foreground-service type.
+
 `SnapshotWorkerRequestJournal` implements durable receipt serialization in common
 Kotlin. Android supplies an encrypted atomic-file store using the same Keystore
 key and file writer as event storage, with an exclusive journal file lock.
@@ -197,8 +203,10 @@ The script creates a throwaway two-day TLS certificate, builds an opt-in
 The printed temporary directory retains the small disposable certificate fixture
 for diagnosis. The emulator must already be running; the script does not start
 or modify other AVDs. The test changes power/network state and alarm volume,
-updates its isolated APK, and reboots the emulator twice. Run it on no other
+updates its isolated APK, and reboots the emulator repeatedly. Run it on no other
 environment. It restores its power/network test overrides in `finally`.
+The suite also includes the location scenarios described in the linked location
+document, using a controlled GPS test provider and the same isolated TLS fixture.
 
 The matrix covers screen-off commands/sound, offline queued requests and TTL,
 emulated cellular/Wi-Fi handover, package replacement, reboot without app launch,

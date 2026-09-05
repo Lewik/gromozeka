@@ -59,7 +59,7 @@ class MobileWorkerSyncJobService : JobService() {
                         AndroidAutoSignals.capture(applicationContext, runtime)
                         sensors.captureConfiguredState(runtime)
                         AndroidSleepSignals(applicationContext).captureLatestSession(runtime)
-                        sensors.enableSignificantLocationUpdates()
+                        sensors.synchronizeGeofences()
                         sensors.enableBlePresenceUpdates()
                     } catch (error: CancellationException) {
                         throw error

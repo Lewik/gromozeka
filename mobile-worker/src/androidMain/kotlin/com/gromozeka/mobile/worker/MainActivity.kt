@@ -3,7 +3,6 @@ package com.gromozeka.mobile.worker
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Build
@@ -80,7 +79,6 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
                 backgroundAccess = backgroundAccess,
                 onStatusListener = { statusChanged = it },
                 onErrorListener = { errorChanged = it },
-                onEnableLocation = ::requestBackgroundLocation,
             )
         }
         handleIntent(intent)
@@ -162,6 +160,10 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
                 runCatching { AndroidWorkerGatewayService.start(applicationContext) }
                     .onFailure { errorChanged?.invoke("Android could not start remote commands: ${it::class.simpleName}") }
             }
+            if (status.locationConfiguration.enabled) {
+                runCatching { AndroidWorkerLocationService.start(applicationContext) }
+                    .onFailure { errorChanged?.invoke("Android could not start location sharing: ${it::class.simpleName}") }
+            }
             MobileWorkerSyncJobService.schedule(applicationContext)
             val sensors = AndroidMobileWorkerSensors(applicationContext)
             runCatching {
@@ -173,7 +175,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
                 AndroidAutoSignals.capture(applicationContext, runtime)
                 sensors.captureConfiguredState(runtime)
                 AndroidSleepSignals(applicationContext).captureLatestSession(runtime)
-                sensors.enableSignificantLocationUpdates()
+                sensors.synchronizeGeofences()
                 sensors.enableBlePresenceUpdates()
                 runtime.synchronize(WorkerAppState.FOREGROUND, heartbeatWhenIdle = true)
             }.onSuccess { statusChanged?.invoke(it) }
@@ -184,16 +186,6 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
     private fun handleIntent(intent: Intent) {
         if (intent.action == NfcAdapter.ACTION_TAG_DISCOVERED) {
             intent.nfcTag()?.let(::storeNfcTag)
-        }
-    }
-
-    private fun requestBackgroundLocation() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", packageName, null)
-                }
-            )
         }
     }
 
@@ -216,7 +208,6 @@ private fun MainActivity.MobileWorkerApp(
     backgroundAccess: AndroidWorkerBackgroundAccess,
     onStatusListener: (((MobileWorkerStatus) -> Unit)?) -> Unit,
     onErrorListener: (((String?) -> Unit)?) -> Unit,
-    onEnableLocation: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<MobileWorkerStatus?>(null) }
@@ -280,32 +271,6 @@ private fun MainActivity.MobileWorkerApp(
             "Bluetooth access is required for BLE presence events"
         }
     }
-    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        locationMessage = if (granted && sensors.enableSignificantLocationUpdates()) {
-            "Background location is active"
-        } else {
-            "Allow location all the time in system settings"
-        }
-    }
-    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions.values.any { it }
-        when {
-            !granted -> locationMessage = "Location permission was not granted"
-            Build.VERSION.SDK_INT == Build.VERSION_CODES.Q ->
-                backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                onEnableLocation()
-                locationMessage = "Choose Permissions, Location, Allow all the time"
-            }
-            sensors.enableSignificantLocationUpdates() -> locationMessage = "Background location is active"
-            else -> locationMessage = "Location provider is unavailable"
-        }
-    }
-
     DisposableEffect(Unit) {
         onStatusListener { status = it }
         onErrorListener { error = it }
@@ -380,8 +345,9 @@ private fun MainActivity.MobileWorkerApp(
 
                 status?.takeIf { it.enrolled }?.let { enrolled ->
                     StatusCard(enrolled)
+                    WorkerLocationSettings(runtime, enrolled, onStatus = { status = it }, onError = { error = it })
                     Text("Remote commands: ${gatewayState.name.lowercase()}")
-                    Text("When enabled, this device accepts supported commands from its server: device status and, with separate permission below, loud sound. A persistent notification lets you disable the connection.",
+                    Text("When enabled, this device accepts supported commands from its server: device status, location while sharing is enabled, and loud sound with separate permission below. A persistent notification lets you disable the connection.",
                         color = workerColors.onSurfaceVariant)
                     OutlinedButton(onClick = {
                         if (enrolled.gatewayEnabled) {
@@ -456,18 +422,6 @@ private fun MainActivity.MobileWorkerApp(
                         ) {
                             Text(if (busy) "Syncing" else "Sync now")
                         }
-                        OutlinedButton(
-                            onClick = {
-                                foregroundPermissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    )
-                                )
-                            },
-                        ) {
-                            Text("Enable location")
-                        }
                     }
                     locationMessage?.let { Text(it, color = workerColors.onSurfaceVariant) }
                     SignalSettings(
@@ -476,7 +430,7 @@ private fun MainActivity.MobileWorkerApp(
                         onAddGeofence = { id, latitude, longitude, radius ->
                             configurationStore.addGeofence(id, latitude, longitude, radius)
                                 .also { configuration = it }
-                            check(sensors.enableSignificantLocationUpdates()) {
+                            check(sensors.synchronizeGeofences()) {
                                 "Allow precise location all the time to activate geofences"
                             }
                         },
@@ -531,6 +485,8 @@ private fun MainActivity.MobileWorkerApp(
                                 runCatching {
                                     runtime.setGatewayEnabled(false)
                                     AndroidWorkerGatewayService.stop(applicationContext)
+                                    runtime.configureLocation(enrolled.locationConfiguration.copy(enabled = false))
+                                    AndroidWorkerLocationService.stop(applicationContext)
                                     sensors.disableBackgroundSignals()
                                     MobileWorkerSyncJobService.cancel(applicationContext)
                                     runtime.reset()

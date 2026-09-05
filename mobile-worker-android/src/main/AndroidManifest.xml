@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -70,10 +71,6 @@
         </activity-alias>
 
         <receiver
-            android:name="com.gromozeka.mobile.worker.MobileWorkerLocationReceiver"
-            android:exported="false" />
-
-        <receiver
             android:name="com.gromozeka.mobile.worker.MobileWorkerGeofenceReceiver"
             android:exported="false" />
 
@@ -106,6 +103,11 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-enabled persistent connection to a private Gromozeka server for authenticated remote device commands, with a visible notification and a disable action." />
         </service>
+
+        <service
+            android:name="com.gromozeka.mobile.worker.AndroidWorkerLocationService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <service
             android:name="com.gromozeka.mobile.worker.MobileWorkerSyncJobService"

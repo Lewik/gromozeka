@@ -14,6 +14,7 @@ import com.gromozeka.worker.runtime.KtorWorkerGatewayTransport
 import com.gromozeka.worker.runtime.WorkerDeviceStatusTool
 import com.gromozeka.worker.runtime.WorkerSoundController
 import com.gromozeka.worker.runtime.WorkerSoundTool
+import com.gromozeka.worker.runtime.WorkerLocationTool
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.websocket.WebSockets
@@ -136,7 +137,8 @@ class AndroidWorkerGatewayService : Service() {
                                     journal = persistence.journal,
                                     profile = device.profile(),
                                     version = applicationContext.applicationVersion(),
-                                    tools = listOf(WorkerDeviceStatusTool(device::status), alertTool),
+                                    tools = listOf(WorkerDeviceStatusTool(device::status), alertTool,
+                                        WorkerLocationTool { age -> AndroidWorkerLocationService.currentLocation(age, enrollment.streamId) }),
                                     beforeExecution = {
                                         check(runtime.gatewayEnrollment()?.streamId == enrollment.streamId) {
                                             "Remote commands are disabled or Worker enrollment changed"

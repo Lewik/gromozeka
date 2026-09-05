@@ -26,7 +26,14 @@ class MobileWorkerBootReceiver : BroadcastReceiver() {
                         }
                     }
                     val sensors = AndroidMobileWorkerSensors(applicationContext)
-                    sensors.enableSignificantLocationUpdates()
+                    if (runtime.locationCollection() != null) {
+                        val location = AndroidWorkerLocationSource(applicationContext)
+                        if (location.hasPermission() && location.hasBackgroundPermission()) {
+                            runCatching { AndroidWorkerLocationService.start(applicationContext) }
+                                .onFailure { androidMobileWorkerLog.warn { "Android deferred location startup; open the Worker to resume sharing" } }
+                        }
+                    }
+                    sensors.synchronizeGeofences()
                     sensors.enableBlePresenceUpdates()
                     MobileWorkerSyncJobService.schedule(applicationContext)
                 }

@@ -26,4 +26,4 @@ ANDROID_LIFECYCLE_SERIAL="$worker_test_serial" \
 ANDROID_LIFECYCLE_TLS_STORE="$worker_lifecycle_dir/tls.p12" \
 ANDROID_LIFECYCLE_APK="$worker_project_root/mobile-worker-android/build/outputs/apk/lifecycle/mobile-worker-android-lifecycle.apk" \
 ANDROID_LIFECYCLE_TEST_APK="$worker_project_root/mobile-worker-android/build/outputs/apk/androidTest/lifecycle/mobile-worker-android-lifecycle-androidTest.apk" \
-./gradlew :server:test --tests 'com.gromozeka.server.AndroidWorkerLifecycleTest' -q
+./gradlew :server:test --tests "${ANDROID_LIFECYCLE_TEST_FILTER:-com.gromozeka.server.AndroidWorkerLifecycleTest}" -q

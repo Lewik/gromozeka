@@ -57,20 +57,20 @@ internal class ContextStateToolContributor(
         },
         callback(
             name = "get_device_state",
-            description = "Read the current state reported by one accessible mobile Worker device.",
+            description = "Read the latest state reported by one accessible user-bound Worker, including location with measurement time and accuracy. This is stored state, possibly stale while offline, not a fresh sensor request. observedAt is measurement time; receivedAt is server receipt time.",
             schema = WORKER_ID_SCHEMA,
         ) { input, userId ->
-            val worker = requireMobileWorker(userId, input.requiredString("worker_id"))
+            val worker = requireContextWorker(userId, input.requiredString("worker_id"))
             contextStateJson.encodeToString(
                 contextStateService.getDeviceState(requireNotNull(worker.subjectUserId), worker.id)
             )
         },
         callback(
             name = "query_state_history",
-            description = "Read immutable user or mobile device state events in reverse chronological order.",
+            description = "Read immutable user or accessible user-bound Worker events, including location history, in reverse measurement-time order. Offline samples keep their observedAt measurement time even when receivedAt is later. Select an exact worker_id for device history and optionally bound from, to and limit.",
             schema = HISTORY_SCHEMA,
         ) { input, userId ->
-            val worker = input.optionalString("worker_id")?.let { requireMobileWorker(userId, it) }
+            val worker = input.optionalString("worker_id")?.let { requireContextWorker(userId, it) }
             val limit = input["limit"]?.jsonPrimitive?.intOrNull ?: 100
             val from = input.optionalString("from")?.let(Instant::parse)
             val to = input.optionalString("to")?.let(Instant::parse)
@@ -115,7 +115,7 @@ internal class ContextStateToolContributor(
         }
     }
 
-    private suspend fun requireMobileWorker(actorUserId: User.Id, workerId: String): WorkerResource {
+    private suspend fun requireContextWorker(actorUserId: User.Id, workerId: String): WorkerResource {
         val actor = userDirectoryService.findActiveById(actorUserId)
             ?: error("State tools require an active authenticated user")
         return workerAccessService.requirePermission(

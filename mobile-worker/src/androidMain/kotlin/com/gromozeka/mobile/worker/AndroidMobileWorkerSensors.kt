@@ -18,7 +18,6 @@ import android.os.Build
 import android.os.ParcelUuid
 import android.provider.Settings
 import android.net.wifi.WifiManager
-import com.gromozeka.domain.model.LocationCause
 
 internal class AndroidMobileWorkerSensors(private val context: Context) {
     fun battery(): BatterySnapshot? {
@@ -70,41 +69,6 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
         return manager.getProviders(true)
             .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
             .maxByOrNull(Location::getTime)
-    }
-
-    fun enableSignificantLocationUpdates(): Boolean {
-        if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-            context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return false
-        }
-        val manager = context.getSystemService(LocationManager::class.java) ?: return false
-        val preferredProviders = buildList {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
-            add(LocationManager.NETWORK_PROVIDER)
-            add(LocationManager.PASSIVE_PROVIDER)
-        }
-        val provider = preferredProviders
-            .firstOrNull { it in manager.getProviders(true) }
-            ?: return false
-        val intent = Intent(context, MobileWorkerLocationReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            LOCATION_REQUEST_CODE,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or mutablePendingIntentFlag(),
-        )
-        return runCatching {
-            manager.requestLocationUpdates(
-                provider,
-                LOCATION_MIN_TIME_MILLIS,
-                LOCATION_MIN_DISTANCE_METERS,
-                pendingIntent,
-            )
-            synchronizeGeofences()
-        }.onFailure { error ->
-            androidMobileWorkerLog.warn(error, "Failed to enable background location signals")
-        }.getOrDefault(false)
     }
 
     fun synchronizeGeofences(): Boolean {
@@ -172,7 +136,6 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
 
     fun disableBackgroundSignals() {
         val locationManager = context.getSystemService(LocationManager::class.java)
-        runCatching { locationManager?.removeUpdates(locationPendingIntent()) }
         registeredGeofenceIds().forEach { id ->
             runCatching { locationManager?.removeProximityAlert(geofencePendingIntent(id)) }
         }
@@ -199,13 +162,6 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
 
     private fun canReadWifiState(): Boolean =
         context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-    private fun locationPendingIntent(): PendingIntent = PendingIntent.getBroadcast(
-        context,
-        LOCATION_REQUEST_CODE,
-        Intent(context, MobileWorkerLocationReceiver::class.java),
-        PendingIntent.FLAG_UPDATE_CURRENT or mutablePendingIntentFlag(),
-    )
 
     private fun geofencePendingIntent(regionId: String): PendingIntent = PendingIntent.getBroadcast(
         context,
@@ -258,30 +214,8 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
                 ?.lastPathSegment
                 ?.takeIf(String::isNotBlank)
 
-        fun locationFrom(intent: Intent): Location? =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED, Location::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED)
-            }
-
-        suspend fun Location.record(runtime: MobileWorkerRuntime) =
-            runtime.recordLocation(
-                latitude = latitude,
-                longitude = longitude,
-                accuracyMeters = accuracy.takeIf { hasAccuracy() }?.toDouble(),
-                altitudeMeters = altitude.takeIf { hasAltitude() },
-                speedMetersPerSecond = speed.takeIf { hasSpeed() }?.toDouble(),
-                cause = LocationCause.SIGNIFICANT_CHANGE,
-                observedAt = kotlin.time.Instant.fromEpochMilliseconds(time),
-            )
-
-        private const val LOCATION_REQUEST_CODE = 27_041
         private const val GEOFENCE_REQUEST_CODE = 27_044
         private const val BLE_REQUEST_CODE = 27_043
-        private const val LOCATION_MIN_TIME_MILLIS = 15 * 60 * 1_000L
-        private const val LOCATION_MIN_DISTANCE_METERS = 500f
         private const val UNKNOWN_WIFI_SSID = "<unknown ssid>"
         private const val NO_EXPIRATION = -1L
         private const val PREFERENCES_NAME = "gromozeka-mobile-worker-signals"

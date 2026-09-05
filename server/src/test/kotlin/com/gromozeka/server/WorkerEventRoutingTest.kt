@@ -59,6 +59,13 @@ class WorkerEventRoutingTest {
             assertEquals(1, repository.events.size)
             assertEquals(ContextEvent.Source.Worker(worker.id), repository.events.single().source)
             assertEquals(worker.subjectUserId, repository.events.single().userId)
+            val locationJson = """{"events":[{"id":"location","observedAt":"2026-09-05T00:00:00Z","payload":{"type":"location","latitude":32.0,"longitude":34.8,"accuracyMeters":15.0,"cause":"LIVE_TRACKING"}}]}"""
+            val location = client.post("https://localhost/api/worker/events") { header("Authorization", "Bearer $credential"); setBody(locationJson) }
+            assertEquals(HttpStatusCode.OK, location.status)
+            val recordedLocation = repository.events.last()
+            assertEquals(time, recordedLocation.observedAt)
+            assertEquals(worker.subjectUserId, recordedLocation.userId)
+            assertEquals(15.0, ((recordedLocation.payload as ContextEvent.Payload.Device).event as com.gromozeka.domain.model.DeviceStateEvent.Location).accuracyMeters)
             val heartbeat = client.post("https://localhost/api/worker/heartbeat") {
                 header("Authorization", "Bearer $credential")
                 setBody("""{"contact":{"requestId":"heartbeat","sentAt":"2026-09-05T00:00:00Z","appState":"BACKGROUND","appVersion":"test","pendingEventCount":0}}""")

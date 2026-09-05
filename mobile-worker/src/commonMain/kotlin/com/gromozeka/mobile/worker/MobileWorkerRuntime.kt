@@ -14,6 +14,8 @@ import kotlinx.coroutines.CancellationException
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.LocationCause
+import com.gromozeka.worker.runtime.WorkerLocationConfiguration
+import com.gromozeka.worker.runtime.WorkerLocationSample
 import com.gromozeka.domain.model.WorkerAppState
 import com.gromozeka.domain.model.WorkerPlatform
 import com.gromozeka.domain.model.SleepState
@@ -227,6 +229,22 @@ internal class MobileWorkerRuntime(
         writeState(state.copy(soundEnabled = enabled))
     }
 
+    suspend fun configureLocation(configuration: WorkerLocationConfiguration) = mobileWorkerStorageMutex.withLock {
+        val state = readState()
+        check(state.enrolled || !configuration.enabled) { "Worker must be enrolled before sharing location" }
+        if (state.locationConfiguration != configuration) {
+            writeState(state.copy(locationConfiguration = configuration, locationRevision = uuid7()))
+        }
+    }
+
+    suspend fun locationCollection(): MobileWorkerLocationCollection? = mobileWorkerStorageMutex.withLock {
+        readState().locationCollection()
+    }
+
+    suspend fun recordSharedLocation(collection: MobileWorkerLocationCollection, sample: WorkerLocationSample) {
+        eventOutbox(collection.streamId, collection).append(listOf(WorkerEventInput(uuid7(), sample.observedAt, sample.location)))
+    }
+
     suspend fun gatewayEnrollment(): MobileWorkerGatewayEnrollment? = mobileWorkerStorageMutex.withLock {
         val state = readState()
         if (!state.enrolled || !state.gatewayEnabled) return@withLock null
@@ -393,7 +411,7 @@ internal class MobileWorkerRuntime(
         eventOutbox(requireNotNull(state.outbox).streamId)
     }
 
-    private fun eventOutbox(streamId: String) = WorkerEventOutbox(
+    private fun eventOutbox(streamId: String, locationCollection: MobileWorkerLocationCollection? = null) = WorkerEventOutbox(
         streamId = streamId,
         limits = outboxLimits,
         synchronization = mobileWorkerSynchronizationMutex,
@@ -405,6 +423,9 @@ internal class MobileWorkerRuntime(
             override suspend fun update(transform: (WorkerEventOutboxState) -> WorkerEventOutboxState): WorkerEventOutboxState =
                 mobileWorkerStorageMutex.withLock {
                     val state = readState()
+                    if (locationCollection != null) {
+                        check(state.locationCollection() == locationCollection) { "Location sharing changed or was disabled" }
+                    }
                     val outbox = state.outbox ?: throw WorkerEventOutboxReplacedException()
                     val updated = transform(outbox)
                     if (updated != outbox) {
@@ -475,6 +496,14 @@ data class MobileWorkerStatus(
     val credentialAvailable: Boolean,
     val gatewayEnabled: Boolean = false,
     val soundEnabled: Boolean = false,
+    val locationConfiguration: WorkerLocationConfiguration = WorkerLocationConfiguration(),
+    val lastLocation: WorkerLocationSample? = null,
+)
+
+internal data class MobileWorkerLocationCollection(
+    val streamId: String,
+    val revision: String,
+    val configuration: WorkerLocationConfiguration,
 )
 
 data class MobileWorkerConnectionChallenge(
@@ -506,9 +535,15 @@ private data class PersistedMobileWorkerState(
     val outbox: WorkerEventOutboxState? = null,
     val gatewayEnabled: Boolean = false,
     val soundEnabled: Boolean = false,
+    val locationConfiguration: WorkerLocationConfiguration = WorkerLocationConfiguration(),
+    val locationRevision: String = "initial",
 ) {
     val enrolled: Boolean
         get() = !serverUrl.isNullOrBlank() && !workerId.isNullOrBlank() && outbox != null
+
+    fun locationCollection(): MobileWorkerLocationCollection? =
+        if (enrolled && locationConfiguration.enabled) MobileWorkerLocationCollection(requireNotNull(outbox).streamId, locationRevision, locationConfiguration)
+        else null
 
     fun toStatus(hasCredential: Boolean): MobileWorkerStatus =
         MobileWorkerStatus(
@@ -520,6 +555,10 @@ private data class PersistedMobileWorkerState(
             credentialAvailable = hasCredential,
             gatewayEnabled = gatewayEnabled,
             soundEnabled = soundEnabled,
+            locationConfiguration = locationConfiguration,
+            lastLocation = outbox?.latest?.get("location")?.let {
+                WorkerLocationSample(it.observedAt, it.payload as DeviceStateEvent.Location)
+            },
         )
 }
 

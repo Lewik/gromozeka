@@ -3,6 +3,9 @@ package com.gromozeka.server
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult
+import com.gromozeka.domain.model.DeviceStateEvent
+import com.gromozeka.worker.runtime.WorkerLocationSample
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -57,22 +60,121 @@ class AndroidWorkerLifecycleTest {
     private val testApk = requiredEnvironment("ANDROID_LIFECYCLE_TEST_APK")
 
     @Test
-    fun `real Android Worker survives network loss sleep update and reboot and respects disable`() = runBlocking {
-        require(serial.startsWith("emulator-")) { "Only a disposable emulator is allowed" }
-        assertEquals("1", shell("getprop", "ro.kernel.qemu").trim())
-        assertTrue(shell("getprop", "ro.build.version.sdk").trim().toInt() >= 35)
-        val aapt = Files.list(Path.of(requiredEnvironment("ANDROID_HOME"), "build-tools")).use { versions ->
-            versions.sorted(Comparator.reverseOrder()).map { it.resolve("aapt2") }
-                .filter(Files::isRegularFile).findFirst().orElseThrow()
+    fun `location requires opt in delivers an offline route and resumes after reboot`() = runBlocking {
+        validateInstallation()
+        Fixture().use { fixture ->
+            try {
+                mark("location setup with sharing disabled")
+                command("install", "-r", apk)
+                command("install", "-r", testApk)
+                assertTrue(shell("pm", "clear", PACKAGE).contains("Success"))
+                shell("cmd", "appops", "set", PACKAGE, "RUN_ANY_IN_BACKGROUND", "allow")
+                assertTrue(shell("am", "instrument", "-w", "-e", "lifecycleSetup", "true", "-e", "locationSetup", "true", RUNNER)
+                    .contains("Lifecycle fixture enrollment prepared."))
+                shell("pm", "grant", PACKAGE, "android.permission.ACCESS_COARSE_LOCATION")
+                shell("pm", "grant", PACKAGE, "android.permission.ACCESS_FINE_LOCATION")
+                shell("pm", "grant", PACKAGE, "android.permission.ACCESS_BACKGROUND_LOCATION")
+                shell("cmd", "location", "set-location-enabled", "true")
+                prepareLocationProvider()
+                launch()
+                fixture.awaitConnectionAfter(0)
+                fix(1)
+                delay(2.seconds)
+                assertTrue(fixture.locations().isEmpty(), "Permission alone enabled location sharing")
+                fixture.locationError("disabled-location")
+                tapText("Enable location sharing")
+                eventually { fix(2); fixture.hasPoint(2) }
+                fixture.sound("sound-during-location")
+
+                mark("location offline route while Activity is closed")
+                shell("input", "keyevent", "KEYCODE_HOME")
+                shell("input", "keyevent", "KEYCODE_SLEEP")
+                shell("svc", "wifi", "disable")
+                shell("svc", "data", "disable")
+                delay(3.seconds)
+                for (point in 3..5) { fix(point); delay(2.seconds) }
+                assertFalse(fixture.hasPoint(5), "Offline point arrived before reconnection")
+                shell("svc", "data", "enable")
+                eventually(120) { (3..5).all(fixture::hasPoint) }
+                assertTrue(fixture.locations().filter { (it.payload as DeviceStateEvent.Location).latitude >= latitude(3) }
+                    .all { it.observedAt < Clock.System.now() })
+
+                mark("fresh command rejects old cache and accepts a new sensor fix")
+                fixture.locationError("no-new-fix", timeoutSeconds = 2)
+                val fresh = fixture.location("fresh-location", timeoutSeconds = 15)
+                delay(1.seconds)
+                fix(6)
+                val sample = fixture.locationResult(fresh)
+                assertEquals(latitude(6), sample.location.latitude, 0.000001)
+                assertTrue(sample.location.accuracyMeters != null)
+                val cached = fixture.locationResult(fixture.location("cached-location", maximumAgeSeconds = 60))
+                assertEquals(sample.observedAt, cached.observedAt)
+
+                mark("location restarts after reboot without Activity")
+                val before = fixture.connections.get()
+                reboot()
+                prepareLocationProvider()
+                fixture.awaitConnectionAfter(before)
+                eventually(90) { fix(7); fixture.hasPoint(7) }
+
+                mark("revoked location permission stops new recordings")
+                shell("pm", "revoke", PACKAGE, "android.permission.ACCESS_FINE_LOCATION")
+                shell("pm", "revoke", PACKAGE, "android.permission.ACCESS_COARSE_LOCATION")
+                val count = fixture.locations().size
+                repeat(3) { fix(8); delay(1.seconds) }
+                assertEquals(count, fixture.locations().size)
+                assertFalse(fixture.hasPoint(8))
+
+                mark("explicit restore and independent local disable")
+                shell("pm", "grant", PACKAGE, "android.permission.ACCESS_COARSE_LOCATION")
+                shell("pm", "grant", PACKAGE, "android.permission.ACCESS_FINE_LOCATION")
+                shell("pm", "grant", PACKAGE, "android.permission.ACCESS_BACKGROUND_LOCATION")
+                launch()
+                eventually { fix(9); fixture.hasPoint(9) }
+                mark("disable Gateway through native UI")
+                tapText("Disable remote commands")
+                eventually { fix(10); fixture.hasPoint(10) }
+                mark("disable sharing through native UI")
+                launch()
+                scrollToTop()
+                tapText("Disable location sharing")
+                eventually { !shell("dumpsys", "activity", "services", PACKAGE).contains("isForeground=true") }
+                reboot()
+                prepareLocationProvider()
+                repeat(3) { fix(11); delay(1.seconds) }
+                assertFalse(fixture.hasPoint(11))
+                assertFalse(shell("dumpsys", "activity", "services", PACKAGE).contains("isForeground=true"))
+                mark("location PASS")
+            } finally {
+                runCatching { shell("svc", "wifi", "enable") }
+                runCatching { shell("svc", "data", "enable") }
+                runCatching { shell("input", "keyevent", "KEYCODE_WAKEUP") }
+                runCatching { shell("am", "force-stop", PACKAGE) }
+                runCatching { shell("cmd", "location", "providers", "remove-test-provider", "gps") }
+            }
         }
-        assertEquals(PACKAGE, runCommand(listOf(aapt.toString(), "dump", "packagename", apk)).trim())
-        assertEquals("$PACKAGE.test", runCommand(listOf(aapt.toString(), "dump", "packagename", testApk)).trim())
+    }
+
+    private fun prepareLocationProvider() {
+        shell("cmd", "appops", "set", "com.android.shell", "MOCK_LOCATION", "allow")
+        shell("cmd", "location", "providers", "add-test-provider", "gps", "--requiresSatellite", "--supportsAltitude", "--supportsSpeed")
+        shell("cmd", "location", "providers", "set-test-provider-enabled", "gps", "true")
+    }
+    private fun fix(point: Int) {
+        shell("cmd", "location", "providers", "set-test-provider-location", "gps", "--location", "${latitude(point)},34.8", "--accuracy", "5")
+    }
+    private fun scrollToTop() { repeat(6) { shell("input", "swipe", "500", "400", "500", "1800", "150") } }
+
+    @Test
+    fun `real Android Worker survives network loss sleep update and reboot and respects disable`() = runBlocking {
+        validateInstallation()
         Fixture().use { fixture ->
             try {
                 mark("install isolated lifecycle application")
                 command("install", "-r", apk)
                 command("install", "-r", testApk)
                 assertTrue(shell("pm", "clear", PACKAGE).contains("Success"))
+                shell("cmd", "appops", "set", PACKAGE, "RUN_ANY_IN_BACKGROUND", "allow")
                 val setup = shell("am", "instrument", "-w", "-e", "lifecycleSetup", "true", RUNNER)
                 assertTrue(setup.contains("Lifecycle fixture enrollment prepared."), setup)
                 launch()
@@ -171,6 +273,18 @@ class AndroidWorkerLifecycleTest {
         }
     }
 
+    private fun validateInstallation() {
+        require(serial.startsWith("emulator-")) { "Only a disposable emulator is allowed" }
+        assertEquals("1", shell("getprop", "ro.kernel.qemu").trim())
+        assertTrue(shell("getprop", "ro.build.version.sdk").trim().toInt() >= 35)
+        val aapt = Files.list(Path.of(requiredEnvironment("ANDROID_HOME"), "build-tools")).use { versions ->
+            versions.sorted(Comparator.reverseOrder()).map { it.resolve("aapt2") }
+                .filter(Files::isRegularFile).findFirst().orElseThrow()
+        }
+        assertEquals(PACKAGE, runCommand(listOf(aapt.toString(), "dump", "packagename", apk)).trim())
+        assertEquals("$PACKAGE.test", runCommand(listOf(aapt.toString(), "dump", "packagename", testApk)).trim())
+    }
+
     private fun launch() {
         shell("input", "keyevent", "KEYCODE_WAKEUP")
         shell("wm", "dismiss-keyguard")
@@ -186,12 +300,16 @@ class AndroidWorkerLifecycleTest {
     }
 
     private suspend fun tapText(text: String) {
-        eventually {
+        scrollToTop()
+        eventually(60) {
             shell("uiautomator", "dump", "/data/local/tmp/worker-lifecycle-ui.xml")
             val xml = shell("cat", "/data/local/tmp/worker-lifecycle-ui.xml")
             val bounds = Regex("text=\"${Regex.escape(text)}\"[^>]*bounds=\"\\[(\\d+),(\\d+)]\\[(\\d+),(\\d+)]\"")
                 .find(xml)?.groupValues
-            if (bounds == null) false else {
+            if (bounds == null) {
+                shell("input", "swipe", "500", "1600", "500", "1050", "600")
+                false
+            } else {
                 val (left, top, right, bottom) = bounds.drop(1).map(String::toInt)
                 shell("input", "tap", ((left + right) / 2).toString(), ((top + bottom) / 2).toString())
                 true
@@ -218,6 +336,9 @@ class AndroidWorkerLifecycleTest {
 
     private class Fixture : AutoCloseable {
         val connections = AtomicInteger()
+        private val events = ConcurrentHashMap<String, WorkerEventInput>()
+        fun locations() = events.values.filter { it.payload is DeviceStateEvent.Location }.sortedBy { it.observedAt }
+        fun hasPoint(point: Int) = locations().any { kotlin.math.abs((it.payload as DeviceStateEvent.Location).latitude - latitude(point)) < 0.000001 }
         private val requests = ConcurrentHashMap<String, WorkerGatewayMessage.Request>()
         private val responses = ConcurrentHashMap<String, CompletableDeferred<WorkerGatewayMessage.Response>>()
         @Volatile private var current: DefaultWebSocketSession? = null
@@ -252,6 +373,10 @@ class AndroidWorkerLifecycleTest {
                 post("/api/worker/events") {
                     check(call.request.headers["Authorization"] == "Bearer $CREDENTIAL")
                     val batch = Json.decodeFromString<WorkerEventBatchRequest>(call.receiveText())
+                    batch.events.forEach { event ->
+                        val previous = events.putIfAbsent(event.id, event)
+                        check(previous == null || previous == event)
+                    }
                     call.respondText(Json.encodeToString(WorkerEventBatchResponse(batch.events.map { it.id }.toSet(), emptySet(), Clock.System.now())), ContentType.Application.Json)
                 }
                 post("/api/worker/heartbeat") {
@@ -269,15 +394,17 @@ class AndroidWorkerLifecycleTest {
 
         suspend fun awaitConnectionAfter(previous: Int) = eventually(120) { connections.get() > previous && current != null }
 
-        suspend fun enqueue(id: String, ttlSeconds: Int = 150, sendNow: Boolean = true, sound: Boolean = false): CompletableDeferred<WorkerGatewayMessage.Response> {
+        suspend fun enqueue(id: String, ttlSeconds: Int = 150, sendNow: Boolean = true, sound: Boolean = false,
+            toolName: String = if (sound) "grz_play_loud_sound" else "grz_get_device_status",
+            arguments: JsonObject = if (sound) JsonObject(mapOf("duration_seconds" to JsonPrimitive(2))) else JsonObject(emptyMap()),
+        ): CompletableDeferred<WorkerGatewayMessage.Response> {
             val deferred = CompletableDeferred<WorkerGatewayMessage.Response>()
             responses[id] = deferred
             val request = WorkerGatewayMessage.Request(id, WorkerGatewayOperation.TOOL_EXECUTION,
                 Json.encodeToString(WorkerToolExecutionRequest(
                     ConversationRuntimeTaskTarget.Worker(ConversationRuntimeWorkerId("android-lifecycle")),
-                    listOf(ToolCall(ToolCall.Id(id), ToolCall.Data(if (sound) "grz_play_loud_sound" else "grz_get_device_status",
-                        if (sound) JsonObject(mapOf("duration_seconds" to JsonPrimitive(2))) else JsonObject(emptyMap())))), emptyMap(),
-                )).encodeToByteArray(), WorkerRequestDelivery(Clock.System.now() + ttlSeconds.seconds, 10_000))
+                    listOf(ToolCall(ToolCall.Id(id), ToolCall.Data(toolName, arguments))), emptyMap(),
+                )).encodeToByteArray(), WorkerRequestDelivery(Clock.System.now() + ttlSeconds.seconds, 30_000))
             requests[id] = request
             if (sendNow) current?.send(Frame.Binary(true, WorkerGatewayCodec.encode(request)))
             return deferred
@@ -285,6 +412,22 @@ class AndroidWorkerLifecycleTest {
 
         suspend fun status(id: String) = expectSuccess(enqueue(id))
         suspend fun sound(id: String) = expectSuccess(enqueue(id, sound = true))
+
+        suspend fun location(id: String, timeoutSeconds: Int = 5, maximumAgeSeconds: Int = 0) = enqueue(id,
+            toolName = "grz_get_current_location", arguments = JsonObject(mapOf(
+                "timeout_seconds" to JsonPrimitive(timeoutSeconds), "max_age_seconds" to JsonPrimitive(maximumAgeSeconds))))
+
+        suspend fun locationResult(response: CompletableDeferred<WorkerGatewayMessage.Response>): WorkerLocationSample {
+            expectSuccess(response)
+            val tools = Json.decodeFromString<WorkerToolExecutionResponse>(requireNotNull(response.await().payload).decodeToString())
+            return Json.decodeFromString((tools.results.single().result.single() as ToolResult.Data.Text).content)
+        }
+
+        suspend fun locationError(id: String, timeoutSeconds: Int = 5) {
+            val result = withTimeout(30.seconds) { location(id, timeoutSeconds).await() }
+            val tools = Json.decodeFromString<WorkerToolExecutionResponse>(requireNotNull(result.payload).decodeToString())
+            assertTrue(tools.results.single().isError, "Location unexpectedly succeeded")
+        }
 
         suspend fun expectSuccess(response: CompletableDeferred<WorkerGatewayMessage.Response>) {
             val result = withTimeout(120.seconds) { response.await() }
@@ -340,6 +483,7 @@ class AndroidWorkerLifecycleTest {
     }
 
     companion object {
+        private fun latitude(point: Int) = 32.0 + point * 0.001
         private const val PACKAGE = "com.gromozeka.mobile.worker.lifecycle"
         private const val RUNNER = "$PACKAGE.test/com.gromozeka.mobile.worker.GatewaySmokeInstrumentation"
         private const val CREDENTIAL = "android-lifecycle-fixture-credential"
