@@ -278,11 +278,7 @@ class TabViewModel(
         when (event) {
             is ConversationRuntimeEvent.SnapshotUpdated -> applyRuntimeSnapshot(event.snapshot)
             is ConversationRuntimeEvent.ReplayCompleted -> runtimeReplayCompleted = true
-            is ConversationRuntimeEvent.MessageEmitted -> {
-                _isWaitingForResponse.value = true
-                _uiState.update { it.copy(isWaitingForResponse = true) }
-                upsertRuntimeMessage(event.message)
-            }
+            is ConversationRuntimeEvent.MessageEmitted -> upsertRuntimeMessage(event.message)
             is ConversationRuntimeEvent.HistoryChanged -> loadMessages()
             is ConversationRuntimeEvent.ExecutionCompleted -> {
                 finishRuntimeExecution()
