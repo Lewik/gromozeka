@@ -74,14 +74,12 @@ class ConversationHistoryRuntimeApplicationService(
             mutation = mutation,
             actorUserId = actorUser.id,
         )
-        if (!accepted) {
+        if (!accepted && !runtimeCoordinator.snapshot(conversationId).containsTask(taskId)) {
             if (findCompletedMutation(conversationId, taskId) != null) return
             runtimeCoordinator.findTaskIncident(conversationId, taskId)?.let { incident ->
                 error(incident.message)
             }
-            check(runtimeCoordinator.snapshot(conversationId).containsTask(taskId)) {
-                "Conversation history mutation was rejected: ${taskId.value}"
-            }
+            error("Conversation history mutation was rejected: ${taskId.value}")
         }
 
         while (true) {
