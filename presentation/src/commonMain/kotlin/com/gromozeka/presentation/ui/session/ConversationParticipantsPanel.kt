@@ -146,6 +146,28 @@ fun ConversationParticipantsPanel(
         }
     }
 
+    fun updateAutoResponders(agentId: AgentDefinition.Id, enabled: Boolean) {
+        if (updating) return
+        scope.launch {
+            updating = true
+            error = null
+            try {
+                val ids = if (enabled) conversation.autoRespondAgentIds + agentId else conversation.autoRespondAgentIds - agentId
+                val updated = requireNotNull(conversationService.updateAutoRespondAgentIds(conversation.id, ids)) {
+                    "Conversation not found: ${conversation.id.value}"
+                }
+                conversation = updated
+                onConversationUpdated(updated)
+            } catch (failure: kotlinx.coroutines.CancellationException) {
+                throw failure
+            } catch (failure: Exception) {
+                error = failure.message ?: "Failed to update automatic responders"
+            } finally {
+                updating = false
+            }
+        }
+    }
+
     fun updateParticipants(participants: Set<Conversation.Participant>) {
         if (updating) return
         scope.launch {
@@ -278,6 +300,8 @@ fun ConversationParticipantsPanel(
                                 testTagId = agentId.value,
                                 agent = true,
                                 connected = connected,
+                                autoRespond = agentId in conversation.autoRespondAgentIds,
+                                onAutoRespondChange = { updateAutoResponders(agentId, it) },
                                 enabled = canManage && !updating,
                                 onConnectedChange = { shouldConnect ->
                                     val participant = Conversation.Participant.Agent(agentId)
@@ -316,6 +340,8 @@ private fun ParticipantRow(
     connected: Boolean,
     enabled: Boolean,
     onConnectedChange: (Boolean) -> Unit,
+    autoRespond: Boolean = false,
+    onAutoRespondChange: ((Boolean) -> Unit)? = null,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -351,6 +377,20 @@ private fun ParticipantRow(
                     UiTestTag.ParticipantToggle(if (agent) "agent" else "user", testTagId).value
                 ),
             )
+        }
+        if (connected && onAutoRespondChange != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 44.dp, end = 12.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = autoRespond,
+                    onCheckedChange = onAutoRespondChange,
+                    enabled = enabled,
+                    modifier = Modifier.testTag(UiTestTag.AgentAutoRespond(testTagId).value),
+                )
+                Text("Reply automatically to user messages", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

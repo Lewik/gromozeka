@@ -92,17 +92,35 @@ class ConversationRuntimeApplicationService(
     override suspend fun postMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-    ): Boolean = runtimeDispatcher.postMessage(conversationId, userMessage)
+    ): Boolean = runtimeDispatcher.postMessage(
+        conversationId,
+        userMessage,
+        autoRespondAgentIds = autoResponders(conversationId, userMessage),
+    )
 
     override suspend fun postMessage(
         actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-    ): Boolean = runtimeDispatcher.postMessage(
-        conversationId = conversationId,
-        userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
-        actorUserId = actorUser.id,
-    )
+    ): Boolean {
+        val attributedMessage = userMessage.attributeAuthenticatedSubmission(actorUser)
+        return runtimeDispatcher.postMessage(
+            conversationId = conversationId,
+            userMessage = attributedMessage,
+            actorUserId = actorUser.id,
+            autoRespondAgentIds = autoResponders(conversationId, attributedMessage),
+        )
+    }
+
+    private suspend fun autoResponders(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+    ): Set<AgentDefinition.Id> {
+        require(userMessage.role == Conversation.Message.Role.USER) { "Only user messages can trigger automatic responses" }
+        return requireNotNull(conversationService.findById(conversationId)) {
+            "Conversation not found: ${conversationId.value}"
+        }.autoRespondersFor(userMessage)
+    }
 
     override suspend fun invokeAgent(
         conversationId: Conversation.Id,

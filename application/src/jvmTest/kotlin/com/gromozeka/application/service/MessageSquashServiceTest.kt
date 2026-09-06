@@ -364,7 +364,7 @@ private class InMemoryConversationRepository(
         values.computeIfPresent(id) { _, conversation -> conversation.copy(currentThread = threadId) }
     }
     override suspend fun updateDisplayName(id: Conversation.Id, displayName: String) = Unit
-    override suspend fun updateParticipants(id: Conversation.Id, participants: Set<Conversation.Participant>) = Unit
+    override suspend fun updateParticipantSettings(id: Conversation.Id, update: (Conversation) -> Conversation): Conversation? = null
     override suspend fun touch(id: Conversation.Id) = Unit
 }
 

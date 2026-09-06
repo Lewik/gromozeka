@@ -615,6 +615,13 @@ data class UpdateConversationParticipantsRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("update_conversation_auto_responders")
+data class UpdateConversationAutoRespondersRequest(
+    val conversationId: Conversation.Id,
+    val agentDefinitionIds: Set<AgentDefinition.Id>,
+) : ClientRequest
+
+@Serializable
 @SerialName("get_conversation_unread_state")
 data object GetConversationUnreadStateRequest : ClientRequest
 

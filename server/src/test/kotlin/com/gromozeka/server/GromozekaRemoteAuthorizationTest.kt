@@ -41,6 +41,25 @@ import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
 class GromozekaRemoteAuthorizationTest {
+    @Test
+    fun `automatic responder settings require conversation access and project write permission`() = runBlocking {
+        val user = testUser()
+        val conversation = testConversation()
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation)
+        authorization.authorize(user, com.gromozeka.remote.protocol.UpdateConversationAutoRespondersRequest(
+            conversation.id, emptySet(),
+        ))
+        Mockito.verify(projectAccessService).requirePermission(user.id, conversation.projectId, ProjectPermission.WRITE)
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation.copy(
+            participants = setOf(Conversation.Participant.User(User.Id("another-user"))),
+        ))
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(user, com.gromozeka.remote.protocol.UpdateConversationAutoRespondersRequest(
+                conversation.id, emptySet(),
+            ))
+        }
+    }
+
     private val projectAccessService = mock<ProjectAccessService>()
     private val conversationService = mock<ConversationDomainService>()
     private val authorization = GromozekaRemoteAuthorization(

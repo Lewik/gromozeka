@@ -173,7 +173,7 @@ data class ConversationRuntimeSchedulingState(
         }
         val task = when {
             continuationTask?.id == taskId -> continuationTask
-            pendingIndex >= 0 && pendingTasks[pendingIndex].id == taskId -> pendingTasks[pendingIndex]
+            continuationTask == null && pendingIndex >= 0 && pendingTasks[pendingIndex].id == taskId -> pendingTasks[pendingIndex]
             else -> return unchanged(null)
         }
         if (!task.requirements.isSatisfiedBy(executor, executorCapabilities, workerWorkspaceMountIds)) {
@@ -181,7 +181,8 @@ data class ConversationRuntimeSchedulingState(
         }
         val claimedTask = task.withTurnTerminationInstructions(pendingTurnTerminationInstructions)
         val consumesTurnTerminationInstructions =
-            claimedTask.payload is ConversationRuntimeTask.Payload.AgentInvocation
+            claimedTask.payload is ConversationRuntimeTask.Payload.AgentInvocation ||
+                (claimedTask.payload as? ConversationRuntimeTask.Payload.PostMessage)?.autoRespondAgentIds?.isNotEmpty() == true
 
         return changed(
             copy(
@@ -253,7 +254,26 @@ data class ConversationRuntimeSchedulingState(
             return unchanged(false)
         }
 
-        val continuation = (outcome as? ConversationRuntimeTaskOutcome.Continue)?.nextTask
+        val continuationOutcome = outcome as? ConversationRuntimeTaskOutcome.Continue
+        val continuation = continuationOutcome?.nextTask
+        val queuedAgentResponses = continuationOutcome?.queuedAgentResponses.orEmpty()
+        if (queuedAgentResponses.isNotEmpty()) {
+            val submission = currentTask.payload as? ConversationRuntimeTask.Payload.PostMessage
+                ?: error("Agent responses must originate from a user message submission")
+            require(queuedAgentResponses.all { response ->
+                val payload = response.payload as ConversationRuntimeTask.Payload.AgentResponse
+                response.conversationId == conversationId &&
+                    response.actorUserId == currentTask.actorUserId &&
+                    response.placement == QueuedMessagePlacement.END_OF_TURN &&
+                    payload.rootUserMessageId == submission.userMessage.id &&
+                    payload.agentDefinitionId in submission.autoRespondAgentIds
+            }) { "Queued agent responses do not match their message submission" }
+            require(queuedAgentResponses.map { (it.payload as ConversationRuntimeTask.Payload.AgentResponse).agentDefinitionId }
+                .distinct().size == queuedAgentResponses.size) { "Agent responses must be unique" }
+            require(queuedAgentResponses.none { it.idempotencyKey in completedIdempotencyKeys }) {
+                "Agent response has already completed"
+            }
+        }
         continuation?.let { nextTask ->
             require(nextTask.conversationId == conversationId) {
                 "Conversation runtime continuation belongs to another conversation"
@@ -299,7 +319,7 @@ data class ConversationRuntimeSchedulingState(
                 activeTask = null,
                 activeInsertions = emptyList(),
                 continuationTask = continuation?.takeUnless { terminal },
-                pendingTasks = promotedPendingTasks,
+                pendingTasks = queuedAgentResponses.takeUnless { terminal }.orEmpty() + promotedPendingTasks,
                 completedIdempotencyKeys = completedIdempotencyKeys +
                     currentTask.idempotencyKey +
                     activeInsertions.map { it.idempotencyKey },
@@ -731,9 +751,13 @@ data class ConversationRuntimeSchedulingState(
     private fun ConversationRuntimeTask.withTurnTerminationInstructions(
         instructions: List<Conversation.Message.Instruction.PreviousTurnTerminated>,
     ): ConversationRuntimeTask {
-        val invocation = payload as? ConversationRuntimeTask.Payload.AgentInvocation ?: return this
         if (instructions.isEmpty()) return this
-        val userMessage = invocation.userMessage
+        val userMessage = when (val input = payload) {
+            is ConversationRuntimeTask.Payload.AgentInvocation -> input.userMessage
+            is ConversationRuntimeTask.Payload.PostMessage ->
+                input.userMessage.takeIf { input.autoRespondAgentIds.isNotEmpty() }
+            else -> null
+        } ?: return this
         val mergedInstructions = mergeTurnTerminationInstructions(
             userMessage.instructions.filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>() +
                 instructions
@@ -742,9 +766,15 @@ data class ConversationRuntimeSchedulingState(
             it is Conversation.Message.Instruction.PreviousTurnTerminated
         }
         return copy(
-            payload = invocation.copy(
-                userMessage = userMessage.copy(instructions = mergedInstructions + otherInstructions),
-            ),
+            payload = when (val input = payload) {
+                is ConversationRuntimeTask.Payload.AgentInvocation -> input.copy(
+                    userMessage = userMessage.copy(instructions = mergedInstructions + otherInstructions),
+                )
+                is ConversationRuntimeTask.Payload.PostMessage -> input.copy(
+                    userMessage = userMessage.copy(instructions = mergedInstructions + otherInstructions),
+                )
+                else -> error("Expected a user message submission")
+            },
         )
     }
 

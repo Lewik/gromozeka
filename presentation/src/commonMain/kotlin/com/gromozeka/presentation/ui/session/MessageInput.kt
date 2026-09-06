@@ -40,6 +40,7 @@ import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.AgentMentionCandidate
+import com.gromozeka.presentation.ui.agentResponseHint
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
@@ -144,6 +145,12 @@ internal fun MessageInput(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        Text(
+            text = agentResponseHint(userInput, agentMentionCandidates),
+            modifier = Modifier.testTag(UiTestTag.AgentResponseHint.value),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
         if (showPttButton) {
             VoiceCaptureStatus(
                 state = pttState,

@@ -32,7 +32,8 @@ class MessageEditingE2eTest {
         waitForTag(UiTestTag.SessionScreen)
 
         val conversation = runBlocking {
-            client.components.conversationService.findByProject(project.id).single()
+            val conversation = client.components.conversationService.findByProject(project.id).single()
+            checkNotNull(client.components.conversationService.updateAutoRespondAgentIds(conversation.id, emptySet()))
         }
         onNodeWithTag(UiTestTag.MessageInput.value).performTextInput("Original message")
         onNodeWithTag(UiTestTag.SendButton.value).performClick()

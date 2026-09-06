@@ -1,6 +1,7 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import kotlinx.coroutines.flow.Flow
@@ -99,6 +100,11 @@ interface ConversationDomainService {
     suspend fun updateParticipants(
         conversationId: Conversation.Id,
         participants: Set<Conversation.Participant>,
+    ): Conversation?
+
+    suspend fun updateAutoRespondAgentIds(
+        conversationId: Conversation.Id,
+        agentDefinitionIds: Set<AgentDefinition.Id>,
     ): Conversation?
 
     /**

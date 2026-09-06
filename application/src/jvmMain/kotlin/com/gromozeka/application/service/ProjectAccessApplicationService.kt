@@ -235,10 +235,9 @@ class ProjectAccessApplicationService(
             "Cannot remove the last user participant from a conversation"
         }
         affectedConversations.forEach { conversation ->
-            conversationRepository.updateParticipants(
-                conversation.id,
-                conversation.participants - participant,
-            )
+            conversationRepository.updateParticipantSettings(conversation.id) { current ->
+                current.withParticipants(current.participants - participant)
+            }
         }
         val removed = membershipRepository.delete(projectId, userId)
         if (removed) {

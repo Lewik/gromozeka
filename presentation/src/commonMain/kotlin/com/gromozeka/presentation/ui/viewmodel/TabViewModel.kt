@@ -134,11 +134,12 @@ class TabViewModel(
         agentService.observeByProject(projectId),
         conversationService.observeByProject(projectId),
     ) { agents, conversations ->
-        val connectedAgentIds = conversations
-            .firstOrNull { it.id == conversationId }
-            ?.connectedAgentIds()
-            .orEmpty()
-        buildAgentMentionCandidates(agents, connectedAgentIds)
+        val conversation = conversations.firstOrNull { it.id == conversationId }
+        buildAgentMentionCandidates(
+            agents,
+            conversation?.connectedAgentIds().orEmpty(),
+            conversation?.autoRespondAgentIds.orEmpty(),
+        )
     }.stateIn(scope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _messageSubmissionError = MutableStateFlow<String?>(null)
@@ -672,12 +673,12 @@ class TabViewModel(
 
     fun sendPendingMessageInCurrentTurn(messageId: String) {
         val pendingMessage = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
-        val agentDefinitionId = pendingMessage.agentDefinitionId
+        val agentDefinitionId = pendingMessage.steeringAgentId
         if (agentDefinitionId == null || pendingMessage.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
             return
         }
 
-        val steeredMessage = pendingMessage.withMidTurnSteerInstruction()
+        val steeredMessage = pendingMessage.copy(agentDefinitionId = agentDefinitionId).withMidTurnSteerInstruction()
         _pendingMessages.update { messages ->
             messages.map { message ->
                 if (message.id == messageId) steeredMessage else message
@@ -777,6 +778,8 @@ class TabViewModel(
         return PendingUserMessage(
             userMessage = userMessage,
             agentDefinitionId = agentDefinitionId,
+            autoRespondAgentIds = agentMentionCandidates.value.filter { it.connected && it.autoRespond }
+                .mapTo(linkedSetOf()) { it.agentDefinitionId },
             placement = QueuedMessagePlacement.END_OF_TURN,
         )
     }
@@ -1452,7 +1455,9 @@ data class PendingUserMessage(
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id?,
     val placement: QueuedMessagePlacement,
+    val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
 ) {
+    val steeringAgentId: AgentDefinition.Id? get() = agentDefinitionId ?: autoRespondAgentIds.singleOrNull()
     val id: String get() = userMessage.id.value
 
     val text: String
@@ -1488,6 +1493,7 @@ private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMes
         is ConversationRuntimeTask.Payload.PostMessage -> PendingUserMessage(
             userMessage = taskPayload.userMessage,
             agentDefinitionId = null,
+            autoRespondAgentIds = taskPayload.autoRespondAgentIds,
             placement = placement,
         )
 

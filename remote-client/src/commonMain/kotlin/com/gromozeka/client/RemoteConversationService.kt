@@ -1,6 +1,7 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.remote.protocol.ConversationResponse
@@ -19,6 +20,7 @@ import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SuggestedRepliesResponse
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
 import com.gromozeka.remote.protocol.UpdateConversationParticipantsRequest
+import com.gromozeka.remote.protocol.UpdateConversationAutoRespondersRequest
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.flow.Flow
 
@@ -66,6 +68,14 @@ internal class RemoteConversationService(
     ): Conversation? =
         client.requestTyped<UpdateConversationParticipantsRequest, ConversationResponse>(
             UpdateConversationParticipantsRequest(conversationId, participants)
+        ).conversation
+
+    override suspend fun updateAutoRespondAgentIds(
+        conversationId: Conversation.Id,
+        agentDefinitionIds: Set<AgentDefinition.Id>,
+    ): Conversation? =
+        client.requestTyped<UpdateConversationAutoRespondersRequest, ConversationResponse>(
+            UpdateConversationAutoRespondersRequest(conversationId, agentDefinitionIds)
         ).conversation
 
     override suspend fun fork(conversationId: Conversation.Id): Conversation =

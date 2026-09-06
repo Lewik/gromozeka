@@ -38,14 +38,16 @@ internal class FakeConversationRepository : ConversationRepository {
         )
     }
 
-    override suspend fun updateParticipants(
+    override suspend fun updateParticipantSettings(
         id: Conversation.Id,
-        participants: Set<Conversation.Participant>,
-    ) {
-        conversations[id] = conversations.getValue(id).copy(
-            participants = participants,
+        update: (Conversation) -> Conversation,
+    ): Conversation? {
+        val existing = conversations[id] ?: return null
+        val updated = update(existing).copy(
             updatedAt = Clock.System.now(),
         )
+        conversations[id] = updated
+        return updated
     }
 
     override suspend fun touch(id: Conversation.Id) {

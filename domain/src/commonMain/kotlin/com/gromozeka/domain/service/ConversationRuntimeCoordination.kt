@@ -66,6 +66,14 @@ data class ConversationRuntimeTask(
         @SerialName("post_message")
         data class PostMessage(
             val userMessage: Conversation.Message,
+            val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
+        ) : Payload
+
+        @Serializable
+        @SerialName("agent_response")
+        data class AgentResponse(
+            val rootUserMessageId: Conversation.Message.Id,
+            val agentDefinitionId: AgentDefinition.Id,
         ) : Payload
 
         @Serializable
@@ -198,6 +206,7 @@ data class ConversationRuntimeTask(
         when (this) {
             is Payload.PostMessage,
             is Payload.AgentInvocation,
+            is Payload.AgentResponse,
             is Payload.HistoryMutation,
             is Payload.MemoryRunCompletion,
             is Payload.BackgroundActivityCompletion,
@@ -211,8 +220,12 @@ data class ConversationRuntimeTask(
 
     private fun Payload.requiredCapabilities(): Set<ConversationRuntimeCapability> =
         when (this) {
-            is Payload.PostMessage -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
-            is Payload.AgentInvocation -> setOf(
+            is Payload.PostMessage -> if (autoRespondAgentIds.isEmpty()) {
+                setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+            } else {
+                setOf(ConversationRuntimeCapability.CONVERSATION_TURN, ConversationRuntimeCapability.MEMORY_PIPELINE)
+            }
+            is Payload.AgentInvocation, is Payload.AgentResponse -> setOf(
                 ConversationRuntimeCapability.CONVERSATION_TURN,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
@@ -268,10 +281,14 @@ sealed interface ConversationRuntimeTaskOutcome {
 
     data class Continue(
         val nextTask: ConversationRuntimeTask,
+        val queuedAgentResponses: List<ConversationRuntimeTask> = emptyList(),
     ) : ConversationRuntimeTaskOutcome {
         init {
             require(nextTask.isContinuation()) {
                 "Conversation runtime continuation outcome must contain a continuation task"
+            }
+            require(queuedAgentResponses.all { it.isRootInput() && it.payload is ConversationRuntimeTask.Payload.AgentResponse }) {
+                "Only agent responses may be queued with a continuation"
             }
         }
     }

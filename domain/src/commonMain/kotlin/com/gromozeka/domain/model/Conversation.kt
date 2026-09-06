@@ -38,11 +38,42 @@ data class Conversation(
     val currentThread: Thread.Id,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
 ) {
     init {
         require(participants.any { it is Participant.User }) {
             "Conversation must have at least one user participant"
         }
+        require(autoRespondAgentIds.all { Participant.Agent(it) in participants }) {
+            "Automatic responders must be connected conversation agents"
+        }
+    }
+
+    fun autoRespondersFor(message: Message): Set<AgentDefinition.Id> =
+        autoRespondAgentIds.takeIf {
+            message.role == Message.Role.USER &&
+                message.author !is Message.Author.Agent &&
+                message.instructions.none { it is Message.Instruction.Source.Agent }
+        }.orEmpty()
+
+    fun withParticipants(updatedParticipants: Set<Participant>): Conversation {
+        if (participants == updatedParticipants) return this
+        val defaultResponders = defaultAutoRespondAgentIds(updatedParticipants)
+        return copy(
+            participants = updatedParticipants,
+            autoRespondAgentIds = defaultResponders.ifEmpty {
+                autoRespondAgentIds.filterTo(linkedSetOf()) { Participant.Agent(it) in updatedParticipants }
+            },
+        )
+    }
+
+    companion object {
+        fun defaultAutoRespondAgentIds(participants: Set<Participant>): Set<AgentDefinition.Id> =
+            if (participants.size == 2 && participants.count { it is Participant.User } == 1) {
+                participants.filterIsInstance<Participant.Agent>().mapTo(linkedSetOf()) { it.agentDefinitionId }
+            } else {
+                emptySet()
+            }
     }
 
     /**

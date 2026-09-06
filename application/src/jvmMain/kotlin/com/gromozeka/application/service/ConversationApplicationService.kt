@@ -94,6 +94,7 @@ class ConversationApplicationService(
             id = conversationId,
             projectId = project.id,
             participants = participants,
+            autoRespondAgentIds = Conversation.defaultAutoRespondAgentIds(participants),
             displayName = displayName,
             currentThread = initialThread.id,
             createdAt = now,
@@ -218,15 +219,27 @@ class ConversationApplicationService(
     ): Conversation? {
         val conversation = conversationRepo.findById(conversationId) ?: return null
         validateParticipants(conversation.projectId, participants)
-        conversationRepo.updateParticipants(conversationId, participants)
-        val previousUserIds = conversation.participants
-            .filterIsInstance<Conversation.Participant.User>()
-            .mapTo(mutableSetOf()) { it.userId }
+        var previousUserIds = emptySet<User.Id>()
+        val updated = conversationRepo.updateParticipantSettings(conversationId) { current ->
+            previousUserIds = current.participants.filterIsInstance<Conversation.Participant.User>()
+                .mapTo(mutableSetOf()) { it.userId }
+            current.withParticipants(participants)
+        } ?: return null
         val updatedUserIds = participants
             .filterIsInstance<Conversation.Participant.User>()
             .mapTo(mutableSetOf()) { it.userId }
         publishUnreadState(previousUserIds xor updatedUserIds)
-        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
+        return updated.also(::publishConversationList)
+    }
+
+    @Transactional
+    override suspend fun updateAutoRespondAgentIds(
+        conversationId: Conversation.Id,
+        agentDefinitionIds: Set<AgentDefinition.Id>,
+    ): Conversation? {
+        return conversationRepo.updateParticipantSettings(conversationId) { current ->
+            current.copy(autoRespondAgentIds = agentDefinitionIds)
+        }.also { it?.let(::publishConversationList) }
     }
 
     private suspend fun validateParticipants(
@@ -292,6 +305,7 @@ class ConversationApplicationService(
             id = newConversationId,
             projectId = sourceConversation.projectId,
             participants = sourceConversation.participants,
+            autoRespondAgentIds = sourceConversation.autoRespondAgentIds,
             displayName = sourceConversation.displayName + " (fork)",
             currentThread = newThread.id,
             createdAt = now,

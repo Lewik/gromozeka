@@ -937,7 +937,7 @@ private fun PendingMessageGroup(
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (
                     isWaitingForResponse &&
-                    message.agentDefinitionId != null &&
+                    message.steeringAgentId != null &&
                     message.placement == QueuedMessagePlacement.END_OF_TURN
                 ) {
                     TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
@@ -1119,6 +1119,7 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
     when (this) {
         is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
         is ConversationRuntimeTask.Payload.AgentInvocation -> translation.agentInvocationTask
+        is ConversationRuntimeTask.Payload.AgentResponse -> translation.agentInvocationTask
         is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationTask
         is ConversationRuntimeTask.Payload.LlmCall -> translation.llmCallTask
         is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionTask
@@ -1134,7 +1135,8 @@ private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
     translation: Translation.RuntimeTranslation,
 ): String = when (this) {
     is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
-    is ConversationRuntimeTask.Payload.AgentInvocation -> agentName?.let { "$it ${translation.agentWorkingStatus}" }
+    is ConversationRuntimeTask.Payload.AgentInvocation,
+    is ConversationRuntimeTask.Payload.AgentResponse -> agentName?.let { "$it ${translation.agentWorkingStatus}" }
         ?: translation.agentInvocationTask
     is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationStatus
     is ConversationRuntimeTask.Payload.LlmCall -> translation.modelRequestStatus
@@ -1148,6 +1150,7 @@ private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
 
 private fun ConversationRuntimeTask.Payload.agentDefinitionIdOrNull(): AgentDefinition.Id? = when (this) {
     is ConversationRuntimeTask.Payload.AgentInvocation -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.AgentResponse -> agentDefinitionId
     is ConversationRuntimeTask.Payload.LlmCall -> agentDefinitionId
     is ConversationRuntimeTask.Payload.ToolExecution -> agentDefinitionId
     is ConversationRuntimeTask.Payload.ToolResultProcessing -> agentDefinitionId

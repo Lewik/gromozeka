@@ -10,6 +10,19 @@ import kotlin.time.Clock
 
 class AgentMentionTest {
     @Test
+    fun `reply hint uses automatic responders unless a connected agent is mentioned`() {
+        val candidates = listOf(
+            candidate("agent-1", "@Claude", true).copy(autoRespond = true),
+            candidate("agent-2", "@Codex", true).copy(autoRespond = true),
+        )
+        assertEquals("Replies: Claude, Codex", agentResponseHint("Hello", candidates))
+        assertEquals("Replies: Codex", agentResponseHint("@Codex hello", candidates))
+        assertEquals("No automatic agent response", agentResponseHint("Hello", candidates.map { it.copy(autoRespond = false) }))
+        assertEquals("Replies: Claude", agentResponseHint("Hello", candidates.map { it.copy(connected = it.name == "Claude") }))
+        assertEquals("Agent @Codex is not connected to this conversation", agentResponseHint("@Codex", candidates.map { it.copy(connected = false) }))
+    }
+
+    @Test
     fun `message without a known mention does not target an agent`() {
         val candidates = listOf(candidate("agent-1", "@Claude", connected = true))
 

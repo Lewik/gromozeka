@@ -172,6 +172,7 @@ class ConversationRuntimeDispatcher(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         actorUserId: User.Id? = null,
+        autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
     ): Boolean {
         artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
         return submitRuntimeTask(
@@ -181,6 +182,7 @@ class ConversationRuntimeDispatcher(
                 agentDefinitionId = null,
                 placement = QueuedMessagePlacement.END_OF_TURN,
                 actorUserId = actorUserId,
+                autoRespondAgentIds = autoRespondAgentIds,
             )
         )
     }
@@ -410,6 +412,7 @@ class ConversationRuntimeDispatcher(
         agentDefinitionId: AgentDefinition.Id?,
         placement: QueuedMessagePlacement,
         actorUserId: User.Id?,
+        autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(userMessage.id.value),
@@ -420,11 +423,11 @@ class ConversationRuntimeDispatcher(
                     userMessage = userMessage,
                     agentDefinitionId = it,
                 )
-            } ?: ConversationRuntimeTask.Payload.PostMessage(userMessage),
+            } ?: ConversationRuntimeTask.Payload.PostMessage(userMessage, autoRespondAgentIds),
             placement = placement,
             idempotencyKey = "conversation:${conversationId.value}:message:${userMessage.id.value}",
             requirements = ConversationRuntimeTaskRequirements(
-                capabilities = if (agentDefinitionId == null) {
+                capabilities = if (agentDefinitionId == null && autoRespondAgentIds.isEmpty()) {
                     setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
                 } else {
                     setOf(

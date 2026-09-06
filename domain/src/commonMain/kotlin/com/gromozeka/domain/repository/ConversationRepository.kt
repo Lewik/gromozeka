@@ -79,7 +79,10 @@ interface ConversationRepository {
      */
     suspend fun updateDisplayName(id: Conversation.Id, displayName: String)
 
-    suspend fun updateParticipants(id: Conversation.Id, participants: Set<Conversation.Participant>)
+    suspend fun updateParticipantSettings(
+        id: Conversation.Id,
+        update: (Conversation) -> Conversation,
+    ): Conversation?
 
     suspend fun touch(id: Conversation.Id)
 

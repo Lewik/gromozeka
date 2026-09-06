@@ -291,6 +291,7 @@ internal object ConversationAgentParticipants : Table("conversation_agent_partic
         .references(Conversations.id, onDelete = ReferenceOption.CASCADE)
     val agentDefinitionId = varchar("agent_definition_id", 255)
         .references(Agents.id)
+    val autoRespond = bool("auto_respond").default(false)
 
     override val primaryKey = PrimaryKey(conversationId, agentDefinitionId)
 }

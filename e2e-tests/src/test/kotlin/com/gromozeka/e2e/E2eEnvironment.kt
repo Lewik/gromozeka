@@ -24,9 +24,14 @@ internal object E2eEnvironment {
         )
     }
 
-    fun openClient(): E2eClient = synchronized(this) {
-        val activeRuntime = runtime ?: Runtime.start().also { runtime = it }
-        activeRuntime.openClient()
+    fun openClient(isolatedServer: Boolean = false): E2eClient = synchronized(this) {
+        val activeRuntime = if (isolatedServer) Runtime.start() else runtime ?: Runtime.start().also { runtime = it }
+        try {
+            activeRuntime.openClient(onClose = { if (isolatedServer) activeRuntime.close() })
+        } catch (error: Throwable) {
+            if (isolatedServer) activeRuntime.close()
+            throw error
+        }
     }
 
     private class Runtime(
@@ -55,7 +60,7 @@ internal object E2eEnvironment {
             }
         }
 
-        fun openClient(): E2eClient {
+        fun openClient(onClose: () -> Unit = {}): E2eClient {
             val clientId = UUID.randomUUID().toString()
             val connection = RemoteAuthenticationConnection(server.remoteUrl, "Compose E2E $clientId")
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -80,7 +85,7 @@ internal object E2eEnvironment {
                         httpClient = connection.httpClient,
                     )
                 }
-                E2eClient(app.components, app, connection, scope)
+                E2eClient(app.components, app, connection, scope, onClose, { openClient() })
             } catch (error: Throwable) {
                 scope.cancel()
                 connection.close()
@@ -99,7 +104,7 @@ internal object E2eEnvironment {
                     System.getProperty("gromozeka.e2e.artifactsDir")
                         ?: error("gromozeka.e2e.artifactsDir is not configured")
                 )
-                val processDirectory = artifactsRoot.resolve("process-${ProcessHandle.current().pid()}")
+                val processDirectory = artifactsRoot.resolve("process-${ProcessHandle.current().pid()}-${UUID.randomUUID()}")
                 Files.createDirectories(processDirectory)
                 val database = PostgresTestDatabase.create()
                 return try {
@@ -119,10 +124,13 @@ internal class E2eClient(
     private val app: RemoteAppComponents,
     private val connection: RemoteAuthenticationConnection,
     private val scope: CoroutineScope,
+    private val onClose: () -> Unit,
+    val openAnotherClient: () -> E2eClient,
 ) : AutoCloseable {
     override fun close() {
         app.close()
         scope.cancel()
         connection.close()
+        onClose()
     }
 }

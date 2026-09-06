@@ -164,9 +164,8 @@ private class TestConversationRepository(
         conversations.computeIfPresent(id) { _, conversation -> conversation.copy(displayName = displayName) }
     }
 
-    override suspend fun updateParticipants(id: Conversation.Id, participants: Set<Conversation.Participant>) {
-        conversations.computeIfPresent(id) { _, conversation -> conversation.copy(participants = participants) }
-    }
+    override suspend fun updateParticipantSettings(id: Conversation.Id, update: (Conversation) -> Conversation): Conversation? =
+        conversations.computeIfPresent(id) { _, conversation -> update(conversation) }
 
     override suspend fun touch(id: Conversation.Id) = Unit
 }

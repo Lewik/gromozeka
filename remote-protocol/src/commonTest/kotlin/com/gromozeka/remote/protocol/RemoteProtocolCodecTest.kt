@@ -793,6 +793,11 @@ class RemoteProtocolCodecTest {
         )
         val agentDefinitionId = AgentDefinition.Id("agent-submit-1")
 
+        val settings = UpdateConversationAutoRespondersRequest(userMessage.conversationId, setOf(agentDefinitionId))
+        assertEquals(settings, RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(GromozekaClientEnvelope("automatic-responders", settings))
+        ).payload)
+
         val postEnvelope = GromozekaClientEnvelope(
             id = "post-1",
             payload = PostMessageRequest(

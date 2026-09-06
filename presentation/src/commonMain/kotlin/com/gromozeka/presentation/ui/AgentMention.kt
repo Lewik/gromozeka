@@ -7,6 +7,7 @@ data class AgentMentionCandidate(
     val name: String,
     val mentionText: String,
     val connected: Boolean,
+    val autoRespond: Boolean = false,
 )
 
 internal sealed interface AgentMentionResolution {
@@ -18,6 +19,7 @@ internal sealed interface AgentMentionResolution {
 internal fun buildAgentMentionCandidates(
     agents: List<AgentDefinition>,
     connectedAgentIds: Set<AgentDefinition.Id>,
+    autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
 ): List<AgentMentionCandidate> {
     return agents.map { agent ->
         val sameNameAgents = agents.filter { it.name.equals(agent.name, ignoreCase = true) }
@@ -31,6 +33,7 @@ internal fun buildAgentMentionCandidates(
             name = agent.name,
             mentionText = mentionText,
             connected = agent.id in connectedAgentIds,
+            autoRespond = agent.id in autoRespondAgentIds,
         )
     }.sortedWith(
         compareByDescending<AgentMentionCandidate> { it.connected }
@@ -38,6 +41,16 @@ internal fun buildAgentMentionCandidates(
             .thenBy { it.agentDefinitionId.value }
     )
 }
+
+internal fun agentResponseHint(message: String, candidates: List<AgentMentionCandidate>): String =
+    when (val mention = resolveAgentMention(message, candidates)) {
+        is AgentMentionResolution.Invalid -> mention.message
+        is AgentMentionResolution.Target -> "Replies: ${mention.candidate.name}"
+        AgentMentionResolution.None -> {
+            val names = candidates.filter { it.connected && it.autoRespond }.map { it.name }
+            if (names.isEmpty()) "No automatic agent response" else "Replies: ${names.joinToString()}"
+        }
+    }
 
 private fun AgentDefinition.uniqueIdPrefix(sameNameAgents: List<AgentDefinition>): String {
     val minimumLength = minOf(8, id.value.length)

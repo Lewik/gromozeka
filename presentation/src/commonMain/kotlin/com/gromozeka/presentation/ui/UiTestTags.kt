@@ -82,6 +82,12 @@ sealed interface UiTestTag {
         override val suffixParts: List<Any?> = listOf(kind, id)
     }
 
+    data class AgentAutoRespond(val agentId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(agentId)
+    }
+
+    data object AgentResponseHint : UiTestTag
+
     data class AgentMentionOption(val agentDefinitionId: String) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(agentDefinitionId)
     }

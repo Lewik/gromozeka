@@ -43,6 +43,40 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class InMemoryConversationRuntimeStoresTest {
+    @Test
+    fun `automatic responders are queued atomically behind the first agent and before later user messages`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val original = task("automatic-message", QueuedMessagePlacement.END_OF_TURN)
+        val userMessage = original.requireAgentInvocation().userMessage
+        val secondAgent = AgentDefinition.Id("agent-2")
+        val submission = original.copy(payload = ConversationRuntimeTask.Payload.PostMessage(
+            userMessage, setOf(agentDefinitionId, secondAgent),
+        ))
+        val secondResponse = task("automatic-message:agent-2", QueuedMessagePlacement.END_OF_TURN).copy(
+            payload = ConversationRuntimeTask.Payload.AgentResponse(userMessage.id, secondAgent),
+        )
+        val laterMessage = task("later-message", QueuedMessagePlacement.END_OF_TURN)
+        val firstLlmCall = llmTask("automatic-message:llm", submission)
+        val worker = worker("automatic-worker")
+        val executor = executor(worker)
+
+        assertTrue(coordinator.submit(submission))
+        assertTrue(coordinator.submit(laterMessage))
+        assertFalse(coordinator.submit(submission))
+        assertEquals(submission, coordinator.claimAsEligibleWorker(submission, worker))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, submission.id, executor, Clock.System.now()))
+        val outcome = ConversationRuntimeTaskOutcome.Continue(firstLlmCall, listOf(secondResponse))
+        assertTrue(coordinator.completeActiveTask(conversationId, submission.id, executor, outcome))
+        assertFalse(coordinator.completeActiveTask(conversationId, submission.id, executor, outcome))
+        assertEquals(listOf(firstLlmCall.id, secondResponse.id, laterMessage.id), coordinator.listPending(conversationId).map { it.id })
+        assertNull(secondResponse.userMessageOrNull())
+        assertNull(coordinator.claimAsEligibleWorker(secondResponse, worker))
+        assertEquals(firstLlmCall, coordinator.claimAsEligibleWorker(firstLlmCall, worker))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, firstLlmCall.id, executor, Clock.System.now()))
+        assertTrue(coordinator.completeActiveTask(conversationId, firstLlmCall.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+        assertEquals(secondResponse, coordinator.claimAsEligibleWorker(secondResponse, worker))
+    }
+
     private val conversationId = Conversation.Id("conversation-1")
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
 

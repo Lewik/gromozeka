@@ -1,6 +1,8 @@
 package com.gromozeka.e2e
 
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.graphics.asSkiaBitmap
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,6 +15,7 @@ import com.gromozeka.presentation.ui.UiTestTag
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import org.jetbrains.skia.Image
 
 @OptIn(ExperimentalTestApi::class)
 internal fun runGromozekaUiTest(
@@ -21,9 +24,10 @@ internal fun runGromozekaUiTest(
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
     viewportWidth: Int = 1280,
     viewportHeight: Int = 800,
+    isolatedServer: Boolean = false,
     block: ComposeUiTest.(E2eClient) -> Unit,
 ) {
-    E2eEnvironment.openClient().use { client ->
+    E2eEnvironment.openClient(isolatedServer).use { client ->
         runDesktopComposeUiTest(width = viewportWidth, height = viewportHeight) {
             setContent {
                 GromozekaApp(
@@ -50,6 +54,16 @@ internal fun ComposeUiTest.waitForTag(tag: UiTestTag, timeoutMillis: Long = 30_0
         onAllNodesWithTag(tag.value, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
     }
     onNodeWithTag(tag.value, useUnmergedTree = true).assertExists()
+}
+
+internal fun ComposeUiTest.saveScreenshot(scenarioName: String) {
+    val directory = Path.of(checkNotNull(System.getProperty("gromozeka.e2e.artifactsDir"))).resolve("screenshots")
+    Files.createDirectories(directory)
+    Image.makeFromBitmap(onRoot().captureToImage().asSkiaBitmap()).use { image ->
+        checkNotNull(image.encodeToData()).use { data ->
+            Files.write(directory.resolve("$scenarioName.png"), data.bytes)
+        }
+    }
 }
 
 private fun writeSemanticsSnapshot(scenarioName: String, content: String) {

@@ -685,6 +685,12 @@ class GromozekaRemoteServer(
                 is UpdateConversationDisplayNameRequest -> ConversationResponse(
                     conversationDomainService.updateDisplayName(request.conversationId, request.displayName)
                 )
+                is UpdateConversationAutoRespondersRequest -> ConversationResponse(
+                    conversationDomainService.updateAutoRespondAgentIds(
+                        request.conversationId,
+                        request.agentDefinitionIds,
+                    )
+                )
                 is UpdateConversationParticipantsRequest -> ConversationResponse(
                     conversationDomainService.updateParticipants(
                         request.conversationId,

@@ -4,6 +4,7 @@ import com.gromozeka.infrastructure.db.persistence.tables.Conversations
 import com.gromozeka.infrastructure.db.persistence.tables.ConversationAgentParticipants
 import com.gromozeka.infrastructure.db.persistence.tables.ConversationUserParticipants
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -28,6 +29,7 @@ class ExposedConversationRepository : ConversationRepository {
             it[updatedAt] = conversation.updatedAt
         }
         saveParticipants(conversation.id, conversation.participants)
+        saveAutoResponders(conversation.id, conversation.autoRespondAgentIds)
         conversation
     }
 
@@ -36,7 +38,7 @@ class ExposedConversationRepository : ConversationRepository {
             .where { Conversations.id eq id.value }
             .singleOrNull()
             ?: return@dbQuery null
-        row.toConversation(loadParticipants(setOf(id))[id].orEmpty())
+        row.toConversation(loadParticipants(setOf(id))[id].orEmpty(), loadAutoResponders(setOf(id))[id].orEmpty())
     }
 
     override suspend fun findByProject(projectId: Project.Id): List<Conversation> = dbQuery {
@@ -45,9 +47,10 @@ class ExposedConversationRepository : ConversationRepository {
             .orderBy(Conversations.updatedAt, SortOrder.DESC)
             .toList()
         val participantsByConversation = loadParticipants(rows.mapTo(mutableSetOf()) { Conversation.Id(it[Conversations.id]) })
+        val respondersByConversation = loadAutoResponders(participantsByConversation.keys)
         rows.map { row ->
             val id = Conversation.Id(row[Conversations.id])
-            row.toConversation(participantsByConversation[id].orEmpty())
+            row.toConversation(participantsByConversation[id].orEmpty(), respondersByConversation[id].orEmpty())
         }
     }
 
@@ -68,11 +71,19 @@ class ExposedConversationRepository : ConversationRepository {
         }
     }
 
-    override suspend fun updateParticipants(
+    override suspend fun updateParticipantSettings(
         id: Conversation.Id,
-        participants: Set<Conversation.Participant>,
-    ): Unit = dbQuery {
+        update: (Conversation) -> Conversation,
+    ): Conversation? = dbQuery {
+        val row = Conversations.selectAll().where { Conversations.id eq id.value }.forUpdate().singleOrNull()
+            ?: return@dbQuery null
         val existing = loadParticipants(setOf(id))[id].orEmpty()
+        val current = row.toConversation(existing, loadAutoResponders(setOf(id))[id].orEmpty())
+        val updated = update(current)
+        check(current.copy(participants = updated.participants, autoRespondAgentIds = updated.autoRespondAgentIds) == updated) {
+            "Participant settings update cannot change other conversation fields"
+        }
+        val participants = updated.participants
         val removed = existing - participants
         val added = participants - existing
 
@@ -91,7 +102,34 @@ class ExposedConversationRepository : ConversationRepository {
             }
         }
         saveParticipants(id, added)
-        Conversations.update({ Conversations.id eq id.value }) { it[updatedAt] = Clock.System.now() }
+        saveAutoResponders(id, updated.autoRespondAgentIds)
+        val now = Clock.System.now()
+        Conversations.update({ Conversations.id eq id.value }) { it[updatedAt] = now }
+        updated.copy(updatedAt = now)
+    }
+
+    private fun saveAutoResponders(id: Conversation.Id, agentDefinitionIds: Set<AgentDefinition.Id>) {
+        ConversationAgentParticipants.update({ ConversationAgentParticipants.conversationId eq id.value }) {
+            it[autoRespond] = false
+        }
+        if (agentDefinitionIds.isNotEmpty()) {
+            val updated = ConversationAgentParticipants.update({
+                (ConversationAgentParticipants.conversationId eq id.value) and
+                    (ConversationAgentParticipants.agentDefinitionId inList agentDefinitionIds.map { it.value })
+            }) { it[autoRespond] = true }
+            check(updated == agentDefinitionIds.size) { "Automatic responder is not connected to conversation" }
+        }
+    }
+
+    private fun loadAutoResponders(conversationIds: Set<Conversation.Id>): Map<Conversation.Id, Set<AgentDefinition.Id>> {
+        if (conversationIds.isEmpty()) return emptyMap()
+        return ConversationAgentParticipants.selectAll().where {
+            (ConversationAgentParticipants.conversationId inList conversationIds.map { it.value }) and
+                (ConversationAgentParticipants.autoRespond eq true)
+        }.groupBy(
+            { Conversation.Id(it[ConversationAgentParticipants.conversationId]) },
+            { AgentDefinition.Id(it[ConversationAgentParticipants.agentDefinitionId]) },
+        ).mapValues { (_, ids) -> ids.toSet() }
     }
 
     override suspend fun touch(id: Conversation.Id): Unit = dbQuery {
@@ -141,10 +179,14 @@ class ExposedConversationRepository : ConversationRepository {
         return participants
     }
 
-    private fun ResultRow.toConversation(participants: Set<Conversation.Participant>) = Conversation(
+    private fun ResultRow.toConversation(
+        participants: Set<Conversation.Participant>,
+        autoRespondAgentIds: Set<AgentDefinition.Id>,
+    ) = Conversation(
         id = Conversation.Id(this[Conversations.id]),
         projectId = Project.Id(this[Conversations.projectId]),
         participants = participants,
+        autoRespondAgentIds = autoRespondAgentIds,
         displayName = this[Conversations.displayName],
         currentThread = Conversation.Thread.Id(this[Conversations.currentThreadId]),
         createdAt = this[Conversations.createdAt],

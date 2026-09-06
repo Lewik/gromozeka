@@ -125,6 +125,16 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.PostMessage -> runPostMessageStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.AgentInvocation ->
                 runAgentInvocationStep(task, executor, payload, emitMessage)
+            is ConversationRuntimeTask.Payload.AgentResponse -> {
+                val userMessage = conversationService.loadCurrentMessages(task.conversationId)
+                    .firstOrNull { it.id == payload.rootUserMessageId }
+                    ?: error("Agent response source message is no longer in the conversation")
+                runAgentInvocationStep(
+                    task, executor,
+                    ConversationRuntimeTask.Payload.AgentInvocation(userMessage, payload.agentDefinitionId),
+                    emitMessage,
+                )
+            }
             is ConversationRuntimeTask.Payload.HistoryMutation ->
                 runHistoryMutationStep(task, executor, payload)
             is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, executor, payload, emitMessage)
@@ -164,6 +174,33 @@ class ConversationEngineService(
     ): ConversationRuntimeTaskOutcome {
         ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
         requireActorConnected(task)
+        val agentIds = payload.autoRespondAgentIds.sortedBy { it.value }
+        if (agentIds.isNotEmpty()) {
+            require(payload.userMessage.role == Conversation.Message.Role.USER) {
+                "Only user messages can trigger automatic responses"
+            }
+            val firstResponse = runAgentInvocationStep(
+                task, executor,
+                ConversationRuntimeTask.Payload.AgentInvocation(payload.userMessage, agentIds.first()),
+                emitMessage,
+            )
+            check(firstResponse is ConversationRuntimeTaskOutcome.Continue)
+            return firstResponse.copy(
+                queuedAgentResponses = agentIds.drop(1).map { agentId ->
+                    val responseId = "${task.id.value}:agent:${agentId.value}"
+                    ConversationRuntimeTask(
+                        id = ConversationRuntimeTask.Id(responseId),
+                        conversationId = task.conversationId,
+                        actorUserId = task.actorUserId,
+                        payload = ConversationRuntimeTask.Payload.AgentResponse(payload.userMessage.id, agentId),
+                        placement = QueuedMessagePlacement.END_OF_TURN,
+                        idempotencyKey = "${task.idempotencyKey}:agent:${agentId.value}",
+                        requirements = task.requirements,
+                        createdAt = task.createdAt,
+                    )
+                },
+            )
+        }
         if (addRuntimeMessageIfMissing(task.conversationId, payload.userMessage)) {
             emitMessage(payload.userMessage)
         }
@@ -1223,7 +1260,7 @@ class ConversationEngineService(
         actorUserId: User.Id?,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
-            id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:llm:$iteration"),
+            id = ConversationRuntimeTask.Id("${parentTask.turnId.value}:llm:$iteration"),
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
@@ -1234,7 +1271,7 @@ class ConversationEngineService(
                 iteration = iteration,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
-            idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:llm:$iteration",
+            idempotencyKey = "conversation:${conversationId.value}:runtime:${parentTask.turnId.value}:llm:$iteration",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
@@ -1286,7 +1323,7 @@ class ConversationEngineService(
         actorUserId: User.Id?,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
-            id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tools:$iteration"),
+            id = ConversationRuntimeTask.Id("${parentTask.turnId.value}:tools:$iteration"),
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
@@ -1301,7 +1338,7 @@ class ConversationEngineService(
                 executionToolNamesByCallId = routing.executionToolNamesByCallId,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
-            idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:tools:$iteration",
+            idempotencyKey = "conversation:${conversationId.value}:runtime:${parentTask.turnId.value}:tools:$iteration",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
                 target = ConversationRuntimeTaskTarget.Server,
@@ -1320,7 +1357,7 @@ class ConversationEngineService(
         actorUserId: User.Id?,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
-            id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tool-result-processing:$iteration"),
+            id = ConversationRuntimeTask.Id("${parentTask.turnId.value}:tool-result-processing:$iteration"),
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
@@ -1334,7 +1371,7 @@ class ConversationEngineService(
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey =
-                "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:tool-result-processing:$iteration",
+                "conversation:${conversationId.value}:runtime:${parentTask.turnId.value}:tool-result-processing:$iteration",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
                     ConversationRuntimeCapability.CONVERSATION_TURN,

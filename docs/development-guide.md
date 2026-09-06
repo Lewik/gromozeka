@@ -134,10 +134,18 @@ Conversation turns and memory pipelines always run on the Server. A Worker can
 execute configured tools and finite AI request-response operations, but it does
 not own conversation or memory orchestration.
 
-Posting a User message and invoking an Agent are separate operations. A plain
-post only appends the message through the serialized Conversation runtime. An
-Agent invocation appends the User message and starts that connected Agent's AI
-and memory pipeline.
+Posting a User message and explicitly invoking an Agent are separate operations.
+The Server selects a Conversation's configured automatic responders when accepting
+a User post, persists the message once, and runs those Agents sequentially through
+the serialized Conversation runtime. Without automatic responders, posting only
+appends the message. An explicit Agent invocation (including a UI `@mention`)
+starts only that connected Agent, overriding automatic responders. Agent-authored
+messages do not trigger automatic replies.
+
+Creating a Conversation or changing its participants to exactly one User and one
+Agent enables that Agent's automatic replies. Manual changes persist until an
+actual participant-set change; adding participants preserves existing choices,
+and disconnecting an Agent removes it from the automatic responders.
 
 Every AI connection has an exact execution target: the Server or one named
 Worker. Finite LLM calls, embeddings, speech transcription, and speech synthesis
