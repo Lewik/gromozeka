@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
+import klog.KLoggers
 
 class WorkerRequestPendingException(val requestId: String) : IllegalStateException(
     "Worker request $requestId is still pending. Waiting ended, but the request was not cancelled. Query grz_worker_request_get or cancel it explicitly.",
@@ -32,6 +33,7 @@ class WorkerRequestService(
     private val repository: WorkerRequestRepository,
     private val authorization: WorkerRequestAuthorization,
 ) {
+    private val log = KLoggers.logger(this)
     suspend fun execute(
         workerId: ConversationRuntimeWorkerId,
         operation: WorkerGatewayOperation,
@@ -39,8 +41,10 @@ class WorkerRequestService(
         policy: WorkerRequestPolicy,
         actorUserId: User.Id? = null,
         projectId: Project.Id? = null,
+        diagnosticId: String? = null,
     ): ByteArray {
         val id = submit(workerId, operation, payload, policy, actorUserId, projectId)
+        log.debug { "WORKER_REQUEST_TRACE request=$id call=${diagnosticId ?: "none"} phase=awaiting" }
         return try {
             val response = await(id, policy.waitTimeoutMillis)
             check(response.status == WorkerGatewayMessage.Response.Status.SUCCEEDED) {
@@ -76,6 +80,10 @@ class WorkerRequestService(
         )
         authorization.requireAccess(record)
         repository.create(record)
+        log.debug {
+            "WORKER_REQUEST_TRACE request=${request.id} phase=persisted worker=${workerId.value} " +
+                "operation=$operation bytes=${payload.size}"
+        }
         return request.id
     }
 
@@ -102,6 +110,7 @@ class WorkerRequestService(
         while (true) {
             val progress = requireNotNull(repository.progress(id)) { "Unknown Worker request $id" }
             if (progress.completedAt != null) {
+                log.debug { "WORKER_REQUEST_TRACE request=$id phase=result_observed" }
                 return WorkerGatewayCodec.decode(requireNotNull(repository.find(id)?.response)) as WorkerGatewayMessage.Response
             }
             if (progress.dispatchedAt == null && (progress.cancelRequestedAt != null || Clock.System.now() >= initial.startDeadline)) {
@@ -143,6 +152,10 @@ class WorkerRequestService(
                 if (!repository.markDispatched(record.id, Clock.System.now())) continue
                 val cancelled = entry.cancelRequested || !permitted
                 session.send(request.copy(delivery = requireNotNull(request.delivery).copy(cancelRequested = cancelled)))
+                log.debug {
+                    "WORKER_REQUEST_TRACE request=${request.id} phase=dispatched worker=${session.identity.workerId.value} " +
+                        "queueMs=${(Clock.System.now() - record.createdAt).inWholeMilliseconds} cancelled=$cancelled"
+                }
                 delivered[entry.id] = cancelled
             }
             delay(250)
@@ -155,6 +168,10 @@ class WorkerRequestService(
         require(record.dispatchedAt != null) { "Worker returned an undispatched request result" }
         if (record.response == null) {
             repository.complete(workerId, response.requestId, WorkerGatewayCodec.encode(response), Clock.System.now())
+        }
+        log.debug {
+            "WORKER_REQUEST_TRACE request=${response.requestId} phase=result_persisted " +
+                "status=${response.status} duplicate=${record.response != null} bytes=${response.payload?.size ?: 0}"
         }
         return true
     }

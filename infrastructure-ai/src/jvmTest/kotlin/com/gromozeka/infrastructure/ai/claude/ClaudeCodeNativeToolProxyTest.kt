@@ -102,7 +102,6 @@ class ClaudeCodeNativeToolProxyTest {
             workspaceDirectory = null,
             systemPrompt = "Use the selected native tool exactly once.",
             userPrompt = "Search for Kotlin coroutines.",
-            jsonSchema = null,
             effort = null,
             reasoningMode = null,
             resumeSessionId = null,

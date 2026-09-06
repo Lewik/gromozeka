@@ -16,6 +16,10 @@ import com.gromozeka.domain.repository.ClaudeCodeSessionStateRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -77,9 +81,9 @@ class ClaudeCodeCliRuntimeTest {
         assertTrue(systemPrompt.contains("Never invoke an external action name through Claude Code native tool use"))
         assertTrue(systemPrompt.contains("Group every independent external action"))
         assertTrue(systemPrompt.contains("<action name=\"read_file\">"))
-        assertTrue(executor.commands.single().userPrompt.endsWith("</gromozeka_external_action_reminder>"))
+        assertTrue(executor.commands.single().userPrompt.endsWith("</system-reminder>"))
         val command = executor.commands.single()
-        val schema = command.jsonSchema?.jsonObject ?: error("Expected Claude Code wrapper schema")
+        val schema = Json.parseToJsonElement(command.systemPrompt.substringAfter("<json_schema>\n").substringBefore("\n</json_schema>")).jsonObject
         assertEquals(
             listOf("response"),
             schema["required"]?.jsonArray?.map { it.jsonPrimitive.content },
@@ -770,6 +774,158 @@ class ClaudeCodeCliRuntimeTest {
         )
     }
 
+    @Test
+    fun correctsThreeInvalidResponsesBeforeReturningValidatedActions() = runBlocking {
+        val valid = actionResponse("README.md")
+        val executor = FakeClaudeCodeCliExecutor(
+            valid.copy(result = "```json\n${valid.result}\n```"),
+            valid.copy(result = """{"response":{"kind":"tool_calls","tool_calls":[]}}"""),
+            valid.copy(result = valid.result.replace("\"README.md\"", "42")),
+            valid,
+            response(structuredOutput = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("Done"))),
+        )
+        val runtime = runtime(executor)
+        val user = userMessage("Read README.md without executing anything twice")
+        val result = runtime.call(request(listOf(user), listOf(readFileTool())))
+        assertEquals(1, result.toolCalls.size)
+        assertEquals("README.md", result.toolCalls.single().call.input.jsonObject.getValue("path").jsonPrimitive.content)
+        assertEquals(4, executor.commands.size)
+        assertEquals(40, result.usage?.promptTokens)
+        assertEquals(20, result.usage?.completionTokens)
+        for (command in executor.commands.drop(1)) {
+            assertEquals("session-1", command.resumeSessionId)
+            assertEquals(executor.commands.first().systemPrompt, command.systemPrompt)
+            assertTrue(command.userContentBlocks.isEmpty())
+            assertTrue(command.userPrompt.contains("Validation errors:"))
+            assertFalse(command.userPrompt.contains("Read README.md without executing anything twice"))
+            assertTrue(command.userPrompt.endsWith("</system-reminder>"))
+        }
+        assertTrue(executor.commands.last().userPrompt.contains("arguments"))
+        val assistant = assistantMessage("").copy(content = result.messages.single().content)
+        val toolResult = userMessage("").copy(content = listOf(Conversation.Message.ContentItem.ToolResult(
+            toolUseId = result.toolCalls.single().id,
+            toolName = "read_file",
+            result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("Contents")),
+        )))
+        val final = runtime.call(request(listOf(user, assistant, toolResult), listOf(readFileTool())))
+        assertEquals("Done", final.messages.single().text())
+        assertEquals("session-1", executor.commands.last().resumeSessionId)
+        assertFalse(executor.commands.last().userPrompt.contains("Validation errors:"))
+    }
+
+    @Test
+    fun rejectsEntireActionBatchWhenOneActionHasInvalidArguments() = runBlocking {
+        val valid = actionResponse("README.md")
+        val invalid = valid.copy(result = """{"response":{"kind":"tool_calls","tool_calls":[
+            {"action_name":"read_file","arguments":{"path":"README.md"}},
+            {"action_name":"read_file","arguments":{"missing":"LICENSE"}}
+        ]}}""")
+        val executor = FakeClaudeCodeCliExecutor(invalid, invalid, invalid, invalid, valid)
+        val runtime = runtime(executor)
+        assertFailsWith<ClaudeCodeResponseFormatException> {
+            runtime.call(request(listOf(userMessage("Read two files")), listOf(readFileTool())))
+        }
+        assertEquals(4, executor.commands.size)
+        assertTrue(executor.commands[1].userPrompt.contains("/response/tool_calls/1/arguments"))
+        runtime.call(request(listOf(userMessage("Try a new turn")), listOf(readFileTool())))
+        assertNull(executor.commands.last().resumeSessionId)
+    }
+
+    @Test
+    fun correctsRequiredToolChoiceAndUnknownActionNames() = runBlocking {
+        val valid = actionResponse("README.md")
+        val executor = FakeClaudeCodeCliExecutor(
+            response(structuredOutput = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("Premature"))),
+            valid.copy(result = valid.result.replace("read_file", "unknown_action")),
+            valid,
+        )
+        val result = runtime(executor).call(request(listOf(userMessage("Read a file")), listOf(readFileTool()),
+            AiRuntimeOptions(toolChoice = AiToolChoice.RequiredTool("read_file"), toolContext = testToolContext())))
+        assertEquals("read_file", result.toolCalls.single().call.name)
+        assertEquals(3, executor.commands.size)
+    }
+
+    @Test
+    fun validatesJsonSchemaWithoutToolsAndDoesNotUseCliSchemaFlag() = runBlocking {
+        val valid = actionResponse("unused").copy(result = """{"answer":"Привет"}""")
+        val executor = FakeClaudeCodeCliExecutor(valid.copy(result = """{"answer":2}"""), valid)
+        val schema = Json.parseToJsonElement("""{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}""").jsonObject
+        val result = runtime(executor).call(request(listOf(userMessage("Say hello")), emptyList(), AiRuntimeOptions(
+            responseFormat = AiResponseFormat.JsonSchema("answer", schema), toolContext = testToolContext())))
+        assertEquals("""{"answer":"Привет"}""", result.messages.single().text())
+        assertFalse(executor.commands.first().userPrompt.contains("tool_calls"))
+        assertTrue(executor.commands.first().systemPrompt.contains(schema.toString()))
+        val processExecutor = ProcessClaudeCodeCliExecutor()
+        try {
+            val args = processExecutor.buildArgs(executor.commands.first(), "/tmp/probe-system.md")
+            assertFalse("--json-schema" in args)
+            assertTrue(args.windowed(2).contains(listOf("--output-format", "stream-json")))
+        } finally {
+            processExecutor.shutdown()
+        }
+    }
+
+    @Test
+    fun doesNotRetryCancellationOrTransportFailures() = runBlocking {
+        for (failure in listOf(CancellationException("cancelled"), java.io.IOException("transport failed"))) {
+            var attempts = 0
+            val executor = object : ClaudeCodeCliExecutor {
+                override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {
+                    attempts++
+                    throw failure
+                }
+            }
+            val thrown = assertFailsWith<Exception> {
+                runtime(executor).call(request(listOf(userMessage("Read")), listOf(readFileTool())))
+            }
+            assertTrue(thrown === failure)
+            assertEquals(1, attempts)
+        }
+    }
+
+    @Test
+    fun correctionRemainsInsideCallerTimeout() = runBlocking {
+        var attempts = 0
+        val executor = object : ClaudeCodeCliExecutor {
+            override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {
+                attempts++
+                if (attempts == 1) return actionResponse("README.md").copy(result = "not json")
+                awaitCancellation()
+            }
+        }
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(200) { runtime(executor).call(request(listOf(userMessage("Read")), listOf(readFileTool()))) }
+        }
+        assertEquals(2, attempts)
+    }
+
+    private fun actionResponse(path: String) = response(structuredOutput = Json.parseToJsonElement(
+        """{"kind":"tool_calls","tool_calls":[{"action_name":"read_file","arguments":{"path":"$path"}}]}"""))
+
+    @Test
+    fun requestsDependentActionOnlyAfterPreviousResult() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(actionResponse("index.txt"), actionResponse("chapter.txt"),
+            response(structuredOutput = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("Chapter"))))
+        val runtime = runtime(executor)
+        val messages = mutableListOf(userMessage("Read the index, then read the file it names"))
+        for ((path, contents) in listOf("index.txt" to "chapter.txt", "chapter.txt" to "Chapter")) {
+            val result = runtime.call(request(messages.toList(), listOf(readFileTool())))
+            val action = result.toolCalls.single()
+            assertEquals(path, action.call.input.jsonObject.getValue("path").jsonPrimitive.content)
+            messages += assistantMessage("").copy(content = result.messages.single().content)
+            messages += userMessage("").copy(content = listOf(Conversation.Message.ContentItem.ToolResult(
+                toolUseId = action.id, toolName = action.call.name,
+                result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text(contents)),
+            )))
+        }
+        val result = runtime.call(request(messages.toList(), listOf(readFileTool())))
+        assertTrue(result.toolCalls.isEmpty())
+        assertEquals("Chapter", result.messages.single().text())
+        assertTrue(executor.commands[1].userPrompt.contains("chapter.txt"))
+        assertFalse(executor.commands[1].userPrompt.contains("Read the index"))
+        assertTrue(executor.commands.drop(1).all { it.resumeSessionId == "session-1" })
+    }
+
     private fun runtime(executor: ClaudeCodeCliExecutor): ClaudeCodeCliRuntime =
         ClaudeCodeCliRuntime(
             executor = executor,
@@ -827,7 +983,7 @@ class ClaudeCodeCliRuntimeTest {
         val envelope = jsonObject("response" to structuredOutput)
         return ClaudeCodeCliResponse(
             result = envelope.toString(),
-            structuredOutput = envelope,
+            structuredOutput = null,
             sessionId = sessionId,
             usage = jsonObject(
                 "input_tokens" to JsonPrimitive(10),

@@ -44,6 +44,7 @@ kotlin {
                 implementation(libs.ktor.server.sse)
                 implementation(libs.ktor.server.content.negotiation)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.json.schema.validator)
                 implementation(libs.jackson.module.kotlin)
                 implementation(libs.pty4j)
 

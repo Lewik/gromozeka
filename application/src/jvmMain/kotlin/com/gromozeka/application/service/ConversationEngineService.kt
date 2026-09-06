@@ -221,10 +221,19 @@ class ConversationEngineService(
         payload: ConversationRuntimeTask.Payload.LlmCall,
         emitMessage: suspend (Conversation.Message) -> Unit,
     ): ConversationRuntimeTaskOutcome {
+        val diagnosticStartedAt = System.nanoTime()
+        val diagnosticId = uuid7().toString()
+        log.debug {
+            "AI_TURN_TRACE call=$diagnosticId task=${task.id.value} phase=preparing iteration=${payload.iteration}"
+        }
         val conversationId = task.conversationId
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        log.debug {
+            "AI_TURN_TRACE call=$diagnosticId phase=context_ready " +
+                "elapsedMs=${(System.nanoTime() - diagnosticStartedAt) / 1_000_000}"
+        }
 
         if (payload.iteration > MAX_TOOL_LOOP_ITERATIONS) {
             val errorMessage = AiConversationMessageMapper.createErrorMessage(
@@ -290,6 +299,7 @@ class ConversationEngineService(
                 ),
                 assistantResponseFormat = context.assistantResponseFormat,
                 toolContext = buildMap {
+                    put("aiCallDiagnosticId", diagnosticId)
                     put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
                     put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
                     put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
@@ -304,6 +314,10 @@ class ConversationEngineService(
         )
 
         val generationStartedAt = Clock.System.now()
+        log.debug {
+            "AI_TURN_TRACE call=$diagnosticId phase=request_ready messages=${runtimeMessages.size} " +
+                "tools=${runtimeRequest.tools.size} elapsedMs=${(System.nanoTime() - diagnosticStartedAt) / 1_000_000}"
+        }
         val activeGeneration = ActiveGenerationSnapshot(
             generationId = uuid7(),
             conversationId = conversationId,
@@ -361,6 +375,10 @@ class ConversationEngineService(
             "Runtime response received: assistantMessages=${runtimeResponse.messages.size}, " +
                 "toolCalls=${runtimeResponse.toolCalls.size}, finishReason=${runtimeResponse.finishReason}"
         }
+        log.debug {
+            "AI_TURN_TRACE call=$diagnosticId phase=model_completed " +
+                "elapsedMs=${(System.nanoTime() - diagnosticStartedAt) / 1_000_000}"
+        }
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
 
         if (runtimeResponse.messages.isEmpty() && runtimeResponse.toolCalls.isEmpty()) {
@@ -401,6 +419,10 @@ class ConversationEngineService(
             val added = addRuntimeMessageIfMissing(conversationId, message)
             if (added) {
                 emitMessage(message)
+                log.debug {
+                    "AI_TURN_TRACE call=$diagnosticId phase=message_emitted " +
+                        "elapsedMs=${(System.nanoTime() - diagnosticStartedAt) / 1_000_000}"
+                }
             }
             if (added && context.automaticMemoryRememberEnabled) {
                 routeMessageThroughMemoryRouter(

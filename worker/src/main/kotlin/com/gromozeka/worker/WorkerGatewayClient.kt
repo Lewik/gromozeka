@@ -233,6 +233,7 @@ class WorkerGatewayOperationHandler(
     private val workerWorkspaceTextFileHandler: WorkerWorkspaceTextFileHandler,
     private val parallelToolExecutor: ParallelToolExecutor,
 ) {
+    private val log = KLoggers.logger(this)
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = false
@@ -241,8 +242,13 @@ class WorkerGatewayOperationHandler(
     suspend fun execute(
         identity: ConversationRuntimeWorkerIdentity,
         request: WorkerGatewayMessage.Request,
-    ): WorkerGatewayMessage.Response =
-        runCatching {
+    ): WorkerGatewayMessage.Response {
+        val startedAt = System.nanoTime()
+        log.debug {
+            "WORKER_REQUEST_TRACE request=${request.id} phase=execution_started operation=${request.operation} " +
+                "bytes=${request.payload.size}"
+        }
+        return runCatching {
             val payload = when (request.operation) {
                 WorkerGatewayOperation.WORKER_CONTROL -> {
                     val controlRequest = json.decodeFromString<WorkerControlRequest>(
@@ -311,7 +317,13 @@ class WorkerGatewayOperationHandler(
                 errorCode = error::class.simpleName ?: "WorkerOperationFailure",
                 errorMessage = error.message ?: "Worker operation failed",
             )
+        }.also { response ->
+            log.debug {
+                "WORKER_REQUEST_TRACE request=${request.id} phase=execution_finished status=${response.status} " +
+                    "elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000} bytes=${response.payload?.size ?: 0}"
+            }
         }
+    }
 }
 
 internal fun workerGatewayWebSocketUrl(serverUrl: String): String {

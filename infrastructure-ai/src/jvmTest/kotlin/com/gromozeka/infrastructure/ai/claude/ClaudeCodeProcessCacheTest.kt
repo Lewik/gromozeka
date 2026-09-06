@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
@@ -484,6 +485,46 @@ class ClaudeCodeProcessCacheTest {
         }
     }
 
+    @Test
+    fun keepsEphemeralProcessAliveAcrossResponseCorrections() = runBlocking {
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val initial = command(cacheKey = null, noSessionPersistence = true)
+        try {
+            executor.withSession(initial) { session ->
+                val first = session.execute(initial)
+                assertFalse(factory.started.single().closed)
+                session.execute(initial.copy(userPrompt = "correct JSON", resumeSessionId = first.sessionId))
+                assertEquals(listOf("first", "correct JSON"), factory.started.single().prompts)
+                assertFalse(factory.started.single().closed)
+            }
+            assertTrue(factory.started.single().closed)
+            assertTrue(factory.started.single().startCommand.noSessionPersistence)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun evictsProcessWhenResponseValidationFails() = runBlocking {
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val initial = command(cacheKey = "conversation")
+        try {
+            assertFailsWith<ClaudeCodeResponseFormatException> {
+                executor.withSession(initial) { session ->
+                    session.execute(initial)
+                    throw ClaudeCodeResponseFormatException()
+                }
+            }
+            executor.execute(initial)
+            assertEquals(2, factory.started.size)
+        } finally {
+            executor.shutdown()
+        }
+        assertTrue(factory.started.all { it.closed })
+    }
+
     private fun command(
         cacheKey: String?,
         maxCachedProcesses: Int = AiConnection.ClaudeCode.DEFAULT_MAX_CACHED_PROCESSES,
@@ -504,7 +545,6 @@ class ClaudeCodeProcessCacheTest {
             workspaceDirectory = null,
             systemPrompt = systemPrompt,
             userPrompt = userPrompt,
-            jsonSchema = null,
             effort = null,
             reasoningMode = reasoningMode,
             resumeSessionId = resumeSessionId,

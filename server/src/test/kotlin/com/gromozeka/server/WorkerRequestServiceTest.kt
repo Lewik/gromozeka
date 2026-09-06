@@ -63,6 +63,40 @@ class WorkerRequestServiceTest {
     private fun success(id: String) = WorkerGatewayMessage.Response(id, WorkerGatewayMessage.Response.Status.SUCCEEDED, byteArrayOf(7))
 
     @Test
+    fun `measures local delivery overhead without duplicate execution`() = runBlocking {
+        val repository = TestWorkerRequestRepository()
+        val requests = service(repository)
+        val session = session()
+        val seen = mutableListOf<String>()
+        val delivery = launch { requests.deliver(session) }
+        val worker = launch {
+            repeat(5) {
+                val request = session.outgoingMessages().receive() as WorkerGatewayMessage.Request
+                seen += request.id
+                delay(20)
+                requests.accept(workerId, success(request.id))
+            }
+        }
+        try {
+            val durations = withTimeout(5_000) {
+                List(5) { index ->
+                    val startedAt = System.nanoTime()
+                    val result = requests.execute(workerId, WorkerGatewayOperation.AI_REQUEST_RESPONSE,
+                        byteArrayOf(1), policy, diagnosticId = "latency-probe-$index")
+                    assertEquals(7.toByte(), result.single())
+                    (System.nanoTime() - startedAt) / 1_000_000
+                }
+            }
+            assertEquals(5, seen.distinct().size)
+            assertEquals(5, repository.records.size)
+            println("WORKER_LATENCY_PROBE roundTripMs=$durations simulatedExecutionMs=20")
+        } finally {
+            worker.cancelAndJoin()
+            delivery.cancelAndJoin()
+        }
+    }
+
+    @Test
     fun `offline submission survives server replacement and short wait does not cancel`() = runBlocking {
         val repository = TestWorkerRequestRepository()
         val requests = service(repository)

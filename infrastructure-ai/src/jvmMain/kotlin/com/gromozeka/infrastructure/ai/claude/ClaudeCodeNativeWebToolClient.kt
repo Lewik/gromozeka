@@ -39,7 +39,6 @@ internal class ClaudeCodeNativeWebToolClient(
             workspaceDirectory = null,
             systemPrompt = systemPrompt(tool),
             userPrompt = userPrompt(invocation),
-            jsonSchema = null,
             effort = runtime.configuration.defaultParameters.reasoning?.effort,
             reasoningMode = runtime.configuration.defaultParameters.reasoning?.mode,
             resumeSessionId = null,

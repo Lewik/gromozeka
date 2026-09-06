@@ -25,6 +25,8 @@ import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
@@ -117,7 +119,9 @@ internal class ClaudeCodeCliRuntime(
         validateToolChoice(request.tools, request.options.toolChoice)
         validateReasoning(request.options.reasoning)
 
-        val diagnosticId = uuid7().toString()
+        val diagnosticId = request.options.toolContext["aiCallDiagnosticId"].contextString()
+            ?.takeIf { it.matches(Regex("[a-zA-Z0-9-]{1,80}")) }
+            ?: uuid7().toString()
         val callStartedAt = System.nanoTime()
         val sessionStateKey = sessionStateKey(request)
         log.debug {
@@ -127,6 +131,7 @@ internal class ClaudeCodeCliRuntime(
                 "toolChoice=${request.options.toolChoice::class.simpleName} " +
                 "responseFormat=${request.options.responseFormat::class.simpleName} " +
                 "reasoning=${request.options.reasoning?.diagnosticSummary() ?: "default"} " +
+                "purpose=${request.options.usagePurpose ?: "unspecified"} " +
                 "durableSession=${sessionStateKey != null} workspace=${workspaceDirectory?.absolutePath ?: "none"}"
         }
 
@@ -182,9 +187,10 @@ internal class ClaudeCodeCliRuntime(
         val preparationStartedAt = System.nanoTime()
         val toolProtocol = request.toolProtocol()
         val sessionPlan = planSession(sessionStateKey, request.messages)
-        val systemPrompt = buildSystemPrompt(request, toolProtocol)
-        val userInput = buildUserInput(sessionPlan, toolProtocol)
         val schema = toolProtocol?.schema ?: (request.options.responseFormat as? AiResponseFormat.JsonSchema)?.schema
+        val contract = schema?.let { ClaudeCodeResponseContract(it, request.tools, toolProtocol != null) }
+        val systemPrompt = listOfNotNull(buildSystemPrompt(request, toolProtocol), contract?.instructions()).joinToString("\n\n")
+        val userInput = buildUserInput(sessionPlan, contract)
 
         log.debug {
             "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_prepared preparationMs=${elapsedMillis(preparationStartedAt)} " +
@@ -192,6 +198,7 @@ internal class ClaudeCodeCliRuntime(
                 "resumed=${sessionPlan.resumeSessionId != null} resumeSession=${sessionPlan.resumeSessionId ?: "none"} " +
                 "systemPromptChars=${systemPrompt.length} systemPromptSha256=${sha256(systemPrompt).take(12)} " +
                 "userPromptChars=${userInput.prompt.length} attachments=${userInput.contentBlocks.size} " +
+                "userPromptSha256=${sha256(userInput.prompt).take(12)} " +
                 "attachmentJsonChars=${userInput.contentBlocks.sumOf { it.toString().length }} " +
                 "schemaChars=${schema?.toString()?.length ?: 0} wrapper=${toolProtocol != null} " +
                 "tools=${request.tools.map { it.definition.name }.sorted()}"
@@ -209,7 +216,6 @@ internal class ClaudeCodeCliRuntime(
             systemPrompt = systemPrompt,
             userPrompt = userInput.prompt,
             userContentBlocks = userInput.contentBlocks,
-            jsonSchema = schema,
             effort = request.options.reasoning?.effort,
             reasoningMode = request.options.reasoning?.mode,
             resumeSessionId = sessionPlan.resumeSessionId,
@@ -217,7 +223,12 @@ internal class ClaudeCodeCliRuntime(
         )
 
         val executionStartedAt = System.nanoTime()
-        val cliResponse = executor.execute(command)
+        val cliResponse = try {
+            executeValidated(command, contract)
+        } catch (error: ClaudeCodeResponseFormatException) {
+            if (sessionStateKey != null) sessionStateRepository.delete(sessionStateKey)
+            throw error
+        }
         log.debug {
             "CLAUDE_CODE_TRACE call=$diagnosticId phase=cli_response executionMs=${elapsedMillis(executionStartedAt)} " +
                 "session=${cliResponse.sessionId ?: "none"} finishReason=${cliResponse.finishReason} " +
@@ -237,6 +248,43 @@ internal class ClaudeCodeCliRuntime(
         }
 
         return runtimeResponse
+    }
+
+    private suspend fun executeValidated(
+        command: ClaudeCodeCommand,
+        contract: ClaudeCodeResponseContract?,
+    ): ClaudeCodeCliResponse = executor.withSession(command) { session ->
+        var attemptCommand = command
+        val responses = mutableListOf<ClaudeCodeCliResponse>()
+        for (attempt in 0..CLAUDE_CODE_MAX_FORMAT_CORRECTIONS) {
+            currentCoroutineContext().ensureActive()
+            val startedAt = System.nanoTime()
+            val response = session.execute(attemptCommand)
+            responses += response
+            val errors = contract?.validationErrors(response.result).orEmpty()
+            log.debug {
+                "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=response_validation " +
+                    "attempt=${attempt + 1} elapsedMs=${elapsedMillis(startedAt)} valid=${errors.isEmpty()} errors=${errors.size}"
+            }
+            if (errors.isEmpty()) {
+                val usage = responses.mapNotNull { it.usage }
+                return@withSession response.copy(
+                    usage = if (usage.isEmpty()) null else JsonObject(
+                        listOf("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+                            .associateWith { key -> JsonPrimitive(usage.sumOf { it[key]?.jsonPrimitive?.longOrNull ?: 0L }) }
+                    ),
+                    compactionBoundaries = responses.flatMap { it.compactionBoundaries },
+                )
+            }
+            if (attempt == CLAUDE_CODE_MAX_FORMAT_CORRECTIONS) throw ClaudeCodeResponseFormatException()
+            attemptCommand = command.copy(
+                diagnosticId = "${command.diagnosticId}-format-${attempt + 1}",
+                userPrompt = requireNotNull(contract).correction(errors),
+                userContentBlocks = emptyList(),
+                resumeSessionId = response.sessionId,
+            )
+        }
+        error("Unreachable Claude Code response validation state")
     }
 
     private fun validateToolChoice(
@@ -429,7 +477,7 @@ internal class ClaudeCodeCliRuntime(
 
     private fun buildUserInput(
         plan: ClaudeCodeSessionPlan,
-        toolProtocol: ClaudeCodeToolProtocol?,
+        contract: ClaudeCodeResponseContract?,
     ): ClaudeCodeUserInput {
         val header = if (plan.resumeSessionId == null) {
             "Gromozeka conversation transcript:"
@@ -439,7 +487,7 @@ internal class ClaudeCodeCliRuntime(
         val attachments = ClaudeCodeAttachmentCollector()
         val prompt = listOf(
             "$header\n\n${messagesToTranscript(plan.messagesToSend, attachments)}",
-            toolProtocol?.runtimeReminder(),
+            contract?.reminder(),
         ).filterNotNull().joinToString("\n\n")
         return ClaudeCodeUserInput(prompt, attachments.contentBlocks)
     }
@@ -453,7 +501,7 @@ internal class ClaudeCodeCliRuntime(
         val thinking = thinkingContent(cliResponse, request.options.reasoning)
         val assistantMessage = if (toolProtocol == null) {
             finalAssistantMessage(
-                text = responseText(cliResponse, request.options.responseFormat),
+                text = cliResponse.result.trim(),
                 assistantResponseFormat = request.options.assistantResponseFormat,
                 metadata = assistantMetadata(cliResponse, wrapper = false, resumed = resumed),
                 thinking = thinking,
@@ -501,18 +549,6 @@ internal class ClaudeCodeCliRuntime(
                 "wrapper" to (toolProtocol != null),
             ),
         )
-    }
-
-    private fun responseText(
-        cliResponse: ClaudeCodeCliResponse,
-        responseFormat: AiResponseFormat,
-    ): String {
-        val structuredOutput = cliResponse.structuredOutput
-        return if (responseFormat is AiResponseFormat.JsonSchema && structuredOutput != null) {
-            structuredOutput.toString()
-        } else {
-            cliResponse.result.trim()
-        }
     }
 
     private fun finalAssistantMessage(
@@ -931,6 +967,8 @@ private fun elapsedMillis(startedAtNanos: Long): Long =
 
 internal interface ClaudeCodeCliExecutor {
     suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse
+
+    suspend fun <T> withSession(command: ClaudeCodeCommand, block: suspend (ClaudeCodeCliExecutor) -> T): T = block(this)
 }
 
 internal interface ClaudeCodeNativeToolExecutor {
@@ -968,7 +1006,6 @@ internal data class ClaudeCodeCommand(
     val systemPrompt: String,
     val userPrompt: String,
     val userContentBlocks: List<JsonObject> = emptyList(),
-    val jsonSchema: JsonElement?,
     val effort: AiReasoningEffort?,
     val reasoningMode: AiReasoningMode?,
     val resumeSessionId: String?,
@@ -1000,7 +1037,6 @@ private class ClaudeCodeToolProtocol(
 ) {
     val schema: JsonObject = buildSchema(finalAnswerSchema)
 
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val actionNames = tools.map { it.definition.name }.toSet()
 
     private fun buildSchema(finalAnswerSchema: JsonElement): JsonObject =
@@ -1112,7 +1148,7 @@ private class ClaudeCodeToolProtocol(
             appendLine("The entries below are external Gromozeka actions, not Claude Code tools.")
             appendLine("Never invoke an external action name through Claude Code native tool use, even when the user explicitly asks to call it.")
             appendLine("Claude Code native tools are disabled. Gromozeka owns external action execution.")
-            appendLine("Submit exactly one object through the structured-output mechanism matching the provided JSON schema.")
+            appendLine("Return exactly one JSON object as plain text matching the JSON Schema in the system prompt.")
             appendLine("The object has one required response field. Put the selected response branch inside it.")
             appendLine("When external actions are needed, do not execute or wait for them in this invocation.")
             appendLine("Instead, immediately submit response.kind=\"tool_calls\" and put every action request in response.tool_calls.")
@@ -1133,14 +1169,6 @@ private class ClaudeCodeToolProtocol(
             appendLine("</external_actions>")
             appendLine("</gromozeka_external_action_protocol>")
         }
-
-    fun runtimeReminder(): String =
-        """
-        <gromozeka_external_action_reminder>
-        External action names are not Claude Code tools. Never invoke them through native tool use.
-        Submit exactly one object through structured output now. Inside its response field, use kind="tool_calls" with every currently independent external action, otherwise kind="final_answer".
-        </gromozeka_external_action_reminder>
-        """.trimIndent()
 
     fun toAssistantMessage(
         cliResponse: ClaudeCodeCliResponse,
@@ -1178,7 +1206,7 @@ private class ClaudeCodeToolProtocol(
                             "Claude Code requested external action $name while runtime required ${toolChoice.name}"
                         }
                     }
-                    val arguments = parseArguments(call["arguments"] ?: JsonObject(emptyMap()))
+                    val arguments = call.getValue("arguments")
                     Conversation.Message.ContentItem.ToolCall(
                         id = Conversation.Message.ContentItem.ToolCall.Id("claude-code:${uuid7()}"),
                         call = Conversation.Message.ContentItem.ToolCall.Data(
@@ -1199,12 +1227,7 @@ private class ClaudeCodeToolProtocol(
     }
 
     private fun wrapperRoot(cliResponse: ClaudeCodeCliResponse): JsonObject {
-        val structured = cliResponse.structuredOutput
-        val envelope = if (structured is JsonObject) {
-            structured
-        } else {
-            json.parseToJsonElement(cliResponse.result).jsonObject
-        }
+        val envelope = Json.parseToJsonElement(cliResponse.result).jsonObject
         return envelope["response"]?.jsonObject
             ?: error("Claude Code structured-output wrapper missed response")
     }
@@ -1214,13 +1237,6 @@ private class ClaudeCodeToolProtocol(
             answer.content
         } else {
             answer.toString()
-        }
-
-    private fun parseArguments(arguments: JsonElement): JsonElement =
-        if (arguments is JsonPrimitive && arguments.isString) {
-            json.parseToJsonElement(arguments.content)
-        } else {
-            arguments
         }
 
     private fun toolChoiceInstruction(): String =

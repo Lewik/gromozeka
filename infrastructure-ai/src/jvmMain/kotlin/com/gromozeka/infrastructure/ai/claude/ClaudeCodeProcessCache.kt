@@ -55,7 +55,10 @@ internal class ProcessClaudeCodeCliExecutor(
     private val processCache = ClaudeCodeProcessCache(processFactory, nanoTime)
     private val log = KLoggers.logger(this)
 
-    override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {
+    override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse =
+        withSession(command) { it.execute(command) }
+
+    override suspend fun <T> withSession(command: ClaudeCodeCommand, block: suspend (ClaudeCodeCliExecutor) -> T): T {
         val effectiveCommand = executableOverride
             ?.let { command.copy(executablePath = it) }
             ?: command
@@ -68,14 +71,10 @@ internal class ProcessClaudeCodeCliExecutor(
 
         val startedAt = System.nanoTime()
         return try {
-            val response = if (effectiveCommand.noSessionPersistence || effectiveCommand.cacheKey == null) {
+            if (effectiveCommand.noSessionPersistence || effectiveCommand.cacheKey == null) {
                 val process = processCache.startUncached(effectiveCommand)
                 try {
-                    process.execute(
-                        effectiveCommand.userPrompt,
-                        effectiveCommand.userContentBlocks,
-                        effectiveCommand.diagnosticId,
-                    )
+                    block(boundExecutor(process, command))
                 } finally {
                     withContext(NonCancellable) {
                         process.close()
@@ -85,18 +84,13 @@ internal class ProcessClaudeCodeCliExecutor(
                 val lease = processCache.acquire(effectiveCommand)
                 var succeeded = false
                 try {
-                    lease.process.execute(
-                        effectiveCommand.userPrompt,
-                        effectiveCommand.userContentBlocks,
-                        effectiveCommand.diagnosticId,
-                    ).also { succeeded = true }
+                    block(boundExecutor(lease.process, command)).also { succeeded = true }
                 } finally {
                     withContext(NonCancellable) {
                         processCache.release(lease, succeeded)
                     }
                 }
             }
-            response
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -106,6 +100,18 @@ internal class ProcessClaudeCodeCliExecutor(
                     "message=${error.message?.redactedDiagnosticPreview()}"
             }
             throw error
+        }
+    }
+
+    private fun boundExecutor(process: ClaudeCodeCliProcess, initial: ClaudeCodeCommand) = object : ClaudeCodeCliExecutor {
+        override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {
+            require(command.copy(
+                diagnosticId = initial.diagnosticId,
+                userPrompt = initial.userPrompt,
+                userContentBlocks = initial.userContentBlocks,
+                resumeSessionId = initial.resumeSessionId,
+            ) == initial) { "Cannot change Claude Code launch configuration inside a process lease" }
+            return process.execute(command.userPrompt, command.userContentBlocks, command.diagnosticId)
         }
     }
 
@@ -194,6 +200,7 @@ internal class ClaudeCodeProcessCache(
     commandQueueCapacity: Int = COMMAND_QUEUE_CAPACITY,
     private val pruneInterval: Duration = PRUNE_INTERVAL,
 ) {
+    private val log = KLoggers.logger(this)
     private val closed = AtomicBoolean(false)
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineName("claude-code-process-cache")
@@ -232,13 +239,19 @@ internal class ClaudeCodeProcessCache(
     }
 
     suspend fun acquire(command: ClaudeCodeCommand): ClaudeCodeProcessLease {
+        val startedAt = System.nanoTime()
         val reply = CompletableDeferred<ClaudeCodeProcessLease>()
         lifecycleMutex.withLock {
             check(!closed.get()) { "Claude Code process cache is closed" }
             commands.send(CacheCommand.Acquire(command, reply))
         }
         return try {
-            reply.await()
+            reply.await().also {
+                log.debug {
+                    "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=cache_wait_completed " +
+                        "elapsedMs=${elapsedMillis(startedAt)}"
+                }
+            }
         } catch (exception: CancellationException) {
             if (!reply.completeExceptionally(exception)) {
                 val lease = withContext(NonCancellable) {
@@ -524,7 +537,6 @@ private data class ClaudeCodeLaunchConfiguration(
     val modelName: String,
     val workspaceDirectory: String?,
     val systemPromptFingerprint: String,
-    val jsonSchemaFingerprint: String?,
     val effort: String?,
     val reasoningMode: String?,
     val nativeTools: Set<String>,
@@ -536,7 +548,6 @@ private data class ClaudeCodeLaunchConfiguration(
                 modelName = command.modelName,
                 workspaceDirectory = command.workspaceDirectory?.absoluteFile?.normalize()?.path,
                 systemPromptFingerprint = sha256(command.systemPrompt),
-                jsonSchemaFingerprint = command.jsonSchema?.toString()?.let(::sha256),
                 effort = command.effort?.name,
                 reasoningMode = command.reasoningMode?.name,
                 nativeTools = command.nativeTools.mapTo(sortedSetOf()) { it.cliName },
@@ -550,7 +561,6 @@ private fun ClaudeCodeLaunchConfiguration.diff(other: ClaudeCodeLaunchConfigurat
         if (modelName != other.modelName) add("model")
         if (workspaceDirectory != other.workspaceDirectory) add("workspace")
         if (systemPromptFingerprint != other.systemPromptFingerprint) add("system_prompt")
-        if (jsonSchemaFingerprint != other.jsonSchemaFingerprint) add("json_schema")
         if (effort != other.effort) add("effort")
         if (reasoningMode != other.reasoningMode) add("reasoning_mode")
         if (nativeTools != other.nativeTools) add("native_tools")
@@ -669,10 +679,19 @@ private class StreamingClaudeCodeCliProcess(
 
             coroutineScope {
                 val response = async(Dispatchers.IO) {
+                    val startedAt = System.nanoTime()
                     val payload = streamingUserMessage(userPrompt, userContentBlocks)
+                    log.debug {
+                        "CLAUDE_CODE_TRACE call=$diagnosticId phase=stdin_sending pid=${process.pid()} " +
+                            "chars=${payload.length} sha256=${shortFingerprint(payload)} session=${sessionId ?: "none"}"
+                    }
                     stdin.write(payload)
                     stdin.newLine()
                     stdin.flush()
+                    log.debug {
+                        "CLAUDE_CODE_TRACE call=$diagnosticId phase=stdin_flushed pid=${process.pid()} " +
+                            "elapsedMs=${elapsedMillis(startedAt)}"
+                    }
                     readResult(diagnosticId)
                 }
                 try {
@@ -739,6 +758,9 @@ private class StreamingClaudeCodeCliProcess(
     private fun readResult(diagnosticId: String): ClaudeCodeCliResponse {
         val startedAt = System.nanoTime()
         var eventIndex = 0
+        var previousEventAt = startedAt
+        val assistantMessageIds = mutableSetOf<String>()
+        val jsonDiagnostics = ClaudeCodeJsonDeltaDiagnostics()
         val parser = ClaudeCodeResultStreamParser()
         while (true) {
             val line = stdout.readLine()
@@ -756,8 +778,19 @@ private class StreamingClaudeCodeCliProcess(
                     )
                 }
             eventIndex++
+            jsonDiagnostics.accept(root)
             val now = System.nanoTime()
             val elapsedMs = (now - startedAt) / 1_000_000
+            if (root["type"]?.jsonPrimitive?.contentOrNull == "assistant") {
+                (root["message"] as? JsonObject)?.get("id")?.jsonPrimitive?.contentOrNull
+                    ?.let(assistantMessageIds::add)
+            }
+            log.debug {
+                "CLAUDE_CODE_TRACE call=$diagnosticId phase=stdout_event pid=${process.pid()} " +
+                    "elapsedMs=$elapsedMs gapMs=${(now - previousEventAt) / 1_000_000} event=$eventIndex " +
+                    "chars=${line.length} ${root.diagnosticEventSummary()} ${jsonDiagnostics.summary()}"
+            }
+            previousEventAt = now
             if (eventIndex == 1) {
                 log.debug {
                     "CLAUDE_CODE_TRACE call=$diagnosticId phase=first_stdout_event pid=${process.pid()} " +
@@ -768,7 +801,8 @@ private class StreamingClaudeCodeCliProcess(
                 log.debug {
                     "CLAUDE_CODE_TRACE call=$diagnosticId phase=result_received pid=${process.pid()} " +
                         "elapsedMs=$elapsedMs events=$eventIndex session=${response.sessionId ?: "none"} " +
-                        "finishReason=${response.finishReason} resultChars=${response.result.length}"
+                        "finishReason=${response.finishReason} resultChars=${response.result.length} " +
+                        "assistantMessages=${assistantMessageIds.size} ${jsonDiagnostics.summary()}"
                 }
                 return response
             }
@@ -799,6 +833,10 @@ private class StreamingClaudeCodeCliProcess(
     }
 
     private fun appendStderr(line: String) {
+        log.debug {
+            "CLAUDE_CODE_TRACE call=$activeDiagnosticId phase=stderr_event pid=${process.pid()} " +
+                "chars=${line.length} sha256=${shortFingerprint(line)}"
+        }
         synchronized(stderrTail) {
             stderrTail.appendLine(line)
             if (stderrTail.length > STDERR_TAIL_LIMIT) {
@@ -871,6 +909,66 @@ private class StreamingClaudeCodeCliProcess(
         const val TERMINATE_SECONDS = 1L
         const val STDERR_TAIL_LIMIT = 64 * 1024
     }
+}
+
+internal class ClaudeCodeJsonDeltaDiagnostics {
+    private val toolJson = ClaudeCodeUnicodeDeltaCounter()
+    private val textJson = ClaudeCodeUnicodeDeltaCounter()
+    val jsonChars get() = toolJson.chars
+    val unicodeEscapes get() = toolJson.unicodeEscapes
+    val textChars get() = textJson.chars
+    val textUnicodeEscapes get() = textJson.unicodeEscapes
+
+    fun accept(root: JsonObject) {
+        if (root["type"]?.jsonPrimitive?.contentOrNull != "stream_event") return
+        val event = root["event"] as? JsonObject ?: return
+        if (event["type"]?.jsonPrimitive?.contentOrNull == "content_block_start") {
+            toolJson.startBlock()
+            textJson.startBlock()
+        }
+        val delta = event["delta"] as? JsonObject ?: return
+        when (delta["type"]?.jsonPrimitive?.contentOrNull) {
+            "input_json_delta" -> toolJson.accept(delta["partial_json"]?.jsonPrimitive?.contentOrNull.orEmpty())
+            "text_delta" -> textJson.accept(delta["text"]?.jsonPrimitive?.contentOrNull.orEmpty())
+        }
+    }
+
+    fun summary(): String = "jsonDeltaChars=$jsonChars jsonUnicodeEscapes=$unicodeEscapes " +
+        "textDeltaChars=$textChars textUnicodeEscapes=$textUnicodeEscapes"
+}
+
+private class ClaudeCodeUnicodeDeltaCounter {
+    private var escaped = false
+    private var remainingHexDigits = 0
+    var chars = 0L
+        private set
+    var unicodeEscapes = 0L
+        private set
+
+    fun startBlock() {
+        escaped = false
+        remainingHexDigits = 0
+    }
+
+    fun accept(fragment: String) {
+        chars += fragment.length
+        for (character in fragment) {
+            when {
+                remainingHexDigits > 0 -> {
+                    if (character in '0'..'9' || character in 'a'..'f' || character in 'A'..'F') {
+                        remainingHexDigits--
+                        if (remainingHexDigits == 0) unicodeEscapes++
+                    } else remainingHexDigits = 0
+                }
+                escaped -> {
+                    escaped = false
+                    if (character == 'u') remainingHexDigits = 4
+                }
+                character == '\\' -> escaped = true
+            }
+        }
+    }
+
 }
 
 internal class ClaudeCodeResultStreamParser {
@@ -1082,11 +1180,17 @@ internal fun JsonObject.diagnosticEventSummary(): String {
         "assistant", "user" -> {
             val message = this["message"] as? JsonObject
             message?.get("id")?.jsonPrimitive?.contentOrNull?.let { fields += "message=$it" }
+            message?.get("model")?.jsonPrimitive?.contentOrNull?.let { fields += "model=$it" }
+            message?.get("stop_reason")?.jsonPrimitive?.contentOrNull?.let { fields += "stopReason=$it" }
             (message?.get("content") as? JsonArray)?.let { fields += it.diagnosticContentSummary() }
             (message?.get("usage") as? JsonObject)?.let { fields += it.diagnosticUsageSummary() }
             fields += "parentToolUse=${this["parent_tool_use_id"] !is JsonNull && this["parent_tool_use_id"] != null}"
         }
         "result" -> {
+            listOf("duration_ms", "duration_api_ms", "num_turns", "stop_reason", "ttft_ms", "ttft_stream_ms",
+                "time_to_request_ms", "first_content_frame_ms", "queued_turn_count", "fast_mode_state", "fast_mode_disabled_reason").forEach { name ->
+                this[name]?.jsonPrimitive?.contentOrNull?.let { fields += "$name=$it" }
+            }
             fields += "isError=${this["is_error"]?.jsonPrimitive?.booleanOrNull ?: false}"
             fields += "resultChars=${this["result"]?.jsonPrimitive?.contentOrNull?.length ?: 0}"
             fields += "structuredChars=${this["structured_output"]?.toString()?.length ?: 0}"
@@ -1096,6 +1200,19 @@ internal fun JsonObject.diagnosticEventSummary(): String {
             fields += "keys=${keys.sorted()}"
             (this["tools"] as? JsonArray)?.let { fields += "tools=${it.size}" }
             (this["mcp_servers"] as? JsonArray)?.let { fields += "mcpServers=${it.size}" }
+            listOf("attempt", "max_retries", "retry_delay_ms", "error_status", "model", "claude_code_version",
+                "fast_mode_state", "fast_mode_disabled_reason").forEach { name ->
+                this[name]?.jsonPrimitive?.contentOrNull?.let { fields += "$name=$it" }
+            }
+        }
+        "stream_event" -> {
+            val event = this["event"] as? JsonObject
+            event?.get("type")?.jsonPrimitive?.contentOrNull?.let { fields += "eventType=$it" }
+            event?.get("index")?.jsonPrimitive?.contentOrNull?.let { fields += "blockIndex=$it" }
+            (event?.get("delta") as? JsonObject)?.let { delta ->
+                fields += "deltaType=${delta["type"]?.jsonPrimitive?.contentOrNull}"
+                fields += "deltaChars=${listOf("text", "thinking", "partial_json").sumOf { delta[it]?.jsonPrimitive?.contentOrNull?.length ?: 0 }}"
+            }
         }
         else -> fields += "keys=${keys.sorted()}"
     }
@@ -1111,7 +1228,14 @@ private fun JsonArray.diagnosticContentSummary(): String {
     val textChars = blocks.sumOf { it["text"]?.jsonPrimitive?.contentOrNull?.length ?: 0 }
     val thinkingChars = blocks.sumOf { it["thinking"]?.jsonPrimitive?.contentOrNull?.length ?: 0 }
     val toolNames = blocks.mapNotNull { it["name"]?.jsonPrimitive?.contentOrNull }.distinct().sorted()
-    return "contentTypes=$types textChars=$textChars thinkingChars=$thinkingChars toolNames=$toolNames"
+    val toolErrors = blocks.count { it["type"]?.jsonPrimitive?.contentOrNull == "tool_result" && it["is_error"]?.jsonPrimitive?.booleanOrNull == true }
+    val structuredShapes = blocks.filter { it["name"]?.jsonPrimitive?.contentOrNull == "StructuredOutput" }
+        .map { block ->
+            val input = block["input"] as? JsonObject
+            "inputKeys=${input?.keys?.sorted()} responseKeys=${(input?.get("response") as? JsonObject)?.keys?.sorted()}"
+        }
+    return "contentTypes=$types textChars=$textChars thinkingChars=$thinkingChars toolNames=$toolNames " +
+        "toolErrors=$toolErrors structuredShapes=$structuredShapes"
 }
 
 private fun JsonObject.diagnosticUsageSummary(): String =
@@ -1147,9 +1271,6 @@ private const val DIAGNOSTIC_PREVIEW_LIMIT = 2_000
 private object ClaudeCodeProcessArguments {
     fun build(command: ClaudeCodeCommand, systemPromptFile: String): List<String> =
         buildList {
-            require(command.nativeTools.isEmpty() || command.jsonSchema == null) {
-                "Claude Code native tools cannot be combined with structured output"
-            }
             val nativeToolNames = command.nativeTools
                 .map { it.cliName }
                 .sorted()
@@ -1170,6 +1291,9 @@ private object ClaudeCodeProcessArguments {
             add("--output-format")
             add("stream-json")
             add("--verbose")
+            if (System.getenv("GROMOZEKA_CLAUDE_CODE_TRACE_PARTIALS") == "true") {
+                add("--include-partial-messages")
+            }
             add("--system-prompt-file")
             add(systemPromptFile)
             add("--model")
@@ -1177,10 +1301,6 @@ private object ClaudeCodeProcessArguments {
             command.effort?.let { effort ->
                 add("--effort")
                 add(effort.name.lowercase())
-            }
-            command.jsonSchema?.let { schema ->
-                add("--json-schema")
-                add(schema.toString())
             }
             command.resumeSessionId?.let { sessionId ->
                 add("--resume")
