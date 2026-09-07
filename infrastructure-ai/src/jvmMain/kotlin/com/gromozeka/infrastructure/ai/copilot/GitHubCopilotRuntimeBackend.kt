@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.ai.copilot
 
+import com.github.copilot.generated.AssistantReasoningEvent
+import com.github.copilot.generated.SessionEvent
+
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -28,6 +31,7 @@ import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.repository.AiUserCredentialRepository
@@ -112,11 +116,23 @@ internal class GitHubCopilotRuntime(
 
         try {
             val usageEvents = CopyOnWriteArrayList<AssistantUsageEvent.AssistantUsageEventData>()
+            val assistantEvents = CopyOnWriteArrayList<SessionEvent>()
             session = handle.client.createSession(
                 buildSessionConfig(request, toolPlan, token, handle, sessionId)
             ).awaitCancellable()
-            usageSubscription = session.on(AssistantUsageEvent::class.java) { event ->
+            val usageListener = session.on(AssistantUsageEvent::class.java) { event ->
                 event.data?.let(usageEvents::add)
+            }
+            val messageListener = session.on(AssistantMessageEvent::class.java) { event ->
+                if (event.data?.parentToolCallId() == null) assistantEvents.add(event)
+            }
+            val reasoningListener = session.on(AssistantReasoningEvent::class.java) { event ->
+                assistantEvents.add(event)
+            }
+            usageSubscription = Closeable {
+                usageListener.close()
+                messageListener.close()
+                reasoningListener.close()
             }
             val mappedRequest = GitHubCopilotRequestMapper().map(request.messages)
             val response = session.sendAndWait(
@@ -126,7 +142,39 @@ internal class GitHubCopilotRuntime(
                 connection.requestTimeoutSeconds.toLong() * 1_000L,
             ).awaitCancellable(onCancellation = { session.abort() })
                 ?: error("GitHub Copilot completed without an assistant message")
-            return response.toRuntimeResponse(request, toolPlan, usageEvents, sessionId)
+            if (assistantEvents.filterIsInstance<AssistantMessageEvent>().none { it.data?.messageId() == response.data?.messageId() }) {
+                assistantEvents.add(response)
+            }
+            val completedMessages = assistantEvents.filterIsInstance<AssistantMessageEvent>()
+                .distinctBy { it.data?.messageId() to it.data?.chunkIndex() }
+            val reportedThinking = completedMessages.mapNotNull { it.data?.reasoningText() }.toSet()
+            val mapped = completedMessages.associateWith { it.toRuntimeResponse(request, toolPlan, emptyList(), sessionId) }
+            val messages = assistantEvents.flatMap { event ->
+                when (event) {
+                    is AssistantMessageEvent -> mapped[event]?.messages.orEmpty()
+                    is AssistantReasoningEvent -> event.data?.content()
+                        ?.takeUnless { it in reportedThinking }
+                        ?.let { listOf(AiAssistantMessage(listOf(Conversation.Message.ContentItem.Thinking(it)))) }.orEmpty()
+                    else -> emptyList()
+                }
+            }
+            val hasFinalAnswer = messages.any { it.metadata["terminalKind"] == "final_answer" }
+            val hasTools = messages.any { it.content.any { block -> block is Conversation.Message.ContentItem.ToolCall } }
+            require(!hasFinalAnswer || !hasTools) { "GitHub Copilot mixed a final answer with external tool calls" }
+            val finishReason = usageEvents.mapNotNull { it.finishReason() }.lastOrNull()
+            return AiRuntimeResponse(
+                messages = messages,
+                usage = usageEvents.toUsage(),
+                contextUsage = usageEvents.toContextUsage(),
+                finishReason = finishReason,
+                outcome = when {
+                    finishReason == "length" || finishReason == "max_tokens" -> AiStepOutcome.INCOMPLETE
+                    finishReason == "content_filter" || finishReason == "refusal" -> AiStepOutcome.REFUSED
+                    hasTools -> AiStepOutcome.TOOL_CALLS
+                    hasFinalAnswer -> AiStepOutcome.COMPLETE
+                    else -> AiStepOutcome.FAILED
+                },
+            )
         } catch (error: Throwable) {
             callFailure = error
             if (error !is CancellationException) {
@@ -314,7 +362,7 @@ internal class GitHubCopilotRuntime(
         toolPlan.requiredToolName?.let { name ->
             appendLine("You must call the required external tool $name.")
         }
-        appendLine("Do not emit ordinary assistant text before or instead of the terminal tool call.")
+        appendLine("You may emit brief user-facing remarks before requesting tools. Do not invent results or replace the terminal tool call with a remark.")
         appendLine("</gromozeka_copilot_runtime>")
     }.trim()
 
@@ -345,13 +393,7 @@ internal class GitHubCopilotRuntime(
             "GitHub Copilot returned ${reportedModels.joinToString()} instead of requested model " +
                 modelConfiguration.providerModelId
         }
-        require(data.content().isNullOrBlank()) {
-            "GitHub Copilot returned ordinary assistant text instead of the terminal response protocol"
-        }
         val toolRequests = data.toolRequests().orEmpty()
-        require(toolRequests.isNotEmpty()) {
-            "GitHub Copilot returned no terminal tool request"
-        }
         val finalAnswers = toolRequests.filter { it.name() == FINAL_ANSWER_TOOL }
         val externalRequests = toolRequests.filterNot { it.name() == FINAL_ANSWER_TOOL }
         require(finalAnswers.size <= 1) { "GitHub Copilot returned multiple final answers" }
@@ -359,10 +401,12 @@ internal class GitHubCopilotRuntime(
             "GitHub Copilot mixed a final answer with external tool calls"
         }
 
-        val thinking = data.reasoningText()
-            ?.takeIf { it.isNotBlank() && request.options.reasoning?.display != AiReasoningDisplay.OMITTED }
-            ?.takeIf { request.options.reasoning?.mode != AiReasoningMode.DISABLED }
-            ?.let { Conversation.Message.ContentItem.Thinking(it) }
+        val thinking = if (data.reasoningText() != null || data.reasoningOpaque() != null || data.encryptedContent() != null) {
+            Conversation.Message.ContentItem.Thinking(data.reasoningText().orEmpty())
+        } else null
+        val remark = data.content()?.takeIf(String::isNotBlank)?.let {
+            Conversation.Message.ContentItem.AssistantMessage(AssistantResponseParser.parseProgress(it, request.options.assistantResponseFormat))
+        }
         val metadata = providerMetadata(data, sessionId)
         val assistantMessage = if (finalAnswers.isNotEmpty()) {
             require(toolPlan.allowsFinalAnswer) {
@@ -370,7 +414,7 @@ internal class GitHubCopilotRuntime(
             }
             val answer = finalAnswers.single().answerText()
             AiAssistantMessage(
-                content = listOfNotNull(thinking) + Conversation.Message.ContentItem.AssistantMessage(
+                content = listOfNotNull(thinking, remark) + Conversation.Message.ContentItem.AssistantMessage(
                     structured = AssistantResponseParser.parse(answer, request.options.assistantResponseFormat)
                 ),
                 metadata = metadata + ("terminalKind" to "final_answer"),
@@ -387,8 +431,8 @@ internal class GitHubCopilotRuntime(
                 }
             }
             AiAssistantMessage(
-                content = listOfNotNull(thinking) + externalRequests.map(::toToolCall),
-                metadata = metadata + ("terminalKind" to "tool_call"),
+                content = listOfNotNull(thinking, remark) + externalRequests.map(::toToolCall),
+                metadata = metadata + ("terminalKind" to if (externalRequests.isEmpty()) "commentary" else "tool_call"),
             )
         }
 
@@ -441,6 +485,11 @@ internal class GitHubCopilotRuntime(
         "clientRequestId" to data.clientRequestId(),
         "serviceRequestId" to data.serviceRequestId(),
         "apiCallId" to data.apiCallId(),
+        "phase" to data.phase(),
+        "reasoningOpaque" to data.reasoningOpaque(),
+        "encryptedContent" to data.encryptedContent(),
+        "reasoningWireField" to data.reasoningWireField(),
+        "serverTools" to data.serverTools()?.let { JSON.parseToJsonElement(objectMapper.writeValueAsString(it)) },
     )
 
     private fun List<AssistantUsageEvent.AssistantUsageEventData>.toUsage(): AiUsage? {

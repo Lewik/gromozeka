@@ -498,7 +498,7 @@ internal class ClaudeCodeCliRuntime(
         toolProtocol: ClaudeCodeToolProtocol?,
         resumed: Boolean,
     ): AiRuntimeResponse {
-        val thinking = thinkingContent(cliResponse, request.options.reasoning)
+        val thinking = thinkingContent(cliResponse)
         val assistantMessage = if (toolProtocol == null) {
             finalAssistantMessage(
                 text = cliResponse.result.trim(),
@@ -567,19 +567,12 @@ internal class ClaudeCodeCliRuntime(
 
     private fun thinkingContent(
         cliResponse: ClaudeCodeCliResponse,
-        reasoning: AiReasoningConfig?,
     ): List<Conversation.Message.ContentItem.Thinking> {
-        if (reasoning?.mode == AiReasoningMode.DISABLED) return emptyList()
-
         return cliResponse.thinking.map { block ->
             Conversation.Message.ContentItem.Thinking(
-                thinking = when (reasoning?.display) {
-                    AiReasoningDisplay.OMITTED -> ""
-                    AiReasoningDisplay.FULL,
-                    AiReasoningDisplay.SUMMARIZED,
-                    null -> block.thinking
-                },
+                thinking = block.thinking,
                 signature = block.signature,
+                kind = block.kind,
                 state = Conversation.Message.BlockState.COMPLETE,
             )
         }
@@ -1016,6 +1009,7 @@ internal data class ClaudeCodeCommand(
 internal data class ClaudeCodeThinkingBlock(
     val thinking: String,
     val signature: String?,
+    val kind: Conversation.Message.ContentItem.Thinking.Kind = Conversation.Message.ContentItem.Thinking.Kind.THINKING,
 )
 
 internal data class ClaudeCodeCliResponse(
@@ -1058,7 +1052,7 @@ private class ClaudeCodeToolProtocol(
                     "anyOf" to JsonArray(
                         listOf(
                             finalAnswerBranch(finalAnswerSchema),
-                            externalActionBranch(),
+                            externalActionBranch(finalAnswerSchema),
                         )
                     ),
                 )
@@ -1066,7 +1060,7 @@ private class ClaudeCodeToolProtocol(
 
             AiToolChoice.None -> finalAnswerBranch(finalAnswerSchema)
             AiToolChoice.RequiredAny,
-            is AiToolChoice.RequiredTool -> externalActionBranch()
+            is AiToolChoice.RequiredTool -> externalActionBranch(finalAnswerSchema)
         }
 
     private fun finalAnswerBranch(finalAnswerSchema: JsonElement): JsonObject =
@@ -1082,23 +1076,31 @@ private class ClaudeCodeToolProtocol(
             "required" to JsonArray(listOf("kind", "final_answer").map(::JsonPrimitive)),
         ))
 
-    private fun externalActionBranch(): JsonObject =
+    private fun externalActionBranch(messageSchema: JsonElement): JsonObject =
         JsonObject(mapOf(
             "type" to JsonPrimitive("object"),
             "additionalProperties" to JsonPrimitive(false),
             "properties" to JsonObject(
                 mapOf(
                     "kind" to kindSchema("tool_calls"),
-                    "tool_calls" to JsonObject(
+                    "content" to JsonObject(
                         mapOf(
                             "type" to JsonPrimitive("array"),
                             "minItems" to JsonPrimitive(1),
-                            "items" to externalActionSchema(),
+                            "items" to JsonObject(mapOf("anyOf" to JsonArray(listOf(
+                                externalActionSchema(),
+                                JsonObject(mapOf(
+                                    "type" to JsonPrimitive("object"),
+                                    "additionalProperties" to JsonPrimitive(false),
+                                    "properties" to JsonObject(mapOf("kind" to kindSchema("message"), "message" to messageSchema)),
+                                    "required" to JsonArray(listOf("kind", "message").map(::JsonPrimitive)),
+                                )),
+                            )))),
                         )
                     ),
                 )
             ),
-            "required" to JsonArray(listOf("kind", "tool_calls").map(::JsonPrimitive)),
+            "required" to JsonArray(listOf("kind", "content").map(::JsonPrimitive)),
         ))
 
     private fun externalActionSchema(): JsonObject =
@@ -1107,6 +1109,7 @@ private class ClaudeCodeToolProtocol(
             "additionalProperties" to JsonPrimitive(false),
             "properties" to JsonObject(
                 mapOf(
+                    "kind" to kindSchema("tool_call"),
                     "action_name" to actionNameSchema(),
                     "arguments" to JsonObject(
                         mapOf(
@@ -1116,7 +1119,7 @@ private class ClaudeCodeToolProtocol(
                     ),
                 )
             ),
-            "required" to JsonArray(listOf("action_name", "arguments").map(::JsonPrimitive)),
+            "required" to JsonArray(listOf("kind", "action_name", "arguments").map(::JsonPrimitive)),
         ))
 
     private fun kindSchema(kind: String): JsonObject =
@@ -1151,8 +1154,10 @@ private class ClaudeCodeToolProtocol(
             appendLine("Return exactly one JSON object as plain text matching the JSON Schema in the system prompt.")
             appendLine("The object has one required response field. Put the selected response branch inside it.")
             appendLine("When external actions are needed, do not execute or wait for them in this invocation.")
-            appendLine("Instead, immediately submit response.kind=\"tool_calls\" and put every action request in response.tool_calls.")
-            appendLine("Each entry must contain the action name in action_name and its input in arguments.")
+            appendLine("Instead, immediately submit response.kind=\"tool_calls\" with an ordered response.content array.")
+            appendLine("Action entries have kind=\"tool_call\", action_name and arguments. Include at least one action.")
+            appendLine("You may include brief user-facing remarks before, between or after action entries: kind=\"message\" and message containing the normal assistant payload.")
+            appendLine("Remarks describe intent or known facts, never pretend the requested actions have already completed.")
             appendLine("Group every independent external action that can run now into the same response.")
             appendLine("Do not group an action that depends on another action's result into the same response.")
             appendLine("Gromozeka will execute the batch concurrently and resume this Claude Code session with all results.")
@@ -1193,11 +1198,15 @@ private class ClaudeCodeToolProtocol(
             }
 
             "tool_calls" -> {
-                val calls = root["tool_calls"]?.jsonArray
-                    ?: error("Claude Code tool_calls wrapper missed tool_calls")
-                require(calls.isNotEmpty()) { "Claude Code tool_calls wrapper must contain at least one action" }
-                val toolCalls = calls.mapIndexed { index, callElement ->
+                val calls = root["content"]?.jsonArray
+                    ?: error("Claude Code tool_calls wrapper missed content")
+                val content = calls.mapIndexed { index, callElement ->
                     val call = callElement.jsonObject
+                    if (call.getValue("kind").jsonPrimitive.content == "message") {
+                        return@mapIndexed Conversation.Message.ContentItem.AssistantMessage(
+                            structured = AssistantResponseParser.parse(finalAnswerText(call.getValue("message")), options.assistantResponseFormat),
+                        )
+                    }
                     val name = call["action_name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
                         ?: error("Claude Code tool_calls wrapper missed action_name at index $index")
                     require(name in actionNames) { "Claude Code requested unavailable external action: $name" }
@@ -1216,8 +1225,11 @@ private class ClaudeCodeToolProtocol(
                         state = Conversation.Message.BlockState.COMPLETE,
                     )
                 }
+                require(content.any { it is Conversation.Message.ContentItem.ToolCall }) {
+                    "Claude Code tool_calls wrapper must contain at least one action"
+                }
                 AiAssistantMessage(
-                    content = thinking + toolCalls,
+                    content = thinking + content,
                     metadata = metadata + ("wrapperKind" to kind),
                 )
             }

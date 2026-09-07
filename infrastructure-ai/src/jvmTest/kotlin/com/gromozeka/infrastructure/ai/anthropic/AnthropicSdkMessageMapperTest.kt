@@ -1,5 +1,11 @@
 package com.gromozeka.infrastructure.ai.anthropic
 
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiStepOutcome
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -20,6 +26,65 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class AnthropicSdkMessageMapperTest {
+
+    @Test
+    fun `preserves signed empty and redacted thinking and content order through a tool turn`() {
+        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, "anthropic-test", "claude-opus-5")
+        val native = com.anthropic.core.jsonMapper().readValue("""{
+            "id":"msg-1","model":"claude-opus-5-snapshot","stop_reason":"tool_use",
+            "usage":{"input_tokens":10,"output_tokens":20},
+            "content":[
+                {"type":"thinking","thinking":"","signature":"signed-empty"},
+                {"type":"text","text":"I will check."},
+                {"type":"tool_use","id":"call-1","name":"check","input":{}},
+                {"type":"text","text":"And compare the results."},
+                {"type":"redacted_thinking","data":"opaque-redacted"}
+            ]
+        }""", com.anthropic.models.messages.Message::class.java)
+        val response = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA)
+        assertEquals(AiStepOutcome.TOOL_CALLS, response.outcome)
+        val thinking = response.messages.single().content.filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+        assertTrue(thinking.all { it.isVisible })
+        assertEquals("signed-empty", thinking.first().signature)
+        assertEquals(Conversation.Message.ContentItem.Thinking.Kind.REDACTED, thinking.last().kind)
+        val assistant = requestWithoutJsonSchema().messages.single().copy(
+            role = Conversation.Message.Role.ASSISTANT,
+            content = response.messages.single().content,
+            providerMetadata = JsonObject(response.messages.single().metadata.mapValues { (_, value) ->
+                value as? JsonElement ?: JsonPrimitive(value.toString())
+            }),
+        )
+        val replay = mapper.toCreateParams("claude-opus-5", requestWithoutJsonSchema().copy(messages = listOf(assistant)))
+            .messages().single().content().asBlockParams()
+        val json = kotlinx.serialization.json.Json
+        assertEquals(
+            json.parseToJsonElement(com.anthropic.core.jsonMapper().writeValueAsString(native.content())),
+            json.parseToJsonElement(com.anthropic.core.jsonMapper().writeValueAsString(replay)),
+        )
+        val foreign = mapper.toCreateParams("claude-other", requestWithoutJsonSchema().copy(messages = listOf(assistant)))
+            .messages().single().content().asBlockParams()
+        assertFalse(foreign.any { it.isThinking() || it.isRedactedThinking() })
+    }
+
+    @Test
+    fun `distinguishes provider pause truncation refusal and completion`() {
+        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val outcomes = mapOf(
+            "pause_turn" to AiStepOutcome.CONTINUE,
+            "end_turn" to AiStepOutcome.COMPLETE,
+            "max_tokens" to AiStepOutcome.INCOMPLETE,
+            "model_context_window_exceeded" to AiStepOutcome.INCOMPLETE,
+            "refusal" to AiStepOutcome.REFUSED,
+            "unknown" to AiStepOutcome.FAILED,
+        )
+        outcomes.forEach { (reason, outcome) ->
+            val native = com.anthropic.core.jsonMapper().readValue("""{
+                "id":"msg-1","model":"claude-opus-5","stop_reason":"$reason",
+                "usage":{"input_tokens":1,"output_tokens":1},"content":[{"type":"text","text":"Partial or final text"}]
+            }""", com.anthropic.models.messages.Message::class.java)
+            assertEquals(outcome, mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.TEXT).outcome)
+        }
+    }
 
     @Test
     fun bedrockRejectsNativeJsonSchemaOutputFormat() {

@@ -236,6 +236,7 @@ data class RussianTranslation(
         cacheLabel = "Кэш",
         completionLabel = "Ответ",
         thinkingLabel = "Размышление",
+        hiddenThinkingLabel = "Размышление · провайдер не передал открытый текст",
         createLabel = "Запись",
         readLabel = "Чтение",
         memoryTitle = "Память",

@@ -163,6 +163,7 @@ sealed class Translation {
         val cacheLabel: String = "Cache",
         val completionLabel: String = "Completion",
         val thinkingLabel: String = "Thinking",
+        val hiddenThinkingLabel: String = "Thinking · the provider did not return readable text",
         val createLabel: String = "Create",
         val readLabel: String = "Read",
         val memoryTitle: String = "Memory",

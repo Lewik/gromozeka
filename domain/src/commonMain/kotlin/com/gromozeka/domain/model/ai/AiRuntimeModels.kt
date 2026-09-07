@@ -65,11 +65,27 @@ data class AiRuntimeResponse(
     val contextUsage: AiContextUsage? = null,
     val finishReason: String? = null,
     val providerMetadata: Map<String, Any?> = emptyMap(),
+    val outcome: AiStepOutcome = if (messages.any { message ->
+        message.content.any { it is Conversation.Message.ContentItem.ToolCall }
+    }) AiStepOutcome.TOOL_CALLS else AiStepOutcome.COMPLETE,
 ) {
     val toolCalls: List<Conversation.Message.ContentItem.ToolCall>
         get() = messages.flatMap { assistantMessage ->
             assistantMessage.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
         }
+}
+
+@Serializable
+enum class AiStepOutcome {
+    COMPLETE,
+    TOOL_CALLS,
+    CONTINUE,
+    INCOMPLETE,
+    REFUSED,
+    FAILED;
+
+    val isFailure: Boolean
+        get() = this == INCOMPLETE || this == FAILED
 }
 
 data class AiAssistantMessage(

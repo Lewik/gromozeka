@@ -92,6 +92,7 @@ private class Runtime(
                 modelProfile = modelProfile,
                 conversationKey = promptCacheKey,
                 webSearchEnabled = webSearchEnabled,
+                connectionId = connectionId,
             )
             val parsed = responsesClient.create(
                 session = session,

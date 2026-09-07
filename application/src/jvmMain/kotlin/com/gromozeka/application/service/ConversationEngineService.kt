@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiStepOutcome
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
@@ -375,7 +378,7 @@ class ConversationEngineService(
             try {
                 log.info { "Calling LLM runtime: model=${context.modelName}, provider=${context.provider}, iteration=${payload.iteration}" }
                 ensureRuntimeTaskOwner(conversationId, task.id, executor)
-                context.runtime.call(runtimeRequest)
+                AiConversationMessageMapper.prepareResponse(context.runtime.call(runtimeRequest))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -418,11 +421,7 @@ class ConversationEngineService(
         }
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
 
-        if (runtimeResponse.messages.isEmpty() && runtimeResponse.toolCalls.isEmpty()) {
-            log.warn { "Empty response from AI runtime" }
-            return ConversationRuntimeTaskOutcome.CompleteTurn
-        }
-
+        val outcome = runtimeResponse.outcome
         val allToolCalls = runtimeResponse.toolCalls
         val mappedAssistantMessages = AiConversationMessageMapper
             .toConversationMessages(
@@ -435,7 +434,7 @@ class ConversationEngineService(
             )
             .withRuntimeMessageIds(task.id, "assistant")
         val assistantMessages = when {
-            allToolCalls.isNotEmpty() -> mappedAssistantMessages.withSuggestedReplies(emptyList())
+            outcome != AiStepOutcome.COMPLETE -> mappedAssistantMessages.withSuggestedReplies(emptyList())
             context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.DISABLED ->
                 mappedAssistantMessages.withSuggestedReplies(emptyList())
             context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE ->
@@ -472,6 +471,29 @@ class ConversationEngineService(
                     context.memoryPipelineTools,
                 )
             }
+        }
+        if (outcome.isFailure) {
+            val errorMessage = AiConversationMessageMapper.createErrorMessage(
+                conversationId,
+                "Model response ${outcome.name.lowercase()}: ${runtimeResponse.finishReason ?: "unspecified reason"}. No actions were executed.",
+            ).copy(id = runtimeMessageId(task.id, "llm-incomplete"))
+            if (addRuntimeMessageIfMissing(conversationId, errorMessage)) emitMessage(errorMessage)
+            return ConversationRuntimeTaskOutcome.CompleteTurn
+        }
+        if (outcome == AiStepOutcome.REFUSED) {
+            return ConversationRuntimeTaskOutcome.CompleteTurn
+        }
+        if (outcome == AiStepOutcome.CONTINUE) {
+            return ConversationRuntimeTaskOutcome.Continue(
+                llmCallTask(
+                    parentTask = task,
+                    conversationId = conversationId,
+                    rootUserMessageId = payload.rootUserMessageId,
+                    agentDefinitionId = payload.agentDefinitionId,
+                    iteration = payload.iteration + 1,
+                    actorUserId = task.actorUserId,
+                ),
+            )
         }
         if (allToolCalls.isNotEmpty()) {
             when (
@@ -973,7 +995,7 @@ class ConversationEngineService(
         val memoryPipelineTools: List<AiToolCallback>,
         val memorySystemPrompts: List<String>,
         val runtimeSystemPrompts: List<String>,
-        val assistantResponseFormat: com.gromozeka.domain.model.ai.AiModelConfiguration.AssistantResponseFormat,
+        val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
         val autoCompactionThresholdTokens: Int?,
         val automaticMemoryRememberEnabled: Boolean,
         val automaticMemoryRecallEnabled: Boolean,

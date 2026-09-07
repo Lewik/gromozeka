@@ -3,6 +3,8 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiStepOutcome
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -14,9 +16,61 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class OpenAiSubscriptionResponseMapperTest {
     private val mapper = OpenAiSubscriptionResponseMapper()
+
+    @Test
+    fun commentaryContinuesTheTurnButAFollowingFinalAnswerCompletesIt() {
+        val commentary = Json.parseToJsonElement("""{
+            "type":"message","role":"assistant","phase":"commentary",
+            "content":[{"type":"output_text","text":"I will check."}]
+        }""").jsonObject
+        val finalAnswer = buildJsonObject {
+            put("type", "message")
+            put("role", "assistant")
+            put("phase", "final_answer")
+            put("content", buildJsonArray {
+                add(buildJsonObject {
+                    put("type", "output_text")
+                    put("text", """{"fullText":"Done.","ttsText":""}""")
+                })
+            })
+        }
+        listOf(listOf(commentary), listOf(commentary, finalAnswer)).forEach { items ->
+            val response = mapper.toRuntimeResponse(
+                items, OpenAiSubscriptionCompletedResponse("response", "completed"),
+                "conversation", "connection", "model", "gpt-5.6-luna",
+                AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
+            )
+            assertEquals(if (items.size == 1) AiStepOutcome.CONTINUE else AiStepOutcome.COMPLETE, response.outcome)
+            assertEquals("commentary", response.messages.first().metadata["phase"])
+            assertEquals("I will check.", assertIs<Conversation.Message.ContentItem.AssistantMessage>(
+                response.messages.first().content.single()
+            ).structured.fullText)
+            assertTrue(response.toolCalls.isEmpty())
+        }
+    }
+
+    @Test
+    fun incompleteToolArgumentsCannotBecomeExecutableCalls() {
+        val response = mapper.toRuntimeResponse(
+            outputItems = listOf(Json.parseToJsonElement("""{
+                "type":"function_call","call_id":"call","name":"read_file","arguments":"{"
+            }""").jsonObject),
+            completed = OpenAiSubscriptionCompletedResponse(
+                id = "response", status = "incomplete",
+                incompleteDetails = buildJsonObject { put("reason", "max_output_tokens") },
+            ),
+            conversationKey = "conversation", connectionId = "connection",
+            modelConfigurationId = "model", modelName = "gpt-6-astra",
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
+        )
+        assertEquals(AiStepOutcome.INCOMPLETE, response.outcome)
+        assertEquals("max_output_tokens", response.finishReason)
+        assertTrue(response.toolCalls.isEmpty())
+    }
 
     @Test
     fun mapsProviderCompactionOutputToExplicitCompactionContentItem() {
@@ -161,9 +215,9 @@ class OpenAiSubscriptionResponseMapperTest {
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         )
 
-        val message = assertIs<Conversation.Message.ContentItem.AssistantMessage>(
-            response.messages.single().content.single()
-        )
+        assertEquals(2, response.messages.size)
+        assertIs<Conversation.Message.ContentItem.System>(response.messages.first().content.single())
+        val message = assertIs<Conversation.Message.ContentItem.AssistantMessage>(response.messages.last().content.single())
         assertEquals(
             "Kotlin 2.3 was released.\n\nSources:\n" +
                 "- <https://kotlinlang.org/docs/releases.html>",

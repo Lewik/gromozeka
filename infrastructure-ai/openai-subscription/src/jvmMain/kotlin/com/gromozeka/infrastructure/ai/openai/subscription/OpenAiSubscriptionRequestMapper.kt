@@ -45,6 +45,7 @@ class OpenAiSubscriptionRequestMapper {
         modelProfile: OpenAiSubscriptionModelProfile,
         conversationKey: String,
         webSearchEnabled: Boolean = false,
+        connectionId: String? = null,
     ): OpenAiSubscriptionResponsesRequest {
         val replayWindow = request.messages.toReplayWindow()
         val effectiveFunctionTools = if (request.options.toolChoice is AiToolChoice.None) {
@@ -63,6 +64,9 @@ class OpenAiSubscriptionRequestMapper {
             toInputItems(
                 message = message,
                 replayCompactionOnly = replayWindow.compactionAnchorIndex == index,
+                replayReasoning = message.providerMetadata["provider"]?.jsonPrimitive?.contentOrNull == AiConnection.Kind.OPENAI_SUBSCRIPTION.name &&
+                    message.providerMetadata["model"]?.jsonPrimitive?.contentOrNull == modelProfile.slug &&
+                    message.providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId,
             )
         }.dropOrphanFunctionCallOutputs(conversationKey)
         val instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null }
@@ -159,10 +163,11 @@ class OpenAiSubscriptionRequestMapper {
     private fun toInputItems(
         message: Conversation.Message,
         replayCompactionOnly: Boolean = false,
+        replayReasoning: Boolean = false,
     ): List<JsonObject> {
         return when (message.role) {
             Conversation.Message.Role.USER -> message.toUserInputItems()
-            Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly)
+            Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly, replayReasoning)
             Conversation.Message.Role.SYSTEM -> message.toSystemInputItems()
         }
     }
@@ -198,11 +203,13 @@ class OpenAiSubscriptionRequestMapper {
 
     private fun Conversation.Message.toAssistantInputItems(
         replayCompactionOnly: Boolean,
+        replayReasoning: Boolean,
     ): List<JsonObject> {
         val items = mutableListOf<JsonObject>()
         val textBuffer = mutableListOf<String>()
-        val hiddenReplayItems = providerMetadata.toHiddenReplayItems()
+        val hiddenReplayItems = if (replayReasoning) providerMetadata.toHiddenReplayItems()
             .filterNot { it.isCompactionReplayItem() }
+            else emptyList()
         val compactionItems = content
             .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
             .map { it.toOpenAiReplayItem() }
@@ -219,6 +226,9 @@ class OpenAiSubscriptionRequestMapper {
         }
 
         items += hiddenReplayItems
+        if (replayReasoning) {
+            items += (providerMetadata["openaiSubscriptionProviderItems"] as? JsonArray).orEmpty().map { it.jsonObject }
+        }
 
         fun flushText() {
             val text = textBuffer.joinToString("\n").trim()
@@ -242,7 +252,7 @@ class OpenAiSubscriptionRequestMapper {
 
                 is Conversation.Message.ContentItem.Thinking -> {
                     flushText()
-                    items += reasoningItem(
+                    if (replayReasoning && hiddenReplayItems.isEmpty()) items += reasoningItem(
                         encryptedContent = contentItem.signature,
                         thinking = contentItem.thinking,
                     )
@@ -281,6 +291,7 @@ class OpenAiSubscriptionRequestMapper {
         val type = this["type"]?.jsonPrimitive?.contentOrNull ?: return this
         val encryptedContent = this["encrypted_content"]?.jsonPrimitive?.contentOrNull
 
+        if (type == "reasoning") return this
         return buildJsonObject {
             put("type", type)
 
@@ -595,7 +606,7 @@ class OpenAiSubscriptionRequestMapper {
             "message" -> item.toReplayMessageItems(assistantResponseFormat)
             "function_call" -> listOfNotNull(item.toReplayFunctionCallItem())
             "reasoning", "compaction", "compaction_summary" -> listOfNotNull(item.toReplayReasoningItem())
-            else -> emptyList()
+            else -> listOf(item)
         }
     }
 
@@ -662,12 +673,13 @@ class OpenAiSubscriptionRequestMapper {
 
     private fun String.toCanonicalAssistantText(
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
-    ): String = AssistantResponseParser.parse(this.trim(), assistantResponseFormat)
+    ): String = AssistantResponseParser.parseProgress(this.trim(), assistantResponseFormat)
         .fullText
         .trim()
 
     private fun JsonObject.toReplayReasoningItem(): JsonObject? {
         val type = this["type"]?.jsonPrimitive?.contentOrNull ?: return null
+        if (type == "reasoning") return this
         val encryptedContent = this["encrypted_content"]?.jsonPrimitive?.contentOrNull
         val thinking = extractThinkingText()
 

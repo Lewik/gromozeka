@@ -1,5 +1,7 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.ai.AiStepOutcome
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
@@ -292,6 +294,7 @@ private data class AiRuntimeResponseWire(
     val contextUsage: com.gromozeka.domain.model.ai.AiContextUsage? = null,
     val finishReason: String?,
     val providerMetadata: JsonObject,
+    val outcome: AiStepOutcome,
 )
 
 @Serializable
@@ -435,6 +438,7 @@ private fun AiRuntimeResponse.toWire(): AiRuntimeResponseWire =
         contextUsage = contextUsage,
         finishReason = finishReason,
         providerMetadata = providerMetadata.toJsonObject(),
+        outcome = outcome,
     )
 
 private fun AiRuntimeResponseWire.toRuntime(): AiRuntimeResponse =
@@ -449,6 +453,7 @@ private fun AiRuntimeResponseWire.toRuntime(): AiRuntimeResponse =
         contextUsage = contextUsage,
         finishReason = finishReason,
         providerMetadata = providerMetadata.mapValues { (_, value) -> value.toRuntimeValue() },
+        outcome = outcome,
     )
 
 private fun AiEmbeddingRequest.toWire(): AiEmbeddingRequestWire =

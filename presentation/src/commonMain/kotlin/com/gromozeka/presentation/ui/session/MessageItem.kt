@@ -180,12 +180,12 @@ internal fun rememberMessageListEntries(
                 }
 
                 is Conversation.Message.ContentItem.Thinking -> {
-                    if (content.isVisible && content.thinking.isNotBlank()) {
+                    if (content.isVisible) {
                         segments += rememberMarkdownSegments(
                             messageId = message.id,
                             contentIndex = contentIndex,
                             kind = MarkdownKind.THINKING,
-                            text = content.thinking,
+                            text = content.thinking.ifBlank { LocalTranslation.current.runtime.hiddenThinkingLabel },
                             isCollapsed = contentIndex in collapsedItems,
                         )
                     }

@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
@@ -82,7 +83,7 @@ internal class OpenAiSdkRuntimeBackend(
                 connectionKind = connection.kind,
                 modelName = modelConfiguration.providerModelId,
                 client = clientFactory.createClient(connection),
-                messageMapper = OpenAiSdkMessageMapper(connection.kind),
+                messageMapper = OpenAiSdkMessageMapper(connection.kind, connection.id.value, modelConfiguration.providerModelId),
             )
 
             else -> error("OpenAI SDK runtime does not support connection ${connection.kind}")
@@ -118,8 +119,10 @@ private class OpenAiSdkRuntime(
     }
 }
 
-private class OpenAiSdkMessageMapper(
+internal class OpenAiSdkMessageMapper(
     private val connectionKind: AiConnection.Kind,
+    private val connectionId: String? = null,
+    private val modelName: String? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -158,19 +161,38 @@ private class OpenAiSdkMessageMapper(
         val choice = completion.choices().firstOrNull()
             ?: return AiRuntimeResponse(
                 messages = emptyList(),
+                outcome = AiStepOutcome.FAILED,
                 usage = usage,
                 contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
                 providerMetadata = mapOf("provider" to connectionKind.name, "model" to completion.model()),
             )
         val message = choice.message()
+        val outcome = when (choice.finishReason().asString()) {
+            "stop" -> when {
+                message.refusal().isPresent -> AiStepOutcome.REFUSED
+                message.toolCalls().getOrNull().orEmpty().isNotEmpty() -> AiStepOutcome.FAILED
+                else -> AiStepOutcome.COMPLETE
+            }
+            "tool_calls" -> AiStepOutcome.TOOL_CALLS
+            "length" -> AiStepOutcome.INCOMPLETE
+            "content_filter" -> AiStepOutcome.REFUSED
+            else -> AiStepOutcome.FAILED
+        }
         val content = buildList {
+            message._additionalProperties()["reasoning_content"]?.asString()?.getOrNull()?.let {
+                add(Conversation.Message.ContentItem.Thinking(it))
+            }
             message.content().getOrNull()?.trim()?.takeIf { it.isNotBlank() }?.let { text ->
-                add(assistantBlock(text, assistantResponseFormat))
+                add(if (outcome != AiStepOutcome.COMPLETE) Conversation.Message.ContentItem.AssistantMessage(
+                    structured = AssistantResponseParser.parseProgress(text, assistantResponseFormat),
+                ) else assistantBlock(text, assistantResponseFormat))
             }
             message.refusal().getOrNull()?.trim()?.takeIf { it.isNotBlank() }?.let { text ->
                 add(plainAssistantBlock(text))
             }
-            message.toolCalls().getOrNull().orEmpty().mapNotNull(::toToolCall).forEach(::add)
+            if (outcome == AiStepOutcome.TOOL_CALLS) {
+                message.toolCalls().getOrNull().orEmpty().mapNotNull(::toToolCall).forEach(::add)
+            }
         }
 
         val assistantMessages = if (content.isEmpty()) {
@@ -181,8 +203,11 @@ private class OpenAiSdkMessageMapper(
                     content = content,
                     metadata = mapOf(
                         "provider" to connectionKind.name,
-                        "model" to completion.model(),
+                        "model" to (modelName ?: completion.model()),
+                        "reportedModel" to completion.model(),
                         "completionId" to completion.id(),
+                        "connectionId" to connectionId,
+                        "openaiCompatibleMessage" to json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(message)),
                     ),
                 )
             )
@@ -193,9 +218,11 @@ private class OpenAiSdkMessageMapper(
             usage = usage,
             contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
             finishReason = choice.finishReason().asString(),
+            outcome = outcome,
             providerMetadata = mapOf(
                 "provider" to connectionKind.name,
-                "model" to completion.model(),
+                "model" to (modelName ?: completion.model()),
+                "reportedModel" to completion.model(),
                 "completionId" to completion.id(),
                 "choiceCount" to completion.choices().size,
             ),
@@ -293,6 +320,17 @@ private class OpenAiSdkMessageMapper(
             .build()
 
     private fun toAssistantMessageParam(message: Conversation.Message): ChatCompletionMessageParam? {
+        val metadata = message.providerMetadata
+        val raw = metadata["openaiCompatibleMessage"] as? JsonObject
+        if (raw != null && metadata["provider"]?.toString()?.trim('"') == connectionKind.name &&
+            metadata["connectionId"]?.toString()?.trim('"') == connectionId &&
+            metadata["model"]?.toString()?.trim('"') == modelName
+        ) {
+            val replay = JsonObject(raw.filterKeys { it in setOf("role", "content", "tool_calls", "reasoning_content", "refusal") })
+            return ChatCompletionMessageParam.ofAssistant(com.openai.core.jsonMapper().readValue(
+                replay.toString(), com.openai.models.chat.completions.ChatCompletionAssistantMessageParam::class.java,
+            ))
+        }
         val text = message.content
             .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
             .map { it.structured.fullText } +
@@ -522,8 +560,8 @@ private class OpenAiSdkMessageMapper(
         toolCall.function().getOrNull()?.let { functionCall ->
             val function = functionCall.function()
             val arguments = function.arguments()
-            val input = runCatching { json.parseToJsonElement(arguments) }
-                .getOrElse { JsonObject(mapOf("raw" to JsonPrimitive(arguments))) }
+            val input = json.parseToJsonElement(arguments)
+            require(input is JsonObject) { "OpenAI-compatible function arguments must be a JSON object" }
 
             Conversation.Message.ContentItem.ToolCall(
                 id = Conversation.Message.ContentItem.ToolCall.Id(functionCall.id()),

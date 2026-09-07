@@ -1,5 +1,7 @@
 package com.gromozeka.server.testsupport.llm
 
+import com.gromozeka.domain.model.ai.AiStepOutcome
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
@@ -806,14 +808,16 @@ internal data class AiRuntimeResponseSnapshot(
     val usage: AiUsage? = null,
     val finishReason: String? = null,
     val providerMetadata: JsonObject = JsonObject(emptyMap()),
+    val outcome: AiStepOutcome? = null,
 ) {
     fun toRuntimeResponse(context: AiRuntimeCassetteReplayContext): AiRuntimeResponse {
-        return AiRuntimeResponse(
+        val response = AiRuntimeResponse(
             messages = messages.mapIndexed { index, message -> message.toAssistantMessage(context, index) },
             usage = usage,
             finishReason = finishReason,
             providerMetadata = providerMetadata.toPlainMap().rehydrateDynamicMetadata(context),
         )
+        return outcome?.let { response.copy(outcome = it) } ?: response
     }
 }
 
@@ -1257,6 +1261,7 @@ private fun AiRuntimeResponse.toCassetteResponseSnapshot(): AiRuntimeResponseSna
         messages = messages.map { it.toCassetteAssistantMessageSnapshot() },
         usage = usage,
         finishReason = finishReason,
+        outcome = outcome,
         providerMetadata = providerMetadata.toJsonObject(),
     )
 }

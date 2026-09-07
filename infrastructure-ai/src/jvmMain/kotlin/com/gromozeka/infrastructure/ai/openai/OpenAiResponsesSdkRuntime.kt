@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
@@ -17,6 +18,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.openai.client.OpenAIClient
 import com.openai.core.JsonValue
+import com.openai.core.jsonMapper
 import com.openai.models.Reasoning
 import com.openai.models.ResponsesModel
 import com.openai.models.ReasoningEffort as OpenAiReasoningEffort
@@ -140,10 +142,19 @@ internal class OpenAiResponsesMessageMapper(
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): AiRuntimeResponse {
         val outputItems = response.output()
+        val status = response.status().getOrNull()?.asString()
+        val outcome = when {
+            status == "incomplete" -> AiStepOutcome.INCOMPLETE
+            status != "completed" -> AiStepOutcome.FAILED
+            outputItems.any { it.isMessage() && it.asMessage().content().any { part -> part.isRefusal() } } -> AiStepOutcome.REFUSED
+            outputItems.any { it.isFunctionCall() } -> AiStepOutcome.TOOL_CALLS
+            outputItems.lastOrNull { it.isMessage() }?.asMessage()?.phase()?.getOrNull()?.asString() == "commentary" -> AiStepOutcome.CONTINUE
+            else -> AiStepOutcome.COMPLETE
+        }
         val messages = outputItems.mapNotNull { item ->
-            when {
-                item.isMessage() -> item.asMessage().toAssistantMessage(assistantResponseFormat)
-                item.isFunctionCall() -> item.asFunctionCall().toAssistantMessage()
+            val mapped = when {
+                item.isMessage() -> item.asMessage().toAssistantMessage(assistantResponseFormat, outcome != AiStepOutcome.COMPLETE)
+                item.isFunctionCall() -> if (outcome == AiStepOutcome.TOOL_CALLS) item.asFunctionCall().toAssistantMessage() else null
                 item.isReasoning() -> item.asReasoning().let { reasoning ->
                     val thinking = buildList {
                         reasoning.summary().map { it.text().trim() }.filter(String::isNotBlank).forEach(::add)
@@ -153,34 +164,24 @@ internal class OpenAiResponsesMessageMapper(
                             .forEach(::add)
                     }.joinToString("\n").trim()
                     val signature = reasoning.encryptedContent().getOrNull()
-                    if (thinking.isBlank() && signature.isNullOrBlank()) {
-                        null
-                    } else {
-                        AiAssistantMessage(
-                            content = if (thinking.isBlank()) {
-                                emptyList()
-                            } else {
-                                listOf(
-                                    Conversation.Message.ContentItem.Thinking(
-                                        thinking = thinking,
-                                        signature = signature,
-                                        state = Conversation.Message.BlockState.COMPLETE,
-                                    )
-                                )
-                            },
-                            metadata = signature?.let {
-                                mapOf(
-                                    OPENAI_API_REASONING_ITEMS_METADATA_KEY to JsonArray(
-                                        listOf(reasoning.toReplayJson())
-                                    )
-                                )
-                            }.orEmpty(),
-                        )
-                    }
+                    AiAssistantMessage(
+                        content = listOf(
+                            Conversation.Message.ContentItem.Thinking(
+                                thinking = thinking,
+                                signature = signature,
+                                state = Conversation.Message.BlockState.COMPLETE,
+                            )
+                        ),
+                    )
                 }
 
-                else -> null
+                else -> AiAssistantMessage(listOf(AssistantResponseParser.providerBlock(
+                    json.parseToJsonElement(jsonMapper().writeValueAsString(item)),
+                )))
             }
+            mapped?.copy(metadata = mapped.metadata + ("openaiOutputItems" to JsonArray(listOf(
+                json.parseToJsonElement(jsonMapper().writeValueAsString(item)),
+            ))))
         }
         val model = response.model().providerModelId()
 
@@ -193,10 +194,12 @@ internal class OpenAiResponsesMessageMapper(
             messages = appendWebSources(messages, sourceUrls),
             usage = usage,
             contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
-            finishReason = response.status().getOrNull()?.asString(),
+            finishReason = response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
+            outcome = outcome,
             providerMetadata = mapOf(
                 "provider" to "OPENAI_API",
-                "model" to model,
+                "model" to modelName,
+                "reportedModel" to model,
                 "connectionId" to connectionId,
                 "modelConfigurationId" to modelConfigurationId,
                 "responseId" to response.id(),
@@ -205,6 +208,15 @@ internal class OpenAiResponsesMessageMapper(
     }
 
     private fun toInputItems(message: Conversation.Message): List<ResponseInputItem> = buildList {
+        val rawItems = message.providerMetadata["openaiOutputItems"] as? JsonArray
+        if (message.role == Conversation.Message.Role.ASSISTANT && rawItems != null &&
+            message.providerMetadata["provider"]?.jsonPrimitive?.contentOrNull == "OPENAI_API" &&
+            message.providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
+            message.providerMetadata["model"]?.jsonPrimitive?.contentOrNull == modelName
+        ) {
+            addAll(rawItems.map { jsonMapper().readValue(it.toString(), ResponseInputItem::class.java) })
+            return@buildList
+        }
         when (message.role) {
             Conversation.Message.Role.USER -> {
                 val content = buildList {
@@ -479,10 +491,13 @@ internal class OpenAiResponsesMessageMapper(
 
     private fun ResponseOutputMessage.toAssistantMessage(
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        progress: Boolean,
     ): AiAssistantMessage? {
         val content = content().mapNotNull { item ->
             when {
-                item.isOutputText() -> item.asOutputText().toAssistantBlock(assistantResponseFormat)
+                item.isOutputText() -> item.asOutputText().toAssistantBlock(
+                    assistantResponseFormat, progress || phase().getOrNull()?.asString() == "commentary",
+                )
                 item.isRefusal() -> item.asRefusal().refusal().trim().takeIf(String::isNotBlank)?.let(::plainAssistantBlock)
                 else -> null
             }
@@ -499,8 +514,10 @@ internal class OpenAiResponsesMessageMapper(
 
     private fun ResponseOutputText.toAssistantBlock(
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        progress: Boolean,
     ): Conversation.Message.ContentItem.AssistantMessage {
-        val structured = AssistantResponseParser.parse(text().trim(), assistantResponseFormat)
+        val structured = if (progress) AssistantResponseParser.parseProgress(text(), assistantResponseFormat)
+            else AssistantResponseParser.parse(text(), assistantResponseFormat)
         val citations = annotations().filter { it.isUrlCitation() }
             .map { it.asUrlCitation() }
             .distinctBy { it.url() }
@@ -518,24 +535,9 @@ internal class OpenAiResponsesMessageMapper(
         )
     }
 
-    private fun ResponseReasoningItem.toReplayJson(): JsonObject = JsonObject(
-        buildMap {
-            put("id", JsonPrimitive(id()))
-            put(
-                "summary",
-                JsonArray(
-                    summary().map { summary ->
-                        JsonObject(mapOf("text" to JsonPrimitive(summary.text())))
-                    }
-                )
-            )
-            encryptedContent().getOrNull()?.let { put("encrypted_content", JsonPrimitive(it)) }
-        }
-    )
-
     private fun ResponseFunctionToolCall.toAssistantMessage(): AiAssistantMessage {
-        val input = runCatching { json.parseToJsonElement(arguments()) }
-            .getOrElse { JsonObject(mapOf("raw" to JsonPrimitive(arguments()))) }
+        val input = json.parseToJsonElement(arguments())
+        require(input is JsonObject) { "OpenAI function arguments must be a JSON object" }
         return AiAssistantMessage(
             content = listOf(
                 Conversation.Message.ContentItem.ToolCall(
