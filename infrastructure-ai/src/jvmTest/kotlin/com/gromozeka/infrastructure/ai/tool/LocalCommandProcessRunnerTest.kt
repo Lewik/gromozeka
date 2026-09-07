@@ -18,6 +18,7 @@ import kotlin.test.assertTrue
 class LocalCommandProcessRunnerTest {
     private val runner = LocalCommandProcessRunner()
     private val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+    private val isLinux = System.getProperty("os.name").lowercase().contains("linux")
 
     @Test
     fun `runner drains large merged output into artifact`() {
@@ -205,6 +206,127 @@ class LocalCommandProcessRunnerTest {
             }
             recovery.process.terminateTree()
             assertFalse(process.isAlive())
+        }
+    }
+
+    @Test
+    fun `linux runner records the actual session leader as process tree id`() {
+        if (!isLinux) return
+        withTemporaryGromozekaHome { home ->
+            val identityFile = File(home, "process-identity")
+            val process = runner.start(
+                CommandProcessSpec(
+                    executionId = "linux-session-identity-task",
+                    command = "pid=${'$'}${'$'}; " +
+                        "pgid=${'$'}(ps -o pgid= -p ${'$'}${'$'} | tr -d ' '); " +
+                        "sid=${'$'}(ps -o sid= -p ${'$'}${'$'} | tr -d ' '); " +
+                        "printf '%s %s %s' \"${'$'}pid\" \"${'$'}pgid\" \"${'$'}sid\" > '${identityFile.absolutePath}'; " +
+                        "sleep 30",
+                    workingDirectory = home.absolutePath,
+                )
+            )
+            try {
+                waitUntil(5_000) { identityFile.isFile && identityFile.readText().isNotBlank() }
+                val (pid, processGroupId, sessionId) = identityFile.readText().trim().split(' ').map(String::toLong)
+
+                assertEquals(process.processTreeId, pid)
+                assertEquals(process.processTreeId, processGroupId)
+                assertEquals(process.processTreeId, sessionId)
+            } finally {
+                if (process.isAlive()) process.terminateTree()
+            }
+        }
+    }
+
+    @Test
+    fun `posix termination refuses the worker process group before sending a signal`() {
+        if (isWindows) return
+        val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
+        val sentSignals = mutableListOf<String>()
+        try {
+            val unsafeGroupId = wrapper.pid()
+            val tree = PosixProcessTree(
+                id = unsafeGroupId,
+                processGroupInspector = PosixProcessGroupInspector { processId ->
+                    when (processId) {
+                        ProcessHandle.current().pid(), wrapper.pid() -> unsafeGroupId
+                        else -> null
+                    }
+                },
+                signalSender = PosixProcessGroupSignalSender { _, signal ->
+                    sentSignals += signal
+                    true
+                },
+            )
+
+            val error = assertFailsWith<IllegalStateException> {
+                tree.terminate(wrapper.toHandle())
+            }
+
+            assertContains(requireNotNull(error.message), "Worker process group")
+            assertTrue(sentSignals.isEmpty())
+        } finally {
+            wrapper.destroyForcibly()
+            wrapper.waitFor()
+        }
+    }
+
+    @Test
+    fun `posix termination refuses special process group ids before sending a signal`() {
+        if (isWindows) return
+        val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
+        val sentSignals = mutableListOf<String>()
+        try {
+            listOf(-1L, 0L, 1L).forEach { unsafeGroupId ->
+                val tree = PosixProcessTree(
+                    id = unsafeGroupId,
+                    processGroupInspector = PosixProcessGroupInspector { error("Unexpected inspection") },
+                    signalSender = PosixProcessGroupSignalSender { _, signal ->
+                        sentSignals += signal
+                        true
+                    },
+                )
+
+                val error = assertFailsWith<IllegalStateException> {
+                    tree.terminate(wrapper.toHandle())
+                }
+
+                assertContains(requireNotNull(error.message), "unsafe command process group")
+            }
+            assertTrue(sentSignals.isEmpty())
+        } finally {
+            wrapper.destroyForcibly()
+            wrapper.waitFor()
+        }
+    }
+
+    @Test
+    fun `posix termination refuses a process group not owned by the command wrapper`() {
+        if (isWindows) return
+        val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
+        val unrelated = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
+        val sentSignals = mutableListOf<String>()
+        try {
+            val tree = PosixProcessTree(
+                id = unrelated.pid(),
+                processGroupInspector = PosixProcessGroupInspector { processId -> processId },
+                signalSender = PosixProcessGroupSignalSender { _, signal ->
+                    sentSignals += signal
+                    true
+                },
+            )
+
+            val error = assertFailsWith<IllegalStateException> {
+                tree.terminate(wrapper.toHandle())
+            }
+
+            assertContains(requireNotNull(error.message), "not owned by wrapper")
+            assertTrue(sentSignals.isEmpty())
+        } finally {
+            wrapper.destroyForcibly()
+            unrelated.destroyForcibly()
+            wrapper.waitFor()
+            unrelated.waitFor()
         }
     }
 

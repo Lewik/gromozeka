@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionResult
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.RunningCommandProcess
+import klog.KLoggers
 import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import java.io.File
@@ -367,6 +368,14 @@ internal interface LocalProcessTree {
     fun terminate(processHandle: ProcessHandle)
 }
 
+internal fun interface PosixProcessGroupInspector {
+    fun processGroupId(processId: Long): Long?
+}
+
+internal fun interface PosixProcessGroupSignalSender {
+    fun send(processGroupId: Long, signal: String): Boolean
+}
+
 internal fun currentLocalCommandHost(
     osName: String = System.getProperty("os.name"),
 ): LocalCommandHost {
@@ -383,6 +392,7 @@ internal class PosixLocalCommandHost private constructor(
     private val launcherMode: String,
     private val launcherExecutable: String?,
     private val killExecutable: File,
+    private val processGroupInspector: PosixProcessGroupInspector,
 ) : LocalCommandHost {
     override fun launch(
         spec: CommandProcessSpec,
@@ -415,7 +425,13 @@ internal class PosixLocalCommandHost private constructor(
         awaitPositiveLong(processTreeFile, STARTUP_HANDSHAKE_MILLIS)
 
     override fun processTree(id: Long): LocalProcessTree =
-        PosixProcessTree(id, killExecutable)
+        PosixProcessTree(
+            id = id,
+            processGroupInspector = processGroupInspector,
+            signalSender = PosixProcessGroupSignalSender { processGroupId, signal ->
+                signalProcessGroup(killExecutable, processGroupId, signal)
+            },
+        )
 
     companion object {
         fun forMacOS(): PosixLocalCommandHost =
@@ -423,6 +439,7 @@ internal class PosixLocalCommandHost private constructor(
                 launcherMode = "job-control",
                 launcherExecutable = null,
                 killExecutable = findExecutable(POSIX_KILL_EXECUTABLE_CANDIDATES, "POSIX kill"),
+                processGroupInspector = commandProcessGroupInspector(),
             )
 
         fun forLinux(): PosixLocalCommandHost =
@@ -430,6 +447,7 @@ internal class PosixLocalCommandHost private constructor(
                 launcherMode = "setsid",
                 launcherExecutable = findExecutable(SETSID_EXECUTABLE_CANDIDATES, "setsid").absolutePath,
                 killExecutable = findExecutable(POSIX_KILL_EXECUTABLE_CANDIDATES, "POSIX kill"),
+                processGroupInspector = commandProcessGroupInspector(),
             )
     }
 }
@@ -494,18 +512,23 @@ internal class WindowsLocalCommandHost(
         WindowsProcessTree(id, taskkillExecutable)
 }
 
-private class PosixProcessTree(
+internal class PosixProcessTree(
     override val id: Long,
-    private val killExecutable: File,
+    private val processGroupInspector: PosixProcessGroupInspector,
+    private val signalSender: PosixProcessGroupSignalSender,
 ) : LocalProcessTree {
+    private val log = KLoggers.logger(this)
+
     override fun isAlive(processHandle: ProcessHandle): Boolean =
-        processHandle.isAlive || processGroupIsAlive(killExecutable, id)
+        processHandle.isAlive || processGroupIsAlive(signalSender, id)
 
     override fun terminate(processHandle: ProcessHandle) {
-        signalProcessGroup(killExecutable, id, "TERM")
+        requireSafeTarget(processHandle)
+        signalSender.send(id, "TERM")
         waitUntilStopped(processHandle, TERMINATION_GRACE_MILLIS)
-        if (processGroupIsAlive(killExecutable, id)) {
-            signalProcessGroup(killExecutable, id, "KILL")
+        if (processGroupIsAlive(signalSender, id)) {
+            log.warn { "Command process group $id survived SIGTERM; sending SIGKILL" }
+            signalSender.send(id, "KILL")
         }
         waitUntilStopped(processHandle, FORCE_TERMINATION_GRACE_MILLIS)
         if (processHandle.isAlive) {
@@ -514,6 +537,41 @@ private class PosixProcessTree(
         waitUntilStopped(processHandle, FORCE_TERMINATION_GRACE_MILLIS)
         check(!isAlive(processHandle)) {
             "Failed to terminate command process tree $id"
+        }
+    }
+
+    private fun requireSafeTarget(processHandle: ProcessHandle) {
+        check(id > 1) { "Refusing to signal unsafe command process group $id" }
+        val groupLeader = ProcessHandle.of(id).orElse(null)
+            ?: error("Command process group leader $id is no longer running")
+        check(groupLeader.isAlive) { "Command process group leader $id is no longer running" }
+        val ownedByWrapper = groupLeader.pid() == processHandle.pid() ||
+            processHandle.descendants().use { descendants ->
+                descendants.anyMatch { it.pid() == groupLeader.pid() }
+            }
+        check(ownedByWrapper) {
+            "Refusing to signal command process group $id because its leader is not owned by wrapper ${processHandle.pid()}"
+        }
+        val targetProcessGroupId = processGroupInspector.processGroupId(groupLeader.pid())
+            ?: error("Cannot resolve process group for command leader ${groupLeader.pid()}")
+        check(targetProcessGroupId == id) {
+            "Refusing to signal command process group $id because leader ${groupLeader.pid()} belongs to group $targetProcessGroupId"
+        }
+        val currentProcessGroupId = processGroupInspector.processGroupId(ProcessHandle.current().pid())
+            ?: error("Cannot resolve Worker process group")
+        check(id != currentProcessGroupId) {
+            "Refusing to signal Worker process group $id"
+        }
+        val wrapperProcessGroupId = processGroupInspector.processGroupId(processHandle.pid())
+            ?: error("Cannot resolve process group for command wrapper ${processHandle.pid()}")
+        check(id != wrapperProcessGroupId) {
+            "Refusing to signal command wrapper process group $id"
+        }
+        log.info {
+            "Terminating command process group: " +
+                "workerPid=${ProcessHandle.current().pid()} workerPgid=$currentProcessGroupId " +
+                "wrapperPid=${processHandle.pid()} wrapperPgid=$wrapperProcessGroupId " +
+                "commandPid=${groupLeader.pid()} commandPgid=$targetProcessGroupId"
         }
     }
 
@@ -631,6 +689,35 @@ private fun findExecutable(candidates: List<String>, description: String): File 
         .firstOrNull { it.isFile && it.canExecute() }
         ?: error("$description executable was not found")
 
+private fun commandProcessGroupInspector(): PosixProcessGroupInspector {
+    val psExecutable = findExecutable(POSIX_PS_EXECUTABLE_CANDIDATES, "POSIX ps")
+    return PosixProcessGroupInspector { processId ->
+        ProcessBuilder(
+            psExecutable.absolutePath,
+            "-o",
+            "pgid=",
+            "-p",
+            processId.toString(),
+        )
+            .redirectErrorStream(true)
+            .start()
+            .let { process ->
+                check(process.waitFor(PROCESS_INSPECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    process.destroyForcibly()
+                    "Timed out while resolving process group for process $processId"
+                }
+                if (process.exitValue() == 0) {
+                    process.inputStream.bufferedReader().use { it.readText() }
+                        .trim()
+                        .toLongOrNull()
+                        ?.takeIf { it > 0 }
+                } else {
+                    null
+                }
+            }
+    }
+}
+
 private fun windowsCommandInterpreter(): String =
     System.getenv("ComSpec")
         ?.takeIf(String::isNotBlank)
@@ -645,7 +732,7 @@ private fun windowsTaskkillExecutable(): String =
         ?: "taskkill.exe"
 
 private fun signalProcessGroup(killExecutable: File, processTreeId: Long, signal: String): Boolean =
-    ProcessBuilder(killExecutable.absolutePath, "-$signal", "-$processTreeId")
+    ProcessBuilder(killExecutable.absolutePath, "-s", signal, "--", "-$processTreeId")
         .redirectErrorStream(true)
         .start()
         .let { process ->
@@ -656,8 +743,8 @@ private fun signalProcessGroup(killExecutable: File, processTreeId: Long, signal
             process.exitValue() == 0
         }
 
-private fun processGroupIsAlive(killExecutable: File, processTreeId: Long): Boolean =
-    signalProcessGroup(killExecutable, processTreeId, "0")
+private fun processGroupIsAlive(signalSender: PosixProcessGroupSignalSender, processTreeId: Long): Boolean =
+    signalSender.send(processTreeId, "0")
 
 private fun forceTerminateHandleTree(processHandle: ProcessHandle) {
     val descendants = processHandle.descendants().toList()
@@ -678,9 +765,11 @@ private const val TERMINATION_GRACE_MILLIS = 1_000L
 private const val FORCE_TERMINATION_GRACE_MILLIS = 1_000L
 private const val TERMINATION_POLL_MILLIS = 25L
 private const val TASKKILL_TIMEOUT_SECONDS = 5L
+private const val PROCESS_INSPECTION_TIMEOUT_SECONDS = 5L
 private const val WINDOWS_COMMAND_FILE_ENV = "GROMOZEKA_COMMAND_FILE"
 private const val WINDOWS_EXIT_FILE_ENV = "GROMOZEKA_EXIT_FILE"
 private val POSIX_KILL_EXECUTABLE_CANDIDATES = listOf("/bin/kill", "/usr/bin/kill")
+private val POSIX_PS_EXECUTABLE_CANDIDATES = listOf("/bin/ps", "/usr/bin/ps")
 private val SETSID_EXECUTABLE_CANDIDATES = listOf("/usr/bin/setsid", "/bin/setsid")
 private val POSIX_COMMAND_WRAPPER = """
     case "${'$'}4" in
@@ -689,19 +778,23 @@ private val POSIX_COMMAND_WRAPPER = """
             /bin/sh -c "${'$'}1" &
             command_pid=${'$'}!
             set +m
+            printf '%s\n' "${'$'}command_pid" > "${'$'}2.tmp"
+            /bin/mv "${'$'}2.tmp" "${'$'}2"
+            wait "${'$'}command_pid" 2>/dev/null
+            exit_code=${'$'}?
             ;;
         setsid)
-            "${'$'}5" /bin/sh -c "${'$'}1" &
-            command_pid=${'$'}!
+            "${'$'}5" --wait /bin/sh -c '
+                printf "%s\n" "${'$'}${'$'}" > "${'$'}2.tmp"
+                /bin/mv "${'$'}2.tmp" "${'$'}2"
+                exec /bin/sh -c "${'$'}1"
+            ' gromozeka-command "${'$'}1" "${'$'}2"
+            exit_code=${'$'}?
             ;;
         *)
             exit 125
             ;;
     esac
-    printf '%s\n' "${'$'}command_pid" > "${'$'}2.tmp"
-    /bin/mv "${'$'}2.tmp" "${'$'}2"
-    wait "${'$'}command_pid" 2>/dev/null
-    exit_code=${'$'}?
     printf '%s\n' "${'$'}exit_code" > "${'$'}3.tmp"
     /bin/mv "${'$'}3.tmp" "${'$'}3"
     exit "${'$'}exit_code"
