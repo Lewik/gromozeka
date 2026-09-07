@@ -3,7 +3,6 @@ package com.gromozeka.presentation
 import com.gromozeka.shared.logging.JvmClientDiagnosticLogging
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,10 +26,7 @@ import com.gromozeka.presentation.ui.ChatWindow
 import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
-import com.gromozeka.presentation.services.DesktopLocalWorkerController
 import com.gromozeka.presentation.services.DesktopNotificationPublisher
-import com.gromozeka.presentation.services.LocalWorkerOperation
-import com.gromozeka.presentation.services.LocalWorkerStatus
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.WindowsWindowAppearance
 import com.gromozeka.presentation.services.defaultDesktopNotificationService
@@ -39,7 +35,6 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
-import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
 import java.awt.Desktop
 import java.awt.desktop.AppReopenedListener
 import java.awt.desktop.QuitHandler
@@ -76,8 +71,6 @@ fun main(args: Array<String>) {
         var trayPttState by remember { mutableStateOf(PttState.IDLE) }
         var windowVisible by remember { mutableStateOf(true) }
         var quitting by remember { mutableStateOf(false) }
-        val localWorkerController = remember { DesktopLocalWorkerController() }
-        val localWorkerStatus by localWorkerController.status.collectAsState()
         val traySupported = isTraySupported
         val trayState = rememberTrayState()
         val desktopNotificationService = remember(trayState) {
@@ -89,33 +82,16 @@ fun main(args: Array<String>) {
         }
         val scope = rememberCoroutineScope()
 
-        suspend fun startAuthenticatedRemoteApp(
-            connection: RemoteAuthenticationConnection,
-            deviceConnection: DeviceConnectionConsumeResponse? = null,
-        ) {
+        suspend fun startAuthenticatedRemoteApp(connection: RemoteAuthenticationConnection) {
             val authenticatedStatus = connection.status()
             authenticationStatus = authenticatedStatus
-            val started = startRemotePresentation(
+            remoteApp = startRemotePresentation(
                 remoteUrl = requireNotNull(remoteUrl),
                 authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
                 remoteClientSettingsStore = settingsStore,
-                localWorkerController = localWorkerController,
                 desktopNotificationService = desktopNotificationService,
                 httpClient = connection.httpClient,
             )
-            try {
-                deviceConnection?.worker?.let { bootstrap ->
-                    localWorkerController.acceptDeviceConnection(
-                        serverUrl = connection.serverHttpBaseUrl,
-                        bootstrap = bootstrap,
-                        workerCatalogService = started.components.workerCatalogService,
-                    )
-                }
-            } catch (error: Throwable) {
-                started.close()
-                throw error
-            }
-            remoteApp = started
         }
 
         fun showWindow() {
@@ -126,15 +102,10 @@ fun main(args: Array<String>) {
             if (quitting) return
             quitting = true
             scope.launch {
-                localWorkerController.stopForApplicationExit()
                 remoteApp?.close()
                 authenticationConnection?.close()
                 exitApplication()
             }
-        }
-
-        LaunchedEffect(Unit) {
-            localWorkerController.initialize()
         }
 
         LaunchedEffect(remoteApp) {
@@ -190,7 +161,6 @@ fun main(args: Array<String>) {
                         remoteUrl = targetUrl,
                         authenticatedUser = requireNotNull(status.authenticatedUser),
                         remoteClientSettingsStore = settingsStore,
-                        localWorkerController = localWorkerController,
                         desktopNotificationService = desktopNotificationService,
                         httpClient = connection.httpClient,
                     )
@@ -208,7 +178,6 @@ fun main(args: Array<String>) {
             onDispose {
                 remoteApp?.close()
                 authenticationConnection?.close()
-                localWorkerController.close()
             }
         }
 
@@ -252,46 +221,6 @@ fun main(args: Array<String>) {
                         enabled = false,
                         onClick = {},
                     )
-                }
-                if (localWorkerStatus.supported) {
-                    Item(
-                        text = localWorkerStatus.trayLabel(),
-                        enabled = false,
-                        onClick = {},
-                    )
-                    when {
-                        localWorkerStatus.running -> Item(
-                            text = "Stop Local Worker",
-                            enabled = localWorkerStatus.operation == null,
-                            onClick = { scope.launch { localWorkerController.stop() } },
-                        )
-
-                        localWorkerStatus.installed -> Item(
-                            text = "Start Local Worker",
-                            enabled = localWorkerStatus.operation == null,
-                            onClick = { scope.launch { localWorkerController.start() } },
-                        )
-
-                        startedApp != null -> Item(
-                            text = "Enable Local Worker",
-                            enabled = localWorkerStatus.operation == null,
-                            onClick = {
-                                scope.launch {
-                                    localWorkerController.enable(
-                                        startedApp.components.distributionService,
-                                        startedApp.components.workerCatalogService,
-                                    )
-                                }
-                            },
-                        )
-                    }
-                    if (localWorkerStatus.installed && localWorkerStatus.permissions != null) {
-                        Item(
-                            text = "Computer Use Permissions...",
-                            enabled = localWorkerStatus.operation == null,
-                            onClick = { scope.launch { localWorkerController.requestComputerUsePermissions() } },
-                        )
-                    }
                 }
                 Separator()
                 Item(
@@ -345,12 +274,12 @@ fun main(args: Array<String>) {
                                     connecting = true
                                     authenticationError = null
                                     try {
-                                        val deviceConnection = connection.authenticate(
+                                        connection.authenticate(
                                             initialized = status.initialized,
                                             input = input,
                                             deviceToken = deviceToken,
                                         )
-                                        startAuthenticatedRemoteApp(connection, deviceConnection)
+                                        startAuthenticatedRemoteApp(connection)
                                     } catch (error: CancellationException) {
                                         throw error
                                     } catch (error: Throwable) {
@@ -361,9 +290,8 @@ fun main(args: Array<String>) {
                             },
                             onStartDeviceConnection = {
                                 requireNotNull(authenticationConnection).startDeviceConnection(
-                                    deviceLabel = localWorkerStatus.deviceDisplayName,
+                                    deviceLabel = "Desktop client",
                                     platform = System.getProperty("os.name"),
-                                    worker = localWorkerController.deviceConnectionWorkerRequest(),
                                 )
                             },
                             onConsumeDeviceConnection = {
@@ -372,13 +300,13 @@ fun main(args: Array<String>) {
                             deviceConnectionVerificationUrl = {
                                 requireNotNull(authenticationConnection).deviceConnectionVerificationUrl(it)
                             },
-                            onDeviceConnected = { deviceConnection ->
+                            onDeviceConnected = {
                                 val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
                                 scope.launch {
                                     connecting = true
                                     authenticationError = null
                                     try {
-                                        startAuthenticatedRemoteApp(connection, deviceConnection)
+                                        startAuthenticatedRemoteApp(connection)
                                     } catch (error: CancellationException) {
                                         throw error
                                     } catch (error: Throwable) {
@@ -403,16 +331,4 @@ fun main(args: Array<String>) {
             }
         }
     }
-}
-
-private fun LocalWorkerStatus.trayLabel(): String = when {
-    operation == LocalWorkerOperation.ENROLLING -> "Local Worker: enrolling"
-    operation == LocalWorkerOperation.STARTING -> "Local Worker: starting"
-    operation == LocalWorkerOperation.STOPPING -> "Local Worker: stopping"
-    operation == LocalWorkerOperation.REQUESTING_PERMISSIONS -> "Local Worker: requesting permissions"
-    failure != null -> "Local Worker: error"
-    running && serverStatus == com.gromozeka.domain.service.WorkerCatalogEntry.Status.ONLINE -> "Local Worker: online"
-    running -> "Local Worker: running"
-    installed -> "Local Worker: stopped"
-    else -> "Local Worker: disabled"
 }

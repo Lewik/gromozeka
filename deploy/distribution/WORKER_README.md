@@ -4,10 +4,9 @@ Gromozeka Worker is a trusted, unsandboxed executor. Enrolling or configuring a
 Worker authorizes the Gromozeka control plane and its selected models to invoke
 configured tools with the effective permissions of the Worker process.
 
-The macOS and Windows Gromozeka apps already include an optional Local Worker.
-Normal desktop installations should enable it from **Settings -> Advanced ->
-This Mac/PC**. This standalone archive remains useful for headless machines,
-remote Workers, and multiple Worker processes on one host.
+The Gromozeka Client does not bundle or manage a Worker. Install this standalone
+archive separately on desktop, headless, or remote machines. Multiple Worker
+processes may run on one host when each uses its own identity and configuration.
 
 Open the Server `/downloads` page and run the connection command shown there.
 The Worker prints a short code. Review and approve it in **Settings -> Security**

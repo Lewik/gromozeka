@@ -9,7 +9,6 @@ import com.gromozeka.presentation.services.DesktopQuickTextActionExecutor
 import com.gromozeka.presentation.services.DesktopNotificationService
 import com.gromozeka.presentation.services.GlobalHotkeyEventPhase
 import com.gromozeka.presentation.services.HoldToTalkShortcutController
-import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
@@ -34,7 +33,6 @@ internal suspend fun startRemotePresentation(
     remoteUrl: String,
     authenticatedUser: AuthenticatedUserView,
     remoteClientSettingsStore: DesktopRemoteClientSettingsStore,
-    localWorkerController: LocalWorkerController,
     desktopNotificationService: DesktopNotificationService,
     httpClient: HttpClient? = null,
 ): RemoteStartedApp {
@@ -55,7 +53,6 @@ internal suspend fun startRemotePresentation(
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
             attachmentAcquisitionController = DesktopAttachmentAcquisitionController(),
             globalHotkeyController = globalHotkeyController,
-            localWorkerController = localWorkerController,
             turnCompletionNotificationSink = TurnCompletionNotificationSink {
                 desktopNotificationService.show("turn-completed", "Gromozeka", "Turn completed")
             },

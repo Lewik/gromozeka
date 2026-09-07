@@ -8,7 +8,6 @@ import com.gromozeka.remote.protocol.AuthenticationStatusResponse
 import com.gromozeka.remote.protocol.DeviceConnectionChallenge
 import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
 import com.gromozeka.remote.protocol.DeviceConnectionPreview
-import com.gromozeka.remote.protocol.DeviceConnectionWorkerRequest
 import com.gromozeka.domain.model.DeviceConnection
 import com.gromozeka.presentation.ui.RemoteAuthenticationInput
 import io.ktor.client.HttpClient
@@ -59,16 +58,11 @@ class RemoteAuthenticationConnection(
     suspend fun startDeviceConnection(
         deviceLabel: String,
         platform: String,
-        worker: DeviceConnectionWorkerRequest? = null,
     ): DeviceConnectionChallenge = deviceConnectionClient.start(
         deviceLabel = deviceLabel,
         platform = platform,
-        components = buildSet {
-            add(DeviceConnection.Component.CLIENT)
-            if (worker != null) add(DeviceConnection.Component.WORKER)
-        },
+        components = setOf(DeviceConnection.Component.CLIENT),
         clientLabel = clientLabel,
-        worker = worker,
     )
 
     suspend fun consumeDeviceConnection(deviceToken: String): DeviceConnectionConsumeResponse =
@@ -83,9 +77,6 @@ class RemoteAuthenticationConnection(
 
     fun deviceConnectionVerificationUrl(challenge: DeviceConnectionChallenge): String =
         deviceConnectionClient.verificationUrl(challenge)
-
-    val serverHttpBaseUrl: String
-        get() = deviceConnectionClient.serverHttpBaseUrl
 
     suspend fun previewDeviceConnection(userCode: String): DeviceConnectionPreview =
         deviceConnectionClient.preview(userCode)

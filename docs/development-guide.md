@@ -217,23 +217,14 @@ a versioned shell or JRE and survive Worker updates.
 Computer Use intentionally controls the real pointer, keyboard, focus, and
 clipboard; there is no separate ownership or takeover UI.
 
-The macOS and Windows applications bundle a self-contained Worker BootJar,
-Browser MCP, Temurin, and Node.js as Local Worker resources. Client and Worker
-remain separate processes with isolated classpaths; presentation dependencies
-can never replace Worker dependencies at runtime. The duplicated Java runtime
-is intentional until packaging can share it without coupling the two
-applications. The Client owns the visible tray item and enrollment UI; the
-Local Worker remains behind the standard Worker Gateway. macOS
-uses a hidden LaunchAgent, while Windows launches the Worker in the current
-interactive session so Computer Use is never isolated in service Session 0.
-Closing the Client window hides it, while an explicit application quit stops
-the managed Local Worker. The stable macOS helper copied under Application
-Support owns Screen Recording, Accessibility, and microphone consent across app
-updates. Browser Bridge and Claude Code remain separately installed user tools.
-The managed Worker keeps its configuration under `~/.gromozeka/local-worker`
-and uses a `-local` Worker ID suffix, so a standalone Worker on the same machine
-retains a separate identity and credential. Standalone Worker packages use the
-same Worker Gateway protocol but keep their own lifecycle.
+Desktop Clients do not bundle or manage a Worker. Client and Worker are separate
+applications with independent release archives, configuration, and lifecycle.
+Workers always connect through the standard Worker Gateway. On macOS, the
+standalone Worker can use its per-user LaunchAgent and stable helper under
+Application Support so Screen Recording, Accessibility, and microphone consent
+survive Worker updates. On Windows, run the standalone Worker in an interactive
+session so Computer Use is not isolated in service Session 0. Browser Bridge
+and Claude Code remain separately installed user tools.
 
 Deployments may attach a human-facing interactive desktop to a Worker. When
 configured, `grz_worker_interactive_access_get` returns a stable Server URL;

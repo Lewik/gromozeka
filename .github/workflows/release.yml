@@ -284,16 +284,9 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24.19.0"
-          cache: npm
-          cache-dependency-path: browser-mcp/package-lock.json
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Build Browser MCP and unsigned macOS ARM64 app
+      - name: Build unsigned macOS ARM64 app
         run: |
-          npm --prefix browser-mcp ci --no-audit --no-fund
-          npm --prefix browser-mcp run verify --silent
           ./gradlew \
             :presentation:packageDmg \
             -Pgromozeka.version=${{ needs.metadata.outputs.version }} \
@@ -303,24 +296,12 @@ jobs:
         run: |
           source_dmg="$(find presentation/build/compose/binaries -type f -name '*.dmg' -print -quit)"
           app_binary="$(find presentation/build/compose/binaries -type f -path '*/Gromozeka.app/Contents/MacOS/Gromozeka' -print -quit)"
+          bundled_worker="$(find presentation/build/compose/binaries -type d -path '*/resources/local-worker' -print -quit)"
           test -n "$source_dmg"
           test -n "$app_binary"
-          worker_jar="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/app/gromozeka-worker.jar' -print -quit)"
-          worker_java="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/runtime/java/Contents/Home/bin/java' -print -quit)"
-          worker_node="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/runtime/node/bin/node' -print -quit)"
-          worker_service="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/bin/gromozeka-worker-service' -print -quit)"
-          browser_mcp="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/app/browser-mcp/node_modules/@playwright/mcp/cli.js' -print -quit)"
-          test -n "$worker_jar"
-          test -x "$worker_java"
-          test -x "$worker_node"
-          test -n "$worker_service"
-          test -n "$browser_mcp"
-          test -d "$(dirname "$(dirname "$worker_java")")/legal"
-          test -f "$(dirname "$(dirname "$worker_node")")/LICENSE"
+          test -z "$bundled_worker"
           test "$(uname -m)" = "arm64"
           file "$app_binary" | grep -q 'arm64'
-          file "$worker_java" | grep -q 'arm64'
-          file "$worker_node" | grep -q 'arm64'
           hdiutil verify "$source_dmg"
           mkdir -p release-asset
           cp "$source_dmg" release-asset/gromozeka-client-macos-arm64.dmg
@@ -341,19 +322,12 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24.19.0"
-          cache: npm
-          cache-dependency-path: browser-mcp/package-lock.json
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Build Browser MCP and portable Windows x64 client
+      - name: Build portable Windows x64 client
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
         run: |
-          npm --prefix browser-mcp ci --no-audit --no-fund
-          npm --prefix browser-mcp run verify --silent
           & ./gradlew.bat `
             :presentation:createDistributable `
             "-Pgromozeka.version=$env:RELEASE_VERSION" `
@@ -376,33 +350,9 @@ jobs:
           if ($null -eq $JvmLibrary) {
             throw "Bundled JVM library was not found"
           }
-          $WorkerJar = Join-Path $App.FullName "app/resources/local-worker/app/gromozeka-worker.jar"
-          if (-not (Test-Path $WorkerJar -PathType Leaf)) {
-            throw "Bundled Local Worker JAR was not found"
-          }
-          $WorkerJava = Join-Path $App.FullName "app/resources/local-worker/runtime/java/bin/java.exe"
-          if (-not (Test-Path $WorkerJava -PathType Leaf)) {
-            throw "Bundled Local Worker Java runtime was not found"
-          }
-          $WorkerNode = Join-Path $App.FullName "app/resources/local-worker/runtime/node/node.exe"
-          if (-not (Test-Path $WorkerNode -PathType Leaf)) {
-            throw "Bundled Local Worker Node.js runtime was not found"
-          }
-          $WorkerJavaLegal = Join-Path $App.FullName "app/resources/local-worker/runtime/java/legal"
-          if (-not (Test-Path $WorkerJavaLegal -PathType Container)) {
-            throw "Bundled Local Worker Java legal notices were not found"
-          }
-          $WorkerNodeLicense = Join-Path $App.FullName "app/resources/local-worker/runtime/node/LICENSE"
-          if (-not (Test-Path $WorkerNodeLicense -PathType Leaf)) {
-            throw "Bundled Local Worker Node.js LICENSE was not found"
-          }
-          $BrowserLauncher = Join-Path $App.FullName "app/resources/local-worker/bin/gromozeka-browser-mcp.cmd"
-          if (-not (Test-Path $BrowserLauncher -PathType Leaf)) {
-            throw "Bundled Browser MCP launcher was not found"
-          }
-          $BrowserMcp = Join-Path $App.FullName "app/resources/local-worker/app/browser-mcp/node_modules/@playwright/mcp/cli.js"
-          if (-not (Test-Path $BrowserMcp -PathType Leaf)) {
-            throw "Bundled Browser MCP package was not found"
+          $BundledWorker = Join-Path $App.FullName "app/resources/local-worker"
+          if (Test-Path $BundledWorker) {
+            throw "Client distributable unexpectedly contains a bundled Worker"
           }
           Copy-Item "LICENSE" (Join-Path $App.FullName "LICENSE")
           Copy-Item "THIRD_PARTY_NOTICES.md" (Join-Path $App.FullName "THIRD_PARTY_NOTICES.md")
@@ -714,7 +664,7 @@ jobs:
           cat > release-notes.md <<'EOF'
           ## Downloads
 
-          - macOS ARM64 app with optional Local Worker: `gromozeka-client-macos-arm64.dmg`
+          - macOS ARM64 Client: `gromozeka-client-macos-arm64.dmg`
           - Windows x64 portable Client: `gromozeka-client-windows-x64.zip`
           - Docker Compose Server stack: `gromozeka-server-stack.zip`
           - macOS ARM64 standalone Server: `gromozeka-server-macos-arm64.tar.gz`

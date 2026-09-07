@@ -14,13 +14,11 @@ import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.ClientFeedbackService
 import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.LiveVoiceInputController
-import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpClientAudioPlayer
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.services.NoOpClientSideSpeechToTextService
 import com.gromozeka.presentation.services.NoOpSystemAudioMuteService
-import com.gromozeka.presentation.services.UnsupportedLocalWorkerController
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.RemotePttController
 import com.gromozeka.presentation.services.ResourceSoundNotificationPlayer
@@ -70,7 +68,6 @@ suspend fun createRemoteAppComponents(
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
     attachmentAcquisitionController: AttachmentAcquisitionController = NoOpAttachmentAcquisitionController,
     globalHotkeyController: GlobalHotkeyController = NoOpGlobalHotkeyController,
-    localWorkerController: LocalWorkerController = UnsupportedLocalWorkerController,
     turnCompletionNotificationSink: TurnCompletionNotificationSink = NoOpTurnCompletionNotificationSink,
     httpClient: HttpClient? = null,
 ): RemoteAppComponents {
@@ -222,7 +219,6 @@ suspend fun createRemoteAppComponents(
             translationService = translationService,
             themeService = themeService,
             aiThemeGenerator = AIThemeGenerator(),
-            localWorkerController = localWorkerController,
             ollamaModelService = OllamaModelService(),
             projectService = remoteServices.projectService,
             workspaceCatalogService = remoteServices.workspaceCatalogService,
