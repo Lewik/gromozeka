@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.KeyboardShortcutKey
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutModifier
 import com.gromozeka.domain.model.KeyboardShortcutSettings
+import com.gromozeka.domain.model.KeyboardShortcutScope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -23,6 +24,7 @@ class KeyboardShortcutNativeMappingTest {
             bindings = KeyboardShortcutSettings.defaultBindings().map { binding ->
                 if (binding.action == KeyboardShortcutAction.FIX_CLIPBOARD_TEXT) {
                     binding.copy(
+                        scope = KeyboardShortcutScope.GLOBAL,
                         key = KeyboardShortcutKey.F17,
                         modifiers = setOf(
                             KeyboardShortcutModifier.CONTROL,

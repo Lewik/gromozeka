@@ -19,8 +19,10 @@ import com.gromozeka.presentation.services.NoOpClientAudioPlayer
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.services.NoOpClientSideSpeechToTextService
 import com.gromozeka.presentation.services.NoOpSystemAudioMuteService
+import com.gromozeka.presentation.services.NoOpQuickTextActionRunner
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.RemotePttController
+import com.gromozeka.presentation.services.QuickTextActionRunner
 import com.gromozeka.presentation.services.ResourceSoundNotificationPlayer
 import com.gromozeka.presentation.services.RemoteTtsQueue
 import com.gromozeka.presentation.services.RollingClientLiveAudioStreamer
@@ -46,6 +48,7 @@ import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
 import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.domain.service.QuickTextActionService
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -68,6 +71,9 @@ suspend fun createRemoteAppComponents(
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
     attachmentAcquisitionController: AttachmentAcquisitionController = NoOpAttachmentAcquisitionController,
     globalHotkeyController: GlobalHotkeyController = NoOpGlobalHotkeyController,
+    quickTextActionRunnerFactory: (QuickTextActionService, UiFeedbackController) -> QuickTextActionRunner = { _, _ ->
+        NoOpQuickTextActionRunner
+    },
     turnCompletionNotificationSink: TurnCompletionNotificationSink = NoOpTurnCompletionNotificationSink,
     httpClient: HttpClient? = null,
 ): RemoteAppComponents {
@@ -90,6 +96,10 @@ suspend fun createRemoteAppComponents(
     }
 
     val uiFeedbackController = UiFeedbackController()
+    val quickTextActionRunner = quickTextActionRunnerFactory(
+        remoteServices.quickTextActionService,
+        uiFeedbackController,
+    )
     val ttsQueue = RemoteTtsQueue(remoteServices.speechSynthesisService, audioPlayer)
     val soundNotificationPlayer = ResourceSoundNotificationPlayer(
         audioPlayer = audioPlayer,
@@ -226,6 +236,7 @@ suspend fun createRemoteAppComponents(
             workerCatalogService = remoteServices.workerCatalogService,
             conversationService = remoteServices.conversationService,
             quickTextActionService = remoteServices.quickTextActionService,
+            quickTextActionRunner = quickTextActionRunner,
             conversationSearchViewModel = ConversationSearchViewModel(remoteServices.conversationSearchService, scope),
             loadingViewModel = LoadingViewModel(),
             tabPromptService = TabPromptService(remoteServices.promptService),

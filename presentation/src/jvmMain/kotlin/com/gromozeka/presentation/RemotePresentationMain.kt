@@ -53,6 +53,13 @@ internal suspend fun startRemotePresentation(
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
             attachmentAcquisitionController = DesktopAttachmentAcquisitionController(),
             globalHotkeyController = globalHotkeyController,
+            quickTextActionRunnerFactory = { quickTextActionService, uiFeedbackController ->
+                DesktopQuickTextActionExecutor(
+                    quickTextActionService = quickTextActionService,
+                    uiFeedbackController = uiFeedbackController,
+                    notificationService = desktopNotificationService,
+                )
+            },
             turnCompletionNotificationSink = TurnCompletionNotificationSink {
                 desktopNotificationService.show("turn-completed", "Gromozeka", "Turn completed")
             },
@@ -64,11 +71,6 @@ internal suspend fun startRemotePresentation(
     }
     File(remoteApp.components.settingsService.homeDirectory).mkdirs()
     System.setProperty("GROMOZEKA_HOME", remoteApp.components.settingsService.homeDirectory)
-    val quickTextActionExecutor = DesktopQuickTextActionExecutor(
-        quickTextActionService = remoteApp.components.quickTextActionService,
-        uiFeedbackController = remoteApp.components.uiFeedbackController,
-        notificationService = desktopNotificationService,
-    )
     val globalHoldToTalkController = HoldToTalkShortcutController(
         pttEventHandler = remoteApp.components.pttEventRouter,
         coroutineScope = scope,
@@ -95,9 +97,9 @@ internal suspend fun startRemotePresentation(
                             KeyboardShortcutAction.TOGGLE_LIVE_VOICE ->
                                 remoteApp.components.liveVoiceInputService.toggle()
                             KeyboardShortcutAction.FIX_CLIPBOARD_TEXT ->
-                                quickTextActionExecutor.run(QuickTextAction.FIX_TEXT_ID)
+                                remoteApp.components.quickTextActionRunner.run(QuickTextAction.FIX_TEXT_ID)
                             KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT ->
-                                quickTextActionExecutor.run(QuickTextAction.TRANSLATE_RU_EN_ID)
+                                remoteApp.components.quickTextActionRunner.run(QuickTextAction.TRANSLATE_RU_EN_ID)
                             else -> Unit
                         }
                     }
@@ -124,6 +126,7 @@ internal fun createDesktopRemoteSessionCredentialStore(): DesktopRemoteSessionCr
 private fun desktopRemoteClientHomeDirectory(): File =
     System.getProperty("GROMOZEKA_CLIENT_HOME")
         ?.let(::File)
+        ?: System.getenv("GROMOZEKA_CLIENT_HOME")?.let(::File)
         ?: File(System.getProperty("user.home"), ".gromozeka-remote-client")
 
 internal class RemoteStartedApp(

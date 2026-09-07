@@ -65,6 +65,14 @@ application {
     mainClass.set("com.gromozeka.server.GromozekaServerMainKt")
 }
 
+@Suppress("UNCHECKED_CAST")
+val localDevelopmentEnvironment =
+    rootProject.extensions.extraProperties["gromozekaLocalDevelopmentEnvironment"]
+        as Map<String, String>
+val localDevelopmentHome = rootProject.layout.projectDirectory
+    .dir("dev-data/client/.gromozeka")
+    .asFile.absolutePath
+
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     archiveFileName.set("gromozeka-server.jar")
     manifest {
@@ -74,6 +82,31 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
 
 tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }.configureEach {
     systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
+    if (localDevelopmentEnvironment.isNotEmpty()) {
+        fun localValue(name: String): String =
+            System.getenv(name)?.takeIf(String::isNotBlank)
+                ?: localDevelopmentEnvironment.getValue(name)
+
+        val postgresPort = localValue("GROMOZEKA_POSTGRES_PORT")
+        environment("GROMOZEKA_DEV_SLOT", localValue("GROMOZEKA_DEV_SLOT"))
+        environment("GROMOZEKA_REMOTE_PORT", localValue("GROMOZEKA_REMOTE_PORT"))
+        environment("GROMOZEKA_POSTGRES_PORT", postgresPort)
+        environment("GROMOZEKA_MODE", System.getenv("GROMOZEKA_MODE") ?: "dev")
+        environment(
+            "GROMOZEKA_HOME",
+            System.getenv("GROMOZEKA_HOME")
+                ?: localDevelopmentHome,
+        )
+        environment(
+            "GROMOZEKA_POSTGRES_JDBC_URL",
+            System.getenv("GROMOZEKA_POSTGRES_JDBC_URL")
+                ?: "jdbc:postgresql://127.0.0.1:$postgresPort/gromozeka",
+        )
+        environment(
+            "GROMOZEKA_WORKER_ENROLLMENT_ENABLED",
+            System.getenv("GROMOZEKA_WORKER_ENROLLMENT_ENABLED") ?: "true",
+        )
+    }
 }
 
 distributions {

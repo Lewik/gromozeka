@@ -18,14 +18,14 @@ data class KeyboardShortcutSettings(
         fun defaultBindings(): List<KeyboardShortcutBinding> = listOf(
             KeyboardShortcutBinding(
                 action = KeyboardShortcutAction.PUSH_TO_TALK,
-                scope = KeyboardShortcutScope.GLOBAL,
+                scope = KeyboardShortcutScope.FOCUSED,
                 key = KeyboardShortcutKey.ESCAPE,
                 enabled = false,
                 consumeEvent = true,
             ),
             KeyboardShortcutBinding(
                 action = KeyboardShortcutAction.TOGGLE_LIVE_VOICE,
-                scope = KeyboardShortcutScope.GLOBAL,
+                scope = KeyboardShortcutScope.FOCUSED,
                 key = KeyboardShortcutKey.V,
                 modifiers = setOf(
                     KeyboardShortcutModifier.CONTROL,
@@ -36,7 +36,7 @@ data class KeyboardShortcutSettings(
             ),
             KeyboardShortcutBinding(
                 action = KeyboardShortcutAction.FIX_CLIPBOARD_TEXT,
-                scope = KeyboardShortcutScope.GLOBAL,
+                scope = KeyboardShortcutScope.FOCUSED,
                 key = KeyboardShortcutKey.F,
                 modifiers = setOf(
                     KeyboardShortcutModifier.CONTROL,
@@ -46,7 +46,7 @@ data class KeyboardShortcutSettings(
             ),
             KeyboardShortcutBinding(
                 action = KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT,
-                scope = KeyboardShortcutScope.GLOBAL,
+                scope = KeyboardShortcutScope.FOCUSED,
                 key = KeyboardShortcutKey.T,
                 modifiers = setOf(
                     KeyboardShortcutModifier.CONTROL,
@@ -94,11 +94,11 @@ enum class KeyboardShortcutAction(
     ),
     FIX_CLIPBOARD_TEXT(
         activation = KeyboardShortcutActivation.ACTIVATE,
-        supportedScopes = setOf(KeyboardShortcutScope.GLOBAL),
+        supportedScopes = KeyboardShortcutScope.entries.toSet(),
     ),
     TRANSLATE_CLIPBOARD_TEXT(
         activation = KeyboardShortcutActivation.ACTIVATE,
-        supportedScopes = setOf(KeyboardShortcutScope.GLOBAL),
+        supportedScopes = KeyboardShortcutScope.entries.toSet(),
     ),
     EDIT_LAST_USER_MESSAGE(
         activation = KeyboardShortcutActivation.ACTIVATE,

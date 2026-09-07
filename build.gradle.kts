@@ -26,6 +26,46 @@ plugins {
     alias(libs.plugins.jetbrains.compose) apply false
 }
 
+fun parseLocalDevelopmentEnvironment(contents: String): Map<String, String> =
+    contents.lineSequence()
+        .mapIndexedNotNull { index, rawLine ->
+            val line = rawLine.trim()
+            if (line.isEmpty() || line.startsWith("#")) {
+                return@mapIndexedNotNull null
+            }
+            val assignment = line.removePrefix("export ")
+            val separator = assignment.indexOf('=')
+            require(separator > 0) { "Invalid .env entry on line ${index + 1}" }
+            val name = assignment.substring(0, separator).trim()
+            val rawValue = assignment.substring(separator + 1).trim()
+            require(name.matches(Regex("[A-Za-z_][A-Za-z0-9_]*"))) {
+                "Invalid .env variable name on line ${index + 1}: $name"
+            }
+            val value = when {
+                rawValue.length >= 2 && rawValue.first() == rawValue.last() && rawValue.first() in setOf('\'', '"') ->
+                    rawValue.substring(1, rawValue.lastIndex)
+                else -> rawValue
+            }
+            name to value
+        }
+        .toMap()
+
+fun validateLocalDevelopmentEnvironment(environment: Map<String, String>): Map<String, String> {
+    fun requiredInt(name: String): Int = environment[name]
+        ?.toIntOrNull()
+        ?: error("$name must be set to an integer in .env")
+
+    val slot = requiredInt("GROMOZEKA_DEV_SLOT")
+    require(slot in 1..5) { "GROMOZEKA_DEV_SLOT must be between 1 and 5" }
+    require(requiredInt("GROMOZEKA_REMOTE_PORT") == 8765 + slot) {
+        "GROMOZEKA_REMOTE_PORT must equal 8765 + GROMOZEKA_DEV_SLOT"
+    }
+    require(requiredInt("GROMOZEKA_POSTGRES_PORT") == 5432 + slot) {
+        "GROMOZEKA_POSTGRES_PORT must equal 5432 + GROMOZEKA_DEV_SLOT"
+    }
+    return environment
+}
+
 // Experimental API opt-ins shared by all Kotlin modules
 val experimentalOptIns = listOf(
     "kotlin.time.ExperimentalTime",
@@ -35,6 +75,15 @@ val experimentalOptIns = listOf(
 val projectVersion = providers.gradleProperty("gromozeka.version")
     .orElse("0.0.0-dev")
     .get()
+
+val localDevelopmentEnvironment = providers
+    .fileContents(layout.projectDirectory.file(".env"))
+    .asText
+    .orNull
+    ?.let(::parseLocalDevelopmentEnvironment)
+    ?.let(::validateLocalDevelopmentEnvironment)
+    ?: emptyMap()
+extensions.extraProperties["gromozekaLocalDevelopmentEnvironment"] = localDevelopmentEnvironment
 
 allprojects {
     group = "com.example"

@@ -46,6 +46,7 @@ import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutSettings
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserDeviceSettings
@@ -244,6 +245,12 @@ fun GromozekaAppContent(
                         when (action) {
                             KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> coroutineScope.launch {
                                 appComponents.liveVoiceInputService.toggle()
+                            }
+                            KeyboardShortcutAction.FIX_CLIPBOARD_TEXT -> coroutineScope.launch {
+                                appComponents.quickTextActionRunner.run(QuickTextAction.FIX_TEXT_ID)
+                            }
+                            KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT -> coroutineScope.launch {
+                                appComponents.quickTextActionRunner.run(QuickTextAction.TRANSLATE_RU_EN_ID)
                             }
                             KeyboardShortcutAction.NEW_CONVERSATION -> createNewSessionInCurrentProject()
                             else -> Unit

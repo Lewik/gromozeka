@@ -16,22 +16,20 @@ GROMOZEKA_MODE=prod \
 ./gradlew :worker:run -q
 ```
 
-For the local dev stack, start the Server with
-`GROMOZEKA_WORKER_ENROLLMENT_ENABLED=true` and connect once from the repository
-root. Approve the printed code in **Settings -> Security**:
+For the local dev stack, the root Gradle configuration reads `.env`, enables
+Worker enrollment, and selects the checkout-local Worker configuration. Connect
+once from the repository root and approve the printed code in **Settings ->
+Security**. This slot 1 example uses the corresponding Server port and Worker ID:
 
 ```bash
 ./gradlew :worker:run \
-  --args="connect --server http://127.0.0.1:8765 --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
+  --args="connect --server http://127.0.0.1:8766 --worker-id local-dev-1 --force" \
   -q
 ```
 
 Start subsequent local dev Worker processes from the generated private config:
 
 ```bash
-SPRING_CONFIG_ADDITIONAL_LOCATION="file:$PWD/dev-data/client/.gromozeka/worker-dev.yaml" \
-GROMOZEKA_MODE=dev \
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
 ./gradlew :worker:run -q
 ```
 

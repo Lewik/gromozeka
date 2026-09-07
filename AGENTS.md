@@ -43,51 +43,20 @@ build-system, packaging, or release changes. Retry without `-q` only on error.
 - Postgres direction: memory/vector work should use PostgreSQL JSONB plus pgvector.
   Do not reintroduce Mongo-only embedding infrastructure.
 
-## Codex Run Actions
+## Parallel Development Checkouts
 
-Codex App run buttons are configured in `.codex/environments/environment.toml`.
-Keep common local commands there so both the user and future Codex agents use the same entry points.
+Sibling checkouts may be used concurrently by other development agents. Read them when a task requires comparison, but write only inside the current checkout unless the user explicitly directs otherwise. Never stop another checkout's processes or infrastructure unless the user asks.
 
-Current high-value commands:
+Each checkout has a local `.env` with a slot from 1 through 5: `dev=1`, `dev0=2`, `dev1=3`, `dev2=4`, `dev3=5`. Server and PostgreSQL ports are their defaults plus the slot (`8765 + slot` and `5432 + slot`). The Gradle run tasks and root Compose configuration read this file and reject inconsistent port values. Slot settings are development-only; do not apply them to `deploy/` configurations.
+
+Use the standard commands from the checkout root:
+
 ```bash
-./gradlew :presentation:run -q
-./gradlew :presentation:build -q
-./gradlew :presentation:wasmJsBrowserDevelopmentExecutableDistribution -q
-./gradlew :server:test -q
-./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q
-./gradlew :server:test --tests 'com.gromozeka.server.MemoryRealModelE2eTest' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q
-```
-
-PostgreSQL infrastructure is intentionally explicit:
-```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres
-```
-
-## Tailscale Web Access
-
-Optional private web endpoint shape:
-```text
-https://<machine>.<tailnet>.ts.net/
-```
-
-Optional remote client WebSocket endpoint shape:
-```text
-wss://<machine>.<tailnet>.ts.net/ws
-```
-
-Use Tailscale Serve only when private HTTPS access from another device is needed. Do not add Caddy or Let's Encrypt for this mode unless the user explicitly asks for public internet access.
-
-Start/stop commands are available as Codex run actions:
-```text
-Start Tailscale Web
-Stop Tailscale Web
-```
-
-Manual start:
-```bash
-GROMOZEKA_REMOTE_PORT="${GROMOZEKA_REMOTE_PORT:-8765}"
-tailscale serve --bg "http://127.0.0.1:${GROMOZEKA_REMOTE_PORT}"
+docker compose up -d postgres
+./gradlew :server:run
+./gradlew :worker:run -q
+./gradlew :presentation:run
+docker compose stop postgres
 ```
 
 ## Local Logs
@@ -111,7 +80,7 @@ Older monolithic runs may still write to `logs/dev.log` or `presentation/logs/de
 For mobile web UI checks, do not approximate iPhone with `resize`.
 Use Playwright device emulation so viewport, screen size, DPR, touch, and user agent match:
 ```bash
-PLAYWRIGHT_MCP_DEVICE="iPhone 15" npx --yes @playwright/cli@latest -s=gromozeka-iphone15 open http://127.0.0.1:8765/
+source .env && PLAYWRIGHT_MCP_DEVICE="iPhone 15" npx --yes @playwright/cli@latest -s=gromozeka-iphone15 open "http://127.0.0.1:${GROMOZEKA_REMOTE_PORT}/"
 ```
 
 Compose/Wasm renders mostly into `canvas`, but text input can still work after a correct click because Compose creates a hidden `INPUT`.

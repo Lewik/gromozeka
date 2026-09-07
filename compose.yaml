@@ -1,16 +1,17 @@
+name: gromozeka-dev-${GROMOZEKA_DEV_SLOT:?Set GROMOZEKA_DEV_SLOT in .env}
+
 services:
   postgres:
     image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
-    container_name: gromozeka-dev-postgres
     shm_size: 1g
     environment:
       POSTGRES_DB: gromozeka
       POSTGRES_USER: gromozeka
       POSTGRES_PASSWORD: gromozeka
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${GROMOZEKA_POSTGRES_PORT:?Set GROMOZEKA_POSTGRES_PORT in .env}:5432"
     volumes:
-      - ${GROMOZEKA_HOME:-../../../../dev-data/client/.gromozeka}/postgres:/var/lib/postgresql
+      - ./dev-data/client/.gromozeka/postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gromozeka -d gromozeka"]
       interval: 5s

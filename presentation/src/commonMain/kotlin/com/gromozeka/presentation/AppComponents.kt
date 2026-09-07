@@ -35,6 +35,7 @@ import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttRecordingService
+import com.gromozeka.presentation.services.QuickTextActionRunner
 import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.services.TurnCompletionNotificationService
@@ -91,6 +92,7 @@ data class AppComponents(
     val workerCatalogService: WorkerCatalogService,
     val conversationService: ConversationDomainService,
     val quickTextActionService: QuickTextActionService,
+    val quickTextActionRunner: QuickTextActionRunner,
     val conversationSearchViewModel: ConversationSearchViewModel,
     val loadingViewModel: LoadingViewModel,
     val tabPromptService: TabPromptService,

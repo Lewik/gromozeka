@@ -49,6 +49,17 @@ application {
     mainClass.set("com.gromozeka.worker.GromozekaWorkerMainKt")
 }
 
+@Suppress("UNCHECKED_CAST")
+val localDevelopmentEnvironment =
+    rootProject.extensions.extraProperties["gromozekaLocalDevelopmentEnvironment"]
+        as Map<String, String>
+val localDevelopmentHome = rootProject.layout.projectDirectory
+    .dir("dev-data/client/.gromozeka")
+    .asFile.absolutePath
+val localWorkerConfig = rootProject.layout.projectDirectory
+    .file("dev-data/client/.gromozeka/worker-dev.yaml")
+    .asFile.absolutePath
+
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     archiveFileName.set("gromozeka-worker.jar")
     manifest {
@@ -76,6 +87,33 @@ tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }
         "GROMOZEKA_NODE_EXECUTABLE",
         "node",
     )
+    if (localDevelopmentEnvironment.isNotEmpty()) {
+        fun localValue(name: String): String =
+            System.getenv(name)?.takeIf(String::isNotBlank)
+                ?: localDevelopmentEnvironment.getValue(name)
+
+        val workerConfig = System.getenv("GROMOZEKA_WORKER_CONFIG")
+            ?: localWorkerConfig
+        environment("GROMOZEKA_DEV_SLOT", localValue("GROMOZEKA_DEV_SLOT"))
+        environment("GROMOZEKA_REMOTE_PORT", localValue("GROMOZEKA_REMOTE_PORT"))
+        environment("GROMOZEKA_POSTGRES_PORT", localValue("GROMOZEKA_POSTGRES_PORT"))
+        environment("GROMOZEKA_MODE", System.getenv("GROMOZEKA_MODE") ?: "dev")
+        environment(
+            "GROMOZEKA_HOME",
+            System.getenv("GROMOZEKA_HOME")
+                ?: localDevelopmentHome,
+        )
+        environment("GROMOZEKA_WORKER_CONFIG", workerConfig)
+        environment(
+            "SPRING_CONFIG_ADDITIONAL_LOCATION",
+            System.getenv("SPRING_CONFIG_ADDITIONAL_LOCATION") ?: "file:$workerConfig",
+        )
+        environment(
+            "GROMOZEKA_SERVER_URL",
+            System.getenv("GROMOZEKA_SERVER_URL")
+                ?: "http://127.0.0.1:${localValue("GROMOZEKA_REMOTE_PORT")}",
+        )
+    }
 }
 
 distributions {

@@ -63,5 +63,18 @@ class KeyboardShortcutSettingsTest {
             KeyboardShortcutSettings.defaultBindings(),
             settings.inputSettings.keyboardShortcuts.bindings,
         )
+        assertTrue(
+            settings.inputSettings.keyboardShortcuts.bindings.all {
+                it.scope == KeyboardShortcutScope.FOCUSED
+            }
+        )
+        assertTrue(
+            KeyboardShortcutScope.GLOBAL in
+                KeyboardShortcutAction.FIX_CLIPBOARD_TEXT.supportedScopes
+        )
+        assertTrue(
+            KeyboardShortcutScope.GLOBAL in
+                KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT.supportedScopes
+        )
     }
 }

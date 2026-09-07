@@ -3,6 +3,7 @@ package com.gromozeka.presentation.services
 import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutSettings
+import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +74,14 @@ object NoOpGlobalHotkeyController : GlobalHotkeyController {
         handler: (GlobalHotkeyEvent) -> Unit,
     ) = Unit
     override fun cleanup() = Unit
+}
+
+fun interface QuickTextActionRunner {
+    suspend fun run(actionId: QuickTextAction.Id)
+}
+
+object NoOpQuickTextActionRunner : QuickTextActionRunner {
+    override suspend fun run(actionId: QuickTextAction.Id) = Unit
 }
 
 data class GlobalHotkeyState(

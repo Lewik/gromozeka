@@ -123,26 +123,30 @@ PostgreSQL is an explicit runtime dependency. The Server fails fast when it is u
 
 The server, Worker, and UI clients are separate processes. Start local infrastructure first, then the server, a Worker, and one of the UI clients.
 
+Create the checkout-local development configuration:
+
+```bash
+cp .env.example .env
+```
+
+The example uses development slot 1. Concurrent checkouts need distinct slots from 1 through 5. Set `GROMOZEKA_REMOTE_PORT` to `8765 + slot` and `GROMOZEKA_POSTGRES_PORT` to `5432 + slot`; Gradle rejects inconsistent values.
+
 Start local infrastructure:
 
 ```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres
+docker compose up -d postgres
 ```
 
 Run the server:
 
 ```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-GROMOZEKA_MODE=dev \
-GROMOZEKA_WORKER_ENROLLMENT_ENABLED=true \
 ./gradlew :server:run
 ```
 
-The server defaults to `127.0.0.1:8765`. It prints a line like:
+With the slot 1 example, the server listens on `127.0.0.1:8766` and prints:
 
 ```bash
-==== Gromozeka server started: ws://127.0.0.1:8765/ws ====
+==== Gromozeka server started: ws://127.0.0.1:8766/ws ====
 ```
 
 The Server only accepts commands, persists runtime state, publishes work, and
@@ -152,25 +156,24 @@ Downloads**, run the connection command, approve its short code in
 
 ```bash
 ./gradlew :worker:run \
-  --args="connect --server http://127.0.0.1:8765 --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
+  --args="connect --server http://127.0.0.1:8766 --worker-id local-dev-1 --force" \
   -q
 ```
+
+Use the server port and slot-specific Worker ID from the checkout's `.env` when it differs from the example.
 
 Then start the local all-capabilities Worker:
 
 ```bash
-SPRING_CONFIG_ADDITIONAL_LOCATION="file:$PWD/dev-data/client/.gromozeka/worker-dev.yaml" \
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-GROMOZEKA_MODE=dev \
 ./gradlew :worker:run -q
 ```
 
 See `worker/README.md` for cloud/local Worker configuration and the trusted executor contract.
 
-The Gradle development client defaults to the local Server:
+The Gradle development client uses the local Server port from `.env`:
 
 ```text
-ws://127.0.0.1:8765/ws
+ws://127.0.0.1:<GROMOZEKA_REMOTE_PORT>/ws
 ```
 
 Override it with `GROMOZEKA_REMOTE_URL` when connecting through LAN, VPN, or
@@ -220,8 +223,6 @@ development builds are installed locally as described in
 Run the desktop UI client against the local server:
 
 ```bash
-GROMOZEKA_REMOTE_URL="ws://127.0.0.1:8765/ws" \
-GROMOZEKA_CLIENT_HOME="$PWD/dev-data/client/.gromozeka-remote-client" \
 ./gradlew :presentation:run
 ```
 
@@ -236,16 +237,14 @@ Build the Wasm web client:
 Then run the server and open locally:
 
 ```text
-http://127.0.0.1:8765/
+http://127.0.0.1:<GROMOZEKA_REMOTE_PORT>/
 ```
 
-The web client resolves its WebSocket endpoint from the browser URL, so `http://127.0.0.1:8765/` uses `ws://127.0.0.1:8765/ws`.
+The web client resolves its WebSocket endpoint from the browser URL, so it uses the same configured port.
 
 For raw HTTP testing through LAN/VPN without Tailscale Serve, bind the server to all interfaces:
 
 ```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-GROMOZEKA_MODE=dev \
 GROMOZEKA_REMOTE_HOST=0.0.0.0 \
 ./gradlew :server:run
 ```
@@ -253,7 +252,7 @@ GROMOZEKA_REMOTE_HOST=0.0.0.0 \
 Then open:
 
 ```text
-http://<machine-tailscale-or-lan-ip>:8765/
+http://<machine-tailscale-or-lan-ip>:<GROMOZEKA_REMOTE_PORT>/
 ```
 
 ### HTTPS Web/PWA through Tailscale
@@ -275,16 +274,13 @@ Build the Wasm web client:
 Run the server:
 
 ```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-GROMOZEKA_MODE=dev \
 ./gradlew :server:run
 ```
 
 Expose the local server through Tailscale Serve:
 
 ```bash
-GROMOZEKA_REMOTE_PORT="${GROMOZEKA_REMOTE_PORT:-8765}"
-tailscale serve --bg "http://127.0.0.1:${GROMOZEKA_REMOTE_PORT}"
+source .env && tailscale serve --bg "http://127.0.0.1:${GROMOZEKA_REMOTE_PORT}"
 ```
 
 Then open:
@@ -316,7 +312,7 @@ GROMOZEKA_WEB_STATIC_DIR="/absolute/path/to/web/dist"
 Stop local infrastructure:
 
 ```bash
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres
+docker compose stop postgres
 ```
 
 ## Verification

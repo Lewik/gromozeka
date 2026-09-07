@@ -324,6 +324,22 @@ compose.desktop {
     }
 }
 
+@Suppress("UNCHECKED_CAST")
+val localDevelopmentEnvironment =
+    rootProject.extensions.extraProperties["gromozekaLocalDevelopmentEnvironment"]
+        as Map<String, String>
+val localDevelopmentClientHome = rootProject.layout.projectDirectory
+    .dir("dev-data/client/.gromozeka-remote-client")
+    .asFile.absolutePath
+val configuredDevelopmentRemoteUrl = System.getProperty("gromozeka.remote.url")
+    ?: System.getenv("GROMOZEKA_REMOTE_URL")
+    ?: providers.gradleProperty("gromozeka.defaultRemoteUrl").orNull
+    ?: (System.getenv("GROMOZEKA_REMOTE_PORT")
+        ?.takeIf(String::isNotBlank)
+        ?: localDevelopmentEnvironment["GROMOZEKA_REMOTE_PORT"])
+        ?.let { "ws://127.0.0.1:$it/ws" }
+    ?: "ws://127.0.0.1:8765/ws"
+
 tasks.register("removeJarSignatures") {
     description = "Remove signature files from JAR to prevent SecurityException"
     group = "build"
@@ -364,19 +380,23 @@ tasks.register("removeJarSignatures") {
     }
 }
 
-tasks.whenTaskAdded {
-    if (name == "run" && this is JavaExec) {
-        systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
-        systemProperty(
-            "gromozeka.remote.url",
-            System.getProperty("gromozeka.remote.url")
-                ?: System.getenv("GROMOZEKA_REMOTE_URL")
-                ?: providers.gradleProperty("gromozeka.defaultRemoteUrl").orNull
-                ?: "ws://127.0.0.1:8765/ws",
+tasks.withType<JavaExec>().matching { it.name == "run" }.configureEach {
+    systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
+    systemProperty("gromozeka.remote.url", configuredDevelopmentRemoteUrl)
+    if (localDevelopmentEnvironment.isNotEmpty()) {
+        fun localValue(name: String): String =
+            System.getenv(name)?.takeIf(String::isNotBlank)
+                ?: localDevelopmentEnvironment.getValue(name)
+
+        environment("GROMOZEKA_DEV_SLOT", localValue("GROMOZEKA_DEV_SLOT"))
+        environment("GROMOZEKA_REMOTE_PORT", localValue("GROMOZEKA_REMOTE_PORT"))
+        environment("GROMOZEKA_POSTGRES_PORT", localValue("GROMOZEKA_POSTGRES_PORT"))
+        environment("GROMOZEKA_MODE", System.getenv("GROMOZEKA_MODE") ?: "dev")
+        environment(
+            "GROMOZEKA_CLIENT_HOME",
+            System.getenv("GROMOZEKA_CLIENT_HOME")
+                ?: localDevelopmentClientHome,
         )
-        System.getenv("GROMOZEKA_MODE")?.let {
-            environment("GROMOZEKA_MODE", it)
-        }
     }
 }
 

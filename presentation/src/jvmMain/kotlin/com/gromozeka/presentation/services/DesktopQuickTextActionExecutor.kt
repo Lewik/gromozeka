@@ -16,11 +16,11 @@ internal class DesktopQuickTextActionExecutor(
     private val quickTextActionService: QuickTextActionService,
     private val uiFeedbackController: UiFeedbackController,
     private val notificationService: DesktopNotificationService,
-) {
+) : QuickTextActionRunner {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
 
-    suspend fun run(actionId: QuickTextAction.Id) {
+    override suspend fun run(actionId: QuickTextAction.Id) {
         mutex.withLock {
             val actionName = actionName(actionId)
             val notificationId = "quick-text-action:${actionId.value}"
