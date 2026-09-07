@@ -121,6 +121,7 @@ fun SessionScreen(
         messages = filteredHistory,
         collapsedContentItems = uiState.collapsedContentItems,
         toolResultsMap = toolResultsMap,
+        expandedActivityKeys = uiState.expandedActivityKeys,
     )
     val runtimeStrings = LocalTranslation.current.runtime
     val editLastMessageShortcut = remember(settings.userDeviceSettings) {
@@ -573,7 +574,6 @@ fun SessionScreen(
                     ) { entry, pauseFollowingLatest ->
                         MessageItem(
                             entry = entry,
-                            toolResultsMap = toolResultsMap,
                             workspaceRootPath = null,
                             isSelected = entry.message.id in uiState.selectedMessageIds,
                             onToggleSelection = { messageId, isShiftPressed ->
@@ -583,6 +583,8 @@ fun SessionScreen(
                                 viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
                             },
                             onManualContentResize = pauseFollowingLatest,
+                            expandedActivityKeys = uiState.expandedActivityKeys,
+                            onToggleActivityExpansion = viewModel::toggleActivityExpansion,
                             loadArtifactContent = viewModel::loadArtifactContent,
                         )
                     }

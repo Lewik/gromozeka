@@ -3,24 +3,19 @@ package com.gromozeka.presentation.ui.session
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.format
@@ -195,22 +190,16 @@ private fun extractKeyParameters(toolName: String, input: JsonElement, workspace
 }
 
 @Composable
-fun ToolCallItem(
+internal fun ToolCallItem(
     toolCall: Conversation.Message.ContentItem.ToolCall.Data,
     toolResult: Conversation.Message.ContentItem.ToolResult?,
     workspaceRootPath: String?,
-    onManualContentResize: () -> Unit = {},
+    isExpanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    activityState: ActivityState,
+    modifier: Modifier = Modifier,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
-    var isExpanded by rememberSaveable { mutableStateOf(false) }
-
-    // Determine status icon based on toolResult (no icon on success)
-    val statusIcon = when {
-        toolResult == null -> Icons.Default.Schedule // No result yet - in progress
-        toolResult.isError -> Icons.Default.Error // Error
-        else -> null // Success - no status icon
-    }
-
     // Get tool display information
     val toolName = toolCall.name
     val displayName = toolDisplayName(toolName, LocalTranslation.current.runtime)
@@ -219,59 +208,15 @@ fun ToolCallItem(
     val detailedParameters = buildDetailedParameters(toolName, toolCall.input, workspaceRootPath)
 
     Column {
-        // Row with main tool button + optional action button
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Main tool call button with status + name + description
-            DisableSelection {
-                CompactButton(
-                onClick = {
-                    if (toolResult != null) {
-                        onManualContentResize()
-                        isExpanded = !isExpanded
-                    }
-                },
-                modifier = Modifier.Companion,
-                enabled = toolResult != null,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
-                elevation = null,
-                tooltip = when {
-                    toolResult == null -> "Выполняется..."
-                    toolResult.isError -> "Ошибка - клик для просмотра"
-                    else -> "Успешно - клик для просмотра результата"
-                }
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ToolSemanticIcon(
-                        toolName = toolName,
-                        contentDescription = "Tool type",
-                    )
-                    
-                    Spacer(modifier = Modifier.width(4.dp))
-                    
-                    // Status icon (only for in-progress or error)
-                    statusIcon?.let { icon ->
-                        Icon(
-                            icon,
-                            contentDescription = "Tool status"
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
-                    
-                    // Tool description with parameters
-                    Text(toolDescription)
-                }
-            }
-        }
-            
-        }
+        ActivityHeader(
+            kind = ActivityKind.Tool(toolName),
+            title = toolDescription,
+            state = activityState,
+            canExpand = toolResult != null,
+            isExpanded = isExpanded,
+            onToggleExpanded = onToggleExpanded,
+            modifier = modifier,
+        )
 
         // Animated expandable result content
         AnimatedVisibility(

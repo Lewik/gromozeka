@@ -73,8 +73,11 @@ internal data class MessageListEntry(
     val segment: MessageSegment,
     val isFirstInMessage: Boolean,
     val isLastInMessage: Boolean,
+    val activityDepth: Int = 0,
+    val groupContentKey: String? = null,
 ) {
-    val key: String = "${message.id.value}:${segment.key}"
+    val sourceKey: String = "${message.id.value}:${segment.key}"
+    val key: String = if (activityDepth > 0 && segment is MessageSegment.Activity) "$sourceKey:member" else sourceKey
 }
 
 internal sealed interface MessageSegment {
@@ -118,14 +121,15 @@ internal sealed interface MessageSegment {
         override val key: String = "$contentIndex:content"
     }
 
-    data class ToolActivityGroup(
-        val calls: List<ToolCallReference>,
-    ) : MessageSegment {
-        init {
-            require(calls.size >= 2) { "A tool activity group must contain at least two calls" }
-        }
+    data class Activity(val contentIndex: Int, val activity: ChatActivity) : MessageSegment {
+        override val key: String = "$contentIndex:content"
+    }
 
-        override val key: String = "${calls.first().contentIndex}:content"
+    data class ActivityGroup(val activities: List<ActivityReference>) : MessageSegment {
+        init {
+            require(activities.size >= 2) { "An activity group must contain at least two activities" }
+        }
+        override val key: String = "${activities.first().contentIndex}:content"
     }
 
     data class Instructions(
@@ -141,21 +145,16 @@ internal sealed interface MessageSegment {
 
 internal enum class MarkdownKind {
     USER,
-    THINKING,
+    DETAIL,
     ASSISTANT,
 }
-
-internal data class ToolCallReference(
-    val messageId: Conversation.Message.Id,
-    val contentIndex: Int,
-    val content: Conversation.Message.ContentItem.ToolCall,
-)
 
 @Composable
 internal fun rememberMessageListEntries(
     messages: List<Conversation.Message>,
     collapsedContentItems: Map<Conversation.Message.Id, Set<Int>>,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+    expandedActivityKeys: Set<String> = emptySet(),
 ): List<MessageListEntry> {
     val entries = mutableListOf<MessageListEntry>()
 
@@ -181,17 +180,11 @@ internal fun rememberMessageListEntries(
                     }
                 }
 
-                is Conversation.Message.ContentItem.Thinking -> {
-                    if (content.isVisible) {
-                        segments += rememberMarkdownSegments(
-                            messageId = message.id,
-                            contentIndex = contentIndex,
-                            kind = MarkdownKind.THINKING,
-                            text = content.thinking.ifBlank { LocalTranslation.current.runtime.hiddenThinkingLabel },
-                            isCollapsed = contentIndex in collapsedItems,
-                        )
-                    }
-                }
+                is Conversation.Message.ContentItem.Thinking ->
+                    segments += MessageSegment.Activity(contentIndex, ChatActivity.Reasoning(content))
+
+                is Conversation.Message.ContentItem.ToolCall ->
+                    segments += MessageSegment.Activity(contentIndex, ChatActivity.Tool(content, toolResultsMap[content.id.value]))
 
                 is Conversation.Message.ContentItem.AssistantMessage -> {
                     val text = content.structured.fullText.trim()
@@ -225,74 +218,63 @@ internal fun rememberMessageListEntries(
         }
     }
 
-    return groupToolCallEntries(entries, toolResultsMap)
+    return expandActivityEntries(groupActivityEntries(entries), expandedActivityKeys)
 }
 
-internal fun groupToolCallEntries(
+@Composable
+private fun expandActivityEntries(
     entries: List<MessageListEntry>,
-    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+    expandedActivityKeys: Set<String>,
 ): List<MessageListEntry> {
-    val visibleEntryCountByMessage = entries.groupingBy { it.message.id }.eachCount()
-    val toolEntryCountByMessage = entries
-        .filter { it.toolCallOrNull() != null }
-        .groupingBy { it.message.id }
-        .eachCount()
-    val toolOnlyMessageIds = visibleEntryCountByMessage
-        .filter { (messageId, count) -> toolEntryCountByMessage[messageId] == count }
-        .keys
     val result = mutableListOf<MessageListEntry>()
-    val pending = mutableListOf<MessageListEntry>()
-
-    fun flushPending() {
-        when (pending.size) {
-            0 -> Unit
-            1 -> result += pending.single()
-            else -> {
-                val first = pending.first()
-                val last = pending.last()
-                result += MessageListEntry(
-                    message = first.message,
-                    segment = MessageSegment.ToolActivityGroup(
-                        calls = pending.map { entry ->
-                            val segment = entry.segment as MessageSegment.Content
-                            ToolCallReference(
-                                messageId = entry.message.id,
-                                contentIndex = segment.contentIndex,
-                                content = segment.content as Conversation.Message.ContentItem.ToolCall,
-                            )
-                        },
-                    ),
-                    isFirstInMessage = first.isFirstInMessage,
-                    isLastInMessage = last.isLastInMessage,
-                )
+    for (entry in entries) {
+        val group = entry.segment as? MessageSegment.ActivityGroup
+        if (group == null) {
+            result += rememberActivityEntries(entry, expandedActivityKeys)
+        } else {
+            val isExpanded = activityGroupExpansionKey(entry.key) in expandedActivityKeys
+            result += entry.copy(isLastInMessage = entry.isLastInMessage && !isExpanded)
+            if (isExpanded) {
+                for ((index, reference) in group.activities.withIndex()) {
+                    val child = reference.toEntry().copy(
+                        isFirstInMessage = false,
+                        activityDepth = 1,
+                        groupContentKey = entry.key.takeIf { index == 0 },
+                    )
+                    result += rememberActivityEntries(child, expandedActivityKeys)
+                }
             }
         }
-        pending.clear()
     }
-
-    entries.forEach { entry ->
-        val toolCall = entry.toolCallOrNull()
-        val toolResult = toolCall?.let { toolResultsMap[it.id.value] }
-        if (toolCall == null || toolResult == null || toolResult.isError) {
-            flushPending()
-            result += entry
-            return@forEach
-        }
-
-        val previous = pending.lastOrNull()
-        val crossesJoinableMessageBoundary = previous != null && previous.message.id != entry.message.id &&
-            previous.message.id in toolOnlyMessageIds && entry.message.id in toolOnlyMessageIds
-        if (previous != null && previous.message.id != entry.message.id && !crossesJoinableMessageBoundary) {
-            flushPending()
-        }
-        pending += entry
-    }
-    flushPending()
     return result
 }
 
-private fun MessageListEntry.toolCallOrNull(): Conversation.Message.ContentItem.ToolCall? =
-    ((segment as? MessageSegment.Content)?.content as? Conversation.Message.ContentItem.ToolCall)
+@Composable
+private fun rememberActivityEntries(
+    entry: MessageListEntry,
+    expandedActivityKeys: Set<String>,
+): List<MessageListEntry> {
+    val segment = entry.segment as? MessageSegment.Activity ?: return listOf(entry)
+    val reasoning = segment.activity as? ChatActivity.Reasoning ?: return listOf(entry)
+    if (!reasoning.canExpand || activityExpansionKey(entry.sourceKey) !in expandedActivityKeys) return listOf(entry)
+    val details = rememberMarkdownSegments(
+        messageId = entry.message.id,
+        contentIndex = segment.contentIndex,
+        kind = MarkdownKind.DETAIL,
+        text = reasoning.block.thinking,
+        isCollapsed = false,
+    )
+    return listOf(entry.copy(isLastInMessage = entry.isLastInMessage && details.isEmpty())) +
+        details.mapIndexed { index, detail ->
+            entry.copy(
+                segment = detail,
+                isFirstInMessage = false,
+                isLastInMessage = entry.isLastInMessage && index == details.lastIndex,
+                activityDepth = entry.activityDepth + 1,
+                groupContentKey = null,
+            )
+        }
+}
 
 @Composable
 private fun rememberMarkdownSegments(
@@ -363,12 +345,14 @@ private fun splitRawMarkdown(text: String, maxChunkLength: Int = 2_000): List<St
 @Composable
 internal fun MessageItem(
     entry: MessageListEntry,
-    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     workspaceRootPath: String? = null,
     isSelected: Boolean = false,
     onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit = { _, _ -> },
     onManualContentResize: () -> Unit = {},
+    expandedActivityKeys: Set<String> = emptySet(),
+    onToggleActivityExpansion: (String) -> Unit = {},
+    activitySummaryStyle: ActivitySummaryStyle = ActivitySummaryStyle.ICONS,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     val message = entry.message
@@ -376,7 +360,11 @@ internal fun MessageItem(
     val userBackground = message.role == Conversation.Message.Role.USER &&
         message.content.any { it is Conversation.Message.ContentItem.UserMessage }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .padding(start = (entry.activityDepth * 12).dp)
+            .then(entry.groupContentKey?.let { Modifier.testTag(UiTestTag.ActivityGroupContent(it).value) } ?: Modifier),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -457,10 +445,12 @@ internal fun MessageItem(
                 SelectionContainer {
                     MessageSegmentContent(
                         entry = entry,
-                        toolResultsMap = toolResultsMap,
                         workspaceRootPath = workspaceRootPath,
                         onToggleContentItemCollapse = onToggleContentItemCollapse,
                         onManualContentResize = onManualContentResize,
+                        expandedActivityKeys = expandedActivityKeys,
+                        onToggleActivityExpansion = onToggleActivityExpansion,
+                        activitySummaryStyle = activitySummaryStyle,
                         loadArtifactContent = loadArtifactContent,
                     )
                 }
@@ -505,10 +495,12 @@ private fun Modifier.messageSelectionInput(
 @Composable
 private fun MessageSegmentContent(
     entry: MessageListEntry,
-    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     workspaceRootPath: String?,
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
     onManualContentResize: () -> Unit,
+    expandedActivityKeys: Set<String>,
+    onToggleActivityExpansion: (String) -> Unit,
+    activitySummaryStyle: ActivitySummaryStyle,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (val segment = entry.segment) {
@@ -549,18 +541,30 @@ private fun MessageSegmentContent(
 
         is MessageSegment.Content -> GenericContentItem(
             content = segment.content,
-            toolResultsMap = toolResultsMap,
-            workspaceRootPath = workspaceRootPath,
-            onManualContentResize = onManualContentResize,
             loadArtifactContent = loadArtifactContent,
         )
 
-        is MessageSegment.ToolActivityGroup -> ToolActivityGroupItem(
-            group = segment,
-            toolResultsMap = toolResultsMap,
+        is MessageSegment.Activity -> ChatActivityItem(
+            activity = segment.activity,
+            activityKey = entry.sourceKey,
+            isExpanded = activityExpansionKey(entry.sourceKey) in expandedActivityKeys,
+            onToggleExpanded = {
+                onManualContentResize()
+                onToggleActivityExpansion(activityExpansionKey(entry.sourceKey))
+            },
             workspaceRootPath = workspaceRootPath,
-            onManualContentResize = onManualContentResize,
             loadArtifactContent = loadArtifactContent,
+        )
+
+        is MessageSegment.ActivityGroup -> ActivityGroupItem(
+            group = segment,
+            groupKey = entry.key,
+            isExpanded = activityGroupExpansionKey(entry.key) in expandedActivityKeys,
+            onToggleExpanded = {
+                onManualContentResize()
+                onToggleActivityExpansion(activityGroupExpansionKey(entry.key))
+            },
+            summaryStyle = activitySummaryStyle,
         )
 
         is MessageSegment.Instructions -> InstructionChips(
@@ -613,52 +617,11 @@ private fun MarkdownSegmentLayout(
             }
         }
 
-        MarkdownKind.THINKING -> {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            shape = thinkingSegmentShape(isFirstInContent, isLastInContent),
-                        )
-                        .padding(
-                            start = 8.dp,
-                            end = 8.dp,
-                            top = if (isFirstInContent) 8.dp else 0.dp,
-                            bottom = if (isLastInContent) 8.dp else 0.dp,
-                        ),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        content()
-                    }
-                    if (isFirstInContent) {
-                        CollapseButton(
-                            isCollapsed = false,
-                            onClick = {
-                                onManualContentResize()
-                                onToggleContentItemCollapse(messageId, contentIndex)
-                            },
-                        )
-                    }
-                }
-                if (isLastInContent) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
+        MarkdownKind.DETAIL -> Column(modifier = Modifier.fillMaxWidth()) {
+            content()
+            if (isLastInContent) Spacer(modifier = Modifier.height(8.dp))
         }
     }
-}
-
-private fun thinkingSegmentShape(isFirst: Boolean, isLast: Boolean): RoundedCornerShape {
-    val radius = 4.dp
-    return RoundedCornerShape(
-        topStart = if (isFirst) radius else 0.dp,
-        topEnd = if (isFirst) radius else 0.dp,
-        bottomStart = if (isLast) radius else 0.dp,
-        bottomEnd = if (isLast) radius else 0.dp,
-    )
 }
 
 @Composable
@@ -668,24 +631,13 @@ private fun CollapsedMarkdownContent(
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
     onManualContentResize: () -> Unit,
 ) {
-    val backgroundModifier = if (segment.kind == MarkdownKind.THINKING) {
-        Modifier.background(
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            shape = MaterialTheme.shapes.small,
-        )
-    } else {
-        Modifier
-    }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
-            .then(backgroundModifier)
             .height(48.dp)
             .clipToBounds()
-            .alpha(0.5f)
-            .then(if (segment.kind == MarkdownKind.THINKING) Modifier.padding(8.dp) else Modifier),
+            .alpha(0.5f),
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {
@@ -726,19 +678,10 @@ private fun CollapseButton(
 @Composable
 private fun GenericContentItem(
     content: Conversation.Message.ContentItem,
-    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
-    workspaceRootPath: String?,
-    onManualContentResize: () -> Unit,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (content) {
-        is Conversation.Message.ContentItem.ToolCall -> ToolCallItem(
-            toolCall = content.call,
-            toolResult = toolResultsMap[content.id.value],
-            workspaceRootPath = workspaceRootPath,
-            onManualContentResize = onManualContentResize,
-            loadArtifactContent = loadArtifactContent,
-        )
+        is Conversation.Message.ContentItem.ToolCall -> error("Tool calls require an activity segment")
 
         is Conversation.Message.ContentItem.ImageItem -> Row(
             verticalAlignment = Alignment.CenterVertically,

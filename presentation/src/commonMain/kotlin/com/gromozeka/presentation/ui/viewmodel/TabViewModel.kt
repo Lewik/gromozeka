@@ -228,7 +228,6 @@ class TabViewModel(
             } else {
                 _allMessages.value = messages
             }
-            collapseVisibleThinkingBlocks(messages, onlyWhenNoManualState = false)
 
             log.debug { "Loaded ${messages.size} messages for conversation $conversationId" }
         } catch (e: Exception) {
@@ -333,39 +332,10 @@ class TabViewModel(
             log.debug { "Added new message ${message.id}" }
         }
 
-        collapseVisibleThinkingBlocks(listOf(message), onlyWhenNoManualState = true)
         _allMessages.value = messages
         if (message.error != null) {
             log.error { "Stream error: ${message.error}" }
             log.error { "Message with error: id=${message.id}, role=${message.role}, content.size=${message.content.size}" }
-        }
-    }
-
-    private fun collapseVisibleThinkingBlocks(
-        messages: List<Conversation.Message>,
-        onlyWhenNoManualState: Boolean,
-    ) {
-        val collapsedItems = messages.mapNotNull { message ->
-            val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
-                if ((item as? Conversation.Message.ContentItem.Thinking)?.isVisible == true) index else null
-            }.toSet()
-
-            if (thinkingIndices.isEmpty()) null else message.id to thinkingIndices
-        }.toMap()
-
-        if (collapsedItems.isEmpty()) {
-            return
-        }
-
-        _uiState.update { currentState ->
-            val updated = collapsedItems.entries.fold(currentState.collapsedContentItems) { currentCollapsed, (messageId, indices) ->
-                if (onlyWhenNoManualState && !currentCollapsed[messageId].isNullOrEmpty()) {
-                    currentCollapsed
-                } else {
-                    currentCollapsed + (messageId to indices)
-                }
-            }
-            currentState.copy(collapsedContentItems = updated)
         }
     }
 
@@ -1143,6 +1113,13 @@ class TabViewModel(
                 lastToggledMessageId = messageId,
                 lastToggleAction = action
             )
+        }
+    }
+
+    fun toggleActivityExpansion(key: String) {
+        _uiState.update { current ->
+            val expanded = current.expandedActivityKeys
+            current.copy(expandedActivityKeys = if (key in expanded) expanded - key else expanded + key)
         }
     }
 

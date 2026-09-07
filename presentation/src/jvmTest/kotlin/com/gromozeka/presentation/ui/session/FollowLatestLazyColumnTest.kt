@@ -40,44 +40,13 @@ class FollowLatestLazyColumnTest {
         width = 390,
         height = 500,
     ) {
-        val group = toolGroup(30)
-        val firstCallId = group.calls.first().content.id.value
-        val values = (0..8).toList()
-        setContent {
-            MaterialTheme {
-                FollowLatestLazyColumn(
-                    items = values,
-                    itemKey = { it },
-                    contentRevision = values,
-                    unreadLabel = { "new activity" },
-                    modifier = Modifier.fillMaxSize(),
-                ) { value, pauseFollowingLatest ->
-                    if (value == values.last()) {
-                        ToolActivityGroupItem(
-                            group = group,
-                            toolResultsMap = successfulResults(group),
-                            workspaceRootPath = null,
-                            onManualContentResize = pauseFollowingLatest,
-                            loadArtifactContent = { byteArrayOf() },
-                        )
-                    } else {
-                        Text(
-                            text = "Message $value",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                                .testTag(itemTag(value)),
-                        )
-                    }
-                }
-            }
-        }
-
-        waitForTag(UiTestTag.ToolActivityGroup(firstCallId).value)
-        onNodeWithTag(UiTestTag.ToolActivityGroup(firstCallId).value).performClick()
+        val messages = activityMessages()
+        setContent { ActivityTimelineFixture(messages) }
+        val groupTag = UiTestTag.ActivityGroup("tools:0:content").value
+        waitForTag(groupTag)
+        onNodeWithTag(groupTag).performClick()
         waitForIdle()
-
-        onNodeWithTag(UiTestTag.ToolActivityGroup(firstCallId).value).assertIsDisplayed()
+        onNodeWithTag(groupTag).assertIsDisplayed()
         onNodeWithTag(UiTestTag.UnreadMessagesButton.value).assertIsDisplayed()
     }
 
@@ -86,52 +55,31 @@ class FollowLatestLazyColumnTest {
         width = 390,
         height = 500,
     ) {
-        val group = toolGroup(30)
-        val firstCallId = group.calls.first().content.id.value
-        val values = (0..9).toList()
-        setContent {
-            MaterialTheme {
-                FollowLatestLazyColumn(
-                    items = values,
-                    itemKey = { it },
-                    contentRevision = values,
-                    unreadLabel = { "new activity" },
-                    modifier = Modifier.fillMaxSize(),
-                ) { value, pauseFollowingLatest ->
-                    if (value == values.last() - 1) {
-                        ToolActivityGroupItem(
-                            group = group,
-                            toolResultsMap = successfulResults(group),
-                            workspaceRootPath = null,
-                            onManualContentResize = pauseFollowingLatest,
-                            loadArtifactContent = { byteArrayOf() },
-                        )
-                    } else {
-                        Text(
-                            text = "Message $value",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                                .testTag(itemTag(value)),
-                        )
-                    }
-                }
-            }
-        }
-
-        waitForTag(UiTestTag.ToolActivityGroup(firstCallId).value)
-        onNodeWithTag(UiTestTag.ToolActivityGroup(firstCallId).value).performClick()
+        val messages = activityMessages()
+        var entries = emptyList<MessageListEntry>()
+        setContent { ActivityTimelineFixture(messages, onEntries = { entries = it }) }
+        val groupKey = "tools:0:content"
+        waitForTag(UiTestTag.ActivityGroup(groupKey).value)
+        onNodeWithTag(UiTestTag.ActivityGroup(groupKey).value).performClick()
         repeat(4) {
             onNodeWithTag(UiTestTag.MessageList.value).performTouchInput { swipeDown() }
             waitForIdle()
         }
         waitForTag(UiTestTag.UnreadMessagesButton.value)
-
         onNodeWithTag(UiTestTag.UnreadMessagesButton.value).performClick()
         waitForIdle()
-
-        onNodeWithTag(UiTestTag.ToolActivityGroupContent(firstCallId).value).assertIsDisplayed()
+        runOnIdle {
+            kotlin.test.assertEquals(30, entries.count { it.segment is MessageSegment.Activity })
+            kotlin.test.assertTrue(entries.any { it.groupContentKey == groupKey })
+        }
     }
+
+    private fun activityMessages(): List<Conversation.Message> =
+        (0..8).map { index ->
+            activityTestMessage("text-$index", Conversation.Message.ContentItem.AssistantMessage(
+                Conversation.Message.StructuredText("Message $index\n\n" + "A line of text.\n".repeat(4)),
+            ))
+        } + activityTestMessage("tools", *(0 until 30).map { activityTestCall("call-$it") }.toTypedArray())
 
     private fun verifyFollowLatestBehavior(width: Int, height: Int) = runDesktopComposeUiTest(
         width = width,
@@ -192,28 +140,4 @@ class FollowLatestLazyColumnTest {
 
     private fun itemTag(value: Int): String = "follow-latest-item:$value"
 
-    private fun toolGroup(callCount: Int) = MessageSegment.ToolActivityGroup(
-        calls = (0 until callCount).map { index ->
-            val id = "call-$index"
-            ToolCallReference(
-                messageId = Conversation.Message.Id("message-1"),
-                contentIndex = index,
-                content = Conversation.Message.ContentItem.ToolCall(
-                    id = Conversation.Message.ContentItem.ToolCall.Id(id),
-                    call = Conversation.Message.ContentItem.ToolCall.Data(
-                        name = "grz_read_file",
-                        input = buildJsonObject {},
-                    ),
-                ),
-            )
-        },
-    )
-
-    private fun successfulResults(group: MessageSegment.ToolActivityGroup) = group.calls.associate { reference ->
-        reference.content.id.value to Conversation.Message.ContentItem.ToolResult(
-            toolUseId = reference.content.id,
-            toolName = "grz_read_file",
-            result = emptyList(),
-        )
-    }
 }
