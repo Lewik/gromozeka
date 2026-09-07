@@ -28,6 +28,11 @@ Default to `:<module>:assemble -q` or the smallest affected target compile.
 Run focused tests for changed behavior. Use a full build only for cross-cutting,
 build-system, packaging, or release changes. Retry without `-q` only on error.
 
+## Release Approval
+
+Major releases require explicit user approval. A general request to release does
+not authorize a major version bump; explain why it is needed and ask first.
+
 ## Priority AI Providers
 
 Primary providers: Claude Code, OpenAI Subscription, OpenAI API, and Anthropic API.
