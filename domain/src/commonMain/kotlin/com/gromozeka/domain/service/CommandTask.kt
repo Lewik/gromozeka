@@ -16,6 +16,7 @@ data class CommandTask(
     val agentDefinitionId: AgentDefinition.Id? = null,
     val command: String,
     val workingDirectory: String,
+    val processLifetime: ProcessLifetime = ProcessLifetime.WORKER_BOUND,
     val status: Status,
     val processId: Long?,
     val processStartedAt: Instant?,
@@ -53,6 +54,12 @@ data class CommandTask(
         COMPLETED,
         FAILED,
         CANCELLED,
+    }
+
+    @Serializable
+    enum class ProcessLifetime {
+        WORKER_BOUND,
+        RESUMABLE,
     }
 
     val isTerminal: Boolean

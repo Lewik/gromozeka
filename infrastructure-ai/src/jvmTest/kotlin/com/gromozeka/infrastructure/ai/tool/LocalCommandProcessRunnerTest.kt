@@ -4,6 +4,7 @@ import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
+import com.gromozeka.domain.service.CommandTask
 import kotlin.time.Instant
 import java.io.File
 import java.nio.file.Files
@@ -121,6 +122,85 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `Worker lifetime binding terminates the managed process tree when its lifeline closes`() {
+        withTemporaryGromozekaHome { home ->
+            val childPidFile = File(home, "bound-child.pid")
+            val process = runner.start(
+                CommandProcessSpec(
+                    executionId = "worker-bound-process-tree-task",
+                    command = platformCommand(
+                        posix = "sleep 30 & child=${'$'}!; echo ${'$'}child > '${childPidFile.absolutePath}'; wait",
+                        windows = windowsProcessTreeCommand(childPidFile),
+                    ),
+                    workingDirectory = home.absolutePath,
+                    lifetime = CommandTask.ProcessLifetime.RESUMABLE,
+                )
+            )
+            waitUntil(5_000) { childPidFile.exists() && childPidFile.readText().trim().isNotEmpty() }
+            val childPid = childPidFile.readText().trim().toLong()
+            val binding = currentLocalCommandHost().bindToWorker(
+                processTreeId = process.processTreeId,
+                outputFile = File(process.outputFile),
+            )
+
+            binding.close()
+
+            waitUntil(5_000) {
+                ProcessHandle.of(process.processId).map { !it.isAlive }.orElse(true) &&
+                    ProcessHandle.of(childPid).map { !it.isAlive }.orElse(true)
+            }
+            assertFalse(ProcessHandle.of(process.processId).map(ProcessHandle::isAlive).orElse(false))
+            assertFalse(ProcessHandle.of(childPid).map(ProcessHandle::isAlive).orElse(false))
+        }
+    }
+
+    @Test
+    fun `Worker-bound process tree stops after abrupt Worker JVM exit`() {
+        if (isWindows) return
+        withTemporaryGromozekaHome { home ->
+            val identityFile = File(home, "abrupt-worker-exit-processes")
+            val helperOutput = File(home, "abrupt-worker-exit-helper.log")
+            val helper = ProcessBuilder(
+                File(System.getProperty("java.home"), "bin/java").absolutePath,
+                "-cp",
+                System.getProperty("java.class.path"),
+                CommandWorkerLifetimeTestProcess::class.java.name,
+                home.absolutePath,
+                identityFile.absolutePath,
+            )
+                .redirectErrorStream(true)
+                .redirectOutput(helperOutput)
+                .start()
+            var processTreeId: Long? = null
+            var childPid: Long? = null
+            try {
+                waitUntil(10_000) { identityFile.isFile && identityFile.readText().isNotBlank() }
+                val processIds = identityFile.readText().trim().split(' ').map(String::toLong)
+                val commandProcessTreeId = processIds[0]
+                val commandChildPid = processIds[1]
+                processTreeId = commandProcessTreeId
+                childPid = commandChildPid
+
+                helper.destroyForcibly()
+                assertTrue(helper.waitFor(5_000, java.util.concurrent.TimeUnit.MILLISECONDS))
+
+                waitUntil(10_000) {
+                    ProcessHandle.of(commandProcessTreeId).map { !it.isAlive }.orElse(true) &&
+                        ProcessHandle.of(commandChildPid).map { !it.isAlive }.orElse(true)
+                }
+            } finally {
+                if (helper.isAlive) helper.destroyForcibly()
+                processTreeId?.let { terminateRemainingProcessTree(it) }
+                childPid?.let { pid ->
+                    ProcessHandle.of(pid).ifPresent { handle ->
+                        if (handle.isAlive) handle.destroyForcibly()
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `runner terminates descendant created while handling termination`() {
         if (isWindows) return
         withTemporaryGromozekaHome { home ->
@@ -186,6 +266,7 @@ class LocalCommandProcessRunnerTest {
                         windows = "ping.exe -n 31 127.0.0.1 >NUL",
                     ),
                     workingDirectory = home.absolutePath,
+                    lifetime = CommandTask.ProcessLifetime.RESUMABLE,
                 )
             )
 
@@ -301,7 +382,7 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
-    fun `posix termination refuses a process group not owned by the command wrapper`() {
+    fun `posix termination refuses a process group that does not match the command root`() {
         if (isWindows) return
         val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
         val unrelated = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
@@ -320,7 +401,7 @@ class LocalCommandProcessRunnerTest {
                 tree.terminate(wrapper.toHandle())
             }
 
-            assertContains(requireNotNull(error.message), "not owned by wrapper")
+            assertContains(requireNotNull(error.message), "does not match command root")
             assertTrue(sentSignals.isEmpty())
         } finally {
             wrapper.destroyForcibly()
@@ -368,9 +449,11 @@ class LocalCommandProcessRunnerTest {
             assertTrue(File(retained.outputFile).isFile)
             assertFalse(File(orphaned.outputFile).exists())
             assertFalse(File("${orphaned.outputFile}.tree").exists())
+            assertFalse(File("${orphaned.outputFile}.start").exists())
             assertFalse(File("${orphaned.outputFile}.exit").exists())
             assertFalse(File("${orphaned.outputFile}.command.cmd").exists())
             assertFalse(File("${orphaned.outputFile}.wrapper.cmd").exists())
+            assertFalse(File("${orphaned.outputFile}.watchdog.cmd").exists())
         }
     }
 
@@ -527,5 +610,32 @@ class LocalCommandProcessRunnerTest {
             "-ArgumentList '-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 30' -PassThru; " +
             "Set-Content -NoNewline -LiteralPath '$escapedPath' -Value ${'$'}child.Id; " +
             "Wait-Process -Id ${'$'}child.Id\""
+    }
+
+    private fun terminateRemainingProcessTree(processTreeId: Long) {
+        val processHandle = ProcessHandle.of(processTreeId).orElse(null) ?: return
+        if (!processHandle.isAlive) return
+        runCatching {
+            currentLocalCommandHost().processTree(processTreeId).terminate(processHandle)
+        }
+    }
+}
+
+internal object CommandWorkerLifetimeTestProcess {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        System.setProperty("GROMOZEKA_HOME", args[0])
+        val identityFile = File(args[1])
+        val process = LocalCommandProcessRunner().start(
+            CommandProcessSpec(
+                executionId = "abrupt-worker-exit-task",
+                command = "sleep 30 & child=${'$'}!; printf '%s %s' ${'$'}${'$'} ${'$'}child > '${identityFile.absolutePath}'; wait",
+                workingDirectory = args[0],
+                lifetime = CommandTask.ProcessLifetime.WORKER_BOUND,
+            )
+        )
+        while (process.isAlive()) {
+            Thread.sleep(1_000)
+        }
     }
 }

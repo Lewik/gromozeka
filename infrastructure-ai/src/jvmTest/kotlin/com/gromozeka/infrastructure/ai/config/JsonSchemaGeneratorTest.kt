@@ -26,6 +26,8 @@ class JsonSchemaGeneratorTest {
             executeProperties.path("yield_time_ms").path("maximum").longValue(),
         )
         assertEquals(1, executeProperties.path("timeout_seconds").path("minimum").longValue())
+        assertEquals("boolean", executeProperties.path("survive_worker_restart").path("type").textValue())
+        assertTrue(executeProperties.path("survive_worker_restart").path("description").textValue().isNotBlank())
         assertEquals(0, getProperties.path("after_byte").path("minimum").longValue())
         assertEquals(
             MAX_COMMAND_TASK_WAIT_MILLIS,

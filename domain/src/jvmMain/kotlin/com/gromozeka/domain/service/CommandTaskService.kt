@@ -32,6 +32,7 @@ data class CommandProcessSpec(
     val workingDirectory: String,
     val environment: Map<String, String> = emptyMap(),
     val captureStandardErrorSeparately: Boolean = false,
+    val lifetime: CommandTask.ProcessLifetime = CommandTask.ProcessLifetime.WORKER_BOUND,
 ) {
     init {
         require(executionId.isNotBlank()) { "Command process execution id must not be blank" }

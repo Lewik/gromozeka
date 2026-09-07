@@ -69,6 +69,7 @@ private fun CommandTaskOutput.toResult(): Map<String, Any> = buildMap {
     put("task_id", task.id.value)
     put("status", task.status.name)
     put("command", task.command)
+    put("survive_worker_restart", task.processLifetime == CommandTask.ProcessLifetime.RESUMABLE)
     task.processId?.let { put("process_id", it) }
     task.exitCode?.let { put("exit_code", it) }
     task.statusMessage?.let { put("status_message", it) }

@@ -101,6 +101,7 @@ class DefaultCommandMonitorService(
                     command = spec.filterCommand,
                     workingDirectory = sourceTask.workingDirectory,
                     captureStandardErrorSeparately = true,
+                    lifetime = CommandTask.ProcessLifetime.RESUMABLE,
                 )
             )
             check(process.acceptsInput) { "New command monitor process must accept streaming input" }

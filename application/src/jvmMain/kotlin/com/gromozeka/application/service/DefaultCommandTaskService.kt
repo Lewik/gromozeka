@@ -50,6 +50,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -78,6 +79,7 @@ class DefaultCommandTaskService(
     private val activeCommands = ConcurrentHashMap<CommandTask.Id, ActiveCommand>()
     private val lifecycleMutex = Mutex()
     private val taskMutexes = Array(TASK_MUTEX_STRIPES) { Mutex() }
+    private val closed = AtomicBoolean()
 
     init {
         require(outputRetentionHours >= 0) { "Command output retention hours must be non-negative" }
@@ -95,17 +97,25 @@ class DefaultCommandTaskService(
         request: ExecuteCommandRequest,
         context: ToolExecutionContext,
     ): CommandTaskOutput {
+        check(!closed.get()) { "Command task service is closed" }
         validateRequest(request)
         val conversationId = context.requiredConversationId()
         val workingDirectory = resolveWorkingDirectory(context.requiredWorkspaceRootPath(), request.working_directory)
         val taskId = CommandTask.Id(uuid7())
+        val processLifetime = if (request.survive_worker_restart) {
+            CommandTask.ProcessLifetime.RESUMABLE
+        } else {
+            CommandTask.ProcessLifetime.WORKER_BOUND
+        }
         val activeCommand = lifecycleMutex.withLock {
+            check(!closed.get()) { "Command task service is closed" }
             val process = processRunner.start(
                 CommandProcessSpec(
                     executionId = taskId.value,
                     command = request.command,
                     workingDirectory = workingDirectory,
                     environment = context.secretEnvironment(),
+                    lifetime = processLifetime,
                 )
             )
             val now = Clock.System.now()
@@ -117,6 +127,7 @@ class DefaultCommandTaskService(
                 agentDefinitionId = context.agentDefinitionIdOrNull(),
                 command = request.command,
                 workingDirectory = workingDirectory,
+                processLifetime = processLifetime,
                 status = CommandTask.Status.WORKING,
                 processId = process.processId,
                 processStartedAt = process.processStartedAt,
@@ -343,6 +354,11 @@ class DefaultCommandTaskService(
                 ?: return@withLock
             if (task.isTerminal || activeCommands.containsKey(task.id)) return@withLock
 
+            if (task.processLifetime == CommandTask.ProcessLifetime.WORKER_BOUND) {
+                finalizeWorkerBoundTaskAfterRestart(task)
+                return@withLock
+            }
+
             when (val recovery = processRunner.recover(task.recoverySpec())) {
                 is CommandProcessRecovery.Running -> {
                     if (task.cancellationRequestedAt != null) {
@@ -399,6 +415,48 @@ class DefaultCommandTaskService(
                     )
                 }
             }
+        }
+    }
+
+    private suspend fun finalizeWorkerBoundTaskAfterRestart(task: CommandTask) {
+        when (val recovery = processRunner.recover(task.recoverySpec())) {
+            is CommandProcessRecovery.Running -> {
+                recovery.process.terminateTree()
+                completeStoredTask(
+                    task = task,
+                    status = CommandTask.Status.FAILED,
+                    exitCode = null,
+                    statusMessage = "Command was stopped because its Worker restarted",
+                )
+            }
+
+            is CommandProcessRecovery.Completed -> completeStoredTask(
+                task = task,
+                status = recovery.exitCode.toTaskStatus(),
+                exitCode = recovery.exitCode,
+                statusMessage = if (recovery.exitCode == 0) {
+                    "Command completed before its Worker restarted"
+                } else {
+                    "Command exited with code ${recovery.exitCode} while its Worker was restarting"
+                },
+            )
+
+            is CommandProcessRecovery.UnrecoverableRunning -> {
+                recovery.process.terminateTree()
+                completeStoredTask(
+                    task = task,
+                    status = CommandTask.Status.FAILED,
+                    exitCode = null,
+                    statusMessage = "Command was stopped after its Worker restarted: ${recovery.reason}",
+                )
+            }
+
+            is CommandProcessRecovery.Unavailable -> completeStoredTask(
+                task = task,
+                status = CommandTask.Status.FAILED,
+                exitCode = null,
+                statusMessage = "Command stopped with its Worker: ${recovery.reason}",
+            )
         }
     }
 
@@ -877,7 +935,50 @@ class DefaultCommandTaskService(
     }
 
     @PreDestroy
-    fun close() = runBlocking { supervisor.cancelAndJoin() }
+    fun close() {
+        if (!closed.compareAndSet(false, true)) return
+        runBlocking {
+            lifecycleMutex.withLock {
+                activeCommands.values
+                    .filter { it.task.processLifetime == CommandTask.ProcessLifetime.WORKER_BOUND }
+                    .forEach { stopWorkerBoundCommand(it) }
+            }
+            supervisor.cancelAndJoin()
+        }
+    }
+
+    private suspend fun stopWorkerBoundCommand(activeCommand: ActiveCommand) {
+        activeCommand.mutex.withLock {
+            if (activeCommand.task.isTerminal) return
+            if (!activeCommand.process.isAlive()) {
+                val exitCode = runCatching(activeCommand.process::exitCode).getOrNull()
+                setTerminalState(
+                    activeCommand = activeCommand,
+                    status = exitCode?.toTaskStatus() ?: CommandTask.Status.FAILED,
+                    exitCode = exitCode,
+                    statusMessage = exitCode?.let { "Command exited with code $it while its Worker was stopping" }
+                        ?: "Command stopped without an exit code while its Worker was stopping",
+                )
+                trySynchronizeCommandTask(activeCommand)
+                return
+            }
+            try {
+                activeCommand.process.terminateTree()
+            } catch (error: Throwable) {
+                log.error(error) {
+                    "Failed to stop Worker-bound command task: ${activeCommand.task.id.value}"
+                }
+                return
+            }
+            setTerminalState(
+                activeCommand = activeCommand,
+                status = CommandTask.Status.FAILED,
+                exitCode = null,
+                statusMessage = "Command was stopped because its Worker shut down",
+            )
+            trySynchronizeCommandTask(activeCommand)
+        }
+    }
 
     private class ActiveCommand(
         var task: CommandTask,
