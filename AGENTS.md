@@ -28,6 +28,20 @@ Default to `:<module>:assemble -q` or the smallest affected target compile.
 Run focused tests for changed behavior. Use a full build only for cross-cutting,
 build-system, packaging, or release changes. Retry without `-q` only on error.
 
+## Priority AI Providers
+
+Primary providers: Claude Code, OpenAI Subscription, OpenAI API, and Anthropic API.
+Live integration checks are especially important for the first two.
+
+- Claude Code: use Haiku for routine checks. The subscription is dedicated to
+  tests, but its small quota runs out quickly. Use it economically without
+  sacrificing necessary verification.
+- OpenAI Subscription: the quota is generous, so thorough testing is welcome.
+  Use low reasoning effort for API/protocol checks; run Astra/Sol only when needed.
+- Model differences: GPT-5.6 and GPT-6 may have different subscription API behavior.
+  When integration changes touch those differences, test both generations.
+  Low reasoning effort is sufficient for protocol checks.
+
 ## Current Product Priorities
 
 - Queued messages UI: allow typing while a turn is running, show queued
