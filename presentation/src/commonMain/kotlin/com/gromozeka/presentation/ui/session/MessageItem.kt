@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.GromozekaMarkdown
 import com.gromozeka.presentation.ui.GromozekaMarkdownNode
+import com.gromozeka.presentation.ui.visibleMarkdownBlocks
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
@@ -313,8 +315,9 @@ private fun rememberMarkdownSegments(
         return listOf(MessageSegment.CollapsedMarkdown(kind, contentIndex, text))
     }
 
-    if (parsedState is State.Success && parsedState.node.children.isNotEmpty()) {
-        return parsedState.node.children.mapIndexed { nodeIndex, node ->
+    if (parsedState is State.Success) {
+        val blocks = parsedState.node.visibleMarkdownBlocks(parsedState.content)
+        return blocks.mapIndexed { nodeIndex, node ->
             MessageSegment.MarkdownBlock(
                 kind = kind,
                 contentIndex = contentIndex,
@@ -322,7 +325,7 @@ private fun rememberMarkdownSegments(
                 node = node,
                 nodeIndex = nodeIndex,
                 isFirstInContent = nodeIndex == 0,
-                isLastInContent = nodeIndex == parsedState.node.children.lastIndex,
+                isLastInContent = nodeIndex == blocks.lastIndex,
             )
         }
     }
@@ -377,7 +380,6 @@ internal fun MessageItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (entry.isFirstInMessage) Modifier.heightIn(min = 48.dp) else Modifier)
                 .then(
                     if (entry.isFirstInMessage) {
                         Modifier.testTag(UiTestTag.MessageItem(message.id.value).value)
@@ -709,12 +711,13 @@ private fun CollapseButton(
         Box(
             modifier = Modifier
                 .clickable(onClick = onClick)
-                .padding(8.dp),
+                .padding(horizontal = 8.dp),
         ) {
             Icon(
                 imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                 contentDescription = if (isCollapsed) "Expand" else "Collapse",
                 tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp),
             )
         }
     }

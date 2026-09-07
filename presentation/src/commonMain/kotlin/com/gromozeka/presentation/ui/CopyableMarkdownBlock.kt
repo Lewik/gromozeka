@@ -80,6 +80,12 @@ internal fun parseCopyableMarkdownBlockInfo(info: String?): CopyableMarkdownBloc
 internal val GromozekaMarkdownComponents: MarkdownComponents = markdownComponents(
     codeFence = { model -> GromozekaCodeFence(model) },
     codeBlock = highlightedCodeBlock,
+    paragraph = { GromozekaMarkdownParagraph(it) },
+    blockQuote = { GromozekaMarkdownBlockQuote(it) },
+    orderedList = { GromozekaMarkdownList(it) },
+    unorderedList = { GromozekaMarkdownList(it) },
+    table = { GromozekaMarkdownTable(it) },
+    custom = { type, model -> GromozekaMarkdownCustomBlock(type, model) },
 )
 
 @Composable
