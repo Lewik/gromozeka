@@ -5,6 +5,7 @@ import com.anthropic.backends.Backend
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
+import com.anthropic.core.jsonMapper
 import com.anthropic.core.http.HttpRequest
 import com.anthropic.core.http.HttpResponse
 import com.anthropic.models.messages.CacheControlEphemeral
@@ -19,6 +20,7 @@ import com.anthropic.models.messages.MessageParam
 import com.anthropic.models.messages.OutputConfig
 import com.anthropic.models.messages.TextBlockParam
 import com.anthropic.models.messages.ThinkingBlockParam
+import com.anthropic.models.messages.RedactedThinkingBlockParam
 import com.anthropic.models.messages.ThinkingConfigAdaptive
 import com.anthropic.models.messages.ThinkingConfigDisabled
 import com.anthropic.models.messages.ThinkingConfigEnabled
@@ -41,6 +43,7 @@ import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
@@ -62,6 +65,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import org.springframework.stereotype.Service
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.regions.Region
@@ -93,7 +98,7 @@ internal class AnthropicSdkRuntimeBackend(
             connectionKind,
             modelConfiguration.providerModelId,
             client,
-            AnthropicSdkMessageMapper(connectionKind)
+            AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId)
         )
     }
 
@@ -210,6 +215,8 @@ private class AnthropicSdkRuntime(
 
 internal class AnthropicSdkMessageMapper(
     private val connectionKind: AiConnection.Kind,
+    private val connectionId: String? = null,
+    private val requestedModelName: String? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -238,7 +245,7 @@ internal class AnthropicSdkMessageMapper(
             }
         }
 
-        val messages = request.messages.mapNotNull(::toMessageParam)
+        val messages = request.messages.mapNotNull { toMessageParam(it, modelName) }
         require(messages.isNotEmpty()) { "Anthropic request must contain at least one user or assistant message" }
         builder.messages(messages)
 
@@ -275,7 +282,18 @@ internal class AnthropicSdkMessageMapper(
         message: Message,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): AiRuntimeResponse {
-        val content = message.content().flatMap { toContentItems(it, assistantResponseFormat) }
+        val stopReason = message.stopReason().getOrNull()?.asString()
+        val outcome = when (stopReason) {
+            "end_turn", "stop_sequence" -> AiStepOutcome.COMPLETE
+            "tool_use" -> AiStepOutcome.TOOL_CALLS
+            "pause_turn" -> AiStepOutcome.CONTINUE
+            "max_tokens", "model_context_window_exceeded" -> AiStepOutcome.INCOMPLETE
+            "refusal" -> AiStepOutcome.REFUSED
+            else -> AiStepOutcome.FAILED
+        }
+        val content = message.content().flatMap {
+            toContentItems(it, assistantResponseFormat, outcome != AiStepOutcome.COMPLETE)
+        }
         val assistantMessages = if (content.isEmpty()) {
             emptyList()
         } else {
@@ -284,8 +302,11 @@ internal class AnthropicSdkMessageMapper(
                     content = content,
                     metadata = mapOf(
                         "provider" to connectionKind.name,
-                        "model" to message.model().asString(),
+                        "model" to (requestedModelName ?: message.model().asString()),
+                        "reportedModel" to message.model().asString(),
                         "messageId" to message.id(),
+                        "connectionId" to connectionId,
+                        "anthropicContent" to json.parseToJsonElement(jsonMapper().writeValueAsString(message.content())),
                     )
                 )
             )
@@ -296,20 +317,22 @@ internal class AnthropicSdkMessageMapper(
             messages = assistantMessages,
             usage = usage,
             contextUsage = AiContextUsage(usage.totalInputTokens),
-            finishReason = message.stopReason().getOrNull()?.asString(),
+            finishReason = stopReason,
+            outcome = outcome,
             providerMetadata = mapOf(
                 "provider" to connectionKind.name,
-                "model" to message.model().asString(),
+                "model" to (requestedModelName ?: message.model().asString()),
+                "reportedModel" to message.model().asString(),
                 "messageId" to message.id(),
                 "contentBlockCount" to message.content().size,
             )
         )
     }
 
-    private fun toMessageParam(message: Conversation.Message): MessageParam? {
+    private fun toMessageParam(message: Conversation.Message, modelName: String): MessageParam? {
         return when (message.role) {
             Conversation.Message.Role.USER -> toUserMessageParam(message)
-            Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message)
+            Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, modelName)
             Conversation.Message.Role.SYSTEM -> null
         }
     }
@@ -382,7 +405,7 @@ internal class AnthropicSdkMessageMapper(
             }
         }
 
-    private fun toAssistantMessageParam(message: Conversation.Message): MessageParam? {
+    private fun toAssistantMessageParam(message: Conversation.Message, modelName: String): MessageParam? {
         val toolResults = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
         if (toolResults.isNotEmpty()) {
             return MessageParam.builder()
@@ -391,29 +414,22 @@ internal class AnthropicSdkMessageMapper(
                 .build()
         }
 
-        val blocks = mutableListOf<ContentBlockParam>()
-
-        message.content
-            .filterIsInstance<Conversation.Message.ContentItem.Thinking>()
-            .mapNotNull(::thinkingBlock)
-            .forEach(blocks::add)
-
-        val text = message.content
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .map { it.structured.fullText } +
-            message.content
-                .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
-                .map { it.toAnthropicText() }
-        val textContent = text.joinToString("\n")
-        if (textContent.isNotBlank()) {
-            blocks.add(textBlock(textContent))
-        }
-
-        message.content
-            .filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
-            .forEach { toolCall ->
-                blocks.add(toolUseBlock(toolCall))
+        val metadata = message.providerMetadata
+        val sameProvider = metadata["provider"]?.jsonPrimitive?.contentOrNull == connectionKind.name &&
+            metadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
+            metadata["model"]?.jsonPrimitive?.contentOrNull == modelName
+        val rawBlocks = metadata["anthropicContent"] as? JsonArray
+        val blocks = if (sameProvider && rawBlocks != null) {
+            rawBlocks.map { jsonMapper().readValue(it.toString(), ContentBlockParam::class.java) }
+        } else message.content.mapNotNull { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.Thinking -> if (sameProvider) thinkingBlock(item) else null
+                is Conversation.Message.ContentItem.AssistantMessage -> textBlock(item.structured.fullText)
+                is Conversation.Message.ContentItem.ContextCompactionResult -> textBlock(item.toAnthropicText())
+                is Conversation.Message.ContentItem.ToolCall -> toolUseBlock(item)
+                else -> null
             }
+        }
 
         return blocks.takeIf { it.isNotEmpty() }?.let {
             MessageParam.builder()
@@ -453,8 +469,8 @@ internal class AnthropicSdkMessageMapper(
 
     private fun thinkingBlock(thinking: Conversation.Message.ContentItem.Thinking): ContentBlockParam? {
         val signature = thinking.signature?.takeIf { it.isNotBlank() } ?: return null
-        if (thinking.thinking.isBlank()) {
-            return null
+        if (thinking.kind == Conversation.Message.ContentItem.Thinking.Kind.REDACTED) {
+            return ContentBlockParam.ofRedactedThinking(RedactedThinkingBlockParam.builder().data(signature).build())
         }
 
         return ContentBlockParam.ofThinking(
@@ -664,6 +680,7 @@ internal class AnthropicSdkMessageMapper(
     private fun toContentItems(
         block: com.anthropic.models.messages.ContentBlock,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        progress: Boolean,
     ): List<Conversation.Message.ContentItem> {
         val items = mutableListOf<Conversation.Message.ContentItem>()
 
@@ -682,6 +699,7 @@ internal class AnthropicSdkMessageMapper(
                 Conversation.Message.ContentItem.Thinking(
                     thinking = "",
                     signature = redacted.data(),
+                    kind = Conversation.Message.ContentItem.Thinking.Kind.REDACTED,
                     state = Conversation.Message.BlockState.COMPLETE
                 )
             )
@@ -690,7 +708,8 @@ internal class AnthropicSdkMessageMapper(
         block.text().getOrNull()?.let { text ->
             items.add(
                 Conversation.Message.ContentItem.AssistantMessage(
-                    structured = AssistantResponseParser.parse(text.text(), assistantResponseFormat),
+                    structured = if (progress) AssistantResponseParser.parseProgress(text.text(), assistantResponseFormat)
+                        else AssistantResponseParser.parse(text.text(), assistantResponseFormat),
                     state = Conversation.Message.BlockState.COMPLETE
                 )
             )
@@ -709,6 +728,9 @@ internal class AnthropicSdkMessageMapper(
             )
         }
 
+        if (items.isEmpty()) {
+            items.add(AssistantResponseParser.providerBlock(json.parseToJsonElement(jsonMapper().writeValueAsString(block))))
+        }
         return items
     }
 

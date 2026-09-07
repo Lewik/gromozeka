@@ -1,5 +1,9 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiStepOutcome
+
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
@@ -7,6 +11,31 @@ import kotlin.test.assertEquals
 import kotlin.time.Clock
 
 class ToolCallPairingServiceTest {
+    @Test
+    fun `incomplete response preserves remarks without executable or replayable tool calls`() {
+        val remark = Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Working."))
+        val call = Conversation.Message.ContentItem.ToolCall(
+            Conversation.Message.ContentItem.ToolCall.Id("call"),
+            Conversation.Message.ContentItem.ToolCall.Data("check", JsonObject(emptyMap())),
+        )
+        val response = AiRuntimeResponse(
+            messages = listOf(AiAssistantMessage(
+                listOf(remark, call), metadata = mapOf("opaqueReplay" to "unexecuted call"),
+            )),
+            providerMetadata = mapOf("opaqueReplay" to "unexecuted call"),
+            outcome = AiStepOutcome.INCOMPLETE,
+        )
+        val prepared = AiConversationMessageMapper.prepareResponse(response)
+        assertEquals(emptyList(), prepared.toolCalls)
+        assertEquals(listOf(remark), prepared.messages.single().content)
+        assertEquals(emptyMap(), prepared.messages.single().metadata)
+        assertEquals(emptyMap(), prepared.providerMetadata)
+        assertEquals(response.copy(outcome = AiStepOutcome.TOOL_CALLS),
+            AiConversationMessageMapper.prepareResponse(response.copy(outcome = AiStepOutcome.TOOL_CALLS)))
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            AiConversationMessageMapper.prepareResponse(response.copy(outcome = AiStepOutcome.COMPLETE))
+        }
+    }
     @Test
     fun `selection of visible tool call includes hidden tool result message`() {
         val toolCallId = Conversation.Message.ContentItem.ToolCall.Id("tool-1")

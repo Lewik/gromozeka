@@ -1,5 +1,7 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.ai.AiStepOutcome
+
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
@@ -221,6 +223,7 @@ class AiRequestResponseGatewayCodecTest {
         )
         val runtimeResponse = AiRuntimeResponse(
             messages = emptyList(),
+            outcome = AiStepOutcome.CONTINUE,
             finishReason = "test",
             usage = AiUsage(promptTokens = 10, completionTokens = 3),
             contextUsage = AiContextUsage(inputTokens = 10),

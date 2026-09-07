@@ -371,7 +371,7 @@ class OpenAiSubscriptionResponsesClient(
                     "OpenAI subscription websocket response completed without response id"
                 )
 
-            incrementalState.record(
+            if (parsed.completed?.status == "completed") incrementalState.record(
                 transportSignature = transportSignature,
                 responseId = responseId,
                 expectedNextInputPrefix = buildExpectedNextInputPrefix(
@@ -381,7 +381,7 @@ class OpenAiSubscriptionResponsesClient(
                         assistantResponseFormat = assistantResponseFormat,
                     ),
                 ),
-            )
+            ) else incrementalState.clear()
             lastUsedAt = System.currentTimeMillis()
 
             return parsed

@@ -62,7 +62,7 @@ internal class OpenAiSubscriptionResponseEventCollector(
                 }
             }
 
-            "response.completed" -> {
+            "response.completed", "response.incomplete" -> {
                 completed = envelope.response?.let(responseMapper::parseCompletedResponse)
                 responseId = completed?.id ?: responseId
             }
@@ -71,13 +71,6 @@ internal class OpenAiSubscriptionResponseEventCollector(
                 throw streamFailure(payload, response = envelope.response)
             }
 
-            "response.incomplete" -> {
-                throw OpenAiSubscriptionRequestException(
-                    statusCode = 400,
-                    message = "OpenAI subscription stream returned an incomplete response: " +
-                        incompleteResponseSummary(envelope.response, payload),
-                )
-            }
         }
     }
 
@@ -108,28 +101,4 @@ internal class OpenAiSubscriptionResponseEventCollector(
             containsKey("detail") ||
             containsKey("message")
 
-    private fun incompleteResponseSummary(
-        response: JsonObject?,
-        payload: String,
-    ): String {
-        val parts = buildList {
-            response?.stringField("status")?.let { add("status=$it") }
-            response?.objectField("incomplete_details")?.stringField("reason")?.let { add("reason=$it") }
-            response?.objectField("error")?.stringField("code")?.let { add("errorCode=$it") }
-            response?.objectField("error")?.stringField("message")?.let { add("errorMessage=$it") }
-            add("payload=${payload.oneLineForOpenAiSubscriptionLog(1_000)}")
-        }
-        return parts.joinToString(" ")
-    }
-
-    private fun JsonObject.stringField(name: String): String? =
-        this[name]?.jsonPrimitive?.contentOrNull
-
-    private fun JsonObject.objectField(name: String): JsonObject? =
-        this[name]?.let { element -> runCatching { element.jsonObject }.getOrNull() }
-
-    private fun String.oneLineForOpenAiSubscriptionLog(limit: Int): String =
-        trim()
-            .replace(Regex("\\s+"), " ")
-            .let { text -> if (text.length <= limit) text else text.take(limit - 3) + "..." }
 }

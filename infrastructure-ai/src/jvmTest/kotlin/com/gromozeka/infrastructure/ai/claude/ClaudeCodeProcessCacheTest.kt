@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.domain.model.Conversation
+
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import kotlinx.coroutines.CompletableDeferred
@@ -182,7 +184,7 @@ class ClaudeCodeProcessCacheTest {
     }
 
     @Test
-    fun resultParserKeepsThinkingFromLatestTopLevelAssistantMessage() {
+    fun resultParserKeepsAllTopLevelThinkingWithoutDuplicatingBlocks() {
         val parser = ClaudeCodeResultStreamParser()
         parser.accept(
             assistantEvent(
@@ -233,8 +235,9 @@ class ClaudeCodeProcessCacheTest {
 
         assertEquals(
             listOf(
+                ClaudeCodeThinkingBlock("old summary", "old-signature"),
                 ClaudeCodeThinkingBlock("current summary", "current-signature"),
-                ClaudeCodeThinkingBlock("", "opaque-signature"),
+                ClaudeCodeThinkingBlock("", "opaque-signature", Conversation.Message.ContentItem.Thinking.Kind.REDACTED),
             ),
             response.thinking,
         )

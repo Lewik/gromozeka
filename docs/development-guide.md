@@ -55,6 +55,26 @@ The main dogfood chat path is `OPEN_AI_SUBSCRIPTION`, implemented by
 for other providers, embeddings, and auxiliary integrations. Provider quirks
 belong behind those infrastructure boundaries rather than in domain workflows.
 
+Each finite model step returns an explicit `AiStepOutcome`: completion, external
+tool requests, provider continuation, truncation, refusal, or failure. The Server
+persists completed assistant blocks before executing tools. Provider continuation
+enqueues another model step under the existing turn limit without inventing a
+user message. Incomplete or refused batches never execute external tools.
+
+Assistant remarks, readable reasoning, and opaque-reasoning placeholders are
+displayed in received order. This is not token streaming. TTS still consumes only
+the existing structured assistant speech fields, never reasoning. Native signed
+blocks and provider phases are retained for same-provider replay; readable UI
+content is not a replacement for opaque provider state.
+
+Claude Code uses a locally validated JSON envelope, not native external tool use.
+Its `tool_calls` branch contains ordered `content` entries: `tool_call` with
+`action_name`/`arguments`, or `message` with the usual assistant payload. The
+`final_answer` branch ends the turn. All action arguments are validated before
+dispatch, with up to three format corrections. Tool results arrive in the next
+transcript step; remarks cannot stand in for results. Copilot likewise keeps
+external execution in Gromozeka while collecting completed SDK assistant events.
+
 ## Corporate Compatibility
 
 External integrations must respect the operator's selected provider policy. A
@@ -409,6 +429,24 @@ Default to the cheapest check that covers the changed boundary:
 ./gradlew :<module>:compileKotlin<Target> -q
 ./gradlew :<module>:test --tests '<focused test>' -q
 ```
+
+Live assistant-progress checks are opt-in. Claude Code uses its existing CLI login:
+
+```bash
+GROMOZEKA_CLAUDE_CODE_REAL=true GROMOZEKA_CLAUDE_CODE_MODEL=haiku ./gradlew :infrastructure-ai:jvmTest --tests '*ClaudeCodeCliRuntimeTest.realClaudeCodeReturnsWrapperToolCallWhenEnabled' --rerun -q
+```
+
+The subscription check covers a remark, an external tool result, a structured
+final answer, and history replay on a fresh connection. It reads an explicitly
+selected Codex auth file without refreshing or modifying credentials. Run it
+separately for `gpt-5.6-luna` and `gpt-6-astra`; both use low reasoning effort:
+
+```bash
+GROMOZEKA_OPENAI_SUBSCRIPTION_REAL=true GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE=/path/to/codex/auth.json GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL=gpt-5.6-luna ./gradlew :infrastructure-ai:openai-subscription:jvmTest --tests '*OpenAiSubscriptionProgressRealTest' --rerun -q
+```
+
+Use `--rerun` to bypass the test task cache when changing live-test environment
+variables; it does not force recompilation of every dependency.
 
 Use a full build for cross-cutting, build-system, packaging, or release changes:
 

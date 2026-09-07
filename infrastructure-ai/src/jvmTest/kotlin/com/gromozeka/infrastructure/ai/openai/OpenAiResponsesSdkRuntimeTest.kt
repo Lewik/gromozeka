@@ -1,5 +1,10 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiStepOutcome
+import kotlinx.serialization.json.JsonElement
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -22,6 +27,67 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class OpenAiResponsesSdkRuntimeTest {
+    @Test
+    fun `preserves commentary phase and opaque reasoning in native response order`() {
+        val native = com.openai.core.jsonMapper().readValue("""{
+            "id":"resp-1","model":"gpt-5-2025-08-07","status":"completed","output":[
+                {"type":"reasoning","id":"rs-1","summary":[],"encrypted_content":"opaque"},
+                {"type":"message","id":"msg-1","role":"assistant","status":"completed","phase":"commentary",
+                 "content":[{"type":"output_text","text":"I will check.","annotations":[]}]},
+                {"type":"function_call","id":"fc-1","call_id":"call-1","name":"check","arguments":"{}","status":"completed"}
+            ]
+        }""", com.openai.models.responses.Response::class.java)
+        val response = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA)
+        assertEquals(AiStepOutcome.TOOL_CALLS, response.outcome)
+        assertTrue((response.messages.first().content.single() as Conversation.Message.ContentItem.Thinking).isVisible)
+        assertEquals("commentary", response.messages[1].metadata["phase"])
+        val messages = response.messages.map { message -> userMessage().copy(
+            role = Conversation.Message.Role.ASSISTANT,
+            content = message.content,
+            providerMetadata = JsonObject((response.providerMetadata + message.metadata).mapValues { (_, value) ->
+                value as? JsonElement ?: JsonPrimitive(value.toString())
+            }),
+        ) }
+        val replay = mapper.toCreateParams("gpt-5", false, request(messages = messages)).input().get().asResponse()
+        assertEquals(3, replay.size)
+        assertEquals("opaque", replay[0].asReasoning().encryptedContent().get())
+        assertTrue(com.openai.core.jsonMapper().writeValueAsString(replay[1]).contains("commentary"))
+        assertEquals("call-1", replay[2].asFunctionCall().callId())
+    }
+
+    @Test
+    fun `truncated tool arguments are not mapped to executable calls`() {
+        val native = com.openai.core.jsonMapper().readValue("""{
+            "id":"resp-1","model":"gpt-5","status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},
+            "output":[{"type":"function_call","id":"fc-1","call_id":"call-1","name":"check","arguments":"{"}]
+        }""", com.openai.models.responses.Response::class.java)
+        val response = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.TEXT)
+        assertEquals(AiStepOutcome.INCOMPLETE, response.outcome)
+        assertTrue(response.toolCalls.isEmpty())
+        assertEquals("max_output_tokens", response.finishReason)
+    }
+
+    @Test
+    fun `OpenAI-compatible reasoning dialect and tool extensions round trip`() {
+        val compatible = OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_COMPATIBLE, "deepseek", "deepseek-reasoner")
+        val native = com.openai.core.jsonMapper().readValue("""{
+            "id":"completion-1","model":"deepseek-reasoner","choices":[{"index":0,"finish_reason":"tool_calls","message":{
+                "role":"assistant","reasoning_content":"Compare both sources.","content":"I will check.",
+                "tool_calls":[{"id":"call-1","type":"function","function":{"name":"check","arguments":"{}"},"extra_content":{"signature":"attached-to-call"}}]
+            }}]
+        }""", com.openai.models.chat.completions.ChatCompletion::class.java)
+        val response = compatible.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA)
+        val message = response.messages.single()
+        assertEquals("Compare both sources.", (message.content.first() as Conversation.Message.ContentItem.Thinking).thinking)
+        val replay = compatible.toCreateParams("deepseek-reasoner", request(messages = listOf(userMessage().copy(
+            role = Conversation.Message.Role.ASSISTANT,
+            content = message.content,
+            providerMetadata = JsonObject(message.metadata.mapValues { (_, value) -> value as? JsonElement ?: JsonPrimitive(value.toString()) }),
+        ))))
+        val payload = com.openai.core.jsonMapper().writeValueAsString(replay.messages().last())
+        assertTrue(payload.contains("reasoning_content"))
+        assertTrue(payload.contains("attached-to-call"))
+    }
     private val mapper = OpenAiResponsesMessageMapper(
         connectionId = "openai-api",
         modelConfigurationId = "openai-api-gpt-5",

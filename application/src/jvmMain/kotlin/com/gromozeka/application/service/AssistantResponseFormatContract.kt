@@ -73,7 +73,8 @@ internal object AssistantResponseFormatContract {
         val copyableBlockInstruction = """
             When a short block should be directly copyable, use a fenced code block whose info string starts with `gromozeka-copy`. Optional quoted attributes are `label`, `icon` (`terminal`, `code`, `document`, or `link`), and `language`. Example: ```gromozeka-copy label="Run command" icon="terminal" language="bash". Use ordinary Markdown for everything else.
         """.trimIndent()
-        return "$responseInstruction\n$copyableBlockInstruction"
+        val progressInstruction = "Brief user-facing remarks before or between tool steps are welcome when they explain useful progress. Use the configured assistant payload for each remark. Do not expose private reasoning, invent tool results, or claim an action completed before its result arrives. A remark does not replace a tool request or the final answer."
+        return "$responseInstruction\n$progressInstruction\n$copyableBlockInstruction"
     }
 
     private fun jsonSchema(includeSuggestedReplies: Boolean) = buildJsonObject {

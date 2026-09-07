@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
+import kotlinx.serialization.json.JsonElement
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -32,6 +34,30 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
+    @Test
+    fun `opaque reasoning marker is replayed exactly once and only to its provider scope`() {
+        val raw = Json.parseToJsonElement("""{"type":"reasoning","id":"rs-1","summary":[],"encrypted_content":"opaque"}""").jsonObject
+        val runtime = OpenAiSubscriptionResponseMapper().toRuntimeResponse(
+            outputItems = listOf(raw),
+            completed = OpenAiSubscriptionCompletedResponse("response", "completed"),
+            conversationKey = "test", connectionId = "connection", modelConfigurationId = "model", modelName = "gpt-5",
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+        )
+        val assistant = runtime.messages.single()
+        assertTrue((assistant.content.single() as Conversation.Message.ContentItem.Thinking).isVisible)
+        val request = AiRuntimeRequest(emptyList(), listOf(Conversation.Message(
+            id = Conversation.Message.Id("reasoning"), conversationId = conversationId,
+            role = Conversation.Message.Role.ASSISTANT, content = assistant.content, createdAt = createdAt,
+            providerMetadata = JsonObject((runtime.providerMetadata + assistant.metadata).mapValues { (_, value) ->
+                value as? JsonElement ?: JsonPrimitive(value.toString())
+            }),
+        )))
+        val matching = mapper.toRequest(request, modelProfile("gpt-5"), "test", connectionId = "connection")
+        assertEquals(listOf(raw), matching.input)
+        assertEquals(listOf(raw), mapper.toReplayItems(listOf(raw), AiModelConfiguration.AssistantResponseFormat.TEXT))
+        val foreign = mapper.toRequest(request, modelProfile("gpt-5"), "test", connectionId = "other")
+        assertTrue(foreign.input.isEmpty())
+    }
     private val mapper = OpenAiSubscriptionRequestMapper()
     private val conversationId = Conversation.Id("conversation-test")
     private val createdAt = Instant.parse("2026-05-08T00:00:00Z")

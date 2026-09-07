@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import kotlinx.serialization.json.Json
@@ -35,13 +36,27 @@ class OpenAiSubscriptionResponseMapper {
         modelName: String,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): AiRuntimeResponse {
-        val messages = outputItems.mapNotNull {
+        val outcome = when {
+            completed?.status == "incomplete" -> AiStepOutcome.INCOMPLETE
+            completed?.status != "completed" -> AiStepOutcome.FAILED
+            outputItems.any { item -> (item["content"] as? JsonArray).orEmpty().any {
+                (it as? JsonObject)?.get("type")?.jsonPrimitive?.contentOrNull == "refusal"
+            } } -> AiStepOutcome.REFUSED
+            outputItems.any { it["type"]?.jsonPrimitive?.contentOrNull == "function_call" } -> AiStepOutcome.TOOL_CALLS
+            outputItems.lastOrNull { it["type"]?.jsonPrimitive?.contentOrNull == "message" }
+                ?.get("phase")?.jsonPrimitive?.contentOrNull == "commentary" -> AiStepOutcome.CONTINUE
+            else -> AiStepOutcome.COMPLETE
+        }
+        val messages = outputItems.filterNot {
+            outcome != AiStepOutcome.TOOL_CALLS && it["type"]?.jsonPrimitive?.contentOrNull == "function_call"
+        }.mapNotNull {
             toAssistantMessage(
                 item = it,
                 assistantResponseFormat = assistantResponseFormat,
                 connectionId = connectionId,
                 modelConfigurationId = modelConfigurationId,
                 modelName = modelName,
+                progress = outcome != AiStepOutcome.COMPLETE,
             )
         }
         val webSearchSourceUrls = outputItems
@@ -53,8 +68,12 @@ class OpenAiSubscriptionResponseMapper {
             messages = appendWebSearchSources(messages, webSearchSourceUrls),
             usage = usage,
             contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
-            finishReason = completed?.status,
+            finishReason = completed?.incompleteDetails?.get("reason")?.jsonPrimitive?.contentOrNull ?: completed?.status,
+            outcome = outcome,
             providerMetadata = buildMap {
+                put("provider", AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+                put("connectionId", connectionId)
+                put("model", modelName)
                 put("conversationKey", conversationKey)
                 completed?.id?.let { put("responseId", it) }
             },
@@ -85,9 +104,10 @@ class OpenAiSubscriptionResponseMapper {
         connectionId: String,
         modelConfigurationId: String,
         modelName: String,
+        progress: Boolean,
     ): AiAssistantMessage? {
         return when (item["type"]?.jsonPrimitive?.contentOrNull) {
-            "message" -> item.toOutputMessage(assistantResponseFormat)
+            "message" -> item.toOutputMessage(assistantResponseFormat, progress)
             "function_call" -> item.toToolCall()
             "reasoning" -> item.toReasoningMessage()
             "compaction_summary", "compaction" -> item.toCompactionResultMessage(
@@ -95,21 +115,26 @@ class OpenAiSubscriptionResponseMapper {
                 modelConfigurationId = modelConfigurationId,
                 modelName = modelName,
             )
-            else -> null
+            else -> AiAssistantMessage(
+                content = listOf(AssistantResponseParser.providerBlock(item)),
+                metadata = mapOf("openaiSubscriptionProviderItems" to JsonArray(listOf(item))),
+            )
         }
     }
 
     private fun JsonObject.toOutputMessage(
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        progress: Boolean,
     ): AiAssistantMessage? {
         if (this["role"]?.jsonPrimitive?.contentOrNull != "assistant") return null
+        val isProgress = progress || this["phase"]?.jsonPrimitive?.contentOrNull == "commentary"
 
         val blocks = buildList {
             when (val content = this@toOutputMessage["content"]) {
                 is JsonPrimitive -> {
                     val text = content.contentOrNull?.trim().orEmpty()
                     if (text.isNotBlank()) {
-                        add(assistantBlock(text, assistantResponseFormat))
+                        add(assistantBlock(text, assistantResponseFormat, progress = isProgress))
                     }
                 }
 
@@ -125,6 +150,7 @@ class OpenAiSubscriptionResponseMapper {
                                             text = text,
                                             assistantResponseFormat = assistantResponseFormat,
                                             webCitations = partObject.webCitations(),
+                                            progress = isProgress,
                                         )
                                     )
                                 }
@@ -190,19 +216,6 @@ class OpenAiSubscriptionResponseMapper {
             }
         }.joinToString("\n").trim()
 
-        if (thinkingText.isBlank() && encryptedContent.isNullOrBlank()) return null
-
-        if (thinkingText.isBlank()) {
-            return AiAssistantMessage(
-                content = emptyList(),
-                metadata = mapOf(
-                    OPENAI_REASONING_ITEMS_METADATA_KEY to buildJsonArray {
-                        add(toHiddenReasoningItem())
-                    }
-                ),
-            )
-        }
-
         return AiAssistantMessage(
             content = listOf(
                 Conversation.Message.ContentItem.Thinking(
@@ -211,6 +224,7 @@ class OpenAiSubscriptionResponseMapper {
                     state = Conversation.Message.BlockState.COMPLETE,
                 )
             ),
+            metadata = mapOf(OPENAI_REASONING_ITEMS_METADATA_KEY to JsonArray(listOf(this))),
         )
     }
 
@@ -262,8 +276,10 @@ class OpenAiSubscriptionResponseMapper {
         text: String,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
         webCitations: List<WebCitation> = emptyList(),
+        progress: Boolean = false,
     ): Conversation.Message.ContentItem.AssistantMessage {
-        val structured = AssistantResponseParser.parse(text, assistantResponseFormat)
+        val structured = if (progress) AssistantResponseParser.parseProgress(text, assistantResponseFormat)
+            else AssistantResponseParser.parse(text, assistantResponseFormat)
         return Conversation.Message.ContentItem.AssistantMessage(
             structured = structured.copy(
                 fullText = structured.fullText.withWebCitations(webCitations),
@@ -385,5 +401,6 @@ class OpenAiSubscriptionResponseMapper {
 }
 
 internal fun Json.parseOpenAiSubscriptionToolArguments(arguments: String): JsonElement =
-    runCatching { parseToJsonElement(arguments) }
-        .getOrElse { JsonObject(mapOf("raw" to JsonPrimitive(arguments))) }
+    parseToJsonElement(arguments).also {
+        require(it is JsonObject) { "OpenAI subscription function arguments must be a JSON object" }
+    }

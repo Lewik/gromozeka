@@ -2,6 +2,8 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import klog.KLoggers
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -133,7 +135,6 @@ class OpenAiSubscriptionResponseEventCollectorTest {
 
     @Test
     fun includesIncompleteResponseDetails() {
-        val error = assertFailsWith<OpenAiSubscriptionRequestException> {
             collector.accept(
                 """
                 {
@@ -148,12 +149,10 @@ class OpenAiSubscriptionResponseEventCollectorTest {
                 }
                 """.trimIndent()
             )
-        }
-
-        assertEquals(400, error.statusCode)
-        assertContains(error.message.orEmpty(), "status=incomplete")
-        assertContains(error.message.orEmpty(), "reason=max_output_tokens")
-        assertContains(error.message.orEmpty(), "resp_incomplete")
+        val completed = collector.toParsedResponse().completed!!
+        assertEquals("incomplete", completed.status)
+        assertEquals("max_output_tokens", completed.incompleteDetails?.get("reason")?.jsonPrimitive?.contentOrNull)
+        assertEquals("resp_incomplete", completed.id)
     }
 
     @Test

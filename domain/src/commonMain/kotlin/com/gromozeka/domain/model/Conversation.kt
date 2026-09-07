@@ -383,10 +383,14 @@ data class Conversation(
             data class Thinking(
                 val thinking: String,
                 val signature: String? = null,
-                override val state: BlockState = BlockState.COMPLETE
+                override val state: BlockState = BlockState.COMPLETE,
+                val kind: Kind = Kind.THINKING,
             ) : ContentItem() {
                 val isVisible: Boolean
-                    get() = thinking.isNotBlank()
+                    get() = true
+
+                @Serializable
+                enum class Kind { THINKING, REDACTED }
             }
 
             /**

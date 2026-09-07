@@ -43,7 +43,8 @@ internal class ClaudeCodeResponseContract(
         if (externalActions) {
             appendLine()
             appendLine("Gromozeka actions are not Claude Code native tools. Never invoke them through native tool use.")
-            appendLine("When actions are needed, use response.kind=\"tool_calls\" and put all currently independent action requests in response.tool_calls.")
+            appendLine("When actions are needed, use response.kind=\"tool_calls\" and put all currently independent action requests in response.content as kind=\"tool_call\" entries.")
+            appendLine("You may include user-facing kind=\"message\" entries in that ordered array. They are remarks, not tool results.")
             appendLine("Gromozeka will execute those actions and provide their results.")
             appendLine("Otherwise, use response.kind=\"final_answer\" and put the answer in response.final_answer.")
         }
@@ -65,10 +66,15 @@ internal class ClaudeCodeResponseContract(
         if (externalActions) {
             val branch = value.getValue("response").jsonObject
             if (branch.getValue("kind").jsonPrimitive.content == "tool_calls") {
-                branch.getValue("tool_calls").jsonArray.forEachIndexed { index, element ->
+                val content = branch.getValue("content").jsonArray
+                if (content.none { it.jsonObject.getValue("kind").jsonPrimitive.content == "tool_call" }) {
+                    errors += "/response/content: at least one tool_call is required"
+                }
+                content.forEachIndexed { index, element ->
                     val call = element.jsonObject
+                    if (call.getValue("kind").jsonPrimitive.content != "tool_call") return@forEachIndexed
                     val action = call.getValue("action_name").jsonPrimitive.content
-                    validate(actionValidators.getValue(action), call.getValue("arguments"), "/response/tool_calls/$index/arguments", errors)
+                    validate(actionValidators.getValue(action), call.getValue("arguments"), "/response/content/$index/arguments", errors)
                 }
             }
         }

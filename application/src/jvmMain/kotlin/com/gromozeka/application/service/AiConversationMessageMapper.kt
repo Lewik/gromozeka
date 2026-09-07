@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import kotlinx.serialization.json.JsonArray
@@ -11,6 +12,26 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 object AiConversationMessageMapper {
+
+    fun prepareResponse(response: AiRuntimeResponse): AiRuntimeResponse {
+        if (response.outcome == AiStepOutcome.TOOL_CALLS) {
+            require(response.toolCalls.isNotEmpty()) { "Tool-call outcome without tool calls" }
+            return response
+        }
+        require(response.toolCalls.isEmpty() || response.outcome.isFailure || response.outcome == AiStepOutcome.REFUSED) {
+            "Model returned tool calls with outcome ${response.outcome}"
+        }
+        if (!response.outcome.isFailure && response.outcome != AiStepOutcome.REFUSED) return response
+        return response.copy(
+            providerMetadata = emptyMap(),
+            messages = response.messages.map { message ->
+                message.copy(
+                    content = message.content.filterNot { it is Conversation.Message.ContentItem.ToolCall },
+                    metadata = emptyMap(),
+                )
+            },
+        )
+    }
 
     fun toConversationMessages(
         conversationId: Conversation.Id,

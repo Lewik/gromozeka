@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.domain.model.Conversation
+
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
@@ -972,9 +974,8 @@ private class ClaudeCodeUnicodeDeltaCounter {
 }
 
 internal class ClaudeCodeResultStreamParser {
-    private var latestMessageId: String? = null
     private var latestAssistantUsage: JsonObject? = null
-    private val latestThinking = linkedMapOf<String, ClaudeCodeThinkingBlock>()
+    private val thinkingBlocks = linkedMapOf<String, ClaudeCodeThinkingBlock>()
     private val compactionBoundaries = mutableListOf<JsonObject>()
 
     fun accept(root: JsonObject): ClaudeCodeCliResponse? =
@@ -1001,16 +1002,9 @@ internal class ClaudeCodeResultStreamParser {
         latestAssistantUsage = message["usage"] as? JsonObject ?: latestAssistantUsage
         val content = message["content"] as? JsonArray ?: return
         val messageId = message["id"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank)
-        if (messageId != null && messageId != latestMessageId) {
-            latestMessageId = messageId
-            latestThinking.clear()
-        }
         val thinking = content.mapNotNull(::parseThinking)
-        if (messageId == null && thinking.isNotEmpty()) {
-            latestThinking.clear()
-        }
         thinking.forEach { block ->
-            latestThinking[block.signature ?: "summary:${block.thinking}"] = block
+            thinkingBlocks["$messageId:${block.signature ?: "summary:${block.thinking}"}"] = block
         }
     }
 
@@ -1024,6 +1018,7 @@ internal class ClaudeCodeResultStreamParser {
             "redacted_thinking" -> ClaudeCodeThinkingBlock(
                 thinking = "",
                 signature = block["data"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank),
+                kind = Conversation.Message.ContentItem.Thinking.Kind.REDACTED,
             )
             else -> null
         }
@@ -1047,7 +1042,7 @@ internal class ClaudeCodeResultStreamParser {
                 ?: usage?.takeUnless { "iterations" in it },
             finishReason = root["subtype"]?.jsonPrimitive?.contentOrNull,
             raw = root,
-            thinking = latestThinking.values.toList(),
+            thinking = thinkingBlocks.values.toList(),
             compactionBoundaries = compactionBoundaries.toList(),
         )
     }

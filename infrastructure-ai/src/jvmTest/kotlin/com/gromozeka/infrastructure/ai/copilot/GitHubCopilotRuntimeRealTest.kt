@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.ai.copilot
 
+import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiStepOutcome
+
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserDeviceSettings
@@ -57,11 +60,11 @@ class GitHubCopilotRuntimeRealTest {
             val directResponse = runtime.call(
                 request(listOf(userMessage("Return exactly COPILOT_DIRECT_OK.")))
             )
-            assertTrue(directResponse.messages.single().text().contains("COPILOT_DIRECT_OK"))
+            assertTrue(directResponse.messages.joinToString { it.text() }.contains("COPILOT_DIRECT_OK"))
 
             val tool = SquareTool()
             val firstUser = userMessage(
-                "Call square_value with value 7. After receiving its result, return exactly " +
+                "First include a brief user-facing remark, then call square_value with value 7. After receiving its result, return exactly " +
                     "COPILOT_TOOL_RESULT_<result>."
             )
             val toolResponse = runtime.call(
@@ -72,6 +75,8 @@ class GitHubCopilotRuntimeRealTest {
                 )
             )
             val toolCall = toolResponse.toolCalls.single()
+            assertTrue(toolResponse.messages.joinToString { it.text() }.isNotBlank())
+            assertEquals(AiStepOutcome.TOOL_CALLS, toolResponse.outcome)
             assertEquals(tool.definition.name, toolCall.call.name)
             assertEquals(7, toolCall.call.input.jsonObject.getValue("value").jsonPrimitive.content.toInt())
 
@@ -81,13 +86,14 @@ class GitHubCopilotRuntimeRealTest {
                 request(
                     messages = listOf(
                         firstUser,
-                        assistantMessage(toolResponse.messages.single().content),
+                        assistantMessage(toolResponse.messages.flatMap { it.content }),
                         toolResultMessage(toolCall, toolOutput),
                     ),
                     tools = listOf(tool),
                 )
             )
-            assertTrue(finalResponse.messages.single().text().contains("COPILOT_TOOL_RESULT_49"))
+            assertTrue(finalResponse.messages.joinToString { it.text() }.contains("COPILOT_TOOL_RESULT_49"))
+            assertEquals(AiStepOutcome.COMPLETE, finalResponse.outcome)
         } finally {
             clientPool.close()
             deleteRecursively(home)
@@ -141,7 +147,7 @@ class GitHubCopilotRuntimeRealTest {
         createdAt = Clock.System.now(),
     )
 
-    private fun com.gromozeka.domain.model.ai.AiAssistantMessage.text(): String =
+    private fun AiAssistantMessage.text(): String =
         content.filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
             .joinToString("\n") { it.structured.fullText }
 

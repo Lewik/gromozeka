@@ -153,6 +153,8 @@ data class OpenAiSubscriptionCompletedResponse(
     val status: String? = null,
     val usage: OpenAiSubscriptionUsage? = null,
     val output: List<JsonObject> = emptyList(),
+    @SerialName("incomplete_details")
+    val incompleteDetails: JsonObject? = null,
 )
 
 @Serializable
