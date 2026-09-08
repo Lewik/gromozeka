@@ -66,6 +66,28 @@ class TargetedAiExecutionTest {
     )
 
     @Test
+    fun `AI permission is rechecked when executing an attributed request`() = runBlocking {
+        val now = Clock.System.now()
+        val actor = com.gromozeka.domain.model.User(
+            id = com.gromozeka.domain.model.User.Id("actor"), displayName = "Actor",
+            status = com.gromozeka.domain.model.User.Status.ACTIVE, createdAt = now, updatedAt = now,
+            loginAllowed = false, aiAllowed = true,
+        )
+        val identities = FakeIdentityRepository().apply { users += actor }
+        val direct = RecordingDirectRuntimeProvider()
+        val provider = TargetedAiRuntimeProvider(direct, FixedAiConfigurationProvider(AiExecutionTarget.Server),
+            RecordingWorkerTargetResolver(workerIdentity), emptyList(), usageRecorder, identities)
+        val runtime = provider.getRuntime(selection, null)
+        val attributed = request.copy(options = request.options.copy(toolContext = mapOf(
+            com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID to actor.id.value)))
+        runtime.call(attributed)
+        identities.updateUser(actor.copy(aiAllowed = false))
+        assertFailsWith<IllegalStateException> { runtime.call(attributed) }
+        assertFailsWith<IllegalStateException> { runtime.stream(attributed).toList() }
+        Unit
+    }
+
+    @Test
     fun `Server-targeted runtime delegates locally`() = runBlocking {
         val directProvider = RecordingDirectRuntimeProvider()
         val remoteClient = RecordingRemoteClient()
@@ -133,6 +155,7 @@ class TargetedAiExecutionTest {
             workerTargetResolver = RecordingWorkerTargetResolver(workerIdentity),
             remoteClients = emptyList(),
             usageRecorder = usageRecorder,
+            identityRepository = FakeIdentityRepository(),
         )
 
         val error = assertFailsWith<IllegalStateException> {
@@ -318,6 +341,7 @@ class TargetedAiExecutionTest {
         workerTargetResolver = resolver,
         remoteClients = listOf(remoteClient),
         usageRecorder = usageRecorder,
+        identityRepository = FakeIdentityRepository(),
     )
 
     private val usageRecorder = AiUsageRecorder(

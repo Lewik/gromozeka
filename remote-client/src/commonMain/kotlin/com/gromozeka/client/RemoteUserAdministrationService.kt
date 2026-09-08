@@ -40,6 +40,8 @@ class RemoteUserAdministrationService internal constructor(
         displayName: String,
         status: User.Status,
         role: User.Role,
+        loginAllowed: Boolean? = null,
+        aiAllowed: Boolean? = null,
     ): User =
         client.requestTyped<UpdateUserRequest, UserResponse>(
             UpdateUserRequest(
@@ -47,6 +49,8 @@ class RemoteUserAdministrationService internal constructor(
                 displayName = displayName,
                 status = status,
                 role = role,
+                loginAllowed = loginAllowed,
+                aiAllowed = aiAllowed,
             )
         ).user
 

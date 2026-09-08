@@ -13,9 +13,10 @@ data class AuthenticationStatusResponse(
 @Serializable
 data class AuthenticatedUserView(
     val id: User.Id,
-    val username: String,
+    val username: String?,
     val displayName: String,
     val role: User.Role,
+    val aiAllowed: Boolean = true,
 )
 
 @Serializable
@@ -70,4 +71,5 @@ fun User.toAuthenticatedUserView(): AuthenticatedUserView =
         username = username,
         displayName = displayName,
         role = role,
+        aiAllowed = aiAllowed,
     )

@@ -2,6 +2,7 @@ package com.gromozeka.domain.model
 
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlin.jvm.JvmInline
 
 @Serializable
@@ -12,8 +13,8 @@ data class Artifact(
     val createdByUserId: User.Id?,
     val fileName: String,
     val mediaType: String,
-    val sizeBytes: Long,
-    val sha256: String,
+    val sizeBytes: Long?,
+    val source: ContentSource,
     val purpose: Purpose,
     val state: State = State.DRAFT,
     val createdAt: Instant,
@@ -22,10 +23,35 @@ data class Artifact(
     init {
         require(fileName.isNotBlank()) { "Artifact file name must not be blank" }
         require(mediaType.isNotBlank()) { "Artifact media type must not be blank" }
-        require(sizeBytes >= 0) { "Artifact size must not be negative" }
-        require(sha256.matches(SHA256_PATTERN)) { "Artifact SHA-256 must contain 64 hexadecimal characters" }
+        require(sizeBytes == null || sizeBytes >= 0) { "Artifact size must not be negative" }
+        require(source !is ContentSource.Managed || sizeBytes != null) { "Managed artifact size must be known" }
         require((state == State.COMMITTED) == (committedAt != null)) {
             "Committed artifacts must have committedAt and draft artifacts must not"
+        }
+    }
+
+    val sha256: String? get() = (source as? ContentSource.Managed)?.sha256
+
+    @Serializable
+    sealed interface ContentSource {
+        @Serializable
+        @SerialName("managed")
+        data class Managed(val sha256: String) : ContentSource {
+            init { require(sha256.matches(SHA256_PATTERN)) { "Artifact SHA-256 must contain 64 hexadecimal characters" } }
+        }
+
+        @Serializable
+        @SerialName("telegram")
+        data class Telegram(
+            val connectionId: String,
+            val fileId: String,
+            val fileUniqueId: String,
+        ) : ContentSource {
+            init {
+                require(connectionId.isNotBlank())
+                require(fileId.isNotBlank() && fileId.length <= 1024)
+                require(fileUniqueId.isNotBlank() && fileUniqueId.length <= 1024)
+            }
         }
     }
 
@@ -81,7 +107,7 @@ data class Artifact(
         val id: Id,
         val fileName: String,
         val mediaType: String,
-        val sizeBytes: Long,
+        val sizeBytes: Long?,
         val purpose: Purpose,
         val kind: Kind,
     )

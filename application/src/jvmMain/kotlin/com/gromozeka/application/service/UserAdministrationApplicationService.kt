@@ -52,7 +52,7 @@ class UserAdministrationApplicationService(
         val now = Clock.System.now()
         val user = User(
             id = User.Id(uuid7()),
-            username = normalizedUsername,
+            identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin(normalizedUsername)),
             displayName = LocalIdentityInputPolicy.normalizeDisplayName(displayName, normalizedUsername),
             status = User.Status.ACTIVE,
             role = role,
@@ -75,7 +75,7 @@ class UserAdministrationApplicationService(
                 targetId = created.id.value,
                 attributes = mapOf(
                     "displayName" to created.displayName,
-                    "username" to created.username,
+                    "username" to normalizedUsername,
                     "role" to created.role.name,
                 ),
             )
@@ -91,28 +91,35 @@ class UserAdministrationApplicationService(
         displayName: String,
         status: User.Status,
         role: User.Role,
+        loginAllowed: Boolean?,
+        aiAllowed: Boolean?,
     ): User {
         requireOwner(actor)
         val existing = identityRepository.findUserById(userId)
             ?: throw IllegalArgumentException("User not found: ${userId.value}")
         val normalizedDisplayName = LocalIdentityInputPolicy.normalizeDisplayName(
             displayName,
-            existing.username,
+            existing.displayName,
         )
+        val allowLogin = loginAllowed ?: existing.loginAllowed
+        val allowAi = aiAllowed ?: existing.aiAllowed
+        require(!allowLogin || existing.identities.any { it is com.gromozeka.domain.model.UserIdentity.LocalLogin }) {
+            "Configure a login identity before enabling login"
+        }
         if (
             existing.displayName == normalizedDisplayName &&
             existing.status == status &&
-            existing.role == role
+            existing.role == role && existing.loginAllowed == allowLogin && existing.aiAllowed == allowAi
         ) {
             return existing
         }
-        val removesActiveOwner = existing.status == User.Status.ACTIVE &&
+        val removesActiveOwner = existing.canLogin &&
             existing.role == User.Role.OWNER &&
-            (status != User.Status.ACTIVE || role != User.Role.OWNER)
+            (status != User.Status.ACTIVE || role != User.Role.OWNER || !allowLogin)
         if (removesActiveOwner && identityRepository.countActiveOwners() <= 1) {
             throw LastActiveRuntimeOwnerException()
         }
-        if (existing.status == User.Status.ACTIVE && status == User.Status.DISABLED) {
+        if (existing.canLogin && (status == User.Status.DISABLED || !allowLogin)) {
             requireUserIsNotSoleProjectOwner(existing)
         }
 
@@ -121,13 +128,15 @@ class UserAdministrationApplicationService(
                 displayName = normalizedDisplayName,
                 status = status,
                 role = role,
+                loginAllowed = allowLogin,
+                aiAllowed = allowAi,
                 updatedAt = Clock.System.now(),
             )
         )
-        if (existing.role != role || existing.status != status) {
+        if (existing.role != role || existing.status != status || existing.loginAllowed != allowLogin) {
             val now = Clock.System.now()
             identityRepository.revokeAllSessions(userId, now)
-            if (status == User.Status.DISABLED) {
+            if (status == User.Status.DISABLED || !allowLogin) {
                 identityRepository.revokeAllPersonalAccessTokens(userId, now)
             }
         }
@@ -144,6 +153,8 @@ class UserAdministrationApplicationService(
                     "role" to updated.role.name,
                     "previousStatus" to existing.status.name,
                     "status" to updated.status.name,
+                    "loginAllowed" to updated.loginAllowed.toString(),
+                    "aiAllowed" to updated.aiAllowed.toString(),
                 ),
             )
         )
@@ -162,6 +173,7 @@ class UserAdministrationApplicationService(
         val existing = identityRepository.findUserById(userId)
             ?: throw IllegalArgumentException("User not found: ${userId.value}")
         val now = Clock.System.now()
+        require(existing.username != null) { "User has no local login identity" }
         identityRepository.updatePasswordCredential(
             LocalPasswordCredential(
                 userId = existing.id,
@@ -196,7 +208,7 @@ class UserAdministrationApplicationService(
     }
 
     private fun requireOwner(actor: User) {
-        if (actor.status != User.Status.ACTIVE || actor.role != User.Role.OWNER) {
+        if (!actor.canLogin || actor.role != User.Role.OWNER) {
             throw UserAdministrationDeniedException()
         }
     }

@@ -130,6 +130,7 @@ class GromozekaRemoteServer(
     private val aiUserCredentialService: AiUserCredentialApplicationService,
     private val namedSecretService: NamedSecretApplicationService,
     private val userAdministrationService: UserAdministrationService,
+    private val telegramManagementService: com.gromozeka.domain.service.TelegramManagementService,
     private val securityAuditService: SecurityAuditService,
     private val userDirectoryService: UserDirectoryService,
     private val remoteAuthorization: GromozekaRemoteAuthorization,
@@ -319,6 +320,11 @@ class GromozekaRemoteServer(
         val response = try {
             remoteAuthorization.authorize(user, request)
             when (request) {
+                GetTelegramSettingsRequest -> TelegramSettingsResponse(telegramManagementService.snapshot(user))
+                is ProbeTelegramBotRequest -> TelegramProfileResponse(telegramManagementService.probe(user, request.tokenSecretName))
+                is SaveTelegramConnectionRequest -> TelegramConnectionResponse(telegramManagementService.save(user, request.connection, request.expectedRevision))
+                is GetTelegramProfileRequest -> TelegramProfileResponse(telegramManagementService.profile(user, request.connectionId))
+                is UpdateTelegramProfileRequest -> TelegramProfileResponse(telegramManagementService.updateProfile(user, request.connectionId, request.update))
                 GetTranslationsRequest -> TranslationsResponse(
                     userTranslationService.snapshot(user.id, clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value)
                 )
@@ -483,6 +489,8 @@ class GromozekaRemoteServer(
                         displayName = request.displayName,
                         status = request.status,
                         role = request.role,
+                        loginAllowed = request.loginAllowed,
+                        aiAllowed = request.aiAllowed,
                     )
                 )
                 is ResetUserPasswordRequest -> {

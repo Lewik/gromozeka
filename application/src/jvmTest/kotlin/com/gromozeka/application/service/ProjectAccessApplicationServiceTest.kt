@@ -225,7 +225,7 @@ private fun activeUser(id: String): User {
     val now = Clock.System.now()
     return User(
         id = User.Id(id),
-        username = id,
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin(id)),
         displayName = id,
         status = User.Status.ACTIVE,
         createdAt = now,

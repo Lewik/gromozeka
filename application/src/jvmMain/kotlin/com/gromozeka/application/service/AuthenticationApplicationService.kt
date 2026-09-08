@@ -36,7 +36,7 @@ class AuthenticationApplicationService(
     private val dummyPasswordHash = passwordHasher.hash(DUMMY_PASSWORD.toCharArray())
 
     override suspend fun hasUsers(): Boolean =
-        identityRepository.countUsers() > 0
+        identityRepository.listUsers().any { it.role == User.Role.OWNER }
 
     @Transactional
     override suspend fun createFirstUser(
@@ -55,7 +55,7 @@ class AuthenticationApplicationService(
         val now = Clock.System.now()
         val user = User(
             id = User.Id(uuid7()),
-            username = normalizedUsername,
+            identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin(normalizedUsername)),
             displayName = normalizedDisplayName,
             status = User.Status.ACTIVE,
             role = User.Role.OWNER,
@@ -79,7 +79,7 @@ class AuthenticationApplicationService(
                 action = SecurityAuditEvent.Action.RUNTIME_BOOTSTRAPPED,
                 targetType = SecurityAuditEvent.TargetType.RUNTIME,
                 targetId = "runtime",
-                attributes = mapOf("ownerUsername" to user.username),
+                attributes = mapOf("ownerUsername" to normalizedUsername),
             )
         )
         return session
@@ -109,7 +109,7 @@ class AuthenticationApplicationService(
         )
         if (
             user == null ||
-            user.status != User.Status.ACTIVE ||
+            !user.canLogin ||
             credential == null ||
             !passwordMatches
         ) {
@@ -133,7 +133,7 @@ class AuthenticationApplicationService(
         val session = identityRepository.findSessionByTokenHash(hashToken(sessionToken)) ?: return null
         if (session.isRevoked || session.expiresAt <= now) return null
         val user = identityRepository.findUserById(session.userId)
-            ?.takeIf { it.status == User.Status.ACTIVE }
+            ?.takeIf { it.canLogin }
             ?: return null
 
         if (session.lastSeenAt < now - AuthenticationSessionPolicy.touchInterval) {

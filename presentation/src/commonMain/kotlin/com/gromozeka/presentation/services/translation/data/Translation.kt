@@ -144,6 +144,7 @@ open class Translation(val content: TranslationPackage) {
     class RuntimeTranslation(
         private val catalog: TranslationCatalog = TranslationCatalog(BundledTranslations.english),
     ) {
+        fun text(key: String): String = catalog.text(key)
         val title: String get() = catalog.template("runtime.title")
         val closePanelDescription: String get() = catalog.template("runtime.closePanelDescription")
         val contextLabel: String get() = catalog.template("runtime.contextLabel")

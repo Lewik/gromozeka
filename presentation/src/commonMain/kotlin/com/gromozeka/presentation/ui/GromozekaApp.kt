@@ -567,6 +567,7 @@ fun GromozekaAppContent(
                                                                     aiUserCredentialService = appComponents.aiUserCredentialService,
                                                                     namedSecretService = appComponents.namedSecretService,
                                                                     userAdministrationService = appComponents.userAdministrationService,
+                                                                    telegramService = appComponents.telegramService,
                                                                     securityAuditService = appComponents.securityAuditService,
                                                                     userDirectoryService = appComponents.userDirectoryService,
                                                                     canAdministerUsers =
@@ -715,6 +716,7 @@ fun GromozekaAppContent(
                                     aiUserCredentialService = appComponents.aiUserCredentialService,
                                     namedSecretService = appComponents.namedSecretService,
                                     userAdministrationService = appComponents.userAdministrationService,
+                                    telegramService = appComponents.telegramService,
                                     securityAuditService = appComponents.securityAuditService,
                                     userDirectoryService = appComponents.userDirectoryService,
                                     canAdministerUsers =
@@ -844,6 +846,7 @@ fun GromozekaAppContent(
                                     aiUserCredentialService = appComponents.aiUserCredentialService,
                                     namedSecretService = appComponents.namedSecretService,
                                     userAdministrationService = appComponents.userAdministrationService,
+                                    telegramService = appComponents.telegramService,
                                     securityAuditService = appComponents.securityAuditService,
                                     userDirectoryService = appComponents.userDirectoryService,
                                     canAdministerUsers =

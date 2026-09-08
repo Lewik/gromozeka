@@ -358,7 +358,7 @@ class SpeechCaptureApplicationServiceTest {
         val now = Instant.parse("2026-07-31T00:00:00Z")
         return User(
             id = User.Id(id),
-            username = id,
+            identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin(id)),
             displayName = id,
             status = User.Status.ACTIVE,
             createdAt = now,

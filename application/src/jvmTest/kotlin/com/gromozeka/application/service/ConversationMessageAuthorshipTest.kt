@@ -54,7 +54,7 @@ class ConversationMessageAuthorshipTest {
 
     private val authenticatedUser = User(
         id = User.Id("authenticated-user"),
-        username = "ada",
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("ada")),
         displayName = "Ada Lovelace",
         status = User.Status.ACTIVE,
         createdAt = Instant.parse("2026-09-03T00:00:00Z"),

@@ -78,9 +78,10 @@ class PostgresConversationRuntimeCoordinator(
         }
     }
 
-    override suspend fun submit(task: ConversationRuntimeTask): Boolean =
+    override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
-            val transition = record.scheduling.submit(task, Clock.System.now())
+            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted)
+            if (!transition.changed) return@mutateRecord transition.result
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
             record.appendTrace(
@@ -615,6 +616,18 @@ class PostgresConversationRuntimeCoordinator(
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
             record.appendControlTrace(conversationId, ConversationExecutionState.ControlState.RUNNING)
+            record.bumpRevision()
+            true
+        }
+
+    override suspend fun requestTurnStop(conversationId: Conversation.Id, turnId: com.gromozeka.domain.service.ConversationRuntimeTurnId): Boolean =
+        mutateRecord(conversationId, createIfMissing = false) { record ->
+            val transition = record.scheduling.requestTurnStop(turnId, Clock.System.now())
+            if (!transition.result) return@mutateRecord false
+            record.scheduling = transition.state
+            record.appendTrace(conversationId = conversationId, taskId = ConversationRuntimeTask.Id(turnId.value),
+                kind = ConversationRuntimeTraceEntry.Kind.TASK_CANCELLED, status = ConversationRuntimeTraceEntry.Status.CANCELLED,
+                message = "Stop requested for one exact turn")
             record.bumpRevision()
             true
         }

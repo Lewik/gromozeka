@@ -33,6 +33,11 @@ class GromozekaRemoteAuthorization(
         request: ClientRequest,
     ) {
         when (request) {
+            GetTelegramSettingsRequest,
+            is ProbeTelegramBotRequest,
+            is SaveTelegramConnectionRequest,
+            is GetTelegramProfileRequest,
+            is UpdateTelegramProfileRequest,
             GetSettingsRequest,
             is SaveSettingsRequest,
             is SaveAiCatalogRequest,
@@ -248,15 +253,19 @@ class GromozekaRemoteAuthorization(
             )
 
             is DeleteConversationRequest,
-            is UpdateConversationDisplayNameRequest,
-            is UpdateConversationParticipantsRequest,
             is UpdateConversationAutoRespondersRequest,
-            is ForkConversationRequest,
             is RegenerateSuggestedRepliesRequest,
             is EditMessageRequest,
             is DeleteMessagesRequest,
             is CompactMessagesRequest,
             is MemoryActionRequest,
+            -> requireConversation(user, request.conversationId(), ProjectPermission.WRITE).also {
+                require(it.externalChannel == null) { "Manage messages through the connected external channel; detach it before editing history" }
+            }
+
+            is UpdateConversationDisplayNameRequest,
+            is UpdateConversationParticipantsRequest,
+            is ForkConversationRequest,
             is PostMessageRequest,
             is InvokeAgentRequest,
             is EnqueueAgentInvocationRequest,

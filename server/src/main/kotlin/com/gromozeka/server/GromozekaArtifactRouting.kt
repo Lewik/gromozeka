@@ -109,13 +109,19 @@ internal fun Routing.gromozekaArtifacts(
                 conversationId = artifact.conversationId,
                 permission = ProjectPermission.READ,
             )
-            call.response.header(HttpHeaders.CacheControl, "private, max-age=31536000, immutable")
+            val bytes = try {
+                artifactService.read(artifact.id)
+            } catch (error: com.gromozeka.domain.service.ArtifactContentUnavailableException) {
+                return@get call.respondArtifactError(HttpStatusCode.BadGateway, error.reason)
+            }
+            call.response.header(HttpHeaders.CacheControl,
+                if (artifact.source is Artifact.ContentSource.Managed) "private, max-age=31536000, immutable" else "private, no-store")
             call.response.header(
                 HttpHeaders.ContentDisposition,
                 ContentDisposition.Inline.withParameter(ContentDisposition.Parameters.FileName, artifact.fileName).toString(),
             )
             call.respondBytes(
-                bytes = artifactService.read(artifact.id),
+                bytes = bytes,
                 contentType = ContentType.parse(artifact.mediaType),
             )
         }

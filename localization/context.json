@@ -1,4 +1,48 @@
 {
+  "telegram.title": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Telegram","args":[]},
+  "telegram.description": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Connect a bot using a named secret from Security settings. Group history is mirrored without granting participants sign-in or AI access.","args":[]},
+  "telegram.serverDisabled": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Telegram is disabled in this Server deployment. No Telegram requests are made. Enable it only on your personal installation.","args":[]},
+  "telegram.tokenSecret": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Bot token secret name","args":[]},
+  "telegram.connect": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Check bot / add connection","args":[]},
+  "telegram.reload": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Reload","args":[]},
+  "telegram.enabled": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Enabled","args":[]},
+  "telegram.disabled": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Disabled","args":[]},
+  "telegram.configure": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Configure","args":[]},
+  "telegram.profile": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Bot profile","args":[]},
+  "telegram.addGroup": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Add group binding","args":[]},
+  "telegram.inputPolicy": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Send messages and trigger agents in Telegram. This conversation is read-only in Gromozeka. Only the configured Telegram user can trigger agents; friends' messages are context.","args":[]},
+  "telegram.invalidSettings": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Check the numeric Telegram IDs, conversation and agent settings.","args":[]},
+  "telegram.conversation": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Project / conversation","args":[]},
+  "telegram.chatId": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Telegram group ID (negative number)","args":[]},
+  "telegram.topicId": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Topic ID (optional)","args":[]},
+  "telegram.initiator": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Telegram user ID allowed to trigger","args":[]},
+  "telegram.locale": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Bot status language (locale code)","args":[]},
+  "telegram.agent": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Agent","args":[]},
+  "telegram.trigger": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Trigger substring (exactly as entered)","args":[]},
+  "telegram.contextPercent": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: History context budget: {percent}%","args":["percent"]},
+  "telegram.writeAllowed": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Writable","args":[]},
+  "telegram.writeHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Uses the same Readonly / Writable instruction as chat. This is guidance to the agent, not a technical write sandbox.","args":[]},
+  "telegram.additionalInstruction": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Additional instruction (fixed safety rules always apply)","args":[]},
+  "telegram.removeAgent": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Remove agent route","args":[]},
+  "telegram.addAgent": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Add agent route","args":[]},
+  "telegram.overlappingAliases": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: These trigger substrings overlap. One message may invoke several agents.","args":[]},
+  "telegram.removeGroup": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Remove group binding","args":[]},
+  "telegram.profileGlobal": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: The bot's profile is shared by every group using this bot. Telegram Bot API does not expose profile accent colors.","args":[]},
+  "telegram.name": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Name (up to 64 characters)","args":[]},
+  "telegram.longDescription": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Description (up to 512 characters)","args":[]},
+  "telegram.shortDescription": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Short description (up to 120 characters)","args":[]},
+  "telegram.avatarArtifact": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Avatar image artifact ID (optional)","args":[]},
+  "telegram.avatarHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/TelegramSettingsPanel.kt"],"description":"Telegram bot settings: Use an image attachment from a conversation you can read. Telegram requires a square JPEG; transparency is flattened onto a dark background. Leave blank to keep the current avatar.","args":[]},
+  "security.users.loginAllowed": {
+    "source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/UserAdministrationSettings.kt"],
+    "description": "Independent user permission to sign in and use personal access tokens. An external Telegram identity alone is not a login method.",
+    "args": []
+  },
+  "security.users.aiAllowed": {
+    "source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/UserAdministrationSettings.kt"],
+    "description": "Independent permission to initiate AI work. Does not grant access to projects or permission to trigger a Telegram channel.",
+    "args": []
+  },
   "agents.always_loaded_tools": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/agents/AgentEditorDialog.kt:324"

@@ -105,6 +105,29 @@ class UserAdministrationApplicationServiceTest {
     }
 
     @Test
+    fun `last owner cannot lose login but can lose AI permission`() = runUserAdministrationTest {
+        assertFailsWith<LastActiveRuntimeOwnerException> {
+            service.update(owner, owner.id, owner.displayName, owner.status, owner.role, loginAllowed = false)
+        }
+        val updated = service.update(owner, owner.id, owner.displayName, owner.status, owner.role, aiAllowed = false)
+        assertTrue(updated.canLogin)
+        assertEquals(false, updated.canUseAi)
+    }
+
+    @Test
+    fun `observed user can gain AI permission without login or implicit linking`() = runUserAdministrationTest {
+        val observed = identityRepository.observeTelegramIdentity(
+            com.gromozeka.domain.model.UserIdentity.Telegram(123, "owner", "owner"), Clock.System.now())
+        val updated = service.update(owner, observed.id, observed.displayName, observed.status, observed.role, aiAllowed = true)
+        assertTrue(updated.canUseAi)
+        assertEquals(false, updated.canLogin)
+        assertTrue(updated.id != owner.id)
+        assertFailsWith<IllegalArgumentException> {
+            service.update(owner, observed.id, observed.displayName, observed.status, observed.role, loginAllowed = true)
+        }
+    }
+
+    @Test
     fun `role change revokes sessions and disabling revokes personal access tokens`() =
         runUserAdministrationTest {
         val secondOwner = service.create(
@@ -192,7 +215,7 @@ class UserAdministrationApplicationServiceTest {
         val now = Clock.System.now()
         return User(
             id = User.Id(username),
-            username = username,
+            identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin(username)),
             displayName = username,
             status = User.Status.ACTIVE,
             role = role,

@@ -106,11 +106,13 @@ internal class ControlMcpIdentityTools(
         },
         controlMcpTool(
             name = "grz_user_update",
-            description = "Replace a user's display name, active status, and Runtime role.",
+            description = "Update a user's profile, Runtime role, login permission and AI permission. Omitted permissions stay unchanged. An observed Telegram identity does not enable login.",
             inputSchema = ControlMcpSchemas.objectSchema(
                 properties = mapOf(
                     "userId" to ControlMcpSchemas.string("User id."),
                     "displayName" to ControlMcpSchemas.string("User-facing display name."),
+                    "loginAllowed" to ControlMcpSchemas.boolean("Allow login and personal access tokens. Requires a configured login identity."),
+                    "aiAllowed" to ControlMcpSchemas.boolean("Allow this user to initiate AI work. Does not grant project or channel access."),
                     "status" to ControlMcpSchemas.string(
                         description = "Account status.",
                         enum = User.Status.entries.map { it.name },
@@ -135,6 +137,8 @@ internal class ControlMcpIdentityTools(
                     displayName = input.requiredString("displayName"),
                     status = User.Status.valueOf(input.requiredString("status")),
                     role = User.Role.valueOf(input.requiredString("role")),
+                    loginAllowed = if ("loginAllowed" in input) input.optionalBoolean("loginAllowed", false) else null,
+                    aiAllowed = if ("aiAllowed" in input) input.optionalBoolean("aiAllowed", false) else null,
                 ),
             )
         },

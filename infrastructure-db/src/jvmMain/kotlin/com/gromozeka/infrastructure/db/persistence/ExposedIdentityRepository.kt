@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.db.persistence
 import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserIdentity
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.infrastructure.db.persistence.tables.LocalPasswordCredentials
@@ -10,6 +11,10 @@ import com.gromozeka.infrastructure.db.persistence.tables.PersonalAccessTokenSco
 import com.gromozeka.infrastructure.db.persistence.tables.PersonalAccessTokens
 import com.gromozeka.infrastructure.db.persistence.tables.UserSessions
 import com.gromozeka.infrastructure.db.persistence.tables.Users
+import com.gromozeka.infrastructure.db.persistence.tables.UserIdentities
+import com.gromozeka.shared.uuid.uuid7
+import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
@@ -28,6 +33,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class ExposedIdentityRepository : IdentityRepository {
+    private val identityJson = Json
     override suspend fun countUsers(): Long = dbQuery {
         Users.selectAll().count()
     }
@@ -36,14 +42,14 @@ class ExposedIdentityRepository : IdentityRepository {
         Users.selectAll()
             .where {
                 (Users.status eq User.Status.ACTIVE.name) and
-                    (Users.role eq User.Role.OWNER.name)
+                    (Users.role eq User.Role.OWNER.name) and (Users.loginAllowed eq true)
             }
             .count()
     }
 
     override suspend fun listUsers(): List<User> = dbQuery {
         Users.selectAll()
-            .orderBy(Users.username)
+            .orderBy(Users.displayName)
             .map { it.toUser() }
     }
 
@@ -54,33 +60,81 @@ class ExposedIdentityRepository : IdentityRepository {
             ?.toUser()
     }
 
-    override suspend fun findUserByUsername(normalizedUsername: String): User? = dbQuery {
-        Users.selectAll()
-            .where { Users.username eq normalizedUsername }
-            .singleOrNull()
-            ?.toUser()
+    override suspend fun findUserByUsername(normalizedUsername: String): User? =
+        findUserByIdentityKey(UserIdentity.LocalLogin(normalizedUsername).key)
+
+    override suspend fun findUserByIdentityKey(key: String): User? = dbQuery {
+        findIdentityOwner(key)
+    }
+
+    override suspend fun observeTelegramIdentity(identity: UserIdentity.Telegram, now: Instant): User = dbQuery {
+        TransactionManager.current().exec("SELECT pg_advisory_xact_lock(${identity.telegramUserId})")
+        val existing = findIdentityOwner(identity.key)
+        if (existing != null) {
+            UserIdentities.update({ UserIdentities.key eq identity.key }) {
+                it[identityJson] = this@ExposedIdentityRepository.identityJson.encodeToString<UserIdentity>(identity)
+            }
+            val identities = existing.identities.map { if (it.key == identity.key) identity else it }
+            val displayName = if (identities.all { it is UserIdentity.Telegram } && !existing.loginAllowed) {
+                identity.displayName.take(255)
+            } else existing.displayName
+            Users.update({ Users.id eq existing.id.value }) {
+                it[Users.displayName] = displayName
+                it[updatedAt] = now
+            }
+            existing.copy(identities = identities, displayName = displayName, updatedAt = now)
+        } else {
+            insertUser(
+                User(
+                    id = User.Id(uuid7()),
+                    identities = listOf(identity),
+                    displayName = identity.displayName.take(255),
+                    status = User.Status.ACTIVE,
+                    createdAt = now,
+                    updatedAt = now,
+                    loginAllowed = false,
+                    aiAllowed = false,
+                ),
+                null,
+            )
+        }
+    }
+
+    private fun findIdentityOwner(key: String): User? {
+        val userId = UserIdentities.selectAll().where { UserIdentities.key eq key }
+            .singleOrNull()?.get(UserIdentities.userId) ?: return null
+        return Users.selectAll().where { Users.id eq userId }.single().toUser()
     }
 
     override suspend fun createUser(
         user: User,
-        credential: LocalPasswordCredential,
-    ): User = dbQuery {
-        require(credential.userId == user.id) { "Password credential must belong to the created user" }
+        credential: LocalPasswordCredential?,
+    ): User = dbQuery { insertUser(user, credential) }
+
+    private fun insertUser(user: User, credential: LocalPasswordCredential?): User {
+        require(credential == null || credential.userId == user.id) { "Password credential must belong to the created user" }
+        require((user.username != null) == (credential != null)) { "Local login identity requires a password credential" }
         Users.insert {
             it[id] = user.id.value
-            it[username] = user.username
+            it[loginAllowed] = user.loginAllowed
+            it[aiAllowed] = user.aiAllowed
             it[displayName] = user.displayName
             it[status] = user.status.name
             it[role] = user.role.name
             it[createdAt] = user.createdAt
             it[updatedAt] = user.updatedAt
         }
-        LocalPasswordCredentials.insert {
+        UserIdentities.batchInsert(user.identities) { identity ->
+            this[UserIdentities.key] = identity.key
+            this[UserIdentities.userId] = user.id.value
+            this[UserIdentities.identityJson] = identityJson.encodeToString<UserIdentity>(identity)
+        }
+        if (credential != null) LocalPasswordCredentials.insert {
             it[userId] = credential.userId.value
             it[passwordHash] = credential.passwordHash
             it[passwordChangedAt] = credential.passwordChangedAt
         }
-        user
+        return user
     }
 
     override suspend fun updateUser(user: User): User = dbQuery {
@@ -90,6 +144,8 @@ class ExposedIdentityRepository : IdentityRepository {
             it[displayName] = user.displayName
             it[status] = user.status.name
             it[role] = user.role.name
+            it[loginAllowed] = user.loginAllowed
+            it[aiAllowed] = user.aiAllowed
             it[updatedAt] = user.updatedAt
         }
         check(updated == 1) { "User does not exist: ${user.id.value}" }
@@ -269,10 +325,13 @@ class ExposedIdentityRepository : IdentityRepository {
     private fun ResultRow.toUser(): User =
         User(
             id = User.Id(this[Users.id]),
-            username = this[Users.username],
+            identities = UserIdentities.selectAll().where { UserIdentities.userId eq this@toUser[Users.id] }
+                .map { identityJson.decodeFromString<UserIdentity>(it[UserIdentities.identityJson]) },
             displayName = this[Users.displayName],
             status = User.Status.valueOf(this[Users.status]),
             role = User.Role.valueOf(this[Users.role]),
+            loginAllowed = this[Users.loginAllowed],
+            aiAllowed = this[Users.aiAllowed],
             createdAt = this[Users.createdAt],
             updatedAt = this[Users.updatedAt],
         )

@@ -127,6 +127,9 @@ class TabViewModel(
 
     private val _allMessages = MutableStateFlow<List<Conversation.Message>>(emptyList())
     val allMessages: StateFlow<List<Conversation.Message>> = _allMessages.asStateFlow()
+    val externalChannel = conversationService.observeByProject(projectId).map { conversations ->
+        conversations.firstOrNull { it.id == conversationId }?.externalChannel
+    }.stateIn(scope, SharingStarted.WhileSubscribed(5000), null)
 
     val agentMentionCandidates: StateFlow<List<AgentMentionCandidate>> = combine(
         agentService.observeByProject(projectId),
@@ -1032,7 +1035,7 @@ class TabViewModel(
                                 ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE.toLong(),
                             ))
                         }
-                        val totalBytes = currentArtifacts.sumOf { it.sizeBytes } + upload.content.size
+                        val totalBytes = currentArtifacts.sumOf { it.sizeBytes ?: 0L } + upload.content.size
                         if (totalBytes > ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE) {
                             throw LocalizedTextException(localizedText(
                                 "client.attachment.totalTooLarge",

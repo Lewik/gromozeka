@@ -313,7 +313,7 @@ class GromozekaRemoteAuthorizationTest {
 private fun testUser(role: User.Role = User.Role.MEMBER): User =
     User(
         id = User.Id("remote-authorization-user"),
-        username = "remote-authorization-user",
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("remote-authorization-user")),
         displayName = "Remote Authorization User",
         status = User.Status.ACTIVE,
         role = role,

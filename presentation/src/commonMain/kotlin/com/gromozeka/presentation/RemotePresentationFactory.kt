@@ -218,6 +218,7 @@ suspend fun createRemoteAppComponents(
             aiUserCredentialService = remoteServices.aiUserCredentialService,
             namedSecretService = remoteServices.namedSecretService,
             userAdministrationService = remoteServices.userAdministrationService,
+            telegramService = remoteServices.telegramService,
             securityAuditService = remoteServices.securityAuditService,
             userDirectoryService = remoteServices.userDirectoryService,
             projectMembershipService = remoteServices.projectMembershipService,

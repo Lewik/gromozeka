@@ -9,6 +9,10 @@ class ConversationRuntimeHistoryMutationExecutor(
     private val conversationService: ConversationApplicationService,
     private val messageSquashService: MessageSquashService,
 ) {
+    internal suspend fun replaceExternalMessage(originalId: Conversation.Message.Id, message: Conversation.Message) {
+        conversationService.replaceExternalRuntimeMessage(originalId, message)
+    }
+
     internal suspend fun execute(
         conversationId: Conversation.Id,
         mutation: ConversationHistoryMutation,

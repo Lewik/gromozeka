@@ -284,6 +284,8 @@ data class UpdateUserRequest(
     val displayName: String,
     val status: User.Status,
     val role: User.Role,
+    val loginAllowed: Boolean? = null,
+    val aiAllowed: Boolean? = null,
 ) : ClientRequest
 
 @Serializable
@@ -1255,7 +1257,7 @@ data object UserPasswordResetResponse : ServerResponse
 @Serializable
 data class UserDirectoryEntry(
     val id: User.Id,
-    val username: String,
+    val username: String?,
     val displayName: String,
 )
 

@@ -267,6 +267,7 @@ class ConversationToolExecutionTaskService(
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
+            externalChannel = parentTask.externalChannel,
             actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 rootUserMessageId = rootUserMessageId,

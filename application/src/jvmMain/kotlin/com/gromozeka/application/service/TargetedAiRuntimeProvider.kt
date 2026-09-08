@@ -1,6 +1,9 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.ai.AiExecutionTarget
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.repository.IdentityRepository
+import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -33,6 +36,7 @@ class TargetedAiRuntimeProvider(
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
     private val remoteClients: List<AiRequestResponseExecutionClient>,
     private val usageRecorder: AiUsageRecorder,
+    private val identityRepository: IdentityRepository,
 ) : AiRuntimeProvider {
     override fun capabilities(selection: AiRuntimeSelection): AiRuntimeCapabilities =
         directProvider.capabilities(configurationProvider.resolveAiRuntime(selection))
@@ -65,16 +69,27 @@ class TargetedAiRuntimeProvider(
         override val capabilities: AiRuntimeCapabilities
             get() = delegate.capabilities
 
-        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse =
-            delegate.call(request).also { response -> usageRecorder.record(runtime, request, response) }
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            requireAiPermission(request)
+            return delegate.call(request).also { response -> usageRecorder.record(runtime, request, response) }
+        }
 
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
+            requireAiPermission(request)
             var finalResponse: AiRuntimeResponse? = null
             delegate.stream(request).collect { response ->
                 finalResponse = response
                 emit(response)
             }
             finalResponse?.let { usageRecorder.record(runtime, request, it) }
+        }
+    }
+
+    private suspend fun requireAiPermission(request: AiRuntimeRequest) {
+        val userId = request.options.toolContext[TOOL_CONTEXT_USER_ID] ?: return
+        require(userId is String) { "AI request user id must be a string" }
+        check(identityRepository.findUserById(User.Id(userId))?.canUseAi == true) {
+            "AI access is not allowed for this user"
         }
     }
 

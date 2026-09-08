@@ -7,6 +7,8 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.domain.service.ArtifactContentStore
+import com.gromozeka.domain.service.ExternalArtifactContentReader
+import com.gromozeka.domain.service.ArtifactContentUnavailableException
 import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
@@ -18,6 +20,7 @@ import java.util.Base64
 class ConversationArtifactApplicationService(
     private val artifactRepository: ArtifactRepository,
     private val contentStore: ArtifactContentStore,
+    private val externalReaders: List<ExternalArtifactContentReader> = emptyList(),
 ) : ArtifactReferenceValidator {
     suspend fun upload(
         conversation: Conversation,
@@ -46,7 +49,7 @@ class ConversationArtifactApplicationService(
             fileName = fileName,
             mediaType = mediaType,
             sizeBytes = content.size.toLong(),
-            sha256 = content.sha256(),
+            source = Artifact.ContentSource.Managed(content.sha256()),
             purpose = upload.purpose,
             createdAt = Clock.System.now(),
         )
@@ -67,7 +70,34 @@ class ConversationArtifactApplicationService(
     suspend fun read(id: Artifact.Id): ByteArray {
         val artifact = artifactRepository.findById(id)
             ?: error("Artifact not found: ${id.value}")
-        return contentStore.read(artifact.id)
+        return readContent(artifact)
+    }
+
+    suspend fun registerExternal(artifact: Artifact): Artifact {
+        require(artifact.source !is Artifact.ContentSource.Managed)
+        val existing = artifactRepository.findById(artifact.id)
+        if (existing != null) {
+            require(existing.copy(state = artifact.state, committedAt = artifact.committedAt) == artifact) {
+                "External artifact id collision"
+            }
+            return existing
+        }
+        return artifactRepository.save(artifact)
+    }
+
+    private suspend fun readContent(artifact: Artifact, maximumBytes: Int = ArtifactLimits.MAX_FILE_BYTES): ByteArray {
+        if (artifact.source is Artifact.ContentSource.Managed) return contentStore.read(artifact.id)
+        if ((artifact.sizeBytes ?: 0) > maximumBytes) {
+            throw ArtifactContentUnavailableException("Attachment is too large to retrieve")
+        }
+        val reader = externalReaders.singleOrNull { it.supports(artifact.source) }
+            ?: throw ArtifactContentUnavailableException("Attachment source is not enabled")
+        val bytes = reader.read(artifact, maximumBytes)
+        if (bytes.size > maximumBytes) throw ArtifactContentUnavailableException("Attachment is too large to retrieve")
+        if (artifact.sizeBytes != null && bytes.size.toLong() != artifact.sizeBytes) {
+            throw ArtifactContentUnavailableException("Attachment size does not match its source metadata")
+        }
+        return bytes
     }
 
     suspend fun deleteDraft(
@@ -86,7 +116,7 @@ class ConversationArtifactApplicationService(
                 null -> DraftDeletionResult.NOT_FOUND
             }
         }
-        contentStore.delete(id)
+        if (artifact.source is Artifact.ContentSource.Managed) contentStore.delete(id)
         return DraftDeletionResult.DELETED
     }
 
@@ -139,10 +169,29 @@ class ConversationArtifactApplicationService(
         val artifactIds = references.map(Artifact.Reference::id).distinct()
 
         val materialized = mutableMapOf<Artifact.Id, MaterializedArtifact>()
-        for (id in artifactIds) {
+        var externalBytesRemaining = ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE.toInt()
+        var externalCountRemaining = ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE
+        for (id in artifactIds.asReversed()) {
             val artifact = artifacts.getValue(id)
-            val encoded = Base64.getEncoder().encodeToString(contentStore.read(id))
-            materialized[id] = MaterializedArtifact(artifact, encoded)
+            val external = artifact.source !is Artifact.ContentSource.Managed
+            if (external && (externalBytesRemaining <= 0 || externalCountRemaining <= 0)) {
+                materialized[id] = MaterializedArtifact(artifact, unavailableReason = "Older attachment omitted from this request's media budget")
+                continue
+            }
+            if (artifact.source !is Artifact.ContentSource.Managed && Artifact.Kind.fromMediaType(artifact.mediaType) == Artifact.Kind.FILE) {
+                materialized[id] = MaterializedArtifact(artifact, unavailableReason = "This attachment type is available for download but is not supported as AI input")
+                continue
+            }
+            if (external) externalCountRemaining--
+            materialized[id] = try {
+                val bytes = readContent(artifact, if (external) minOf(ArtifactLimits.MAX_FILE_BYTES, externalBytesRemaining) else ArtifactLimits.MAX_FILE_BYTES)
+                if (external) {
+                    externalBytesRemaining -= bytes.size
+                }
+                MaterializedArtifact(artifact, Base64.getEncoder().encodeToString(bytes))
+            } catch (error: ArtifactContentUnavailableException) {
+                MaterializedArtifact(artifact, unavailableReason = error.reason)
+            }
         }
 
         return runtimeMessages.map { message ->
@@ -222,7 +271,9 @@ class ConversationArtifactApplicationService(
             "A message can contain at most ${ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE} artifacts"
         }
         val artifacts = requireArtifactReferences(conversationId, references)
-        val totalBytes = references.sumOf { reference -> artifacts.getValue(reference.id).sizeBytes }
+        val totalBytes = references.sumOf { reference ->
+            artifacts.getValue(reference.id).takeIf { it.source is Artifact.ContentSource.Managed }?.sizeBytes ?: 0L
+        }
         require(totalBytes <= ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE) {
             "Message artifacts exceed the ${ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE / (1024 * 1024)} MB total limit"
         }
@@ -245,7 +296,10 @@ class ConversationArtifactApplicationService(
         val clonedReferences = linkedMapOf<Artifact.Id, Artifact.Reference>()
         for (artifactId in artifactIds) {
             val source = sourceArtifacts.getValue(artifactId)
-            val clone = upload(
+            val clone = if (source.source !is Artifact.ContentSource.Managed) {
+                registerExternal(source.copy(id = Artifact.Id(uuid7()), projectId = targetConversation.projectId,
+                    conversationId = targetConversation.id, state = Artifact.State.DRAFT, committedAt = null))
+            } else upload(
                 conversation = targetConversation,
                 createdByUserId = source.createdByUserId,
                 upload = ArtifactUpload(
@@ -276,7 +330,7 @@ class ConversationArtifactApplicationService(
         var deletedDrafts = 0
         staleDrafts.forEach { artifact ->
             if (artifactRepository.deleteDraft(artifact.id)) {
-                contentStore.delete(artifact.id)
+                if (artifact.source is Artifact.ContentSource.Managed) contentStore.delete(artifact.id)
                 deletedDrafts++
             }
         }
@@ -346,10 +400,13 @@ class ConversationArtifactApplicationService(
 
     private data class MaterializedArtifact(
         val artifact: Artifact,
-        val encoded: String,
+        val encoded: String = "",
+        val unavailableReason: String? = null,
     ) {
         fun asContentItem(): Conversation.Message.ContentItem =
-            if (artifact.mediaType.startsWith("image/")) {
+            if (unavailableReason != null) {
+                Conversation.Message.ContentItem.UserMessage("[Attachment ${artifact.fileName}: $unavailableReason]")
+            } else if (artifact.mediaType.startsWith("image/")) {
                 Conversation.Message.ContentItem.ImageItem(
                     Conversation.Message.ImageSource.Base64ImageSource(
                         data = encoded,
@@ -366,8 +423,10 @@ class ConversationArtifactApplicationService(
                 )
             }
 
-        fun asToolResultData(): Conversation.Message.ContentItem.ToolResult.Data.Base64Data =
-            Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+        fun asToolResultData(): Conversation.Message.ContentItem.ToolResult.Data =
+            if (unavailableReason != null) Conversation.Message.ContentItem.ToolResult.Data.Text(
+                "[Attachment ${artifact.fileName}: $unavailableReason]"
+            ) else Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
                 data = encoded,
                 mediaType = Conversation.Message.MediaType.parse(artifact.mediaType),
                 fileName = artifact.fileName,

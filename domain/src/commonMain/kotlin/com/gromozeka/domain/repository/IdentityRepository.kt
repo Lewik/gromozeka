@@ -3,6 +3,7 @@ package com.gromozeka.domain.repository
 import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserIdentity
 import com.gromozeka.domain.model.UserSession
 import kotlin.time.Instant
 
@@ -12,7 +13,9 @@ interface IdentityRepository {
     suspend fun listUsers(): List<User>
     suspend fun findUserById(id: User.Id): User?
     suspend fun findUserByUsername(normalizedUsername: String): User?
-    suspend fun createUser(user: User, credential: LocalPasswordCredential): User
+    suspend fun createUser(user: User, credential: LocalPasswordCredential? = null): User
+    suspend fun findUserByIdentityKey(key: String): User?
+    suspend fun observeTelegramIdentity(identity: UserIdentity.Telegram, now: Instant): User
     suspend fun updateUser(user: User): User
     suspend fun findPasswordCredential(userId: User.Id): LocalPasswordCredential?
     suspend fun updatePasswordCredential(credential: LocalPasswordCredential)

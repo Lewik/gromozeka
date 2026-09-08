@@ -124,6 +124,7 @@ class GromozekaRemoteServices(
         RemoteNamedSecretService(client)
     val userAdministrationService: RemoteUserAdministrationService =
         RemoteUserAdministrationService(client)
+    val telegramService = RemoteTelegramService(client, authenticatedUserId)
     val securityAuditService: RemoteSecurityAuditService =
         RemoteSecurityAuditService(client)
     val userDirectoryService: RemoteUserDirectoryService =

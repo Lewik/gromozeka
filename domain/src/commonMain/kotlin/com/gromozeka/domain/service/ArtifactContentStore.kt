@@ -11,3 +11,10 @@ interface ArtifactContentStore {
 
     suspend fun listIds(): Set<Artifact.Id>
 }
+
+interface ExternalArtifactContentReader {
+    fun supports(source: Artifact.ContentSource): Boolean
+    suspend fun read(artifact: Artifact, maximumBytes: Int): ByteArray
+}
+
+class ArtifactContentUnavailableException(val reason: String) : RuntimeException(reason)

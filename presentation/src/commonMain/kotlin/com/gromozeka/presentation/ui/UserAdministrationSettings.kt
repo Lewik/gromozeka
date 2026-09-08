@@ -142,12 +142,12 @@ fun UserAdministrationSettings(
             user = user,
             submitting = submitting,
             onDismiss = { if (!submitting) editingUser = null },
-            onSave = { displayName, status, role ->
+            onSave = { displayName, status, role, loginAllowed, aiAllowed ->
                 submitting = true
                 coroutineScope.launch {
                     error = null
                     try {
-                        service.update(user.id, displayName, status, role)
+                        service.update(user.id, displayName, status, role, loginAllowed, aiAllowed)
                         editingUser = null
                     } catch (failure: Throwable) {
                         error = failure.message ?: failure.toString()
@@ -202,7 +202,13 @@ private fun RuntimeUserCard(
                 Column {
                     Text(user.displayName, fontWeight = FontWeight.SemiBold)
                     Text(
-                        text = "@${user.username}",
+                        text = user.identities.joinToString { identity ->
+                            when (identity) {
+                                is com.gromozeka.domain.model.UserIdentity.LocalLogin -> "@${identity.username}"
+                                is com.gromozeka.domain.model.UserIdentity.Telegram -> "Telegram: ${identity.telegramUserId}" +
+                                    (identity.username?.let { " (@$it)" } ?: "")
+                            }
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -221,7 +227,7 @@ private fun RuntimeUserCard(
                 TextButton(onClick = onEdit) {
                     Text(translation.text("security.users.edit"))
                 }
-                TextButton(onClick = onResetPassword) {
+                TextButton(onClick = onResetPassword, enabled = user.username != null) {
                     Text(translation.text("security.users.resetPassword"))
                 }
             }
@@ -291,16 +297,18 @@ private fun EditRuntimeUserDialog(
     user: User,
     submitting: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, User.Status, User.Role) -> Unit,
+    onSave: (String, User.Status, User.Role, Boolean, Boolean) -> Unit,
 ) {
     val translation = LocalTranslation.current
     var displayName by remember(user.id) { mutableStateOf(user.displayName) }
     var status by remember(user.id) { mutableStateOf(user.status) }
     var role by remember(user.id) { mutableStateOf(user.role) }
+    var loginAllowed by remember(user.id) { mutableStateOf(user.loginAllowed) }
+    var aiAllowed by remember(user.id) { mutableStateOf(user.aiAllowed) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(translation.text("security.users.editTitle", "username" to user.username)) },
+        title = { Text(user.username?.let { translation.text("security.users.editTitle", "username" to it) } ?: user.displayName) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -311,6 +319,14 @@ private fun EditRuntimeUserDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 RoleSelector(role, onRoleChange = { role = it })
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(translation.text("security.users.loginAllowed"), modifier = Modifier.weight(1f))
+                    Switch(loginAllowed, { loginAllowed = it }, enabled = user.username != null)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(translation.text("security.users.aiAllowed"), modifier = Modifier.weight(1f))
+                    Switch(aiAllowed, { aiAllowed = it })
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -336,7 +352,7 @@ private fun EditRuntimeUserDialog(
         confirmButton = {
             Button(
                 enabled = !submitting && displayName.isNotBlank(),
-                onClick = { onSave(displayName, status, role) },
+                onClick = { onSave(displayName, status, role, loginAllowed, aiAllowed) },
             ) {
                 Text(translation.text("security.users.save"))
             }
@@ -362,7 +378,7 @@ private fun ResetRuntimeUserPasswordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(translation.text("security.users.resetPasswordTitle", "username" to user.username)) },
+        title = { Text(translation.text("security.users.resetPasswordTitle", "username" to (user.username ?: user.displayName))) },
         text = {
             OutlinedSecretTextField(
                 state = passwordState,

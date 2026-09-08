@@ -122,6 +122,7 @@ class ConversationApplicationService(
     ): List<String> {
         val conversation = findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
+        require(conversation.externalChannel == null) { "Suggested replies are unavailable in an external channel" }
         val messages = loadCurrentMessages(conversationId)
         val sourceMessage = messages.firstOrNull { it.id == sourceMessageId }
             ?: error("Suggested reply source message not found: ${sourceMessageId.value}")
@@ -405,6 +406,32 @@ class ConversationApplicationService(
         log.debug("Appended message ${message.id} to thread ${currentThread.id} at position ${lastPosition + 1}")
 
         return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
+    }
+
+    @Transactional
+    internal suspend fun replaceExternalRuntimeMessage(originalId: Conversation.Message.Id, message: Conversation.Message) {
+        val conversation = requireNotNull(conversationRepo.findById(message.conversationId))
+        require(conversation.externalChannel != null)
+        val messages = threadMessageRepo.getMessagesByThread(conversation.currentThread)
+        if (messages.any { it.id == message.id }) return
+        val previous = messages.firstOrNull { it.id == originalId || originalId in it.originalIds }
+        if (previous == null) {
+            appendRuntimeMessage(conversation.id, message)
+            return
+        }
+        require(previous.role == Conversation.Message.Role.USER && message.role == Conversation.Message.Role.USER)
+        val replacement = message.copy(originalIds = (previous.originalIds + previous.id).distinct())
+        artifactService.validateReferences(conversation.id, replacement.content)
+        saveMessageIfAbsent(replacement)
+        val now = Clock.System.now()
+        val thread = Conversation.Thread(id = Conversation.Thread.Id(uuid7()), conversationId = conversation.id,
+            originalThread = conversation.currentThread, createdAt = now, updatedAt = now)
+        threadRepo.save(thread)
+        threadMessageRepo.addBatch(threadMessageRepo.getByThread(conversation.currentThread).map { link ->
+            link.copy(threadId = thread.id, messageId = if (link.messageId == previous.id) replacement.id else link.messageId)
+        })
+        conversationRepo.updateCurrentThread(conversation.id, thread.id)
+        publishConversationList(conversation)
     }
 
     private suspend fun saveMessageIfAbsent(message: Conversation.Message) {

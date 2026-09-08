@@ -12,7 +12,7 @@ internal fun testControlMcpCaller(
         AuthenticatedUser(
             user = User(
                 id = User.Id("control-mcp-test-user"),
-                username = "control-mcp-test-user",
+                identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("control-mcp-test-user")),
                 displayName = "Control MCP Test User",
                 status = User.Status.ACTIVE,
                 role = role,

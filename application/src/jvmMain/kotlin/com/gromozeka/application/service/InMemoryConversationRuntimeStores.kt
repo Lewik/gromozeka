@@ -69,11 +69,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         emitAll(schedulingSignalChannel.receiveAsFlow())
     }
 
-    override suspend fun submit(task: ConversationRuntimeTask): Boolean =
+    override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
         mutex.withLock {
             val current = schedulingByConversation[task.conversationId]
                 ?: ConversationRuntimeSchedulingState(task.conversationId)
-            val transition = current.submit(task, Clock.System.now())
+            val transition = current.submit(task, Clock.System.now(), acceptPreviouslySubmitted)
+            if (!transition.changed) return@withLock transition.result
             if (!transition.result) return@withLock false
             schedulingByConversation[task.conversationId] = transition.state
             appendTrace(
@@ -665,6 +666,18 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             appendControlTrace(conversationId, ConversationExecutionState.ControlState.RUNNING)
             scheduleNextRunnableTaskIfReady(conversationId)
             bumpRevision(conversationId)
+            true
+        }
+
+    override suspend fun requestTurnStop(conversationId: Conversation.Id, turnId: com.gromozeka.domain.service.ConversationRuntimeTurnId): Boolean =
+        mutex.withLock {
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.requestTurnStop(turnId, Clock.System.now())
+            if (!transition.result) return@withLock false
+            schedulingByConversation[conversationId] = transition.state
+            scheduleNextRunnableTaskIfReady(conversationId)
+            bumpRevision(conversationId)
+            signalSchedulingChanged(conversationId)
             true
         }
 

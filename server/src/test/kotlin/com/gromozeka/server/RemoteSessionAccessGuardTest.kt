@@ -81,7 +81,7 @@ class RemoteSessionAccessGuardTest {
     private fun user(role: User.Role): User =
         User(
             id = User.Id("user-id"),
-            username = "user",
+            identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("user")),
             displayName = "User",
             status = User.Status.ACTIVE,
             role = role,

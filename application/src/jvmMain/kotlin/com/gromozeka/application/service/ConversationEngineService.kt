@@ -34,6 +34,7 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationRequestEnricher
 import com.gromozeka.domain.service.ConversationHistoryMutation
 import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -116,6 +117,7 @@ class ConversationEngineService(
     private val stickyMessageInstructionService: StickyMessageInstructionService,
     private val pendingSecretRevealService: PendingSecretRevealService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
+    private val requestEnrichers: List<ConversationRequestEnricher> = emptyList(),
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -160,6 +162,7 @@ class ConversationEngineService(
         payload: ConversationRuntimeTask.Payload.HistoryMutation,
     ): ConversationRuntimeTaskOutcome {
         ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        requireActorConnected(task)
         historyMutationExecutor.execute(task.conversationId, payload.mutation)
         val kind = when (payload.mutation) {
             is ConversationHistoryMutation.Edit -> ConversationHistoryMutationKind.EDIT
@@ -177,6 +180,11 @@ class ConversationEngineService(
     ): ConversationRuntimeTaskOutcome {
         ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
         requireActorConnected(task)
+        payload.replaceExternalOriginalId?.let { originalId ->
+            require(task.externalChannel != null && payload.autoRespondAgentIds.isEmpty())
+            historyMutationExecutor.replaceExternalMessage(originalId, payload.userMessage)
+            return ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.EDIT)
+        }
         val agentIds = payload.autoRespondAgentIds.sortedBy { it.value }
         if (agentIds.isNotEmpty()) {
             require(payload.userMessage.role == Conversation.Message.Role.USER) {
@@ -269,6 +277,7 @@ class ConversationEngineService(
         val conversationId = task.conversationId
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
+        requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
         log.debug {
             "AI_TURN_TRACE call=$diagnosticId phase=context_ready " +
@@ -300,14 +309,12 @@ class ConversationEngineService(
         }
 
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
-        context.modelSpec.requireSupportsInputs(currentMessages)
-        val materializedMessages = artifactService.materialize(conversationId, currentMessages)
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
                 messages = pendingSecretRevealService.consume(
                     conversationId = conversationId,
                     userId = task.actorUserId,
-                    messages = materializedMessages,
+                    messages = currentMessages,
                 ),
                 enabled = context.includeMessageTemporalContext,
             ),
@@ -320,7 +327,7 @@ class ConversationEngineService(
             memoryEnabled = context.automaticMemoryRememberEnabled || context.automaticMemoryRecallEnabled,
         )
 
-        val runtimeRequest = AiRuntimeRequest(
+        var runtimeRequest = AiRuntimeRequest(
             systemPrompts = buildList {
                 addAll(context.runtimeSystemPrompts)
                 toolSelection.unavailableToolsSystemPrompt()?.let(::add)
@@ -353,6 +360,12 @@ class ConversationEngineService(
             )
         )
 
+        for (enricher in requestEnrichers) {
+            runtimeRequest = enricher.enrich(conversationId, payload.rootUserMessageId, task.turnId, context.modelSpec, runtimeRequest)
+        }
+        runtimeRequest = runtimeRequest.copy(messages = artifactService.materialize(conversationId, runtimeRequest.messages))
+        context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
+
         val generationStartedAt = Clock.System.now()
         log.debug {
             "AI_TURN_TRACE call=$diagnosticId phase=request_ready messages=${runtimeMessages.size} " +
@@ -368,8 +381,8 @@ class ConversationEngineService(
             phase = ActiveGenerationSnapshot.Phase.WAITING_FOR_MODEL,
             startedAt = generationStartedAt,
             updatedAt = generationStartedAt,
-            inputMessageCount = runtimeMessages.size,
-            inputContentItemCount = runtimeMessages.sumOf { it.content.size },
+            inputMessageCount = runtimeRequest.messages.size,
+            inputContentItemCount = runtimeRequest.messages.sumOf { it.content.size },
             systemPromptCount = runtimeRequest.systemPrompts.size,
             availableToolCount = runtimeRequest.tools.size,
         )
@@ -794,6 +807,7 @@ class ConversationEngineService(
                     }
                 }
 
+                if (task.externalChannel != null) return ConversationRuntimeTaskOutcome.CompleteTurn
                 ConversationRuntimeTaskOutcome.Continue(
                     toolResultProcessingTask(
                         parentTask = task,
@@ -1070,10 +1084,11 @@ class ConversationEngineService(
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
         val memorySettings = settingsProvider.userProfile.memorySettings
-        val suggestedRepliesMode = settingsProvider.userProfile.suggestedRepliesSettings.mode
-        val automaticMemoryRememberEnabled = memorySettings.autoRemember &&
+        val suggestedRepliesMode = if (conversation.externalChannel != null) UserProfile.SuggestedRepliesSettings.Mode.DISABLED
+            else settingsProvider.userProfile.suggestedRepliesSettings.mode
+        val automaticMemoryRememberEnabled = conversation.externalChannel == null && memorySettings.autoRemember &&
             aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null
-        val automaticMemoryRecallEnabled = memorySettings.autoRecall &&
+        val automaticMemoryRecallEnabled = conversation.externalChannel == null && memorySettings.autoRecall &&
             aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ) != null
         val runtimeSystemPrompts = buildList {
             addAll(baseSystemPrompts)
@@ -1112,9 +1127,10 @@ class ConversationEngineService(
         task: ConversationRuntimeTask,
         conversation: Conversation? = null,
     ) {
-        val actorUserId = task.actorUserId ?: return
         val resolvedConversation = conversation ?: conversationService.findById(task.conversationId)
             ?: throw IllegalStateException("Conversation not found: ${task.conversationId.value}")
+        require(task.externalChannel == resolvedConversation.externalChannel) { "Conversation input source does not match its channel binding" }
+        val actorUserId = task.actorUserId ?: return
         require(Conversation.Participant.User(actorUserId) in resolvedConversation.participants) {
             "User ${actorUserId.value} is not connected to conversation ${resolvedConversation.id.value}"
         }
@@ -1286,6 +1302,7 @@ class ConversationEngineService(
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
+            externalChannel = parentTask.externalChannel,
             actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.LlmCall(
                 rootUserMessageId = rootUserMessageId,
@@ -1318,6 +1335,7 @@ class ConversationEngineService(
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
+            externalChannel = parentTask.externalChannel,
             actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.MemoryRecall(
                 rootUserMessageId = rootUserMessageId,
@@ -1349,6 +1367,7 @@ class ConversationEngineService(
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
+            externalChannel = parentTask.externalChannel,
             actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.ToolExecution(
                 rootUserMessageId = rootUserMessageId,
@@ -1383,6 +1402,7 @@ class ConversationEngineService(
             conversationId = conversationId,
             turnId = parentTask.turnId,
             parentTaskId = parentTask.id,
+            externalChannel = parentTask.externalChannel,
             actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 rootUserMessageId = rootUserMessageId,

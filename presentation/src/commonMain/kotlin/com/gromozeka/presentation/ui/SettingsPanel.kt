@@ -105,6 +105,7 @@ private enum class SettingsSection(val testTagName: String, val titleKey: String
     Behavior("Behavior", "settingsUi.behavior"),
     Tools("Tools", "settingsUi.tools"),
     Security("Security", "settingsUi.security"),
+    Telegram("Telegram", "telegram.title"),
     Downloads("Downloads", "settingsUi.downloads"),
     Advanced("Advanced", "settingsUi.advanced"),
 }
@@ -134,6 +135,7 @@ fun SettingsPanel(
     aiUserCredentialService: CurrentUserAiCredentialService,
     namedSecretService: com.gromozeka.domain.service.CurrentUserNamedSecretService,
     userAdministrationService: RemoteUserAdministrationService,
+    telegramService: com.gromozeka.client.RemoteTelegramService,
     securityAuditService: RemoteSecurityAuditService,
     userDirectoryService: RemoteUserDirectoryService,
     canAdministerUsers: Boolean,
@@ -175,7 +177,7 @@ fun SettingsPanel(
         mutableStateOf(SettingsSection.AiRuntime)
     }
     val availableSections = SettingsSection.entries.filter {
-        (it != SettingsSection.Usage || canAdministerUsers) &&
+        (it !in setOf(SettingsSection.Usage, SettingsSection.Telegram) || canAdministerUsers) &&
             (it != SettingsSection.Keyboard || deviceSettings is UserDeviceSettings.Desktop)
     }
 
@@ -1044,6 +1046,13 @@ fun SettingsPanel(
                         selectedSection == SettingsSection.Downloads
                     ) {
                         DistributionSettings(distributionService)
+                    }
+
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Telegram && canAdministerUsers
+                    ) {
+                        TelegramSettingsPanel(telegramService, namedSecretService, coroutineScope)
                     }
 
                     if (

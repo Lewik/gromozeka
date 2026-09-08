@@ -93,6 +93,7 @@ fun SessionScreen(
     // All data comes from ViewModel
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val allMessages by viewModel.allMessages.collectAsState()
+    val externalChannel by viewModel.externalChannel.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
@@ -140,415 +141,427 @@ fun SessionScreen(
             .testTag(UiTestTag.SessionScreen.value)
     ) {
         // Main chat content
-        Box(modifier = Modifier.weight(1f)) {
+        BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            val compactToolbar = isCompactLayout || maxWidth < 1000.dp
             Column(modifier = Modifier.fillMaxSize()) {
                 DisableSelection {
-                    // Row 1: Navigation buttons (New, Fork, Restart) + Info buttons (Message count, Token stats, etc.)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (isCompactLayout) Modifier.horizontalScroll(topToolbarScrollState) else Modifier),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Navigation buttons (left side)
-                        CompactButton(onClick = onNewSession) {
-                            Text(LocalTranslation.current.newSessionShort)
+                    if (externalChannel != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(localization.text("telegram.inputPolicy"), modifier = Modifier.weight(1f).padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            CompactButton(onClick = { onShowRuntimePanelChange(!showRuntimePanel) },
+                                tooltip = localization.text("session.toolbar.showRuntime")) {
+                                Icon(Icons.Default.HourglassTop, contentDescription = localization.text("runtime.title"))
+                            }
                         }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        CompactButton(onClick = onForkSession) {
-                            Text(LocalTranslation.current.forkButton)
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        CompactButton(onClick = onRestartSession) {
-                            Text(LocalTranslation.current.restartButton)
-                        }
-
-                        if (isCompactLayout) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                        } else {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-
-//                        // Right-side buttons
-//                        if (uiState.editMode) {
-//                            // Exit edit mode button (replaces all other buttons in edit mode)
-//                            CompactButton(
-//                                onClick = { viewModel.toggleEditMode() },
-//                                tooltip = "Exit edit mode"
-//                            ) {
-//                                Row(verticalAlignment = Alignment.CenterVertically) {
-//                                    Icon(Icons.Default.Close, contentDescription = "Exit edit mode")
-//                                    Spacer(modifier = Modifier.width(4.dp))
-//                                    Text("Exit Edit Mode")
-//                                }
-//                            }
-//                        } else {
-                        // Context extraction button
-                        onExtractContexts?.let { extractCallback ->
-                            CompactButton(
-                                onClick = extractCallback,
-                                tooltip = localization.text("session.toolbar.extractContexts")
-                            ) {
-                                Icon(Icons.Default.FolderOpen, contentDescription = localization.text("session.toolbar.extractContextsShort"))
+                    } else {
+                        // Row 1: Navigation buttons (New, Fork, Restart) + Info buttons (Message count, Token stats, etc.)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (compactToolbar) Modifier.horizontalScroll(topToolbarScrollState) else Modifier),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Navigation buttons (left side)
+                            CompactButton(onClick = onNewSession) {
+                                Text(LocalTranslation.current.newSessionShort)
                             }
 
                             Spacer(modifier = Modifier.width(8.dp))
-                        }
 
-                        // Context panel button
-                        onShowContextsPanel?.let { showContextsCallback ->
-                            CompactButton(
-                                onClick = showContextsCallback,
-                                tooltip = localization.text("session.toolbar.viewContexts")
-                            ) {
-                                Icon(Icons.Default.Book, contentDescription = localization.text("session.toolbar.viewContextsShort"))
+                            CompactButton(onClick = onForkSession) {
+                                Text(LocalTranslation.current.forkButton)
                             }
 
                             Spacer(modifier = Modifier.width(8.dp))
-                        }
 
-                        CompactButton(
-                            onClick = { onShowParticipantsPanelChange(!showParticipantsPanel) },
-                            modifier = Modifier.testTag(UiTestTag.ParticipantsButton.value),
-                            tooltip = if (showParticipantsPanel) localization.text("session.toolbar.hideParticipants") else localization.text("session.toolbar.showParticipants"),
-                        ) {
-                            Icon(Icons.Default.Person, contentDescription = localization.text("session.participants.title"))
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        CompactButton(
-                            onClick = { onShowRuntimePanelChange(!showRuntimePanel) },
-                            modifier = Modifier.testTag(UiTestTag.RuntimeButton.value),
-                            tooltip = if (showRuntimePanel) localization.text("session.toolbar.hideRuntime") else localization.text("session.toolbar.showRuntime"),
-                        ) {
-                            Icon(Icons.Default.HourglassTop, contentDescription = localization.text("runtime.title"))
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        CompactButton(
-                            onClick = {},
-                            tooltip = LocalTranslation.current.format("messageCountTooltip", filteredHistory.size),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.ChatBubbleOutline, contentDescription = localization.text("session.toolbar.messages"))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("${filteredHistory.size}")
+                            CompactButton(onClick = onRestartSession) {
+                                Text(LocalTranslation.current.restartButton)
                             }
-                        }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                            if (compactToolbar) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
 
-                        Box {
+    //                        // Right-side buttons
+    //                        if (uiState.editMode) {
+    //                            // Exit edit mode button (replaces all other buttons in edit mode)
+    //                            CompactButton(
+    //                                onClick = { viewModel.toggleEditMode() },
+    //                                tooltip = "Exit edit mode"
+    //                            ) {
+    //                                Row(verticalAlignment = Alignment.CenterVertically) {
+    //                                    Icon(Icons.Default.Close, contentDescription = "Exit edit mode")
+    //                                    Spacer(modifier = Modifier.width(4.dp))
+    //                                    Text("Exit Edit Mode")
+    //                                }
+    //                            }
+    //                        } else {
+                            // Context extraction button
+                            onExtractContexts?.let { extractCallback ->
+                                CompactButton(
+                                    onClick = extractCallback,
+                                    tooltip = localization.text("session.toolbar.extractContexts")
+                                ) {
+                                    Icon(Icons.Default.FolderOpen, contentDescription = localization.text("session.toolbar.extractContextsShort"))
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
+                            // Context panel button
+                            onShowContextsPanel?.let { showContextsCallback ->
+                                CompactButton(
+                                    onClick = showContextsCallback,
+                                    tooltip = localization.text("session.toolbar.viewContexts")
+                                ) {
+                                    Icon(Icons.Default.Book, contentDescription = localization.text("session.toolbar.viewContextsShort"))
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
                             CompactButton(
-                                onClick = { showMemoryMenu = !showMemoryMenu },
-                                modifier = Modifier.testTag(UiTestTag.MemoryMenuButton.value),
-                                tooltip = localization.text("session.toolbar.memoryActions"),
+                                onClick = { onShowParticipantsPanelChange(!showParticipantsPanel) },
+                                modifier = Modifier.testTag(UiTestTag.ParticipantsButton.value),
+                                tooltip = if (showParticipantsPanel) localization.text("session.toolbar.hideParticipants") else localization.text("session.toolbar.showParticipants"),
                             ) {
-                                Icon(Icons.Default.Inventory2, contentDescription = localization.text("session.toolbar.memoryActions"))
+                                Icon(Icons.Default.Person, contentDescription = localization.text("session.participants.title"))
                             }
 
-                            DropdownMenu(
-                                expanded = showMemoryMenu,
-                                onDismissRequest = { showMemoryMenu = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(localization.text("session.toolbar.actionItems")) },
-                                    leadingIcon = {
-                                        Icon(Icons.AutoMirrored.Filled.ListAlt, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        showMemoryMenu = false
-                                        onShowMemoryActionItemsPanelChange(!showMemoryActionItemsPanel)
-                                    },
-                                    modifier = Modifier.testTag(UiTestTag.MemoryActionItemsButton.value),
-                                )
-                                onRememberThread?.let { rememberCallback ->
-                                    DropdownMenuItem(
-                                        text = { Text(localization.text("session.toolbar.remember")) },
-                                        leadingIcon = { Icon(Icons.Default.Psychology, contentDescription = null) },
-                                        onClick = {
-                                            showMemoryMenu = false
-                                            rememberCallback()
-                                        },
-                                    )
-                                }
-                                onConsolidateMemory?.let { consolidateCallback ->
-                                    DropdownMenuItem(
-                                        text = { Text(localization.text("session.toolbar.consolidate")) },
-                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = null) },
-                                        onClick = {
-                                            showMemoryMenu = false
-                                            consolidateCallback()
-                                        },
-                                    )
-                                }
-                                onRepairMemory?.let { repairCallback ->
-                                    DropdownMenuItem(
-                                        text = { Text(localization.text("session.toolbar.repair")) },
-                                        leadingIcon = { Icon(Icons.Default.Build, contentDescription = null) },
-                                        onClick = {
-                                            showMemoryMenu = false
-                                            repairCallback()
-                                        },
-                                    )
-                                }
-                                onMaintainMemoryEntities?.let { maintainEntitiesCallback ->
-                                    DropdownMenuItem(
-                                        text = { Text(localization.text("session.toolbar.maintainEntities")) },
-                                        leadingIcon = { Icon(Icons.Default.AccountTree, contentDescription = null) },
-                                        onClick = {
-                                            showMemoryMenu = false
-                                            maintainEntitiesCallback()
-                                        },
-                                    )
-                                }
-                                onApplyMemoryRetention?.let { retentionCallback ->
-                                    DropdownMenuItem(
-                                        text = { Text(localization.text("session.toolbar.retention")) },
-                                        leadingIcon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
-                                        onClick = {
-                                            showMemoryMenu = false
-                                            retentionCallback()
-                                        },
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Settings button
-                        CompactButton(
-                            onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
-                            modifier = Modifier.testTag(UiTestTag.SettingsButton.value),
-                            tooltip = LocalTranslation.current.settingsTooltip
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = LocalTranslation.current.settingsTooltip)
-                        }
-
-                        // Close tab button (if onCloseTab callback is provided)
-                        onCloseTab?.let { closeCallback ->
                             Spacer(modifier = Modifier.width(8.dp))
+
                             CompactButton(
-                                onClick = closeCallback,
-                                tooltip = LocalTranslation.current.closeTabTooltip
+                                onClick = { onShowRuntimePanelChange(!showRuntimePanel) },
+                                modifier = Modifier.testTag(UiTestTag.RuntimeButton.value),
+                                tooltip = if (showRuntimePanel) localization.text("session.toolbar.hideRuntime") else localization.text("session.toolbar.showRuntime"),
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = LocalTranslation.current.closeTabTooltip)
+                                Icon(Icons.Default.HourglassTop, contentDescription = localization.text("runtime.title"))
                             }
-                        }
-                    }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                    // Row 2: Message editing tools (selection buttons + action buttons)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (isCompactLayout) Modifier.horizontalScroll(editToolbarScrollState) else Modifier),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Selection buttons
-                        val selectionOptions = remember(localization) {
-                            listOf(
-                                com.gromozeka.presentation.ui.ToggleButtonOption(
-                                    Icons.Default.SelectAll,
-                                    localization.text("chat.selection.toggleAll")
-                                ),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Person, localization.text("chat.selection.userMessages")),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(
-                                    Icons.Default.DeveloperBoard,
-                                    localization.text("chat.selection.assistantMessages")
-                                ),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(
-                                    Icons.Default.Psychology,
-                                    localization.text("chat.selection.thinkingBlocks")
-                                ),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Build, localization.text("chat.selection.toolCalls")),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(
-                                    Icons.Default.ChatBubbleOutline,
-                                    localization.text("chat.selection.plainMessages")
-                                ),
-                            )
-                        }
+                            CompactButton(
+                                onClick = {},
+                                tooltip = LocalTranslation.current.format("messageCountTooltip", filteredHistory.size),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = localization.text("session.toolbar.messages"))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("${filteredHistory.size}")
+                                }
+                            }
 
-                        val selectedIndices = remember(allMessages, filteredHistory, uiState.selectedMessageIds) {
-                            buildSet {
-                                val allMessageIds = allMessages.mapTo(mutableSetOf()) { it.id }
-                                if (allMessageIds.isNotEmpty() && allMessageIds.all { it in uiState.selectedMessageIds }) {
-                                    add(0)
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Box {
+                                CompactButton(
+                                    onClick = { showMemoryMenu = !showMemoryMenu },
+                                    modifier = Modifier.testTag(UiTestTag.MemoryMenuButton.value),
+                                    tooltip = localization.text("session.toolbar.memoryActions"),
+                                ) {
+                                    Icon(Icons.Default.Inventory2, contentDescription = localization.text("session.toolbar.memoryActions"))
                                 }
 
-                                val userMessages = filteredHistory.filter { it.role == Conversation.Message.Role.USER }
-                                if (userMessages.isNotEmpty() && userMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(1)
-                                }
-
-                                val assistantMessages =
-                                    filteredHistory.filter { it.role == Conversation.Message.Role.ASSISTANT }
-                                if (assistantMessages.isNotEmpty() && assistantMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(2)
-                                }
-
-                                val thinkingMessages = filteredHistory.filter { message ->
-                                    message.content.any {
-                                        (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
+                                DropdownMenu(
+                                    expanded = showMemoryMenu,
+                                    onDismissRequest = { showMemoryMenu = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(localization.text("session.toolbar.actionItems")) },
+                                        leadingIcon = {
+                                            Icon(Icons.AutoMirrored.Filled.ListAlt, contentDescription = null)
+                                        },
+                                        onClick = {
+                                            showMemoryMenu = false
+                                            onShowMemoryActionItemsPanelChange(!showMemoryActionItemsPanel)
+                                        },
+                                        modifier = Modifier.testTag(UiTestTag.MemoryActionItemsButton.value),
+                                    )
+                                    onRememberThread?.let { rememberCallback ->
+                                        DropdownMenuItem(
+                                            text = { Text(localization.text("session.toolbar.remember")) },
+                                            leadingIcon = { Icon(Icons.Default.Psychology, contentDescription = null) },
+                                            onClick = {
+                                                showMemoryMenu = false
+                                                rememberCallback()
+                                            },
+                                        )
+                                    }
+                                    onConsolidateMemory?.let { consolidateCallback ->
+                                        DropdownMenuItem(
+                                            text = { Text(localization.text("session.toolbar.consolidate")) },
+                                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = null) },
+                                            onClick = {
+                                                showMemoryMenu = false
+                                                consolidateCallback()
+                                            },
+                                        )
+                                    }
+                                    onRepairMemory?.let { repairCallback ->
+                                        DropdownMenuItem(
+                                            text = { Text(localization.text("session.toolbar.repair")) },
+                                            leadingIcon = { Icon(Icons.Default.Build, contentDescription = null) },
+                                            onClick = {
+                                                showMemoryMenu = false
+                                                repairCallback()
+                                            },
+                                        )
+                                    }
+                                    onMaintainMemoryEntities?.let { maintainEntitiesCallback ->
+                                        DropdownMenuItem(
+                                            text = { Text(localization.text("session.toolbar.maintainEntities")) },
+                                            leadingIcon = { Icon(Icons.Default.AccountTree, contentDescription = null) },
+                                            onClick = {
+                                                showMemoryMenu = false
+                                                maintainEntitiesCallback()
+                                            },
+                                        )
+                                    }
+                                    onApplyMemoryRetention?.let { retentionCallback ->
+                                        DropdownMenuItem(
+                                            text = { Text(localization.text("session.toolbar.retention")) },
+                                            leadingIcon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+                                            onClick = {
+                                                showMemoryMenu = false
+                                                retentionCallback()
+                                            },
+                                        )
                                     }
                                 }
-                                if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(3)
-                                }
-
-                                val toolMessages = filteredHistory.filter { message ->
-                                    message.content.any { it is Conversation.Message.ContentItem.ToolCall }
-                                }
-                                if (toolMessages.isNotEmpty() && toolMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(4)
-                                }
-
-                                val plainMessages = filteredHistory.filter { message ->
-                                    message.content.none {
-                                        (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
-                                    } &&
-                                            message.content.none { it is Conversation.Message.ContentItem.ToolCall }
-                                }
-                                if (plainMessages.isNotEmpty() && plainMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(5)
-                                }
                             }
-                        }
 
-                        ToggleButtonGroup(
-                            options = selectionOptions,
-                            selectedIndices = selectedIndices,
-                            onToggle = { index ->
-                                when (index) {
-                                    0 -> viewModel.toggleSelectAll(allMessages.map { it.id }.toSet())
-                                    1 -> viewModel.toggleSelectUserMessages()
-                                    2 -> viewModel.toggleSelectAssistantMessages()
-                                    3 -> viewModel.toggleSelectThinkingMessages()
-                                    4 -> viewModel.toggleSelectToolMessages()
-                                    5 -> viewModel.toggleSelectPlainMessages()
-                                }
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Action buttons
-                        val messageSquashRunning = messageSquashState is MessageSquashUiState.Running
-                        val selectedMessage = remember(allMessages, uiState.selectedMessageIds) {
-                            uiState.selectedMessageIds.singleOrNull()?.let { selectedMessageId ->
-                                allMessages.firstOrNull { it.id == selectedMessageId }
-                            }
-                        }
-
-                        CompactButton(
-                            onClick = {
-                                selectedMessage?.let { viewModel.startEditMessage(it.id) }
-                            },
-                            modifier = Modifier.testTag(UiTestTag.EditSelectedMessageButton.value),
-                            enabled = selectedMessage?.editableText() != null && !messageSquashRunning,
-                            tooltip = localization.text("chat.selection.editHint")
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Edit, contentDescription = localization.text("runtime.editButton"))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text(localization.text("runtime.editButton"))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Concat - disabled when 0 or 1 message selected
-                        CompactButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.squashSelectedMessages()
-                                }
-                            },
-                            enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
-                            tooltip = localization.text("chat.selection.concatHint")
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = localization.text("chat.selection.concat"))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text(localization.text("chat.selection.concat"))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Distill - disabled when 0 messages selected
-                        CompactButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.distillSelectedMessages()
-                                }
-                            },
-                            enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
-                            tooltip = localization.text("chat.selection.distillHint")
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Compress, contentDescription = localization.text("chat.selection.distill"))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text(localization.text("chat.selection.distill"))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Summarize - disabled when 0 messages selected
-                        CompactButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.summarizeSelectedMessages()
-                                }
-                            },
-                            enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
-                            tooltip = localization.text("chat.selection.summarizeHint")
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.AutoMirrored.Filled.Subject, contentDescription = localization.text("chat.selection.summarize"))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text(localization.text("chat.selection.summarize"))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Delete - disabled when 0 messages selected
-                        CompactButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.deleteSelectedMessages()
-                                }
-                            },
-                            enabled = uiState.selectedMessageIds.isNotEmpty() && !messageSquashRunning,
-                            tooltip = localization.text("chat.selection.deleteHint")
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Delete, contentDescription = localization.text("chat.selection.delete"))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text(localization.text("chat.selection.delete"))
-                            }
-                        }
-
-                        if (isCompactLayout) {
                             Spacer(modifier = Modifier.width(8.dp))
-                        } else {
-                            Spacer(modifier = Modifier.weight(1f))
+
+                            // Settings button
+                            CompactButton(
+                                onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
+                                modifier = Modifier.testTag(UiTestTag.SettingsButton.value),
+                                tooltip = LocalTranslation.current.settingsTooltip
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = LocalTranslation.current.settingsTooltip)
+                            }
+
+                            // Close tab button (if onCloseTab callback is provided)
+                            onCloseTab?.let { closeCallback ->
+                                Spacer(modifier = Modifier.width(8.dp))
+                                CompactButton(
+                                    onClick = closeCallback,
+                                    tooltip = LocalTranslation.current.closeTabTooltip
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = LocalTranslation.current.closeTabTooltip)
+                                }
+                            }
                         }
 
-                        MessageSquashStatus(messageSquashState)
-                        // Selected count (right side)
-                        Text(localization.text("chat.selection.selectedCount", "count" to uiState.selectedMessageIds.size))
+                        Spacer(modifier = Modifier.height(4.dp))
 
+                        // Row 2: Message editing tools (selection buttons + action buttons)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (compactToolbar) Modifier.horizontalScroll(editToolbarScrollState) else Modifier),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Selection buttons
+                            val selectionOptions = remember(localization) {
+                                listOf(
+                                    com.gromozeka.presentation.ui.ToggleButtonOption(
+                                        Icons.Default.SelectAll,
+                                        localization.text("chat.selection.toggleAll")
+                                    ),
+                                    com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Person, localization.text("chat.selection.userMessages")),
+                                    com.gromozeka.presentation.ui.ToggleButtonOption(
+                                        Icons.Default.DeveloperBoard,
+                                        localization.text("chat.selection.assistantMessages")
+                                    ),
+                                    com.gromozeka.presentation.ui.ToggleButtonOption(
+                                        Icons.Default.Psychology,
+                                        localization.text("chat.selection.thinkingBlocks")
+                                    ),
+                                    com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Build, localization.text("chat.selection.toolCalls")),
+                                    com.gromozeka.presentation.ui.ToggleButtonOption(
+                                        Icons.Default.ChatBubbleOutline,
+                                        localization.text("chat.selection.plainMessages")
+                                    ),
+                                )
+                            }
+
+                            val selectedIndices = remember(allMessages, filteredHistory, uiState.selectedMessageIds) {
+                                buildSet {
+                                    val allMessageIds = allMessages.mapTo(mutableSetOf()) { it.id }
+                                    if (allMessageIds.isNotEmpty() && allMessageIds.all { it in uiState.selectedMessageIds }) {
+                                        add(0)
+                                    }
+
+                                    val userMessages = filteredHistory.filter { it.role == Conversation.Message.Role.USER }
+                                    if (userMessages.isNotEmpty() && userMessages.all { it.id in uiState.selectedMessageIds }) {
+                                        add(1)
+                                    }
+
+                                    val assistantMessages =
+                                        filteredHistory.filter { it.role == Conversation.Message.Role.ASSISTANT }
+                                    if (assistantMessages.isNotEmpty() && assistantMessages.all { it.id in uiState.selectedMessageIds }) {
+                                        add(2)
+                                    }
+
+                                    val thinkingMessages = filteredHistory.filter { message ->
+                                        message.content.any {
+                                            (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
+                                        }
+                                    }
+                                    if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
+                                        add(3)
+                                    }
+
+                                    val toolMessages = filteredHistory.filter { message ->
+                                        message.content.any { it is Conversation.Message.ContentItem.ToolCall }
+                                    }
+                                    if (toolMessages.isNotEmpty() && toolMessages.all { it.id in uiState.selectedMessageIds }) {
+                                        add(4)
+                                    }
+
+                                    val plainMessages = filteredHistory.filter { message ->
+                                        message.content.none {
+                                            (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
+                                        } &&
+                                                message.content.none { it is Conversation.Message.ContentItem.ToolCall }
+                                    }
+                                    if (plainMessages.isNotEmpty() && plainMessages.all { it.id in uiState.selectedMessageIds }) {
+                                        add(5)
+                                    }
+                                }
+                            }
+
+                            ToggleButtonGroup(
+                                options = selectionOptions,
+                                selectedIndices = selectedIndices,
+                                onToggle = { index ->
+                                    when (index) {
+                                        0 -> viewModel.toggleSelectAll(allMessages.map { it.id }.toSet())
+                                        1 -> viewModel.toggleSelectUserMessages()
+                                        2 -> viewModel.toggleSelectAssistantMessages()
+                                        3 -> viewModel.toggleSelectThinkingMessages()
+                                        4 -> viewModel.toggleSelectToolMessages()
+                                        5 -> viewModel.toggleSelectPlainMessages()
+                                    }
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Action buttons
+                            val messageSquashRunning = messageSquashState is MessageSquashUiState.Running
+                            val selectedMessage = remember(allMessages, uiState.selectedMessageIds) {
+                                uiState.selectedMessageIds.singleOrNull()?.let { selectedMessageId ->
+                                    allMessages.firstOrNull { it.id == selectedMessageId }
+                                }
+                            }
+
+                            CompactButton(
+                                onClick = {
+                                    selectedMessage?.let { viewModel.startEditMessage(it.id) }
+                                },
+                                modifier = Modifier.testTag(UiTestTag.EditSelectedMessageButton.value),
+                                enabled = selectedMessage?.editableText() != null && !messageSquashRunning,
+                                tooltip = localization.text("chat.selection.editHint")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Edit, contentDescription = localization.text("runtime.editButton"))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    if (!compactToolbar) Text(localization.text("runtime.editButton"))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Concat - disabled when 0 or 1 message selected
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.squashSelectedMessages()
+                                    }
+                                },
+                                enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
+                                tooltip = localization.text("chat.selection.concatHint")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = localization.text("chat.selection.concat"))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    if (!compactToolbar) Text(localization.text("chat.selection.concat"))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Distill - disabled when 0 messages selected
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.distillSelectedMessages()
+                                    }
+                                },
+                                enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
+                                tooltip = localization.text("chat.selection.distillHint")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Compress, contentDescription = localization.text("chat.selection.distill"))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    if (!compactToolbar) Text(localization.text("chat.selection.distill"))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Summarize - disabled when 0 messages selected
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.summarizeSelectedMessages()
+                                    }
+                                },
+                                enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
+                                tooltip = localization.text("chat.selection.summarizeHint")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.AutoMirrored.Filled.Subject, contentDescription = localization.text("chat.selection.summarize"))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    if (!compactToolbar) Text(localization.text("chat.selection.summarize"))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Delete - disabled when 0 messages selected
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.deleteSelectedMessages()
+                                    }
+                                },
+                                enabled = uiState.selectedMessageIds.isNotEmpty() && !messageSquashRunning,
+                                tooltip = localization.text("chat.selection.deleteHint")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Delete, contentDescription = localization.text("chat.selection.delete"))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    if (!compactToolbar) Text(localization.text("chat.selection.delete"))
+                                }
+                            }
+
+                            if (compactToolbar) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+
+                            MessageSquashStatus(messageSquashState)
+                            // Selected count (right side)
+                            Text(localization.text("chat.selection.selectedCount", "count" to uiState.selectedMessageIds.size))
+
+                        }
                     }
                 }
 
@@ -595,55 +608,57 @@ fun SessionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DisableSelection {
-                    // The ViewModel claims the composer draft atomically before asynchronous submission.
-                    MessageInput(
-                        userInput = userInput,
-                        onUserInputChange = { viewModel.updateUserInput(it) },
-                        isWaitingForResponse = isWaitingForResponse,
-                        pendingMessagesCount = pendingMessagesCount,
-                        agentMentionCandidates = agentMentionCandidates,
-                        messageSubmissionError = messageSubmissionError?.resolve(localization),
-                        suggestedReplies = suggestedReplies,
-                        suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor ==
-                            suggestedReplies?.sourceMessageId,
-                        onRegenerateSuggestedReplies = viewModel::regenerateSuggestedReplies,
-                        onSendMessage = viewModel::submitUserInputToSession,
-                        coroutineScope = coroutineScope,
-                        pttEventHandler = pttEventHandler,
-                        pttState = pttState,
-                        pttStatusMessage = pttStatusMessage,
-                        pttUnavailableReason = pttUnavailableReason,
-                        liveVoiceInputService = liveVoiceInputService,
-                        liveVoiceInputState = liveVoiceInputState,
-                        liveVoiceInputStatusMessage = liveVoiceInputStatusMessage,
-                        liveVoiceInputUnavailableReason = liveVoiceInputUnavailableReason,
-                        showLiveVoiceButton = settings.userDeviceSettings.voiceInputSettings.liveVoiceInputEnabled,
-                        showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
-                        compactVoiceMode = isCompactLayout,
-                        clientPlatform = clientPlatform,
-                        instructionGroups = viewModel.messageInstructionGroups,
-                        activeInstructionIds = uiState.activeMessageInstructionIds,
-                        onSelectInstruction = viewModel::selectMessageInstruction,
-                        composerArtifacts = uiState.composerArtifacts,
-                        artifactUploadInProgress = uiState.composerArtifactUploadInProgress,
-                        artifactError = uiState.composerArtifactError?.resolve(localization),
-                        canPickAttachments = viewModel.attachmentCapabilities.filePicker,
-                        canCaptureScreenshot = viewModel.attachmentCapabilities.screenshot,
-                        onPickAttachments = viewModel::pickAttachments,
-                        onCaptureScreenshot = viewModel::captureScreenshot,
-                        onRemoveArtifact = viewModel::removeComposerArtifact,
-                        onInsertCurrentLocation = onInsertCurrentLocation,
-                        editLastMessageShortcut = editLastMessageShortcut,
-                        onEditLastUserMessage = viewModel::startEditLatestUserMessage,
-                    )
-
-                    // Dev buttons only
-                    if (isDev) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        DevButtons(
-                            onSendMessage = { message -> viewModel.sendMessageToSession(message) },
+                    if (externalChannel == null) {
+                        // The ViewModel claims the composer draft atomically before asynchronous submission.
+                        MessageInput(
+                            userInput = userInput,
+                            onUserInputChange = { viewModel.updateUserInput(it) },
+                            isWaitingForResponse = isWaitingForResponse,
+                            pendingMessagesCount = pendingMessagesCount,
+                            agentMentionCandidates = agentMentionCandidates,
+                            messageSubmissionError = messageSubmissionError?.resolve(localization),
+                            suggestedReplies = suggestedReplies,
+                            suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor ==
+                                suggestedReplies?.sourceMessageId,
+                            onRegenerateSuggestedReplies = viewModel::regenerateSuggestedReplies,
+                            onSendMessage = viewModel::submitUserInputToSession,
                             coroutineScope = coroutineScope,
+                            pttEventHandler = pttEventHandler,
+                            pttState = pttState,
+                            pttStatusMessage = pttStatusMessage,
+                            pttUnavailableReason = pttUnavailableReason,
+                            liveVoiceInputService = liveVoiceInputService,
+                            liveVoiceInputState = liveVoiceInputState,
+                            liveVoiceInputStatusMessage = liveVoiceInputStatusMessage,
+                            liveVoiceInputUnavailableReason = liveVoiceInputUnavailableReason,
+                            showLiveVoiceButton = settings.userDeviceSettings.voiceInputSettings.liveVoiceInputEnabled,
+                            showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
+                            compactVoiceMode = isCompactLayout,
+                            clientPlatform = clientPlatform,
+                            instructionGroups = viewModel.messageInstructionGroups,
+                            activeInstructionIds = uiState.activeMessageInstructionIds,
+                            onSelectInstruction = viewModel::selectMessageInstruction,
+                            composerArtifacts = uiState.composerArtifacts,
+                            artifactUploadInProgress = uiState.composerArtifactUploadInProgress,
+                            artifactError = uiState.composerArtifactError?.resolve(localization),
+                            canPickAttachments = viewModel.attachmentCapabilities.filePicker,
+                            canCaptureScreenshot = viewModel.attachmentCapabilities.screenshot,
+                            onPickAttachments = viewModel::pickAttachments,
+                            onCaptureScreenshot = viewModel::captureScreenshot,
+                            onRemoveArtifact = viewModel::removeComposerArtifact,
+                            onInsertCurrentLocation = onInsertCurrentLocation,
+                            editLastMessageShortcut = editLastMessageShortcut,
+                            onEditLastUserMessage = viewModel::startEditLatestUserMessage,
                         )
+
+                        // Dev buttons only
+                        if (isDev) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            DevButtons(
+                                onSendMessage = { message -> viewModel.sendMessageToSession(message) },
+                                coroutineScope = coroutineScope,
+                            )
+                        }
                     }
                 }
             }

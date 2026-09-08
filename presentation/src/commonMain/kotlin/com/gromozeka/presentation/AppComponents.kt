@@ -70,6 +70,7 @@ data class AppComponents(
     val aiUserCredentialService: CurrentUserAiCredentialService,
     val namedSecretService: com.gromozeka.domain.service.CurrentUserNamedSecretService,
     val userAdministrationService: RemoteUserAdministrationService,
+    val telegramService: com.gromozeka.client.RemoteTelegramService,
     val securityAuditService: RemoteSecurityAuditService,
     val userDirectoryService: RemoteUserDirectoryService,
     val projectMembershipService: RemoteProjectMembershipService,

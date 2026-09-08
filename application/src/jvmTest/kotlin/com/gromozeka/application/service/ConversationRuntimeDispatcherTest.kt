@@ -704,6 +704,7 @@ class ConversationRuntimeDispatcherTest {
             assertTrue(replayedEvents[1] is ConversationRuntimeEvent.ExecutionCompleted)
             assertTrue(replayedEvents[2] is ConversationRuntimeEvent.ReplayCompleted)
             assertEquals(message.id.value, (replayedEvents[0] as ConversationRuntimeEvent.MessageEmitted).taskId?.value)
+            assertEquals(message.id.value, (replayedEvents[0] as ConversationRuntimeEvent.MessageEmitted).turnId?.value)
         } finally {
             harness.close()
         }
@@ -937,7 +938,7 @@ class ConversationRuntimeDispatcherTest {
 
     private fun actorUser(): User = User(
         id = User.Id("user-1"),
-        username = "user-1",
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("user-1")),
         displayName = "User One",
         status = User.Status.ACTIVE,
         role = User.Role.MEMBER,

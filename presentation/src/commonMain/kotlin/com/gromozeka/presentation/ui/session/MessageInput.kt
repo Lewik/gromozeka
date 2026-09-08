@@ -845,7 +845,8 @@ private fun VoiceCaptureStatus(
 private fun Int.asRecordingDuration(): String =
     "${this / 60}:${(this % 60).toString().padStart(2, '0')}"
 
-private fun Long.formatArtifactSize(): String = when {
+private fun Long?.formatArtifactSize(): String = when {
+    this == null -> "—"
     this >= 1024 * 1024 -> "${this / (1024 * 1024)} MB"
     this >= 1024 -> "${this / 1024} KB"
     else -> "$this B"
