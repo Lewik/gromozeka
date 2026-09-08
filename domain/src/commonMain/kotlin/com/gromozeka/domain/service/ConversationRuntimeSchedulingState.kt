@@ -16,7 +16,6 @@ data class ConversationRuntimeSchedulingState(
     val pendingTurnTerminationInstructions: List<Conversation.Message.Instruction.PreviousTurnTerminated> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val completedIdempotencyKeys: Set<String> = emptySet(),
-    val targetedStopTurnId: ConversationRuntimeTurnId? = null,
 ) {
     init {
         require(executionState == null || executionState.conversationId == conversationId) {
@@ -307,9 +306,7 @@ data class ConversationRuntimeSchedulingState(
         } else {
             pendingTasks
         }
-        val settledControlState = if (terminal && targetedStopTurnId == currentTask.turnId) {
-            ConversationExecutionState.ControlState.RUNNING
-        } else if (terminal && promotedPendingTasks.isNotEmpty()) {
+        val settledControlState = if (terminal && promotedPendingTasks.isNotEmpty()) {
             ConversationExecutionState.ControlState.PAUSED
         } else {
             completedControlState
@@ -327,7 +324,6 @@ data class ConversationRuntimeSchedulingState(
                 activeTask = null,
                 activeInsertions = emptyList(),
                 continuationTask = continuation?.takeUnless { terminal },
-                targetedStopTurnId = null,
                 pendingTasks = queuedAgentResponses.takeUnless { terminal }.orEmpty() + promotedPendingTasks,
                 completedIdempotencyKeys = completedIdempotencyKeys +
                     currentTask.idempotencyKey +
@@ -369,7 +365,6 @@ data class ConversationRuntimeSchedulingState(
         val terminal = currentState.controlState == ConversationExecutionState.ControlState.STOPPING ||
             currentState.controlState == ConversationExecutionState.ControlState.INTERRUPTING
         if (terminal) {
-            val targetedStop = targetedStopTurnId == currentTask.turnId
             val preservedPendingTasks = (
                 activeInsertions.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +
                     pendingTasks.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }
@@ -378,7 +373,7 @@ data class ConversationRuntimeSchedulingState(
                 null
             } else {
                 currentState.copy(
-                    controlState = if (targetedStop) ConversationExecutionState.ControlState.RUNNING else ConversationExecutionState.ControlState.PAUSED,
+                    controlState = ConversationExecutionState.ControlState.PAUSED,
                     activeTaskId = null,
                     activeExecutor = null,
                     activeTaskStartedAt = null,
@@ -394,7 +389,6 @@ data class ConversationRuntimeSchedulingState(
                     pendingTasks = preservedPendingTasks,
                     incidents = incidents + incident,
                     completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
-                    targetedStopTurnId = null,
                 ),
                 incident,
             )
@@ -551,12 +545,20 @@ data class ConversationRuntimeSchedulingState(
     fun requestTerminalState(
         controlState: ConversationExecutionState.ControlState,
         now: Instant,
+        expectedTurnId: ConversationRuntimeTurnId? = null,
     ): ConversationRuntimeStateTransition<Boolean> {
-        if (targetedStopTurnId != null) return copy(targetedStopTurnId = null).requestTerminalState(controlState, now)
         require(controlState == ConversationExecutionState.ControlState.STOPPING ||
             controlState == ConversationExecutionState.ControlState.INTERRUPTING
         ) {
             "Conversation runtime terminal request must stop or interrupt"
+        }
+        if (expectedTurnId != null && (activeTask ?: continuationTask)?.turnId != expectedTurnId) {
+            val removed = pendingTasks.filter { it.turnId == expectedTurnId }
+            if (removed.isEmpty()) return unchanged(false)
+            return changed(copy(
+                pendingTasks = pendingTasks.filterNot { it.turnId == expectedTurnId },
+                completedIdempotencyKeys = completedIdempotencyKeys + removed.map { it.idempotencyKey },
+            ), true)
         }
         val currentState = executionState
         if (currentState == null && activeTask == null && continuationTask == null && pendingTasks.isEmpty()) {
@@ -661,34 +663,6 @@ data class ConversationRuntimeSchedulingState(
                 } ?: completedIdempotencyKeys,
             ),
             Unit,
-        )
-    }
-
-    fun requestTurnStop(turnId: ConversationRuntimeTurnId, now: Instant): ConversationRuntimeStateTransition<Boolean> {
-        val current = activeTask ?: continuationTask
-        if (current?.turnId == turnId) {
-            if (executionState?.controlState in setOf(ConversationExecutionState.ControlState.STOPPING, ConversationExecutionState.ControlState.INTERRUPTING)) {
-                return unchanged(targetedStopTurnId == turnId)
-            }
-            val instruction = Conversation.Message.Instruction.PreviousTurnTerminated(turnId.value, Conversation.TurnTerminationReason.STOPPED, now)
-            return changed(copy(
-                executionState = executionState?.copy(
-                    controlState = if (activeTask == null) ConversationExecutionState.ControlState.RUNNING else ConversationExecutionState.ControlState.STOPPING,
-                    updatedAt = now,
-                ),
-                targetedStopTurnId = turnId.takeIf { activeTask != null },
-                continuationTask = null,
-                pendingTasks = pendingTasks.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) },
-                completedIdempotencyKeys = completedIdempotencyKeys + listOfNotNull(continuationTask?.idempotencyKey),
-                pendingTurnTerminationInstructions = mergeTurnTerminationInstructions(pendingTurnTerminationInstructions + instruction),
-            ), true)
-        }
-        val removed = pendingTasks.filter { it.turnId == turnId }
-        if (removed.isEmpty()) return unchanged(false)
-        return changed(
-            copy(pendingTasks = pendingTasks.filterNot { it.turnId == turnId },
-                completedIdempotencyKeys = completedIdempotencyKeys + removed.map { it.idempotencyKey }),
-            true,
         )
     }
 

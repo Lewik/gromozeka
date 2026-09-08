@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service
 class ExternalConversationIngressApplicationService(
     private val conversations: ConversationDomainService,
     private val dispatcher: ConversationRuntimeDispatcher,
-    private val coordinator: ConversationRuntimeCoordinator,
 ) : ExternalConversationIngressService {
     override suspend fun importMessage(channel: ExternalConversationChannel, message: Conversation.Message, replaceOriginalId: Conversation.Message.Id?): Boolean {
         requireBinding(channel, message.conversationId)
@@ -25,9 +24,7 @@ class ExternalConversationIngressApplicationService(
     }
 
     override suspend fun stop(conversationId: Conversation.Id, turnId: ConversationRuntimeTurnId): Boolean {
-        val stopped = coordinator.requestTurnStop(conversationId, turnId)
-        if (stopped) dispatcher.publishSnapshot(conversationId)
-        return stopped
+        return dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT, expectedTurnId = turnId)
     }
 
     private suspend fun requireBinding(channel: ExternalConversationChannel, conversationId: Conversation.Id): Conversation =

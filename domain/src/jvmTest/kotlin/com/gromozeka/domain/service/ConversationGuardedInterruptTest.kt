@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.Conversation
 import kotlin.test.*
 import kotlin.time.Instant
 
-class ConversationTargetedStopTest {
+class ConversationGuardedInterruptTest {
     private val conversation = Conversation.Id("channel")
     private val now = Instant.fromEpochSeconds(1)
     private val executor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server"))
@@ -17,21 +17,26 @@ class ConversationTargetedStopTest {
         executionState = ConversationExecutionState(conversation, ConversationExecutionState.ControlState.RUNNING, current.id,
             activeExecutor = executor, activeTaskStartedAt = now, updatedAt = now), activeTask = current, pendingTasks = listOf(next))
 
-    @Test fun `stopping current turn does not pause or cancel next turn`() {
+    private fun ConversationRuntimeSchedulingState.interrupt(turnId: ConversationRuntimeTurnId) =
+        requestTerminalState(ConversationExecutionState.ControlState.INTERRUPTING, now, expectedTurnId = turnId)
+
+    @Test fun `interrupt uses standard cancellation and preserves queued turns paused`() {
         val first = task("first"); val second = task("second")
-        val stopped = active(first, second).requestTurnStop(first.turnId, now)
+        val stopped = active(first, second).interrupt(first.turnId)
         assertTrue(stopped.result)
-        assertEquals(ConversationExecutionState.ControlState.STOPPING, stopped.state.executionState?.controlState)
-        val completed = stopped.state.completeActiveTask(first.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn, now)
+        assertEquals(ConversationExecutionState.ControlState.INTERRUPTING, stopped.state.executionState?.controlState)
+        val completed = stopped.state.abort(now)
         assertEquals(listOf(second), completed.state.pendingTasks)
-        assertEquals(ConversationExecutionState.ControlState.RUNNING, completed.state.executionState?.controlState)
-        assertFalse(completed.state.requestTurnStop(first.turnId, now).result)
+        assertEquals(ConversationExecutionState.ControlState.PAUSED, completed.state.executionState?.controlState)
+        assertFalse(completed.state.interrupt(first.turnId).result)
         assertEquals(listOf(first.turnId.value), completed.state.pendingTurnTerminationInstructions.map { it.turnId })
+        assertEquals(com.gromozeka.domain.model.Conversation.TurnTerminationReason.INTERRUPTED,
+            completed.state.pendingTurnTerminationInstructions.single().reason)
     }
 
     @Test fun `queued stop is specific and retains idempotency after cancellation`() {
         val first = task("first"); val second = task("second")
-        val stopped = active(first, second).requestTurnStop(second.turnId, now)
+        val stopped = active(first, second).interrupt(second.turnId)
         assertEquals(first, stopped.state.activeTask)
         assertEquals(ConversationExecutionState.ControlState.RUNNING, stopped.state.executionState?.controlState)
         assertTrue(stopped.state.pendingTasks.isEmpty())
@@ -40,41 +45,41 @@ class ConversationTargetedStopTest {
         assertTrue(stopped.state.submit(second, now, acceptPreviouslySubmitted = true).state.pendingTasks.isEmpty())
     }
 
-    @Test fun `continuation can be stopped between claims without pausing next request`() {
+    @Test fun `interrupt between claims drops continuation and preserves standard queue pause`() {
         val first = task("first")
         val continuation = first.copy(id = ConversationRuntimeTask.Id("first-llm"), parentTaskId = first.id,
             payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("root"), AgentDefinition.Id("agent"), 1), idempotencyKey = "first-llm")
         val state = ConversationRuntimeSchedulingState(conversation,
             executionState = ConversationExecutionState(conversation, ConversationExecutionState.ControlState.RUNNING, null, updatedAt = now),
             continuationTask = continuation, pendingTasks = listOf(task("next")))
-        val stopped = state.requestTurnStop(first.turnId, now)
+        val stopped = state.interrupt(first.turnId)
         assertTrue(stopped.result); assertNull(stopped.state.continuationTask)
-        assertEquals(ConversationExecutionState.ControlState.RUNNING, stopped.state.executionState?.controlState)
+        assertEquals(ConversationExecutionState.ControlState.PAUSED, stopped.state.executionState?.controlState)
         assertEquals(1, stopped.state.pendingTasks.size)
     }
 
-    @Test fun `addressed stop never downgrades a global interrupt`() {
+    @Test fun `guarded interrupt never downgrades a global interrupt or targets another turn`() {
         val first = task("first")
         val interrupted = active(first, task("second")).requestTerminalState(ConversationExecutionState.ControlState.INTERRUPTING, now).state
-        assertFalse(interrupted.requestTurnStop(first.turnId, now).result)
+        assertTrue(interrupted.interrupt(first.turnId).result)
+        assertFalse(interrupted.interrupt(ConversationRuntimeTurnId("stale")).result)
         assertEquals(ConversationExecutionState.ControlState.INTERRUPTING, interrupted.executionState?.controlState)
     }
 
     @Test fun `duplicate acceptance distinguishes durable work from temporary rejection`() {
         val first = task("first"); val next = task("next")
-        val stopping = active(first, next).requestTurnStop(first.turnId, now).state
+        val stopping = active(first, next).interrupt(first.turnId).state
         assertTrue(stopping.submit(first, now, acceptPreviouslySubmitted = true).result)
         assertFalse(stopping.submit(task("new"), now, acceptPreviouslySubmitted = true).result)
     }
 
-    @Test fun `failure during addressed stop does not pause subsequent requests`() {
+    @Test fun `failure during guarded interrupt preserves standard queue pause`() {
         val first = task("first"); val next = task("next")
-        val stopping = active(first, next).requestTurnStop(first.turnId, now).state
+        val stopping = active(first, next).interrupt(first.turnId).state
         val failed = stopping.recordActiveTaskIncident(first.id, executor, ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN,
             "Interrupted work", "TestFailure", now).state
-        assertEquals(ConversationExecutionState.ControlState.RUNNING, failed.executionState?.controlState)
+        assertEquals(ConversationExecutionState.ControlState.PAUSED, failed.executionState?.controlState)
         assertEquals(listOf(next), failed.pendingTasks)
-        assertNull(failed.targetedStopTurnId)
     }
 
     @Test fun `incident recovery preserves the external origin without creating a new agent turn`() {

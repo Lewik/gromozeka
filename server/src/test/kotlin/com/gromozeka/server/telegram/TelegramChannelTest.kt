@@ -230,7 +230,7 @@ class TelegramChannelTest {
         assertEquals(1, gateway.submissions.size)
     }
 
-    @Test fun `stop validates initiator chat and exact status message and waits for safe completion`() = runBlocking {
+    @Test fun `stop validates initiator chat and exact status message and awaits interrupt acknowledgement`() = runBlocking {
         val repository = MemorySession(TelegramBotState(inbox = listOf(incoming(1, listOf(route)))))
         val gateway = FakeGateway()
         val processor = processor(repository, gateway)

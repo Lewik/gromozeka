@@ -193,7 +193,7 @@ class PostgresConversationRuntimeCoordinatorTest {
     }
 
     @Test
-    fun `postgres keeps a continuation ahead of later root input`() = runBlocking {
+    fun `postgres keeps continuation order and interrupts only the expected turn`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
             return@runBlocking
         }
@@ -250,6 +250,15 @@ class PostgresConversationRuntimeCoordinatorTest {
 
             assertEquals(continuation.id, coordinator.listReadyWorkItems(1).single().taskId)
             assertEquals(continuation, coordinator.claim(continuation, worker("worker-1", "session-2")))
+            assertFalse(coordinator.requestInterrupt(conversationId, com.gromozeka.domain.service.ConversationRuntimeTurnId("stale")))
+            assertTrue(coordinator.requestInterrupt(conversationId, continuation.turnId))
+            assertEquals(com.gromozeka.domain.service.ConversationExecutionState.ControlState.INTERRUPTING,
+                coordinator.find(conversationId)?.controlState)
+            coordinator.abort(conversationId)
+            assertEquals(listOf(laterRoot.id), coordinator.listPending(conversationId).map { it.id })
+            assertTrue(coordinator.requestResume(conversationId))
+            assertFalse(coordinator.requestInterrupt(conversationId, continuation.turnId))
+            assertEquals(laterRoot.id, coordinator.listReadyWorkItems(1).single().taskId)
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->

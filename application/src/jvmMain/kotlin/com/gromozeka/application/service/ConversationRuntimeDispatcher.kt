@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTurnId
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -116,8 +117,10 @@ class ConversationRuntimeDispatcher(
     suspend fun controlExecution(
         conversationId: Conversation.Id,
         action: ConversationRuntimeControlAction,
+        expectedTurnId: ConversationRuntimeTurnId? = null,
     ): Boolean {
-        val cancelledCommands = if (action == ConversationRuntimeControlAction.INTERRUPT) {
+        require(expectedTurnId == null || action == ConversationRuntimeControlAction.INTERRUPT)
+        val cancelledCommands = if (action == ConversationRuntimeControlAction.INTERRUPT && expectedTurnId == null) {
             runtimeCoordinator.requestCommandTaskCancellations(conversationId, Clock.System.now())
         } else {
             0
@@ -126,7 +129,7 @@ class ConversationRuntimeDispatcher(
             ConversationRuntimeControlAction.PAUSE -> runtimeCoordinator.requestPause(conversationId)
             ConversationRuntimeControlAction.RESUME -> runtimeCoordinator.requestResume(conversationId)
             ConversationRuntimeControlAction.STOP -> runtimeCoordinator.requestStop(conversationId)
-            ConversationRuntimeControlAction.INTERRUPT -> runtimeCoordinator.requestInterrupt(conversationId)
+            ConversationRuntimeControlAction.INTERRUPT -> runtimeCoordinator.requestInterrupt(conversationId, expectedTurnId)
         }
         val accepted = runtimeControlAccepted || cancelledCommands > 0
         if (accepted) {

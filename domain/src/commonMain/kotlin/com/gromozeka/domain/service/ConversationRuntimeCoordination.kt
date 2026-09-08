@@ -994,8 +994,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun markPaused(conversationId: Conversation.Id): Boolean
     suspend fun requestResume(conversationId: Conversation.Id): Boolean
     suspend fun requestStop(conversationId: Conversation.Id): Boolean
-    suspend fun requestTurnStop(conversationId: Conversation.Id, turnId: ConversationRuntimeTurnId): Boolean
-    suspend fun requestInterrupt(conversationId: Conversation.Id): Boolean
+    suspend fun requestInterrupt(conversationId: Conversation.Id, expectedTurnId: ConversationRuntimeTurnId? = null): Boolean
     suspend fun abort(conversationId: Conversation.Id)
     suspend fun find(conversationId: Conversation.Id): ConversationExecutionState?
 

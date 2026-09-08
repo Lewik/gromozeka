@@ -138,9 +138,11 @@ An oversized mandatory request fails before the model call.
   labels share the UI implementation and translation catalog. Redacted/encrypted
   reasoning is never invented or disclosed. Completed assistant remarks update
   that message during work; there is no token streaming or progress LLM.
-- Stop validates the initiator, chat and exact status/invocation. It requests a
-  safe-boundary stop of that invocation, without stopping a later request. An
-  already-running tool can finish; stale buttons cannot stop the next response.
+- Stop validates the initiator, chat and exact status/invocation. It uses the
+  standard runtime interrupt to cancel in-flight work, not a safe-boundary stop.
+  The expected turn is checked atomically; stale buttons cannot stop a later
+  response. Already completed effects cannot be undone. Later Telegram messages
+  remain in the adapter inbox and are processed after cancellation completes.
 - Stable source and invocation IDs make inbox/actor retries idempotent. A rejected
   submission during stopping stays queued rather than disappearing.
 - A PostgreSQL advisory lease allows one poller per bot in the database. Never

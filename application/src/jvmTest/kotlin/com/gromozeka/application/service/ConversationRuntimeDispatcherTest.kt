@@ -347,14 +347,15 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `dispatcher interrupt cancels active task and preserves queued turns`() = runBlocking {
+    fun `dispatcher guarded interrupt cancels active task without response and preserves queued turns`() = runBlocking {
         val harness = dispatcherHarness()
         try {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
             assertTrue(harness.dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
-            assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
+            val activeTask = harness.runner.awaitStarted()
+            assertEquals(firstMessage.id.value, activeTask.id.value)
             assertTrue(
                 harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
@@ -364,7 +365,11 @@ class ConversationRuntimeDispatcherTest {
                 )
             )
 
-            assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT))
+            assertFalse(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT,
+                expectedTurnId = com.gromozeka.domain.service.ConversationRuntimeTurnId("stale")))
+            assertEquals(activeTask.id, harness.coordinator.find(conversationId)?.activeTaskId)
+            assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT,
+                expectedTurnId = activeTask.turnId))
 
             waitUntil {
                 harness.coordinator.find(conversationId)?.controlState ==
@@ -375,6 +380,14 @@ class ConversationRuntimeDispatcherTest {
                 harness.coordinator.listPending(conversationId).map { it.id.value },
             )
             assertNull(withTimeoutOrNull(350) { harness.runner.awaitStarted() })
+            assertTrue(harness.coordinator.listEventLogEntries(conversationId, null, 100)
+                .none { it.event is ConversationRuntimeEvent.MessageEmitted })
+            assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.RESUME))
+            assertEquals(secondMessage.id.value, harness.runner.awaitStarted().id.value)
+            assertFalse(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT,
+                expectedTurnId = activeTask.turnId))
+            harness.runner.releaseCurrentTask()
+            waitUntil { harness.coordinator.find(conversationId) == null }
         } finally {
             harness.close()
         }

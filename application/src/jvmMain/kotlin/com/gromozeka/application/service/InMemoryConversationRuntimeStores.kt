@@ -669,26 +669,21 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             true
         }
 
-    override suspend fun requestTurnStop(conversationId: Conversation.Id, turnId: com.gromozeka.domain.service.ConversationRuntimeTurnId): Boolean =
-        mutex.withLock {
-            val current = schedulingByConversation[conversationId] ?: return@withLock false
-            val transition = current.requestTurnStop(turnId, Clock.System.now())
-            if (!transition.result) return@withLock false
-            schedulingByConversation[conversationId] = transition.state
-            scheduleNextRunnableTaskIfReady(conversationId)
-            bumpRevision(conversationId)
-            signalSchedulingChanged(conversationId)
-            true
-        }
-
     override suspend fun requestStop(conversationId: Conversation.Id): Boolean =
         mutex.withLock {
             requestTerminalStatus(conversationId, ConversationExecutionState.ControlState.STOPPING)
         }
 
-    override suspend fun requestInterrupt(conversationId: Conversation.Id): Boolean =
+    override suspend fun requestInterrupt(conversationId: Conversation.Id, expectedTurnId: com.gromozeka.domain.service.ConversationRuntimeTurnId?): Boolean =
         mutex.withLock {
-            requestTerminalStatus(conversationId, ConversationExecutionState.ControlState.INTERRUPTING)
+            val current = schedulingByConversation[conversationId]
+            val accepted = requestTerminalStatus(conversationId, ConversationExecutionState.ControlState.INTERRUPTING, expectedTurnId)
+            if (accepted && expectedTurnId != null && (current?.activeTask ?: current?.continuationTask)?.turnId == expectedTurnId) {
+                commandTasksByConversation[conversationId].orEmpty().filter { it.status == CommandTask.Status.WORKING }.forEach {
+                    requestCommandTaskCancellationLocked(conversationId, it.id, Clock.System.now())
+                }
+            }
+            accepted
         }
 
     override suspend fun abort(conversationId: Conversation.Id) {
@@ -932,12 +927,13 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private fun requestTerminalStatus(
         conversationId: Conversation.Id,
         controlState: ConversationExecutionState.ControlState,
+        expectedTurnId: com.gromozeka.domain.service.ConversationRuntimeTurnId? = null,
     ): Boolean {
         val current = schedulingByConversation[conversationId] ?: return false
-        val transition = current.requestTerminalState(controlState, Clock.System.now())
+        val transition = current.requestTerminalState(controlState, Clock.System.now(), expectedTurnId)
         if (!transition.result) return false
         schedulingByConversation[conversationId] = transition.state
-        readyWorkByConversation.remove(conversationId)
+        scheduleNextRunnableTaskIfReady(conversationId)
         appendControlTrace(
             conversationId,
             transition.state.executionState?.controlState ?: controlState,

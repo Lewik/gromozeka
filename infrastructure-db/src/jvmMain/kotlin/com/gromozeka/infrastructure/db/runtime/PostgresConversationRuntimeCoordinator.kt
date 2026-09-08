@@ -620,18 +620,6 @@ class PostgresConversationRuntimeCoordinator(
             true
         }
 
-    override suspend fun requestTurnStop(conversationId: Conversation.Id, turnId: com.gromozeka.domain.service.ConversationRuntimeTurnId): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
-            val transition = record.scheduling.requestTurnStop(turnId, Clock.System.now())
-            if (!transition.result) return@mutateRecord false
-            record.scheduling = transition.state
-            record.appendTrace(conversationId = conversationId, taskId = ConversationRuntimeTask.Id(turnId.value),
-                kind = ConversationRuntimeTraceEntry.Kind.TASK_CANCELLED, status = ConversationRuntimeTraceEntry.Status.CANCELLED,
-                message = "Stop requested for one exact turn")
-            record.bumpRevision()
-            true
-        }
-
     override suspend fun requestStop(conversationId: Conversation.Id): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val transition = record.scheduling.requestTerminalState(
@@ -649,13 +637,20 @@ class PostgresConversationRuntimeCoordinator(
             true
         }
 
-    override suspend fun requestInterrupt(conversationId: Conversation.Id): Boolean =
+    override suspend fun requestInterrupt(conversationId: Conversation.Id, expectedTurnId: com.gromozeka.domain.service.ConversationRuntimeTurnId?): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
+            val current = record.scheduling.activeTask ?: record.scheduling.continuationTask
             val transition = record.scheduling.requestTerminalState(
                 ConversationExecutionState.ControlState.INTERRUPTING,
                 Clock.System.now(),
+                expectedTurnId,
             )
             if (!transition.result) return@mutateRecord false
+            if (expectedTurnId != null && current?.turnId == expectedTurnId) {
+                record.commandTasks.filter { it.status == CommandTask.Status.WORKING }.forEach {
+                    record.requestCommandTaskCancellation(conversationId, it.id, Clock.System.now())
+                }
+            }
             record.scheduling = transition.state
             record.appendControlTrace(
                 conversationId,
