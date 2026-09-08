@@ -2,6 +2,7 @@ package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -27,6 +28,7 @@ data class AiRuntimeOptions(
     val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
     val toolContext: Map<String, Any?> = emptyMap(),
     val usagePurpose: String? = null,
+    val toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
 ) {
     init {
         require(maxOutputTokens == null || maxOutputTokens > 0) { "AI runtime max output tokens must be positive" }

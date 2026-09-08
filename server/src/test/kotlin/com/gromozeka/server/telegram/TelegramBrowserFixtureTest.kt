@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.repository.*
 import com.gromozeka.domain.service.*
+import com.gromozeka.domain.tool.*
 import com.gromozeka.server.*
 import com.gromozeka.server.testsupport.app.ServerTestHarness
 import io.ktor.server.application.install
@@ -16,6 +17,9 @@ import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -33,7 +37,8 @@ class TelegramBrowserFixtureTest {
             "gromozeka.postgres.jdbc-url" to requireNotNull(System.getenv("GROMOZEKA_POSTGRES_URL")),
             "gromozeka.postgres.schema" to schema, "gromozeka.telegram.enabled" to "true",
             "gromozeka.llm.cassette.mode" to "replay-only",
-        ), additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java), aiCatalogTransform = { catalog ->
+            "gromozeka.test.telegram-tool-fixture" to "true",
+        ), additionalSources = listOf(TelegramBrowserToolFixtureConfiguration::class.java), aiCatalogTransform = { catalog ->
             catalog.copy(connections = catalog.connections.map {
                 if (it is com.gromozeka.domain.model.ai.AiConnection.OpenAiSubscription) it.copy(enabled = true) else it
             })
@@ -51,7 +56,11 @@ class TelegramBrowserFixtureTest {
             val agentService = context.getBean(AgentDomainService::class.java)
             val selection = AiRuntimeSelection(AiModelConfiguration.Id("openai-subscription-gpt-5.6-luna"))
             val prompt = context.getBean(PromptDomainService::class.java).createPrompt(project.id, "Visual fixture", "This is a local UI fixture. No model calls are expected.")
-            val first = agentService.createAgent(project.id, "Gromozeka", listOf(prompt.id), selection)
+            val webContracts = agentService.toolCatalog(project.id).filter { it.name.name in setOf("brave_web_search", "jina_read_url") }
+            check(webContracts.size == 2)
+            val first = agentService.createAgent(project.id, "Gromozeka", listOf(prompt.id), selection,
+                tools = AgentPreloadedTools(listOf("brave_web_search", "jina_read_url", "grz_read_file")),
+                toolAccess = ToolAccessPolicy.AllowOnly(webContracts.mapTo(mutableSetOf()) { it.selector(false) }))
             val second = agentService.createAgent(project.id, "Reviewer", listOf(prompt.id), selection)
             val conversations = context.getBean(ConversationDomainService::class.java)
             val conversation = conversations.create(project.id,
@@ -87,6 +96,21 @@ class TelegramBrowserFixtureTest {
             println("Telegram visual fixture ready at http://127.0.0.1:8767/ ; conversation=${conversation.id.value}; local=${local.id.value}; user=telegram-ui")
             try { delay((System.getenv("GROMOZEKA_TELEGRAM_TEST_HOLD_SECONDS")?.toLong() ?: 900).coerceIn(1, 1800) * 1000) }
             finally { http.stop(500, 2000) }
+        }
+    }
+}
+
+@TestConfiguration(proxyBeanMethods = false)
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = ["gromozeka.test.telegram-tool-fixture"], havingValue = "true")
+class TelegramBrowserToolFixtureConfiguration {
+    @Bean @Primary
+    fun aiToolProvider(): AiToolProvider = object : AiToolProvider {
+        override fun getTools(): List<AiToolCallback> = listOf("brave_web_search", "jina_read_url", "grz_read_file").map { name ->
+            object : AiToolCallback {
+                override val definition = AiToolDefinition(name, "Visual fixture only; never executes", "{\"type\":\"object\"}")
+                override val metadata = ServerToolMetadata
+                override fun call(toolInput: String, context: ToolExecutionContext?): String = error("Visual fixture tools cannot execute")
+            }
         }
     }
 }

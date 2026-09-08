@@ -2,6 +2,10 @@
 
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.tool.AgentPreloadedTools
+import com.gromozeka.domain.tool.AgentToolCatalogEntry
+import com.gromozeka.domain.tool.ToolAccessPolicy
+
 import com.gromozeka.domain.model.SpeechAvailabilityFailure
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkill
@@ -341,6 +345,14 @@ data class FindAgentsRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("agent_tool_catalog_get")
+data class GetAgentToolCatalogRequest(val projectId: Project.Id? = null) : ClientRequest
+
+@Serializable
+@SerialName("agent_tool_catalog")
+data class AgentToolCatalogResponse(val entries: List<AgentToolCatalogEntry>) : ServerResponse
+
+@Serializable
 @SerialName("create_agent")
 data class CreateAgentRequest(
     val projectId: Project.Id?,
@@ -348,9 +360,10 @@ data class CreateAgentRequest(
     val prompts: List<Prompt.Id>,
     val runtimeSelection: AiRuntimeSelection,
     val runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
-    val tools: List<String> = emptyList(),
+    val tools: AgentPreloadedTools = AgentPreloadedTools(),
     val description: String? = null,
     val skills: List<AgentSkill.Id> = emptyList(),
+    val toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
 ) : ClientRequest
 
 @Serializable
@@ -371,7 +384,8 @@ data class UpdateAgentRequest(
     val skills: List<AgentSkill.Id>,
     val runtimeSelection: AiRuntimeSelection,
     val runtimeOverrides: AiRuntimeOverrides,
-    val tools: List<String>,
+    val tools: AgentPreloadedTools,
+    val toolAccess: ToolAccessPolicy,
 ) : ClientRequest
 
 @Serializable

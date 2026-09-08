@@ -10,6 +10,8 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.ToolAccessPolicy
+import com.gromozeka.domain.tool.QualifiedToolName
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -68,8 +70,13 @@ class DistributedAiToolCatalog(
 ) {
     private val json = Json
 
+    suspend fun serverContracts() = aiToolContractRepository.resolveAll(aiToolProvider.getTools()
+        .filter { it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER }
+        .map { AiToolDescriptor(it.definition, it.metadata).asModelContractDescriptor() })
+
     suspend fun snapshot(
         project: Project,
+        toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
     ): DistributedAiToolCatalogSnapshot {
         val now = Clock.System.now()
         val staleBefore = now - ConversationRuntimeTiming.workerRegistrationStaleAfter
@@ -149,7 +156,9 @@ class DistributedAiToolCatalog(
                     contractFingerprint = contract.fingerprint,
                 )
             }
-        val entries = (workerEntries + serverEntries).toSortedMap()
+        val entries = (workerEntries + serverEntries).filterValues { entry ->
+            toolAccess.allows(QualifiedToolName(entry.descriptor.definition.source, entry.logicalName), entry.contractFingerprint)
+        }.toSortedMap()
         val callbacks = entries.values.map(::modelCallback)
         val environmentTopology = buildEnvironmentTopology(
             project = project,

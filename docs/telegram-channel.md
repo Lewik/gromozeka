@@ -15,6 +15,8 @@ Installing this code alone makes no Telegram requests.
    Tokens are encrypted by the existing Server secret store, never returned by
    Telegram configuration endpoints. Do not put tokens in repository files or logs.
 4. Prepare a project and conversation with the owner and desired agents connected.
+   For a public group, use a dedicated project without Workspaces and configure
+   the Agent's [tool allowlist](agent-tool-access.md), independently of preloads.
 5. In **Settings → Telegram**, select the secret and probe the bot. Bind each group
    or forum topic to its conversation. Enter the real numeric Telegram group and
    initiator IDs, not usernames or IDs guessed from browser URLs.
@@ -169,7 +171,8 @@ It reads identity/update metadata without posting or acknowledging updates. Do
 not run the probe alongside a poller.
 
 `TelegramLiveRoundTripTest` sends real messages and uses GPT-5.6 Luna at low effort,
-with tools and other providers disabled. It requires explicit
+with an empty Agent allowlist and other providers disabled. The connection enables
+hosted search to exercise the Agent-level restriction on the live request. It requires explicit
 `GROMOZEKA_TELEGRAM_LIVE_ROUNDTRIP=true`, the bot variables above, plus
 `GROMOZEKA_TELEGRAM_TEST_CHAT_ID`, `GROMOZEKA_TELEGRAM_TEST_OWNER_ID`,
 `GROMOZEKA_TELEGRAM_TEST_SCHEMA` (fresh `telegram_live_*`),

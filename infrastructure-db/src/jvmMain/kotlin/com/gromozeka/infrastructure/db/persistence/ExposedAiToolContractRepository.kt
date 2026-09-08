@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service
 class ExposedAiToolContractRepository(
     private val json: Json,
 ) : AiToolContractRepository {
+    override suspend fun findAll(): List<AiToolContract> = dbQuery { loadContracts() }
     override suspend fun resolveAll(descriptors: Collection<AiToolDescriptor>): List<AiToolContract> {
         val requested = descriptors
             .groupBy(AiToolDescriptor::contractFingerprint)

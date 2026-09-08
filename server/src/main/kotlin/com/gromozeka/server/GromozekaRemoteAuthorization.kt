@@ -99,6 +99,11 @@ class GromozekaRemoteAuthorization(
             is FindAgentRequest ->
                 requireAgent(user, request.agentId, ProjectPermission.READ)
 
+            is GetAgentToolCatalogRequest -> {
+                if (request.projectId == null) requireServerOwner(user)
+                else requireScope(user, request.projectId, ProjectPermission.READ)
+            }
+
             is FindAgentsRequest ->
                 request.projectId?.let {
                     projectAccessService.requirePermission(user.id, it, ProjectPermission.READ)

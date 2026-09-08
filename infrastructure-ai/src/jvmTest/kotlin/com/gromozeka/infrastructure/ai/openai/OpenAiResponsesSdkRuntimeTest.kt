@@ -95,6 +95,20 @@ class OpenAiResponsesSdkRuntimeTest {
     )
 
     @Test
+    fun `agent allowlist gates hosted search separately from external functions`() {
+        val input = request(tools = listOf(testTool()))
+        val blocked = mapper.toCreateParams("gpt-5", true, input.copy(options = input.options.copy(
+            toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
+        )))
+        assertTrue(blocked.tools().get().none { it.isWebSearch() })
+        val policy = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
+            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.catalogEntry().selector(true),
+        ))
+        val allowed = mapper.toCreateParams("gpt-5", true, input.copy(options = input.options.copy(toolAccess = policy)))
+        assertTrue(allowed.tools().get().any { it.isWebSearch() })
+    }
+
+    @Test
     fun `adds hosted web search alongside function tools`() {
         val params = mapper.toCreateParams(
             modelName = "gpt-5",

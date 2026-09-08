@@ -98,6 +98,16 @@ fun AgentConstructorScreen(
     var editingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
     var agentTemplate by remember { mutableStateOf<AgentTemplate?>(null) }
     var showAgentEditor by remember { mutableStateOf(false) }
+    var toolCatalog by remember { mutableStateOf<List<com.gromozeka.domain.tool.AgentToolCatalogEntry>>(emptyList()) }
+    var toolCatalogError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(showAgentEditor, selectedProjectId) {
+        if (showAgentEditor) {
+            toolCatalog = emptyList()
+            toolCatalogError = null
+            runCatching { agentService.toolCatalog(selectedProjectId) }
+                .onSuccess { toolCatalog = it }.onFailure { toolCatalogError = it.message }
+        }
+    }
     var deletingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
 
     var editingPrompt by remember { mutableStateOf<Prompt?>(null) }
@@ -379,6 +389,8 @@ fun AgentConstructorScreen(
         } + if (agentTemplate?.includeRuntimeEnvironment == true) listOf(Prompt.Id("env")) else emptyList()
         AgentEditorDialog(
             agent = editingAgent,
+            toolCatalog = toolCatalog,
+            toolCatalogError = toolCatalogError,
             template = agentTemplate,
             prompts = availablePrompts,
             skills = skills,
@@ -399,6 +411,7 @@ fun AgentConstructorScreen(
                                 runtimeSelection = value.runtimeSelection,
                                 runtimeOverrides = value.runtimeOverrides,
                                 tools = value.tools,
+                                toolAccess = value.toolAccess,
                                 description = value.description,
                                 skills = value.skills,
                             )
@@ -412,6 +425,7 @@ fun AgentConstructorScreen(
                                 runtimeSelection = value.runtimeSelection,
                                 runtimeOverrides = value.runtimeOverrides,
                                 tools = value.tools,
+                                toolAccess = value.toolAccess,
                             )
                         }
                         showAgentEditor = false

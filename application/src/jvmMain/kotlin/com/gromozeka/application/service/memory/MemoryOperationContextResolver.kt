@@ -83,7 +83,7 @@ class MemoryOperationContextResolver(
             agent = agent,
             runtimeContext = runtimeContext,
             systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
-            memoryTools = memoryTools(),
+            memoryTools = memoryTools(agent),
             threadMessages = threadMessages,
         )
     }
@@ -98,7 +98,7 @@ class MemoryOperationContextResolver(
             agent = agent,
             runtimeContext = runtimeContext,
             systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
-            memoryTools = memoryTools(),
+            memoryTools = memoryTools(agent),
             threadMessages = emptyList(),
         )
     }
@@ -120,7 +120,7 @@ class MemoryOperationContextResolver(
             agent = agent,
             runtimeContext = runtimeContext,
             systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
-            memoryTools = memoryTools(),
+            memoryTools = memoryTools(agent),
             threadMessages = emptyList(),
         )
     }
@@ -140,9 +140,9 @@ class MemoryOperationContextResolver(
         return message
     }
 
-    private fun memoryTools(): List<AiToolCallback> =
+    private fun memoryTools(agent: AgentDefinition): List<AiToolCallback> =
         aiToolProvider.getTools()
-            .forMemoryPipeline()
+            .forMemoryPipeline(agent.toolAccess)
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"

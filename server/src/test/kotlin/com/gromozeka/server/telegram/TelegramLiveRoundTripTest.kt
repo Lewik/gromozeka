@@ -65,6 +65,7 @@ class TelegramLiveRoundTripTest {
             val prompt = context.getBean(PromptDomainService::class.java).createPrompt(project.id, "Telegram test assistant",
                 "You are a concise assistant in a Telegram group. Follow the authorized owner's current request. Do not use tools.")
             val agent = context.getBean(AgentDomainService::class.java).createAgent(project.id, "Telegram test", listOf(prompt.id), selection,
+                toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
                 runtimeOverrides = AiRuntimeOverrides(maxOutputTokens = 1024, reasoning = AiReasoningConfig(effort = AiReasoningEffort.LOW)))
             val conversations = context.getBean(ConversationDomainService::class.java)
             val conversation = conversations.create(project.id,
@@ -115,7 +116,7 @@ class TelegramLiveRoundTripTest {
 
     private fun testCatalog(catalog: AiCatalog): AiCatalog = catalog.copy(connections = catalog.connections.map {
         when (it) {
-            is AiConnection.OpenAiSubscription -> it.copy(enabled = true, webSearchEnabled = false)
+            is AiConnection.OpenAiSubscription -> it.copy(enabled = true, webSearchEnabled = true)
             is AiConnection.OpenAiApi -> it.copy(enabled = false)
             is AiConnection.OpenAiCompatible -> it.copy(enabled = false)
             is AiConnection.GitHubCopilot -> it.copy(enabled = false)

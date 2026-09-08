@@ -536,6 +536,7 @@ class GromozekaRemoteServer(
 
                 GetDefaultAgentRequest -> DefaultAgentResponse(defaultAgentProvider.getDefault())
                 is FindAgentRequest -> AgentResponse(agentDomainService.findById(request.agentId))
+                is GetAgentToolCatalogRequest -> AgentToolCatalogResponse(agentDomainService.toolCatalog(request.projectId))
                 is FindAgentsRequest -> {
                     val readableProjectIds = remoteAuthorization.readableProjectIds(user)
                     AgentsResponse(
@@ -555,6 +556,7 @@ class GromozekaRemoteServer(
                         request.tools,
                         request.description,
                         request.skills,
+                        request.toolAccess,
                     )
                 )
                 is DuplicateAgentRequest -> AgentResponse(
@@ -574,6 +576,7 @@ class GromozekaRemoteServer(
                         request.runtimeSelection,
                         request.runtimeOverrides,
                         request.tools,
+                        request.toolAccess,
                     )
                 )
                 is DeleteAgentRequest -> {

@@ -45,7 +45,7 @@ class ControlMcpConversationToolContributorTest {
         val result = controlMcpJson.parseToJsonElement(
             callback.call(
                 "{}",
-                ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to user.id.value)),
+                ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to user.id.value, com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID to "test-agent")),
             )
         ).jsonObject
 

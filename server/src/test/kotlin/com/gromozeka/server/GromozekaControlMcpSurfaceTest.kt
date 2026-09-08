@@ -83,6 +83,7 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_runtime_template_get",
                 "grz_agent_list",
                 "grz_agent_get",
+                "grz_agent_tool_catalog",
                 "grz_agent_create",
                 "grz_agent_update",
                 "grz_agent_duplicate",

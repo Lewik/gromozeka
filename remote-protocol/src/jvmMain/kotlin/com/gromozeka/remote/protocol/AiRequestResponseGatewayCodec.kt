@@ -248,6 +248,7 @@ private data class AiRuntimeRequestWire(
 
 @Serializable
 private data class AiRuntimeOptionsWire(
+    val toolAccess: com.gromozeka.domain.tool.ToolAccessPolicy = com.gromozeka.domain.tool.ToolAccessPolicy.DenyListed(),
     val maxOutputTokens: Int?,
     val reasoning: AiReasoningConfig?,
     val autoCompactionThresholdTokens: Int?,
@@ -368,6 +369,7 @@ private fun AiRuntimeRequestWire.toRuntime(): AiRuntimeRequest =
 
 private fun AiRuntimeOptions.toWire(): AiRuntimeOptionsWire =
     AiRuntimeOptionsWire(
+        toolAccess = toolAccess,
         maxOutputTokens = maxOutputTokens,
         reasoning = reasoning,
         autoCompactionThresholdTokens = autoCompactionThresholdTokens,
@@ -380,6 +382,7 @@ private fun AiRuntimeOptions.toWire(): AiRuntimeOptionsWire =
 
 private fun AiRuntimeOptionsWire.toRuntime(): AiRuntimeOptions =
     AiRuntimeOptions(
+        toolAccess = toolAccess,
         maxOutputTokens = maxOutputTokens,
         reasoning = reasoning,
         autoCompactionThresholdTokens = autoCompactionThresholdTokens,

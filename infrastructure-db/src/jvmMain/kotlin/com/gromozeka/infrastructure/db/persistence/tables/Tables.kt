@@ -237,6 +237,7 @@ internal object Agents : Table("agents") {
     val runtimeSelectionJson = text("runtime_selection_json")
     val runtimeOverridesJson = text("runtime_overrides_json")
     val toolsJson = text("tools_json")
+    val toolAccessJson = text("tool_access_json")
     val description = text("description").nullable()
     val type = varchar("type", 50)
     val createdAt = timestamp("created_at")

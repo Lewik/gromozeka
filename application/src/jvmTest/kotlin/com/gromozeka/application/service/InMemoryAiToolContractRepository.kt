@@ -9,6 +9,8 @@ import kotlin.time.Clock
 internal class InMemoryAiToolContractRepository : AiToolContractRepository {
     private val contracts = linkedMapOf<String, AiToolContract>()
 
+    override suspend fun findAll(): List<AiToolContract> = contracts.values.toList()
+
     override suspend fun resolveAll(descriptors: Collection<AiToolDescriptor>): List<AiToolContract> =
         descriptors
             .associateBy(AiToolDescriptor::contractFingerprint)

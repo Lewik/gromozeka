@@ -1,6 +1,8 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.tool.AgentPreloadedTools
+import com.gromozeka.domain.tool.ToolAccessPolicy
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
@@ -41,6 +43,7 @@ class ExposedAgentRepository(
                 statement[Agents.runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
                 statement[Agents.runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
                 statement[Agents.toolsJson] = json.encodeToString(agent.tools)
+                statement[Agents.toolAccessJson] = json.encodeToString(agent.toolAccess)
                 statement[Agents.description] = agent.description
                 statement[Agents.type] = agent.type.databaseValue()
                 statement[Agents.updatedAt] = agent.updatedAt
@@ -85,6 +88,7 @@ class ExposedAgentRepository(
         this[Agents.runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
         this[Agents.runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
         this[Agents.toolsJson] = json.encodeToString(agent.tools)
+        this[Agents.toolAccessJson] = json.encodeToString(agent.toolAccess)
         this[Agents.description] = agent.description
         this[Agents.type] = agent.type.databaseValue()
         this[Agents.createdAt] = agent.createdAt
@@ -105,7 +109,8 @@ class ExposedAgentRepository(
             skills = json.decodeFromString<List<AgentSkill.Id>>(this[Agents.skillsJson]),
             runtimeSelection = json.decodeFromString<AiRuntimeSelection>(this[Agents.runtimeSelectionJson]),
             runtimeOverrides = json.decodeFromString<AiRuntimeOverrides>(this[Agents.runtimeOverridesJson]),
-            tools = json.decodeFromString<List<String>>(this[Agents.toolsJson]),
+            tools = json.decodeFromString<AgentPreloadedTools>(this[Agents.toolsJson]),
+            toolAccess = json.decodeFromString<ToolAccessPolicy>(this[Agents.toolAccessJson]),
             description = this[Agents.description],
             type = type,
             createdAt = this[Agents.createdAt],

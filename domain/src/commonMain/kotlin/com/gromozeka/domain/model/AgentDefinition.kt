@@ -2,6 +2,8 @@ package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.tool.AgentPreloadedTools
+import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -43,7 +45,8 @@ data class AgentDefinition(
     val skills: List<AgentSkill.Id> = emptyList(),
     val runtimeSelection: AiRuntimeSelection,
     val runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
-    val tools: List<String> = emptyList(),
+    val tools: AgentPreloadedTools = AgentPreloadedTools(),
+    val toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
     val description: String? = null,
     val type: Type,
     val createdAt: Instant,

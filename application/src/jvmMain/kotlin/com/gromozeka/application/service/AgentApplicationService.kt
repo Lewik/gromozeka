@@ -1,6 +1,9 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.tool.AgentPreloadedTools
+import com.gromozeka.domain.tool.AgentToolCatalogEntry
+import com.gromozeka.domain.tool.ToolAccessPolicy
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
@@ -21,6 +24,7 @@ import com.gromozeka.domain.service.PromptAssemblyService
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.transaction.annotation.Transactional
 
 @Service
@@ -31,7 +35,11 @@ class AgentApplicationService(
     private val promptAssemblyService: PromptAssemblyService,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
+    private val toolCatalogProvider: ObjectProvider<AgentToolCatalogApplicationService>? = null,
 ) : AgentDomainService, AgentPromptAssemblyService {
+    override suspend fun toolCatalog(projectId: Project.Id?): List<AgentToolCatalogEntry> =
+        checkNotNull(toolCatalogProvider).getObject().load(projectId)
+
     @Transactional
     override suspend fun createAgent(
         projectId: Project.Id?,
@@ -39,11 +47,12 @@ class AgentApplicationService(
         prompts: List<Prompt.Id>,
         runtimeSelection: AiRuntimeSelection,
         runtimeOverrides: AiRuntimeOverrides,
-        tools: List<String>,
+        tools: AgentPreloadedTools,
         description: String?,
         skills: List<AgentSkill.Id>,
+        toolAccess: ToolAccessPolicy,
     ): AgentDefinition {
-        validateDefinition(projectId, name, prompts, skills, runtimeSelection, tools)
+        validateDefinition(projectId, name, prompts, skills, runtimeSelection)
         val now = Clock.System.now()
         return agentRepository.save(
             AgentDefinition(
@@ -61,6 +70,7 @@ class AgentApplicationService(
                 runtimeSelection = runtimeSelection,
                 runtimeOverrides = runtimeOverrides,
                 tools = tools,
+                toolAccess = toolAccess,
                 description = description?.trim()?.takeIf(String::isNotBlank),
                 type = if (projectId == null) AgentDefinition.Type.Global else AgentDefinition.Type.Project,
                 createdAt = now,
@@ -84,6 +94,7 @@ class AgentApplicationService(
             runtimeSelection = source.runtimeSelection,
             runtimeOverrides = source.runtimeOverrides,
             tools = source.tools,
+            toolAccess = source.toolAccess,
             description = source.description,
             skills = skills,
         )
@@ -113,7 +124,8 @@ class AgentApplicationService(
         skills: List<AgentSkill.Id>,
         runtimeSelection: AiRuntimeSelection,
         runtimeOverrides: AiRuntimeOverrides,
-        tools: List<String>,
+        tools: AgentPreloadedTools,
+        toolAccess: ToolAccessPolicy,
     ): AgentDefinition? {
         val current = agentRepository.findById(id) ?: return null
         val updated = current.copy(
@@ -124,6 +136,7 @@ class AgentApplicationService(
             runtimeSelection = runtimeSelection,
             runtimeOverrides = runtimeOverrides,
             tools = tools,
+            toolAccess = toolAccess,
             updatedAt = Clock.System.now(),
         )
         validateDefinition(
@@ -132,7 +145,6 @@ class AgentApplicationService(
             prompts = updated.prompts,
             skills = updated.skills,
             runtimeSelection = updated.runtimeSelection,
-            tools = updated.tools,
         )
         return agentRepository.save(updated).also {
             stateChanges.publish(DeclarativeStateKey.agents)
@@ -156,13 +168,10 @@ class AgentApplicationService(
         prompts: List<Prompt.Id>,
         skills: List<AgentSkill.Id>,
         runtimeSelection: AiRuntimeSelection,
-        tools: List<String>,
     ) {
         require(name.isNotBlank()) { "Agent name must not be blank" }
         require(prompts.isNotEmpty()) { "Agent must contain at least one prompt or runtime environment context" }
         require(prompts.distinct().size == prompts.size) { "Agent prompts must not contain duplicates" }
-        require(tools.none(String::isBlank)) { "Agent tool names must not be blank" }
-        require(tools.distinct().size == tools.size) { "Agent tools must not contain duplicates" }
         val runtime = aiConfigurationProvider.resolveAiRuntime(runtimeSelection)
         val modelSpec = aiConfigurationProvider.catalog.modelSpecFor(runtime.modelConfiguration)
             ?: error("AI model spec not found: ${runtime.modelConfiguration.providerModelId}")

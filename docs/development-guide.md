@@ -154,6 +154,8 @@ credentials, raw authorization headers, or exact device locations.
   access that Conversation.
 - An **Agent** is a server-managed model, prompt, and behavior configuration. It
   is not an executor.
+  Its typed [tool access policy](agent-tool-access.md) is independent of preloading
+  and applies to ordinary tools and supported provider-native capabilities.
 - A **Worker** is a named execution process. The Server is not a Worker.
 - Workers have one resource model. Platform, advertised capabilities, ownership,
   and optional user-context binding are independent properties. A user-bound

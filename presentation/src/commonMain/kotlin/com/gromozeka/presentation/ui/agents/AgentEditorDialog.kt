@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.tool.*
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentTemplate
 import com.gromozeka.domain.model.Prompt
@@ -63,7 +64,8 @@ data class AgentEditorValue(
     val skills: List<AgentSkill.Id>,
     val runtimeSelection: AiRuntimeSelection,
     val runtimeOverrides: AiRuntimeOverrides,
-    val tools: List<String>,
+    val tools: AgentPreloadedTools,
+    val toolAccess: ToolAccessPolicy,
 )
 
 @Composable
@@ -75,6 +77,8 @@ fun AgentEditorDialog(
     modelConfigurations: List<AiModelConfiguration>,
     initialPromptIds: List<Prompt.Id>,
     defaultRuntimeSelection: AiRuntimeSelection,
+    toolCatalog: List<AgentToolCatalogEntry>,
+    toolCatalogError: String?,
     onSave: (AgentEditorValue) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -105,8 +109,12 @@ fun AgentEditorDialog(
         mutableStateOf(initialOverrides.reasoning?.budgetTokens?.toString().orEmpty())
     }
     var toolsText by remember {
-        mutableStateOf((agent?.tools ?: template?.tools.orEmpty()).joinToString("\n"))
+        mutableStateOf((agent?.tools?.names ?: template?.tools.orEmpty()).joinToString("\n"))
     }
+    var toolAccess by remember { mutableStateOf(agent?.toolAccess ?: ToolAccessPolicy.DenyListed()) }
+    var showToolAccess by remember { mutableStateOf(false) }
+    val preloadedTools = AgentPreloadedTools(toolsText.lineSequence().map(String::trim).filter(String::isNotBlank).distinct().toList())
+    val blockedPreloads = preloadedTools.blockedBy(toolAccess, toolCatalog)
     var modelMenuExpanded by remember { mutableStateOf(false) }
     var error by remember(translation) { mutableStateOf<String?>(null) }
 
@@ -297,13 +305,13 @@ fun AgentEditorDialog(
                 }
 
                 Text(translation.text("agents.runtime_overrides"), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = maxOutputTokens,
                         onValueChange = { maxOutputTokens = it },
                         label = { Text(translation.text("ai.model.max_output_tokens")) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.width(160.dp),
                     )
                     AgentNullableEnumDropdown(translation.text("ai.reasoning.mode"), reasoningMode, AiReasoningMode.entries, { it.aiLabel(translation) }) {
                         reasoningMode = it
@@ -319,7 +327,7 @@ fun AgentEditorDialog(
                         onValueChange = { reasoningBudget = it },
                         label = { Text(translation.text("agents.budget_tokens")) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.width(160.dp),
                     )
                 }
                 OutlinedTextField(
@@ -329,6 +337,16 @@ fun AgentEditorDialog(
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedButton(onClick = { showToolAccess = true }) {
+                    Text(translation.text("agents.tools.access"))
+                    Text(" · " + translation.text(if (toolAccess is ToolAccessPolicy.AllowOnly) "agents.tools.allowlist" else "agents.tools.denylist") + " (${toolAccess.entries.size})")
+                }
+                if (blockedPreloads.isNotEmpty()) Text(
+                    translation.text("agents.tools.preload_warning") + " " + blockedPreloads.joinToString(),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3,
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -365,11 +383,8 @@ fun AgentEditorDialog(
                                     maxOutputTokens = maxOutputTokens.optionalPositiveInt(translation.text("ai.model.max_output_tokens"), translation),
                                     reasoning = reasoning,
                                 ),
-                                tools = toolsText.lineSequence()
-                                    .map(String::trim)
-                                    .filter(String::isNotBlank)
-                                    .distinct()
-                                    .toList(),
+                                tools = preloadedTools,
+                                toolAccess = toolAccess,
                             )
                         }.onSuccess(onSave).onFailure { error = it.message }
                     }) {
@@ -379,6 +394,7 @@ fun AgentEditorDialog(
             }
         }
     }
+    if (showToolAccess) AgentToolAccessDialog(toolAccess, toolCatalog, toolCatalogError, { toolAccess = it }) { showToolAccess = false }
 }
 
 @Composable

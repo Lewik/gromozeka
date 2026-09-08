@@ -336,6 +336,7 @@ class ConversationEngineService(
             tools = toolSelection.tools,
             options = AiRuntimeOptions(
                 maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,
+                toolAccess = context.agent.toolAccess,
                 reasoning = context.agent.runtimeOverrides.reasoning,
                 autoCompactionThresholdTokens = context.autoCompactionThresholdTokens,
                 toolChoice = AiToolChoice.Auto,
@@ -1067,7 +1068,7 @@ class ConversationEngineService(
             }
             else -> null
         }
-        val baseToolCatalog = distributedToolCatalog.snapshot(project)
+        val baseToolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess)
         val agentSkillRuntime = agentSkillRuntimeCatalogService.prepare(
             agent = agent,
             projectId = project.id,
@@ -1080,7 +1081,7 @@ class ConversationEngineService(
         }
         val toolCapabilityCatalogPrompt = aiToolCapabilityCatalogService.promptFor(capabilityCatalogDefinitions)
         val memoryPipelineTools = aiToolProvider.getTools()
-            .forMemoryPipeline()
+            .forMemoryPipeline(agent.toolAccess)
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
         val memorySettings = settingsProvider.userProfile.memorySettings
