@@ -64,7 +64,7 @@ internal class ClaudeCodeCliRuntimeBackend(
     override fun capabilities(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-    ): AiRuntimeCapabilities = AiRuntimeCapabilities(providerManagedAutoCompaction = true)
+    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true, providerManagedAutoCompaction = true)
 
     override fun createRuntime(
         connection: AiConnection,
@@ -111,6 +111,7 @@ internal class ClaudeCodeCliRuntime(
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
+        supportsAutoCompaction = true,
         providerManagedAutoCompaction = true,
     )
 
@@ -224,7 +225,11 @@ internal class ClaudeCodeCliRuntime(
 
         val executionStartedAt = System.nanoTime()
         val cliResponse = try {
-            executeValidated(command, contract)
+            executeValidated(command, contract, request.options.autoCompactionThresholdTokens, sessionPlan.state?.contextUsage)
+        } catch (error: ClaudeCodeSessionUnavailableException) {
+            if (sessionStateKey == null || sessionPlan.resumeSessionId == null) throw error
+            sessionStateRepository.delete(sessionStateKey)
+            return callLocked(request, sessionStateKey, "$diagnosticId-recovered")
         } catch (error: ClaudeCodeResponseFormatException) {
             if (sessionStateKey != null) sessionStateRepository.delete(sessionStateKey)
             throw error
@@ -236,11 +241,20 @@ internal class ClaudeCodeCliRuntime(
                 "thinkingBlocks=${cliResponse.thinking.size} compactions=${cliResponse.compactionBoundaries.size} " +
                 "usage=${cliResponse.usage.diagnosticSummary()} contextUsage=${cliResponse.contextUsage.diagnosticSummary()}"
         }
-        val runtimeResponse = toRuntimeResponse(cliResponse, request, toolProtocol, sessionPlan.resumeSessionId != null)
+        val replayState = ClaudeCodeReplayState(sessionPlan.state?.replayState)
+        cliResponse.replayEvents.forEach(replayState::accept)
+        replayState.ensureComplete()
+        val runtimeResponse = toRuntimeResponse(
+            cliResponse = cliResponse,
+            request = request,
+            toolProtocol = toolProtocol,
+            resumed = sessionPlan.resumeSessionId != null,
+            compactions = listOfNotNull(replayState.checkpointBeforeAssistantResponse()),
+        )
 
         if (sessionStateKey != null && cliResponse.sessionId != null) {
             val saveStartedAt = System.nanoTime()
-            saveSessionState(sessionStateKey, cliResponse.sessionId, request.messages, runtimeResponse.messages)
+            saveSessionState(sessionStateKey, cliResponse.sessionId, request.messages, runtimeResponse.messages, replayState.snapshot(), runtimeResponse.contextUsage)
             log.debug {
                 "CLAUDE_CODE_TRACE call=$diagnosticId phase=session_state_saved saveMs=${elapsedMillis(saveStartedAt)} " +
                     "coveredMessages=${request.messages.size} generatedMessages=${runtimeResponse.messages.size}"
@@ -253,9 +267,24 @@ internal class ClaudeCodeCliRuntime(
     private suspend fun executeValidated(
         command: ClaudeCodeCommand,
         contract: ClaudeCodeResponseContract?,
+        compactionThreshold: Int?,
+        previousContextUsage: AiContextUsage?,
     ): ClaudeCodeCliResponse = executor.withSession(command) { session ->
         var attemptCommand = command
         val responses = mutableListOf<ClaudeCodeCliResponse>()
+        if (command.resumeSessionId != null && compactionThreshold != null &&
+            (previousContextUsage?.inputTokens ?: 0) >= compactionThreshold
+        ) {
+            val compacted = session.execute(command.copy(
+                diagnosticId = "${command.diagnosticId}-compact",
+                userPrompt = "/compact",
+                userContentBlocks = emptyList(),
+            ))
+            check(compacted.compactionBoundaries.isNotEmpty()) {
+                "Claude Code did not perform the requested context compaction"
+            }
+            responses += compacted
+        }
         for (attempt in 0..CLAUDE_CODE_MAX_FORMAT_CORRECTIONS) {
             currentCoroutineContext().ensureActive()
             val startedAt = System.nanoTime()
@@ -274,6 +303,7 @@ internal class ClaudeCodeCliRuntime(
                             .associateWith { key -> JsonPrimitive(usage.sumOf { it[key]?.jsonPrimitive?.longOrNull ?: 0L }) }
                     ),
                     compactionBoundaries = responses.flatMap { it.compactionBoundaries },
+                    replayEvents = responses.flatMap { it.replayEvents },
                 )
             }
             if (attempt == CLAUDE_CODE_MAX_FORMAT_CORRECTIONS) throw ClaudeCodeResponseFormatException()
@@ -355,14 +385,14 @@ internal class ClaudeCodeCliRuntime(
         messages: List<Conversation.Message>,
     ): ClaudeCodeSessionPlan {
         val state = sessionKey?.let { sessionStateRepository.find(it) }
-        if (state == null) {
+        if (state == null || state.replayState == null) {
             return ClaudeCodeSessionPlan(
                 messagesToSend = messages,
                 resumeSessionId = null,
-                decision = if (sessionKey == null) {
-                    ClaudeCodeSessionDecision.NO_DURABLE_SESSION
-                } else {
-                    ClaudeCodeSessionDecision.STATE_NOT_FOUND
+                decision = when {
+                    sessionKey == null -> ClaudeCodeSessionDecision.NO_DURABLE_SESSION
+                    state == null -> ClaudeCodeSessionDecision.STATE_NOT_FOUND
+                    else -> ClaudeCodeSessionDecision.REPLAY_STATE_MISSING
                 },
             )
         }
@@ -417,6 +447,7 @@ internal class ClaudeCodeCliRuntime(
                 messagesToSend = deltaMessages,
                 resumeSessionId = state.claudeSessionId,
                 decision = ClaudeCodeSessionDecision.RESUME_WITH_DELTA,
+                state = state,
             )
         }
     }
@@ -426,6 +457,8 @@ internal class ClaudeCodeCliRuntime(
         claudeSessionId: String,
         inputMessages: List<Conversation.Message>,
         generatedAssistantMessages: List<AiAssistantMessage>,
+        replayState: JsonObject,
+        contextUsage: AiContextUsage?,
     ) {
         val now = Clock.System.now()
         val existing = sessionStateRepository.find(key)
@@ -443,6 +476,8 @@ internal class ClaudeCodeCliRuntime(
                 createdAt = existing?.createdAt ?: now,
                 updatedAt = now,
                 lastUsedAt = now,
+                replayState = replayState,
+                contextUsage = contextUsage,
             )
         )
     }
@@ -485,8 +520,18 @@ internal class ClaudeCodeCliRuntime(
             "New Gromozeka messages since the previous Claude Code session turn:"
         }
         val attachments = ClaudeCodeAttachmentCollector()
+        val replayMessages = if (plan.resumeSessionId == null) {
+            val anchor = plan.messagesToSend.indexOfLast { message ->
+                message.content.any { item ->
+                    item is Conversation.Message.ContentItem.ContextCompactionResult &&
+                        item.payload is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState &&
+                        item.providerScope?.provider == AiConnection.Kind.CLAUDE_CODE.name
+                }
+            }
+            plan.messagesToSend.drop(anchor.coerceAtLeast(0))
+        } else plan.messagesToSend
         val prompt = listOf(
-            "$header\n\n${messagesToTranscript(plan.messagesToSend, attachments)}",
+            "$header\n\n${messagesToTranscript(replayMessages, attachments)}",
             contract?.reminder(),
         ).filterNotNull().joinToString("\n\n")
         return ClaudeCodeUserInput(prompt, attachments.contentBlocks)
@@ -497,6 +542,7 @@ internal class ClaudeCodeCliRuntime(
         request: AiRuntimeRequest,
         toolProtocol: ClaudeCodeToolProtocol?,
         resumed: Boolean,
+        compactions: List<ClaudeCodeCompactionCheckpoint>,
     ): AiRuntimeResponse {
         val thinking = thinkingContent(cliResponse)
         val assistantMessage = if (toolProtocol == null) {
@@ -515,15 +561,18 @@ internal class ClaudeCodeCliRuntime(
             )
         }
 
-        val compactionMessages = cliResponse.compactionBoundaries.map { boundary ->
+        val compactionMessages = compactions.map { checkpoint ->
             AiAssistantMessage(
                 content = listOf(
                     Conversation.Message.ContentItem.ContextCompactionResult(
                         payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
-                            state = boundary,
+                            state = checkpoint.replayState,
                         ),
-                        origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                        origin = if (checkpoint.boundary["compact_metadata"]?.jsonObject?.get("trigger")?.jsonPrimitive?.contentOrNull == "manual")
+                            Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY
+                        else Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
                         strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+                        sourceMessageIds = request.messages.map { it.id },
                         providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
                             provider = AiConnection.Kind.CLAUDE_CODE.name,
                             connectionId = connectionId,
@@ -532,7 +581,8 @@ internal class ClaudeCodeCliRuntime(
                         ),
                     )
                 ),
-                metadata = assistantMetadata(cliResponse, wrapper = false, resumed = resumed),
+                metadata = assistantMetadata(cliResponse, wrapper = false, resumed = resumed) +
+                    ("compactionBoundary" to checkpoint.boundary),
             )
         }
 
@@ -656,7 +706,7 @@ internal class ClaudeCodeCliRuntime(
                 attachments.addDocument(item.source).toTranscriptMarker("document")
             is Conversation.Message.ContentItem.ArtifactItem ->
                 error("Claude Code received an unmaterialized artifact: ${item.artifact.id.value}")
-            is Conversation.Message.ContentItem.ContextCompactionResult -> compactionResultToTranscript(item)
+            is Conversation.Message.ContentItem.ContextCompactionResult -> compactionResultToTranscript(item, attachments)
             is Conversation.Message.ContentItem.UnknownJson -> xmlBlock("json", item.json.toString())
         }
 
@@ -683,13 +733,31 @@ internal class ClaudeCodeCliRuntime(
 
     private fun compactionResultToTranscript(
         item: Conversation.Message.ContentItem.ContextCompactionResult,
+        attachments: ClaudeCodeAttachmentCollector,
     ): String =
         when (val payload = item.payload) {
             is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
                 xmlBlock("context_compaction_result", payload.text)
 
-            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
-                error("Claude Code cannot replay opaque compaction state for provider=${item.providerScope?.provider}")
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState -> {
+                require(item.providerScope?.provider == AiConnection.Kind.CLAUDE_CODE.name) {
+                    "Claude Code cannot replay opaque compaction state for provider=${item.providerScope?.provider}"
+                }
+                ClaudeCodeReplayState.readMessages(payload.state).joinToString("\n") { frame ->
+                    val message = frame.getValue("message").jsonObject
+                    val content = message.getValue("content")
+                    val text = if (content is JsonPrimitive) content.content else content.jsonArray.joinToString("\n") { element ->
+                        val block = element.jsonObject
+                        when (block["type"]?.jsonPrimitive?.contentOrNull) {
+                            "text" -> block["text"]?.jsonPrimitive?.content.orEmpty()
+                            "image", "document" -> attachments.addNativeBlock(block).toTranscriptMarker("attachment")
+                            "thinking", "redacted_thinking" -> ""
+                            else -> block.toString()
+                        }
+                    }
+                    xmlBlock("historical_${message.getValue("role").jsonPrimitive.content}", text)
+                }
+            }
         }
 
     private fun xmlBlock(name: String, content: String): String =
@@ -819,6 +887,8 @@ private class ClaudeCodeAttachmentCollector {
     val contentBlocks: List<JsonObject>
         get() = blocks.toList()
 
+    fun addNativeBlock(block: JsonObject): ClaudeCodeAttachmentReference = add(block)
+
     fun addImage(source: Conversation.Message.ImageSource): ClaudeCodeAttachmentReference =
         add(
             when (source) {
@@ -924,11 +994,13 @@ private data class ClaudeCodeSessionPlan(
     val messagesToSend: List<Conversation.Message>,
     val resumeSessionId: String?,
     val decision: ClaudeCodeSessionDecision,
+    val state: ClaudeCodeSessionState? = null,
 )
 
 private enum class ClaudeCodeSessionDecision {
     NO_DURABLE_SESSION,
     STATE_NOT_FOUND,
+    REPLAY_STATE_MISSING,
     RESET_MESSAGE_IDS_CHANGED,
     RESET_GENERATED_TAIL_CHANGED,
     RESET_TRANSCRIPT_CHANGED,
@@ -1021,6 +1093,7 @@ internal data class ClaudeCodeCliResponse(
     val raw: JsonObject,
     val thinking: List<ClaudeCodeThinkingBlock> = emptyList(),
     val compactionBoundaries: List<JsonObject> = emptyList(),
+    val replayEvents: List<JsonObject> = emptyList(),
     val contextUsage: JsonObject? = null,
 )
 

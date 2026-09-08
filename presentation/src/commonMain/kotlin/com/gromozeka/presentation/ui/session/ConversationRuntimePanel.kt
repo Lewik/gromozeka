@@ -677,9 +677,9 @@ internal fun runtimeAutoCompactionLabel(
     thresholdTokens: Int?,
     localization: Translation,
 ): String? = when {
-    connectionKind == AiConnection.Kind.CLAUDE_CODE -> localization.text("session.runtime.parameters.autoCompactionProvider")
-    connectionKind == AiConnection.Kind.OPENAI_SUBSCRIPTION && thresholdTokens != null ->
+    connectionKind in setOf(AiConnection.Kind.OPENAI_SUBSCRIPTION, AiConnection.Kind.CLAUDE_CODE) && thresholdTokens != null ->
         localization.plural("session.runtime.parameters.autoCompactionThreshold", thresholdTokens.toLong())
+    connectionKind == AiConnection.Kind.CLAUDE_CODE -> localization.text("session.runtime.parameters.autoCompactionProvider")
     thresholdTokens != null -> localization.text("session.runtime.parameters.autoCompactionUnsupported")
     else -> null
 }

@@ -543,6 +543,7 @@ private fun MessageSegmentContent(
 
         is MessageSegment.Content -> GenericContentItem(
             content = segment.content,
+            providerMetadata = entry.message.providerMetadata,
             loadArtifactContent = loadArtifactContent,
         )
 
@@ -681,6 +682,7 @@ private fun CollapseButton(
 @Composable
 private fun GenericContentItem(
     content: Conversation.Message.ContentItem,
+    providerMetadata: JsonObject,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     val localization = LocalTranslation.current
@@ -758,7 +760,7 @@ private fun GenericContentItem(
         }
 
         is Conversation.Message.ContentItem.System -> Text(text = content.content)
-        is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content)
+        is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content, providerMetadata["compactionBoundary"] as? JsonObject)
         is Conversation.Message.ContentItem.UnknownJson -> Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -858,6 +860,7 @@ private fun MessageError(message: Conversation.Message) {
 @Composable
 private fun ContextCompactionResultItem(
     content: Conversation.Message.ContentItem.ContextCompactionResult,
+    boundary: JsonObject?,
 ) {
     val localization = LocalTranslation.current
     val title = when (content.origin) {
@@ -869,7 +872,7 @@ private fun ContextCompactionResultItem(
     val details = when (val payload = content.payload) {
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text.trim()
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
-            providerCompactionDetails(content.providerScope?.provider, payload.state, localization)
+            providerCompactionDetails(content.providerScope?.provider, boundary, localization)
     }
 
     Surface(
@@ -900,10 +903,10 @@ private fun ContextCompactionResultItem(
     }
 }
 
-private fun providerCompactionDetails(provider: String?, state: JsonObject, localization: Translation): String {
-    val metadata = state["compact_metadata"] as? JsonObject
+private fun providerCompactionDetails(provider: String?, boundary: JsonObject?, localization: Translation): String {
+    val metadata = boundary?.get("compact_metadata") as? JsonObject
     val trigger = metadata?.get("trigger")?.jsonPrimitive?.contentOrNull
-        ?: state["trigger"]?.jsonPrimitive?.contentOrNull
+        ?: boundary?.get("trigger")?.jsonPrimitive?.contentOrNull
     val preTokens = metadata?.get("pre_tokens")?.jsonPrimitive?.longOrNull
         ?: metadata?.get("preTokens")?.jsonPrimitive?.longOrNull
     return buildList {

@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class ClaudeCodeSessionState(
@@ -15,6 +16,8 @@ data class ClaudeCodeSessionState(
     val createdAt: Instant,
     val updatedAt: Instant,
     val lastUsedAt: Instant,
+    val replayState: JsonObject? = null,
+    val contextUsage: AiContextUsage? = null,
 ) {
     init {
         require(claudeSessionId.isNotBlank()) { "Claude Code session id must not be blank" }

@@ -1052,21 +1052,15 @@ class ConversationEngineService(
             agent.runtimeSelection,
             null,
         )
-        val autoCompactionThresholdTokens = when {
-            runtime.capabilities.supportsAutoCompaction -> {
-                resolvedRuntime.modelSpec.autoCompactionThresholdTokens.also { threshold ->
-                    if (threshold == null) {
-                        log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
-                    } else {
-                        log.info { "Auto compaction configured: model=$modelName threshold=$threshold" }
-                    }
-                }
-            }
-            runtime.capabilities.providerManagedAutoCompaction -> {
+        val autoCompactionThresholdTokens = resolvedRuntime.modelSpec.autoCompactionThresholdTokens
+            .takeIf { runtime.capabilities.supportsAutoCompaction }
+        when {
+            autoCompactionThresholdTokens != null ->
+                log.info { "Auto compaction configured: model=$modelName threshold=$autoCompactionThresholdTokens" }
+            runtime.capabilities.providerManagedAutoCompaction ->
                 log.info { "Auto compaction is provider-managed: model=$modelName" }
-                null
-            }
-            else -> null
+            runtime.capabilities.supportsAutoCompaction ->
+                log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
         }
         val baseToolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess)
         val agentSkillRuntime = agentSkillRuntimeCatalogService.prepare(

@@ -75,6 +75,28 @@ dispatch, with up to three format corrections. Tool results arrive in the next
 transcript step; remarks cannot stand in for results. Copilot likewise keeps
 external execution in Gromozeka while collecting completed SDK assistant events.
 
+Claude Code compaction notifications and replay data have separate roles. A
+`compact_boundary` is retained as message metadata; the persisted compaction
+payload contains the synthetic summary and retained native messages, including
+attachments. The Worker mirrors its CLI transcript in the session state so a
+new process can continue tracking the retained tail. A fresh or forked session
+replays the latest checkpoint and subsequent Gromozeka messages. Only an explicit
+missing-native-session error retries through that path; arbitrary provider
+failures never restart a call automatically.
+
+Configured Claude Code compaction thresholds use the last measured context usage.
+At or above the threshold, Gromozeka invokes the built-in `/compact` between model
+steps in the same CLI session, before sending the next input. The CLI's native
+auto-compaction remains active. Its `--autocompact` flag selects a window size,
+not an exact threshold, so Gromozeka does not substitute that flag for the policy.
+Safe mode disables customizations; built-in slash commands remain available for
+this explicit control operation. User messages remain wrapped as transcript data.
+
+Run the opt-in Claude Code recovery checks with an authenticated local CLI:
+`GROMOZEKA_CLAUDE_COMPACTION_LIVE=true ./gradlew :infrastructure-ai:jvmTest --tests '*ClaudeCodeCompactionLiveTest' -q`.
+They use synthetic Haiku conversations and verify both policy-triggered and
+native automatic compaction, forks, and missing-session recovery.
+
 ## Interface Localization
 
 `localization/en.json` is the canonical interface catalog. Keep semantic context
