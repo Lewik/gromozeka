@@ -3,8 +3,8 @@ import Foundation
 import GromozekaPresentation
 
 struct ToggleConversationIntent: AppIntent {
-    static var title: LocalizedStringResource = "Toggle Gromozeka Conversation"
-    static var description = IntentDescription("Starts or stops the current Gromozeka voice conversation.")
+    static var title: LocalizedStringResource = "native.shortcuts.toggleRecording"
+    static var description = IntentDescription("native.shortcuts.toggleRecordingDescription")
     static var openAppWhenRun = true
 
     func perform() async throws -> some IntentResult {
@@ -15,49 +15,13 @@ struct ToggleConversationIntent: AppIntent {
     }
 }
 
-struct GromozekaShortcuts: AppShortcutsProvider {
-    static var appShortcuts: [AppShortcut] {
-        AppShortcut(
-            intent: ToggleConversationIntent(),
-            phrases: [
-                "Toggle Gromozeka conversation in \(.applicationName)",
-                "Start Gromozeka conversation in \(.applicationName)"
-            ],
-            shortTitle: "Toggle Conversation",
-            systemImageName: "mic.circle"
-        )
-        AppShortcut(
-            intent: FixTextIntent(),
-            phrases: [
-                "Fix text with \(.applicationName)",
-                "Correct text with \(.applicationName)"
-            ],
-            shortTitle: "Fix Text",
-            systemImageName: "text.badge.checkmark"
-        )
-        AppShortcut(
-            intent: TranslateTextIntent(),
-            phrases: [
-                "Translate text with \(.applicationName)",
-                "Translate with \(.applicationName)"
-            ],
-            shortTitle: "Translate",
-            systemImageName: "translate"
-        )
-    }
-}
-
 struct FixTextIntent: AppIntent {
-    static var title: LocalizedStringResource = "Fix Text"
-    static var description = IntentDescription("Corrects spelling, grammar, punctuation, and wording while preserving the original language.")
+    static var title: LocalizedStringResource = "quickText.fix"
+    static var description = IntentDescription("quickText.fixDescription")
     static var openAppWhenRun = false
 
-    @Parameter(title: "Text")
+    @Parameter(title: "native.shortcuts.textParameter")
     var text: String
-
-    static var parameterSummary: some ParameterSummary {
-        Summary("Fix \(\.$text)")
-    }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
         let result = try await runQuickTextAction(
@@ -69,20 +33,16 @@ struct FixTextIntent: AppIntent {
 }
 
 struct TranslateTextIntent: AppIntent {
-    static var title: LocalizedStringResource = "Translate Text"
-    static var description = IntentDescription("Translates Russian text to English and non-Russian text to Russian.")
+    static var title: LocalizedStringResource = "quickText.translate"
+    static var description = IntentDescription("quickText.translateDescription")
     static var openAppWhenRun = false
 
-    @Parameter(title: "Text")
+    @Parameter(title: "native.shortcuts.textParameter")
     var text: String
-
-    static var parameterSummary: some ParameterSummary {
-        Summary("Translate \(\.$text)")
-    }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
         let result = try await runQuickTextAction(
-            actionId: "translate_ru_en",
+            actionId: "translate_interface_language",
             text: text
         )
         return .result(value: result)
@@ -98,7 +58,7 @@ private func runQuickTextAction(actionId: String, text: String) async throws -> 
             if let result {
                 continuation.resume(returning: result)
             } else {
-                continuation.resume(throwing: QuickTextActionError(message: error ?? "Quick text action failed"))
+                continuation.resume(throwing: QuickTextActionError(message: error ?? String(localized: "common.unknownError")))
             }
         }
     }

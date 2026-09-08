@@ -1,5 +1,11 @@
 package com.gromozeka.presentation.ui.viewmodel
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.ui.liveSteeringInstruction
+import com.gromozeka.presentation.services.asAttachmentFailure
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.presentation.services.translation.localizedPlural
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -104,16 +110,8 @@ class TabViewModel(
     )
 
     companion object {
-        private const val MID_TURN_STEER_INSTRUCTION_ID = "mid_turn_steer"
         private const val MAX_ARTIFACT_CONTENT_CACHE_BYTES = 32 * 1024 * 1024
 
-        private val MID_TURN_STEER_INSTRUCTION = Conversation.Message.Instruction.UserInstruction(
-            id = MID_TURN_STEER_INSTRUCTION_ID,
-            title = "Live steering update",
-            description = "This user message was submitted while the assistant was already working. " +
-                "Treat it as additional steering for the active turn and incorporate it at the next safe boundary, " +
-                "usually after the current tool result. Do not restart or discard completed work unless the user explicitly asks."
-        )
 
     }
 
@@ -142,8 +140,8 @@ class TabViewModel(
         )
     }.stateIn(scope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _messageSubmissionError = MutableStateFlow<String?>(null)
-    val messageSubmissionError: StateFlow<String?> = _messageSubmissionError.asStateFlow()
+    private val _messageSubmissionError = MutableStateFlow<LocalizedText?>(null)
+    val messageSubmissionError: StateFlow<LocalizedText?> = _messageSubmissionError.asStateFlow()
 
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
@@ -287,7 +285,7 @@ class TabViewModel(
             }
             is ConversationRuntimeEvent.ExecutionFailed -> {
                 log.error { "Conversation runtime failed: ${event.failureType ?: "unknown"} ${event.message}" }
-                _messageSubmissionError.value = event.message
+                _messageSubmissionError.value = LocalizedText.Literal(event.message)
                 finishRuntimeExecution()
             }
         }
@@ -583,7 +581,7 @@ class TabViewModel(
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {
-        AgentMentionResolution.Invalid(error.message ?: "Failed to resolve agent mention")
+        AgentMentionResolution.Invalid(error.localizedText("client.mention.failed"))
     }
 
     private fun restoreComposerMessage(pendingMessage: PendingUserMessage) {
@@ -817,13 +815,13 @@ class TabViewModel(
                 userMessage = pendingMessage.userMessage,
             )
         if (!accepted) {
-            _messageSubmissionError.value = "Conversation runtime rejected the message"
+            _messageSubmissionError.value = localizedText("client.message.rejected")
         }
         accepted
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {
-        _messageSubmissionError.value = error.message ?: "Failed to submit message"
+        _messageSubmissionError.value = error.localizedText("client.message.submissionFailed")
         log.warn(error) {
             "Runtime queue request failed for conversation $conversationId: ${error.message}"
         }
@@ -848,8 +846,8 @@ class TabViewModel(
         val instructions = userMessage.instructions
             .filterNot { instruction ->
                 instruction is Conversation.Message.Instruction.UserInstruction &&
-                    instruction.id == MID_TURN_STEER_INSTRUCTION_ID
-            } + MID_TURN_STEER_INSTRUCTION
+                    instruction.id == liveSteeringInstruction.id
+            } + liveSteeringInstruction
 
         return copy(
             userMessage = userMessage.copy(instructions = instructions),
@@ -1003,7 +1001,7 @@ class TabViewModel(
         return content
     }
 
-    fun reportAttachmentError(message: String) {
+    fun reportAttachmentError(message: LocalizedText) {
         _uiState.update { it.copy(composerArtifactError = message) }
     }
 
@@ -1020,16 +1018,26 @@ class TabViewModel(
                 }
                 try {
                     acquire().forEach { upload ->
-                        require(upload.content.size <= ArtifactLimits.MAX_FILE_BYTES) {
-                            "${upload.fileName} exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
+                        if (upload.content.size > ArtifactLimits.MAX_FILE_BYTES) {
+                            throw LocalizedTextException(localizedText(
+                                "client.attachment.fileTooLarge",
+                                "file" to upload.fileName,
+                                "limit" to ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024),
+                            ))
                         }
                         val currentArtifacts = _uiState.value.composerArtifacts
-                        require(currentArtifacts.size < ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE) {
-                            "A message can contain at most ${ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE} attachments"
+                        if (currentArtifacts.size >= ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE) {
+                            throw LocalizedTextException(localizedPlural(
+                                "client.attachment.tooMany",
+                                ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE.toLong(),
+                            ))
                         }
                         val totalBytes = currentArtifacts.sumOf { it.sizeBytes } + upload.content.size
-                        require(totalBytes <= ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE) {
-                            "Message attachments exceed the ${ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE / (1024 * 1024)} MB total limit"
+                        if (totalBytes > ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE) {
+                            throw LocalizedTextException(localizedText(
+                                "client.attachment.totalTooLarge",
+                                "limit" to ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE / (1024 * 1024),
+                            ))
                         }
                         val reference = artifactTransferService.upload(conversationId, upload)
                         _uiState.update { state ->
@@ -1044,7 +1052,7 @@ class TabViewModel(
                 } catch (error: Exception) {
                     log.warn(error) { "Artifact acquisition failed: ${error.message}" }
                     _uiState.update {
-                        it.copy(composerArtifactError = error.message ?: "Failed to attach file")
+                        it.copy(composerArtifactError = error.asAttachmentFailure())
                     }
                 } finally {
                     _uiState.update { it.copy(composerArtifactUploadInProgress = false) }
@@ -1301,7 +1309,7 @@ class TabViewModel(
 
         try {
             val message = _allMessages.value.find { it.id == editingId }
-                ?: error("Message $editingId is no longer available")
+                ?: throw LocalizedTextException(localizedText("client.message.noLongerAvailable"))
             val newContent = message.withEditedText(newText)
 
             conversationHistoryService.editMessage(conversationId, editingId, newContent)
@@ -1345,7 +1353,7 @@ class TabViewModel(
         if (selectedIds.size < 2) {
             _messageSquashState.value = MessageSquashUiState.Failed(
                 squashType,
-                "Select at least two messages",
+                localizedText("client.message.selectAtLeastTwo"),
             )
             return
         }
@@ -1367,7 +1375,7 @@ class TabViewModel(
             _messageSquashState.value = MessageSquashUiState.Idle
             throw error
         } catch (error: Exception) {
-            val message = error.message?.takeIf { it.isNotBlank() } ?: "Unknown error"
+            val message = error.localizedText()
             _messageSquashState.value = MessageSquashUiState.Failed(squashType, message)
             log.error(error) { "Message squash failed: type=$squashType" }
         } finally {
@@ -1409,7 +1417,7 @@ sealed interface MessageSquashUiState {
     data object Idle : MessageSquashUiState
     data class Running(val squashType: SquashType) : MessageSquashUiState
     data class Succeeded(val squashType: SquashType) : MessageSquashUiState
-    data class Failed(val squashType: SquashType, val message: String) : MessageSquashUiState
+    data class Failed(val squashType: SquashType, val message: LocalizedText) : MessageSquashUiState
 }
 
 private fun UIState.Tab.withSelectedMessageInstruction(

@@ -10,7 +10,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 internal fun ConversationRuntimeSnapshot.runningToolActivities(
-    translation: Translation.RuntimeTranslation,
+    translation: Translation,
 ): List<String> = toolExecutions
     .asSequence()
     .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
@@ -26,31 +26,32 @@ internal fun ConversationRuntimeSnapshot.runningToolActivities(
 internal fun toolActivityCaption(
     toolName: String,
     input: JsonElement?,
-    translation: Translation.RuntimeTranslation,
+    translation: Translation,
 ): String {
+    val strings = translation.runtime
     val actionName = normalizedToolActionName(toolName)
     return when {
-        actionName.isCommandTool() && input.isTestCommand() -> translation.runningTestsActivity
-        actionName.isCommandTool() -> translation.runningCommandActivity
+        actionName.isCommandTool() && input.isTestCommand() -> strings.runningTestsActivity
+        actionName.isCommandTool() -> strings.runningCommandActivity
         actionName.containsAnyFragment("read_file", "read_text", "get_file", "load_file") ->
-            translation.readingFileActivity
+            strings.readingFileActivity
         actionName.containsAnyFragment("write_file", "edit_file", "apply_patch", "replace_file", "file_change") ->
-            translation.editingFileActivity
+            strings.editingFileActivity
         actionName.containsAnyFragment("web_search", "websearch", "search_query", "brave_search") ->
-            translation.searchingWebActivity
+            strings.searchingWebActivity
         actionName.containsAnyFragment("read_url", "web_fetch", "webfetch", "fetch_url", "open_page") ->
-            translation.readingWebActivity
+            strings.readingWebActivity
         actionName.containsAnyFragment("grep", "glob", "search_files", "find_files", "search_code") ->
-            translation.searchingFilesActivity
-        actionName.containsAnyFragment("take_screenshot", "capture_screenshot") -> translation.capturingScreenActivity
-        actionName.containsAnyFragment("computer_observe", "observe_screen") -> translation.observingScreenActivity
-        actionName.containsAnyFragment("computer_act", "computer_use") -> translation.usingComputerActivity
-        actionName.contains("browser") -> translation.usingBrowserActivity
+            strings.searchingFilesActivity
+        actionName.containsAnyFragment("take_screenshot", "capture_screenshot") -> strings.capturingScreenActivity
+        actionName.containsAnyFragment("computer_observe", "observe_screen") -> strings.observingScreenActivity
+        actionName.containsAnyFragment("computer_act", "computer_use") -> strings.usingComputerActivity
+        actionName.contains("browser") -> strings.usingBrowserActivity
         actionName.containsAnyFragment("create_agent", "tell_agent", "send_input", "spawn_agent", "wait_agent") ->
-            translation.coordinatingAgentsActivity
-        actionName.contains("skill") -> translation.usingSkillActivity
-        actionName.contains("memory") -> translation.accessingMemoryActivity
-        else -> "${translation.usingToolActivity}: ${humanizedToolActionName(actionName)}"
+            strings.coordinatingAgentsActivity
+        actionName.contains("skill") -> strings.usingSkillActivity
+        actionName.contains("memory") -> strings.accessingMemoryActivity
+        else -> translation.text("chat.tool.usingNamedTool", "toolName" to humanizedToolActionName(actionName))
     }
 }
 

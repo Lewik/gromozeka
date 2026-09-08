@@ -19,6 +19,7 @@ fun TokenStatisticsTable(
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     modifier: Modifier = Modifier,
 ) {
+    val localization = LocalTranslation.current
     if (tokenStats == null) {
         return
     }
@@ -64,7 +65,7 @@ fun TokenStatisticsTable(
 
             if (tokenStats.recentCalls.isNotEmpty()) {
                 Text(
-                    "${translation.recentTurnsLabel}: ${tokenStats.recentCalls.size}",
+                    localization.text("session.tokens.recentTurnCount", "count" to tokenStats.recentCalls.size),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )

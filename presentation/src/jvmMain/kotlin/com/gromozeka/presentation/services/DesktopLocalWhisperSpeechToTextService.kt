@@ -3,6 +3,9 @@ package com.gromozeka.presentation.services
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.presentation.services.translation.localizedPlural
 import com.gromozeka.remote.protocol.RemoteAudioRecording
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import klog.KLoggers
@@ -91,7 +94,7 @@ class DesktopLocalWhisperSpeechToTextService(
         prompt: String?,
         sequenceNumber: Int?,
     ): String = withContext(Dispatchers.IO) {
-        check(isAvailable()) { "Client-side Local Whisper is disabled" }
+        if (!isAvailable()) throw LocalizedTextException(localizedText("client.whisper.disabled"))
         format.requireValid(audioData)
 
         val speechToText = settingsService.userProfile.speechSettings.speechToText
@@ -161,7 +164,11 @@ class DesktopLocalWhisperSpeechToTextService(
             val process = try {
                 ProcessBuilder(command).start()
             } catch (e: IOException) {
-                throw IllegalStateException("Failed to start Local Whisper server '$serverExecutable': ${e.message}", e)
+                throw LocalizedTextException(localizedText(
+                    "client.whisper.startFailed",
+                    "executable" to serverExecutable,
+                    "error" to e.localizedText(),
+                ), e)
             }
 
             drainProcessOutput(process, "stdout")
@@ -196,7 +203,9 @@ class DesktopLocalWhisperSpeechToTextService(
 
         while (System.nanoTime() < deadline) {
             if (!server.process.isAlive) {
-                error("Local Whisper server exited before becoming ready with code ${server.process.exitValue()}")
+                throw LocalizedTextException(localizedText(
+                    "client.whisper.serverExited", "code" to server.process.exitValue(),
+                ))
             }
 
             try {
@@ -215,7 +224,10 @@ class DesktopLocalWhisperSpeechToTextService(
             Thread.sleep(ServerPollIntervalMillis)
         }
 
-        throw IllegalStateException("Local Whisper server was not ready after ${startupTimeoutSeconds}s", lastError)
+        throw LocalizedTextException(
+            localizedPlural("client.whisper.startupTimedOut", startupTimeoutSeconds),
+            lastError,
+        )
     }
 
     private fun postInference(
@@ -250,7 +262,11 @@ class DesktopLocalWhisperSpeechToTextService(
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
 
         if (response.statusCode() !in 200..299) {
-            error("Local Whisper server inference failed: status=${response.statusCode()} body=${response.body().take(2000)}")
+            throw LocalizedTextException(localizedText(
+                "client.whisper.inferenceFailed",
+                "status" to response.statusCode(),
+                "diagnostic" to response.body().take(2000),
+            ))
         }
 
         return extractTextFromBody(response.body()).trim()
@@ -311,12 +327,14 @@ class DesktopLocalWhisperSpeechToTextService(
             return modelFile
         }
 
-        error(
-            "Client Local Whisper model file not found: ${modelFile.absolutePath}. " +
-                "Install it with: mkdir -p '${modelFile.parentFile.absolutePath}' && " +
-                "curl -L 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${modelFile.name}' " +
-                "-o '${modelFile.absolutePath}'"
-        )
+        val installCommand = "mkdir -p '${modelFile.parentFile.absolutePath}' && " +
+            "curl -L 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${modelFile.name}' " +
+            "-o '${modelFile.absolutePath}'"
+        throw LocalizedTextException(localizedText(
+            "client.whisper.modelMissing",
+            "file" to modelFile.absolutePath,
+            "command" to installCommand,
+        ))
     }
 
     private fun stopServer() {

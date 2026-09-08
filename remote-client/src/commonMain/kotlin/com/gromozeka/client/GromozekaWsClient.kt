@@ -1,5 +1,7 @@
 package com.gromozeka.client
 
+import com.gromozeka.domain.model.SpeechAvailabilityException
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.ArtifactUpload
@@ -1017,7 +1019,8 @@ internal suspend inline fun <reified TRequest : ClientRequest, reified TResponse
     payload: TRequest,
 ): TResponse =
     when (val response = request(payload)) {
-        is ErrorResponse -> error(response.message)
+        is ErrorResponse -> response.speechFailure?.let { throw SpeechAvailabilityException(it) }
+            ?: error(response.message)
         is TResponse -> response
         else -> error("Unexpected response type: $response")
     }

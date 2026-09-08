@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +54,7 @@ import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.remote.protocol.BrowserUseProbeResponse
 import com.gromozeka.remote.protocol.DistributionComponent
 import com.gromozeka.remote.protocol.RemoteMcpServerView
+import com.gromozeka.presentation.services.translation.data.Translation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.catch
 
@@ -63,12 +65,13 @@ internal fun BrowserUseSettings(
     workers: List<WorkerCatalogEntry>,
     canManage: Boolean,
 ) {
+    val translation by rememberUpdatedState(LocalTranslation.current)
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     var reloadKey by remember { mutableIntStateOf(0) }
     var loadState by remember { mutableStateOf<BrowserUseLoadState>(BrowserUseLoadState.Loading) }
     var mutationInProgress by remember { mutableStateOf(false) }
-    var mutationError by remember { mutableStateOf<String?>(null) }
+    var mutationError by remember(translation) { mutableStateOf<String?>(null) }
     var probeState by remember { mutableStateOf<BrowserUseProbeState?>(null) }
     var bridgeDownloadUrl by remember { mutableStateOf<String?>(null) }
 
@@ -87,7 +90,7 @@ internal fun BrowserUseSettings(
             service.observe()
                 .catch { failure ->
                     loadState = BrowserUseLoadState.Failed(
-                        failure.message ?: "Could not load Browser Use connections"
+                        failure.message
                     )
                 }
                 .collect { servers ->
@@ -106,7 +109,7 @@ internal fun BrowserUseSettings(
         probeState = null
         scope.launch {
             runCatching { block() }
-                .onFailure { mutationError = it.message ?: "Browser Use configuration failed" }
+                .onFailure { mutationError = it.message ?: translation.text("browser.error.configuration") }
             mutationInProgress = false
         }
     }
@@ -122,27 +125,27 @@ internal fun BrowserUseSettings(
                     onFailure = {
                         BrowserUseProbeState.Failed(
                             serverId = serverId,
-                            message = it.message ?: "Browser Use test failed",
+                            message = it.message,
                         )
                     },
                 )
         }
     }
 
-    SettingsGroup(title = "Browser Use") {
+    SettingsGroup(title = translation.text("browser.title")) {
         Text(
-            text = "Let the model work in your real Chrome session through Playwright on one exact Worker.",
+            text = translation.text("browser.description"),
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            text = "The browser stays on that Worker. Gromozeka never reroutes browser actions to another machine.",
+            text = translation.text("browser.worker_boundary"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         if (!canManage) {
             Text(
-                text = "Only the Server Owner can manage Browser Use connections.",
+                text = translation.text("browser.owner_only"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             return@SettingsGroup
@@ -152,11 +155,11 @@ internal fun BrowserUseSettings(
             BrowserUseLoadState.Loading -> CircularProgressIndicator()
 
             is BrowserUseLoadState.Failed -> {
-                Text(state.message, color = MaterialTheme.colorScheme.error)
+                Text(state.message ?: translation.text("browser.error.load_connections"), color = MaterialTheme.colorScheme.error)
                 OutlinedButton(onClick = { reloadKey++ }) {
                     Icon(Icons.Default.Refresh, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Retry")
+                    Text(translation.text("browser.retry"))
                 }
             }
 
@@ -188,7 +191,7 @@ internal fun BrowserUseSettings(
                         onSaveExtensionToken = { token ->
                             mutate {
                                 service.update(
-                                    config = connection.server.config.withExtensionToken(token),
+                                    config = connection.server.config.withExtensionToken(token, translation),
                                     expectedRevision = connection.server.revision,
                                 )
                             }
@@ -252,7 +255,7 @@ internal fun BrowserUseSettings(
         ) {
             Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Download Gromozeka Browser Bridge")
+            Text(translation.text("browser.download_bridge"))
         }
     }
 }
@@ -264,12 +267,13 @@ private fun BrowserConnectionCreator(
     enabled: Boolean,
     onCreate: (WorkerCatalogEntry, String?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     if (workers.isEmpty()) {
         Text(
             text = if (hasRegisteredWorkers) {
-                "Every available Worker already has a Browser Use connection."
+                translation.text("browser.all_workers_connected")
             } else {
-                "No Workers are registered yet."
+                translation.text("browser.no_workers")
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -284,7 +288,7 @@ private fun BrowserConnectionCreator(
     val selectedWorker = workers.firstOrNull { it.workerId == selectedWorkerId }
 
     Text(
-        text = "Add browser connection",
+        text = translation.text("browser.add_connection"),
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
     )
@@ -310,7 +314,7 @@ private fun BrowserConnectionCreator(
         },
         enabled = enabled && selectedWorker?.status == WorkerCatalogEntry.Status.ONLINE,
     ) {
-        Text(if (selectedWorker?.status == WorkerCatalogEntry.Status.OFFLINE) "Worker is offline" else "Connect")
+        Text(if (selectedWorker?.status == WorkerCatalogEntry.Status.OFFLINE) translation.text("browser.worker_offline") else translation.text("browser.connect"))
     }
 }
 
@@ -327,6 +331,7 @@ private fun BrowserConnectionCard(
     onTest: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     val server = connection.server
     val presetUpdateAvailable = server.config.transport != BrowserUseMcpPreset.transport()
     val extensionTokenState = remember(server.revision) { TextFieldState() }
@@ -340,15 +345,12 @@ private fun BrowserConnectionCard(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = buildString {
-                append(server.config.workerId.value)
-                append(" · ")
-                append(worker?.status?.name?.lowercase() ?: "unavailable")
-                append(" · ")
-                append(server.snapshot.tools.size)
-                append(" tools")
-                if (server.refreshAvailable) append(" · refresh available")
-            },
+            text = translation.plural(
+                if (server.refreshAvailable) "browser.connection_summary_refresh" else "browser.connection_summary",
+                server.snapshot.tools.size.toLong(),
+                "workerId" to server.config.workerId.value,
+                "status" to (worker?.status?.aiLabel(translation) ?: translation.text("browser.status.unavailable")),
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -356,7 +358,7 @@ private fun BrowserConnectionCard(
         BrowserExtensionExplanation()
         if (presetUpdateAvailable) {
             Text(
-                text = "This Playwright configuration differs from the Browser Use preset.",
+                text = translation.text("browser.preset_differs"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -377,14 +379,14 @@ private fun BrowserConnectionCard(
                     worker?.status == WorkerCatalogEntry.Status.ONLINE &&
                     extensionTokenState.text.isNotBlank(),
             ) {
-                Text(if (extensionTokenConfigured) "Replace token" else "Save token")
+                Text(if (extensionTokenConfigured) translation.text("browser.token.replace") else translation.text("browser.token.save"))
             }
             if (extensionTokenConfigured) {
                 TextButton(
                     onClick = onRemoveExtensionToken,
                     enabled = enabled && worker?.status == WorkerCatalogEntry.Status.ONLINE,
                 ) {
-                    Text("Remove token")
+                    Text(translation.text("browser.token.remove"))
                 }
             }
         }
@@ -398,7 +400,7 @@ private fun BrowserConnectionCard(
                     onClick = onApplyPreset,
                     enabled = enabled && worker?.status == WorkerCatalogEntry.Status.ONLINE,
                 ) {
-                    Text("Apply update")
+                    Text(translation.text("browser.apply_update"))
                 }
             }
             OutlinedButton(
@@ -407,7 +409,7 @@ private fun BrowserConnectionCard(
             ) {
                 Icon(Icons.Default.CameraAlt, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Test")
+                Text(translation.text("browser.test"))
             }
             OutlinedButton(
                 onClick = onRefresh,
@@ -415,7 +417,7 @@ private fun BrowserConnectionCard(
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Refresh")
+                Text(translation.text("browser.refresh"))
             }
             TextButton(
                 onClick = onDelete,
@@ -423,7 +425,7 @@ private fun BrowserConnectionCard(
             ) {
                 Icon(Icons.Default.Delete, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Remove")
+                Text(translation.text("browser.remove"))
             }
         }
 
@@ -433,13 +435,13 @@ private fun BrowserConnectionCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircularProgressIndicator()
-                Text("Capturing a Browser Use screenshot…")
+                Text(translation.text("browser.screenshot.capturing"))
             }
 
             is BrowserUseProbeState.Ready -> BrowserUseProbePreview(probeState.response)
 
             is BrowserUseProbeState.Failed -> Text(
-                text = probeState.message,
+                text = probeState.message ?: translation.text("browser.error.test"),
                 color = MaterialTheme.colorScheme.error,
             )
 
@@ -450,16 +452,17 @@ private fun BrowserConnectionCard(
 
 @Composable
 private fun BrowserUseProbePreview(response: BrowserUseProbeResponse) {
+    val translation = LocalTranslation.current
     val bitmap = remember(response.screenshot) {
         runCatching { response.screenshot.decodeToImageBitmap() }.getOrNull()
     }
     if (bitmap == null) {
-        Text("The Worker returned an unreadable ${response.mediaType} screenshot.")
+        Text(translation.text("browser.screenshot.unreadable", "mediaType" to response.mediaType))
         return
     }
     Image(
         bitmap = bitmap,
-        contentDescription = response.fileName ?: "Browser Use test screenshot",
+        contentDescription = response.fileName ?: translation.text("browser.screenshot.description"),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = 280.dp)
@@ -474,17 +477,18 @@ private fun ExtensionTokenField(
     configured: Boolean,
     enabled: Boolean,
 ) {
+    val translation = LocalTranslation.current
     OutlinedSecretTextField(
         state = state,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("Extension token") },
+        label = { Text(translation.text("browser.token.label")) },
         enabled = enabled,
         supportingText = {
             Text(
                 if (configured) {
-                    "A token is stored on the Server. Leave this field empty to keep it."
+                    translation.text("browser.token.keep_hint")
                 } else {
-                    "Optional. Copy PLAYWRIGHT_MCP_EXTENSION_TOKEN from the extension to skip approval dialogs."
+                    translation.text("browser.token.optional_hint")
                 }
             )
         },
@@ -497,6 +501,7 @@ private fun BrowserWorkerPicker(
     selectedWorkerId: ConversationRuntimeWorkerId?,
     onSelected: (ConversationRuntimeWorkerId) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var expanded by remember { mutableStateOf(false) }
     val selected = workers.firstOrNull { it.workerId == selectedWorkerId }
 
@@ -505,10 +510,10 @@ private fun BrowserWorkerPicker(
         onExpandedChange = { expanded = !expanded },
     ) {
         OutlinedTextField(
-            value = selected?.browserLabel() ?: "Select Worker",
+            value = selected?.browserLabel(translation) ?: translation.text("browser.worker.select"),
             onValueChange = {},
             readOnly = true,
-            label = { Text("Worker") },
+            label = { Text(translation.text("browser.worker.label")) },
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
@@ -520,7 +525,7 @@ private fun BrowserWorkerPicker(
         ) {
             workers.forEach { worker ->
                 DropdownMenuItem(
-                    text = { Text(worker.browserLabel()) },
+                    text = { Text(worker.browserLabel(translation)) },
                     onClick = {
                         onSelected(worker.workerId)
                         expanded = false
@@ -533,18 +538,19 @@ private fun BrowserWorkerPicker(
 
 @Composable
 private fun BrowserExtensionExplanation() {
+    val translation = LocalTranslation.current
     Text(
-        text = "Uses every ordinary tab and sign-in from this browser profile. Extract the Browser Bridge ZIP and load its folder from chrome://extensions with Developer mode enabled. It can coexist with the official Playwright Extension.",
+        text = translation.text("browser.bridge.instructions"),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
-private fun McpServerConfig.withExtensionToken(token: String): McpServerConfig {
+private fun McpServerConfig.withExtensionToken(token: String, translation: Translation): McpServerConfig {
     val stdio = transport as? McpServerTransport.BundledStdio
-        ?: error("Browser Bridge token requires the bundled Browser Use runtime")
+        ?: error(translation.text("browser.validation.bundled_runtime"))
     val normalizedToken = BrowserUseMcpPreset.normalizeExtensionToken(token)
-    require(normalizedToken.isNotBlank()) { "Browser Bridge token must not be blank" }
+    require(normalizedToken.isNotBlank()) { translation.text("browser.validation.token_required") }
     return copy(
         transport = stdio.copy(
             environment = stdio.environment +
@@ -553,13 +559,13 @@ private fun McpServerConfig.withExtensionToken(token: String): McpServerConfig {
     )
 }
 
-private fun WorkerCatalogEntry.browserLabel(): String =
-    "${workerId.value} · ${environmentProfile.operatingSystem.name} · ${status.name.lowercase()}"
+private fun WorkerCatalogEntry.browserLabel(translation: Translation): String =
+    "${workerId.value} · ${environmentProfile.operatingSystem.name} · ${status.aiLabel(translation)}"
 
 private sealed interface BrowserUseLoadState {
     data object Loading : BrowserUseLoadState
     data class Ready(val connections: List<RemoteMcpServerView>) : BrowserUseLoadState
-    data class Failed(val message: String) : BrowserUseLoadState
+    data class Failed(val message: String?) : BrowserUseLoadState
 }
 
 private sealed interface BrowserUseProbeState {
@@ -573,6 +579,6 @@ private sealed interface BrowserUseProbeState {
 
     data class Failed(
         override val serverId: McpServerId,
-        val message: String,
+        val message: String?,
     ) : BrowserUseProbeState
 }

@@ -34,7 +34,8 @@ import com.gromozeka.presentation.services.AndroidClientAudioPlayer
 import com.gromozeka.presentation.services.AndroidAttachmentAcquisitionController
 import com.gromozeka.presentation.services.AndroidMicrophonePermissionRequester
 import com.gromozeka.presentation.services.InMemoryUIStateStore
-import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.ClientTheme
+import com.gromozeka.presentation.ui.rememberClientTranslation
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
@@ -132,9 +133,9 @@ private fun GromozekaAndroidApp(
     var connectionAttempt by remember { mutableStateOf(0) }
     var connecting by remember { mutableStateOf(false) }
     var startupError by remember {
-        mutableStateOf(initialResolution.exceptionOrNull()?.message)
+        mutableStateOf(initialResolution.exceptionOrNull())
     }
-    var authenticationError by remember { mutableStateOf<String?>(null) }
+    var authenticationError by remember { mutableStateOf<Throwable?>(null) }
     var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
     var authenticationConnection by remember { mutableStateOf<RemoteAuthenticationConnection?>(null) }
     val locationPermissionRequester = remember { ComposeLocationPermissionRequester() }
@@ -181,7 +182,7 @@ private fun GromozekaAndroidApp(
                     remoteClientSettingsStore = settingsStore,
                     audioRecorder = audioRecorder,
                     audioPlayer = audioPlayer,
-                    attachmentAcquisitionController = attachmentController,
+                    attachmentAcquisitionControllerFactory = { attachmentController },
                     deviceLocationService = if (enableLocationTelemetry) {
                         AndroidDeviceLocationService(context, locationPermissionRequester)
                     } else {
@@ -195,7 +196,7 @@ private fun GromozekaAndroidApp(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            startupError = error.message ?: error.toString()
+            startupError = error
         }
         connecting = false
     }
@@ -210,7 +211,9 @@ private fun GromozekaAndroidApp(
         }
     }
 
-    GromozekaTheme {
+    val localization = rememberClientTranslation(remoteApp?.components?.translationService, settingsStore)
+
+    ClientTheme(localization) {
         when {
             remoteApp != null -> GromozekaApp(
                 appComponents = remoteApp!!.components,
@@ -248,7 +251,7 @@ private fun GromozekaAndroidApp(
                                     remoteClientSettingsStore = settingsStore,
                                     audioRecorder = audioRecorder,
                                     audioPlayer = audioPlayer,
-                                    attachmentAcquisitionController = attachmentController,
+                                    attachmentAcquisitionControllerFactory = { attachmentController },
                                     deviceLocationService = if (enableLocationTelemetry) {
                                         AndroidDeviceLocationService(context, locationPermissionRequester)
                                     } else {
@@ -259,7 +262,7 @@ private fun GromozekaAndroidApp(
                                 remoteApp = app
                                 onRemoteAppStarted(app)
                             } catch (error: Throwable) {
-                                authenticationError = error.message ?: error.toString()
+                                authenticationError = error
                             }
                             connecting = false
                         }

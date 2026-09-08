@@ -1,5 +1,9 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
+import com.gromozeka.domain.model.SpeechAvailabilityFailure.Code
+import com.gromozeka.domain.model.SpeechAvailabilityException
+import com.gromozeka.domain.model.failSpeechAvailability
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
@@ -70,17 +74,19 @@ class SpeechCaptureApplicationService(
         }.fold(
             onSuccess = { SpeechCaptureAvailabilityResponse(available = true) },
             onFailure = { error ->
+                if (error is CancellationException) throw error
                 SpeechCaptureAvailabilityResponse(
                     available = false,
-                    unavailableReason = error.message ?: "Speech capture is unavailable",
+                    unavailableReason = (error as? SpeechAvailabilityException)?.failure
+                        ?: SpeechAvailabilityFailure(Code.UNAVAILABLE, diagnostic = error.message),
                 )
             },
         )
 
     internal suspend fun requireClientAudioRoute(user: User) {
         val settings = settingsProvider.userProfile.speechSettings.speechToText
-        require(settings.audioSource == SpeechAudioSource.CurrentClient) {
-            "Client audio upload is unavailable while a Worker audio source is selected"
+        if (settings.audioSource != SpeechAudioSource.CurrentClient) {
+            failSpeechAvailability(Code.CLIENT_AUDIO_UPLOAD_UNAVAILABLE)
         }
         validateClientAudioRoute(user, settings)
     }
@@ -203,12 +209,12 @@ class SpeechCaptureApplicationService(
     private suspend fun resolveRoute(user: User): SpeechCaptureRoute {
         val settings = settingsProvider.userProfile.speechSettings.speechToText
         val source = settings.audioSource as? SpeechAudioSource.WorkerInput
-            ?: error("Worker speech capture requires a Worker audio source")
+            ?: failSpeechAvailability(Code.WORKER_AUDIO_SOURCE_REQUIRED)
         workerAccessService.requirePermission(user, source.workerId, WorkerPermission.USE)
 
         val workers = workerCatalogService.listWorkers()
         val sourceWorker = workers.singleOrNull { it.workerId == source.workerId }
-            ?: error("Speech audio source Worker not found: ${source.workerId.value}")
+            ?: failSpeechAvailability(Code.SOURCE_WORKER_NOT_FOUND, "worker" to source.workerId.value)
         val sourceIdentity = workerTargetResolver.requireOnline(
             source.workerId,
             ConversationRuntimeCapability.AUDIO_CAPTURE,
@@ -228,8 +234,9 @@ class SpeechCaptureApplicationService(
             )
         }
 
-        require(sourceWorker.environmentProfile.audioInputs.any { it.id == source.inputId }) {
-            "Speech audio input is unavailable on Worker ${source.workerId.value}: ${source.inputId.value}"
+        if (sourceWorker.environmentProfile.audioInputs.none { it.id == source.inputId }) {
+            failSpeechAvailability(Code.AUDIO_INPUT_UNAVAILABLE,
+                "worker" to source.workerId.value, "input" to source.inputId.value)
         }
 
         val processingTarget = settings.processingTarget(claudeConnection)
@@ -274,15 +281,14 @@ class SpeechCaptureApplicationService(
 
     private fun UserProfile.SpeechSettings.SpeechToText.claudeCodeConnection(): AiConnection.ClaudeCode? {
         if (engine != UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE) return null
-        val connectionId = requireNotNull(claudeCodeConnectionId) {
-            "Claude Code speech transcription connection is not configured"
-        }
+        val connectionId = claudeCodeConnectionId
+            ?: failSpeechAvailability(Code.CLAUDE_CONNECTION_NOT_CONFIGURED)
         val connection = aiConfigurationProvider.catalog.connections
             .singleOrNull { it.id == connectionId } as? AiConnection.ClaudeCode
-            ?: error("Claude Code speech transcription connection not found: ${connectionId.value}")
-        require(connection.enabled) { "Claude Code connection is disabled: ${connection.id.value}" }
-        require(connection.voiceTranscriptionEnabled) {
-            "Claude Code voice transcription is disabled for connection ${connection.id.value}"
+            ?: failSpeechAvailability(Code.CLAUDE_CONNECTION_NOT_FOUND, "connection" to connectionId.value)
+        if (!connection.enabled) failSpeechAvailability(Code.CONNECTION_DISABLED, "connection" to connection.id.value)
+        if (!connection.voiceTranscriptionEnabled) {
+            failSpeechAvailability(Code.CLAUDE_VOICE_DISABLED, "connection" to connection.id.value)
         }
         return connection
     }
@@ -306,8 +312,8 @@ class SpeechCaptureApplicationService(
         if (target !is AiExecutionTarget.Worker) return
         val workerId = ConversationRuntimeWorkerId(target.workerId)
         workerAccessService.requirePermission(user, workerId, WorkerPermission.USE)
-        require(workers.any { it.workerId == workerId }) {
-            "Speech transcription Worker not found: ${workerId.value}"
+        if (workers.none { it.workerId == workerId }) {
+            failSpeechAvailability(Code.TRANSCRIPTION_WORKER_NOT_FOUND, "worker" to workerId.value)
         }
         workerTargetResolver.requireOnline(workerId, ConversationRuntimeCapability.AI_REQUEST_RESPONSE)
     }
@@ -316,13 +322,11 @@ class SpeechCaptureApplicationService(
         worker: WorkerCatalogEntry,
         connection: AiConnection.ClaudeCode,
     ) {
-        require(
-            worker.environmentProfile.operatingSystem.family in CLAUDE_VOICE_OPERATING_SYSTEMS
-        ) {
-            "Direct Claude Code microphone transcription is unsupported on " +
-                worker.environmentProfile.operatingSystem.family
+        if (worker.environmentProfile.operatingSystem.family !in CLAUDE_VOICE_OPERATING_SYSTEMS) {
+            failSpeechAvailability(Code.CLAUDE_DIRECT_UNSUPPORTED_PLATFORM,
+                "platform" to worker.environmentProfile.operatingSystem.family)
         }
-        requireWorkerExecutable(worker, connection.executablePath, "Claude Code")
+        requireWorkerExecutable(worker, connection.executablePath)
     }
 
     private fun requireClaudeForwardingTargetReady(
@@ -331,26 +335,26 @@ class SpeechCaptureApplicationService(
         connection: AiConnection.ClaudeCode,
     ) {
         val workerTarget = target as? AiExecutionTarget.Worker
-            ?: error("Claude Code speech transcription requires a Worker execution target")
+            ?: failSpeechAvailability(Code.CLAUDE_REQUIRES_WORKER)
         val worker = workers.singleOrNull { it.workerId.value == workerTarget.workerId }
-            ?: error("Claude Code speech transcription Worker not found: ${workerTarget.workerId}")
-        require(worker.environmentProfile.operatingSystem.family == WorkerOperatingSystem.Family.LINUX) {
-            "Forwarded audio for Claude Code voice transcription requires a Linux execution target"
+            ?: failSpeechAvailability(Code.TRANSCRIPTION_WORKER_NOT_FOUND, "worker" to workerTarget.workerId)
+        if (worker.environmentProfile.operatingSystem.family != WorkerOperatingSystem.Family.LINUX) {
+            failSpeechAvailability(Code.CLAUDE_FORWARDING_REQUIRES_LINUX)
         }
-        requireWorkerExecutable(worker, connection.executablePath, "Claude Code")
+        requireWorkerExecutable(worker, connection.executablePath)
         CLAUDE_FORWARDING_EXECUTABLES.forEach { executable ->
-            requireWorkerExecutable(worker, executable, executable)
+            requireWorkerExecutable(worker, executable)
         }
     }
 
     private fun requireWorkerExecutable(
         worker: WorkerCatalogEntry,
         executablePath: String,
-        displayName: String,
     ) {
         if (executablePath.hasPathSeparator()) return
-        require(executablePath in worker.environmentProfile.availableExecutables) {
-            "$displayName executable is unavailable on Worker ${worker.workerId.value}: $executablePath"
+        if (executablePath !in worker.environmentProfile.availableExecutables) {
+            failSpeechAvailability(Code.EXECUTABLE_UNAVAILABLE,
+                "worker" to worker.workerId.value, "executable" to executablePath)
         }
     }
 

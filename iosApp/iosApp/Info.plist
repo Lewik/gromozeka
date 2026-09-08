@@ -7,9 +7,9 @@
 	<key>GromozekaRemoteURL</key>
 	<string>$(GROMOZEKA_REMOTE_URL)</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Gromozeka needs microphone access for voice conversations.</string>
+	<string>Gromozeka uses the microphone for voice messages and speech recognition.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Gromozeka connects to your local development server.</string>
+	<string>Gromozeka connects to your server and devices on the local network.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

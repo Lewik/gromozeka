@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.viewmodel
 
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.service.AgentDomainService
@@ -39,6 +40,7 @@ open class AppViewModel(
     private val conversationUnreadStateService: ConversationUnreadStateService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
+    private val currentTranslation: () -> Translation,
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -354,7 +356,7 @@ open class AppViewModel(
         agentDefinitionId: AgentDefinition.Id?,
     ) {
         val messageContent = message.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            .firstOrNull()?.text ?: "Ready to work on this project"
+            .firstOrNull()?.text ?: currentTranslation().text("client.message.initial")
         log.debug("Sending initial message with ${messageContent.length} characters")
         try {
             if (agentDefinitionId == null) {

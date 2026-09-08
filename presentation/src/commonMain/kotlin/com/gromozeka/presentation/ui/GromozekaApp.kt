@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui
 
+import com.gromozeka.presentation.services.translation.data.Translation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -95,6 +96,7 @@ fun GromozekaAppContent(
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
+    val localization = LocalTranslation.current
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
@@ -213,7 +215,9 @@ fun GromozekaAppContent(
     val onSettingsChange: (Settings) -> Unit = { newSettings ->
         appComponents.settingsService.saveSettings(newSettings)
     }
-    val onRemoteClientSettingsChange = appComponents.remoteClientSettingsService::saveSettings
+    val onRemoteClientSettingsChange: (com.gromozeka.client.RemoteClientSettings) -> Unit = { settings ->
+        coroutineScope.launch { appComponents.remoteClientSettingsService.saveSettings(settings) }
+    }
     val currentUiSettings = currentSettings.userDeviceSettings.uiSettings
     val platformDensity = LocalDensity.current
     val effectiveUiScale = currentUiSettings.uiScale.coerceIn(0.5f, 3.0f)
@@ -250,7 +254,7 @@ fun GromozekaAppContent(
                                 appComponents.quickTextActionRunner.run(QuickTextAction.FIX_TEXT_ID)
                             }
                             KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT -> coroutineScope.launch {
-                                appComponents.quickTextActionRunner.run(QuickTextAction.TRANSLATE_RU_EN_ID)
+                                appComponents.quickTextActionRunner.run(QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID)
                             }
                             KeyboardShortcutAction.NEW_CONVERSATION -> createNewSessionInCurrentProject()
                             else -> Unit
@@ -444,12 +448,12 @@ fun GromozekaAppContent(
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,
-                                                        pttStatusMessage = pttStatusMessage,
-                                                        pttUnavailableReason = pttUnavailableReason,
+                                                        pttStatusMessage = pttStatusMessage?.resolve(localization),
+                                                        pttUnavailableReason = pttUnavailableReason?.resolve(localization),
                                                         liveVoiceInputService = appComponents.liveVoiceInputService,
                                                         liveVoiceInputState = liveVoiceInputState,
-                                                        liveVoiceInputStatusMessage = liveVoiceInputStatusMessage,
-                                                        liveVoiceInputUnavailableReason = liveVoiceInputUnavailableReason,
+                                                        liveVoiceInputStatusMessage = liveVoiceInputStatusMessage?.resolve(localization),
+                                                        liveVoiceInputUnavailableReason = liveVoiceInputUnavailableReason?.resolve(localization),
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,
@@ -504,7 +508,7 @@ fun GromozekaAppContent(
                                                                 coroutineScope.launch {
                                                                     val locationText = appComponents.deviceLocationService
                                                                         .getCurrentLocation()
-                                                                        .toInputText()
+                                                                        .toInputText(localization)
                                                                     val currentInput = tabViewModel.userInput.trimEnd()
                                                                     tabViewModel.updateUserInput(
                                                                         if (currentInput.isBlank()) {
@@ -661,7 +665,7 @@ fun GromozekaAppContent(
                                                     isWaitingForResponse = isWaitingForResponse,
                                                     executionPauseRequested = executionPauseRequested,
                                                     pttState = pttState,
-                                                    pttStatusMessage = pttStatusMessage,
+                                                    pttStatusMessage = pttStatusMessage?.resolve(localization),
                                                     pendingMessages = pendingMessages,
                                                     runtimeSnapshot = runtimeSnapshot,
                                                     activeGeneration = activeGeneration,
@@ -790,7 +794,7 @@ fun GromozekaAppContent(
                                         isWaitingForResponse = isWaitingForResponse,
                                         executionPauseRequested = executionPauseRequested,
                                         pttState = pttState,
-                                        pttStatusMessage = pttStatusMessage,
+                                        pttStatusMessage = pttStatusMessage?.resolve(localization),
                                         pendingMessages = pendingMessages,
                                         runtimeSnapshot = runtimeSnapshot,
                                         activeGeneration = activeGeneration,
@@ -896,22 +900,27 @@ private enum class ProjectArea {
     WORKSPACES,
 }
 
-private fun DeviceLocationResult.toInputText(): String =
-    when (this) {
-        is DeviceLocationResult.Available -> snapshot.toInputText()
-        is DeviceLocationResult.Unavailable -> buildString {
-            append("Device location unavailable: ")
-            append(reason.name.lowercase().replace('_', ' '))
-            message?.takeIf { it.isNotBlank() }?.let { append(" ($it)") }
-        }
+private fun DeviceLocationResult.toInputText(localization: Translation): String = when (this) {
+    is DeviceLocationResult.Available -> snapshot.toInputText(localization)
+    is DeviceLocationResult.Unavailable -> {
+        val reasonText = localization.text(when (reason) {
+            com.gromozeka.device.telemetry.DeviceLocationUnavailableReason.UNSUPPORTED -> "chat.location.reason.unsupported"
+            com.gromozeka.device.telemetry.DeviceLocationUnavailableReason.PERMISSION_DENIED -> "chat.location.reason.permissionDenied"
+            com.gromozeka.device.telemetry.DeviceLocationUnavailableReason.LOCATION_DISABLED -> "chat.location.reason.disabled"
+            com.gromozeka.device.telemetry.DeviceLocationUnavailableReason.TIMEOUT -> "chat.location.reason.timeout"
+            com.gromozeka.device.telemetry.DeviceLocationUnavailableReason.ERROR -> "chat.location.reason.error"
+        })
+        message?.takeIf(String::isNotBlank)?.let {
+            localization.text("chat.location.unavailableWithMessage", "reason" to reasonText, "message" to it)
+        } ?: localization.text("chat.location.unavailable", "reason" to reasonText)
     }
+}
 
-private fun DeviceLocationSnapshot.toInputText(): String =
-    buildString {
-        append("Current device location: ")
+private fun DeviceLocationSnapshot.toInputText(localization: Translation): String =
+    localization.text("chat.location.current", "details" to buildString {
         append("latitude=$latitude, longitude=$longitude")
         accuracyMeters?.let { append(", accuracyMeters=$it") }
         altitudeMeters?.let { append(", altitudeMeters=$it") }
         provider?.let { append(", provider=$it") }
         append(", capturedAt=$capturedAt")
-    }
+    })

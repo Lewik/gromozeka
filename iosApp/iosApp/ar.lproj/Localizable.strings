@@ -1,0 +1,11 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"native.shortcuts.toggleRecording" = "بدء التسجيل الصوتي أو إيقافه";
+"native.shortcuts.toggleRecordingDescription" = "بدء تسجيل رسالة صوتية، أو إيقاف التسجيل وإرسال الرسالة.";
+"native.shortcuts.textParameter" = "النص";
+"quickText.fix" = "تصحيح النص";
+"quickText.fixDescription" = "تصحيح النص مع الحفاظ على لغته الأصلية.";
+"quickText.translate" = "ترجمة النص";
+"quickText.translateDescription" = "ترجمة النص إلى لغة واجهتك، أو إلى الإنجليزية إذا كان مكتوبًا بتلك اللغة بالفعل.";
+"common.unknownError" = "خطأ غير معروف";
+"Fix ${text}" = "تصحيح ${text}";
+"Translate ${text}" = "ترجمة ${text}";

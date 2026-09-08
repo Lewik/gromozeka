@@ -2,6 +2,7 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.AuthenticationRejectedException
 import com.gromozeka.domain.service.AuthenticationService
+import com.gromozeka.remote.protocol.AuthenticationErrorCode
 import com.gromozeka.remote.protocol.AuthenticationErrorResponse
 import com.gromozeka.remote.protocol.DeviceConnectionCodeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionConsumeRequest
@@ -23,7 +24,7 @@ internal fun Routing.gromozekaDeviceConnections(
         if (!call.requireSecureAuthenticationTransport()) return@post
         if (!authenticationService.hasUsers()) {
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Runtime initialization is required"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.RUNTIME_NOT_INITIALIZED, "Runtime initialization is required"),
                 HttpStatusCode.Conflict,
             )
             return@post
@@ -33,7 +34,7 @@ internal fun Routing.gromozekaDeviceConnections(
         if (retryAfterSeconds != null) {
             call.response.headers.append(HttpHeaders.RetryAfter, retryAfterSeconds.toString())
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Too many device connection requests"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.DEVICE_CONNECTION_RATE_LIMITED, "Too many device connection requests"),
                 HttpStatusCode.TooManyRequests,
             )
             return@post
@@ -56,7 +57,7 @@ internal fun Routing.gromozekaDeviceConnections(
         val principal = call.authenticateOrNull(authenticationService)
         if (principal == null) {
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Authentication required"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"),
                 HttpStatusCode.Unauthorized,
             )
             return@post
@@ -75,7 +76,7 @@ internal fun Routing.gromozekaDeviceConnections(
         val principal = call.authenticateOrNull(authenticationService)
         if (principal == null) {
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Authentication required"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"),
                 HttpStatusCode.Unauthorized,
             )
             return@post
@@ -98,7 +99,7 @@ internal fun Routing.gromozekaDeviceConnections(
         val principal = call.authenticateOrNull(authenticationService)
         if (principal == null) {
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Authentication required"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"),
                 HttpStatusCode.Unauthorized,
             )
             return@post
@@ -123,7 +124,7 @@ internal fun Routing.gromozekaDeviceConnections(
         if (retryAfterSeconds != null) {
             call.response.headers.append(HttpHeaders.RetryAfter, retryAfterSeconds.toString())
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Too many authentication attempts"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.RATE_LIMITED, "Too many authentication attempts"),
                 HttpStatusCode.TooManyRequests,
             )
             return@post
@@ -140,7 +141,7 @@ internal fun Routing.gromozekaDeviceConnections(
         } catch (_: AuthenticationRejectedException) {
             attemptLimiter.recordFailure(remoteAddress, request.username)
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Invalid username or password"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.INVALID_CREDENTIALS, "Invalid username or password"),
                 HttpStatusCode.Unauthorized,
             )
         } catch (error: IllegalArgumentException) {
@@ -188,7 +189,14 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondDeviceConn
     status: HttpStatusCode,
 ) {
     respondAuthenticationJson(
-        AuthenticationErrorResponse(error.message ?: "Device connection failed"),
+        AuthenticationErrorResponse(
+            code = if (error is InvalidDeviceConnectionException || error is ExpiredDeviceConnectionException) {
+                AuthenticationErrorCode.INVALID_DEVICE_CONNECTION
+            } else {
+                AuthenticationErrorCode.DEVICE_CONNECTION_FAILED
+            },
+            message = error.message,
+        ),
         status,
     )
 }

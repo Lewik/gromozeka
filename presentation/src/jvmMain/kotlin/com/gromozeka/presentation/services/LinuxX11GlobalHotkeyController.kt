@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutActivation
 import com.gromozeka.domain.model.KeyboardShortcutBinding
@@ -45,19 +48,19 @@ internal class LinuxX11GlobalHotkeyController : GlobalHotkeyController {
             _state.value = GlobalHotkeyState(
                 available = false,
                 implementationType = IMPLEMENTATION_TYPE,
-                message = "Global keyboard shortcuts are unavailable on Wayland",
+                message = localizedText("hotkeys.waylandUnavailable"),
             )
             return
         }
 
         val ready = CountDownLatch(1)
-        var startupError: String? = null
+        var startupError: LocalizedText? = null
         running.set(true)
         eventThread = thread(start = true, isDaemon = true, name = "gromozeka-linux-hotkeys") {
             val x11 = X11.INSTANCE
             val openedDisplay = x11.XOpenDisplay(null)
             if (openedDisplay == null) {
-                startupError = "X11 display is unavailable"
+                startupError = localizedText("hotkeys.backendUnavailable", "backend" to "X11")
                 running.set(false)
                 ready.countDown()
                 return@thread
@@ -83,7 +86,7 @@ internal class LinuxX11GlobalHotkeyController : GlobalHotkeyController {
         }
         if (!ready.await(2, TimeUnit.SECONDS)) {
             running.set(false)
-            startupError = "X11 shortcut service timed out during startup"
+            startupError = localizedText("hotkeys.startupTimedOut", "backend" to "X11")
         }
         startupError?.let { message ->
             _state.value = GlobalHotkeyState(
@@ -104,13 +107,13 @@ internal class LinuxX11GlobalHotkeyController : GlobalHotkeyController {
         val normalized = settings.normalized()
         val errors = KeyboardShortcutValidator.validate(normalized)
             .filter { it.severity == KeyboardShortcutValidationSeverity.ERROR }
-            .associate { it.action to it.message }
+            .associate { it.action to it.localizedText() }
             .toMutableMap()
         val bindings = normalized.bindings.filter {
             it.enabled && it.scope == KeyboardShortcutScope.GLOBAL && it.action !in errors
         }
         bindings.filterNot(KeyboardShortcutBinding::consumeEvent).forEach { binding ->
-            errors[binding.action] = "X11 global shortcuts are exclusive and must consume the key"
+            errors[binding.action] = localizedText("hotkeys.x11MustConsume")
         }
         postCommand {
             val x11 = X11.INSTANCE
@@ -200,11 +203,11 @@ internal class LinuxX11GlobalHotkeyController : GlobalHotkeyController {
         x11: X11,
         display: X11.Display,
         binding: KeyboardShortcutBinding,
-    ): String? {
-        val root = rootWindow ?: return "X11 root window is unavailable"
+    ): LocalizedText? {
+        val root = rootWindow ?: return localizedText("hotkeys.backendUnavailable", "backend" to "X11")
         val keySym = x11.XStringToKeysym(binding.key.x11KeyName())
         val keyCode = x11.XKeysymToKeycode(display, keySym).toInt() and 0xff
-        if (keyCode == 0) return "X11 cannot resolve key ${binding.key}"
+        if (keyCode == 0) return localizedText("hotkeys.unsupportedKey", "backend" to "X11", "key" to binding.key)
         val baseModifiers = binding.modifiers.x11Modifiers()
         lastXError = null
         LOCK_VARIANTS.forEach { lockModifiers ->
@@ -224,7 +227,7 @@ internal class LinuxX11GlobalHotkeyController : GlobalHotkeyController {
             LOCK_VARIANTS.forEach { lockModifiers ->
                 x11.XUngrabKey(display, keyCode, baseModifiers or lockModifiers, root)
             }
-            return "X11 shortcut registration failed (error $error)"
+            return localizedText("hotkeys.registrationFailed", "backend" to "X11", "code" to error)
         }
         bindingsByKeyCode.getOrPut(keyCode, ::mutableListOf) += binding
         log.info("Registered Linux X11 global shortcut action=${binding.action}")

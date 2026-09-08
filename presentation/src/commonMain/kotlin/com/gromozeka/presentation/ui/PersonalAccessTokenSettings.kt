@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.remote.protocol.IssuedPersonalAccessTokenResponse
@@ -38,9 +39,10 @@ fun PersonalAccessTokenSettings(
     service: RemotePersonalAccessTokenService,
     coroutineScope: CoroutineScope,
 ) {
+    val translation = LocalTranslation.current
     var tokens by remember { mutableStateOf<List<PersonalAccessTokenView>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<Throwable?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     var issuedToken by remember { mutableStateOf<IssuedPersonalAccessTokenResponse?>(null) }
@@ -48,7 +50,7 @@ fun PersonalAccessTokenSettings(
     LaunchedEffect(service) {
         runCatching { service.list() }
             .onSuccess { tokens = it }
-            .onFailure { error = it.message ?: it.toString() }
+            .onFailure { error = it }
         loading = false
     }
 
@@ -58,25 +60,28 @@ fun PersonalAccessTokenSettings(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Personal access tokens",
+                text = translation.text("security.tokens.title"),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Use separate revocable tokens for external MCP clients. " +
-                    "Your account password is never stored in an MCP configuration.",
+                text = translation.text("security.tokens.description"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
         Button(onClick = { showCreateDialog = true }) {
-            Text("Create token")
+            Text(translation.text("security.tokens.createButton"))
         }
 
         error?.let {
             Text(
-                text = it,
+                text = if (it is TokenAlreadyRevokedException) {
+                    translation.text("security.tokens.alreadyRevoked")
+                } else {
+                    it.message ?: it.toString()
+                },
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -86,7 +91,7 @@ fun PersonalAccessTokenSettings(
             CircularProgressIndicator()
         } else if (tokens.isEmpty()) {
             Text(
-                text = "No personal access tokens.",
+                text = translation.text("security.tokens.empty"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
@@ -97,10 +102,10 @@ fun PersonalAccessTokenSettings(
                         coroutineScope.launch {
                             error = null
                             try {
-                                check(service.revoke(token.id)) { "Token is already revoked" }
+                                if (!service.revoke(token.id)) throw TokenAlreadyRevokedException()
                                 tokens = service.list()
                             } catch (failure: Throwable) {
-                                error = failure.message ?: failure.toString()
+                                error = failure
                             }
                         }
                     },
@@ -125,7 +130,7 @@ fun PersonalAccessTokenSettings(
                         showCreateDialog = false
                         tokens = service.list()
                     } catch (failure: Throwable) {
-                        error = failure.message ?: failure.toString()
+                        error = failure
                     } finally {
                         creating = false
                     }
@@ -137,10 +142,10 @@ fun PersonalAccessTokenSettings(
     issuedToken?.let { issued ->
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Token created") },
+            title = { Text(translation.text("security.tokens.createdTitle")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Copy this token now. Gromozeka will not show it again.")
+                    Text(translation.text("security.tokens.copyWarning"))
                     SelectionContainer {
                         Text(
                             text = issued.rawToken,
@@ -152,7 +157,7 @@ fun PersonalAccessTokenSettings(
             },
             confirmButton = {
                 Button(onClick = { issuedToken = null }) {
-                    Text("I saved it")
+                    Text(translation.text("security.tokens.savedAcknowledgment"))
                 }
             },
         )
@@ -164,6 +169,7 @@ private fun PersonalAccessTokenCard(
     token: PersonalAccessTokenView,
     onRevoke: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     val active = token.revokedAt == null
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -185,24 +191,22 @@ private fun PersonalAccessTokenCard(
                 }
                 if (active) {
                     TextButton(onClick = onRevoke) {
-                        Text("Revoke")
+                        Text(translation.text("security.tokens.revoke"))
                     }
                 } else {
                     Text(
-                        text = "Revoked",
+                        text = translation.text("security.tokens.revoked"),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
             }
             Text(
-                text = token.scopes.joinToString { it.displayName() },
+                text = token.scopes.joinToString { it.displayName(translation) },
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                text = "Created ${token.createdAt}" +
-                    (token.expiresAt?.let { " · Expires $it" } ?: " · No expiration") +
-                    (token.lastUsedAt?.let { " · Last used $it" } ?: ""),
+                text = token.displayDates(translation),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -216,6 +220,7 @@ private fun CreatePersonalAccessTokenDialog(
     onDismiss: () -> Unit,
     onCreate: (String, Set<PersonalAccessToken.Scope>, Int?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var name by remember { mutableStateOf("") }
     var expiresInDays by remember { mutableStateOf("365") }
     var scopes by remember {
@@ -226,13 +231,13 @@ private fun CreatePersonalAccessTokenDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create personal access token") },
+        title = { Text(translation.text("security.tokens.createTitle")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(translation.text("security.tokens.nameLabel")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -246,14 +251,14 @@ private fun CreatePersonalAccessTokenDialog(
                                 scopes = if (checked) scopes + scope else scopes - scope
                             },
                         )
-                        Text(scope.displayName())
+                        Text(scope.displayName(translation))
                     }
                 }
                 OutlinedTextField(
                     value = expiresInDays,
                     onValueChange = { expiresInDays = it.filter(Char::isDigit) },
-                    label = { Text("Expires in days") },
-                    supportingText = { Text("Leave empty for no expiration") },
+                    label = { Text(translation.text("security.tokens.expirationLabel")) },
+                    supportingText = { Text(translation.text("security.tokens.expirationHint")) },
                     isError = !expirationValid,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -274,19 +279,42 @@ private fun CreatePersonalAccessTokenDialog(
                     )
                 },
             ) {
-                Text("Create")
+                Text(translation.text("security.tokens.create"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(translation.text("security.tokens.cancel"))
             }
         },
     )
 }
 
-private fun PersonalAccessToken.Scope.displayName(): String =
+private fun PersonalAccessToken.Scope.displayName(translation: Translation): String =
     when (this) {
-        PersonalAccessToken.Scope.MCP_MEMORY -> "Memory MCP"
-        PersonalAccessToken.Scope.MCP_CONTROL -> "Control MCP"
+        PersonalAccessToken.Scope.MCP_MEMORY -> translation.text("security.tokens.scope.memory")
+        PersonalAccessToken.Scope.MCP_CONTROL -> translation.text("security.tokens.scope.control")
+    }
+
+private class TokenAlreadyRevokedException : IllegalStateException()
+
+private fun PersonalAccessTokenView.displayDates(translation: Translation): String =
+    when {
+        expiresAt != null && lastUsedAt != null -> translation.text(
+            "security.tokens.dates.expiringAndUsed",
+            "createdAt" to createdAt,
+            "expiresAt" to expiresAt,
+            "lastUsedAt" to lastUsedAt,
+        )
+        expiresAt != null -> translation.text(
+            "security.tokens.dates.expiring",
+            "createdAt" to createdAt,
+            "expiresAt" to expiresAt,
+        )
+        lastUsedAt != null -> translation.text(
+            "security.tokens.dates.nonExpiringAndUsed",
+            "createdAt" to createdAt,
+            "lastUsedAt" to lastUsedAt,
+        )
+        else -> translation.text("security.tokens.dates.nonExpiring", "createdAt" to createdAt)
     }

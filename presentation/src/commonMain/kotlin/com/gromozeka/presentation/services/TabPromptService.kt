@@ -12,7 +12,7 @@ class TabPromptService(
                 TabPromptOption(
                     id = prompt.id.value,
                     name = prompt.name,
-                    type = prompt.type.label,
+                    type = prompt.type,
                     typeOrder = prompt.type.order,
                 )
             }
@@ -21,15 +21,9 @@ class TabPromptService(
     data class TabPromptOption(
         val id: String,
         val name: String,
-        val type: String,
+        val type: Prompt.Type,
         val typeOrder: Int,
     )
-
-    private val Prompt.Type.label: String
-        get() = when (this) {
-            is Prompt.Type.Global -> "Global"
-            is Prompt.Type.Project -> "Project"
-        }
 
     private val Prompt.Type.order: Int
         get() = when (this) {

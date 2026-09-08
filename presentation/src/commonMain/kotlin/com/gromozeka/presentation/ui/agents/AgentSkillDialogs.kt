@@ -1,5 +1,7 @@
 package com.gromozeka.presentation.ui.agents
 
+import com.gromozeka.presentation.ui.aiLabel
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -33,6 +35,7 @@ fun AgentSkillDetailsDialog(
     onReanalyze: () -> Unit,
     onSetMaterializationPolicy: (AgentSkill.MaterializationPlan.Policy) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     BasicGromozekaDialog(onDismissRequest = onDismiss) {
         Surface(
             shape = MaterialTheme.shapes.large,
@@ -45,31 +48,41 @@ fun AgentSkillDetailsDialog(
                 Text(skill.description, style = MaterialTheme.typography.bodyMedium)
                 skill.compatibility?.let {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Compatibility: $it", style = MaterialTheme.typography.bodySmall)
+                    Text(translation.text("agents.skills.compatibility", "compatibility" to it), style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "Package ${skill.contentHash}",
+                    translation.text("agents.skills.package_hash", "hash" to skill.contentHash),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
-                    "Materialization: ${skill.materializationPlan.policy.name.lowercase().replace('_', ' ')}",
+                    translation.text("agents.skills.materialization", "policy" to skill.materializationPlan.policy.aiLabel(translation)),
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(
-                    skill.materializationPlan.reason,
+                    skill.materializationPlan.reason.let { reason ->
+                        if (reason == "Materialization policy was explicitly set by the user.") {
+                            translation.text("agents.skills.explicit_policy_reason")
+                        } else {
+                            reason
+                        }
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     skill.materializationPlan.analyzedAt?.let { analyzedAt ->
-                        "Analyzed at $analyzedAt by ${skill.materializationPlan.analyzedByModelConfigurationId?.value}"
-                    } ?: "Manual materialization policy",
+                        translation.text(
+                            "agents.skills.analyzed_at",
+                            "timestamp" to analyzedAt,
+                            "modelId" to skill.materializationPlan.analyzedByModelConfigurationId?.value.orEmpty(),
+                        )
+                    } ?: translation.text("agents.skills.manual_policy"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "Actual workspace materialization availability is resolved per conversation from online Workers and project mounts.",
+                    translation.text("agents.skills.materialization_description"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -79,7 +92,7 @@ fun AgentSkillDetailsDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     OutlinedButton(onClick = onReanalyze, enabled = !updating) {
-                        Text("Reanalyze")
+                        Text(translation.text("agents.skills.reanalyze"))
                     }
                     OutlinedButton(
                         onClick = {
@@ -88,7 +101,7 @@ fun AgentSkillDetailsDialog(
                         enabled = !updating &&
                             skill.materializationPlan.policy != AgentSkill.MaterializationPlan.Policy.REQUIRED,
                     ) {
-                        Text("Require workspace files")
+                        Text(translation.text("agents.skills.require_files"))
                     }
                     OutlinedButton(
                         onClick = {
@@ -97,7 +110,7 @@ fun AgentSkillDetailsDialog(
                         enabled = !updating &&
                             skill.materializationPlan.policy != AgentSkill.MaterializationPlan.Policy.NOT_REQUIRED,
                     ) {
-                        Text("Model-readable only")
+                        Text(translation.text("agents.skills.model_readable_only"))
                     }
                     if (updating) {
                         CircularProgressIndicator()
@@ -117,7 +130,7 @@ fun AgentSkillDetailsDialog(
                     horizontalArrangement = Arrangement.End,
                 ) {
                     Button(onClick = onDismiss) {
-                        Text("Close")
+                        Text(translation.text("agents.close"))
                     }
                 }
             }

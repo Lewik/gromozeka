@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.presentation.services.translation.data.Translation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -88,6 +89,7 @@ fun SessionScreen(
     isCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
+    val localization = LocalTranslation.current
     // All data comes from ViewModel
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val allMessages by viewModel.allMessages.collectAsState()
@@ -189,9 +191,9 @@ fun SessionScreen(
                         onExtractContexts?.let { extractCallback ->
                             CompactButton(
                                 onClick = extractCallback,
-                                tooltip = "Extract contexts from conversation"
+                                tooltip = localization.text("session.toolbar.extractContexts")
                             ) {
-                                Icon(Icons.Default.FolderOpen, contentDescription = "Extract contexts")
+                                Icon(Icons.Default.FolderOpen, contentDescription = localization.text("session.toolbar.extractContextsShort"))
                             }
 
                             Spacer(modifier = Modifier.width(8.dp))
@@ -201,9 +203,9 @@ fun SessionScreen(
                         onShowContextsPanel?.let { showContextsCallback ->
                             CompactButton(
                                 onClick = showContextsCallback,
-                                tooltip = "View saved contexts"
+                                tooltip = localization.text("session.toolbar.viewContexts")
                             ) {
-                                Icon(Icons.Default.Book, contentDescription = "View contexts")
+                                Icon(Icons.Default.Book, contentDescription = localization.text("session.toolbar.viewContextsShort"))
                             }
 
                             Spacer(modifier = Modifier.width(8.dp))
@@ -212,9 +214,9 @@ fun SessionScreen(
                         CompactButton(
                             onClick = { onShowParticipantsPanelChange(!showParticipantsPanel) },
                             modifier = Modifier.testTag(UiTestTag.ParticipantsButton.value),
-                            tooltip = if (showParticipantsPanel) "Hide participants" else "Show participants",
+                            tooltip = if (showParticipantsPanel) localization.text("session.toolbar.hideParticipants") else localization.text("session.toolbar.showParticipants"),
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = "Participants")
+                            Icon(Icons.Default.Person, contentDescription = localization.text("session.participants.title"))
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -222,19 +224,19 @@ fun SessionScreen(
                         CompactButton(
                             onClick = { onShowRuntimePanelChange(!showRuntimePanel) },
                             modifier = Modifier.testTag(UiTestTag.RuntimeButton.value),
-                            tooltip = if (showRuntimePanel) "Hide runtime" else "Show runtime",
+                            tooltip = if (showRuntimePanel) localization.text("session.toolbar.hideRuntime") else localization.text("session.toolbar.showRuntime"),
                         ) {
-                            Icon(Icons.Default.HourglassTop, contentDescription = "Runtime")
+                            Icon(Icons.Default.HourglassTop, contentDescription = localization.text("runtime.title"))
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
 
                         CompactButton(
                             onClick = {},
-                            tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size),
+                            tooltip = LocalTranslation.current.format("messageCountTooltip", filteredHistory.size),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Messages")
+                                Icon(Icons.Default.ChatBubbleOutline, contentDescription = localization.text("session.toolbar.messages"))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("${filteredHistory.size}")
                             }
@@ -246,9 +248,9 @@ fun SessionScreen(
                             CompactButton(
                                 onClick = { showMemoryMenu = !showMemoryMenu },
                                 modifier = Modifier.testTag(UiTestTag.MemoryMenuButton.value),
-                                tooltip = "Memory actions",
+                                tooltip = localization.text("session.toolbar.memoryActions"),
                             ) {
-                                Icon(Icons.Default.Inventory2, contentDescription = "Memory actions")
+                                Icon(Icons.Default.Inventory2, contentDescription = localization.text("session.toolbar.memoryActions"))
                             }
 
                             DropdownMenu(
@@ -256,7 +258,7 @@ fun SessionScreen(
                                 onDismissRequest = { showMemoryMenu = false },
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Action items") },
+                                    text = { Text(localization.text("session.toolbar.actionItems")) },
                                     leadingIcon = {
                                         Icon(Icons.AutoMirrored.Filled.ListAlt, contentDescription = null)
                                     },
@@ -268,7 +270,7 @@ fun SessionScreen(
                                 )
                                 onRememberThread?.let { rememberCallback ->
                                     DropdownMenuItem(
-                                        text = { Text("Remember conversation") },
+                                        text = { Text(localization.text("session.toolbar.remember")) },
                                         leadingIcon = { Icon(Icons.Default.Psychology, contentDescription = null) },
                                         onClick = {
                                             showMemoryMenu = false
@@ -278,7 +280,7 @@ fun SessionScreen(
                                 }
                                 onConsolidateMemory?.let { consolidateCallback ->
                                     DropdownMenuItem(
-                                        text = { Text("Consolidate") },
+                                        text = { Text(localization.text("session.toolbar.consolidate")) },
                                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = null) },
                                         onClick = {
                                             showMemoryMenu = false
@@ -288,7 +290,7 @@ fun SessionScreen(
                                 }
                                 onRepairMemory?.let { repairCallback ->
                                     DropdownMenuItem(
-                                        text = { Text("Repair") },
+                                        text = { Text(localization.text("session.toolbar.repair")) },
                                         leadingIcon = { Icon(Icons.Default.Build, contentDescription = null) },
                                         onClick = {
                                             showMemoryMenu = false
@@ -298,7 +300,7 @@ fun SessionScreen(
                                 }
                                 onMaintainMemoryEntities?.let { maintainEntitiesCallback ->
                                     DropdownMenuItem(
-                                        text = { Text("Entity maintenance") },
+                                        text = { Text(localization.text("session.toolbar.maintainEntities")) },
                                         leadingIcon = { Icon(Icons.Default.AccountTree, contentDescription = null) },
                                         onClick = {
                                             showMemoryMenu = false
@@ -308,7 +310,7 @@ fun SessionScreen(
                                 }
                                 onApplyMemoryRetention?.let { retentionCallback ->
                                     DropdownMenuItem(
-                                        text = { Text("Apply retention") },
+                                        text = { Text(localization.text("session.toolbar.retention")) },
                                         leadingIcon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
                                         onClick = {
                                             showMemoryMenu = false
@@ -352,25 +354,25 @@ fun SessionScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Selection buttons
-                        val selectionOptions = remember {
+                        val selectionOptions = remember(localization) {
                             listOf(
                                 com.gromozeka.presentation.ui.ToggleButtonOption(
                                     Icons.Default.SelectAll,
-                                    "Select/Deselect All"
+                                    localization.text("chat.selection.toggleAll")
                                 ),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Person, "User Messages"),
+                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Person, localization.text("chat.selection.userMessages")),
                                 com.gromozeka.presentation.ui.ToggleButtonOption(
                                     Icons.Default.DeveloperBoard,
-                                    "Assistant Messages"
+                                    localization.text("chat.selection.assistantMessages")
                                 ),
                                 com.gromozeka.presentation.ui.ToggleButtonOption(
                                     Icons.Default.Psychology,
-                                    "Thinking Blocks"
+                                    localization.text("chat.selection.thinkingBlocks")
                                 ),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Build, "Tool Calls"),
+                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Build, localization.text("chat.selection.toolCalls")),
                                 com.gromozeka.presentation.ui.ToggleButtonOption(
                                     Icons.Default.ChatBubbleOutline,
-                                    "Plain Messages"
+                                    localization.text("chat.selection.plainMessages")
                                 ),
                             )
                         }
@@ -452,12 +454,12 @@ fun SessionScreen(
                             },
                             modifier = Modifier.testTag(UiTestTag.EditSelectedMessageButton.value),
                             enabled = selectedMessage?.editableText() != null && !messageSquashRunning,
-                            tooltip = "Edit selected message"
+                            tooltip = localization.text("chat.selection.editHint")
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                Icon(Icons.Default.Edit, contentDescription = localization.text("runtime.editButton"))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text("Edit")
+                                if (!isCompactLayout) Text(localization.text("runtime.editButton"))
                             }
                         }
 
@@ -471,12 +473,12 @@ fun SessionScreen(
                                 }
                             },
                             enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
-                            tooltip = "Concatenate messages (instant, no AI)"
+                            tooltip = localization.text("chat.selection.concatHint")
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = "Concat")
+                                Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = localization.text("chat.selection.concat"))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text("Concat")
+                                if (!isCompactLayout) Text(localization.text("chat.selection.concat"))
                             }
                         }
 
@@ -490,12 +492,12 @@ fun SessionScreen(
                                 }
                             },
                             enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
-                            tooltip = "Distill messages (AI context transfer)"
+                            tooltip = localization.text("chat.selection.distillHint")
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Compress, contentDescription = "Distill")
+                                Icon(Icons.Default.Compress, contentDescription = localization.text("chat.selection.distill"))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text("Distill")
+                                if (!isCompactLayout) Text(localization.text("chat.selection.distill"))
                             }
                         }
 
@@ -509,12 +511,12 @@ fun SessionScreen(
                                 }
                             },
                             enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
-                            tooltip = "Summarize messages (AI history compression)"
+                            tooltip = localization.text("chat.selection.summarizeHint")
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.AutoMirrored.Filled.Subject, contentDescription = "Summarize")
+                                Icon(Icons.AutoMirrored.Filled.Subject, contentDescription = localization.text("chat.selection.summarize"))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text("Summarize")
+                                if (!isCompactLayout) Text(localization.text("chat.selection.summarize"))
                             }
                         }
 
@@ -528,12 +530,12 @@ fun SessionScreen(
                                 }
                             },
                             enabled = uiState.selectedMessageIds.isNotEmpty() && !messageSquashRunning,
-                            tooltip = "Delete selected message(s)"
+                            tooltip = localization.text("chat.selection.deleteHint")
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                Icon(Icons.Default.Delete, contentDescription = localization.text("chat.selection.delete"))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                if (!isCompactLayout) Text("Delete")
+                                if (!isCompactLayout) Text(localization.text("chat.selection.delete"))
                             }
                         }
 
@@ -545,7 +547,7 @@ fun SessionScreen(
 
                         MessageSquashStatus(messageSquashState)
                         // Selected count (right side)
-                        Text("Selected: ${uiState.selectedMessageIds.size}")
+                        Text(localization.text("chat.selection.selectedCount", "count" to uiState.selectedMessageIds.size))
 
                     }
                 }
@@ -560,7 +562,7 @@ fun SessionScreen(
                         contentRevision = messageEntries,
                         unreadLabel = { count ->
                             if (count > 0) {
-                                runtimeStrings.newMessagesLabel
+                                localization.plural("chat.history.unreadMessages", count.toLong())
                             } else {
                                 runtimeStrings.newActivityLabel
                             }
@@ -600,7 +602,7 @@ fun SessionScreen(
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessagesCount = pendingMessagesCount,
                         agentMentionCandidates = agentMentionCandidates,
-                        messageSubmissionError = messageSubmissionError,
+                        messageSubmissionError = messageSubmissionError?.resolve(localization),
                         suggestedReplies = suggestedReplies,
                         suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor ==
                             suggestedReplies?.sourceMessageId,
@@ -624,7 +626,7 @@ fun SessionScreen(
                         onSelectInstruction = viewModel::selectMessageInstruction,
                         composerArtifacts = uiState.composerArtifacts,
                         artifactUploadInProgress = uiState.composerArtifactUploadInProgress,
-                        artifactError = uiState.composerArtifactError,
+                        artifactError = uiState.composerArtifactError?.resolve(localization),
                         canPickAttachments = viewModel.attachmentCapabilities.filePicker,
                         canCaptureScreenshot = viewModel.attachmentCapabilities.screenshot,
                         onPickAttachments = viewModel::pickAttachments,
@@ -676,11 +678,12 @@ fun SessionScreen(
 
 @Composable
 private fun MessageSquashStatus(state: MessageSquashUiState) {
+    val localization = LocalTranslation.current
     val text = when (state) {
         MessageSquashUiState.Idle -> return
-        is MessageSquashUiState.Running -> "${state.squashType.actionTitle()} running"
-        is MessageSquashUiState.Succeeded -> "${state.squashType.actionTitle()} complete"
-        is MessageSquashUiState.Failed -> "${state.squashType.actionTitle()} failed: ${state.message}"
+        is MessageSquashUiState.Running -> localization.text("chat.selection.operationRunning", "action" to state.squashType.actionTitle(localization))
+        is MessageSquashUiState.Succeeded -> localization.text("chat.selection.operationComplete", "action" to state.squashType.actionTitle(localization))
+        is MessageSquashUiState.Failed -> localization.text("chat.selection.operationFailed", "action" to state.squashType.actionTitle(localization), "message" to state.message.resolve(localization))
     }
     Row(
         modifier = Modifier
@@ -706,8 +709,8 @@ private fun MessageSquashStatus(state: MessageSquashUiState) {
     }
 }
 
-private fun com.gromozeka.domain.model.SquashType.actionTitle(): String = when (this) {
-    com.gromozeka.domain.model.SquashType.CONCATENATE -> "Concat"
-    com.gromozeka.domain.model.SquashType.DISTILL -> "Distill"
-    com.gromozeka.domain.model.SquashType.SUMMARIZE -> "Summarize"
+private fun com.gromozeka.domain.model.SquashType.actionTitle(localization: Translation): String = when (this) {
+    com.gromozeka.domain.model.SquashType.CONCATENATE -> localization.text("chat.selection.concat")
+    com.gromozeka.domain.model.SquashType.DISTILL -> localization.text("chat.selection.distill")
+    com.gromozeka.domain.model.SquashType.SUMMARIZE -> localization.text("chat.selection.summarize")
 }

@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
@@ -34,7 +36,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
-import androidx.compose.material3.SecondaryTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -76,22 +78,23 @@ import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerCatalogService
+import com.gromozeka.presentation.services.translation.data.Translation
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-private enum class AiCatalogSection(val title: String) {
-    Runtime("Runtime"),
-    Models("Models"),
-    Connections("Connections"),
-    Credentials("My access"),
-    Specs("Specs"),
+private enum class AiCatalogSection(val titleKey: String) {
+    Runtime("ai.catalog.section.runtime"),
+    Models("ai.catalog.section.models"),
+    Connections("ai.catalog.section.connections"),
+    Credentials("ai.catalog.section.credentials"),
+    Specs("ai.catalog.section.specs"),
 }
 
-private enum class AutoCompactionEditorMode(val title: String) {
-    None("Disabled"),
-    Percent("Percent"),
-    Absolute("Token threshold"),
+private enum class AutoCompactionEditorMode(val titleKey: String) {
+    None("ai.compaction.disabled"),
+    Percent("ai.compaction.percent"),
+    Absolute("ai.compaction.token_threshold"),
 }
 
 private data class AiCatalogDraft(
@@ -141,6 +144,7 @@ fun AiCatalogSettings(
     coroutineScope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
+    val translation = LocalTranslation.current
     val snapshot by aiConfigurationService.snapshotFlow.collectAsState()
     val availableSections = if (canManageCatalog) {
         AiCatalogSection.entries
@@ -152,7 +156,7 @@ fun AiCatalogSettings(
     }
     var draft by remember { mutableStateOf(snapshot?.catalog?.let(AiCatalogDraft::from)) }
     var isSaving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
     var workers by remember { mutableStateOf(emptyList<WorkerCatalogEntry>()) }
     val templates = remember { runtimeCatalogTemplateService.getTemplates() }
 
@@ -195,85 +199,85 @@ fun AiCatalogSettings(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text("AI runtime catalog", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "Server database · revision ${currentSnapshot.revision}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                runCatching { aiConfigurationService.reload() }
-                                    .onFailure { error = it.message }
-                            }
-                        },
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reload AI catalog")
+            AdaptiveCatalogRow(
+                description = {
+                    Column {
+                        Text(translation.text("ai.catalog.title"), style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            translation.text("ai.catalog.revision", "revision" to currentSnapshot.revision),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                    if (canManageCatalog) {
-                        OutlinedButton(
-                            onClick = {
-                                draft = AiCatalogDraft.from(currentSnapshot.catalog)
-                                error = null
-                            },
-                            enabled = isDirty && !isSaving,
-                        ) {
-                            Icon(Icons.Default.Restore, contentDescription = null)
-                            Spacer(Modifier.width(6.dp))
-                            Text("Revert")
-                        }
-                        Button(
+                },
+                controls = {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
                             onClick = {
                                 coroutineScope.launch {
-                                    isSaving = true
-                                    error = null
-                                    runCatching {
-                                        aiConfigurationService.replaceCatalog(
-                                            currentDraft.toCatalog(),
-                                            currentSnapshot.revision,
-                                            currentDraft.secretMutations,
-                                        )
-                                    }.onFailure {
-                                        error = it.message ?: it::class.simpleName
-                                        isSaving = false
-                                    }
+                                    runCatching { aiConfigurationService.reload() }
+                                        .onFailure { error = it.message }
                                 }
                             },
-                            enabled = isDirty && !isSaving,
                         ) {
-                            if (isSaving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.width(18.dp).height(18.dp),
-                                    strokeWidth = 2.dp,
-                                )
-                            } else {
-                                Text("Save")
+                            Icon(Icons.Default.Refresh, contentDescription = translation.text("ai.catalog.reload"))
+                        }
+                        if (canManageCatalog) {
+                            OutlinedButton(
+                                onClick = {
+                                    draft = AiCatalogDraft.from(currentSnapshot.catalog)
+                                    error = null
+                                },
+                                enabled = isDirty && !isSaving,
+                            ) {
+                                Icon(Icons.Default.Restore, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(translation.text("ai.action.revert"))
+                            }
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        isSaving = true
+                                        error = null
+                                        runCatching {
+                                            aiConfigurationService.replaceCatalog(
+                                                currentDraft.toCatalog(),
+                                                currentSnapshot.revision,
+                                                currentDraft.secretMutations,
+                                            )
+                                        }.onFailure {
+                                            error = it.message ?: it::class.simpleName
+                                            isSaving = false
+                                        }
+                                    }
+                                },
+                                enabled = isDirty && !isSaving,
+                            ) {
+                                if (isSaving) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.width(18.dp).height(18.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                } else {
+                                    Text(translation.text("ai.action.save"))
+                                }
                             }
                         }
                     }
-                }
-            }
+                },
+            )
 
             error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             if (availableSections.size > 1) {
-                SecondaryTabRow(selectedTabIndex = availableSections.indexOf(selectedSection)) {
+                SecondaryScrollableTabRow(selectedTabIndex = availableSections.indexOf(selectedSection), edgePadding = 0.dp) {
                     availableSections.forEach { section ->
                         Tab(
                             selected = selectedSection == section,
                             onClick = { selectedSection = section },
-                            text = { Text(section.title) },
+                            text = { Text(translation.text(section.titleKey)) },
                         )
                     }
                 }
@@ -320,18 +324,44 @@ fun AiCatalogSettings(
 }
 
 @Composable
+private fun AdaptiveCatalogRow(
+    description: @Composable () -> Unit,
+    controls: @Composable () -> Unit,
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val availableWidth = maxWidth
+        if (availableWidth < 600.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                description()
+                controls()
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) { description() }
+                Box(Modifier.widthIn(max = availableWidth / 2)) { controls() }
+            }
+        }
+    }
+}
+
+@Composable
 private fun RuntimeAssignmentsEditor(
     draft: AiCatalogDraft,
     runtimeEnabledConnectionIds: Set<AiConnection.Id>,
     onChange: (AiCatalogDraft) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var showAdvanced by remember { mutableStateOf(false) }
     val primary = AiRuntimeAssignment.Purpose.entries.filter { it.requiresExplicitAssignment }
     val advanced = AiRuntimeAssignment.Purpose.entries.filterNot { it.requiresExplicitAssignment }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            "Models selected for Gromozeka workflows. Optional stage overrides inherit from their parent workflow.",
+            translation.text("ai.runtime.description"),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -346,7 +376,7 @@ private fun RuntimeAssignmentsEditor(
 
         HorizontalDivider()
         OutlinedButton(onClick = { showAdvanced = !showAdvanced }) {
-            Text(if (showAdvanced) "Hide stage overrides" else "Show stage overrides (${advanced.size})")
+            Text(if (showAdvanced) translation.text("ai.runtime.hide_overrides") else translation.plural("ai.runtime.show_overrides", advanced.size.toLong()))
         }
         if (showAdvanced) {
             advanced.forEach { purpose ->
@@ -368,11 +398,12 @@ private fun RuntimeAssignmentRow(
     runtimeEnabledConnectionIds: Set<AiConnection.Id>,
     onChange: (AiCatalogDraft) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     val directAssignment = draft.runtimeAssignments.firstOrNull { it.purpose == purpose }
     val options = draft.modelConfigurations.filter {
         draft.supportsPurpose(it, purpose, runtimeEnabledConnectionIds)
     }
-    val fallbackLabel = purpose.fallbackPurpose?.let { "Inherit ${it.displayName}" }
+    val fallbackLabel = purpose.fallbackPurpose?.let { translation.text("ai.runtime.inherit", "purpose" to it.aiLabel(translation)) }
     val selectedId = directAssignment?.selection?.modelConfigurationId
     val selectedConfiguration = selectedId?.let { id ->
         draft.modelConfigurations.firstOrNull { it.id == id }
@@ -381,9 +412,9 @@ private fun RuntimeAssignmentRow(
         draft.supportsPurpose(it, purpose, runtimeEnabledConnectionIds)
     } ?: (directAssignment == null && fallbackLabel != null)
     val selectedLabel = selectedConfiguration?.displayName
-        ?.let { if (selectedAvailable) it else "$it · unavailable" }
+        ?.let { if (selectedAvailable) it else translation.text("ai.runtime.unavailable_model", "name" to it) }
         ?: fallbackLabel
-        ?: "Not configured"
+        ?: translation.text("ai.runtime.not_configured")
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -393,39 +424,39 @@ private fun RuntimeAssignmentRow(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(purpose.displayName, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        purpose.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AdaptiveCatalogRow(
+                description = {
+                    Column {
+                        Text(purpose.aiLabel(translation), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            purpose.aiDescription(translation),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                controls = {
+                    CatalogDropdown(
+                        label = selectedLabel,
+                        options = buildList {
+                            if (fallbackLabel != null) add(null to fallbackLabel)
+                            options.forEach { add(it.id to "${it.displayName} · ${it.providerModelId}") }
+                        },
+                        onSelect = { modelId ->
+                            val assignments = draft.runtimeAssignments.filterNot { it.purpose == purpose } +
+                                listOfNotNull(
+                                    modelId?.let {
+                                        AiRuntimeAssignment(purpose, AiRuntimeSelection(it))
+                                    }
+                                )
+                            onChange(draft.copy(runtimeAssignments = assignments.sortedBy { it.purpose.ordinal }))
+                        },
                     )
-                }
-                CatalogDropdown(
-                    label = selectedLabel,
-                    options = buildList {
-                        if (fallbackLabel != null) add(null to fallbackLabel)
-                        options.forEach { add(it.id to "${it.displayName} · ${it.providerModelId}") }
-                    },
-                    onSelect = { modelId ->
-                        val assignments = draft.runtimeAssignments.filterNot { it.purpose == purpose } +
-                            listOfNotNull(
-                                modelId?.let {
-                                    AiRuntimeAssignment(purpose, AiRuntimeSelection(it))
-                                }
-                            )
-                        onChange(draft.copy(runtimeAssignments = assignments.sortedBy { it.purpose.ordinal }))
-                    },
-                )
-            }
+                },
+            )
             if (options.isEmpty()) {
                 Text(
-                    "No enabled model supports ${purpose.requiredCapabilities.joinToString()}",
+                    translation.text("ai.runtime.unsupported_capabilities", "capabilities" to purpose.requiredCapabilities.joinToString { it.aiLabel(translation) }),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -433,9 +464,9 @@ private fun RuntimeAssignmentRow(
             if (directAssignment != null && !selectedAvailable) {
                 Text(
                     if (fallbackLabel == null) {
-                        "This capability is paused while its assigned connection is unavailable."
+                        translation.text("ai.runtime.paused_connection")
                     } else {
-                        "This override is unavailable; runtime falls back to ${purpose.fallbackPurpose?.displayName}."
+                        translation.text("ai.runtime.unavailable_override", "purpose" to purpose.fallbackPurpose?.aiLabel(translation).orEmpty())
                     },
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
@@ -452,6 +483,7 @@ private fun ModelConfigurationsEditor(
     onChange: (AiCatalogDraft) -> Unit,
     onError: (String?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var editing by remember { mutableStateOf<AiModelConfiguration?>(null) }
     var creating by remember { mutableStateOf(false) }
     val missingTemplates = templateCatalog.modelConfigurations.filter { template ->
@@ -460,7 +492,7 @@ private fun ModelConfigurationsEditor(
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         CatalogSectionActions(
-            addLabel = "New model",
+            addLabel = translation.text("ai.model.new"),
             missingTemplateCount = missingTemplates.size,
             onAdd = { creating = true },
             onAddTemplates = {
@@ -495,20 +527,20 @@ private fun ModelConfigurationsEditor(
                         title = configuration.displayName,
                         subtitle = "${configuration.providerModelId} · ${configuration.id.value}",
                         badges = buildList {
-                            add(if (configuration.enabled) "enabled" else "disabled")
+                            add(if (configuration.enabled) translation.text("ai.badge.enabled") else translation.text("ai.badge.disabled"))
                             draft.modelSpecs.firstOrNull {
                                 it.id == configuration.providerModelId &&
                                     it.provider == connection.kind.provider
-                            }?.capabilities?.forEach { add(it.name.lowercase()) }
+                            }?.capabilities?.forEach { add(it.aiLabel(translation)) }
                             configuration.requestedEmbeddingDimensions?.let {
-                                add("embedding ${it}d override")
+                                add(translation.text("ai.model.embedding_override", "dimensions" to it))
                             }
-                            if (assignments.isNotEmpty()) add("${assignments.size} assignments")
+                            if (assignments.isNotEmpty()) add(translation.plural("ai.model.assignments", assignments.size.toLong()))
                         },
                         onEdit = { editing = configuration },
                         onDelete = {
                             if (assignments.isNotEmpty()) {
-                                onError("Model ${configuration.displayName} is used by runtime assignments")
+                                onError(translation.text("ai.model.in_use", "name" to configuration.displayName))
                             } else {
                                 onChange(
                                     draft.copy(
@@ -557,6 +589,7 @@ private fun ConnectionsEditor(
     onChange: (AiCatalogDraft) -> Unit,
     onError: (String?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var editing by remember { mutableStateOf<AiConnection?>(null) }
     var creating by remember { mutableStateOf(false) }
     val missingTemplates = templateCatalog.connections.filter { template ->
@@ -565,7 +598,7 @@ private fun ConnectionsEditor(
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         CatalogSectionActions(
-            addLabel = "New connection",
+            addLabel = translation.text("ai.connection.new"),
             missingTemplateCount = missingTemplates.size,
             onAdd = { creating = true },
             onAddTemplates = {
@@ -577,16 +610,16 @@ private fun ConnectionsEditor(
             val modelCount = draft.modelConfigurations.count { it.connectionId == connection.id }
             CatalogEntityCard(
                 title = connection.displayName,
-                subtitle = "${connection.kind.name} · ${connection.id.value}",
+                subtitle = "${connection.kind.aiLabel(translation)} · ${connection.id.value}",
                 badges = listOf(
-                    if (connection.enabled) "enabled" else "disabled",
-                    "$modelCount models",
-                    connection.executionTarget.displayLabel(workers),
-                ) + connection.openAiWebSearchBadge(),
+                    if (connection.enabled) translation.text("ai.badge.enabled") else translation.text("ai.badge.disabled"),
+                    translation.plural("ai.connection.models", modelCount.toLong()),
+                    connection.executionTarget.displayLabel(workers, translation),
+                ) + connection.openAiWebSearchBadge(translation),
                 onEdit = { editing = connection },
                 onDelete = {
                     if (modelCount > 0) {
-                        onError("Connection ${connection.displayName} still has $modelCount model configurations")
+                        onError(translation.plural("ai.connection.in_use", modelCount.toLong(), "name" to connection.displayName))
                     } else {
                         val slot = AiCatalogSecretSlot.ConnectionApiKey(connection.id)
                         onChange(
@@ -633,6 +666,7 @@ private fun ModelSpecsEditor(
     onChange: (AiCatalogDraft) -> Unit,
     onError: (String?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var editing by remember { mutableStateOf<AiModelSpec?>(null) }
     var creating by remember { mutableStateOf(false) }
     val missingTemplates = templateCatalog.modelSpecs.filter { template ->
@@ -641,12 +675,12 @@ private fun ModelSpecsEditor(
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "Specs describe provider capabilities and limits. Model configurations reference them by provider and model id.",
+            translation.text("ai.spec.description"),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         CatalogSectionActions(
-            addLabel = "New spec",
+            addLabel = translation.text("ai.spec.new"),
             missingTemplateCount = missingTemplates.size,
             onAdd = { creating = true },
             onAddTemplates = {
@@ -657,7 +691,7 @@ private fun ModelSpecsEditor(
         AiProvider.entries.forEach { provider ->
             val specs = draft.modelSpecs.filter { it.provider == provider }
             if (specs.isNotEmpty()) {
-                Text(provider.name, style = MaterialTheme.typography.titleMedium)
+                Text(provider.aiLabel(translation), style = MaterialTheme.typography.titleMedium)
                 specs.forEach { spec ->
                     val used = draft.modelConfigurations.any { configuration ->
                         draft.connections.firstOrNull { it.id == configuration.connectionId }
@@ -666,12 +700,12 @@ private fun ModelSpecsEditor(
                     }
                     CatalogEntityCard(
                         title = spec.id,
-                        subtitle = spec.limits.summary(),
-                        badges = spec.capabilities.map { it.name.lowercase() },
+                        subtitle = spec.limits.summary(translation),
+                        badges = spec.capabilities.map { it.aiLabel(translation) },
                         onEdit = { editing = spec },
                         onDelete = {
                             if (used) {
-                                onError("Model spec ${spec.provider}/${spec.id} is used by a configuration")
+                                onError(translation.text("ai.spec.in_use", "provider" to spec.provider.aiLabel(translation), "modelId" to spec.id))
                             } else {
                                 onChange(
                                     draft.copy(
@@ -717,6 +751,7 @@ private fun CatalogSectionActions(
     onAdd: () -> Unit,
     onAddTemplates: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End,
@@ -724,7 +759,7 @@ private fun CatalogSectionActions(
     ) {
         if (missingTemplateCount > 0) {
             OutlinedButton(onClick = onAddTemplates) {
-                Text("Add $missingTemplateCount from templates")
+                Text(translation.text("ai.catalog.add_templates", "count" to missingTemplateCount))
             }
             Spacer(Modifier.width(8.dp))
         }
@@ -744,6 +779,7 @@ private fun CatalogEntityCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -769,12 +805,12 @@ private fun CatalogEntityCard(
                 }
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit $title")
+                Icon(Icons.Default.Edit, contentDescription = translation.text("ai.catalog.edit_entity", "title" to title))
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete $title",
+                    contentDescription = translation.text("ai.catalog.delete_entity", "title" to title),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -819,6 +855,7 @@ private fun ConnectionDialog(
     onDismiss: () -> Unit,
     onSave: (AiConnection, AiCatalogSecretMutation?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var kind by remember { mutableStateOf(existing?.kind ?: AiConnection.Kind.OPENAI_API) }
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
     var name by remember { mutableStateOf(existing?.displayName.orEmpty()) }
@@ -914,7 +951,7 @@ private fun ConnectionDialog(
     }
     val secretValue = secretValueState.text.toString()
     var removeConfiguredSecret by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(kind, workers, executionTarget, copilotAuthMode) {
         if (kind == AiConnection.Kind.CLAUDE_CODE && executionTarget !is AiExecutionTarget.Worker) {
@@ -941,7 +978,7 @@ private fun ConnectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "New connection" else "Edit connection") },
+        title = { Text(if (existing == null) translation.text("ai.connection.new") else translation.text("ai.connection.edit")) },
         text = {
             Column(
                 modifier = Modifier.heightIn(max = 640.dp).verticalScroll(rememberScrollState()),
@@ -949,17 +986,17 @@ private fun ConnectionDialog(
             ) {
                 if (existing == null) {
                     LabeledDropdown(
-                        label = "Connection kind",
+                        label = translation.text("ai.connection.kind"),
                         value = kind,
                         options = AiConnection.Kind.entries,
-                        optionLabel = { it.name },
+                        optionLabel = { it.aiLabel(translation) },
                         onSelect = { kind = it },
                     )
                 }
                 OutlinedTextField(
                     value = id,
                     onValueChange = { id = it },
-                    label = { Text("Stable id") },
+                    label = { Text(translation.text("ai.field.stable_id")) },
                     enabled = existing == null,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -967,23 +1004,23 @@ private fun ConnectionDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Display name") },
+                    label = { Text(translation.text("ai.field.display_name")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                     Spacer(Modifier.width(8.dp))
-                    Text("Enabled")
+                    Text(translation.text("ai.field.enabled"))
                 }
                 if (kind == AiConnection.Kind.OPENAI_API || kind == AiConnection.Kind.OPENAI_SUBSCRIPTION) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = webSearchEnabled, onCheckedChange = { webSearchEnabled = it })
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text("OpenAI hosted web search")
+                            Text(translation.text("ai.connection.web_search"))
                             Text(
-                                "Let this connection use OpenAI's native web_search tool.",
+                                translation.text("ai.connection.web_search_description"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1000,28 +1037,26 @@ private fun ConnectionDialog(
                     }
                 }
                 LabeledDropdown(
-                    label = "Execution target",
+                    label = translation.text("ai.connection.execution_target"),
                     value = executionTarget,
                     options = targetOptions,
-                    optionLabel = { it.displayLabel(workers) },
+                    optionLabel = { it.displayLabel(workers, translation) },
                     onSelect = { executionTarget = it },
                 )
                 Text(
                     if (kind == AiConnection.Kind.CLAUDE_CODE) {
-                        "Claude Code runs only on the selected Worker, using that machine's installation and credentials."
+                        translation.text("ai.connection.claude_target_description")
                     } else if (kind == AiConnection.Kind.GITHUB_COPILOT) {
-                        "GitHub Copilot runs on the selected target using that machine's separately installed CLI. " +
-                            "Gromozeka does not bundle, reassign, or silently replace it."
+                        translation.text("ai.connection.copilot_target_description")
                     } else {
-                        "Finite LLM, embedding, speech-to-text, and text-to-speech requests use this exact target. " +
-                            "Streaming and live voice require Server."
+                        translation.text("ai.connection.request_target_description")
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (kind == AiConnection.Kind.CLAUDE_CODE && workers.isEmpty()) {
                     Text(
-                        "Enroll a Worker before creating a Claude Code connection.",
+                        translation.text("ai.connection.worker_required"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -1030,17 +1065,19 @@ private fun ConnectionDialog(
                     OutlinedTextField(
                         value = baseUrl,
                         onValueChange = { baseUrl = it },
-                        label = { Text("Base URL") },
+                        label = { Text(translation.text("ai.connection.base_url")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 if (kind in apiKeyConnectionKinds) {
                     LabeledDropdown(
-                        label = "Secret source",
+                        label = translation.text("ai.secret.source"),
                         value = secretMode,
                         options = listOf("Environment", "Inline"),
-                        optionLabel = { it },
+                        optionLabel = {
+                            translation.text(if (it == "Inline") "ai.secret.source.inline" else "ai.secret.source.environment")
+                        },
                         onSelect = {
                             secretMode = it
                             removeConfiguredSecret = false
@@ -1049,13 +1086,13 @@ private fun ConnectionDialog(
                     if (secretMode == "Inline") {
                         OutlinedSecretTextField(
                             state = secretValueState,
-                            label = { Text("API key") },
+                            label = { Text(translation.text("ai.secret.api_key")) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     } else {
                         OutlinedTextField(
                             state = secretValueState,
-                            label = { Text("Environment variable") },
+                            label = { Text(translation.text("ai.secret.environment_variable")) },
                             lineLimits = TextFieldLineLimits.SingleLine,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -1063,9 +1100,9 @@ private fun ConnectionDialog(
                     if (existingSecretState?.source == AiCatalogSecretState.Source.INLINE) {
                         Text(
                             text = if (removeConfiguredSecret) {
-                                "The stored API key will be removed."
+                                translation.text("ai.secret.key_will_be_removed")
                             } else {
-                                "An API key is stored on the Server. Leave this field empty to keep it."
+                                translation.text("ai.secret.keep_existing_hint")
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (removeConfiguredSecret) {
@@ -1086,9 +1123,9 @@ private fun ConnectionDialog(
                         ) {
                             Text(
                                 if (removeConfiguredSecret) {
-                                    "Keep configured API key"
+                                    translation.text("ai.secret.keep_key")
                                 } else {
-                                    "Remove configured API key"
+                                    translation.text("ai.secret.remove_key")
                                 }
                             )
                         }
@@ -1098,14 +1135,14 @@ private fun ConnectionDialog(
                     OutlinedTextField(
                         value = awsRegion,
                         onValueChange = { awsRegion = it },
-                        label = { Text("AWS region") },
+                        label = { Text(translation.text("ai.connection.aws_region")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = awsProfile,
                         onValueChange = { awsProfile = it },
-                        label = { Text("AWS profile") },
+                        label = { Text(translation.text("ai.connection.aws_profile")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -1118,9 +1155,9 @@ private fun ConnectionDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text("Experimental Claude Code voice adapter")
+                            Text(translation.text("ai.connection.claude_voice"))
                             Text(
-                                "Controls a separately installed Claude Code UI. Enable only when your organization and account terms permit automation; consumer Pro/Max is not supported by default.",
+                                translation.text("ai.connection.claude_voice_description"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1129,30 +1166,30 @@ private fun ConnectionDialog(
                     OutlinedTextField(
                         value = executablePath,
                         onValueChange = { executablePath = it },
-                        label = { Text("Executable") },
+                        label = { Text(translation.text("ai.connection.executable")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = maxCachedProcesses,
                         onValueChange = { maxCachedProcesses = it.filter(Char::isDigit) },
-                        label = { Text("Cached process limit") },
-                        supportingText = { Text("Maximum Claude Code session processes retained by this connection") },
+                        label = { Text(translation.text("ai.connection.cached_process_limit")) },
+                        supportingText = { Text(translation.text("ai.connection.cached_process_limit_hint")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = processIdleTtlMinutes,
                         onValueChange = { processIdleTtlMinutes = it.filter(Char::isDigit) },
-                        label = { Text("Idle TTL (minutes)") },
-                        supportingText = { Text("Close a cached process after this much idle time") },
+                        label = { Text(translation.text("ai.connection.idle_ttl")) },
+                        supportingText = { Text(translation.text("ai.connection.idle_ttl_hint")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 if (kind == AiConnection.Kind.GITHUB_COPILOT) {
                     LabeledDropdown(
-                        label = "Authentication",
+                        label = translation.text("ai.connection.authentication"),
                         value = copilotAuthMode,
                         options = if (executionTarget is AiExecutionTarget.Worker) {
                             listOf(AiConnection.GitHubCopilotAuthMode.SERVER_CLI)
@@ -1163,11 +1200,11 @@ private fun ConnectionDialog(
                             when (it) {
                                 AiConnection.GitHubCopilotAuthMode.SERVER_CLI ->
                                     if (executionTarget is AiExecutionTarget.Worker) {
-                                        "Worker CLI login"
+                                        translation.text("ai.connection.authentication.worker_cli")
                                     } else {
-                                        "Server CLI login"
+                                        translation.text("ai.connection.authentication.server_cli")
                                     }
-                                AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN -> "Per-user token"
+                                AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN -> translation.text("ai.connection.authentication.per_user_token")
                             }
                         },
                         onSelect = { copilotAuthMode = it },
@@ -1176,12 +1213,12 @@ private fun ConnectionDialog(
                         if (copilotAuthMode == AiConnection.GitHubCopilotAuthMode.SERVER_CLI) {
                             when (val target = executionTarget) {
                                 AiExecutionTarget.Server ->
-                                    "All requests use the GitHub account logged into Copilot CLI on the Server."
+                                    translation.text("ai.connection.authentication.server_cli_hint")
                                 is AiExecutionTarget.Worker ->
-                                    "All requests use the GitHub account logged into Copilot CLI on Worker ${target.workerId}."
+                                    translation.text("ai.connection.authentication.worker_cli_hint", "workerId" to target.workerId)
                             }
                         } else {
-                            "Each user configures their own GitHub token in the My access tab. No shared fallback is used."
+                            translation.text("ai.connection.authentication.per_user_hint")
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1189,29 +1226,29 @@ private fun ConnectionDialog(
                     OutlinedTextField(
                         value = copilotExecutablePath,
                         onValueChange = { copilotExecutablePath = it },
-                        label = { Text("Copilot executable") },
+                        label = { Text(translation.text("ai.connection.copilot_executable")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = copilotHomePath,
                         onValueChange = { copilotHomePath = it },
-                        label = { Text("Copilot home override") },
-                        supportingText = { Text("Optional. CLI login defaults to ~/.copilot on the execution target.") },
+                        label = { Text(translation.text("ai.connection.copilot_home")) },
+                        supportingText = { Text(translation.text("ai.connection.copilot_home_hint")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = copilotRequestTimeoutSeconds,
                         onValueChange = { copilotRequestTimeoutSeconds = it.filter(Char::isDigit) },
-                        label = { Text("Request timeout (seconds)") },
+                        label = { Text(translation.text("ai.connection.request_timeout")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = copilotSessionIdleTimeoutSeconds,
                         onValueChange = { copilotSessionIdleTimeoutSeconds = it.filter(Char::isDigit) },
-                        label = { Text("CLI session idle timeout (seconds)") },
+                        label = { Text(translation.text("ai.connection.session_idle_timeout")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -1225,9 +1262,9 @@ private fun ConnectionDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text("Protect subscription quota from background work")
+                            Text(translation.text("ai.quota.protect"))
                             Text(
-                                "Applies to memory writes and maintenance. Memory recall and foreground requests bypass it.",
+                                translation.text("ai.quota.protect_description"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1236,8 +1273,8 @@ private fun ConnectionDialog(
                     OutlinedTextField(
                         value = quotaReservePercent,
                         onValueChange = { quotaReservePercent = it.filterQuotaNumber() },
-                        label = { Text("Protected reserve (%)") },
-                        supportingText = { Text("Keep this much subscription capacity for foreground work") },
+                        label = { Text(translation.text("ai.quota.reserve")) },
+                        supportingText = { Text(translation.text("ai.quota.reserve_hint")) },
                         enabled = quotaPacingEnabled,
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -1245,8 +1282,8 @@ private fun ConnectionDialog(
                     OutlinedTextField(
                         value = quotaMinimumHeadroomPercent,
                         onValueChange = { quotaMinimumHeadroomPercent = it.filterQuotaNumber() },
-                        label = { Text("Per-call headroom (%)") },
-                        supportingText = { Text("Required surplus above the time-based spending curve") },
+                        label = { Text(translation.text("ai.quota.headroom")) },
+                        supportingText = { Text(translation.text("ai.quota.headroom_hint")) },
                         enabled = quotaPacingEnabled,
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -1254,8 +1291,8 @@ private fun ConnectionDialog(
                     OutlinedTextField(
                         value = quotaRefreshIntervalSeconds,
                         onValueChange = { quotaRefreshIntervalSeconds = it.filter(Char::isDigit) },
-                        label = { Text("Quota refresh interval (seconds)") },
-                        supportingText = { Text("A fresh quota snapshot is required after every background model call") },
+                        label = { Text(translation.text("ai.quota.refresh_interval")) },
+                        supportingText = { Text(translation.text("ai.quota.refresh_interval_hint")) },
                         enabled = quotaPacingEnabled,
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -1269,6 +1306,7 @@ private fun ConnectionDialog(
                 onClick = {
                     runCatching {
                         val connection = createConnection(
+                            translation = translation,
                             kind = kind,
                             id = id,
                             name = name,
@@ -1309,14 +1347,15 @@ private fun ConnectionDialog(
                     }.onFailure { error = it.message }
                 },
             ) {
-                Text("Apply")
+                Text(translation.text("ai.action.apply"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("ai.action.cancel")) } },
     )
 }
 
 private fun createConnection(
+    translation: Translation,
     kind: AiConnection.Kind,
     id: String,
     name: String,
@@ -1350,11 +1389,11 @@ private fun createConnection(
     val quotaPacing = AiSubscriptionQuotaPacingPolicy(
         enabled = quotaPacingEnabled,
         reservePercent = quotaReservePercent.toDoubleOrNull()
-            ?: error("Protected reserve must be a number"),
+            ?: error(translation.text("ai.validation.reserve_number")),
         minimumHeadroomPercent = quotaMinimumHeadroomPercent.toDoubleOrNull()
-            ?: error("Per-call headroom must be a number"),
+            ?: error(translation.text("ai.validation.headroom_number")),
         refreshIntervalSeconds = quotaRefreshIntervalSeconds.toLongOrNull()
-            ?: error("Quota refresh interval must be a positive integer"),
+            ?: error(translation.text("ai.validation.refresh_positive_integer")),
     )
     return when (kind) {
         AiConnection.Kind.OPENAI_API -> AiConnection.OpenAiApi(
@@ -1382,9 +1421,9 @@ private fun createConnection(
             copilotHomePath = copilotHomePath.trim().ifBlank { null },
             authMode = copilotAuthMode,
             requestTimeoutSeconds = copilotRequestTimeoutSeconds.toIntOrNull()
-                ?: error("Request timeout must be a positive integer"),
+                ?: error(translation.text("ai.validation.request_timeout_positive_integer")),
             sessionIdleTimeoutSeconds = copilotSessionIdleTimeoutSeconds.toIntOrNull()
-                ?: error("Session idle timeout must be a positive integer"),
+                ?: error(translation.text("ai.validation.session_timeout_positive_integer")),
             quotaPacing = quotaPacing,
             executionTarget = executionTarget,
         )
@@ -1419,13 +1458,13 @@ private fun createConnection(
             enabled = enabled,
             executablePath = executablePath.trim(),
             maxCachedProcesses = maxCachedProcesses.toIntOrNull()
-                ?: error("Cached process limit must be a positive integer"),
+                ?: error(translation.text("ai.validation.cached_process_limit_positive_integer")),
             processIdleTtlMinutes = processIdleTtlMinutes.toIntOrNull()
-                ?: error("Idle TTL must be a positive integer"),
+                ?: error(translation.text("ai.validation.idle_ttl_positive_integer")),
             voiceTranscriptionEnabled = voiceTranscriptionEnabled,
             quotaPacing = quotaPacing,
             executionTarget = executionTarget as? AiExecutionTarget.Worker
-                ?: error("Claude Code requires a Worker execution target"),
+                ?: error(translation.text("ai.validation.claude_worker_target")),
         )
         AiConnection.Kind.GEMINI_API -> AiConnection.GeminiApi(
             id = connectionId,
@@ -1459,13 +1498,13 @@ private fun String.filterQuotaNumber(): String {
     }
 }
 
-private fun AiExecutionTarget.displayLabel(workers: List<WorkerCatalogEntry>): String =
+private fun AiExecutionTarget.displayLabel(workers: List<WorkerCatalogEntry>, translation: Translation): String =
     when (this) {
-        AiExecutionTarget.Server -> "Server"
+        AiExecutionTarget.Server -> translation.text("ai.target.server")
         is AiExecutionTarget.Worker -> {
             val worker = workers.firstOrNull { it.workerId.value == workerId }
-            val status = worker?.status?.name?.lowercase() ?: "unknown"
-            "Worker $workerId · $status"
+            val status = worker?.status?.aiLabel(translation) ?: translation.text("ai.worker.status.unknown")
+            translation.text("ai.target.worker", "workerId" to workerId, "status" to status)
         }
     }
 
@@ -1477,6 +1516,7 @@ private fun ModelConfigurationDialog(
     onDismiss: () -> Unit,
     onSave: (AiModelConfiguration) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
     var connectionId by remember {
         mutableStateOf(existing?.connectionId ?: connections.firstOrNull()?.id)
@@ -1507,7 +1547,7 @@ private fun ModelConfigurationDialog(
     var reasoningBudget by remember {
         mutableStateOf(existing?.defaultParameters?.reasoning?.budgetTokens?.toString().orEmpty())
     }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
     val selectedConnection = connections.firstOrNull { it.id == connectionId }
     val selectedModelSpec = modelSpecs.firstOrNull {
         it.provider == selectedConnection?.kind?.provider &&
@@ -1517,7 +1557,7 @@ private fun ModelConfigurationDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "New model configuration" else "Edit model configuration") },
+        title = { Text(if (existing == null) translation.text("ai.model.configuration.new") else translation.text("ai.model.configuration.edit")) },
         text = {
             Column(
                 modifier = Modifier.heightIn(max = 640.dp).verticalScroll(rememberScrollState()),
@@ -1526,14 +1566,14 @@ private fun ModelConfigurationDialog(
                 OutlinedTextField(
                     value = id,
                     onValueChange = { id = it },
-                    label = { Text("Stable id") },
+                    label = { Text(translation.text("ai.field.stable_id")) },
                     enabled = existing == null,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 connectionId?.let { selected ->
                     LabeledDropdown(
-                        label = "Connection",
+                        label = translation.text("ai.model.connection"),
                         value = selected,
                         options = connections.map { it.id },
                         optionLabel = { candidate ->
@@ -1545,46 +1585,46 @@ private fun ModelConfigurationDialog(
                 OutlinedTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
-                    label = { Text("Display name") },
+                    label = { Text(translation.text("ai.field.display_name")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = providerModelId,
                     onValueChange = { providerModelId = it },
-                    label = { Text("Provider model id") },
+                    label = { Text(translation.text("ai.model.provider_model_id")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 LabeledDropdown(
-                    label = "Assistant response format",
+                    label = translation.text("ai.model.response_format"),
                     value = responseFormat,
                     options = AiModelConfiguration.AssistantResponseFormat.entries,
-                    optionLabel = { it.name },
+                    optionLabel = { it.aiLabel(translation) },
                     onSelect = { responseFormat = it },
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                     Spacer(Modifier.width(8.dp))
-                    Text("Enabled")
+                    Text(translation.text("ai.field.enabled"))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OptionalNumberField(
                         value = temperature,
                         onValueChange = { temperature = it },
-                        label = "Temperature",
+                        label = translation.text("ai.model.temperature"),
                         modifier = Modifier.weight(1f),
                     )
                     OptionalNumberField(
                         value = maxOutputTokens,
                         onValueChange = { maxOutputTokens = it },
-                        label = "Max output",
+                        label = translation.text("ai.model.max_output"),
                         modifier = Modifier.weight(1f),
                     )
                     OptionalNumberField(
                         value = timeoutSeconds,
                         onValueChange = { timeoutSeconds = it },
-                        label = "Timeout sec",
+                        label = translation.text("ai.model.timeout_seconds"),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -1592,39 +1632,42 @@ private fun ModelConfigurationDialog(
                     OptionalNumberField(
                         value = requestedEmbeddingDimensions,
                         onValueChange = { requestedEmbeddingDimensions = it },
-                        label = "Requested embedding dimensions",
+                        label = translation.text("ai.model.requested_embedding_dimensions"),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        "Leave empty to use the model default without sending a dimensions parameter.",
+                        translation.text("ai.model.embedding_dimensions_hint"),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Text("Default reasoning", style = MaterialTheme.typography.titleSmall)
+                Text(translation.text("ai.reasoning.default"), style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NullableEnumDropdown(
-                        label = "Mode",
+                        label = translation.text("ai.reasoning.mode"),
                         value = reasoningMode,
                         options = AiReasoningMode.entries,
+                        optionLabel = { it.aiLabel(translation) },
                         onSelect = { reasoningMode = it },
                     )
                     NullableEnumDropdown(
-                        label = "Effort",
+                        label = translation.text("ai.reasoning.effort"),
                         value = reasoningEffort,
                         options = AiReasoningEffort.entries,
+                        optionLabel = { it.aiLabel(translation) },
                         onSelect = { reasoningEffort = it },
                     )
                     NullableEnumDropdown(
-                        label = "Display",
+                        label = translation.text("ai.reasoning.display"),
                         value = reasoningDisplay,
                         options = AiReasoningDisplay.entries,
+                        optionLabel = { it.aiLabel(translation) },
                         onSelect = { reasoningDisplay = it },
                     )
                 }
                 OptionalNumberField(
                     value = reasoningBudget,
                     onValueChange = { reasoningBudget = it },
-                    label = "Reasoning budget tokens",
+                    label = translation.text("ai.reasoning.budget_tokens"),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -1634,7 +1677,7 @@ private fun ModelConfigurationDialog(
             Button(onClick = {
                 runCatching {
                     val selectedConnectionId = requireNotNull(connectionId) {
-                        "Connection is required"
+                        translation.text("ai.validation.connection_required")
                     }
                     val reasoning = if (
                         reasoningMode != null ||
@@ -1646,7 +1689,7 @@ private fun ModelConfigurationDialog(
                             mode = reasoningMode,
                             effort = reasoningEffort,
                             display = reasoningDisplay,
-                            budgetTokens = reasoningBudget.optionalInt("Reasoning budget"),
+                            budgetTokens = reasoningBudget.optionalInt(translation.text("ai.reasoning.budget"), translation),
                         )
                     } else {
                         null
@@ -1659,23 +1702,23 @@ private fun ModelConfigurationDialog(
                         enabled = enabled,
                         assistantResponseFormat = responseFormat,
                         defaultParameters = AiModelConfiguration.DefaultParameters(
-                            temperature = temperature.optionalDouble("Temperature"),
-                            maxOutputTokens = maxOutputTokens.optionalInt("Max output tokens"),
+                            temperature = temperature.optionalDouble(translation.text("ai.model.temperature"), translation),
+                            maxOutputTokens = maxOutputTokens.optionalInt(translation.text("ai.model.max_output_tokens"), translation),
                             reasoning = reasoning,
-                            timeoutSeconds = timeoutSeconds.optionalInt("Timeout"),
+                            timeoutSeconds = timeoutSeconds.optionalInt(translation.text("ai.model.timeout"), translation),
                         ),
                         requestedEmbeddingDimensions = if (supportsEmbeddings) {
-                            requestedEmbeddingDimensions.optionalInt("Requested embedding dimensions")
+                            requestedEmbeddingDimensions.optionalInt(translation.text("ai.model.requested_embedding_dimensions"), translation)
                         } else {
                             null
                         },
                     )
                 }.onSuccess(onSave).onFailure { error = it.message }
             }) {
-                Text("Apply")
+                Text(translation.text("ai.action.apply"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("ai.action.cancel")) } },
     )
 }
 
@@ -1685,6 +1728,7 @@ private fun ModelSpecDialog(
     onDismiss: () -> Unit,
     onSave: (AiModelSpec) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var id by remember { mutableStateOf(existing?.id.orEmpty()) }
     var provider by remember { mutableStateOf(existing?.provider ?: AiProvider.OPENAI) }
     var capabilities by remember {
@@ -1724,33 +1768,33 @@ private fun ModelSpecDialog(
     var reasoningModes by remember { mutableStateOf(existing?.reasoning?.modes.orEmpty()) }
     var reasoningEfforts by remember { mutableStateOf(existing?.reasoning?.efforts.orEmpty()) }
     var reasoningDisplays by remember { mutableStateOf(existing?.reasoning?.displays.orEmpty()) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "New model spec" else "Edit model spec") },
+        title = { Text(if (existing == null) translation.text("ai.spec.model_new") else translation.text("ai.spec.model_edit")) },
         text = {
             Column(
                 modifier = Modifier.heightIn(max = 640.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 LabeledDropdown(
-                    label = "Provider",
+                    label = translation.text("ai.spec.provider"),
                     value = provider,
                     options = AiProvider.entries,
-                    optionLabel = { it.name },
+                    optionLabel = { it.aiLabel(translation) },
                     onSelect = { provider = it },
                     enabled = existing == null,
                 )
                 OutlinedTextField(
                     value = id,
                     onValueChange = { id = it },
-                    label = { Text("Provider model id") },
+                    label = { Text(translation.text("ai.model.provider_model_id")) },
                     enabled = existing == null,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Text("Capabilities", style = MaterialTheme.typography.titleSmall)
+                Text(translation.text("ai.spec.capabilities"), style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AiModelCapability.entries.forEach { capability ->
                         FilterChip(
@@ -1762,7 +1806,7 @@ private fun ModelSpecDialog(
                                     capabilities + capability
                                 }
                             },
-                            label = { Text(capability.name.lowercase()) },
+                            label = { Text(capability.aiLabel(translation)) },
                         )
                     }
                 }
@@ -1771,22 +1815,22 @@ private fun ModelSpecDialog(
                         OptionalNumberField(
                             contextWindow,
                             { contextWindow = it },
-                            "Context window",
+                            translation.text("ai.spec.context_window"),
                             Modifier.weight(1f),
                         )
                         OptionalNumberField(
                             maxOutput,
                             { maxOutput = it },
-                            "Max output",
+                            translation.text("ai.model.max_output"),
                             Modifier.weight(1f),
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LabeledDropdown(
-                            label = "Auto compaction",
+                            label = translation.text("ai.spec.auto_compaction"),
                             value = compactionMode,
                             options = AutoCompactionEditorMode.entries,
-                            optionLabel = { it.title },
+                            optionLabel = { translation.text(it.titleKey) },
                             onSelect = { compactionMode = it },
                             modifier = Modifier.weight(1f),
                         )
@@ -1794,21 +1838,21 @@ private fun ModelSpecDialog(
                             compactionValue,
                             { compactionValue = it },
                             when (compactionMode) {
-                                AutoCompactionEditorMode.None -> "Disabled"
-                                AutoCompactionEditorMode.Percent -> "Percent"
-                                AutoCompactionEditorMode.Absolute -> "Threshold tokens"
+                                AutoCompactionEditorMode.None -> translation.text("ai.compaction.disabled")
+                                AutoCompactionEditorMode.Percent -> translation.text("ai.compaction.percent")
+                                AutoCompactionEditorMode.Absolute -> translation.text("ai.compaction.threshold_tokens")
                             },
                             Modifier.weight(1f),
                             enabled = compactionMode != AutoCompactionEditorMode.None,
                         )
                     }
-                    EnumSetEditor("Reasoning modes", reasoningModes, AiReasoningMode.entries) {
+                    EnumSetEditor(translation.text("ai.spec.reasoning_modes"), reasoningModes, AiReasoningMode.entries, { it.aiLabel(translation) }) {
                         reasoningModes = it
                     }
-                    EnumSetEditor("Reasoning efforts", reasoningEfforts, AiReasoningEffort.entries) {
+                    EnumSetEditor(translation.text("ai.spec.reasoning_efforts"), reasoningEfforts, AiReasoningEffort.entries, { it.aiLabel(translation) }) {
                         reasoningEfforts = it
                     }
-                    EnumSetEditor("Reasoning display", reasoningDisplays, AiReasoningDisplay.entries) {
+                    EnumSetEditor(translation.text("ai.spec.reasoning_display"), reasoningDisplays, AiReasoningDisplay.entries, { it.aiLabel(translation) }) {
                         reasoningDisplays = it
                     }
                 }
@@ -1817,13 +1861,13 @@ private fun ModelSpecDialog(
                         OptionalNumberField(
                             embeddingDimensions,
                             { embeddingDimensions = it },
-                            "Default dimensions",
+                            translation.text("ai.spec.default_dimensions"),
                             Modifier.weight(1f),
                         )
                         OptionalNumberField(
                             embeddingInput,
                             { embeddingInput = it },
-                            "Max input",
+                            translation.text("ai.spec.max_input"),
                             Modifier.weight(1f),
                         )
                     }
@@ -1838,15 +1882,15 @@ private fun ModelSpecDialog(
                         val autoCompaction = when (compactionMode) {
                             AutoCompactionEditorMode.None -> null
                             AutoCompactionEditorMode.Percent -> AiModelSpec.AutoCompaction.Percent(
-                                compactionValue.requiredInt("Compaction percent")
+                                compactionValue.requiredInt(translation.text("ai.compaction.percent_field"), translation)
                             )
                             AutoCompactionEditorMode.Absolute -> AiModelSpec.AutoCompaction.Absolute(
-                                compactionValue.requiredInt("Compaction threshold")
+                                compactionValue.requiredInt(translation.text("ai.compaction.threshold_field"), translation)
                             )
                         }
                         AiModelSpec.Limits.TextGeneration(
-                            contextWindowTokens = contextWindow.requiredInt("Context window"),
-                            maxOutputTokens = maxOutput.optionalInt("Max output"),
+                            contextWindowTokens = contextWindow.requiredInt(translation.text("ai.spec.context_window"), translation),
+                            maxOutputTokens = maxOutput.optionalInt(translation.text("ai.model.max_output"), translation),
                             autoCompaction = autoCompaction,
                         )
                     } else {
@@ -1854,8 +1898,8 @@ private fun ModelSpecDialog(
                     }
                     val embeddingLimits = if (AiModelCapability.EMBEDDINGS in capabilities) {
                         AiModelSpec.Limits.Embeddings(
-                            dimensions = embeddingDimensions.optionalInt("Embedding dimensions"),
-                            maxInputTokens = embeddingInput.optionalInt("Embedding max input"),
+                            dimensions = embeddingDimensions.optionalInt(translation.text("ai.spec.embedding_dimensions"), translation),
+                            maxInputTokens = embeddingInput.optionalInt(translation.text("ai.spec.embedding_max_input"), translation),
                         )
                     } else {
                         null
@@ -1882,10 +1926,10 @@ private fun ModelSpecDialog(
                     )
                 }.onSuccess(onSave).onFailure { error = it.message }
             }) {
-                Text("Apply")
+                Text(translation.text("ai.action.apply"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("ai.action.cancel")) } },
     )
 }
 
@@ -1894,6 +1938,7 @@ private fun <T : Enum<T>> EnumSetEditor(
     label: String,
     values: Set<T>,
     options: List<T>,
+    optionLabel: (T) -> String,
     onChange: (Set<T>) -> Unit,
 ) {
     Column {
@@ -1905,7 +1950,7 @@ private fun <T : Enum<T>> EnumSetEditor(
                     onClick = {
                         onChange(if (option in values) values - option else values + option)
                     },
-                    label = { Text(option.name.lowercase()) },
+                    label = { Text(optionLabel(option)) },
                 )
             }
         }
@@ -1938,13 +1983,15 @@ private fun <T : Enum<T>> NullableEnumDropdown(
     label: String,
     value: T?,
     options: List<T>,
+    optionLabel: (T) -> String,
     onSelect: (T?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Column {
         Text(label, style = MaterialTheme.typography.bodySmall)
         CatalogDropdown(
-            label = value?.name ?: "Default",
-            options = listOf(null to "Default") + options.map { it to it.name },
+            label = value?.let(optionLabel) ?: translation.text("ai.option.default"),
+            options = listOf(null to translation.text("ai.option.default")) + options.map { it to optionLabel(it) },
             onSelect = onSelect,
         )
     }
@@ -1982,25 +2029,25 @@ private fun AiCatalogDraft.supportsPurpose(
     return spec.capabilities.containsAll(purpose.requiredCapabilities)
 }
 
-private fun AiModelSpec.Limits.summary(): String = buildList {
+private fun AiModelSpec.Limits.summary(translation: Translation): String = buildList {
     textGeneration?.let {
-        add("${it.contextWindowTokens} context")
-        it.maxOutputTokens?.let { max -> add("$max output") }
+        add(translation.text("ai.spec.limit.context", "count" to it.contextWindowTokens))
+        it.maxOutputTokens?.let { max -> add(translation.text("ai.spec.limit.output", "count" to max)) }
     }
     embeddings?.let {
-        it.dimensions?.let { dimensions -> add("$dimensions dimensions") }
-        it.maxInputTokens?.let { max -> add("$max input") }
+        it.dimensions?.let { dimensions -> add(translation.plural("ai.spec.limit.dimensions", dimensions.toLong())) }
+        it.maxInputTokens?.let { max -> add(translation.text("ai.spec.limit.input", "count" to max)) }
     }
-}.ifEmpty { listOf("No token limits") }.joinToString(" · ")
+}.ifEmpty { listOf(translation.text("ai.spec.limit.none")) }.joinToString(" · ")
 
-private fun String.requiredInt(label: String): Int =
-    trim().toIntOrNull() ?: error("$label must be an integer")
+private fun String.requiredInt(label: String, translation: Translation): Int =
+    trim().toIntOrNull() ?: error(translation.text("ai.validation.integer", "label" to label))
 
-private fun String.optionalInt(label: String): Int? =
-    trim().ifBlank { null }?.toIntOrNull() ?: if (isBlank()) null else error("$label must be an integer")
+private fun String.optionalInt(label: String, translation: Translation): Int? =
+    trim().ifBlank { null }?.toIntOrNull() ?: if (isBlank()) null else error(translation.text("ai.validation.integer", "label" to label))
 
-private fun String.optionalDouble(label: String): Double? =
-    trim().ifBlank { null }?.toDoubleOrNull() ?: if (isBlank()) null else error("$label must be a number")
+private fun String.optionalDouble(label: String, translation: Translation): Double? =
+    trim().ifBlank { null }?.toDoubleOrNull() ?: if (isBlank()) null else error(translation.text("ai.validation.number", "label" to label))
 
 private fun AiConnection?.openAiWebSearchEnabledOrDefault(): Boolean =
     when (this) {
@@ -2009,10 +2056,10 @@ private fun AiConnection?.openAiWebSearchEnabledOrDefault(): Boolean =
         else -> true
     }
 
-private fun AiConnection.openAiWebSearchBadge(): List<String> =
+private fun AiConnection.openAiWebSearchBadge(translation: Translation): List<String> =
     when (this) {
-        is AiConnection.OpenAiApi -> listOf(if (webSearchEnabled) "web search" else "web search off")
-        is AiConnection.OpenAiSubscription -> listOf(if (webSearchEnabled) "web search" else "web search off")
+        is AiConnection.OpenAiApi -> listOf(if (webSearchEnabled) translation.text("ai.badge.web_search_on") else translation.text("ai.badge.web_search_off"))
+        is AiConnection.OpenAiSubscription -> listOf(if (webSearchEnabled) translation.text("ai.badge.web_search_on") else translation.text("ai.badge.web_search_off"))
         else -> emptyList()
     }
 

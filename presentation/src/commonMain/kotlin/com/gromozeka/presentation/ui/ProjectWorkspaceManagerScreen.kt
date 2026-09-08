@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.AlertDialog
@@ -75,7 +76,7 @@ fun ProjectManagerScreen(
     onManageWorkspaces: (Project.Id?) -> Unit,
     onChanged: () -> Unit,
 ) {
-    val strings = managementStrings()
+    val translation = LocalTranslation.current
     val scope = rememberCoroutineScope()
     var projects by remember { mutableStateOf<List<Project>>(emptyList()) }
     var selectedProjectId by remember { mutableStateOf<Project.Id?>(null) }
@@ -83,14 +84,14 @@ fun ProjectManagerScreen(
     var showCreateEditor by remember { mutableStateOf(false) }
     var projectToDelete by remember { mutableStateOf<Project?>(null) }
     var membersProject by remember { mutableStateOf<Project?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<Throwable?>(null) }
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(projectService) {
         loading = true
         projectService.observeAll()
             .catch { failure ->
-                error = failure.message ?: strings.operationFailed
+                error = failure
                 loading = false
             }
             .collect { loaded ->
@@ -106,11 +107,11 @@ fun ProjectManagerScreen(
     val selectedProject = projects.firstOrNull { it.id == selectedProjectId }
     ManagerScaffold(
         modifier = Modifier.testTag(UiTestTag.ProjectManager.value),
-        title = strings.projects,
+        title = translation.text("projects.title"),
         onBack = onBack,
         actions = {
             CompactButton(onClick = { onManageWorkspaces(selectedProjectId) }) {
-                Text(strings.workspaces)
+                Text(translation.text("projects.workspaces.title"))
             }
             Spacer(Modifier.width(8.dp))
             CompactButton(
@@ -119,11 +120,11 @@ fun ProjectManagerScreen(
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
-                Text(strings.newProject)
+                Text(translation.text("projects.create.title"))
             }
         },
     ) {
-        error?.let { ManagerError(it) }
+        error?.let { ManagerError(it.message ?: translation.text("projects.operationFailed")) }
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -132,7 +133,7 @@ fun ProjectManagerScreen(
             ManagerMasterDetail(
                 master = {
                     if (projects.isEmpty()) {
-                        EmptyManagerState(strings.noProjects)
+                        EmptyManagerState(translation.text("projects.empty"))
                     } else {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(projects, key = { it.id.value }) { project ->
@@ -149,7 +150,7 @@ fun ProjectManagerScreen(
                 },
                 detail = {
                     if (selectedProject == null) {
-                        EmptyManagerState(strings.selectProject)
+                        EmptyManagerState(translation.text("projects.selectProject"))
                     } else {
                         Column(
                             modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -157,22 +158,22 @@ fun ProjectManagerScreen(
                         ) {
                             Text(selectedProject.name, style = MaterialTheme.typography.headlineSmall)
                             Text(
-                                selectedProject.description ?: strings.noDescription,
+                                selectedProject.description ?: translation.text("projects.description.empty"),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            IdLine("Project ID", selectedProject.id.value)
+                            IdLine(translation.text("projects.projectIdLabel"), selectedProject.id.value)
                             Spacer(Modifier.weight(1f))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 CompactButton(onClick = { editorProject = selectedProject }) {
                                     Icon(Icons.Default.Edit, contentDescription = null)
                                     Spacer(Modifier.width(4.dp))
-                                    Text(strings.edit)
+                                    Text(translation.text("projects.action.edit"))
                                 }
                                 CompactButton(onClick = { onManageWorkspaces(selectedProject.id) }) {
-                                    Text(strings.manageWorkspaces)
+                                    Text(translation.text("projects.workspaces.manage"))
                                 }
                                 CompactButton(onClick = { membersProject = selectedProject }) {
-                                    Text(strings.manageMembers)
+                                    Text(translation.text("projects.members.manage"))
                                 }
                                 CompactButton(
                                     onClick = { projectToDelete = selectedProject },
@@ -183,7 +184,7 @@ fun ProjectManagerScreen(
                                 ) {
                                     Icon(Icons.Default.Delete, contentDescription = null)
                                     Spacer(Modifier.width(4.dp))
-                                    Text(strings.delete)
+                                    Text(translation.text("projects.action.delete"))
                                 }
                             }
                         }
@@ -196,7 +197,6 @@ fun ProjectManagerScreen(
     if (showCreateEditor || editorProject != null) {
         ProjectEditorDialog(
             project = editorProject,
-            strings = strings,
             onDismiss = {
                 showCreateEditor = false
                 editorProject = null
@@ -211,7 +211,7 @@ fun ProjectManagerScreen(
                         showCreateEditor = false
                         editorProject = null
                         onChanged()
-                    }.onFailure { error = it.message ?: strings.operationFailed }
+                    }.onFailure { error = it }
                 }
             },
         )
@@ -219,9 +219,8 @@ fun ProjectManagerScreen(
 
     projectToDelete?.let { project ->
         ConfirmDestructiveDialog(
-            title = strings.deleteProject,
-            body = strings.deleteProjectBody.replace("{name}", project.name),
-            strings = strings,
+            title = translation.text("projects.delete.title"),
+            body = translation.text("projects.delete.description", "name" to project.name),
             onDismiss = { projectToDelete = null },
             onConfirm = {
                 scope.launch {
@@ -230,7 +229,7 @@ fun ProjectManagerScreen(
                             projectToDelete = null
                             onChanged()
                         }
-                        .onFailure { error = it.message ?: strings.operationFailed }
+                        .onFailure { error = it }
                 }
             },
         )
@@ -241,7 +240,6 @@ fun ProjectManagerScreen(
             project = project,
             projectMembershipService = projectMembershipService,
             userDirectoryService = userDirectoryService,
-            strings = strings,
             onDismiss = { membersProject = null },
         )
     }
@@ -258,7 +256,7 @@ fun WorkspaceManagerScreen(
     onBack: () -> Unit,
     onManageProjects: () -> Unit,
 ) {
-    val strings = managementStrings()
+    val translation = LocalTranslation.current
     val scope = rememberCoroutineScope()
     var projects by remember { mutableStateOf<List<Project>>(emptyList()) }
     var selectedProjectId by remember(initialProjectId) { mutableStateOf(initialProjectId) }
@@ -270,7 +268,7 @@ fun WorkspaceManagerScreen(
     var showCreateEditor by remember { mutableStateOf(false) }
     var workspaceToDelete by remember { mutableStateOf<Workspace?>(null) }
     var mountToDelete by remember { mutableStateOf<WorkspaceMount?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<Throwable?>(null) }
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(selectedProjectId, selectedWorkspaceId) {
         loading = true
@@ -303,7 +301,7 @@ fun WorkspaceManagerScreen(
                 }
             }
         }.catch { failure ->
-            error = failure.message ?: strings.operationFailed
+            error = failure
             loading = false
         }.collect { snapshot ->
             projects = snapshot.projects
@@ -319,10 +317,10 @@ fun WorkspaceManagerScreen(
 
     val selectedWorkspace = workspaces.firstOrNull { it.id == selectedWorkspaceId }
     ManagerScaffold(
-        title = strings.workspaces,
+        title = translation.text("projects.workspaces.title"),
         onBack = onBack,
         actions = {
-            CompactButton(onClick = onManageProjects) { Text(strings.projects) }
+            CompactButton(onClick = onManageProjects) { Text(translation.text("projects.title")) }
             Spacer(Modifier.width(8.dp))
             CompactButton(
                 onClick = { showCreateEditor = true },
@@ -330,15 +328,14 @@ fun WorkspaceManagerScreen(
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
-                Text(strings.newWorkspace)
+                Text(translation.text("projects.workspaces.create.title"))
             }
         },
     ) {
-        error?.let { ManagerError(it) }
+        error?.let { ManagerError(it.message ?: translation.text("projects.operationFailed")) }
         ProjectSelector(
             projects = projects,
             selectedProjectId = selectedProjectId,
-            strings = strings,
             onSelect = {
                 selectedProjectId = it
                 selectedWorkspaceId = null
@@ -353,13 +350,13 @@ fun WorkspaceManagerScreen(
             ManagerMasterDetail(
                 master = {
                     if (workspaces.isEmpty()) {
-                        EmptyManagerState(strings.noWorkspaces)
+                        EmptyManagerState(translation.text("projects.workspaces.empty"))
                     } else {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(workspaces, key = { it.id.value }) { workspace ->
                                 ManagerListItem(
                                     title = workspace.name,
-                                    subtitle = workspace.kind.name.lowercase(),
+                                    subtitle = workspace.kind.displayName(translation),
                                     selected = workspace.id == selectedWorkspaceId,
                                     onClick = {
                                         selectedWorkspaceId = workspace.id
@@ -371,7 +368,7 @@ fun WorkspaceManagerScreen(
                 },
                 detail = {
                     if (selectedWorkspace == null) {
-                        EmptyManagerState(strings.selectWorkspace)
+                        EmptyManagerState(translation.text("projects.workspaces.select"))
                     } else {
                         Column(
                             modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -386,7 +383,7 @@ fun WorkspaceManagerScreen(
                                 CompactButton(onClick = { editorWorkspace = selectedWorkspace }) {
                                     Icon(Icons.Default.Edit, contentDescription = null)
                                     Spacer(Modifier.width(4.dp))
-                                    Text(strings.edit)
+                                    Text(translation.text("projects.action.edit"))
                                 }
                                 Spacer(Modifier.width(8.dp))
                                 CompactButton(
@@ -398,19 +395,19 @@ fun WorkspaceManagerScreen(
                                 ) {
                                     Icon(Icons.Default.Delete, contentDescription = null)
                                     Spacer(Modifier.width(4.dp))
-                                    Text(strings.delete)
+                                    Text(translation.text("projects.action.delete"))
                                 }
                             }
-                            IdLine("Workspace ID", selectedWorkspace.id.value)
+                            IdLine(translation.text("projects.workspaces.idLabel"), selectedWorkspace.id.value)
                             HorizontalDivider()
-                            Text(strings.mounts, style = MaterialTheme.typography.titleMedium)
+                            Text(translation.text("projects.mounts.title"), style = MaterialTheme.typography.titleMedium)
                             Text(
-                                strings.mountExplanation,
+                                translation.text("projects.mounts.description"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             if (mounts.isEmpty()) {
-                                Text(strings.noMounts, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(translation.text("projects.mounts.empty"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
                                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(mounts, key = { it.id.value }) { mount ->
@@ -426,8 +423,8 @@ fun WorkspaceManagerScreen(
                                                 Column(Modifier.weight(1f)) {
                                                     Text(mount.workerId, fontWeight = FontWeight.SemiBold)
                                                     Text(
-                                                        worker?.environmentSummary(strings)
-                                                            ?: strings.workerProfileUnavailable,
+                                                        worker?.environmentSummary(translation)
+                                                            ?: translation.text("projects.workers.profileUnavailable"),
                                                         style = MaterialTheme.typography.labelSmall,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     )
@@ -444,7 +441,7 @@ fun WorkspaceManagerScreen(
                                                     )
                                                 }
                                                 TextButton(onClick = { mountToDelete = mount }) {
-                                                    Text(strings.detach)
+                                                    Text(translation.text("projects.mounts.action.detach"))
                                                 }
                                             }
                                         }
@@ -461,7 +458,6 @@ fun WorkspaceManagerScreen(
     if (showCreateEditor || editorWorkspace != null) {
         WorkspaceEditorDialog(
             workspace = editorWorkspace,
-            strings = strings,
             onDismiss = {
                 showCreateEditor = false
                 editorWorkspace = null
@@ -478,7 +474,7 @@ fun WorkspaceManagerScreen(
                         selectedWorkspaceId = workspace.id
                         showCreateEditor = false
                         editorWorkspace = null
-                    }.onFailure { error = it.message ?: strings.operationFailed }
+                    }.onFailure { error = it }
                 }
             },
         )
@@ -486,9 +482,8 @@ fun WorkspaceManagerScreen(
 
     workspaceToDelete?.let { workspace ->
         ConfirmDestructiveDialog(
-            title = strings.deleteWorkspace,
-            body = strings.deleteWorkspaceBody.replace("{name}", workspace.name),
-            strings = strings,
+            title = translation.text("projects.workspaces.delete.title"),
+            body = translation.text("projects.workspaces.delete.description", "name" to workspace.name),
             onDismiss = { workspaceToDelete = null },
             onConfirm = {
                 scope.launch {
@@ -496,7 +491,7 @@ fun WorkspaceManagerScreen(
                         .onSuccess {
                             workspaceToDelete = null
                         }
-                        .onFailure { error = it.message ?: strings.operationFailed }
+                        .onFailure { error = it }
                 }
             },
         )
@@ -504,9 +499,8 @@ fun WorkspaceManagerScreen(
 
     mountToDelete?.let { mount ->
         ConfirmDestructiveDialog(
-            title = strings.detachMount,
-            body = strings.detachMountBody.replace("{path}", mount.rootPath),
-            strings = strings,
+            title = translation.text("projects.mounts.detach.title"),
+            body = translation.text("projects.mounts.detach.description", "path" to mount.rootPath),
             onDismiss = { mountToDelete = null },
             onConfirm = {
                 scope.launch {
@@ -514,7 +508,7 @@ fun WorkspaceManagerScreen(
                         .onSuccess {
                             mountToDelete = null
                         }
-                        .onFailure { error = it.message ?: strings.operationFailed }
+                        .onFailure { error = it }
                 }
             },
         )
@@ -606,13 +600,13 @@ private fun ManagerListItem(
 private fun ProjectSelector(
     projects: List<Project>,
     selectedProjectId: Project.Id?,
-    strings: ManagementStrings,
     onSelect: (Project.Id) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(strings.project, style = MaterialTheme.typography.labelLarge)
+        Text(translation.text("projects.projectLabel"), style = MaterialTheme.typography.labelLarge)
         if (projects.isEmpty()) {
-            Text(strings.noProjects, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(translation.text("projects.empty"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(projects, key = { it.id.value }) { project ->
@@ -635,30 +629,30 @@ private fun ProjectSelector(
 @Composable
 private fun ProjectEditorDialog(
     project: Project?,
-    strings: ManagementStrings,
     onDismiss: () -> Unit,
     onSave: (String, String?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var name by remember(project?.id) { mutableStateOf(project?.name.orEmpty()) }
     var description by remember(project?.id) { mutableStateOf(project?.description.orEmpty()) }
     AlertDialog(
         modifier = Modifier.testTag(UiTestTag.ProjectEditorDialog.value),
         onDismissRequest = onDismiss,
-        title = { Text(if (project == null) strings.newProject else strings.editProject) },
+        title = { Text(if (project == null) translation.text("projects.create.title") else translation.text("projects.edit.title")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     name,
                     { name = it },
                     modifier = Modifier.testTag(UiTestTag.ProjectNameInput.value),
-                    label = { Text(strings.name) },
+                    label = { Text(translation.text("projects.field.name")) },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     description,
                     { description = it },
                     modifier = Modifier.testTag(UiTestTag.ProjectDescriptionInput.value),
-                    label = { Text(strings.description) },
+                    label = { Text(translation.text("projects.field.description")) },
                     minLines = 3,
                 )
             }
@@ -669,29 +663,29 @@ private fun ProjectEditorDialog(
                 modifier = Modifier.testTag(UiTestTag.ProjectSaveButton.value),
                 enabled = name.isNotBlank(),
             ) {
-                Text(strings.save)
+                Text(translation.text("projects.action.save"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("projects.action.cancel")) } },
     )
 }
 
 @Composable
 private fun WorkspaceEditorDialog(
     workspace: Workspace?,
-    strings: ManagementStrings,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var name by remember(workspace?.id) { mutableStateOf(workspace?.name.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (workspace == null) strings.newWorkspace else strings.editWorkspace) },
-        text = { OutlinedTextField(name, { name = it }, label = { Text(strings.name) }, singleLine = true) },
+        title = { Text(if (workspace == null) translation.text("projects.workspaces.create.title") else translation.text("projects.workspaces.edit.title")) },
+        text = { OutlinedTextField(name, { name = it }, label = { Text(translation.text("projects.field.name")) }, singleLine = true) },
         confirmButton = {
-            TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text(strings.save) }
+            TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text(translation.text("projects.action.save")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("projects.action.cancel")) } },
     )
 }
 
@@ -699,16 +693,16 @@ private fun WorkspaceEditorDialog(
 private fun ConfirmDestructiveDialog(
     title: String,
     body: String,
-    strings: ManagementStrings,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(body) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(strings.delete) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(translation.text("projects.action.delete")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("projects.action.cancel")) } },
     )
 }
 
@@ -717,16 +711,16 @@ private fun ProjectMembersDialog(
     project: Project,
     projectMembershipService: RemoteProjectMembershipService,
     userDirectoryService: RemoteUserDirectoryService,
-    strings: ManagementStrings,
     onDismiss: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     val scope = rememberCoroutineScope()
     var memberships by remember(project.id) { mutableStateOf<List<ProjectMembership>>(emptyList()) }
     var users by remember(project.id) { mutableStateOf<List<UserDirectoryEntry>>(emptyList()) }
     var selectedUserId by remember(project.id) { mutableStateOf<User.Id?>(null) }
     var selectedRole by remember(project.id) { mutableStateOf(ProjectMembership.Role.EDITOR) }
     var loading by remember(project.id) { mutableStateOf(true) }
-    var error by remember(project.id) { mutableStateOf<String?>(null) }
+    var error by remember(project.id) { mutableStateOf<Throwable?>(null) }
 
     LaunchedEffect(project.id) {
         loading = true
@@ -735,7 +729,7 @@ private fun ProjectMembersDialog(
             userDirectoryService.observe(),
         ) { loadedMemberships, loadedUsers -> loadedMemberships to loadedUsers }
             .catch { failure ->
-                error = failure.message ?: strings.operationFailed
+                error = failure
                 loading = false
             }
             .collect { (loadedMemberships, loadedUsers) ->
@@ -752,13 +746,13 @@ private fun ProjectMembersDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("${strings.members}: ${project.name}") },
+        title = { Text(translation.text("projects.members.titleWithProject", "projectName" to project.name)) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                error?.let { ManagerError(it) }
+                error?.let { ManagerError(it.message ?: translation.text("projects.operationFailed")) }
                 if (loading) {
                     CircularProgressIndicator()
                 } else {
@@ -807,19 +801,18 @@ private fun ProjectMembersDialog(
                                                         )
                                                     }.onSuccess { loading = false }
                                                         .onFailure {
-                                                            error = it.message ?: strings.operationFailed
+                                                            error = it
                                                             loading = false
                                                         }
                                                 }
                                             },
                                         ) {
-                                            Text(strings.remove)
+                                            Text(translation.text("projects.members.action.remove"))
                                         }
                                     }
                                     ProjectRoleSelector(
                                         role = membership.role,
                                         enabled = !loading,
-                                        strings = strings,
                                         onRoleChange = { role ->
                                             scope.launch {
                                                 loading = true
@@ -831,7 +824,7 @@ private fun ProjectMembersDialog(
                                                         )
                                                     }.onSuccess { loading = false }
                                                     .onFailure {
-                                                        error = it.message ?: strings.operationFailed
+                                                        error = it
                                                         loading = false
                                                     }
                                             }
@@ -847,7 +840,7 @@ private fun ProjectMembersDialog(
                     }
                     if (availableUsers.isNotEmpty()) {
                         HorizontalDivider()
-                        Text(strings.addMember, style = MaterialTheme.typography.titleSmall)
+                        Text(translation.text("projects.members.addTitle"), style = MaterialTheme.typography.titleSmall)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(availableUsers, key = { it.id.value }) { user ->
                                 FilterChip(
@@ -860,7 +853,6 @@ private fun ProjectMembersDialog(
                         ProjectRoleSelector(
                             role = selectedRole,
                             enabled = !loading,
-                            strings = strings,
                             onRoleChange = { selectedRole = it },
                         )
                         CompactButton(
@@ -879,13 +871,13 @@ private fun ProjectMembersDialog(
                                         selectedUserId = null
                                         loading = false
                                     }.onFailure {
-                                        error = it.message ?: strings.operationFailed
+                                        error = it
                                         loading = false
                                     }
                                 }
                             },
                         ) {
-                            Text(strings.add)
+                            Text(translation.text("projects.members.action.add"))
                         }
                     }
                 }
@@ -893,7 +885,7 @@ private fun ProjectMembersDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(strings.close)
+                Text(translation.text("projects.members.action.close"))
             }
         },
     )
@@ -903,9 +895,9 @@ private fun ProjectMembersDialog(
 private fun ProjectRoleSelector(
     role: ProjectMembership.Role,
     enabled: Boolean,
-    strings: ManagementStrings,
     onRoleChange: (ProjectMembership.Role) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         items(ProjectMembership.Role.entries) { candidate ->
             FilterChip(
@@ -915,9 +907,9 @@ private fun ProjectRoleSelector(
                 label = {
                     Text(
                         when (candidate) {
-                            ProjectMembership.Role.OWNER -> strings.ownerRole
-                            ProjectMembership.Role.EDITOR -> strings.editorRole
-                            ProjectMembership.Role.VIEWER -> strings.viewerRole
+                            ProjectMembership.Role.OWNER -> translation.text("projects.members.role.owner")
+                            ProjectMembership.Role.EDITOR -> translation.text("projects.members.role.editor")
+                            ProjectMembership.Role.VIEWER -> translation.text("projects.members.role.viewer")
                         }
                     )
                 },
@@ -950,14 +942,6 @@ private fun ManagerError(error: String) {
     )
 }
 
-@Composable
-private fun managementStrings(): ManagementStrings {
-    val languageCode = LocalTranslation.current.languageCode
-    return remember(languageCode) {
-        if (languageCode == "ru") ManagementStrings.russian else ManagementStrings.english
-    }
-}
-
 private data class WorkspaceManagerSnapshot(
     val projects: List<Project>,
     val projectId: Project.Id?,
@@ -967,152 +951,22 @@ private data class WorkspaceManagerSnapshot(
     val workers: List<WorkerCatalogEntry>,
 )
 
-private fun WorkerCatalogEntry.environmentSummary(strings: ManagementStrings): String {
+private fun WorkerCatalogEntry.environmentSummary(translation: Translation): String {
     val statusLabel = when (status) {
-        WorkerCatalogEntry.Status.ONLINE -> strings.workerOnline
-        WorkerCatalogEntry.Status.OFFLINE -> strings.workerOffline
+        WorkerCatalogEntry.Status.ONLINE -> translation.text("projects.workers.status.online")
+        WorkerCatalogEntry.Status.OFFLINE -> translation.text("projects.workers.status.offline")
     }
-    return listOf(
-        statusLabel,
-        "${environmentProfile.operatingSystem.name} ${environmentProfile.operatingSystem.version}",
-        environmentProfile.architecture,
-        environmentProfile.nativeShell.executable,
-    ).joinToString(" · ")
+    return translation.text(
+        "projects.workers.environmentSummary",
+        "status" to statusLabel,
+        "operatingSystem" to environmentProfile.operatingSystem.name,
+        "operatingSystemVersion" to environmentProfile.operatingSystem.version,
+        "architecture" to environmentProfile.architecture,
+        "shell" to environmentProfile.nativeShell.executable,
+    )
 }
 
-private data class ManagementStrings(
-    val projects: String,
-    val project: String,
-    val workspaces: String,
-    val newProject: String,
-    val newWorkspace: String,
-    val editProject: String,
-    val editWorkspace: String,
-    val edit: String,
-    val delete: String,
-    val detach: String,
-    val save: String,
-    val cancel: String,
-    val name: String,
-    val description: String,
-    val noDescription: String,
-    val noProjects: String,
-    val noWorkspaces: String,
-    val noMounts: String,
-    val selectProject: String,
-    val selectWorkspace: String,
-    val manageWorkspaces: String,
-    val manageMembers: String,
-    val members: String,
-    val addMember: String,
-    val add: String,
-    val remove: String,
-    val close: String,
-    val ownerRole: String,
-    val editorRole: String,
-    val viewerRole: String,
-    val mounts: String,
-    val mountExplanation: String,
-    val deleteProject: String,
-    val deleteProjectBody: String,
-    val deleteWorkspace: String,
-    val deleteWorkspaceBody: String,
-    val detachMount: String,
-    val detachMountBody: String,
-    val workerOnline: String,
-    val workerOffline: String,
-    val workerProfileUnavailable: String,
-    val operationFailed: String,
-) {
-    companion object {
-        val english = ManagementStrings(
-            projects = "Projects",
-            project = "Project",
-            workspaces = "Workspaces",
-            newProject = "New project",
-            newWorkspace = "New workspace",
-            editProject = "Edit project",
-            editWorkspace = "Edit workspace",
-            edit = "Edit",
-            delete = "Delete",
-            detach = "Detach",
-            save = "Save",
-            cancel = "Cancel",
-            name = "Name",
-            description = "Description",
-            noDescription = "No description",
-            noProjects = "No projects yet",
-            noWorkspaces = "This project has no workspaces",
-            noMounts = "This workspace has no mounts",
-            selectProject = "Select a project",
-            selectWorkspace = "Select a workspace",
-            manageWorkspaces = "Manage workspaces",
-            manageMembers = "Manage members",
-            members = "Project members",
-            addMember = "Add member",
-            add = "Add",
-            remove = "Remove",
-            close = "Close",
-            ownerRole = "Owner",
-            editorRole = "Editor",
-            viewerRole = "Viewer",
-            mounts = "Workspace mounts",
-            mountExplanation = "A mount is the exact worker-local filesystem location used for tool execution.",
-            deleteProject = "Delete project?",
-            deleteProjectBody = "Project {name}, its conversations, workspaces, and mounts will be deleted permanently.",
-            deleteWorkspace = "Delete workspace?",
-            deleteWorkspaceBody = "Workspace {name} and all of its mounts will be deleted permanently.",
-            detachMount = "Detach mount?",
-            detachMountBody = "The worker path {path} will no longer be available through this workspace.",
-            workerOnline = "Online",
-            workerOffline = "Offline",
-            workerProfileUnavailable = "Worker profile unavailable",
-            operationFailed = "Operation failed",
-        )
-
-        val russian = ManagementStrings(
-            projects = "Проекты",
-            project = "Проект",
-            workspaces = "Рабочие пространства",
-            newProject = "Новый проект",
-            newWorkspace = "Новое пространство",
-            editProject = "Изменить проект",
-            editWorkspace = "Изменить пространство",
-            edit = "Изменить",
-            delete = "Удалить",
-            detach = "Отключить",
-            save = "Сохранить",
-            cancel = "Отмена",
-            name = "Название",
-            description = "Описание",
-            noDescription = "Нет описания",
-            noProjects = "Проектов пока нет",
-            noWorkspaces = "В проекте нет рабочих пространств",
-            noMounts = "У рабочего пространства нет mount-ов",
-            selectProject = "Выберите проект",
-            selectWorkspace = "Выберите рабочее пространство",
-            manageWorkspaces = "Управлять пространствами",
-            manageMembers = "Участники",
-            members = "Участники проекта",
-            addMember = "Добавить участника",
-            add = "Добавить",
-            remove = "Убрать",
-            close = "Закрыть",
-            ownerRole = "Владелец",
-            editorRole = "Редактор",
-            viewerRole = "Читатель",
-            mounts = "Workspace mounts",
-            mountExplanation = "Mount — точное расположение файловой системы на конкретном worker для выполнения tools.",
-            deleteProject = "Удалить проект?",
-            deleteProjectBody = "Проект {name}, его conversations, workspaces и mounts будут удалены безвозвратно.",
-            deleteWorkspace = "Удалить workspace?",
-            deleteWorkspaceBody = "Workspace {name} и все его mounts будут удалены безвозвратно.",
-            detachMount = "Отключить mount?",
-            detachMountBody = "Путь worker {path} больше не будет доступен через этот workspace.",
-            workerOnline = "В сети",
-            workerOffline = "Не в сети",
-            workerProfileUnavailable = "Профиль worker недоступен",
-            operationFailed = "Операция не выполнена",
-        )
+private fun Workspace.Kind.displayName(translation: Translation): String =
+    when (this) {
+        Workspace.Kind.FILESYSTEM -> translation.text("projects.workspaces.kind.filesystem")
     }
-}

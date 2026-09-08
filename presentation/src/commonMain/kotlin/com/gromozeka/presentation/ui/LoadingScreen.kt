@@ -15,6 +15,7 @@ fun LoadingScreen(
     loadingViewModel: LoadingViewModel,
     onComplete: () -> Unit
 ) {
+    val translation = LocalTranslation.current
     val loadingState by loadingViewModel.loadingState.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -55,7 +56,7 @@ fun LoadingScreen(
                             modifier = Modifier.size(48.dp)
                         )
                         Text(
-                            text = "Initializing...",
+                            text = translation.text("bootstrap.initializing"),
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -65,12 +66,12 @@ fun LoadingScreen(
                             modifier = Modifier.size(48.dp)
                         )
                         Text(
-                            text = "Loading MCP servers",
+                            text = translation.text("bootstrap.loadingMcp"),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "${state.serverName} (${state.current}/${state.total})",
+                            text = translation.text("bootstrap.progress", "name" to state.serverName, "current" to state.current, "total" to state.total),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -78,7 +79,7 @@ fun LoadingScreen(
 
                     is LoadingViewModel.LoadingState.Error -> {
                         Text(
-                            text = "Error: ${state.message}",
+                            text = translation.text("common.error", "error" to state.message),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -86,7 +87,7 @@ fun LoadingScreen(
 
                     is LoadingViewModel.LoadingState.Complete -> {
                         Text(
-                            text = "Ready!",
+                            text = translation.text("bootstrap.ready"),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
                         )

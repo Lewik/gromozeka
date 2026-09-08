@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
+import com.gromozeka.domain.model.SpeechAvailabilityException
+
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
@@ -175,7 +178,7 @@ class SpeechCaptureApplicationServiceTest {
         val availability = service.availability(user)
 
         assertFalse(availability.available)
-        assertTrue(availability.unavailableReason.orEmpty().contains("Linux"))
+        assertEquals(SpeechAvailabilityFailure.Code.CLAUDE_FORWARDING_REQUIRES_LINUX, availability.unavailableReason?.code)
         assertTrue(client.requests.isEmpty())
     }
 
@@ -202,7 +205,8 @@ class SpeechCaptureApplicationServiceTest {
         val availability = service.availability(user)
 
         assertFalse(availability.available)
-        assertTrue(availability.unavailableReason.orEmpty().contains("paplay"))
+        assertEquals(SpeechAvailabilityFailure.Code.EXECUTABLE_UNAVAILABLE, availability.unavailableReason?.code)
+        assertEquals("paplay", availability.unavailableReason?.arguments?.get("executable"))
     }
 
     @Test
@@ -226,7 +230,8 @@ class SpeechCaptureApplicationServiceTest {
         val availability = service.availability(user)
 
         assertFalse(availability.available)
-        assertTrue(availability.unavailableReason.orEmpty().contains("Claude Code executable"))
+        assertEquals(SpeechAvailabilityFailure.Code.EXECUTABLE_UNAVAILABLE, availability.unavailableReason?.code)
+        assertEquals("claude", availability.unavailableReason?.arguments?.get("executable"))
     }
 
     @Test
@@ -241,11 +246,11 @@ class SpeechCaptureApplicationServiceTest {
             user = user,
         )
 
-        val error = assertFailsWith<IllegalArgumentException> {
+        val error = assertFailsWith<SpeechAvailabilityException> {
             service.requireClientAudioRoute(user)
         }
 
-        assertTrue(error.message.orEmpty().contains("Worker audio source"))
+        assertEquals(SpeechAvailabilityFailure.Code.CLIENT_AUDIO_UPLOAD_UNAVAILABLE, error.failure.code)
     }
 
     private fun service(

@@ -13,9 +13,9 @@ class RemoteLiveInterpreterService internal constructor(
     private val client: GromozekaWsClient,
 ) {
     suspend fun start(
-        targetLanguage: String = "ru",
+        targetLanguage: String,
         sourceLanguageCode: String = "auto",
-        sourceLanguageHint: String = "Hebrew, Russian, and English workplace conversation",
+        sourceLanguageHint: String = "Speech in any language, including multilingual conversation, names, and technical terms",
         translationRuntimeSelection: AiRuntimeSelection? = null,
     ): RemoteLiveInterpreterSession {
         val session = client.startLiveInterpreter(

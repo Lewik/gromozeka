@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.agents
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,9 +33,10 @@ fun PromptEditorDialog(
     onSave: (name: String, content: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var name by remember { mutableStateOf(prompt?.name ?: template?.name.orEmpty()) }
     var content by remember { mutableStateOf(prompt?.content ?: template?.content.orEmpty()) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
 
     BasicGromozekaDialog(onDismissRequest = onDismiss) {
         Surface(
@@ -48,38 +50,38 @@ fun PromptEditorDialog(
             ) {
                 Text(
                     when {
-                        prompt != null -> "Edit prompt"
-                        template != null -> "Create prompt from template"
-                        else -> "Create prompt"
+                        prompt != null -> translation.text("prompts.edit")
+                        template != null -> translation.text("prompts.create_from_template")
+                        else -> translation.text("prompts.create")
                     },
                     style = MaterialTheme.typography.headlineSmall,
                 )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(translation.text("prompts.name")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    label = { Text("Prompt content (Markdown)") },
+                    label = { Text(translation.text("prompts.content")) },
                     minLines = 16,
                     modifier = Modifier.fillMaxWidth().weight(1f),
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(translation.text("prompts.cancel")) }
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = {
                         if (name.isBlank() || content.isBlank()) {
-                            error = "Name and content are required"
+                            error = translation.text("prompts.name_content_required")
                         } else {
                             onSave(name.trim(), content.trim())
                         }
                     }) {
-                        Text("Save")
+                        Text(translation.text("prompts.save"))
                     }
                 }
             }

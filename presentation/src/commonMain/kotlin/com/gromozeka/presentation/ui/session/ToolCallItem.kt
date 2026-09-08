@@ -17,8 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.format
+import com.gromozeka.presentation.ui.LocalTranslation
+import com.gromozeka.presentation.services.translation.data.Translation
 import kotlinx.serialization.json.*
 
 private fun formatPath(path: String, workspaceRootPath: String?): String {
@@ -33,160 +34,122 @@ private fun formatPath(path: String, workspaceRootPath: String?): String {
     }
 }
 
-private fun truncateText(text: String, maxLines: Int = 5): String {
+private fun truncateText(text: String, localization: Translation, maxLines: Int = 5): String {
     val lines = text.lines()
     val lineBounded = if (lines.size > maxLines * 2) {
-        val firstLines = lines.take(maxLines)
-        val lastLines = lines.takeLast(maxLines)
-        val omittedCount = lines.size - (maxLines * 2)
-        
-        firstLines.joinToString("\n") + 
-        "\n\n... ($omittedCount lines omitted) ...\n\n" + 
-        lastLines.joinToString("\n")
+        val omittedCount = lines.size - maxLines * 2
+        lines.take(maxLines).joinToString("\n") + "\n\n" +
+            localization.plural("chat.tool.linesOmitted", omittedCount.toLong()) + "\n\n" +
+            lines.takeLast(maxLines).joinToString("\n")
     } else {
         text
     }
-    if (lineBounded.length <= MaxExpandedToolResultChars) {
-        return lineBounded
-    }
+    if (lineBounded.length <= MaxExpandedToolResultChars) return lineBounded
     val halfLimit = MaxExpandedToolResultChars / 2
-    return lineBounded.take(halfLimit) +
-        "\n\n...[${lineBounded.length - MaxExpandedToolResultChars} chars omitted]...\n\n" +
-        lineBounded.takeLast(halfLimit)
+    return lineBounded.take(halfLimit) + "\n\n" +
+        localization.plural("chat.tool.charactersOmitted", (lineBounded.length - MaxExpandedToolResultChars).toLong()) +
+        "\n\n" + lineBounded.takeLast(halfLimit)
 }
 
 private const val MaxExpandedToolResultChars = 12_000
 
-private fun buildDetailedParameters(toolName: String, input: JsonElement, workspaceRootPath: String?): String {
-    return try {
-        val json = input.jsonObject
-        when (toolName) {
-            "grz_read_file" -> {
-                val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                "File: ${formatPath(path, workspaceRootPath)}"
-            }
-            "grz_write_file" -> {
-                val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                val content = json["content"]?.jsonPrimitive?.content ?: ""
-                val size = (content.length / 1024.0).let { 
-                    if (it < 1) "${content.length} bytes" 
-                    else "%.1f KB".format(it) 
-                }
-                "File: ${formatPath(path, workspaceRootPath)}\nSize: $size"
-            }
-            "grz_edit_file" -> {
-                val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                val oldString = json["old_string"]?.jsonPrimitive?.content ?: ""
-                val newString = json["new_string"]?.jsonPrimitive?.content ?: ""
-                val replaceAll = json["replace_all"]?.jsonPrimitive?.boolean ?: false
-                
-                buildString {
-                    append("File: ${formatPath(path, workspaceRootPath)}\n")
-                    append("Replace: \"$oldString\" → \"$newString\"\n")
-                    append("Mode: ${if (replaceAll) "Replace all occurrences" else "Replace first occurrence"}")
-                }
-            }
-            "grz_execute_command" -> {
-                val command = json["command"]?.jsonPrimitive?.content ?: ""
-                val workingDir = json["working_directory"]?.jsonPrimitive?.content
-                val timeout = json["timeout_seconds"]?.jsonPrimitive?.longOrNull
-                
-                buildString {
-                    append("Command: $command\n")
-                    workingDir?.let { append("Working directory: ${formatPath(it, workspaceRootPath)}\n") }
-                    timeout?.let { append("Timeout: ${it}s") }
-                }
-            }
-            "brave_web_search", "brave_local_search" -> {
-                val query = json["query"]?.jsonPrimitive?.content ?: ""
-                val count = json["count"]?.jsonPrimitive?.intOrNull
-                "Query: $query${count?.let { "\nResults limit: $it" } ?: ""}"
-            }
-            "jina_read_url" -> {
-                val url = json["url"]?.jsonPrimitive?.content ?: ""
-                "URL: $url"
-            }
-            "create_agent" -> {
-                val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
-                val projectId = json["project_id"]?.jsonPrimitive?.content ?: ""
-                val workspaceId = json["workspace_id"]?.jsonPrimitive?.content ?: ""
-                val initialMessage = json["initial_message"]?.jsonPrimitive?.content
-                
-                buildString {
-                    append("Agent: $agentName\n")
-                    append("Project: $projectId\n")
-                    append("Workspace: $workspaceId")
-                    initialMessage?.let { append("\nInitial message: ${it.take(100)}${if (it.length > 100) "..." else ""}") }
-                }
-            }
-            "tell_agent" -> {
-                val message = json["message"]?.jsonPrimitive?.content ?: ""
-                val targetTabId = json["target_tab_id"]?.jsonPrimitive?.content
-                
-                buildString {
-                    targetTabId?.let { append("Target: Tab #${it.take(8)}\n") }
-                    append("Message: $message")
-                }
-            }
-            "switch_tab" -> {
-                val tabId = json["tab_id"]?.jsonPrimitive?.content ?: ""
-                "Tab ID: $tabId"
-            }
-            else -> json.toString()
+private fun buildDetailedParameters(
+    toolName: String,
+    input: JsonElement,
+    workspaceRootPath: String?,
+    localization: Translation,
+): String = try {
+    val json = input.jsonObject
+    when (toolName) {
+        "grz_read_file" -> localization.text(
+            "chat.tool.fileParameter", "path" to formatPath(json["file_path"]?.jsonPrimitive?.content.orEmpty(), workspaceRootPath)
+        )
+        "grz_write_file" -> {
+            val path = formatPath(json["file_path"]?.jsonPrimitive?.content.orEmpty(), workspaceRootPath)
+            val size = json["content"]?.jsonPrimitive?.content.orEmpty().encodeToByteArray().size
+            localization.text("chat.tool.writeFileParameters", "path" to path,
+                "size" to localization.plural("chat.tool.contentBytes", size.toLong()))
         }
-    } catch (e: Exception) {
-        "Error parsing parameters: ${e.message}"
+        "grz_edit_file" -> listOf(
+            localization.text("chat.tool.fileParameter", "path" to formatPath(json["file_path"]?.jsonPrimitive?.content.orEmpty(), workspaceRootPath)),
+            localization.text("chat.tool.replacement", "oldText" to json["old_string"]?.jsonPrimitive?.content.orEmpty(),
+                "newText" to json["new_string"]?.jsonPrimitive?.content.orEmpty()),
+            localization.text("chat.tool.replacementMode", "mode" to localization.text(
+                if (json["replace_all"]?.jsonPrimitive?.boolean == true) "chat.tool.replaceAll" else "chat.tool.replaceFirst"
+            )),
+        ).joinToString("\n")
+        "grz_execute_command" -> listOfNotNull(
+            localization.text("chat.tool.command", "command" to json["command"]?.jsonPrimitive?.content.orEmpty()),
+            json["working_directory"]?.jsonPrimitive?.content?.let {
+                localization.text("chat.tool.workingDirectory", "path" to formatPath(it, workspaceRootPath))
+            },
+            json["timeout_seconds"]?.jsonPrimitive?.longOrNull?.let { localization.text("chat.tool.timeout", "seconds" to it) },
+        ).joinToString("\n")
+        "brave_web_search", "brave_local_search" -> listOfNotNull(
+            localization.text("chat.tool.query", "query" to json["query"]?.jsonPrimitive?.content.orEmpty()),
+            json["count"]?.jsonPrimitive?.intOrNull?.let { localization.text("chat.tool.resultLimit", "count" to it) },
+        ).joinToString("\n")
+        "jina_read_url" -> localization.text("chat.tool.url", "url" to json["url"]?.jsonPrimitive?.content.orEmpty())
+        "create_agent" -> listOfNotNull(
+            localization.text("chat.tool.agent", "agentName" to json["agent_name"]?.jsonPrimitive?.content.orEmpty()),
+            localization.text("chat.tool.project", "projectId" to json["project_id"]?.jsonPrimitive?.content.orEmpty()),
+            localization.text("chat.tool.workspace", "workspaceId" to json["workspace_id"]?.jsonPrimitive?.content.orEmpty()),
+            json["initial_message"]?.jsonPrimitive?.content?.let {
+                localization.text("chat.tool.initialMessage", "message" to if (it.length > 100) it.take(100) + "…" else it)
+            },
+        ).joinToString("\n")
+        "tell_agent" -> listOfNotNull(
+            json["target_tab_id"]?.jsonPrimitive?.content?.let { localization.text("chat.tool.targetTab", "tabId" to it.take(8)) },
+            localization.text("chat.tool.message", "message" to json["message"]?.jsonPrimitive?.content.orEmpty()),
+        ).joinToString("\n")
+        "switch_tab" -> localization.text("chat.tool.tabId", "tabId" to json["tab_id"]?.jsonPrimitive?.content.orEmpty())
+        else -> json.toString()
     }
+} catch (e: Exception) {
+    localization.text("chat.tool.parametersError", "message" to e.message.orEmpty())
 }
 
-private fun extractKeyParameters(toolName: String, input: JsonElement, workspaceRootPath: String?): String {
-    return try {
-        val json = input.jsonObject
-        when (toolName) {
-            "grz_read_file" -> {
-                val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                formatPath(path, workspaceRootPath)
-            }
-            "grz_write_file" -> {
-                val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                val content = json["content"]?.jsonPrimitive?.content ?: ""
-                val size = (content.length / 1024.0).let { if (it < 1) "${content.length} B" else "%.1f KB".format(it) }
-                "${formatPath(path, workspaceRootPath)} ($size)"
-            }
-            "grz_edit_file" -> {
-                val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                val replaceAll = json["replace_all"]?.jsonPrimitive?.boolean ?: false
-                "${formatPath(path, workspaceRootPath)}${if (replaceAll) " (replace all)" else ""}"
-            }
-            "grz_execute_command" -> {
-                val command = json["command"]?.jsonPrimitive?.content ?: ""
-                if (command.length > 60) command.take(57) + "..." else command
-            }
-            "brave_web_search", "brave_local_search" -> {
-                json["query"]?.jsonPrimitive?.content ?: ""
-            }
-            "jina_read_url" -> {
-                val url = json["url"]?.jsonPrimitive?.content ?: ""
-                if (url.length > 50) url.take(47) + "..." else url
-            }
-            "create_agent" -> {
-                val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
-                val workspaceId = json["workspace_id"]?.jsonPrimitive?.content ?: ""
-                "$agentName ($workspaceId)"
-            }
-            "tell_agent" -> {
-                val message = json["message"]?.jsonPrimitive?.content ?: ""
-                if (message.length > 50) message.take(47) + "..." else message
-            }
-            "switch_tab" -> {
-                val tabId = json["tab_id"]?.jsonPrimitive?.content ?: ""
-                "Tab #${tabId.take(8)}"
-            }
-            else -> ""
+private fun extractKeyParameters(
+    toolName: String,
+    input: JsonElement,
+    workspaceRootPath: String?,
+    localization: Translation,
+): String = try {
+    val json = input.jsonObject
+    when (toolName) {
+        "grz_read_file" -> formatPath(json["file_path"]?.jsonPrimitive?.content.orEmpty(), workspaceRootPath)
+        "grz_write_file" -> {
+            val path = formatPath(json["file_path"]?.jsonPrimitive?.content.orEmpty(), workspaceRootPath)
+            val size = json["content"]?.jsonPrimitive?.content.orEmpty().encodeToByteArray().size
+            val sizeLabel = localization.plural("chat.tool.contentBytes", size.toLong())
+            "$path ($sizeLabel)"
         }
-    } catch (e: Exception) {
-        ""
+        "grz_edit_file" -> {
+            val path = formatPath(json["file_path"]?.jsonPrimitive?.content.orEmpty(), workspaceRootPath)
+            if (json["replace_all"]?.jsonPrimitive?.boolean == true) {
+                localization.text("chat.tool.replaceAllSummary", "path" to path)
+            } else path
+        }
+        "grz_execute_command" -> json["command"]?.jsonPrimitive?.content.orEmpty().let {
+            if (it.length > 60) it.take(57) + "..." else it
+        }
+        "brave_web_search", "brave_local_search" -> json["query"]?.jsonPrimitive?.content.orEmpty()
+        "jina_read_url" -> json["url"]?.jsonPrimitive?.content.orEmpty().let {
+            if (it.length > 50) it.take(47) + "..." else it
+        }
+        "create_agent" -> {
+            val agentName = json["agent_name"]?.jsonPrimitive?.content.orEmpty()
+            val workspaceId = json["workspace_id"]?.jsonPrimitive?.content.orEmpty()
+            "$agentName ($workspaceId)"
+        }
+        "tell_agent" -> json["message"]?.jsonPrimitive?.content.orEmpty().let {
+            if (it.length > 50) it.take(47) + "..." else it
+        }
+        "switch_tab" -> localization.text("chat.tool.tabSummary", "tabId" to json["tab_id"]?.jsonPrimitive?.content.orEmpty().take(8))
+        else -> ""
     }
+} catch (e: Exception) {
+    ""
 }
 
 @Composable
@@ -200,12 +163,13 @@ internal fun ToolCallItem(
     modifier: Modifier = Modifier,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
+    val localization = LocalTranslation.current
     // Get tool display information
     val toolName = toolCall.name
     val displayName = toolDisplayName(toolName, LocalTranslation.current.runtime)
-    val keyParameters = extractKeyParameters(toolName, toolCall.input, workspaceRootPath)
+    val keyParameters = extractKeyParameters(toolName, toolCall.input, workspaceRootPath, localization)
     val toolDescription = if (keyParameters.isNotEmpty()) "$displayName: $keyParameters" else displayName
-    val detailedParameters = buildDetailedParameters(toolName, toolCall.input, workspaceRootPath)
+    val detailedParameters = buildDetailedParameters(toolName, toolCall.input, workspaceRootPath, localization)
 
     Column {
         ActivityHeader(
@@ -255,6 +219,7 @@ internal fun ToolCallItem(
                                         }
                                         val displayText = truncateText(
                                             text = prettyJsonContent ?: dataItem.content,
+                                            localization = localization,
                                             maxLines = if (prettyJsonContent == null) 5 else 40,
                                         )
                                         Text(
@@ -278,11 +243,11 @@ internal fun ToolCallItem(
                                                     ) {
                                                         Icon(
                                                             Icons.Default.Image,
-                                                            contentDescription = "Image"
+                                                            contentDescription = localization.text("chat.attachment.image")
                                                         )
                                                         Spacer(modifier = Modifier.width(4.dp))
                                                         Text(
-                                                            text = "[Image ${dataItem.mediaType.value} - ${dataItem.data.length} chars Base64]",
+                                                            text = localization.format("imageDisplayText", dataItem.mediaType.value, dataItem.data.length),
                                                             style = MaterialTheme.typography.bodySmall,
                                                             color = MaterialTheme.colorScheme.primary
                                                         )
@@ -292,11 +257,8 @@ internal fun ToolCallItem(
                                                 else -> {
                                                     // Non-image Base64 data - show truncated version
                                                     val truncated = if (dataItem.data.length > 100) {
-                                                        "${dataItem.data.take(50)}...[${dataItem.data.length - 100} chars]...${
-                                                            dataItem.data.takeLast(
-                                                                50
-                                                            )
-                                                        }"
+                                                        localization.plural("chat.tool.dataTruncation", (dataItem.data.length - 100).toLong(),
+                                                            "prefix" to dataItem.data.take(50), "suffix" to dataItem.data.takeLast(50))
                                                     } else {
                                                         dataItem.data
                                                     }
@@ -306,7 +268,7 @@ internal fun ToolCallItem(
                                                     ) {
                                                         Icon(
                                                             Icons.Default.Description,
-                                                            contentDescription = "Document"
+                                                            contentDescription = localization.text("chat.attachment.document")
                                                         )
                                                         Spacer(modifier = Modifier.width(4.dp))
                                                         Text(
@@ -325,7 +287,7 @@ internal fun ToolCallItem(
                                             ) {
                                                 Icon(
                                                     Icons.Default.Link,
-                                                    contentDescription = "URL"
+                                                    contentDescription = localization.text("chat.attachment.url")
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(
@@ -348,7 +310,7 @@ internal fun ToolCallItem(
                                                         } else {
                                                             Icons.Default.Folder
                                                         },
-                                                        contentDescription = "File"
+                                                        contentDescription = localization.text("chat.attachment.file")
                                                     )
                                                     Spacer(modifier = Modifier.width(4.dp))
                                                     Text(

@@ -75,6 +75,23 @@ dispatch, with up to three format corrections. Tool results arrive in the next
 transcript step; remarks cannot stand in for results. Copilot likewise keeps
 external execution in Gromozeka while collecting completed SDK assistant events.
 
+## Interface Localization
+
+`localization/en.json` is the canonical interface catalog. Keep semantic context
+in `localization/context.json`, terminology in `localization/glossary.json`, and
+generation guidance in `localization/translator-prompt.md`. Packages remain
+ordinary JSON; update every bundled locale when adding or changing a message.
+Use the active translation in UI helpers and structured `LocalizedText` for
+messages resolved at display time. Preserve user content and raw diagnostics.
+
+Personal translation packages and shared/per-client choices belong to the
+authenticated User on the Server. Clients retain a bootstrap/offline display
+cache. The nine `grz_translation_*` MCP tools expose source context, validation,
+package management, selection, and synchronization to Agents. See
+[interface translations](../localization/README.md) for the package format,
+ownership contracts, and validation commands, and
+[Web font fallback](localization-fonts.md) for bundled font resources.
+
 ## Corporate Compatibility
 
 External integrations must respect the operator's selected provider policy. A

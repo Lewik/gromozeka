@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,9 +16,10 @@ fun EditMessageDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val localization = LocalTranslation.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Message") },
+        title = { Text(localization.text("chat.editMessage.title")) },
         text = {
             Column {
                 OutlinedTextField(
@@ -27,7 +29,7 @@ fun EditMessageDialog(
                         .fillMaxWidth()
                         .height(200.dp)
                         .testTag(UiTestTag.EditMessageInput.value),
-                    placeholder = { Text("Enter message text") },
+                    placeholder = { Text(localization.text("chat.editMessage.placeholder")) },
                     maxLines = 10
                 )
             }
@@ -37,12 +39,12 @@ fun EditMessageDialog(
                 onClick = onConfirm,
                 modifier = Modifier.testTag(UiTestTag.EditMessageSaveButton.value),
             ) {
-                Text("Save")
+                Text(localization.text("saveButton"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(localization.text("cancelButton"))
             }
         }
     )

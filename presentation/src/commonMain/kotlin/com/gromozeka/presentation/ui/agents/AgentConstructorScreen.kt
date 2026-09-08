@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.agents
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,10 +60,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 
-private enum class RuntimeCatalogTab(val title: String) {
-    Agents("Agents"),
-    Prompts("Prompts"),
-    Skills("Skills"),
+private enum class RuntimeCatalogTab(val titleKey: String) {
+    Agents("agents.catalog.tab.agents"),
+    Prompts("agents.catalog.tab.prompts"),
+    Skills("agents.catalog.tab.skills"),
 }
 
 private data class RuntimeCatalogSnapshot(
@@ -83,6 +85,7 @@ fun AgentConstructorScreen(
     coroutineScope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
+    val translation by rememberUpdatedState(LocalTranslation.current)
     var selectedTab by remember { mutableStateOf(RuntimeCatalogTab.Agents) }
     var projects by remember { mutableStateOf<List<Project>>(emptyList()) }
     var selectedProjectId by remember { mutableStateOf(projectId) }
@@ -90,7 +93,7 @@ fun AgentConstructorScreen(
     var prompts by remember { mutableStateOf<List<Prompt>>(emptyList()) }
     var skills by remember { mutableStateOf<List<AgentSkill>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
 
     var editingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
     var agentTemplate by remember { mutableStateOf<AgentTemplate?>(null) }
@@ -140,7 +143,7 @@ fun AgentConstructorScreen(
             selectedProjectId?.let(agentSkillService::observeByProject) ?: flowOf(emptyList()),
             ::RuntimeCatalogSnapshot,
         ).catch { failure ->
-            error = failure.message ?: "Failed to observe runtime catalog"
+            error = failure.message ?: translation.text("agents.catalog.observe_failed")
             isLoading = false
         }.collect { snapshot ->
             projects = snapshot.projects
@@ -163,12 +166,12 @@ fun AgentConstructorScreen(
         ) {
             Column {
                 Text(
-                    "Runtime catalog",
+                    translation.text("agents.catalog.title"),
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    "Agents and prompts are server-owned runtime configuration. Skills are imported packages.",
+                    translation.text("agents.catalog.description"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -179,7 +182,7 @@ fun AgentConstructorScreen(
                         Text(
                             selectedProjectId?.let { id ->
                                 projects.firstOrNull { it.id == id }?.name ?: id.value
-                            } ?: "Global"
+                            } ?: translation.text("agents.scope.global")
                         )
                     }
                     DropdownMenu(
@@ -187,7 +190,7 @@ fun AgentConstructorScreen(
                         onDismissRequest = { scopeMenuExpanded = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Global") },
+                            text = { Text(translation.text("agents.scope.global")) },
                             onClick = {
                                 selectedProjectId = null
                                 scopeMenuExpanded = false
@@ -206,14 +209,14 @@ fun AgentConstructorScreen(
                 }
                 CompactButton(
                     onClick = { refreshKey++ },
-                    tooltip = "Reload runtime catalog",
+                    tooltip = translation.text("agents.catalog.reload"),
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Reload")
+                    Icon(Icons.Default.Refresh, contentDescription = translation.text("agents.reload"))
                 }
                 if (selectedTab != RuntimeCatalogTab.Skills) {
                     Box {
                         OutlinedButton(onClick = { templateMenuExpanded = true }) {
-                            Text("From template")
+                            Text(translation.text("agents.catalog.from_template"))
                         }
                         DropdownMenu(
                             expanded = templateMenuExpanded,
@@ -269,7 +272,7 @@ fun AgentConstructorScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(Modifier.width(6.dp))
-                        Text(if (selectedTab == RuntimeCatalogTab.Agents) "New agent" else "New prompt")
+                        Text(if (selectedTab == RuntimeCatalogTab.Agents) translation.text("agents.new") else translation.text("prompts.new"))
                     }
                 }
             }
@@ -284,7 +287,7 @@ fun AgentConstructorScreen(
                 Tab(
                     selected = selectedTab == tab,
                     onClick = { selectedTab = tab },
-                    text = { Text(tab.title) },
+                    text = { Text(translation.text(tab.titleKey)) },
                 )
             }
         }
@@ -299,7 +302,7 @@ fun AgentConstructorScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (scopedAgents.isEmpty()) {
-                    item { EmptyCatalogMessage("No agents in this scope") }
+                    item { EmptyCatalogMessage(translation.text("agents.catalog.empty")) }
                 }
                 items(scopedAgents, key = { it.id.value }) { agent ->
                     AgentListItem(
@@ -316,7 +319,7 @@ fun AgentConstructorScreen(
                                     agentService.duplicateAgent(
                                         projectId = selectedProjectId,
                                         sourceAgentId = agent.id,
-                                        name = "${agent.name} copy",
+                                        name = translation.text("agents.copy_name", "name" to agent.name),
                                     )
                                 }.onFailure { error = it.message }
                             }
@@ -345,7 +348,7 @@ fun AgentConstructorScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (scopedPrompts.isEmpty()) {
-                    item { EmptyCatalogMessage("No prompts in this scope") }
+                    item { EmptyCatalogMessage(translation.text("prompts.catalog.empty")) }
                 }
                 items(scopedPrompts, key = { it.id.value }) { prompt ->
                     PromptListItem(
@@ -383,7 +386,7 @@ fun AgentConstructorScreen(
             initialPromptIds = templatePromptIds,
             defaultRuntimeSelection = aiSnapshot.catalog.runtimeSelectionFor(
                 AiRuntimeAssignment.Purpose.DEFAULT_CHAT
-            ) ?: error("Default chat runtime is not configured"),
+            ) ?: error(translation.text("agents.default_chat_missing")),
             onSave = { value ->
                 coroutineScope.launch {
                     runCatching {
@@ -455,8 +458,8 @@ fun AgentConstructorScreen(
 
     deletingAgent?.let { agent ->
         DeleteConfirmation(
-            title = "Delete agent?",
-            message = "Delete \"${agent.name}\"? Conversations or defaults that reference it will prevent deletion.",
+            title = translation.text("agents.delete_confirmation.title"),
+            message = translation.text("agents.delete_confirmation.message", "name" to agent.name),
             onDismiss = { deletingAgent = null },
             onConfirm = {
                 coroutineScope.launch {
@@ -474,8 +477,8 @@ fun AgentConstructorScreen(
 
     deletingPrompt?.let { prompt ->
         DeleteConfirmation(
-            title = "Delete prompt?",
-            message = "Delete \"${prompt.name}\"? Agents that reference it will prevent deletion.",
+            title = translation.text("prompts.delete_confirmation.title"),
+            message = translation.text("prompts.delete_confirmation.message", "name" to prompt.name),
             onDismiss = { deletingPrompt = null },
             onConfirm = {
                 coroutineScope.launch {
@@ -531,8 +534,8 @@ fun AgentConstructorScreen(
 
     deletingSkill?.let { skill ->
         DeleteConfirmation(
-            title = "Delete skill package?",
-            message = "Delete \"${skill.name}\"? Assigned packages cannot be deleted.",
+            title = translation.text("agents.skills.delete_confirmation.title"),
+            message = translation.text("agents.skills.delete_confirmation.message", "name" to skill.name),
             onDismiss = { deletingSkill = null },
             onConfirm = {
                 coroutineScope.launch {
@@ -556,13 +559,14 @@ private fun SkillsCatalog(
     onView: (AgentSkill) -> Unit,
     onDelete: (AgentSkill) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     if (projectId == null) {
-        EmptyCatalogMessage("Skills are project-scoped packages. Select a project to manage them.")
+        EmptyCatalogMessage(translation.text("agents.skills.project_required"))
         return
     }
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            "Skill contents are not edited here. Importing the same package name updates it from disk.",
+            translation.text("agents.skills.import_description"),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -573,7 +577,7 @@ private fun SkillsCatalog(
             if (skills.isEmpty()) {
                 item {
                     EmptyCatalogMessage(
-                        "No skill packages. Workspace package import will populate this catalog."
+                        translation.text("agents.skills.empty")
                     )
                 }
             }
@@ -591,18 +595,18 @@ private fun SkillsCatalog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                "Package ${skill.contentHash.take(12)}",
+                                translation.text("agents.skills.package_hash", "hash" to skill.contentHash.take(12)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         IconButton(onClick = { onView(skill) }) {
-                            Icon(Icons.Default.Visibility, contentDescription = "View package")
+                            Icon(Icons.Default.Visibility, contentDescription = translation.text("agents.skills.view_package"))
                         }
                         IconButton(onClick = { onDelete(skill) }) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Delete package",
+                                contentDescription = translation.text("agents.skills.delete_package"),
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }
@@ -634,15 +638,16 @@ private fun DeleteConfirmation(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
             Button(onClick = onConfirm) {
-                Text("Delete")
+                Text(translation.text("agents.delete_action"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("agents.cancel")) } },
     )
 }

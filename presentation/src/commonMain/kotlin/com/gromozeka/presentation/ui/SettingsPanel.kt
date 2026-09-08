@@ -80,6 +80,8 @@ import com.gromozeka.remote.protocol.DistributionOperatingSystem
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.theming.data.Theme
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.presentation.services.translation.LocalizedText
 import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.services.translation.data.Translation
 import klog.KLoggers
@@ -94,17 +96,17 @@ enum class SettingsPanelContentMode {
     Full,
 }
 
-private enum class SettingsSection(val title: String) {
-    Interface("Interface"),
-    Voice("Voice"),
-    Keyboard("Keyboard"),
-    AiRuntime("AI"),
-    Usage("Usage"),
-    Behavior("Behavior"),
-    Tools("Tools"),
-    Security("Security"),
-    Downloads("Downloads"),
-    Advanced("Advanced"),
+private enum class SettingsSection(val testTagName: String, val titleKey: String) {
+    Interface("Interface", "settingsUi.interface"),
+    Voice("Voice", "settingsUi.voice"),
+    Keyboard("Keyboard", "settingsUi.keyboard"),
+    AiRuntime("AI", "settingsUi.ai"),
+    Usage("Usage", "settingsUi.usage"),
+    Behavior("Behavior", "settingsUi.behavior"),
+    Tools("Tools", "settingsUi.tools"),
+    Security("Security", "settingsUi.security"),
+    Downloads("Downloads", "settingsUi.downloads"),
+    Advanced("Advanced", "settingsUi.advanced"),
 }
 
 @Composable
@@ -284,8 +286,8 @@ fun SettingsPanel(
                             Tab(
                                 selected = selectedSection == section,
                                 onClick = { selectedSection = section },
-                                text = { Text(section.title) },
-                                modifier = Modifier.testTag(UiTestTag.SettingsSectionTab(section.title).value),
+                                text = { Text(translation.text(section.titleKey)) },
+                                modifier = Modifier.testTag(UiTestTag.SettingsSectionTab(section.testTagName).value),
                             )
                         }
                     }
@@ -406,15 +408,15 @@ fun SettingsPanel(
                         // Only show STT settings if STT is enabled
                         if (speechToText.enabled) {
                             DropdownSettingItem(
-                                label = "Speech-to-text backend",
-                                description = "Choose the transcription engine independently from the device that records audio.",
+                                label = translation.text("settingsUi.speechToTextBackend"),
+                                description = translation.text("settingsUi.chooseTheTranscriptionEngineIndependentlyFromTheDevice"),
                                 value = speechToText.engine,
                                 options = UserProfile.SpeechSettings.SpeechToText.Engine.entries.toList(),
                                 optionLabel = {
                                     when (it) {
-                                        UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API -> "OpenAI API"
-                                        UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> "Local Whisper"
-                                        UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE -> "Claude Code voice"
+                                        UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API -> translation.text("settingsUi.openaiAPI")
+                                        UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> translation.text("settingsUi.localWhisper")
+                                        UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE -> translation.text("settingsUi.claudeCodeVoice")
                                     }
                                 },
                                 onValueChange = { engine ->
@@ -448,25 +450,25 @@ fun SettingsPanel(
                                 }
                                 if (connectionIds.isEmpty()) {
                                     Text(
-                                        "Create a Claude Code connection and enable voice transcription on it first.",
+                                        translation.text("settingsUi.createAClaudeCodeConnectionAndEnableVoice"),
                                         color = MaterialTheme.colorScheme.error,
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                 } else {
                                     DropdownSettingItem(
-                                        label = "Claude Code connection",
-                                        description = "Requires an organization-approved Claude.ai login on the execution target; API keys, Bedrock, Vertex, and Foundry cannot use Claude voice.",
+                                        label = translation.text("settingsUi.claudeCodeConnection"),
+                                        description = translation.text("settingsUi.requiresAnOrganizationApprovedClaudeAiLoginOn"),
                                         value = speechToText.claudeCodeConnectionId,
                                         options = listOf(null) + connectionIds,
                                         optionLabel = { id ->
-                                            if (id == null) return@DropdownSettingItem "Select a Claude Code connection"
+                                            if (id == null) return@DropdownSettingItem translation.text("settingsUi.selectAClaudeCodeConnection")
                                             val connection = claudeCodeConnections.firstOrNull { it.id == id }
                                             buildString {
                                                 append(connection?.displayName ?: id.value)
                                                 when {
-                                                    connection == null -> append(" · unavailable")
-                                                    !connection.enabled -> append(" · disabled")
-                                                    !connection.voiceTranscriptionEnabled -> append(" · voice disabled")
+                                                    connection == null -> append(translation.text("settingsUi.unavailable"))
+                                                    !connection.enabled -> append(translation.text("settingsUi.disabled"))
+                                                    !connection.voiceTranscriptionEnabled -> append(translation.text("settingsUi.voiceDisabled"))
                                                 }
                                             }
                                         },
@@ -491,20 +493,20 @@ fun SettingsPanel(
 
                             val selectedWorkerSource = speechToText.audioSource as? SpeechAudioSource.WorkerInput
                             val sourceOptions = buildList {
-                                add("" to "This client")
+                                add("" to translation.text("settingsUi.thisClient"))
                                 workers.forEach { worker ->
                                     add(
                                         worker.workerId.value to
-                                            "Worker ${worker.workerId.value} · ${worker.status.name.lowercase()}"
+                                            translation.text("settingsUi.workerStatus", "worker" to worker.workerId.value, "status" to worker.status.displayName(translation))
                                     )
                                 }
                                 selectedWorkerSource?.workerId?.value
                                     ?.takeIf { id -> none { it.first == id } }
-                                    ?.let { add(it to "Worker $it · unavailable") }
+                                    ?.let { add(it to translation.text("settingsUi.workerStatus", "worker" to it, "status" to translation.text("settingsUi.unknown"))) }
                             }
                             DropdownSettingItem(
-                                label = "Audio source",
-                                description = "Record on this client or on one exact Worker. The transcription backend may run elsewhere.",
+                                label = translation.text("settingsUi.audioSource"),
+                                description = translation.text("settingsUi.recordOnThisClientOrOnOneExact"),
                                 value = selectedWorkerSource?.workerId?.value.orEmpty(),
                                 options = sourceOptions.map { it.first },
                                 optionLabel = { id -> sourceOptions.first { it.first == id }.second },
@@ -544,19 +546,23 @@ fun SettingsPanel(
                                         add(
                                             WorkerAudioInput(
                                                 id = selectedWorkerSource.inputId,
-                                                displayName = "Unavailable input ${selectedWorkerSource.inputId.value}",
+                                                displayName = translation.text("settingsUi.unavailableInput", "input" to selectedWorkerSource.inputId.value),
                                             )
                                         )
                                     }
                                 }
                                 DropdownSettingItem(
-                                    label = "Worker audio input",
-                                    description = "An offline Worker remains selectable; recording becomes available when it reconnects with this input.",
+                                    label = translation.text("settingsUi.workerAudioInput"),
+                                    description = translation.text("settingsUi.anOfflineWorkerRemainsSelectableRecordingBecomesAvailable"),
                                     value = selectedWorkerSource.inputId,
                                     options = audioInputs.map { it.id },
                                     optionLabel = { id ->
                                         audioInputs.first { it.id == id }.let { input ->
-                                            if (input.isDefault) "${input.displayName} · default" else input.displayName
+                                            val name = if (
+                                                input.id == WorkerAudioInput.SystemDefault.id &&
+                                                input.displayName == WorkerAudioInput.SystemDefault.displayName
+                                            ) translation.text("settingsUi.systemDefaultMicrophone") else input.displayName
+                                            if (input.isDefault) translation.text("settingsUi.defaultInput", "input" to name) else name
                                         }
                                     },
                                     onValueChange = { inputId ->
@@ -588,18 +594,18 @@ fun SettingsPanel(
                                 }
 
                                 DropdownSettingItem(
-                                    label = "Whisper execution target",
-                                    description = "Finite transcription runs on this exact target. Live interpretation requires Server.",
+                                    label = translation.text("settingsUi.whisperExecutionTarget"),
+                                    description = translation.text("settingsUi.finiteTranscriptionRunsOnThisExactTargetLive"),
                                     value = localWhisper.executionTarget,
                                     options = executionTargets,
                                     optionLabel = { target ->
                                         when (target) {
-                                            AiExecutionTarget.Server -> "Server"
+                                            AiExecutionTarget.Server -> translation.text("settingsUi.server")
                                             is AiExecutionTarget.Worker -> {
                                                 val status = workers.firstOrNull {
                                                     it.workerId.value == target.workerId
-                                                }?.status?.name?.lowercase() ?: "unknown"
-                                                "Worker ${target.workerId} · $status"
+                                                }?.status?.displayName(translation) ?: translation.text("settingsUi.unknown")
+                                                translation.text("settingsUi.workerStatus", "worker" to target.workerId, "status" to status)
                                             }
                                         }
                                     },
@@ -619,8 +625,8 @@ fun SettingsPanel(
                                 )
 
                                 TextFieldSettingItem(
-                                    label = "Whisper executable",
-                                    description = "Path or command name for whisper.cpp CLI. Gromozeka starts the sibling whisper-server executable.",
+                                    label = translation.text("settingsUi.whisperExecutable"),
+                                    description = translation.text("settingsUi.pathOrCommandNameForWhisperCppCLI"),
                                     value = localWhisper.executablePath,
                                     placeholder = "whisper-cli",
                                     onValueChange = {
@@ -639,8 +645,8 @@ fun SettingsPanel(
                                 )
 
                                 DropdownSettingItem(
-                                    label = "Whisper model",
-                                    description = "Used when model path is empty. Model is expected under Gromozeka home: models/whisper/ggml-<name>.bin",
+                                    label = translation.text("settingsUi.whisperModel"),
+                                    description = translation.text("settingsUi.usedWhenModelPathIsEmptyModelIs"),
                                     value = localWhisper.modelName,
                                     options = listOf("tiny", "base", "small", "medium", "large-v3-turbo", "large-v3"),
                                     onValueChange = {
@@ -659,8 +665,8 @@ fun SettingsPanel(
                                 )
 
                                 TextFieldSettingItem(
-                                    label = "Whisper model path",
-                                    description = "Optional absolute path. Leave empty to use the model name in Gromozeka home.",
+                                    label = translation.text("settingsUi.whisperModelPath"),
+                                    description = translation.text("settingsUi.optionalAbsolutePathLeaveEmptyToUseThe"),
                                     value = localWhisper.modelPath,
                                     placeholder = "",
                                     onValueChange = {
@@ -679,8 +685,8 @@ fun SettingsPanel(
                                 )
 
                                 TextFieldSettingItem(
-                                    label = "Whisper threads",
-                                    description = "0 keeps whisper.cpp default. Positive values are passed as -t to whisper-cli and whisper-server.",
+                                    label = translation.text("settingsUi.whisperThreads"),
+                                    description = translation.text("settingsUi.0KeepsWhisperCppDefaultPositiveValuesAre"),
                                     value = localWhisper.threadCount.takeIf { it > 0 }?.toString().orEmpty(),
                                     placeholder = "0",
                                     onValueChange = { value ->
@@ -714,8 +720,8 @@ fun SettingsPanel(
                                 )
 
                                 TextFieldSettingItem(
-                                    label = "Whisper extra arguments",
-                                    description = "Advanced whisper.cpp args appended after Gromozeka required args. Split by spaces.",
+                                    label = translation.text("settingsUi.whisperExtraArguments"),
+                                    description = translation.text("settingsUi.advancedWhisperCppArgsAppendedAfterGromozekaRequired"),
                                     value = localWhisper.extraArguments.joinToString(" "),
                                     placeholder = "--no-gpu -bo 1",
                                     onValueChange = { value ->
@@ -736,11 +742,11 @@ fun SettingsPanel(
                                 )
 
                                 DropdownSettingItem(
-                                    label = "Whisper live profile",
-                                    description = "Controls live chunk size. Slow CPU increases latency but reduces missed audio on weak machines.",
+                                    label = translation.text("settingsUi.whisperLiveProfile"),
+                                    description = translation.text("settingsUi.controlsLiveChunkSizeSlowCPUIncreasesLatency"),
                                     value = localWhisper.liveStreaming.profile,
                                     options = UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.entries,
-                                    optionLabel = { it.label },
+                                    optionLabel = { it.displayName(translation) },
                                     onValueChange = { profile ->
                                         onSettingsChange(
                                             settings.updateUserProfile {
@@ -759,11 +765,14 @@ fun SettingsPanel(
                                 )
                             }
 
-                            DropdownSettingItem(
+                            val recognitionLanguageNames = Translation.builtIn.values
+                                .associate { it.content.locale.substringBefore('-') to it.languageName }
+                            EditableDropdownSettingItem(
                                 label = translation.settings.recognitionLanguageLabel,
                                 description = translation.settings.sttLanguageDescription,
                                 value = speechToText.mainLanguageCode,
-                                options = listOf("en", "ru", "he", "ar", "es", "fr", "de", "zh", "ja"),
+                                predefinedOptions = recognitionLanguageNames.keys.toList(),
+                                optionLabel = { code -> recognitionLanguageNames[code]?.let { "$it ($code)" } ?: code },
                                 onValueChange = {
                                     onSettingsChange(
                                         settings.updateUserProfile {
@@ -789,8 +798,8 @@ fun SettingsPanel(
                             )
 
                             SwitchSettingItem(
-                                label = "Continuous voice input",
-                                description = "Keep this client's microphone open, split speech into complete phrases, and send each transcript like sequential PTT.",
+                                label = translation.text("settingsUi.continuousVoiceInput"),
+                                description = translation.text("settingsUi.keepThisClientSMicrophoneOpenSplitSpeech"),
                                 value = voiceInputSettings.liveVoiceInputEnabled,
                                 onValueChange = {
                                     onSettingsChange(
@@ -800,16 +809,16 @@ fun SettingsPanel(
                             )
 
                             DropdownSettingItem(
-                                label = "Continuous voice VAD mode",
-                                description = "Choose who decides phrase boundaries. Provider VAD is explicit and never falls back to local VAD.",
+                                label = translation.text("settingsUi.continuousVoiceVADMode"),
+                                description = translation.text("settingsUi.chooseWhoDecidesPhraseBoundariesProviderVADIs"),
                                 value = voiceInputSettings.liveVoiceVadMode,
                                 options = UserDeviceSettings.VoiceInputSettings.LiveVoiceVadMode.entries,
                                 optionLabel = {
                                     when (it) {
                                         UserDeviceSettings.VoiceInputSettings.LiveVoiceVadMode.LOCAL_VAD ->
-                                            "Local energy VAD"
+                                            translation.text("settingsUi.localEnergyVAD")
                                         UserDeviceSettings.VoiceInputSettings.LiveVoiceVadMode.PROVIDER_VAD ->
-                                            "Provider VAD"
+                                            translation.text("settingsUi.providerVAD")
                                     }
                                 },
                                 onValueChange = { mode ->
@@ -878,7 +887,7 @@ fun SettingsPanel(
                         contentMode == SettingsPanelContentMode.Full &&
                         selectedSection == SettingsSection.Behavior
                     ) {
-                        SettingsGroup(title = "Agent and memory behavior") {
+                        SettingsGroup(title = translation.text("settingsUi.agentAndMemoryBehavior")) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                         SwitchSettingItem(
@@ -931,8 +940,8 @@ fun SettingsPanel(
                         }
 
                         SwitchSettingItem(
-                            label = "Auto-approve all tool requests",
-                            description = "Automatically allow all tool executions without showing permission dialogs (affects new sessions only)",
+                            label = translation.text("settingsUi.autoApproveAllToolRequests"),
+                            description = translation.text("settingsUi.automaticallyAllowAllToolExecutionsWithoutShowingPermission"),
                             value = agentSettings.autoApproveAllTools,
                             onValueChange = {
                                 onSettingsChange(
@@ -944,15 +953,15 @@ fun SettingsPanel(
                         )
 
                         DropdownSettingItem(
-                            label = "Suggested replies",
-                            description = "Generate reply chips inline with the answer or through the Suggested replies runtime configured under AI.",
+                            label = translation.text("settingsUi.suggestedReplies"),
+                            description = translation.text("settingsUi.generateReplyChipsInlineWithTheAnswerOr"),
                             value = suggestedRepliesSettings.mode,
                             options = UserProfile.SuggestedRepliesSettings.Mode.entries,
                             optionLabel = { mode ->
                                 when (mode) {
-                                    UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> "Off"
-                                    UserProfile.SuggestedRepliesSettings.Mode.INLINE -> "Inline with the answer"
-                                    UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME -> "Separate AI runtime"
+                                    UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> translation.text("settingsUi.off")
+                                    UserProfile.SuggestedRepliesSettings.Mode.INLINE -> translation.text("settingsUi.inlineWithTheAnswer")
+                                    UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME -> translation.text("settingsUi.separateAIRuntime")
                                 }
                             },
                             onValueChange = { mode ->
@@ -967,8 +976,8 @@ fun SettingsPanel(
                         )
 
                         SwitchSettingItem(
-                            label = "Auto-remember threads",
-                            description = "Automatically write typed memory around each chat message",
+                            label = translation.text("settingsUi.autoRememberThreads"),
+                            description = translation.text("settingsUi.automaticallyWriteTypedMemoryAroundEachChatMessage"),
                             value = memorySettings.autoRemember,
                             onValueChange = {
                                 onSettingsChange(
@@ -980,8 +989,8 @@ fun SettingsPanel(
                         )
 
                         SwitchSettingItem(
-                            label = "Auto-recall memory",
-                            description = "Automatically recall typed memory before the main model response",
+                            label = translation.text("settingsUi.autoRecallMemory"),
+                            description = translation.text("settingsUi.automaticallyRecallTypedMemoryBeforeTheMainModel"),
                             value = memorySettings.autoRecall,
                             onValueChange = {
                                 onSettingsChange(
@@ -993,8 +1002,8 @@ fun SettingsPanel(
                         )
 
                         SwitchSettingItem(
-                            label = "Force document ingest",
-                            description = "Bypass memory relevance routing for technically valid documents; extraction and reconciliation still validate supported memory",
+                            label = translation.text("settingsUi.forceDocumentIngest"),
+                            description = translation.text("settingsUi.bypassMemoryRelevanceRoutingForTechnicallyValidDocuments"),
                             value = memorySettings.forceWriteForDocumentIngest,
                             onValueChange = {
                                 onSettingsChange(
@@ -1074,10 +1083,10 @@ fun SettingsPanel(
                                 selectedSection == SettingsSection.Interface
                             )
                     ) {
-                    SettingsGroup(title = "Composer shortcuts") {
+                    SettingsGroup(title = translation.text("settingsUi.composerShortcuts")) {
                         TextFieldSettingItem(
-                            label = "Instruction shortcut separators",
-                            description = "Comma-separated prefixes. Type a prefix, an instruction alias, then two spaces.",
+                            label = translation.text("settingsUi.instructionShortcutSeparators"),
+                            description = translation.text("settingsUi.commaSeparatedPrefixesTypeAPrefixAnInstruction"),
                             value = userProfile.messageInstructionTextShortcuts.separators.joinToString(", "),
                             placeholder = "/, =",
                             onValueChange = { value ->
@@ -1094,9 +1103,9 @@ fun SettingsPanel(
                         )
                         userProfile.messageInstructionGroups.forEach { group ->
                             SwitchSettingItem(
-                                label = group.title,
+                                label = group.displayTitle(translation),
                                 description = group.controls.joinToString(" · ") { control ->
-                                    "${control.shortLabel} ${control.data.title}"
+                                    "${control.displayShortLabel(translation)} ${control.data.displayTitle(translation)}"
                                 },
                                 value = group.showInComposer,
                                 onValueChange = { showInComposer ->
@@ -1116,8 +1125,8 @@ fun SettingsPanel(
                                 },
                             )
                             SwitchSettingItem(
-                                label = "${group.title}: Sticky reminder",
-                                description = "Keep only the latest instruction from this group in each model request.",
+                                label = translation.text("settingsUi.stickyReminder", "group" to group.displayTitle(translation)),
+                                description = translation.text("settingsUi.keepOnlyTheLatestInstructionFromThisGroup"),
                                 value = group.retentionMode == MessageInstructionGroup.RetentionMode.STICKY_LATEST,
                                 enabled = group.controls.all { it.includeInMessage },
                                 onValueChange = { sticky ->
@@ -1144,16 +1153,15 @@ fun SettingsPanel(
                             )
                             if (group.retentionMode == MessageInstructionGroup.RetentionMode.STICKY_LATEST) {
                                 Text(
-                                    text = "Warning: sticky reminders rewrite the prompt prefix and can invalidate " +
-                                        "almost all prompt-cache reuse.",
+                                    text = translation.text("settingsUi.stickyReminderWarning"),
                                     color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
                             group.controls.forEach { control ->
                                 TextFieldSettingItem(
-                                    label = "${group.title}: ${control.data.title} aliases",
-                                    description = "Comma-separated, case-insensitive aliases. Ambiguous aliases are ignored.",
+                                    label = translation.text("settingsUi.instructionAliases", "group" to group.displayTitle(translation), "instruction" to control.data.displayTitle(translation)),
+                                    description = translation.text("settingsUi.commaSeparatedCaseInsensitiveAliasesAmbiguousAliasesAre"),
                                     value = control.textShortcutAliases.joinToString(", "),
                                     onValueChange = { value ->
                                         onSettingsChange(
@@ -1213,8 +1221,8 @@ fun SettingsPanel(
                         )
 
                         SliderSettingItem(
-                            label = "UI Scale",
-                            description = "Adjust interface size (0.5 = tiny, 1.0 = normal, 3.0 = huge).",
+                            label = translation.text("settingsUi.uiScale"),
+                            description = translation.text("settingsUi.adjustInterfaceSize05Tiny10"),
                             value = uiSettings.uiScale,
                             min = 0.5f,
                             max = 3.0f,
@@ -1226,8 +1234,8 @@ fun SettingsPanel(
                         )
 
                         SliderSettingItem(
-                            label = "Font Scale",
-                            description = "Adjust text size (0.5 = small, 1.0 = normal, 2.0 = large)",
+                            label = translation.text("settingsUi.fontScale"),
+                            description = translation.text("settingsUi.adjustTextSize05Small10"),
                             value = uiSettings.fontScale,
                             min = 0.5f,
                             max = 2.0f,
@@ -1239,9 +1247,9 @@ fun SettingsPanel(
                         )
 
                         ButtonSettingItem(
-                            label = "Reset Scale",
-                            description = "Restore interface and text scale to 100%.",
-                            buttonText = "Reset scale",
+                            label = translation.text("settingsUi.resetScale"),
+                            description = translation.text("settingsUi.restoreInterfaceAndTextScaleTo100"),
+                            buttonText = translation.text("settingsUi.resetScale"),
                             onClick = {
                                 onSettingsChange(settings.updateUiSettings { copy(uiScale = 1.0f, fontScale = 1.0f) })
                             }
@@ -1249,76 +1257,7 @@ fun SettingsPanel(
                     }
 
                     // Localization Settings
-                    SettingsGroup(title = translation.settings.localizationTitle) {
-                        // Language selection
-                        DropdownSettingItem(
-                            label = translation.switchLanguage,
-                            description = translation.settings.languageSelectionDescription,
-                            value = uiSettings.languageCode,
-                            options = Translation.builtIn.keys.toList(),
-                            optionLabel = { languageCode ->
-                                Translation.builtIn[languageCode]!!.languageName
-                            },
-                            onValueChange = { newLanguageCode ->
-                                onSettingsChange(settings.updateUiSettings { copy(languageCode = newLanguageCode) })
-                            }
-                        )
-
-                        InfoSettingItem(
-                            label = translation.settings.customTranslationInfoLabel,
-                            message = translation.settings.customTranslationInfoMessage,
-                            isError = false
-                        )
-
-                        // Show override status - automatically based on file existence
-                        val overrideResult by translationService.lastOverrideResult.collectAsState()
-                        overrideResult?.let { result ->
-                            when (result) {
-                                is com.gromozeka.presentation.services.translation.TranslationOverrideResult.Success -> {
-                                    InfoSettingItem(
-                                        label = translation.settings.translationOverrideStatusLabel,
-                                        message = translation.settings.overrideSuccessMessage.format(result.overriddenFields.size),
-                                        isError = false
-                                    )
-                                }
-
-                                is com.gromozeka.presentation.services.translation.TranslationOverrideResult.Failure -> {
-                                    InfoSettingItem(
-                                        label = translation.settings.translationOverrideStatusLabel,
-                                        message = translation.settings.overrideFailureMessage.format(result.error),
-                                        isError = true
-                                    )
-                            }
-                        }
-                        }
-                    }
-
-                        ButtonSettingItem(
-                            label = translation.settings.refreshTranslationsLabel,
-                            description = translation.settings.refreshTranslationsDescription,
-                            buttonText = translation.settings.refreshTranslationsButton,
-                            onClick = {
-                                log.info("Refreshing translations...")
-                                translationService.refreshTranslations()
-                            }
-                        )
-
-                        ButtonSettingItem(
-                            label = translation.settings.exportTranslationLabel,
-                            description = translation.settings.exportTranslationDescription,
-                            buttonText = translation.settings.exportTranslationButton,
-                            onClick = {
-                                val success = translationService.exportToFile()
-
-                                if (success) {
-                                    log.info("Successfully exported translation")
-                                    // TODO: Show success notification
-                                } else {
-                                    log.warn("Failed to export translation")
-                                    // TODO: Show error notification  
-                                }
-                            }
-                        )
+                    LocalizationSettings(translationService)
 
                     // Theming Settings
                     SettingsGroup(title = translation.settings.themingTitle) {
@@ -1333,12 +1272,10 @@ fun SettingsPanel(
                                 val themeInfo = availableThemes[themeId]
                                 when {
                                     themeInfo == null -> themeId
-                                    themeInfo.isBuiltIn -> "${
-                                        Theme.getThemeNameTranslated(
-                                            themeId,
-                                            translation
-                                        )
-                                    } (built-in)"
+                                    themeInfo.isBuiltIn -> translation.text(
+                                        "settingsUi.builtInTheme",
+                                        "theme" to Theme.getThemeNameTranslated(themeId, translation),
+                                    )
 
                                     !themeInfo.isValid -> "${themeInfo.themeName} (${translation.settings.themeInvalidFormat})"
                                     else -> themeInfo.themeName
@@ -1378,8 +1315,8 @@ fun SettingsPanel(
 
                         // Theme override toggle
                         SwitchSettingItem(
-                            label = "Enable Theme Override",
-                            description = "Allow custom theme colors from override.json file to modify the selected theme",
+                            label = translation.text("settingsUi.enableThemeOverride"),
+                            description = translation.text("settingsUi.allowCustomThemeColorsFromOverrideJsonFile"),
                             value = themeSettings.overrideEnabled,
                             onValueChange = {
                                 onSettingsChange(
@@ -1407,7 +1344,7 @@ fun SettingsPanel(
                                     is com.gromozeka.presentation.services.theming.ThemeOverrideResult.Success -> {
                                         InfoSettingItem(
                                             label = translation.settings.themeOverrideStatusLabel,
-                                            message = translation.settings.themeOverrideSuccessMessage.format(result.overriddenFields.size),
+                                            message = translation.format("settings.themeOverrideSuccessMessage", result.overriddenFields.size),
                                             isError = false
                                         )
                                     }
@@ -1415,7 +1352,7 @@ fun SettingsPanel(
                                     is com.gromozeka.presentation.services.theming.ThemeOverrideResult.Failure -> {
                                         InfoSettingItem(
                                             label = translation.settings.themeOverrideStatusLabel,
-                                            message = translation.settings.themeOverrideFailureMessage.format(result.error),
+                                            message = translation.format("settings.themeOverrideFailureMessage", result.error),
                                             isError = true
                                         )
                                     }
@@ -1443,9 +1380,9 @@ fun SettingsPanel(
 
                         // AI-powered theme generation from window screenshot
                         ButtonSettingItem(
-                            label = "AI Generate Theme from Window",
-                            description = "Take a screenshot of a selected window and use AI to automatically generate a theme based on its colors. Opens a new tab with Claude Code for interactive theme generation.",
-                            buttonText = "Generate Theme from Window",
+                            label = translation.text("settingsUi.aiGenerateThemeFromWindow"),
+                            description = translation.text("settingsUi.takeAScreenshotOfASelectedWindowAnd"),
+                            buttonText = translation.text("settingsUi.generateThemeFromWindow"),
                             onClick = {
                                 coroutineScope.launch {
                                     val preparedMessage = aiThemeGenerator.prepareThemeGenerationData(coroutineScope)
@@ -1535,17 +1472,16 @@ fun SettingsPanel(
                     // Logs & Diagnostics
                     SettingsGroup(title = translation.settings.logsAndDiagnosticsTitle) {
                         InfoSettingItem(
-                            label = "Automatic retention",
-                            message = "Native application logs are size-bounded and rotated automatically. " +
-                                "Browser diagnostics stay in the browser console.",
+                            label = translation.text("settingsUi.automaticRetention"),
+                            message = translation.text("settingsUi.logRetentionDescription"),
                         )
                     }
 
                     // Developer Settings
                     SettingsGroup(title = translation.settings.developerSettingsTitle) {
                         TextFieldSettingItem(
-                            label = "Server address",
-                            description = "The new address is used after restarting this client. Clear it to choose a server on the next launch.",
+                            label = translation.text("settingsUi.serverAddress"),
+                            description = translation.text("settingsUi.theNewAddressIsUsedAfterRestartingThis"),
                             value = remoteClientSettings.remoteUrl.orEmpty(),
                             placeholder = "https://gromozeka.example",
                             onValueChange = {
@@ -1563,8 +1499,8 @@ fun SettingsPanel(
                         )
 
                         DropdownSettingItem(
-                            label = "Remote protocol",
-                            description = "CBOR is the normal binary transport. JSON is useful when debugging WebSocket frames.",
+                            label = translation.text("settingsUi.remoteProtocol"),
+                            description = translation.text("settingsUi.cborIsTheNormalBinaryTransportJSONIs"),
                             value = remoteClientSettings.protocolEncoding.name,
                             options = RemoteProtocolEncoding.entries.map { it.name },
                             onValueChange = {
@@ -1583,6 +1519,7 @@ fun SettingsPanel(
 
 @Composable
 private fun DistributionSettings(distributionService: RemoteDistributionService) {
+    val translation = LocalTranslation.current
     var reloadKey by remember { mutableIntStateOf(0) }
     var loadState by remember { mutableStateOf<DistributionLoadState>(DistributionLoadState.Loading) }
 
@@ -1608,15 +1545,15 @@ private fun DistributionSettings(distributionService: RemoteDistributionService)
         }
 
         is DistributionLoadState.Failed -> {
-            SettingsGroup(title = "Downloads") {
+            SettingsGroup(title = translation.text("settingsUi.downloads")) {
                 Text(
-                    text = state.message.ifBlank { "Could not load distributions." },
+                    text = state.message.ifBlank { translation.text("settingsUi.couldNotLoadDistributions") },
                     color = MaterialTheme.colorScheme.error,
                 )
                 OutlinedButton(onClick = { reloadKey++ }) {
                     Icon(Icons.Default.Refresh, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Retry")
+                    Text(translation.text("settingsUi.retry"))
                 }
             }
         }
@@ -1634,22 +1571,23 @@ private fun DistributionSettings(distributionService: RemoteDistributionService)
 
 @Composable
 private fun DistributionCatalog(manifest: DistributionManifest) {
+    val translation = LocalTranslation.current
     val uriHandler = LocalUriHandler.current
 
-    SettingsGroup(title = "Downloads") {
+    SettingsGroup(title = translation.text("settingsUi.downloads")) {
         Text(
-            text = "Native clients, standalone and Docker Servers, the Browser Bridge, and trusted Workers for version ${manifest.serverVersion}.",
+            text = translation.text("settingsUi.distributionsDescription", "version" to manifest.serverVersion),
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            text = "Downloads come directly from the matching GitHub Release.",
+            text = translation.text("settingsUi.downloadsComeDirectlyFromTheMatchingGitHubRelease"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         DistributionComponent.entries.forEach { component ->
             Text(
-                text = component.displayName(),
+                text = component.displayName(translation),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -1665,7 +1603,7 @@ private fun DistributionCatalog(manifest: DistributionManifest) {
         TextButton(onClick = { uriHandler.openUri(manifest.checksumsUrl) }) {
             Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("SHA-256 checksums")
+            Text(translation.text("settingsUi.sha256Checksums"))
         }
     }
 }
@@ -1675,6 +1613,7 @@ private fun DistributionArtifactItem(
     artifact: DistributionArtifact,
     onDownload: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -1686,12 +1625,12 @@ private fun DistributionArtifactItem(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = artifact.platformDisplayName(),
+                text = artifact.platformDisplayName(translation),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
             )
             Text(
-                text = "${artifact.format.displayName()} · ${artifact.fileName}",
+                text = "${artifact.format.displayName(translation)} · ${artifact.fileName}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1701,22 +1640,22 @@ private fun DistributionArtifactItem(
             ) {
                 Icon(Icons.Default.Download, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Download")
+                Text(translation.text("settingsUi.download"))
             }
         }
     }
 }
 
-private fun DistributionArtifact.platformDisplayName(): String =
+private fun DistributionArtifact.platformDisplayName(translation: Translation): String =
     if (component == DistributionComponent.BROWSER_BRIDGE) {
-        "Chrome, Edge, or Chromium"
+        translation.text("settingsUi.chromeEdgeOrChromium")
     } else if (
         operatingSystem == DistributionOperatingSystem.ANY &&
         architecture == DistributionArchitecture.ANY
     ) {
-        "Any Docker host"
+        translation.text("settingsUi.anyDockerHost")
     } else {
-        "${operatingSystem.displayName()} ${architecture.displayName()}"
+        "${operatingSystem.displayName(translation)} ${architecture.displayName(translation)}"
     }
 
 @Composable
@@ -1725,26 +1664,27 @@ private fun WorkerEnrollmentSettings(
     unavailableReason: String?,
     distributionService: RemoteDistributionService,
 ) {
+    val translation = LocalTranslation.current
     val scope = rememberCoroutineScope()
     var enrollmentState by remember {
         mutableStateOf<WorkerEnrollmentState>(WorkerEnrollmentState.Idle)
     }
 
-    SettingsGroup(title = "Add a Worker") {
+    SettingsGroup(title = translation.text("settingsUi.addAWorker")) {
         if (!availability) {
             Text(
-                text = unavailableReason ?: "Worker enrollment is unavailable on this Server.",
+                text = unavailableReason ?: translation.text("settingsUi.workerEnrollmentIsUnavailableOnThisServer"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             return@SettingsGroup
         }
 
         Text(
-            text = "Extract the Worker archive and run the command for its operating system. It prints a short code that you approve in Security.",
+            text = translation.text("settingsUi.extractTheWorkerArchiveAndRunTheCommand"),
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            text = "For a private Server CA, append --ca-certificate /path/to/root-or-chain.pem.",
+            text = translation.text("settingsUi.forAPrivateServerCAAppendCaCertificate"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -1752,7 +1692,7 @@ private fun WorkerEnrollmentSettings(
         WorkerConnectionCommands(distributionService.workerConnectionInstructions())
 
         Text(
-            text = "Advanced: generate a short-lived token for headless provisioning.",
+            text = translation.text("settingsUi.advancedGenerateAShortLivedTokenForHeadless"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -1775,7 +1715,7 @@ private fun WorkerEnrollmentSettings(
                     strokeWidth = 2.dp,
                 )
             } else {
-                Text("Generate one-time token")
+                Text(translation.text("settingsUi.generateOneTimeToken"))
             }
         }
 
@@ -1784,7 +1724,7 @@ private fun WorkerEnrollmentSettings(
             WorkerEnrollmentState.Loading -> Unit
 
             is WorkerEnrollmentState.Failed -> Text(
-                text = state.message.ifBlank { "Could not generate an enrollment token." },
+                text = state.message.ifBlank { translation.text("settingsUi.couldNotGenerateAnEnrollmentToken") },
                 color = MaterialTheme.colorScheme.error,
             )
 
@@ -1813,6 +1753,7 @@ private fun WorkerConnectionCommands(instructions: WorkerConnectionInstructions)
 
 @Composable
 private fun WorkerEnrollmentCommands(instructions: WorkerEnrollmentInstructions) {
+    val translation = LocalTranslation.current
     SelectionContainer {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -1822,7 +1763,7 @@ private fun WorkerEnrollmentCommands(instructions: WorkerEnrollmentInstructions)
             Text(
                 text = "macOS / Linux\n${instructions.macOsLinuxCommand}\n\n" +
                     "Windows\n${instructions.windowsCommand}\n\n" +
-                    "Token expires at ${instructions.expiresAt}",
+                    translation.text("settingsUi.tokenExpiresAt", "time" to instructions.expiresAt),
                 modifier = Modifier.padding(12.dp),
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -1843,35 +1784,35 @@ private sealed interface WorkerEnrollmentState {
     data class Failed(val message: String) : WorkerEnrollmentState
 }
 
-private fun DistributionComponent.displayName(): String =
+private fun DistributionComponent.displayName(translation: Translation): String =
     when (this) {
-        DistributionComponent.CLIENT -> "Clients"
-        DistributionComponent.SERVER -> "Servers"
-        DistributionComponent.WORKER -> "Workers"
-        DistributionComponent.BROWSER_BRIDGE -> "Browser Bridge"
+        DistributionComponent.CLIENT -> translation.text("settingsUi.clients")
+        DistributionComponent.SERVER -> translation.text("settingsUi.servers")
+        DistributionComponent.WORKER -> translation.text("settingsUi.workers")
+        DistributionComponent.BROWSER_BRIDGE -> translation.text("settingsUi.browserBridge")
     }
 
-private fun DistributionOperatingSystem.displayName(): String =
+private fun DistributionOperatingSystem.displayName(translation: Translation): String =
     when (this) {
-        DistributionOperatingSystem.ANY -> "Any Docker host"
+        DistributionOperatingSystem.ANY -> translation.text("settingsUi.anyDockerHost")
         DistributionOperatingSystem.MACOS -> "macOS"
         DistributionOperatingSystem.WINDOWS -> "Windows"
         DistributionOperatingSystem.LINUX -> "Linux"
     }
 
-private fun DistributionArchitecture.displayName(): String =
+private fun DistributionArchitecture.displayName(translation: Translation): String =
     when (this) {
-        DistributionArchitecture.ANY -> "any architecture"
+        DistributionArchitecture.ANY -> translation.text("settingsUi.anyArchitecture")
         DistributionArchitecture.ARM64 -> "ARM64"
         DistributionArchitecture.X64 -> "x64"
     }
 
-private fun DistributionFormat.displayName(): String =
+private fun DistributionFormat.displayName(translation: Translation): String =
     when (this) {
-        DistributionFormat.BROWSER_EXTENSION_ZIP -> "unpacked extension ZIP"
-        DistributionFormat.DOCKER_COMPOSE_ZIP -> "Docker Compose ZIP"
+        DistributionFormat.BROWSER_EXTENSION_ZIP -> translation.text("settingsUi.unpackedExtensionZIP")
+        DistributionFormat.DOCKER_COMPOSE_ZIP -> translation.text("settingsUi.dockerComposeZIP")
         DistributionFormat.DMG -> "DMG"
-        DistributionFormat.PORTABLE_ZIP -> "portable ZIP"
+        DistributionFormat.PORTABLE_ZIP -> translation.text("settingsUi.portableZIP")
         DistributionFormat.TAR_GZ -> "tar.gz"
     }
 
@@ -1884,10 +1825,10 @@ private fun WebToolSettingsEditor(
     val snapshot by aiConfigurationService.snapshotFlow.collectAsState()
     val currentSnapshot = snapshot
     if (currentSnapshot == null) {
-        SettingsGroup(title = "Web tools") {
+        SettingsGroup(title = translation.text("settingsUi.webTools")) {
             InfoSettingItem(
-                label = "AI catalog is loading",
-                message = "Web tool settings will become available after the server catalog is loaded.",
+                label = translation.text("settingsUi.aiCatalogIsLoading"),
+                message = translation.text("settingsUi.webToolSettingsWillBecomeAvailableAfterThe"),
             )
         }
         return
@@ -1974,21 +1915,21 @@ private fun WebToolSettingsEditor(
         }
     }
 
-    SettingsGroup(title = "Web tools") {
+    SettingsGroup(title = translation.text("settingsUi.webTools")) {
         if (openAiConnections.isEmpty()) {
             InfoSettingItem(
-                label = "OpenAI hosted web search",
-                message = "Create an OpenAI API or OpenAI subscription connection to use its native web search.",
+                label = translation.text("settingsUi.openaiHostedWebSearch"),
+                message = translation.text("settingsUi.createAnOpenAIAPIOrOpenAISubscriptionConnection"),
             )
         } else {
             openAiConnections.forEach { connection ->
                 SwitchSettingItem(
-                    label = "${connection.displayName} hosted search",
+                    label = translation.text("settingsUi.hostedSearch", "connection" to connection.displayName),
                     description = when (connection) {
                         is AiConnection.OpenAiApi ->
-                            "Use OpenAI web_search through this API connection when its model needs current information."
+                            translation.text("settingsUi.useOpenAIWebSearchThroughThisAPIConnection")
                         is AiConnection.OpenAiSubscription ->
-                            "Use OpenAI web_search through this subscription connection when its model needs current information."
+                            translation.text("settingsUi.useOpenAIWebSearchThroughThisSubscriptionConnection")
                         else -> error("Unexpected OpenAI web search connection ${connection.kind}")
                     },
                     value = connection.openAiWebSearchEnabled(),
@@ -2104,19 +2045,19 @@ private fun WebToolSettingsEditor(
 
         if (claudeModels.isEmpty()) {
             InfoSettingItem(
-                label = "Claude Code web tools",
-                message = "Create and enable a Claude Code connection and model configuration first.",
+                label = translation.text("settingsUi.claudeCodeWebTools"),
+                message = translation.text("settingsUi.createAndEnableAClaudeCodeConnectionAnd"),
             )
         } else {
             DropdownSettingItem<AiModelConfiguration.Id?>(
-                label = "Claude Code web model",
-                description = "One central model configuration used by the native WebSearch and WebFetch proxies.",
+                label = translation.text("settingsUi.claudeCodeWebModel"),
+                description = translation.text("settingsUi.oneCentralModelConfigurationUsedByTheNative"),
                 value = selectedClaudeModel,
                 options = listOf(null) + claudeModels.map(AiModelConfiguration::id),
                 optionLabel = { id ->
                     id?.let(claudeModelById::get)?.let { model ->
                         "${model.displayName} (${model.providerModelId})"
-                    } ?: "Not configured"
+                    } ?: translation.text("settingsUi.notConfigured")
                 },
                 onValueChange = { modelConfigurationId ->
                     draft = draft.copy(
@@ -2137,8 +2078,8 @@ private fun WebToolSettingsEditor(
                 },
             )
             SwitchSettingItem(
-                label = "Enable Claude Code WebSearch",
-                description = "Expose claude_code_web_search only on Workers that can run the selected Claude Code connection.",
+                label = translation.text("settingsUi.enableClaudeCodeWebSearch"),
+                description = translation.text("settingsUi.exposeClaudeCodeWebSearchOnlyOnWorkers"),
                 value = draft.claudeCode.searchEnabled,
                 enabled = canEnableClaudeTools,
                 onValueChange = { enabled ->
@@ -2148,8 +2089,8 @@ private fun WebToolSettingsEditor(
                 },
             )
             SwitchSettingItem(
-                label = "Enable Claude Code WebFetch",
-                description = "Expose claude_code_web_fetch only on Workers that can run the selected Claude Code connection.",
+                label = translation.text("settingsUi.enableClaudeCodeWebFetch"),
+                description = translation.text("settingsUi.exposeClaudeCodeWebFetchOnlyOnWorkers"),
                 value = draft.claudeCode.fetchEnabled,
                 enabled = canEnableClaudeTools,
                 onValueChange = { enabled ->
@@ -2204,7 +2145,7 @@ private fun WebToolSettingsEditor(
                         strokeWidth = 2.dp,
                     )
                 } else {
-                    Text("Save web tools")
+                    Text(translation.text("settingsUi.saveWebTools"))
                 }
             }
         }
@@ -2230,14 +2171,15 @@ private fun ConfiguredSecretControls(
     onRemove: () -> Unit,
     onKeep: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     if (state == null) return
     val removing = pendingMutation is AiCatalogSecretMutation.Remove
     Text(
         text = when {
-            removing -> "The configured API key will be removed."
+            removing -> translation.text("settingsUi.theConfiguredAPIKeyWillBeRemoved")
             state.source == AiCatalogSecretState.Source.INLINE ->
-                "An API key is stored on the Server. Leave the field empty to keep it."
-            else -> "Using environment variable ${state.environmentVariableName}."
+                translation.text("settingsUi.anAPIKeyIsStoredOnTheServer")
+            else -> translation.text("settingsUi.environmentVariable", "name" to state.environmentVariableName)
         },
         style = MaterialTheme.typography.bodySmall,
         color = if (removing) {
@@ -2247,7 +2189,7 @@ private fun ConfiguredSecretControls(
         },
     )
     TextButton(onClick = if (removing) onKeep else onRemove) {
-        Text(if (removing) "Keep configured API key" else "Remove configured API key")
+        Text(if (removing) translation.text("settingsUi.keepConfiguredAPIKey") else translation.text("settingsUi.removeConfiguredAPIKey"))
     }
 }
 
@@ -2295,26 +2237,27 @@ private fun KeyboardShortcutSettingsGroup(
     globalHotkeyController: GlobalHotkeyController,
     onSettingsChange: (Settings) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     val shortcuts = settings.desktopInputSettings.keyboardShortcuts.normalized()
     val validationIssues = remember(shortcuts) { KeyboardShortcutValidator.validate(shortcuts) }
     val globalState by globalHotkeyController.state.collectAsState()
 
     Box(modifier = Modifier.testTag(UiTestTag.KeyboardShortcuts.value)) {
-        SettingsGroup(title = "Keyboard shortcuts") {
+        SettingsGroup(title = translation.text("settingsUi.keyboardShortcuts")) {
             Text(
-                text = "Focused shortcuts work only inside Gromozeka. Global shortcuts stay active without raising the window.",
+                text = translation.text("settingsUi.focusedShortcutsWorkOnlyInsideGromozekaGlobalShortcuts"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (!globalState.available || globalState.message != null) {
                 Text(
-                    text = globalState.message ?: "Global shortcuts are unavailable",
+                    text = globalState.message?.resolve(translation) ?: translation.text("settingsUi.globalShortcutsAreUnavailable"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
             } else {
                 Text(
-                    text = "Global backend: ${globalState.implementationType}",
+                    text = translation.text("settingsUi.globalBackend", "backend" to globalState.implementationType),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -2340,9 +2283,10 @@ private fun QuickTextActionSettingsGroup(
     agents: List<AgentDefinition>,
     onSettingsChange: (Settings) -> Unit,
 ) {
-    SettingsGroup(title = "Quick text actions") {
+    val translation = LocalTranslation.current
+    SettingsGroup(title = translation.text("settingsUi.quickTextActions")) {
         Text(
-            text = "These Agent and prompt settings apply to desktop hotkeys and mobile quick actions.",
+            text = translation.text("settingsUi.theseAgentAndPromptSettingsApplyToDesktop"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -2365,24 +2309,24 @@ private fun QuickTextActionSettingsGroup(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Column {
-                            Text(action.title, fontWeight = FontWeight.Medium)
+                            Text(action.displayTitle(translation), fontWeight = FontWeight.Medium)
                             Text(
-                                text = action.description,
+                                text = action.displayDescription(translation),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
 
                         DropdownSettingItem(
-                            label = "Agent",
-                            description = "Uses the Agent model, runtime overrides, prompts, and style. Tools and skills stay disabled for this text-only action.",
+                            label = translation.text("settingsUi.agent"),
+                            description = translation.text("settingsUi.usesTheAgentModelRuntimeOverridesPromptsAnd"),
                             value = selectedAgentId,
                             options = agentOptions,
                             optionLabel = { agentId ->
                                 when (agentId) {
-                                    null -> "Quick text runtime (no Agent)"
+                                    null -> translation.text("settingsUi.quickTextRuntimeNoAgent")
                                     else -> agents.firstOrNull { it.id == agentId }?.name
-                                        ?: "Missing Agent (${agentId.value})"
+                                        ?: translation.text("settingsUi.missingAgent", "id" to agentId.value)
                                 }
                             },
                             onValueChange = { agentId ->
@@ -2391,8 +2335,8 @@ private fun QuickTextActionSettingsGroup(
                         )
 
                         MultilineTextFieldSettingItem(
-                            label = "Prompt",
-                            description = "Transformation instruction appended after the selected Agent prompts.",
+                            label = translation.text("settingsUi.prompt"),
+                            description = translation.text("settingsUi.transformationInstructionAppendedAfterTheSelectedAgentPrompts"),
                             value = action.prompt,
                             onValueChange = { prompt ->
                                 if (prompt.isNotBlank()) {
@@ -2411,9 +2355,10 @@ private fun QuickTextActionSettingsGroup(
 private fun KeyboardShortcutBindingEditor(
     binding: KeyboardShortcutBinding,
     validationIssues: List<com.gromozeka.domain.model.KeyboardShortcutValidationIssue>,
-    runtimeError: String?,
+    runtimeError: LocalizedText?,
     onChange: (KeyboardShortcutBinding) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var recording by remember(binding.action) { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
@@ -2436,9 +2381,9 @@ private fun KeyboardShortcutBindingEditor(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(binding.action.displayName(), fontWeight = FontWeight.Medium)
+                    Text(binding.action.displayName(translation), fontWeight = FontWeight.Medium)
                     Text(
-                        binding.action.description(),
+                        binding.action.description(translation),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -2452,11 +2397,11 @@ private fun KeyboardShortcutBindingEditor(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DropdownSettingItem(
-                    label = "Scope",
+                    label = translation.text("settingsUi.scope"),
                     description = "",
                     value = binding.scope,
                     options = KeyboardShortcutScope.entries.filter { it in binding.action.supportedScopes },
-                    optionLabel = { it.name.lowercase().replaceFirstChar(Char::uppercase) },
+                    optionLabel = { it.displayName(translation) },
                     onValueChange = { onChange(binding.copy(scope = it)) },
                     modifier = Modifier.weight(1f),
                 )
@@ -2481,13 +2426,13 @@ private fun KeyboardShortcutBindingEditor(
                             true
                         },
                 ) {
-                    Text(if (recording) "Press keys..." else binding.displayLabel())
+                    Text(if (recording) translation.text("settingsUi.pressKeys") else binding.displayLabel())
                 }
             }
 
             if (recording) {
                 TextButton(onClick = { recording = false }) {
-                    Text("Cancel recording")
+                    Text(translation.text("settingsUi.cancelRecording"))
                 }
             }
 
@@ -2497,8 +2442,8 @@ private fun KeyboardShortcutBindingEditor(
                 binding.scope == KeyboardShortcutScope.GLOBAL
             ) {
                 SwitchSettingItem(
-                    label = "Swallow key",
-                    description = "When enabled, the foreground application does not receive this key while push-to-talk is active.",
+                    label = translation.text("settingsUi.swallowKey"),
+                    description = translation.text("settingsUi.whenEnabledTheForegroundApplicationDoesNotReceive"),
                     value = binding.consumeEvent,
                     onValueChange = { onChange(binding.copy(consumeEvent = it)) },
                 )
@@ -2506,7 +2451,7 @@ private fun KeyboardShortcutBindingEditor(
 
             validationIssues.forEach { issue ->
                 Text(
-                    text = issue.message,
+                    text = issue.localizedText().resolve(translation),
                     style = MaterialTheme.typography.bodySmall,
                     color = when (issue.severity) {
                         KeyboardShortcutValidationSeverity.ERROR -> MaterialTheme.colorScheme.error
@@ -2516,7 +2461,7 @@ private fun KeyboardShortcutBindingEditor(
             }
             runtimeError?.let { message ->
                 Text(
-                    text = message,
+                    text = message.resolve(translation),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -2693,30 +2638,70 @@ private fun KeyboardShortcutModifier.displayName(): String = when (this) {
 }
 
 private fun KeyboardShortcutKey.displayName(): String = when (this) {
+    in KeyboardShortcutKey.A..KeyboardShortcutKey.Z,
+    in KeyboardShortcutKey.F1..KeyboardShortcutKey.F24 -> name
     in KeyboardShortcutKey.DIGIT_0..KeyboardShortcutKey.DIGIT_9 -> name.removePrefix("DIGIT_")
-    in KeyboardShortcutKey.ARROW_UP..KeyboardShortcutKey.ARROW_RIGHT ->
-        name.removePrefix("ARROW_").lowercase().replaceFirstChar(Char::uppercase)
-    KeyboardShortcutKey.PAGE_UP -> "Page Up"
-    KeyboardShortcutKey.PAGE_DOWN -> "Page Down"
-    else -> name.lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase)
+    KeyboardShortcutKey.ESCAPE -> "Esc"
+    KeyboardShortcutKey.SPACE -> "␣"
+    KeyboardShortcutKey.ENTER -> "↵"
+    KeyboardShortcutKey.TAB -> "⇥"
+    KeyboardShortcutKey.BACKSPACE -> "⌫"
+    KeyboardShortcutKey.DELETE -> "⌦"
+    KeyboardShortcutKey.ARROW_UP -> "↑"
+    KeyboardShortcutKey.ARROW_DOWN -> "↓"
+    KeyboardShortcutKey.ARROW_LEFT -> "←"
+    KeyboardShortcutKey.ARROW_RIGHT -> "→"
+    KeyboardShortcutKey.HOME -> "↖"
+    KeyboardShortcutKey.END -> "↘"
+    KeyboardShortcutKey.PAGE_UP -> "⇞"
+    KeyboardShortcutKey.PAGE_DOWN -> "⇟"
+    else -> error("Unknown keyboard key $this")
 }
 
-private fun KeyboardShortcutAction.displayName(): String = when (this) {
-    KeyboardShortcutAction.PUSH_TO_TALK -> "Push to talk"
-    KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> "Toggle continuous voice"
-    KeyboardShortcutAction.FIX_CLIPBOARD_TEXT -> "Fix clipboard text"
-    KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT -> "Translate clipboard text"
-    KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE -> "Edit previous message"
-    KeyboardShortcutAction.NEW_CONVERSATION -> "New conversation"
+private fun WorkerCatalogEntry.Status.displayName(translation: Translation): String = translation.text(when (this) {
+    WorkerCatalogEntry.Status.ONLINE -> "settingsUi.workerOnline"
+    WorkerCatalogEntry.Status.OFFLINE -> "settingsUi.workerOffline"
+})
+
+private fun UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.displayName(
+    translation: Translation,
+): String = translation.text(when (this) {
+    UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.LOW_LATENCY -> "settingsUi.whisperProfileLowLatency"
+    UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.BALANCED -> "settingsUi.whisperProfileBalanced"
+    UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.SLOW_CPU -> "settingsUi.whisperProfileSlowCpu"
+})
+
+private fun KeyboardShortcutScope.displayName(translation: Translation): String = localizedText().resolve(translation)
+
+private fun QuickTextAction.displayTitle(translation: Translation): String {
+    val default = QuickTextAction.defaults().firstOrNull { it.id == id }
+    if (title != default?.title) return title
+    return when (id) {
+        QuickTextAction.FIX_TEXT_ID -> translation.text("quickText.fix")
+        QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID -> translation.text("quickText.translate")
+        else -> title
+    }
 }
 
-private fun KeyboardShortcutAction.description(): String = when (this) {
-    KeyboardShortcutAction.PUSH_TO_TALK -> "Hold to record; release to transcribe and send. A quick tap is discarded."
-    KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> "Starts or stops continuous voice input."
-    KeyboardShortcutAction.FIX_CLIPBOARD_TEXT -> "Fixes the text currently stored in the clipboard."
-    KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT -> "Translates the text currently stored in the clipboard."
-    KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE -> "With an empty composer, opens the latest editable user message."
-    KeyboardShortcutAction.NEW_CONVERSATION -> "Creates a conversation in the current project."
+private fun QuickTextAction.displayDescription(translation: Translation): String {
+    val default = QuickTextAction.defaults().firstOrNull { it.id == id }
+    if (description != default?.description) return description
+    return when (id) {
+        QuickTextAction.FIX_TEXT_ID -> translation.text("quickText.fixDescription")
+        QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID -> translation.text("quickText.translateDescription")
+        else -> description
+    }
+}
+
+private fun KeyboardShortcutAction.displayName(translation: Translation): String = localizedText().resolve(translation)
+
+private fun KeyboardShortcutAction.description(translation: Translation): String = when (this) {
+    KeyboardShortcutAction.PUSH_TO_TALK -> translation.text("settingsUi.holdToRecordReleaseToTranscribeAndSend")
+    KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> translation.text("settingsUi.startsOrStopsContinuousVoiceInput")
+    KeyboardShortcutAction.FIX_CLIPBOARD_TEXT -> translation.text("settingsUi.fixesTheTextCurrentlyStoredInTheClipboard")
+    KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT -> translation.text("settingsUi.translatesTheTextCurrentlyStoredInTheClipboard")
+    KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE -> translation.text("settingsUi.withAnEmptyComposerOpensTheLatestEditable")
+    KeyboardShortcutAction.NEW_CONVERSATION -> translation.text("settingsUi.createsAConversationInTheCurrentProject")
 }
 
 private fun Settings.updateDesktopSettings(
@@ -3134,6 +3119,7 @@ private fun EditableDropdownSettingItem(
     description: String,
     value: String,
     predefinedOptions: List<String>,
+    optionLabel: (String) -> String = { it },
     placeholder: String = "",
     onValueChange: (String) -> Unit,
 ) {
@@ -3194,7 +3180,7 @@ private fun EditableDropdownSettingItem(
                     // Use key() for better recomposition performance
                     key(option) {
                         DropdownMenuItem(
-                            text = { Text(option) },
+                            text = { Text(optionLabel(option)) },
                             onClick = {
                                 onValueChange(option)
                                 expanded = false

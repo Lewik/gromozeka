@@ -3,6 +3,9 @@ package com.gromozeka.presentation.services
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.ArtifactUpload
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.presentation.services.translation.data.Translation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,7 +25,9 @@ import java.nio.file.Files
 import javax.imageio.ImageIO
 import kotlin.coroutines.resume
 
-class DesktopAttachmentAcquisitionController : AttachmentAcquisitionController {
+class DesktopAttachmentAcquisitionController(
+    private val currentTranslation: () -> Translation,
+) : AttachmentAcquisitionController {
     override val capabilities = AttachmentAcquisitionCapabilities(
         filePicker = !GraphicsEnvironment.isHeadless(),
         screenshot = !GraphicsEnvironment.isHeadless(),
@@ -42,7 +47,7 @@ class DesktopAttachmentAcquisitionController : AttachmentAcquisitionController {
             .onFailure { error ->
                 _externalEvents.emit(
                     AttachmentAcquisitionEvent.Failed(
-                        error.message ?: "Failed to read dropped files",
+                        error.asAttachmentFailure(),
                     )
                 )
             }
@@ -65,7 +70,7 @@ class DesktopAttachmentAcquisitionController : AttachmentAcquisitionController {
 
     private suspend fun chooseFiles(): List<File> = suspendCancellableCoroutine { continuation ->
         EventQueue.invokeLater {
-            val dialog = FileDialog(null as Frame?, "Attach files", FileDialog.LOAD).apply {
+            val dialog = FileDialog(null as Frame?, currentTranslation().text("chat.input.attachFiles"), FileDialog.LOAD).apply {
                 isMultipleMode = true
             }
             dialog.isVisible = true
@@ -77,9 +82,15 @@ class DesktopAttachmentAcquisitionController : AttachmentAcquisitionController {
 
     private suspend fun uploadsFor(files: List<File>): List<ArtifactUpload> = withContext(Dispatchers.IO) {
         files.map { file ->
-            require(file.isFile) { "Not a file: ${file.name}" }
-            require(file.length() <= ArtifactLimits.MAX_FILE_BYTES) {
-                "${file.name} exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
+            if (!file.isFile) {
+                throw LocalizedTextException(localizedText("client.attachment.notAFile", "file" to file.name))
+            }
+            if (file.length() > ArtifactLimits.MAX_FILE_BYTES) {
+                throw LocalizedTextException(localizedText(
+                    "client.attachment.fileTooLarge",
+                    "file" to file.name,
+                    "limit" to ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024),
+                ))
             }
             ArtifactUpload(
                 fileName = file.name,
@@ -113,7 +124,9 @@ class DesktopAttachmentAcquisitionController : AttachmentAcquisitionController {
 
     private fun BufferedImage.toPng(): ByteArray =
         ByteArrayOutputStream().use { output ->
-            check(ImageIO.write(this, "png", output)) { "PNG encoder is unavailable" }
+            if (!ImageIO.write(this, "png", output)) {
+                throw LocalizedTextException(localizedText("client.attachment.screenshotFailed"))
+            }
             output.toByteArray()
         }
 

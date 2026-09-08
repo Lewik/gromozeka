@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutModifier
 import com.gromozeka.domain.model.KeyboardShortcutSettings
 import com.gromozeka.domain.model.KeyboardShortcutScope
+import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -40,7 +41,7 @@ class KeyboardShortcutNativeMappingTest {
         )
         try {
             controller.applySettings(settings) {}
-            assertTrue(controller.state.value.available, controller.state.value.message)
+            assertTrue(controller.state.value.available, controller.state.value.message?.resolve(EnglishTranslation()))
             assertTrue(controller.state.value.bindingErrors.isEmpty(), controller.state.value.bindingErrors.toString())
         } finally {
             controller.cleanup()

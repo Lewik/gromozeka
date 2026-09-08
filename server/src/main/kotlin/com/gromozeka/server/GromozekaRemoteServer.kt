@@ -1,5 +1,7 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.SpeechAvailabilityException
+
 import com.gromozeka.application.service.AiUserCredentialApplicationService
 import com.gromozeka.application.service.AiSubscriptionQuotaApplicationService
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
@@ -86,6 +88,7 @@ import kotlin.time.Duration.Companion.days
 
 @Service
 class GromozekaRemoteServer(
+    private val userTranslationService: com.gromozeka.domain.service.UserTranslationService,
     private val settingsService: SettingsService,
     private val aiConfigurationService: AiConfigurationService,
     private val aiSubscriptionQuotaApplicationService: AiSubscriptionQuotaApplicationService,
@@ -212,6 +215,7 @@ class GromozekaRemoteServer(
                                 }
                                 val handle = suspend {
                                     handleRequest(
+                                        connectionId = connectionId,
                                         sender = sender,
                                         requestId = envelope.id,
                                         request = payload,
@@ -302,6 +306,7 @@ class GromozekaRemoteServer(
             this is CompactMessagesRequest
 
     private suspend fun handleRequest(
+        connectionId: String,
         sender: RemoteSessionSender,
         requestId: String,
         request: ClientRequest,
@@ -314,6 +319,39 @@ class GromozekaRemoteServer(
         val response = try {
             remoteAuthorization.authorize(user, request)
             when (request) {
+                GetTranslationsRequest -> TranslationsResponse(
+                    userTranslationService.snapshot(user.id, clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value)
+                )
+                is GetTranslationPackageRequest -> TranslationPackageResponse(
+                    userTranslationService.getPackage(user.id, request.selectionId)
+                )
+                is SaveTranslationPackageRequest -> TranslationSavedResponse(
+                    userTranslationService.savePackage(
+                        userId = user.id,
+                        translation = com.gromozeka.shared.localization.TranslationJson.decode(request.json),
+                        expectedRevision = request.expectedRevision,
+                        packageId = request.packageId,
+                        clientInstanceId = clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
+                is DeleteTranslationPackageRequest -> TranslationsResponse(
+                    userTranslationService.deletePackage(
+                        user.id, request.selectionId, request.expectedRevision,
+                        clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
+                is SelectTranslationRequest -> TranslationsResponse(
+                    userTranslationService.select(
+                        user.id, request.selectionId, request.expectedRevision,
+                        clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
+                is SynchronizeTranslationsRequest -> TranslationsResponse(
+                    userTranslationService.setSynchronizeClients(
+                        user.id, request.synchronizeClients, request.expectedRevision,
+                        clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
                 GetSettingsRequest -> SettingsResponse(settingsService.settings)
                 is SaveSettingsRequest -> {
                     settingsService.saveSettings(request.settings)
@@ -747,7 +785,7 @@ class GromozekaRemoteServer(
                 )
 
                 is RunQuickTextActionRequest -> QuickTextActionResultResponse(
-                    quickTextActionService.runAction(request.actionId, request.text)
+                    quickTextActionService.runAction(request.actionId, request.text, request.interfaceLanguage)
                 )
 
                 is SearchConversationsRequest -> {
@@ -825,7 +863,11 @@ class GromozekaRemoteServer(
             throw error
         } catch (error: Throwable) {
             log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }
-            ErrorResponse(error.message ?: "Unknown server error", error::class.simpleName)
+            ErrorResponse(
+                error.message ?: "Unknown server error",
+                error::class.simpleName,
+                (error as? SpeechAvailabilityException)?.failure,
+            )
         }
 
         sender.send(requestId, response, encoding)

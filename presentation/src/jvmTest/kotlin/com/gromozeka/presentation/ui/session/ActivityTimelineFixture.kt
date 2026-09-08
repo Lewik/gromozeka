@@ -48,7 +48,7 @@ internal fun ActivityTimelineFixture(
             items = entries,
             itemKey = MessageListEntry::key,
             contentRevision = entries,
-            unreadLabel = { "new activity" },
+            unreadLabel = { "$it new activity" },
             modifier = Modifier.fillMaxSize(),
         ) { entry, pauseFollowingLatest ->
             MessageItem(

@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutActivation
 import com.gromozeka.domain.model.KeyboardShortcutBinding
@@ -76,7 +79,7 @@ internal class MacOsGlobalHotkeyController : GlobalHotkeyController {
             _state.value = GlobalHotkeyState(
                 available = false,
                 implementationType = IMPLEMENTATION_TYPE,
-                message = error.message ?: "macOS global shortcut initialization failed",
+                message = localizedText("hotkeys.initializationFailed", "error" to (error.message ?: LocalizedText.Resource("common.unknownError"))),
             )
             log.warn(error) { "macOS global shortcut service unavailable: ${error.message}" }
         }
@@ -94,7 +97,7 @@ internal class MacOsGlobalHotkeyController : GlobalHotkeyController {
         val normalized = settings.normalized()
         val errors = KeyboardShortcutValidator.validate(normalized)
             .filter { it.severity == KeyboardShortcutValidationSeverity.ERROR }
-            .associate { it.action to it.message }
+            .associate { it.action to it.localizedText() }
             .toMutableMap()
         val bindings = normalized.bindings.filter {
             it.enabled && it.scope == KeyboardShortcutScope.GLOBAL && it.action !in errors
@@ -128,10 +131,10 @@ internal class MacOsGlobalHotkeyController : GlobalHotkeyController {
 
     override fun getImplementationType(): String = IMPLEMENTATION_TYPE
 
-    private fun registerHotkey(id: Int, binding: KeyboardShortcutBinding): String? {
-        val loadedCarbon = carbon ?: return "Carbon is unavailable"
+    private fun registerHotkey(id: Int, binding: KeyboardShortcutBinding): LocalizedText? {
+        val loadedCarbon = carbon ?: return localizedText("hotkeys.backendUnavailable", "backend" to "Carbon")
         val keyCode = runCatching(binding.key::macVirtualKey)
-            .getOrElse { return it.message ?: "Unsupported macOS shortcut key ${binding.key}" }
+            .getOrElse { return localizedText("hotkeys.unsupportedKey", "backend" to "macOS", "key" to binding.key) }
         val outRef = PointerByReference()
         val hotkeyId = EventHotKeyID.ByValue().apply {
             signature = HOTKEY_SIGNATURE
@@ -146,8 +149,8 @@ internal class MacOsGlobalHotkeyController : GlobalHotkeyController {
             if (binding.consumeEvent) EVENT_HOTKEY_EXCLUSIVE else 0,
             outRef,
         )
-        if (status != 0) return "Shortcut registration failed (macOS status $status)"
-        val ref = outRef.value ?: return "macOS registered the shortcut without a native reference"
+        if (status != 0) return localizedText("hotkeys.registrationFailed", "backend" to "macOS", "code" to status)
+        val ref = outRef.value ?: return localizedText("hotkeys.macNativeReference")
         registeredHotkeys += ref
         hotkeyActions[id] = binding.action
         log.info("Registered macOS global shortcut action=${binding.action}")
@@ -255,19 +258,19 @@ private class MacOsHoldShortcutHook(
     private var pressed = false
     private var keyCode: Int? = null
 
-    fun start(): String? {
+    fun start(): LocalizedText? {
         keyCode = runCatching(binding.key::macVirtualKey)
-            .getOrElse { return it.message ?: "Unsupported macOS shortcut key ${binding.key}" }
+            .getOrElse { return localizedText("hotkeys.unsupportedKey", "backend" to "macOS", "key" to binding.key) }
         val coreGraphics = CoreGraphics.INSTANCE
         if (binding.consumeEvent && !coreGraphics.AXIsProcessTrusted()) {
-            return "Global hold shortcuts that swallow keys require macOS Accessibility permission"
+            return localizedText("hotkeys.macAccessibility")
         }
         if (!binding.consumeEvent && !coreGraphics.CGPreflightListenEventAccess()) {
-            return "Global hold shortcuts require macOS Input Monitoring permission"
+            return localizedText("hotkeys.macInputMonitoring")
         }
 
         val ready = CountDownLatch(1)
-        var startupError: String? = null
+        var startupError: LocalizedText? = null
         running.set(true)
         thread = thread(start = true, isDaemon = true, name = "gromozeka-macos-hold-shortcut") {
             val coreFoundation = CoreFoundation.INSTANCE
@@ -285,9 +288,9 @@ private class MacOsHoldShortcutHook(
             )
             if (tap == null) {
                 startupError = if (binding.consumeEvent) {
-                    "macOS denied the global keyboard event tap; grant Accessibility permission"
+                    localizedText("hotkeys.macAccessibility")
                 } else {
-                    "macOS denied the global keyboard event tap; grant Input Monitoring permission"
+                    localizedText("hotkeys.macInputMonitoring")
                 }
                 running.set(false)
                 ready.countDown()
@@ -309,7 +312,7 @@ private class MacOsHoldShortcutHook(
         }
         if (!ready.await(2, TimeUnit.SECONDS)) {
             close()
-            return "macOS keyboard event tap timed out during startup"
+            return localizedText("hotkeys.startupTimedOut", "backend" to "macOS")
         }
         return startupError
     }

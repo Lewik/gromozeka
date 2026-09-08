@@ -76,6 +76,7 @@ internal fun ActivityHeader(
     onToggleExpanded: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val translation = LocalTranslation.current
     // Determine status icon based on toolResult (no icon on success)
     val statusIcon = when (state) {
         ActivityState.RUNNING -> Icons.Default.Schedule
@@ -99,7 +100,15 @@ internal fun ActivityHeader(
             ) {
                 ActivityIcon(kind, modifier = Modifier.size(26.dp))
                 // Status icon (only for in-progress or error)
-                statusIcon?.let { Icon(it, contentDescription = state.name, modifier = Modifier.size(16.dp)) }
+                statusIcon?.let {
+                    val description = when (state) {
+                        ActivityState.RUNNING -> translation.text("runtime.runningTaskLabel")
+                        ActivityState.FAILED -> translation.text("runtime.failedTaskLabel")
+                        ActivityState.INTERRUPTED -> translation.text("chat.activity.interrupted")
+                        ActivityState.COMPLETE -> null
+                    }
+                    Icon(it, contentDescription = description, modifier = Modifier.size(16.dp))
+                }
                 // Tool description with parameters
                 Text(
                     text = title,
@@ -122,6 +131,7 @@ internal fun ActivityGroupItem(
     onToggleExpanded: () -> Unit,
     summaryStyle: ActivitySummaryStyle = ActivitySummaryStyle.ICONS,
 ) {
+    val localization = LocalTranslation.current
     val strings = LocalTranslation.current.runtime
     val summaries = summarizeActivities(group.activities.map(ActivityReference::activity))
     DisableSelection {
@@ -137,7 +147,7 @@ internal fun ActivityGroupItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "${strings.activityGroupLabel} · ${group.activities.size}",
+                    text = localization.text("chat.activity.groupCount", "count" to group.activities.size),
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                 )
@@ -202,11 +212,12 @@ private fun summaryLabel(summary: ActivitySummary, strings: Translation.RuntimeT
 
 @Composable
 private fun ActivityIcon(kind: ActivityKind, modifier: Modifier = Modifier, count: Int = 1) {
+    val localization = LocalTranslation.current
     when (kind) {
-        is ActivityKind.Tool -> ToolSemanticIcon(kind.name, "${kind.name}: $count", modifier, count)
+        is ActivityKind.Tool -> ToolSemanticIcon(kind.name, "${toolDisplayName(kind.name, localization.runtime)}: $count", modifier, count)
         ActivityKind.Reasoning -> SemanticActivityIcon(
             spec = ToolIconSpec(Icons.Default.Psychology),
-            contentDescription = "${LocalTranslation.current.runtime.thinkingLabel}: $count",
+            contentDescription = localization.text("chat.activity.thinkingCount", "count" to count),
             modifier = modifier,
             invocationCount = count,
         )

@@ -1,0 +1,11 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"native.shortcuts.toggleRecording" = "Start or stop voice recording";
+"native.shortcuts.toggleRecordingDescription" = "Start recording a voice message, or stop recording and send it.";
+"native.shortcuts.textParameter" = "Text";
+"quickText.fix" = "Fix text";
+"quickText.fixDescription" = "Correct text while preserving its original language.";
+"quickText.translate" = "Translate text";
+"quickText.translateDescription" = "Translate text into your interface language, or into English if it is already in that language.";
+"common.unknownError" = "Unknown error";
+"Fix ${text}" = "Fix ${text}";
+"Translate ${text}" = "Translate ${text}";

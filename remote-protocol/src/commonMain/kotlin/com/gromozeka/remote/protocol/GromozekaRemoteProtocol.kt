@@ -2,6 +2,7 @@
 
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillPackage
@@ -697,10 +698,12 @@ data object ListQuickTextActionsRequest : ClientRequest
 data class RunQuickTextActionRequest(
     val actionId: QuickTextAction.Id,
     val text: String,
+    val interfaceLanguage: String,
 ) : ClientRequest {
     init {
         require(actionId.value.isNotBlank()) { "Quick text action id must not be blank" }
         require(text.isNotBlank()) { "Quick text action input must not be blank" }
+        require(interfaceLanguage.isNotBlank()) { "Interface language must not be blank" }
     }
 }
 
@@ -783,9 +786,9 @@ data class SynthesizeSpeechRequest(
 @Serializable
 @SerialName("start_live_interpreter")
 data class StartLiveInterpreterRequest(
-    val targetLanguage: String = "ru",
+    val targetLanguage: String,
     val sourceLanguageCode: String = "auto",
-    val sourceLanguageHint: String = "Hebrew, Russian, and English workplace conversation",
+    val sourceLanguageHint: String = "Speech in any language, including multilingual conversation, names, and technical terms",
     val translationRuntimeSelection: AiRuntimeSelection? = null,
 ) : ClientRequest
 
@@ -881,6 +884,7 @@ data object ConversationTabLayoutStateQuery : RemoteStateSyncQuery
 
 @Serializable
 enum class RemoteDeclarativeStateResource {
+    TRANSLATIONS,
     PROJECTS,
     PROJECT_CONVERSATIONS,
     CONVERSATION_UNREAD_STATE,
@@ -1507,7 +1511,7 @@ data class SpeechCaptureStartedResponse(
 @SerialName("speech_capture_availability")
 data class SpeechCaptureAvailabilityResponse(
     val available: Boolean,
-    val unavailableReason: String? = null,
+    val unavailableReason: SpeechAvailabilityFailure? = null,
 ) : ServerResponse {
     init {
         require(available == (unavailableReason == null)) {
@@ -1539,7 +1543,7 @@ data class LiveVoiceProviderVadStartedResponse(
 @Serializable
 @SerialName("live_voice_provider_vad_availability")
 data class LiveVoiceProviderVadAvailabilityResponse(
-    val unavailableReason: String?,
+    val unavailableReason: SpeechAvailabilityFailure?,
 ) : ServerResponse
 
 @Serializable
@@ -1547,6 +1551,7 @@ data class LiveVoiceProviderVadAvailabilityResponse(
 data class ErrorResponse(
     val message: String,
     val type: String? = null,
+    val speechFailure: SpeechAvailabilityFailure? = null,
 ) : ServerResponse
 
 @Serializable
@@ -1696,7 +1701,8 @@ data class SpeechSynthesisFailedEvent(
 @SerialName("live_interpreter_status")
 data class LiveInterpreterStatusEvent(
     val sessionId: String,
-    val message: String,
+    val messageKey: String,
+    val arguments: Map<String, String> = emptyMap(),
 ) : ServerPayload
 
 @Serializable

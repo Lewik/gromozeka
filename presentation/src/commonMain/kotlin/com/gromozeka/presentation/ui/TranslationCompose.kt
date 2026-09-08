@@ -19,6 +19,6 @@ fun TranslationProvider(currentTranslation: Translation, content: @Composable ()
         LocalTranslation provides currentTranslation,
         LocalLayoutDirection provides layoutDirection
     ) {
-        content()
+        PlatformFontFallback(currentTranslation, content)
     }
 }

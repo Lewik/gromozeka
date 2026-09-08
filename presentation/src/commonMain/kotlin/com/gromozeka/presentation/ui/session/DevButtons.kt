@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ fun DevButtons(
     onSendMessage: suspend (String) -> Unit,
     coroutineScope: CoroutineScope,
 ) {
+    val localization = LocalTranslation.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -28,34 +30,34 @@ fun DevButtons(
     ) {
         CompactButton(onClick = {
             coroutineScope.launch {
-                onSendMessage("Расскажи скороговорку")
+                onSendMessage(localization.text("chat.developerPrompt.tongueTwister"))
             }
         }) {
-            Text("Скороговорка")
+            Text(localization.text("quickActionTongueTwister"))
         }
 
         CompactButton(onClick = {
             coroutineScope.launch {
-                onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
+                onSendMessage(localization.text("chat.developerPrompt.dataTypesTable"))
             }
         }) {
-            Text("Таблица")
+            Text(localization.text("quickActionTable"))
         }
 
         CompactButton(onClick = {
             coroutineScope.launch {
-                onSendMessage("Загугли последние новости про Google")
+                onSendMessage(localization.text("chat.developerPrompt.googleNews"))
             }
         }) {
-            Text("Загугли про Google")
+            Text(localization.text("quickActionGoogleSearch"))
         }
 
         CompactButton(onClick = {
             coroutineScope.launch {
-                onSendMessage("Выполни ls")
+                onSendMessage(localization.text("chat.developerPrompt.listFiles"))
             }
         }) {
-            Text("Выполни ls")
+            Text(localization.text("chat.developerPrompt.listFiles"))
         }
     }
 }

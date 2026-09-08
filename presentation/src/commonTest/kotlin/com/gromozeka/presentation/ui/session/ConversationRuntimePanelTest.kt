@@ -10,31 +10,33 @@ import kotlin.time.Instant
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ConversationRuntimePanelTest {
+    private val translation = EnglishTranslation()
     @Test
     fun `runtime panel distinguishes configured and provider managed compaction`() {
         assertEquals(
-            "auto compact=provider-managed",
-            runtimeAutoCompactionLabel(AiConnection.Kind.CLAUDE_CODE, 180_000),
+            "Automatic compaction: managed by provider",
+            runtimeAutoCompactionLabel(AiConnection.Kind.CLAUDE_CODE, 180_000, translation),
         )
         assertEquals(
-            "auto compact=180,000",
-            runtimeAutoCompactionLabel(AiConnection.Kind.OPENAI_SUBSCRIPTION, 180_000),
+            "Automatic compaction: 180000 tokens",
+            runtimeAutoCompactionLabel(AiConnection.Kind.OPENAI_SUBSCRIPTION, 180_000, translation),
         )
         assertEquals(
-            "auto compact=unsupported",
-            runtimeAutoCompactionLabel(AiConnection.Kind.ANTHROPIC_API, 180_000),
+            "Automatic compaction: unsupported",
+            runtimeAutoCompactionLabel(AiConnection.Kind.ANTHROPIC_API, 180_000, translation),
         )
     }
 
     @Test
     fun `quota reset duration remains compact`() {
-        assertEquals("2d 3h", runtimeDurationLabel(2.days + 3.hours + 15.minutes))
-        assertEquals("3h 15m", runtimeDurationLabel(3.hours + 15.minutes))
-        assertEquals("15m", runtimeDurationLabel(15.minutes))
+        assertEquals("2d 3h", runtimeDurationLabel(2.days + 3.hours + 15.minutes, translation))
+        assertEquals("3h 15m", runtimeDurationLabel(3.hours + 15.minutes, translation))
+        assertEquals("15m", runtimeDurationLabel(15.minutes, translation))
     }
 
     @Test

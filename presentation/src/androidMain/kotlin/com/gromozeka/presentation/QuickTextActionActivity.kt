@@ -8,12 +8,18 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.text.intl.Locale
 import com.gromozeka.client.GromozekaRemoteServices
 import com.gromozeka.client.resolveRemoteUrl
 import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.presentation.services.AndroidRemoteClientSettingsStore
 import com.gromozeka.presentation.services.AndroidRemoteSessionCredentialStore
+import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.shared.localization.BundledTranslations
 import com.gromozeka.remote.protocol.RemoteClientPlatform
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,19 +47,27 @@ class QuickTextActionActivity : ComponentActivity() {
 
     private fun runAction(intent: Intent) {
         val action = resolveQuickTextAction()
+        val settingsStore = AndroidRemoteClientSettingsStore(applicationContext)
+        var translation = Translation(BundledTranslations.get(BundledTranslations.matchLocale(
+            settingsStore.load()?.bootstrapLocale ?: Locale.current.toLanguageTag()
+        )))
         val inputText = intent.quickTextInput()
         if (inputText.isNullOrBlank()) {
-            finishWithMessage("${action.title}: no text input")
+            finishWithMessage(translation.text("quickText.noInput", "action" to action.localizedTitle(translation)))
             return
         }
 
         scope.launch {
-            runCatching {
-                executeQuickTextAction(action.id, inputText)
-            }.onSuccess { result ->
-                finishWithResult(intent, action.title, result)
-            }.onFailure { error ->
-                finishWithMessage("${action.title} failed: ${error.message ?: error::class.simpleName}")
+            try {
+                val result = executeQuickTextAction(action.id, inputText, settingsStore) { translation = it }
+                finishWithResult(intent, action.localizedTitle(translation), result, translation)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                finishWithMessage(translation.text(
+                    "quickText.failed", "action" to action.localizedTitle(translation),
+                    "error" to error.localizedText().resolve(translation),
+                ))
             }
         }
     }
@@ -61,11 +75,12 @@ class QuickTextActionActivity : ComponentActivity() {
     private suspend fun executeQuickTextAction(
         quickTextActionId: QuickTextAction.Id,
         inputText: String,
+        settingsStore: AndroidRemoteClientSettingsStore,
+        onTranslationLoaded: (Translation) -> Unit,
     ): String {
         val context = applicationContext
-        val settingsStore = AndroidRemoteClientSettingsStore(context)
         val remoteUrl = settingsStore.resolveRemoteUrl(fallbackUrl = bundledRemoteUrl())
-            ?: error("Gromozeka server is not configured")
+            ?: throw LocalizedTextException(localizedText("quickText.serverNotConfigured"))
         val authConnection = RemoteAuthenticationConnection(
             remoteUrl = remoteUrl,
             clientLabel = "Android quick text action",
@@ -74,7 +89,8 @@ class QuickTextActionActivity : ComponentActivity() {
         var services: GromozekaRemoteServices? = null
         try {
             val status = authConnection.status()
-            val authenticatedUser = checkNotNull(status.authenticatedUser) { "Gromozeka is not signed in" }
+            val authenticatedUser = status.authenticatedUser
+                ?: throw LocalizedTextException(localizedText("quickText.notSignedIn"))
             services = GromozekaRemoteServices(
                 url = remoteUrl,
                 httpClient = authConnection.httpClient,
@@ -86,17 +102,26 @@ class QuickTextActionActivity : ComponentActivity() {
                 authenticatedUserRole = authenticatedUser.role,
             )
             services.initialize()
-            return services.quickTextActionService.runAction(quickTextActionId, inputText).text
+            val translation = Translation(services.translationService.snapshot().selectedPackage)
+            onTranslationLoaded(translation)
+            return services.quickTextActionService.runAction(quickTextActionId, inputText, translation.content.locale).text
         } finally {
             runCatching { services?.close() }
             runCatching { authConnection.close() }
         }
     }
 
+    private fun QuickTextAction.localizedTitle(translation: Translation): String = when (id) {
+        QuickTextAction.FIX_TEXT_ID -> translation.text("quickText.fix")
+        QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID -> translation.text("quickText.translate")
+        else -> title
+    }
+
     private fun finishWithResult(
         intent: Intent,
         quickTextActionLabel: String,
         result: String,
+        translation: Translation,
     ) {
         val readOnly = intent.getBooleanExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, false)
         if (intent.action == Intent.ACTION_PROCESS_TEXT && !readOnly) {
@@ -106,7 +131,7 @@ class QuickTextActionActivity : ComponentActivity() {
             )
         } else {
             copyToClipboard(quickTextActionLabel, result)
-            Toast.makeText(this, "$quickTextActionLabel copied to clipboard", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, translation.text("native.copiedToClipboard", "action" to quickTextActionLabel), Toast.LENGTH_SHORT).show()
             setResult(RESULT_OK)
         }
         finish()
@@ -158,7 +183,7 @@ class QuickTextActionActivity : ComponentActivity() {
     private fun actionIdFromComponentName(): String? =
         when {
             componentName.className.endsWith(".FixTextActionActivity") -> QuickTextAction.FIX_TEXT_ID.value
-            componentName.className.endsWith(".TranslateTextActionActivity") -> QuickTextAction.TRANSLATE_RU_EN_ID.value
+            componentName.className.endsWith(".TranslateTextActionActivity") -> QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID.value
             else -> null
         }
 

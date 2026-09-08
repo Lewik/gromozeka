@@ -20,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,13 +43,13 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 
 private enum class UsagePeriod(
-    val label: String,
+    val labelKey: String,
     val duration: Duration?,
 ) {
-    Day("24h", 24.hours),
-    Week("7d", 7.days),
-    Month("30d", 30.days),
-    All("All", null),
+    Day("ai.usage.period.day", 24.hours),
+    Week("ai.usage.period.week", 7.days),
+    Month("ai.usage.period.month", 30.days),
+    All("ai.usage.period.all", null),
 }
 
 private data class UsageFilters(
@@ -62,13 +63,14 @@ private data class UsageFilters(
 
 @Composable
 internal fun AiUsageSettings(service: AiUsageReportService) {
+    val translation by rememberUpdatedState(LocalTranslation.current)
     var selectedPeriod by remember { mutableStateOf(UsagePeriod.Week) }
     var editableFilters by remember { mutableStateOf(UsageFilters()) }
     var appliedFilters by remember { mutableStateOf(editableFilters) }
     var refreshKey by remember { mutableIntStateOf(0) }
     var report by remember { mutableStateOf<TokenUsageStatistics.Report?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
 
     val query = remember(selectedPeriod, appliedFilters, refreshKey) {
         val now = Clock.System.now()
@@ -89,7 +91,7 @@ internal fun AiUsageSettings(service: AiUsageReportService) {
         error = null
         runCatching { service.getReport(query) }
             .onSuccess { report = it }
-            .onFailure { error = it.message ?: it::class.simpleName ?: "Unknown error" }
+            .onFailure { error = it.message ?: it::class.simpleName ?: translation.text("ai.usage.unknown_error") }
         loading = false
     }
 
@@ -100,15 +102,15 @@ internal fun AiUsageSettings(service: AiUsageReportService) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text("AI usage", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(translation.text("ai.usage.title"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(
-                    "Installation-wide consumption and estimated direct API cost",
+                    translation.text("ai.usage.description"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             IconButton(onClick = { refreshKey++ }, enabled = !loading) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh usage")
+                Icon(Icons.Default.Refresh, contentDescription = translation.text("ai.usage.refresh"))
             }
         }
 
@@ -117,7 +119,7 @@ internal fun AiUsageSettings(service: AiUsageReportService) {
                 FilterChip(
                     selected = selectedPeriod == period,
                     onClick = { selectedPeriod = period },
-                    label = { Text(period.label) },
+                    label = { Text(translation.text(period.labelKey)) },
                 )
             }
         }
@@ -131,7 +133,7 @@ internal fun AiUsageSettings(service: AiUsageReportService) {
         when {
             loading && report == null -> CircularProgressIndicator()
             error != null -> Text(
-                "Could not load usage: $error",
+                translation.text("ai.usage.load_failed", "error" to error.orEmpty()),
                 color = MaterialTheme.colorScheme.error,
             )
             report != null -> UsageReportContent(requireNotNull(report), loading)
@@ -145,22 +147,23 @@ private fun UsageFilterFields(
     onFiltersChange: (UsageFilters) -> Unit,
     onApply: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Filters", style = MaterialTheme.typography.titleMedium)
-            UsageFilterField("Provider", filters.provider) { onFiltersChange(filters.copy(provider = it)) }
-            UsageFilterField("Model", filters.model) { onFiltersChange(filters.copy(model = it)) }
-            UsageFilterField("Project ID", filters.project) { onFiltersChange(filters.copy(project = it)) }
-            UsageFilterField("Agent ID", filters.agent) { onFiltersChange(filters.copy(agent = it)) }
-            UsageFilterField("Conversation ID", filters.conversation) {
+            Text(translation.text("ai.usage.filters"), style = MaterialTheme.typography.titleMedium)
+            UsageFilterField(translation.text("ai.usage.provider"), filters.provider) { onFiltersChange(filters.copy(provider = it)) }
+            UsageFilterField(translation.text("ai.usage.model"), filters.model) { onFiltersChange(filters.copy(model = it)) }
+            UsageFilterField(translation.text("ai.usage.project_id"), filters.project) { onFiltersChange(filters.copy(project = it)) }
+            UsageFilterField(translation.text("ai.usage.agent_id"), filters.agent) { onFiltersChange(filters.copy(agent = it)) }
+            UsageFilterField(translation.text("ai.usage.conversation_id"), filters.conversation) {
                 onFiltersChange(filters.copy(conversation = it))
             }
-            UsageFilterField("Runtime purpose", filters.purpose) { onFiltersChange(filters.copy(purpose = it)) }
+            UsageFilterField(translation.text("ai.usage.runtime_purpose"), filters.purpose) { onFiltersChange(filters.copy(purpose = it)) }
             Button(onClick = onApply, modifier = Modifier.fillMaxWidth()) {
-                Text("Apply filters")
+                Text(translation.text("ai.usage.apply_filters"))
             }
         }
     }
@@ -186,26 +189,27 @@ private fun UsageReportContent(
     report: TokenUsageStatistics.Report,
     refreshing: Boolean,
 ) {
+    val translation = LocalTranslation.current
     val totals = report.totals
     Card {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text("Summary", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            if (refreshing) Text("Refreshing...", style = MaterialTheme.typography.bodySmall)
-            UsageMetric("Calls", totals.callCount.toLong().grouped())
-            UsageMetric("Input", "${totals.totalInputTokens.grouped()} tokens")
-            UsageMetric("Output", "${totals.totalOutputTokens.grouped()} tokens")
-            UsageMetric("Cache writes", "${totals.cacheCreationTokens.grouped()} tokens")
-            UsageMetric("Cache reads", "${totals.cacheReadTokens.grouped()} tokens")
-            UsageMetric("Thinking", "${totals.thinkingTokens.grouped()} tokens")
-            UsageMetric("Estimated direct API cost", totals.estimatedCostNanoUsd.usd())
-            UsageMetric("Priced calls", totals.pricedCallCount.toLong().grouped())
-            UsageMetric("Unpriced calls", totals.unpricedCallCount.toLong().grouped())
+            Text(translation.text("ai.usage.summary"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            if (refreshing) Text(translation.text("ai.usage.refreshing"), style = MaterialTheme.typography.bodySmall)
+            UsageMetric(translation.text("ai.usage.calls"), totals.callCount.toLong().grouped())
+            UsageMetric(translation.text("ai.usage.input"), translation.plural("ai.usage.tokens", totals.totalInputTokens))
+            UsageMetric(translation.text("ai.usage.output"), translation.plural("ai.usage.tokens", totals.totalOutputTokens))
+            UsageMetric(translation.text("ai.usage.cache_writes"), translation.plural("ai.usage.tokens", totals.cacheCreationTokens))
+            UsageMetric(translation.text("ai.usage.cache_reads"), translation.plural("ai.usage.tokens", totals.cacheReadTokens))
+            UsageMetric(translation.text("ai.usage.thinking"), translation.plural("ai.usage.tokens", totals.thinkingTokens))
+            UsageMetric(translation.text("ai.usage.estimated_cost"), totals.estimatedCostNanoUsd.usd())
+            UsageMetric(translation.text("ai.usage.priced_calls"), totals.pricedCallCount.toLong().grouped())
+            UsageMetric(translation.text("ai.usage.unpriced_calls"), totals.unpricedCallCount.toLong().grouped())
             if (totals.unpricedCallCount > 0) {
                 Text(
-                    "Subscription, compatible, local, and unknown models stay explicitly unpriced.",
+                    translation.text("ai.usage.unpriced_description"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -213,16 +217,16 @@ private fun UsageReportContent(
         }
     }
 
-    UsageBreakdown("Provider / model", report.byProviderAndModel)
-    UsageBreakdown("Runtime purpose", report.byRuntimePurpose)
-    UsageBreakdown("Project", report.byProject)
-    UsageBreakdown("Agent", report.byAgent)
-    UsageBreakdown("Conversation", report.byConversation)
+    UsageBreakdown(translation.text("ai.usage.provider_model"), report.byProviderAndModel)
+    UsageBreakdown(translation.text("ai.usage.runtime_purpose"), report.byRuntimePurpose)
+    UsageBreakdown(translation.text("ai.usage.project"), report.byProject)
+    UsageBreakdown(translation.text("ai.usage.agent"), report.byAgent)
+    UsageBreakdown(translation.text("ai.usage.conversation"), report.byConversation)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Recent calls", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(translation.text("ai.usage.recent_calls"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         if (report.recentCalls.isEmpty()) {
-            Text("No matching calls", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(translation.text("ai.usage.no_matching_calls"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         report.recentCalls.forEachIndexed { index, call ->
             if (index > 0) HorizontalDivider()
@@ -234,7 +238,12 @@ private fun UsageReportContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "${call.timestamp} · ${call.totalTokens.toLong().grouped()} tokens · ${call.price?.estimatedCostNanoUsd?.usd() ?: "unpriced"}",
+                    translation.plural(
+                        "ai.usage.call_summary",
+                        call.totalTokens.toLong(),
+                        "timestamp" to call.timestamp,
+                        "cost" to (call.price?.estimatedCostNanoUsd?.usd() ?: translation.text("ai.usage.unpriced")),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -248,22 +257,26 @@ private fun UsageBreakdown(
     title: String,
     entries: List<TokenUsageStatistics.Breakdown>,
 ) {
+    val translation = LocalTranslation.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         if (entries.isEmpty()) {
-            Text("No data", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(translation.text("ai.usage.no_data"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         entries.take(20).forEach { entry ->
             UsageMetric(
                 entry.key,
-                "${entry.totals.totalInputTokens.grouped()} in · " +
-                    "${entry.totals.totalOutputTokens.grouped()} out · " +
-                    entry.totals.estimatedCostNanoUsd.usd(),
+                translation.text(
+                    "ai.usage.breakdown_summary",
+                    "inputTokens" to entry.totals.totalInputTokens.grouped(),
+                    "outputTokens" to entry.totals.totalOutputTokens.grouped(),
+                    "cost" to entry.totals.estimatedCostNanoUsd.usd(),
+                ),
             )
         }
         if (entries.size > 20) {
             Text(
-                "${entries.size - 20} more groups hidden; narrow the filters to inspect them.",
+                translation.plural("ai.usage.hidden_groups", (entries.size - 20).toLong()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

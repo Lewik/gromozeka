@@ -31,7 +31,8 @@ import com.gromozeka.presentation.services.PTTEvent
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
-import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.ClientTheme
+import com.gromozeka.presentation.ui.rememberClientTranslation
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
@@ -72,9 +73,9 @@ private fun GromozekaIosApp() {
     var connectionAttempt by remember { mutableStateOf(0) }
     var connecting by remember { mutableStateOf(false) }
     var startupError by remember {
-        mutableStateOf(initialResolution.exceptionOrNull()?.message)
+        mutableStateOf(initialResolution.exceptionOrNull())
     }
-    var authenticationError by remember { mutableStateOf<String?>(null) }
+    var authenticationError by remember { mutableStateOf<Throwable?>(null) }
     var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
     var authenticationConnection by remember { mutableStateOf<RemoteAuthenticationConnection?>(null) }
 
@@ -107,7 +108,7 @@ private fun GromozekaIosApp() {
                     remoteClientSettingsStore = settingsStore,
                     audioRecorder = IosClientAudioRecorder(),
                     audioPlayer = IosClientAudioPlayer(),
-                    attachmentAcquisitionController = IosAttachmentAcquisitionController(),
+                    attachmentAcquisitionControllerFactory = { IosAttachmentAcquisitionController() },
                     deviceLocationService = NoOpDeviceLocationService,
                     httpClient = connection.httpClient,
                 )
@@ -115,7 +116,7 @@ private fun GromozekaIosApp() {
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            startupError = error.message ?: error.toString()
+            startupError = error
         }
         connecting = false
     }
@@ -132,7 +133,9 @@ private fun GromozekaIosApp() {
         }
     }
 
-    GromozekaTheme {
+    val localization = rememberClientTranslation(remoteApp?.components?.translationService, settingsStore)
+
+    ClientTheme(localization) {
         when {
             remoteApp != null -> GromozekaApp(
                 appComponents = remoteApp!!.components,
@@ -170,12 +173,12 @@ private fun GromozekaIosApp() {
                                     remoteClientSettingsStore = settingsStore,
                                     audioRecorder = IosClientAudioRecorder(),
                                     audioPlayer = IosClientAudioPlayer(),
-                                    attachmentAcquisitionController = IosAttachmentAcquisitionController(),
+                                    attachmentAcquisitionControllerFactory = { IosAttachmentAcquisitionController() },
                                     deviceLocationService = NoOpDeviceLocationService,
                                     httpClient = connection.httpClient,
                                 )
                             } catch (error: Throwable) {
-                                authenticationError = error.message ?: error.toString()
+                                authenticationError = error
                             }
                             connecting = false
                         }

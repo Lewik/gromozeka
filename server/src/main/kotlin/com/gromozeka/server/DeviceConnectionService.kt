@@ -182,7 +182,7 @@ class DeviceConnectionService(
         check(connection.status == DeviceConnection.Status.PENDING) {
             "Device connection is no longer pending"
         }
-        check(connection.expiresAt > now()) { "Device connection has expired" }
+        if (connection.expiresAt <= now()) throw ExpiredDeviceConnectionException()
         val user = credentialVerifier.verifyPassword(username, password)
         approve(connection.userCode, user.id)
         return consume(deviceToken)
@@ -293,7 +293,9 @@ class DeviceConnectionService(
     }
 
     private suspend fun findByDeviceToken(deviceToken: String): DeviceConnection {
-        require(deviceToken.length in 40..128) { "Device connection token is invalid" }
+        if (deviceToken.length !in 40..128) {
+            throw InvalidDeviceConnectionException("Device connection token is invalid")
+        }
         return repository.findBySecretHash(hashToken(deviceToken))
             ?: throw InvalidDeviceConnectionException()
     }
@@ -360,8 +362,8 @@ class DeviceConnectionService(
 
     private fun normalizeUserCode(value: String): String {
         val compact = value.uppercase().filter(Char::isLetterOrDigit)
-        require(compact.length == USER_CODE_LENGTH && compact.all { it in USER_CODE_ALPHABET }) {
-            "Device connection code is invalid"
+        if (compact.length != USER_CODE_LENGTH || compact.any { it !in USER_CODE_ALPHABET }) {
+            throw InvalidDeviceConnectionException("Device connection code is invalid")
         }
         return "${compact.take(4)}-${compact.drop(4)}"
     }
@@ -395,4 +397,7 @@ data class DeviceConnectionConsumeOutcome(
     val sessionToken: String? = null,
 )
 
-class InvalidDeviceConnectionException : IllegalArgumentException("Device connection is invalid or expired")
+class InvalidDeviceConnectionException(message: String = "Device connection is invalid or expired") :
+    IllegalArgumentException(message)
+
+internal class ExpiredDeviceConnectionException : IllegalStateException("Device connection has expired")

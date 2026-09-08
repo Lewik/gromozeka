@@ -51,6 +51,12 @@ class GromozekaRemoteAuthorization(
             -> requireServerOwner(user)
 
             ListPersonalAccessTokensRequest,
+            GetTranslationsRequest,
+            is GetTranslationPackageRequest,
+            is SaveTranslationPackageRequest,
+            is DeleteTranslationPackageRequest,
+            is SelectTranslationRequest,
+            is SynchronizeTranslationsRequest,
             is CreatePersonalAccessTokenRequest,
             is RevokePersonalAccessTokenRequest,
             is GetAiUserCredentialStatusRequest,
@@ -335,7 +341,9 @@ class GromozekaRemoteAuthorization(
                 ProjectPermission.READ,
             )
 
-            RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE ->
+            RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
+            RemoteDeclarativeStateResource.TRANSLATIONS,
+            ->
                 if (query.scopeId != user.id.value) throw ProjectAccessDeniedException()
 
             RemoteDeclarativeStateResource.WORKSPACE_MOUNTS -> requireWorkspace(

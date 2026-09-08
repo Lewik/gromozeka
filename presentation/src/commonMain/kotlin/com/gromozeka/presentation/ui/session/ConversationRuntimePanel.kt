@@ -200,6 +200,7 @@ fun ConversationRuntimePanel(
 
 @Composable
 private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) {
+    val localization = LocalTranslation.current
     val operations = runtimeSnapshot?.memoryOperations.orEmpty()
     if (operations.isEmpty()) return
 
@@ -234,7 +235,7 @@ private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) 
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = operation.operation.replace('_', ' '),
+                                text = runtimeMemoryOperationLabel(operation.operation, localization),
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -278,6 +279,7 @@ private fun RuntimeConfigurationCard(
     agent: AgentDefinition,
     aiCatalog: AiCatalog,
 ) {
+    val localization = LocalTranslation.current
     val configuration = aiCatalog.modelConfigurations.firstOrNull {
         it.id == agent.runtimeSelection.modelConfigurationId
     }
@@ -286,15 +288,15 @@ private fun RuntimeConfigurationCard(
     val reasoning = agent.runtimeOverrides.reasoning ?: configuration?.defaultParameters?.reasoning
     val maxOutputTokens = agent.runtimeOverrides.maxOutputTokens ?: configuration?.defaultParameters?.maxOutputTokens
     val parameters = buildList {
-        reasoning?.mode?.let { add("mode=${it.name.lowercase()}") }
-        reasoning?.effort?.let { add("effort=${it.name.lowercase()}") }
-        reasoning?.display?.let { add("thinking=${it.name.lowercase()}") }
-        reasoning?.budgetTokens?.let { add("budget=${it.formatWithCommas()}") }
-        maxOutputTokens?.let { add("max output=${it.formatWithCommas()}") }
-        configuration?.defaultParameters?.temperature?.let { add("temperature=$it") }
-        configuration?.defaultParameters?.timeoutSeconds?.let { add("timeout=${it}s") }
-        configuration?.assistantResponseFormat?.let { add("format=${it.name.lowercase()}") }
-        runtimeAutoCompactionLabel(connection?.kind, modelSpec?.autoCompactionThresholdTokens)?.let(::add)
+        reasoning?.mode?.let { add(localization.text("session.runtime.parameters.mode", "mode" to it.runtimeDisplayName(localization))) }
+        reasoning?.effort?.let { add(localization.text("session.runtime.parameters.effort", "effort" to it.runtimeDisplayName(localization))) }
+        reasoning?.display?.let { add(localization.text("session.runtime.parameters.thinkingDisplay", "display" to it.runtimeDisplayName(localization))) }
+        reasoning?.budgetTokens?.let { add(localization.text("session.runtime.parameters.budget", "count" to it.formatWithCommas())) }
+        maxOutputTokens?.let { add(localization.text("session.runtime.parameters.maxOutput", "count" to it.formatWithCommas())) }
+        configuration?.defaultParameters?.temperature?.let { add(localization.text("session.runtime.parameters.temperature", "temperature" to it)) }
+        configuration?.defaultParameters?.timeoutSeconds?.let { add(localization.text("session.runtime.parameters.timeout", "seconds" to it)) }
+        configuration?.assistantResponseFormat?.let { add(localization.text("session.runtime.parameters.responseFormat", "format" to it.runtimeDisplayName(localization))) }
+        runtimeAutoCompactionLabel(connection?.kind, modelSpec?.autoCompactionThresholdTokens, localization)?.let(::add)
     }
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -310,7 +312,7 @@ private fun RuntimeConfigurationCard(
                 style = MaterialTheme.typography.bodyMedium,
             )
             val configuredRuntime = listOfNotNull(
-                connection?.kind?.provider?.name,
+                connection?.kind?.provider?.runtimeDisplayName(localization),
                 configuration?.providerModelId,
             ).joinToString(" · ")
             if (configuredRuntime.isNotBlank()) {
@@ -339,6 +341,7 @@ private fun RuntimeUsageCard(
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     quotaService: AiSubscriptionQuotaService,
 ) {
+    val localization = LocalTranslation.current
     val translation = LocalTranslation.current.runtime
     val targets = remember(agent.runtimeSelection, aiCatalog) {
         runtimeQuotaModelConfigurations(agent, aiCatalog)
@@ -479,11 +482,13 @@ private fun RuntimeUsageCard(
                     backgroundPolicies.forEach { (connection, policy) ->
                         Text(
                             text = if (policy.enabled) {
-                                "${connection.displayName} · reserve=${policy.reservePercent.runtimePercent()}% · " +
-                                    "headroom=${policy.minimumHeadroomPercent.runtimePercent()}% · " +
-                                    "refresh=${policy.refreshIntervalSeconds}s"
+                                localization.text("session.runtime.quota.policyEnabled",
+                                    "connectionName" to connection.displayName,
+                                    "reservePercent" to policy.reservePercent.runtimePercent(),
+                                    "headroomPercent" to policy.minimumHeadroomPercent.runtimePercent(),
+                                    "refreshSeconds" to policy.refreshIntervalSeconds)
                             } else {
-                                "${connection.displayName} · disabled"
+                                localization.text("session.runtime.quota.policyDisabled", "connectionName" to connection.displayName)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -497,11 +502,12 @@ private fun RuntimeUsageCard(
 
 @Composable
 private fun RuntimeContextUsage(tokenStats: TokenUsageStatistics.ThreadTotals?) {
-    val translation = LocalTranslation.current.runtime
+    val localization = LocalTranslation.current
     if (tokenStats?.contextStatus == TokenUsageStatistics.ContextStatus.OUT_OF_RANGE) {
         Text(
-            text = "${translation.contextLabel} unavailable · provider reported " +
-                "${tokenStats.reportedContextSize?.formatWithCommas() ?: "unknown"} tokens",
+            text = tokenStats.reportedContextSize?.let {
+                localization.plural("session.runtime.context.reportedUnavailable", it.toLong())
+            } ?: localization.text("session.runtime.context.reportedUnknown"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
@@ -511,7 +517,7 @@ private fun RuntimeContextUsage(tokenStats: TokenUsageStatistics.ThreadTotals?) 
     val contextWindow = tokenStats.contextWindowTokens
     if (contextWindow == null) {
         Text(
-            "${translation.contextLabel} · ${currentContext.formatWithCommas()} ${translation.tokensLabel}",
+            localization.plural("session.runtime.context.withoutLimit", currentContext.toLong()),
             style = MaterialTheme.typography.bodySmall,
         )
         return
@@ -528,31 +534,31 @@ private fun RuntimeContextUsage(tokenStats: TokenUsageStatistics.ThreadTotals?) 
         },
     )
     Text(
-        text = "${translation.contextLabel} $percentage% · " +
-            "${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()}",
+        text = localization.text("session.runtime.context.withLimit", "percent" to percentage,
+            "currentCount" to currentContext.formatWithCommas(), "limitCount" to contextWindow.formatWithCommas()),
         style = MaterialTheme.typography.bodySmall,
     )
 }
 
 @Composable
 private fun RuntimeTokenUsageSummary(tokenStats: TokenUsageStatistics.ThreadTotals?) {
+    val localization = LocalTranslation.current
     val stats = tokenStats ?: return
-    val translation = LocalTranslation.current.runtime
     Text(
         text = buildList {
-            stats.lastCallTokens?.let { add("${translation.lastUsageLabel} ${it.formatWithCommas()}") }
-            add("${translation.threadUsageLabel} ${stats.totalTokens.formatWithCommas()}")
+            stats.lastCallTokens?.let { add(localization.text("session.runtime.context.lastUsage", "count" to it.formatWithCommas())) }
+            add(localization.text("session.runtime.context.threadUsage", "count" to stats.totalTokens.formatWithCommas()))
             if (stats.totalCacheReadTokens > 0) {
-                add("${translation.cacheReadUsageLabel} ${stats.totalCacheReadTokens.formatWithCommas()}")
+                add(localization.text("session.runtime.context.cacheReadUsage", "count" to stats.totalCacheReadTokens.formatWithCommas()))
             }
         }.joinToString(" · "),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    val observedRuntime = listOfNotNull(stats.provider, stats.modelId).joinToString(" · ")
+    val observedRuntime = listOfNotNull(stats.provider?.let { runtimeProviderLabel(it, localization) }, stats.modelId).joinToString(" · ")
     if (observedRuntime.isNotBlank()) {
         Text(
-            text = "${translation.lastCallLabel}: $observedRuntime",
+            text = localization.text("session.runtime.context.lastCall", "runtime" to observedRuntime),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -561,10 +567,11 @@ private fun RuntimeTokenUsageSummary(tokenStats: TokenUsageStatistics.ThreadTota
 
 @Composable
 private fun RuntimeQuotaObservation(observation: AiSubscriptionQuotaObservation) {
+    val localization = LocalTranslation.current
     val translation = LocalTranslation.current.runtime
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            "${observation.connectionKind.provider.name} · " +
+            "${observation.connectionKind.provider.runtimeDisplayName(localization)} · " +
                 "${observation.connectionDisplayName} · ${observation.providerModelId}",
             style = MaterialTheme.typography.labelLarge,
         )
@@ -587,9 +594,8 @@ private fun RuntimeQuotaObservation(observation: AiSubscriptionQuotaObservation)
                 }
                 val snapshot = requireNotNull(observation.snapshot)
                 Text(
-                    "${translation.quotaObservedLabel} " +
-                        "${runtimeDurationLabel(Clock.System.now() - snapshot.observedAt)} " +
-                        translation.quotaAgoLabel,
+                    localization.text("session.runtime.quota.observedAgo",
+                        "duration" to runtimeDurationLabel(Clock.System.now() - snapshot.observedAt, localization)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -611,9 +617,9 @@ private fun RuntimeQuotaObservation(observation: AiSubscriptionQuotaObservation)
                             },
                         )
                         Text(
-                            "${window.displayName} · ${window.usedPercent.runtimePercent()}% · " +
-                                "${translation.quotaResetLabel} " +
-                                runtimeDurationLabel(window.resetsAt - Clock.System.now()),
+                            localization.text("session.runtime.quota.window", "windowName" to window.displayName,
+                                "usedPercent" to window.usedPercent.runtimePercent(),
+                                "duration" to runtimeDurationLabel(window.resetsAt - Clock.System.now(), localization)),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -652,28 +658,29 @@ private fun runtimeBackgroundQuotaPolicies(aiCatalog: AiCatalog) = listOf(
     }
     .distinctBy { (connection, _) -> connection.id }
 
-internal fun runtimeDurationLabel(duration: Duration): String {
-    if (duration <= ZERO) return "0m"
+internal fun runtimeDurationLabel(duration: Duration, localization: Translation): String {
+    if (duration <= ZERO) return localization.text("session.runtime.duration.zero")
     val totalMinutes = duration.inWholeMinutes
-    if (totalMinutes == 0L) return "<1m"
+    if (totalMinutes == 0L) return localization.text("session.runtime.duration.lessThanMinute")
     val days = totalMinutes / (24 * 60)
     val hours = totalMinutes % (24 * 60) / 60
     val minutes = totalMinutes % 60
     return when {
-        days > 0 -> "${days}d ${hours}h"
-        hours > 0 -> "${hours}h ${minutes}m"
-        else -> "${minutes}m"
+        days > 0 -> localization.text("session.runtime.duration.daysHours", "days" to days, "hours" to hours)
+        hours > 0 -> localization.text("session.runtime.duration.hoursMinutes", "hours" to hours, "minutes" to minutes)
+        else -> localization.text("session.runtime.duration.minutes", "minutes" to minutes)
     }
 }
 
 internal fun runtimeAutoCompactionLabel(
     connectionKind: AiConnection.Kind?,
     thresholdTokens: Int?,
+    localization: Translation,
 ): String? = when {
-    connectionKind == AiConnection.Kind.CLAUDE_CODE -> "auto compact=provider-managed"
+    connectionKind == AiConnection.Kind.CLAUDE_CODE -> localization.text("session.runtime.parameters.autoCompactionProvider")
     connectionKind == AiConnection.Kind.OPENAI_SUBSCRIPTION && thresholdTokens != null ->
-        "auto compact=${thresholdTokens.formatWithCommas()}"
-    thresholdTokens != null -> "auto compact=unsupported"
+        localization.plural("session.runtime.parameters.autoCompactionThreshold", thresholdTokens.toLong())
+    thresholdTokens != null -> localization.text("session.runtime.parameters.autoCompactionUnsupported")
     else -> null
 }
 
@@ -686,11 +693,12 @@ private fun RuntimeTasksSection(
     onCancelCommandTask: (CommandTask.Id) -> Unit,
     onCancelCommandMonitor: (CommandMonitor.Id) -> Unit,
 ) {
-    val appTranslation = LocalTranslation.current
-    val translation = appTranslation.runtime
+    val localization = LocalTranslation.current
+    val appTranslation = localization
+    val translation = localization.runtime
     val activeTask = runtimeSnapshot?.activeTask
     val pendingTasks = runtimeSnapshot?.pendingTasks.orEmpty()
-    val runningTools = runtimeSnapshot?.runningToolActivities(translation).orEmpty()
+    val runningTools = runtimeSnapshot?.runningToolActivities(localization).orEmpty()
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
     val incidents = runtimeSnapshot?.incidents.orEmpty()
@@ -782,7 +790,7 @@ private fun RuntimeTasksSection(
                             Text(
                                 text = buildList {
                                     add(monitor.mode.runtimeMonitorModeLabel(translation))
-                                    add("${translation.monitorEventsLabel}: ${monitor.eventCount}")
+                                    add(localization.text("session.runtime.monitorEventCount", "count" to monitor.eventCount))
                                     add(monitor.workerId.value)
                                 }.joinToString(" · "),
                                 maxLines = 1,
@@ -856,6 +864,7 @@ private fun PendingMessagesSection(
     onEdit: (String) -> Unit,
     onCancel: (String) -> Unit,
 ) {
+    val localization = LocalTranslation.current
     if (pendingMessages.isEmpty()) return
 
     val translation = LocalTranslation.current.runtime
@@ -873,7 +882,7 @@ private fun PendingMessagesSection(
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(
-                text = "${translation.queueTitle} ${pendingMessages.size}",
+                text = localization.text("session.runtime.queueCount", "count" to pendingMessages.size),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -971,11 +980,12 @@ private fun RuntimeStatusFooter(
     onResume: () -> Unit,
     onStop: () -> Unit,
 ) {
+    val localization = LocalTranslation.current
     val translation = LocalTranslation.current.runtime
     val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
-    val runningTools = runtimeSnapshot?.runningToolActivities(translation).orEmpty().distinct()
+    val runningTools = runtimeSnapshot?.runningToolActivities(localization).orEmpty().distinct()
     val activeTask = runtimeSnapshot?.activeTask
     val activeGenerationElapsedSeconds by produceState(
         initialValue = activeGeneration?.elapsedSeconds() ?: 0L,
@@ -1011,20 +1021,18 @@ private fun RuntimeStatusFooter(
         executionPauseRequested -> translation.pauseRequestedStatus
         runningTools.size == 1 -> runningTools.single()
         runningTools.size > 1 -> runningTools.joinToString(" · ")
-        activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName, translation)
-        isWaitingForResponse -> agentName?.let { "$it ${translation.agentWorkingStatus}" }
+        activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName, localization)
+        isWaitingForResponse -> agentName?.let { localization.text("session.runtime.agentWorking", "agentName" to it) }
             ?: translation.agentInvocationTask
-        activeCommands.size == 1 -> translation.commandRunningStatus
-        activeCommands.size > 1 -> "${translation.commandsRunningStatus}: ${activeCommands.size}"
-        activeMonitors.size == 1 -> translation.monitorRunningStatus
-        activeMonitors.size > 1 -> "${translation.monitorsRunningStatus}: ${activeMonitors.size}"
-        pendingMessages.isNotEmpty() -> "${translation.queuedStatus} ${pendingMessages.size}"
+        activeCommands.isNotEmpty() -> localization.plural("session.runtime.commandsRunning", activeCommands.size.toLong())
+        activeMonitors.isNotEmpty() -> localization.plural("session.runtime.monitorsRunning", activeMonitors.size.toLong())
+        pendingMessages.isNotEmpty() -> localization.text("session.runtime.queuedCount", "count" to pendingMessages.size)
         else -> translation.readyStatus
     }
-    val detailText = activeGeneration?.detailsText(activeGenerationElapsedSeconds)
-        ?: runtimeSnapshot?.runtimeDetailsText(translation)
+    val detailText = activeGeneration?.detailsText(activeGenerationElapsedSeconds, localization)
+        ?: runtimeSnapshot?.runtimeDetailsText(localization)
         ?.takeIf { it.isNotBlank() }
-        ?: runtimeSnapshot?.trace?.lastOrNull()?.runtimeTraceText()
+        ?: runtimeSnapshot?.trace?.lastOrNull()?.runtimeTraceText(localization)
     val containerColor = when {
         voiceError != null -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f)
         isReady -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
@@ -1105,14 +1113,15 @@ private fun RuntimeStatusFooter(
 private fun ActiveGenerationSnapshot.elapsedSeconds(): Long =
     (Clock.System.now() - startedAt).inWholeSeconds.coerceAtLeast(0)
 
-private fun ActiveGenerationSnapshot.detailsText(elapsedSeconds: Long): String = buildList {
-    add("${elapsedSeconds}s")
+private fun ActiveGenerationSnapshot.detailsText(elapsedSeconds: Long, localization: Translation): String = buildList {
+    add(localization.text("session.runtime.duration.seconds", "seconds" to elapsedSeconds))
     add("#$iteration")
     add(modelName)
-    add("$inputMessageCount msg / $inputContentItemCount blocks")
-    add("$systemPromptCount prompts")
-    add("$availableToolCount tools")
-    add(provider.lowercase().replace('_', ' '))
+    add(localization.plural("session.runtime.inputMessages", inputMessageCount.toLong()))
+    add(localization.plural("session.runtime.inputBlocks", inputContentItemCount.toLong()))
+    add(localization.plural("session.runtime.systemPrompts", systemPromptCount.toLong()))
+    add(localization.plural("session.runtime.availableTools", availableToolCount.toLong()))
+    add(runtimeProviderLabel(provider, localization))
 }.joinToString(" · ")
 
 private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translation.RuntimeTranslation): String =
@@ -1132,20 +1141,24 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
 
 private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
     agentName: String?,
-    translation: Translation.RuntimeTranslation,
-): String = when (this) {
-    is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
-    is ConversationRuntimeTask.Payload.AgentInvocation,
-    is ConversationRuntimeTask.Payload.AgentResponse -> agentName?.let { "$it ${translation.agentWorkingStatus}" }
-        ?: translation.agentInvocationTask
-    is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationStatus
-    is ConversationRuntimeTask.Payload.LlmCall -> translation.modelRequestStatus
-    is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus
-    is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingStatus
-    is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallStatus
-    is ConversationRuntimeTask.Payload.MemoryRunCompletion -> translation.memoryRunCompletionStatus
-    is ConversationRuntimeTask.Payload.BackgroundActivityCompletion -> translation.backgroundActivityDeliveryStatus
-    is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentStatus
+    localization: Translation,
+): String {
+    val translation = localization.runtime
+    return when (this) {
+        is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
+        is ConversationRuntimeTask.Payload.AgentInvocation,
+        is ConversationRuntimeTask.Payload.AgentResponse -> agentName?.let {
+            localization.text("session.runtime.agentWorking", "agentName" to it)
+        } ?: translation.agentInvocationTask
+        is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationStatus
+        is ConversationRuntimeTask.Payload.LlmCall -> translation.modelRequestStatus
+        is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus
+        is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingStatus
+        is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallStatus
+        is ConversationRuntimeTask.Payload.MemoryRunCompletion -> translation.memoryRunCompletionStatus
+        is ConversationRuntimeTask.Payload.BackgroundActivityCompletion -> translation.backgroundActivityDeliveryStatus
+        is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentStatus
+    }
 }
 
 private fun ConversationRuntimeTask.Payload.agentDefinitionIdOrNull(): AgentDefinition.Id? = when (this) {
@@ -1190,25 +1203,24 @@ internal fun List<CommandMonitor>.activeForRuntimePanel(): List<CommandMonitor> 
         .toList()
 
 private fun ConversationRuntimeSnapshot.runtimeDetailsText(
-    translation: Translation.RuntimeTranslation,
+    localization: Translation,
 ): String = buildList {
-    activeTask?.payload?.let { add(it.runtimeLabel(translation)) }
-    if (pendingTasks.isNotEmpty()) add("${translation.pendingDetailsLabel} ${pendingTasks.size}")
+    activeTask?.payload?.let { add(it.runtimeLabel(localization.runtime)) }
+    if (pendingTasks.isNotEmpty()) add(localization.text("session.runtime.pendingTasks", "count" to pendingTasks.size))
     commandTasks.count { !it.isTerminal }
         .takeIf { it > 0 }
-        ?.let { add("${translation.commandsDetailsLabel} $it") }
+        ?.let { add(localization.text("session.runtime.commandCount", "count" to it)) }
     commandMonitors.count { !it.isTerminal }
         .takeIf { it > 0 }
-        ?.let { add("${translation.monitorsDetailsLabel} $it") }
-    if (incidents.isNotEmpty()) add("${translation.incidentsDetailsLabel} ${incidents.size}")
+        ?.let { add(localization.text("session.runtime.monitorCount", "count" to it)) }
+    if (incidents.isNotEmpty()) add(localization.text("session.runtime.incidentCount", "count" to incidents.size))
 }.joinToString(" · ")
 
-private fun ConversationRuntimeTraceEntry.runtimeTraceText(): String = buildString {
-    append(kind.name.lowercase().replace('_', ' '))
-    message?.takeIf { it.isNotBlank() }?.let {
-        append(": ")
-        append(it)
-    }
+private fun ConversationRuntimeTraceEntry.runtimeTraceText(localization: Translation): String {
+    val label = kind.runtimeDisplayName(localization)
+    return message?.takeIf(String::isNotBlank)?.let {
+        localization.text("session.runtime.traceMessage", "kind" to label, "message" to it)
+    } ?: label
 }
 
 private fun queuePlacementDescription(

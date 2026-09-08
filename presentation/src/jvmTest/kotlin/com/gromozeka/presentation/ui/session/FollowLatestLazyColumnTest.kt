@@ -92,7 +92,7 @@ class FollowLatestLazyColumnTest {
                     items = values,
                     itemKey = { it },
                     contentRevision = values.toList(),
-                    unreadLabel = { "new messages" },
+                    unreadLabel = { "$it new messages" },
                     modifier = Modifier.fillMaxSize(),
                 ) { value, _ ->
                     Text(

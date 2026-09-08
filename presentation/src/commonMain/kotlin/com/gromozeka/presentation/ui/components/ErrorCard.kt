@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.components
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -21,6 +22,7 @@ fun ErrorCard(
     onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val localization = LocalTranslation.current
     AnimatedVisibility(
         visible = true,
         enter = slideInVertically(
@@ -68,7 +70,7 @@ fun ErrorCard(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "Error",
+                                text = localization.text("chat.error.title"),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onErrorContainer
@@ -89,7 +91,7 @@ fun ErrorCard(
                     ) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Dismiss error",
+                            contentDescription = localization.text("chat.error.dismiss"),
                             tint = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.size(16.dp)
                         )
@@ -116,7 +118,7 @@ fun ErrorCard(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Retry")
+                            Text(localization.text("chat.error.retry"))
                         }
                     }
                 }
@@ -131,6 +133,7 @@ fun WarningCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val localization = LocalTranslation.current
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -172,7 +175,7 @@ fun WarningCard(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Dismiss warning",
+                    contentDescription = localization.text("chat.error.dismissWarning"),
                     tint = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier.size(16.dp)
                 )
@@ -187,6 +190,7 @@ fun InfoCard(
     onDismiss: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val localization = LocalTranslation.current
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -229,7 +233,7 @@ fun InfoCard(
                 ) {
                     Icon(
                         Icons.Default.Close,
-                        contentDescription = "Dismiss info",
+                        contentDescription = localization.text("chat.error.dismissInfo"),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(16.dp)
                     )

@@ -28,8 +28,9 @@ internal fun OutlinedSecretTextField(
     imeAction: ImeAction = ImeAction.Default,
     onKeyboardAction: (() -> Unit)? = null,
 ) {
+    val translation = LocalTranslation.current
     var hidden by remember(state) { mutableStateOf(true) }
-    val visibilityDescription = if (hidden) "Show secret" else "Hide secret"
+    val visibilityDescription = if (hidden) translation.text("security.secretField.show") else translation.text("security.secretField.hide")
 
     OutlinedSecureTextField(
         state = state,

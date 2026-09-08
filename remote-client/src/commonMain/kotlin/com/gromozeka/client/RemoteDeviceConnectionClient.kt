@@ -1,7 +1,6 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.DeviceConnection
-import com.gromozeka.remote.protocol.AuthenticationErrorResponse
 import com.gromozeka.remote.protocol.DeviceConnectionChallenge
 import com.gromozeka.remote.protocol.DeviceConnectionCodeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionConsumeRequest
@@ -101,10 +100,7 @@ class RemoteDeviceConnectionClient private constructor(
         if (response.status.isSuccess()) {
             return json.decodeFromString(body)
         }
-        val message = runCatching { json.decodeFromString<AuthenticationErrorResponse>(body).message }
-            .getOrDefault(body)
-            .ifBlank { "Device connection failed with HTTP ${response.status.value}" }
-        error(message)
+        throw remoteAuthenticationFailure(body, response.status.value)
     }
 }
 

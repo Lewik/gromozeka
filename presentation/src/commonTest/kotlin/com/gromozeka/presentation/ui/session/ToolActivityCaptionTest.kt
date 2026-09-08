@@ -1,6 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
-import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class ToolActivityCaptionTest {
-    private val translation = Translation.RuntimeTranslation()
+    private val translation = EnglishTranslation()
 
     @Test
     fun `built-in and mcp tools use deterministic activity captions`() {

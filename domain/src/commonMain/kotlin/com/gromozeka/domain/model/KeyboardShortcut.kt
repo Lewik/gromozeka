@@ -213,10 +213,21 @@ enum class KeyboardShortcutValidationSeverity {
     WARNING,
 }
 
+enum class KeyboardShortcutValidationCode {
+    UNSUPPORTED_SCOPE,
+    GLOBAL_MODIFIERS_REQUIRED,
+    GLOBAL_ESCAPE_CONSUMED,
+    GLOBAL_ESCAPE_SHARED,
+    CONFLICT,
+}
+
 data class KeyboardShortcutValidationIssue(
     val action: KeyboardShortcutAction,
     val severity: KeyboardShortcutValidationSeverity,
+    val code: KeyboardShortcutValidationCode,
     val message: String,
+    val scope: KeyboardShortcutScope? = null,
+    val conflictingActions: List<KeyboardShortcutAction> = emptyList(),
 )
 
 object KeyboardShortcutValidator {
@@ -229,6 +240,8 @@ object KeyboardShortcutValidator {
                         KeyboardShortcutValidationIssue(
                             action = binding.action,
                             severity = KeyboardShortcutValidationSeverity.ERROR,
+                            code = KeyboardShortcutValidationCode.UNSUPPORTED_SCOPE,
+                            scope = binding.scope,
                             message = "${binding.action} does not support ${binding.scope} shortcuts",
                         )
                     )
@@ -242,6 +255,7 @@ object KeyboardShortcutValidator {
                         KeyboardShortcutValidationIssue(
                             action = binding.action,
                             severity = KeyboardShortcutValidationSeverity.ERROR,
+                            code = KeyboardShortcutValidationCode.GLOBAL_MODIFIERS_REQUIRED,
                             message = "Global shortcuts without modifiers are only allowed for push-to-talk",
                         )
                     )
@@ -254,6 +268,11 @@ object KeyboardShortcutValidator {
                         KeyboardShortcutValidationIssue(
                             action = binding.action,
                             severity = KeyboardShortcutValidationSeverity.WARNING,
+                            code = if (binding.consumeEvent) {
+                                KeyboardShortcutValidationCode.GLOBAL_ESCAPE_CONSUMED
+                            } else {
+                                KeyboardShortcutValidationCode.GLOBAL_ESCAPE_SHARED
+                            },
                             message = if (binding.consumeEvent) {
                                 "Global Escape will prevent the foreground application from receiving Escape"
                             } else {
@@ -273,6 +292,8 @@ object KeyboardShortcutValidator {
                             KeyboardShortcutValidationIssue(
                                 action = binding.action,
                                 severity = KeyboardShortcutValidationSeverity.ERROR,
+                                code = KeyboardShortcutValidationCode.CONFLICT,
+                                conflictingActions = conflicts.filterNot { it.action == binding.action }.map { it.action },
                                 message = "Shortcut conflicts with ${conflicts.filterNot { it.action == binding.action }.joinToString { it.action.name }}",
                             )
                         )

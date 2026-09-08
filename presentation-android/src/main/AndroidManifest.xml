@@ -7,6 +7,8 @@
     <application
         android:name="com.gromozeka.presentation.GromozekaAndroidApplication"
         android:allowBackup="true"
+        android:supportsRtl="true"
+        android:localeConfig="@xml/locales_config"
         android:label="Gromozeka"
         android:usesCleartextTraffic="true"
         android:theme="@style/GromozekaTheme">
@@ -32,14 +34,14 @@
             android:name="com.gromozeka.presentation.QuickTextActionActivity"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:label="Quick text"
+            android:label="@string/quick_text_actions"
             android:noHistory="true"
             android:theme="@style/GromozekaQuickTextActionTheme" />
 
         <activity-alias
             android:name="com.gromozeka.presentation.FixTextActionActivity"
             android:exported="true"
-            android:label="Fix text"
+            android:label="@string/quick_text_fix"
             android:targetActivity="com.gromozeka.presentation.QuickTextActionActivity">
             <meta-data
                 android:name="com.gromozeka.QUICK_TEXT_ACTION_ID"
@@ -59,11 +61,11 @@
         <activity-alias
             android:name="com.gromozeka.presentation.TranslateTextActionActivity"
             android:exported="true"
-            android:label="Translate"
+            android:label="@string/quick_text_translate"
             android:targetActivity="com.gromozeka.presentation.QuickTextActionActivity">
             <meta-data
                 android:name="com.gromozeka.QUICK_TEXT_ACTION_ID"
-                android:value="translate_ru_en" />
+                android:value="translate_interface_language" />
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />

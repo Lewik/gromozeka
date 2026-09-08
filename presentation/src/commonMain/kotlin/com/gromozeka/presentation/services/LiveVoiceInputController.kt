@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.client.AudioTranscriptionService
 import com.gromozeka.client.LiveVoiceProviderVadService
 import com.gromozeka.domain.model.MessageInputContext
@@ -47,8 +50,8 @@ enum class LiveVoiceInputState {
 
 interface LiveVoiceInputService {
     val state: StateFlow<LiveVoiceInputState>
-    val statusMessage: StateFlow<String?>
-    val unavailableReason: StateFlow<String?>
+    val statusMessage: StateFlow<LocalizedText?>
+    val unavailableReason: StateFlow<LocalizedText?>
 
     suspend fun start()
     suspend fun stop()
@@ -57,15 +60,15 @@ interface LiveVoiceInputService {
 }
 
 class NoOpLiveVoiceInputService(
-    reason: String = "Непрерывный голосовой ввод недоступен на этом клиенте",
+    reason: LocalizedText = localizedText("voice.liveUnavailable"),
 ) : LiveVoiceInputService {
     private val _state = MutableStateFlow(LiveVoiceInputState.IDLE)
-    private val _statusMessage = MutableStateFlow<String?>(null)
-    private val _unavailableReason = MutableStateFlow<String?>(reason)
+    private val _statusMessage = MutableStateFlow<LocalizedText?>(null)
+    private val _unavailableReason = MutableStateFlow<LocalizedText?>(reason)
 
     override val state: StateFlow<LiveVoiceInputState> = _state
-    override val statusMessage: StateFlow<String?> = _statusMessage
-    override val unavailableReason: StateFlow<String?> = _unavailableReason
+    override val statusMessage: StateFlow<LocalizedText?> = _statusMessage
+    override val unavailableReason: StateFlow<LocalizedText?> = _unavailableReason
 
     override suspend fun start() = Unit
     override suspend fun stop() = Unit
@@ -87,17 +90,17 @@ class LiveVoiceInputController(
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
     private val _state = MutableStateFlow(LiveVoiceInputState.IDLE)
-    private val _statusMessage = MutableStateFlow<String?>(null)
-    private val _unavailableReason = MutableStateFlow<String?>(null)
+    private val _statusMessage = MutableStateFlow<LocalizedText?>(null)
+    private val _unavailableReason = MutableStateFlow<LocalizedText?>(null)
     private var sessionJob: Job? = null
     private var recordingSession: ClientAudioRecordingSession? = null
 
     override val state: StateFlow<LiveVoiceInputState> = _state
-    override val statusMessage: StateFlow<String?> = _statusMessage
-    override val unavailableReason: StateFlow<String?> = _unavailableReason
+    override val statusMessage: StateFlow<LocalizedText?> = _statusMessage
+    override val unavailableReason: StateFlow<LocalizedText?> = _unavailableReason
 
     init {
-        _unavailableReason.value = "Проверка доступности непрерывного голосового ввода"
+        _unavailableReason.value = localizedText("voice.checkingLiveAvailability")
         scope.launch {
             while (isActive) {
                 if (_state.value == LiveVoiceInputState.IDLE) {
@@ -118,7 +121,7 @@ class LiveVoiceInputController(
         mutex.withLock {
             if (sessionJob?.isActive == true) return
             _state.value = LiveVoiceInputState.STARTING
-            _statusMessage.value = "Запуск непрерывного голосового ввода"
+            _statusMessage.value = localizedText("voice.startingLive")
             sessionJob = scope.launch { runLiveSession() }
         }
     }
@@ -172,12 +175,12 @@ class LiveVoiceInputController(
         val utterances = Channel<ByteArray>(Channel.UNLIMITED)
         val microphoneGate = LiveVoiceMicrophoneGate()
         var speaking = false
-        var terminalStatus: String? = null
+        var terminalStatus: LocalizedText? = null
         try {
             val session = audioRecorder.start(scope)
             mutex.withLock { recordingSession = session }
             _state.value = LiveVoiceInputState.LISTENING
-            _statusMessage.value = "Слушаю голос"
+            _statusMessage.value = localizedText("voice.listening")
 
             coroutineScope {
                 val collector = launch {
@@ -196,7 +199,7 @@ class LiveVoiceInputController(
                                 is LiveVoiceMicrophoneGateDecision.Allow -> {
                                     if (decision.resumed) {
                                         _state.value = LiveVoiceInputState.LISTENING
-                                        _statusMessage.value = "Слушаю голос"
+                                        _statusMessage.value = localizedText("voice.listening")
                                     }
                                 }
                             }
@@ -205,7 +208,7 @@ class LiveVoiceInputController(
                                     LiveVoiceVadEvent.SpeechStarted -> {
                                         speaking = true
                                         _state.value = LiveVoiceInputState.SPEECH
-                                        _statusMessage.value = "Слушаю фразу"
+                                        _statusMessage.value = localizedText("voice.listeningPhrase")
                                         ttsQueue.blockAndClear()
                                     }
 
@@ -213,14 +216,14 @@ class LiveVoiceInputController(
                                         speaking = false
                                         utterances.send(event.pcmBigEndian)
                                         _state.value = LiveVoiceInputState.LISTENING
-                                        _statusMessage.value = "Фраза отправлена на распознавание"
+                                        _statusMessage.value = localizedText("voice.transcriptionQueued")
                                     }
 
                                     LiveVoiceVadEvent.SpeechDiscarded -> {
                                         speaking = false
                                         ttsQueue.allowPlayback()
                                         _state.value = LiveVoiceInputState.LISTENING
-                                        _statusMessage.value = "Короткий шум отброшен"
+                                        _statusMessage.value = localizedText("voice.noiseDiscarded")
                                     }
                                 }
                             }
@@ -240,7 +243,7 @@ class LiveVoiceInputController(
                         if (!speaking && isActive) {
                             ttsQueue.allowPlayback()
                             _state.value = LiveVoiceInputState.LISTENING
-                            _statusMessage.value = "Слушаю голос"
+                            _statusMessage.value = localizedText("voice.listening")
                         }
                     }
                 }
@@ -255,7 +258,7 @@ class LiveVoiceInputController(
                 throw CancellationException("Live voice input stopped", error)
             }
             log.warn(error) { "Live voice input failed: ${error.message}" }
-            terminalStatus = "Непрерывный голосовой ввод остановлен: ${error.message}"
+            terminalStatus = localizedText("voice.liveStopped", "error" to error.localizedText())
         } finally {
             recordingSession?.cancel()
             mutex.withLock {
@@ -270,7 +273,7 @@ class LiveVoiceInputController(
 
     private suspend fun runProviderVadLiveSession() {
         val ownJob = currentCoroutineContext()[Job]
-        var terminalStatus: String? = null
+        var terminalStatus: LocalizedText? = null
         var providerSession: com.gromozeka.client.LiveVoiceProviderVadSession? = null
         try {
             val speechToText = settingsService.userProfile.speechSettings.speechToText
@@ -281,7 +284,7 @@ class LiveVoiceInputController(
                 prompt = null,
             )
             _state.value = LiveVoiceInputState.LISTENING
-            _statusMessage.value = "Provider VAD слушает голос"
+            _statusMessage.value = localizedText("voice.providerListening")
 
             coroutineScope {
                 val sender = launch {
@@ -300,7 +303,7 @@ class LiveVoiceInputController(
                             is LiveVoiceMicrophoneGateDecision.Allow -> {
                                 if (decision.resumed) {
                                     _state.value = LiveVoiceInputState.LISTENING
-                                    _statusMessage.value = "Provider VAD слушает голос"
+                                    _statusMessage.value = localizedText("voice.providerListening")
                                 }
                             }
                         }
@@ -321,23 +324,23 @@ class LiveVoiceInputController(
                     providerSession?.events?.collect { event ->
                         when (event) {
                             is LiveVoiceProviderVadStatusEvent ->
-                                _statusMessage.value = event.message
+                                _statusMessage.value = localizedText("voice.providerListening")
 
                             is LiveVoiceProviderVadSpeechStartedEvent -> {
                                 _state.value = LiveVoiceInputState.SPEECH
-                                _statusMessage.value = "Provider VAD: слушаю фразу"
+                                _statusMessage.value = localizedText("voice.providerListeningPhrase")
                                 ttsQueue.blockAndClear()
                             }
 
                             is LiveVoiceProviderVadSpeechStoppedEvent -> {
                                 _state.value = LiveVoiceInputState.TRANSCRIBING
-                                _statusMessage.value = "Provider VAD: распознаю фразу"
+                                _statusMessage.value = localizedText("voice.providerTranscribing")
                             }
 
                             is LiveVoiceProviderVadTranscriptDeltaEvent -> {
                                 if (event.delta.isNotBlank()) {
                                     _state.value = LiveVoiceInputState.TRANSCRIBING
-                                    _statusMessage.value = "Provider VAD: идет распознавание"
+                                    _statusMessage.value = localizedText("voice.providerTranscriptionInProgress")
                                 }
                             }
 
@@ -345,11 +348,11 @@ class LiveVoiceInputController(
                                 deliverText(event.text, event.itemId.ifBlank { uuid7() })
                                 ttsQueue.allowPlayback()
                                 _state.value = LiveVoiceInputState.LISTENING
-                                _statusMessage.value = "Provider VAD слушает голос"
+                                _statusMessage.value = localizedText("voice.providerListening")
                             }
 
                             is LiveVoiceProviderVadFailedEvent -> {
-                                terminalStatus = "Provider VAD остановлен: ${event.message}"
+                                terminalStatus = localizedText("voice.providerStopped", "error" to LocalizedText.Literal(event.message))
                                 error(event.message)
                             }
 
@@ -372,7 +375,7 @@ class LiveVoiceInputController(
                 throw CancellationException("Provider VAD live voice input stopped", error)
             }
             log.warn(error) { "Provider VAD live voice input failed: ${error.message}" }
-            terminalStatus = terminalStatus ?: "Provider VAD остановлен: ${error.message}"
+            terminalStatus = terminalStatus ?: localizedText("voice.providerStopped", "error" to error.localizedText())
         } finally {
             recordingSession?.cancel()
             runCatching { providerSession?.stop() }
@@ -393,7 +396,7 @@ class LiveVoiceInputController(
         val sessionId = uuid7()
         val text = runCatching {
             _state.value = LiveVoiceInputState.TRANSCRIBING
-            _statusMessage.value = "Распознаю фразу"
+            _statusMessage.value = localizedText("voice.transcribingPhrase")
             val wav = SpeechPcmWav.encode(pcm16BigEndianToLittleEndian(pcmBigEndian))
             val recording = RemoteAudioRecording(
                 sessionId = sessionId,
@@ -406,14 +409,15 @@ class LiveVoiceInputController(
                 audioTranscriptionService.transcribe(recording)
             }.trim()
         }.getOrElse { error ->
+            if (error is CancellationException) throw error
             log.warn(error) { "Live voice transcription failed: session=$sessionId error=${error.message}" }
-            _statusMessage.value = "Не удалось распознать фразу: ${error.message}"
+            _statusMessage.value = localizedText("voice.phraseTranscriptionFailed", "error" to error.localizedText())
             return
         }
 
         if (text.isBlank()) {
             log.info { "Live voice transcription returned blank text: session=$sessionId" }
-            _statusMessage.value = "Пустая фраза"
+            _statusMessage.value = localizedText("voice.emptyPhrase")
             return
         }
 
@@ -423,14 +427,14 @@ class LiveVoiceInputController(
     private suspend fun deliverText(text: String, sessionId: String) {
         if (text.isBlank()) {
             log.info { "Live voice transcription returned blank text: session=$sessionId" }
-            _statusMessage.value = "Пустая фраза"
+            _statusMessage.value = localizedText("voice.emptyPhrase")
             return
         }
 
         val currentTab = appViewModel.currentTab.value
         if (currentTab == null) {
             log.warn { "Live voice transcription has no current tab: session=$sessionId textChars=${text.length}" }
-            _statusMessage.value = "Нет активного обсуждения для распознанного текста"
+            _statusMessage.value = localizedText("voice.noConversation")
             return
         }
 
@@ -449,34 +453,36 @@ class LiveVoiceInputController(
         }
     }
 
-    private suspend fun finishStopped(statusMessage: String? = null) {
+    private suspend fun finishStopped(statusMessage: LocalizedText? = null) {
         ttsQueue.allowPlayback()
         _state.value = LiveVoiceInputState.IDLE
         _statusMessage.value = statusMessage
     }
 
-    private suspend fun refreshAvailability(): String? {
+    private suspend fun refreshAvailability(): LocalizedText? {
         val speechToText = settingsService.userProfile.speechSettings.speechToText
         val liveVoiceSettings = settingsService.userDeviceSettings.voiceInputSettings
         val localReason = audioRecorder.unavailableReason
         val reason = when {
-            !speechToText.enabled -> "Speech-to-text выключен"
+            !speechToText.enabled -> localizedText("voice.sttDisabled")
             speechToText.audioSource != SpeechAudioSource.CurrentClient ->
-                "Непрерывный голосовой ввод работает только с микрофоном текущего клиента"
+                localizedText("voice.liveNeedsClientMicrophone")
             localReason != null -> localReason
             !audioRecorder.supportsStreamingAudioChunks ->
-                "Непрерывный голосовой ввод требует потоковые audio chunks на клиенте"
+                localizedText("voice.liveNeedsStreaming")
             liveVoiceSettings.liveVoiceVadMode == UserDeviceSettings.VoiceInputSettings.LiveVoiceVadMode.PROVIDER_VAD ->
                 runCatching {
-                    liveVoiceProviderVadService.unavailableReason()
+                    liveVoiceProviderVadService.unavailableReason()?.localizedText()
                 }.getOrElse { error ->
-                    "Не удалось проверить Provider VAD: ${error.message}"
+                    if (error is CancellationException) throw error
+                    localizedText("voice.providerAvailabilityFailed", "error" to error.localizedText())
                 }
             clientSideSpeechToTextService.isEnabled() -> null
             else -> runCatching {
-                audioTranscriptionService.captureUnavailableReason()
+                audioTranscriptionService.captureUnavailableReason()?.localizedText()
             }.getOrElse { error ->
-                "Не удалось проверить доступность распознавания голоса: ${error.message}"
+                if (error is CancellationException) throw error
+                localizedText("voice.sttAvailabilityFailed", "error" to error.localizedText())
             }
         }
         _unavailableReason.value = reason
@@ -490,7 +496,7 @@ class LiveVoiceInputController(
 
     private companion object {
         const val AVAILABILITY_REFRESH_MILLIS = 5_000L
-        const val LIVE_VOICE_TTS_SUPPRESSED_STATUS = "Озвучиваю ответ, микрофон временно приглушен"
+        val LIVE_VOICE_TTS_SUPPRESSED_STATUS = localizedText("voice.speakingSuppressed")
     }
 }
 

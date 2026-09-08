@@ -1,5 +1,9 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+import kotlinx.coroutines.CancellationException
+
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.shared.audio.SpeechPcmWav
 import klog.KLoggers
@@ -78,9 +82,13 @@ private class BrowserClientAudioRecordingSession(
                     )
                     audioChunkChannel.close()
                 },
-                onError = { message: String ->
+                onError = { messageKey: String, message: String ->
                     log.warn { "Browser PCM audio recorder error: $message; ${browserAudioDebugInfo()}" }
-                    val error = IllegalStateException(message)
+                    val error = when (messageKey) {
+                        "cancelled" -> CancellationException(message)
+                        "" -> LocalizedTextException(localizedText("voice.microphoneFailed", "error" to message))
+                        else -> LocalizedTextException(localizedText(messageKey))
+                    }
                     started.completeExceptionally(error)
                     stopped.completeExceptionally(error)
                     audioChunkChannel.close(error)
@@ -208,12 +216,12 @@ private external fun browserAudioDebugInfo(): String
 
         const createContext = () => {
             if (!AudioContextConstructor) {
-                throw new Error("Browser Web Audio API is not available");
+                throw Object.assign(new Error("Browser Web Audio API is not available"), { messageKey: "voice.unavailable" });
             }
             const created = new AudioContextConstructor();
             if (!created.audioWorklet) {
                 created.close();
-                throw new Error("Browser AudioWorklet API is not available");
+                throw Object.assign(new Error("Browser AudioWorklet API is not available"), { messageKey: "voice.unavailable" });
             }
             const moduleUrl = URL.createObjectURL(new Blob([workletSource], { type: "text/javascript" }));
             context = created;
@@ -312,7 +320,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                 if (handle.cancelRequested) return;
                 handle.cancelRequested = true;
                 handle.state = "cancelled";
-                fail(new Error("Browser audio recording cancelled"));
+                fail(Object.assign(new Error("Browser audio recording cancelled"), { messageKey: "cancelled" }));
             }
         };
 
@@ -331,7 +339,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
         const fail = async error => {
             if (!handle.finalized) {
                 handle.finalized = true;
-                onError(error?.message || String(error));
+                onError(error?.messageKey || (error?.name === "NotAllowedError" ? "client.voice.microphoneDenied" : ""), error?.message || String(error));
             }
             await cleanup();
         };
@@ -394,7 +402,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
         const toDataUrl = buffer => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(String(reader.result || ""));
-            reader.onerror = () => reject(reader.error || new Error("Failed to read browser PCM audio"));
+            reader.onerror = () => reject(Object.assign(reader.error || new Error("Failed to read browser PCM audio"), { messageKey: "client.voice.audioReadFailedGeneric" }));
             reader.readAsDataURL(new Blob([buffer], { type: "application/octet-stream" }));
         });
 
@@ -411,20 +419,20 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                 const dataUrl = await toDataUrl(pcm);
                 onStopped(dataUrl, pcm.byteLength);
             } catch (error) {
-                onError(error?.message || String(error));
+                onError(error?.messageKey || (error?.name === "NotAllowedError" ? "client.voice.microphoneDenied" : ""), error?.message || String(error));
             }
         };
 
         (async () => {
             try {
                 if (!navigator.mediaDevices?.getUserMedia) {
-                    throw new Error("Browser microphone API is not available");
+                    throw Object.assign(new Error("Browser microphone API is not available"), { messageKey: "voice.unavailable" });
                 }
                 if (typeof AudioWorkletNode === "undefined") {
-                    throw new Error("Browser AudioWorklet API is not available");
+                    throw Object.assign(new Error("Browser AudioWorklet API is not available"), { messageKey: "voice.unavailable" });
                 }
                 if (typeof OfflineAudioContext === "undefined") {
-                    throw new Error("Browser offline audio rendering API is not available");
+                    throw Object.assign(new Error("Browser offline audio rendering API is not available"), { messageKey: "voice.unavailable" });
                 }
                 if (await cleanupIfCancelled()) return;
 
@@ -484,7 +492,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                         if (!handle.cancelRequested) finish();
                     }
                 };
-                workletNode.onprocessorerror = () => fail(new Error("Browser PCM audio processor failed"));
+                workletNode.onprocessorerror = () => fail(Object.assign(new Error("Browser PCM audio processor failed"), { messageKey: "client.voice.audioProcessorFailed" }));
 
                 sourceNode.connect(workletNode);
                 workletNode.connect(silentGain);
@@ -508,7 +516,7 @@ private external fun startBrowserAudioRecording(
     onStarted: (Double) -> Unit,
     onChunk: (String, Int) -> Unit,
     onStopped: (String, Int) -> Unit,
-    onError: (String) -> Unit,
+    onError: (String, String) -> Unit,
 ): JsAny?
 
 @JsFun("(handle) => handle?.stop()")

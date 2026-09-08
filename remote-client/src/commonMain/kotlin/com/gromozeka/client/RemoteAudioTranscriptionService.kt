@@ -1,5 +1,7 @@
 package com.gromozeka.client
 
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
+
 import com.gromozeka.remote.protocol.AudioTranscriptionResponse
 import com.gromozeka.remote.protocol.CancelSpeechCaptureRequest
 import com.gromozeka.remote.protocol.GetSpeechCaptureAvailabilityRequest
@@ -13,7 +15,7 @@ import com.gromozeka.remote.protocol.StopSpeechCaptureRequest
 
 interface AudioTranscriptionService {
     suspend fun transcribe(recording: RemoteAudioRecording): String
-    suspend fun captureUnavailableReason(): String?
+    suspend fun captureUnavailableReason(): SpeechAvailabilityFailure?
     suspend fun startCapture(sessionId: String)
     suspend fun stopCapture(sessionId: String): String
     suspend fun cancelCapture(sessionId: String)
@@ -27,7 +29,7 @@ class RemoteAudioTranscriptionService internal constructor(
             TranscribeAudioRequest(recording)
         ).text
 
-    override suspend fun captureUnavailableReason(): String? =
+    override suspend fun captureUnavailableReason(): SpeechAvailabilityFailure? =
         client.requestTyped<GetSpeechCaptureAvailabilityRequest, SpeechCaptureAvailabilityResponse>(
             GetSpeechCaptureAvailabilityRequest
         ).unavailableReason

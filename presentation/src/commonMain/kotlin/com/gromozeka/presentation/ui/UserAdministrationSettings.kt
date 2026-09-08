@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.domain.model.User
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,7 @@ fun UserAdministrationSettings(
     service: RemoteUserAdministrationService,
     coroutineScope: CoroutineScope,
 ) {
+    val translation = LocalTranslation.current
     var users by remember { mutableStateOf<List<User>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -67,12 +69,12 @@ fun UserAdministrationSettings(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Runtime users",
+                text = translation.text("security.users.title"),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Owners manage this isolated Runtime. Project roles control access to individual projects.",
+                text = translation.text("security.users.description"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -83,13 +85,13 @@ fun UserAdministrationSettings(
                 enabled = !loading && error == null,
                 onClick = { showCreateDialog = true },
             ) {
-                Text("Add user")
+                Text(translation.text("security.users.addUser"))
             }
             TextButton(
                 enabled = !loading,
                 onClick = { refreshKey++ },
             ) {
-                Text("Refresh")
+                Text(translation.text("security.users.refresh"))
             }
         }
 
@@ -186,6 +188,7 @@ private fun RuntimeUserCard(
     onEdit: () -> Unit,
     onResetPassword: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -205,7 +208,7 @@ private fun RuntimeUserCard(
                     )
                 }
                 Text(
-                    text = if (user.status == User.Status.ACTIVE) user.role.displayName() else "Disabled",
+                    text = if (user.status == User.Status.ACTIVE) user.role.displayName(translation) else translation.text("security.users.disabled"),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (user.status == User.Status.ACTIVE) {
                         MaterialTheme.colorScheme.primary
@@ -216,10 +219,10 @@ private fun RuntimeUserCard(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onEdit) {
-                    Text("Edit")
+                    Text(translation.text("security.users.edit"))
                 }
                 TextButton(onClick = onResetPassword) {
-                    Text("Reset password")
+                    Text(translation.text("security.users.resetPassword"))
                 }
             }
         }
@@ -232,6 +235,7 @@ private fun CreateRuntimeUserDialog(
     onDismiss: () -> Unit,
     onCreate: (String, String, String, User.Role) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var username by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
     val passwordState = remember { TextFieldState() }
@@ -240,27 +244,27 @@ private fun CreateRuntimeUserDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Runtime user") },
+        title = { Text(translation.text("security.users.createTitle")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text("Username") },
+                    label = { Text(translation.text("security.users.usernameLabel")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
-                    label = { Text("Display name") },
+                    label = { Text(translation.text("security.users.displayNameLabel")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedSecretTextField(
                     state = passwordState,
-                    label = { Text("Initial password") },
-                    supportingText = { Text("At least 12 characters") },
+                    label = { Text(translation.text("security.users.initialPasswordLabel")) },
+                    supportingText = { Text(translation.text("security.users.passwordLengthHint")) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 RoleSelector(role, onRoleChange = { role = it })
@@ -271,12 +275,12 @@ private fun CreateRuntimeUserDialog(
                 enabled = !submitting && username.isNotBlank() && password.length >= 12,
                 onClick = { onCreate(username, displayName, password, role) },
             ) {
-                Text("Add")
+                Text(translation.text("security.users.add"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(translation.text("security.users.cancel"))
             }
         },
     )
@@ -289,19 +293,20 @@ private fun EditRuntimeUserDialog(
     onDismiss: () -> Unit,
     onSave: (String, User.Status, User.Role) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var displayName by remember(user.id) { mutableStateOf(user.displayName) }
     var status by remember(user.id) { mutableStateOf(user.status) }
     var role by remember(user.id) { mutableStateOf(user.role) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit @${user.username}") },
+        title = { Text(translation.text("security.users.editTitle", "username" to user.username)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
-                    label = { Text("Display name") },
+                    label = { Text(translation.text("security.users.displayNameLabel")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -312,9 +317,9 @@ private fun EditRuntimeUserDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Active")
+                        Text(translation.text("security.users.active"))
                         Text(
-                            text = "Disabling revokes sessions and personal access tokens.",
+                            text = translation.text("security.users.disableWarning"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -333,12 +338,12 @@ private fun EditRuntimeUserDialog(
                 enabled = !submitting && displayName.isNotBlank(),
                 onClick = { onSave(displayName, status, role) },
             ) {
-                Text("Save")
+                Text(translation.text("security.users.save"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(translation.text("security.users.cancel"))
             }
         },
     )
@@ -351,17 +356,18 @@ private fun ResetRuntimeUserPasswordDialog(
     onDismiss: () -> Unit,
     onReset: (String) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     val passwordState = remember(user.id) { TextFieldState() }
     val password = passwordState.text.toString()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Reset @${user.username} password") },
+        title = { Text(translation.text("security.users.resetPasswordTitle", "username" to user.username)) },
         text = {
             OutlinedSecretTextField(
                 state = passwordState,
-                label = { Text("New password") },
-                supportingText = { Text("Existing sessions and personal access tokens will be revoked.") },
+                label = { Text(translation.text("security.users.newPasswordLabel")) },
+                supportingText = { Text(translation.text("security.users.resetPasswordWarning")) },
                 modifier = Modifier.fillMaxWidth(),
             )
         },
@@ -370,12 +376,12 @@ private fun ResetRuntimeUserPasswordDialog(
                 enabled = !submitting && password.length >= 12,
                 onClick = { onReset(password) },
             ) {
-                Text("Reset")
+                Text(translation.text("security.users.reset"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(translation.text("security.users.cancel"))
             }
         },
     )
@@ -386,22 +392,23 @@ private fun RoleSelector(
     role: User.Role,
     onRoleChange: (User.Role) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Runtime role", style = MaterialTheme.typography.labelLarge)
+        Text(translation.text("security.users.roleLabel"), style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             User.Role.entries.forEach { candidate ->
                 FilterChip(
                     selected = role == candidate,
                     onClick = { onRoleChange(candidate) },
-                    label = { Text(candidate.displayName()) },
+                    label = { Text(candidate.displayName(translation)) },
                 )
             }
         }
     }
 }
 
-private fun User.Role.displayName(): String =
+private fun User.Role.displayName(translation: Translation): String =
     when (this) {
-        User.Role.OWNER -> "Owner"
-        User.Role.MEMBER -> "Member"
+        User.Role.OWNER -> translation.text("security.users.role.owner")
+        User.Role.MEMBER -> translation.text("security.users.role.member")
     }

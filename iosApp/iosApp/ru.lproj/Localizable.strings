@@ -1,0 +1,11 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"native.shortcuts.toggleRecording" = "Начать или остановить запись голоса";
+"native.shortcuts.toggleRecordingDescription" = "Начать запись голосового сообщения либо остановить запись и отправить его.";
+"native.shortcuts.textParameter" = "Текст";
+"quickText.fix" = "Исправить текст";
+"quickText.fixDescription" = "Исправить текст, сохранив исходный язык.";
+"quickText.translate" = "Перевести текст";
+"quickText.translateDescription" = "Перевести текст на язык интерфейса, а если он уже на этом языке — на английский.";
+"common.unknownError" = "Неизвестная ошибка";
+"Fix ${text}" = "Исправить ${text}";
+"Translate ${text}" = "Перевести ${text}";

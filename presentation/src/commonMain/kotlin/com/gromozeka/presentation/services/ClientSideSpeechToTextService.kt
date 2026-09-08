@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.remote.protocol.RemoteAudioRecording
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 
@@ -21,12 +24,12 @@ object NoOpClientSideSpeechToTextService : ClientSideSpeechToTextService {
     override fun isEnabled(): Boolean = false
 
     override suspend fun transcribe(recording: RemoteAudioRecording): String =
-        error("Client-side speech-to-text is not available")
+        throw LocalizedTextException(localizedText("voice.clientSttUnavailable"))
 
     override suspend fun transcribe(
         chunk: RemoteLiveAudioChunk,
         language: String,
         prompt: String?,
     ): String =
-        error("Client-side speech-to-text is not available")
+        throw LocalizedTextException(localizedText("voice.clientSttUnavailable"))
 }

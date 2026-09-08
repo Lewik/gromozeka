@@ -1,0 +1,11 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"native.shortcuts.toggleRecording" = "음성 녹음 시작 또는 중지";
+"native.shortcuts.toggleRecordingDescription" = "음성 메시지 녹음을 시작하거나 녹음을 중지하고 메시지를 보냅니다.";
+"native.shortcuts.textParameter" = "텍스트";
+"quickText.fix" = "텍스트 교정";
+"quickText.fixDescription" = "원래 언어를 유지하며 텍스트를 교정합니다.";
+"quickText.translate" = "텍스트 번역";
+"quickText.translateDescription" = "텍스트를 인터페이스 언어로 번역합니다. 이미 그 언어로 작성되었다면 영어로 번역합니다.";
+"common.unknownError" = "알 수 없는 오류";
+"Fix ${text}" = "${text} 교정";
+"Translate ${text}" = "${text} 번역";

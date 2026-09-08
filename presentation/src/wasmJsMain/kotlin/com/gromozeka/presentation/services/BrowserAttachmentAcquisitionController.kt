@@ -3,6 +3,9 @@ package com.gromozeka.presentation.services
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.ArtifactUpload
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
 import kotlinx.coroutines.await
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,11 +41,11 @@ class BrowserAttachmentAcquisitionController : AttachmentAcquisitionController {
         scope.launch {
             while (isActive) {
                 val payload = awaitBrowserExternalAttachments().await()?.toString() ?: break
-                runCatching { json.decodeFromString<BrowserExternalAttachmentPayload>(payload) }
+                runCatching { json.decodeFromString<BrowserAttachmentPayload>(payload) }
                     .onSuccess { external ->
                         val error = external.error
                         if (error != null) {
-                            _externalEvents.emit(AttachmentAcquisitionEvent.Failed(error))
+                            _externalEvents.emit(AttachmentAcquisitionEvent.Failed(error.localizedText()))
                         } else {
                             _externalEvents.emit(
                                 AttachmentAcquisitionEvent.Acquired(
@@ -54,7 +57,7 @@ class BrowserAttachmentAcquisitionController : AttachmentAcquisitionController {
                     .onFailure { error ->
                         _externalEvents.emit(
                             AttachmentAcquisitionEvent.Failed(
-                                error.message ?: "Failed to read dropped files",
+                                error.asAttachmentFailure(),
                             )
                         )
                     }
@@ -62,14 +65,20 @@ class BrowserAttachmentAcquisitionController : AttachmentAcquisitionController {
         }
     }
 
-    override suspend fun pickAttachments(): List<ArtifactUpload> =
-        json.decodeFromString<List<BrowserFile>>(
+    override suspend fun pickAttachments(): List<ArtifactUpload> {
+        val payload = json.decodeFromString<BrowserAttachmentPayload>(
             pickBrowserAttachments(ArtifactLimits.MAX_FILE_BYTES).await().toString()
         )
-            .map(::toArtifactUpload)
+        payload.error?.let { throw LocalizedTextException(it.localizedText()) }
+        return payload.files.map(::toArtifactUpload)
+    }
 
     override suspend fun captureScreenshot(): ArtifactUpload? {
-        val dataUrl = captureBrowserScreenshot().await()?.toString() ?: return null
+        val payload = json.decodeFromString<BrowserScreenshotPayload>(
+            captureBrowserScreenshot().await().toString()
+        )
+        payload.error?.let { throw LocalizedTextException(it.localizedText()) }
+        val dataUrl = payload.dataUrl ?: return null
         return ArtifactUpload(
             fileName = "screenshot-${Clock.System.now().toEpochMilliseconds()}.png",
             mediaType = "image/png",
@@ -112,14 +121,54 @@ private data class BrowserFile(
 )
 
 @Serializable
-private data class BrowserExternalAttachmentPayload(
+private data class BrowserAttachmentPayload(
     val files: List<BrowserFile> = emptyList(),
-    val error: String? = null,
+    val error: BrowserAttachmentFailure? = null,
 )
+
+@Serializable
+private data class BrowserScreenshotPayload(
+    val dataUrl: String? = null,
+    val error: BrowserAttachmentFailure? = null,
+)
+
+@Serializable
+private data class BrowserAttachmentFailure(
+    val code: BrowserAttachmentFailureCode,
+    val fileName: String? = null,
+    val diagnostic: String? = null,
+) {
+    fun localizedText(): LocalizedText {
+        val reason = when (code) {
+            BrowserAttachmentFailureCode.FILE_TOO_LARGE -> localizedText(
+                "client.attachment.fileTooLarge",
+                "file" to (fileName?.let(LocalizedText::Literal) ?: localizedText("chat.attachment.generic")),
+                "limit" to ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024),
+            )
+            BrowserAttachmentFailureCode.FILE_READ_FAILED -> localizedText(
+                "client.attachment.readFailed",
+                "file" to (fileName?.let(LocalizedText::Literal) ?: localizedText("chat.attachment.generic")),
+            )
+            BrowserAttachmentFailureCode.ATTACHMENT_FAILED -> localizedText("client.attachment.failed")
+            BrowserAttachmentFailureCode.SCREENSHOT_UNAVAILABLE -> localizedText("client.attachment.screenshotUnavailable")
+            BrowserAttachmentFailureCode.SCREENSHOT_FAILED -> localizedText("client.attachment.screenshotFailed")
+        }
+        return attachmentFailureText(reason, diagnostic)
+    }
+}
+
+@Serializable
+private enum class BrowserAttachmentFailureCode {
+    FILE_TOO_LARGE,
+    FILE_READ_FAILED,
+    ATTACHMENT_FAILED,
+    SCREENSHOT_UNAVAILABLE,
+    SCREENSHOT_FAILED,
+}
 
 @JsFun(
     """
-    maxBytes => new Promise((resolve, reject) => {
+    maxBytes => new Promise(resolve => {
         const input = document.createElement("input");
         input.type = "file";
         input.multiple = true;
@@ -133,7 +182,7 @@ private data class BrowserExternalAttachmentPayload(
         };
         const readFile = file => new Promise((readResolve, readReject) => {
             if (file.size > maxBytes) {
-                readReject(new Error(file.name + " exceeds the " + Math.floor(maxBytes / 1048576) + " MB limit"));
+                readReject({ code: "FILE_TOO_LARGE", fileName: file.name });
                 return;
             }
             const reader = new FileReader();
@@ -142,18 +191,31 @@ private data class BrowserExternalAttachmentPayload(
                 type: file.type || "",
                 dataUrl: String(reader.result || "")
             });
-            reader.onerror = () => readReject(reader.error || new Error("Failed to read selected file"));
-            reader.readAsDataURL(file);
+            reader.onerror = () => readReject({
+                code: "FILE_READ_FAILED", fileName: file.name, diagnostic: reader.error?.message || null
+            });
+            try {
+                reader.readAsDataURL(file);
+            } catch (error) {
+                readReject({
+                    code: "FILE_READ_FAILED", fileName: file.name,
+                    diagnostic: error instanceof Error ? error.message : String(error)
+                });
+            }
         });
         input.addEventListener("change", async () => {
             try {
-                finish(JSON.stringify(await Promise.all(Array.from(input.files || []).map(readFile))));
+                finish(JSON.stringify({ files: await Promise.all(Array.from(input.files || []).map(readFile)) }));
             } catch (error) {
-                input.remove();
-                reject(error);
+                finish(JSON.stringify({
+                    error: error?.code === "FILE_TOO_LARGE" || error?.code === "FILE_READ_FAILED" ? error : {
+                        code: "ATTACHMENT_FAILED",
+                        diagnostic: error instanceof Error ? error.message : String(error)
+                    }
+                }));
             }
         }, { once: true });
-        input.addEventListener("cancel", () => finish("[]"), { once: true });
+        input.addEventListener("cancel", () => finish(JSON.stringify({ files: [] })), { once: true });
         document.body.appendChild(input);
         input.click();
     })
@@ -169,18 +231,28 @@ private external fun pickBrowserAttachments(maxBytes: Int): Promise<JsAny?>
 
         const state = { queue: [], waiter: null };
         const readFile = file => new Promise((resolve, reject) => {
+            const fileName = file.name || ("pasted-" + Date.now());
             if (file.size > maxBytes) {
-                reject(new Error((file.name || "Attachment") + " exceeds the " + Math.floor(maxBytes / 1048576) + " MB limit"));
+                reject({ code: "FILE_TOO_LARGE", fileName });
                 return;
             }
             const reader = new FileReader();
             reader.onload = () => resolve({
-                name: file.name || ("pasted-" + Date.now()),
+                name: fileName,
                 type: file.type || "",
                 dataUrl: String(reader.result || "")
             });
-            reader.onerror = () => reject(reader.error || new Error("Failed to read attached file"));
-            reader.readAsDataURL(file);
+            reader.onerror = () => reject({
+                code: "FILE_READ_FAILED", fileName, diagnostic: reader.error?.message || null
+            });
+            try {
+                reader.readAsDataURL(file);
+            } catch (error) {
+                reject({
+                    code: "FILE_READ_FAILED", fileName,
+                    diagnostic: error instanceof Error ? error.message : String(error)
+                });
+            }
         });
         const deliver = payload => {
             if (state.waiter) {
@@ -198,7 +270,10 @@ private external fun pickBrowserAttachments(maxBytes: Int): Promise<JsAny?>
                 deliver(JSON.stringify({ files: await Promise.all(files.map(readFile)) }));
             } catch (error) {
                 deliver(JSON.stringify({
-                    error: error instanceof Error ? error.message : String(error),
+                    error: error?.code === "FILE_TOO_LARGE" || error?.code === "FILE_READ_FAILED" ? error : {
+                        code: "ATTACHMENT_FAILED",
+                        diagnostic: error instanceof Error ? error.message : String(error)
+                    },
                     files: []
                 }));
             }
@@ -271,7 +346,7 @@ private external fun browserDisplayCaptureSupported(): Boolean
     """
     async () => {
         if (!navigator.mediaDevices?.getDisplayMedia) {
-            throw new Error("Screen capture is not supported by this browser");
+            return JSON.stringify({ error: { code: "SCREENSHOT_UNAVAILABLE" } });
         }
         let stream = null;
         try {
@@ -292,23 +367,35 @@ private external fun browserDisplayCaptureSupported(): Boolean
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const context = canvas.getContext("2d");
-            if (!context) throw new Error("Browser canvas is unavailable");
+            if (!context) return JSON.stringify({ error: { code: "SCREENSHOT_FAILED" } });
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return await new Promise((resolve, reject) => {
+            const dataUrl = await new Promise((resolve, reject) => {
                 canvas.toBlob(blob => {
                     if (!blob) {
-                        reject(new Error("Failed to encode screenshot"));
+                        reject({ code: "SCREENSHOT_FAILED" });
                         return;
                     }
                     const reader = new FileReader();
                     reader.onload = () => resolve(String(reader.result || ""));
-                    reader.onerror = () => reject(reader.error || new Error("Failed to read screenshot"));
-                    reader.readAsDataURL(blob);
+                    reader.onerror = () => reject({
+                        code: "SCREENSHOT_FAILED", diagnostic: reader.error?.message || null
+                    });
+                    try {
+                        reader.readAsDataURL(blob);
+                    } catch (error) {
+                        reject(error);
+                    }
                 }, "image/png");
             });
+            return JSON.stringify({ dataUrl });
         } catch (error) {
-            if (error?.name === "NotAllowedError" || error?.name === "AbortError") return null;
-            throw error;
+            if (error?.name === "NotAllowedError" || error?.name === "AbortError") return JSON.stringify({});
+            return JSON.stringify({
+                error: error?.code === "SCREENSHOT_FAILED" ? error : {
+                    code: "SCREENSHOT_FAILED",
+                    diagnostic: error instanceof Error ? error.message : String(error)
+                }
+            });
         } finally {
             stream?.getTracks().forEach(track => track.stop());
         }

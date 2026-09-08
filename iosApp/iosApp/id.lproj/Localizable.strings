@@ -1,0 +1,11 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"native.shortcuts.toggleRecording" = "Mulai atau hentikan rekaman suara";
+"native.shortcuts.toggleRecordingDescription" = "Mulai merekam pesan suara, atau hentikan rekaman dan kirim pesannya.";
+"native.shortcuts.textParameter" = "Teks";
+"quickText.fix" = "Perbaiki teks";
+"quickText.fixDescription" = "Perbaiki teks tanpa mengubah bahasa aslinya.";
+"quickText.translate" = "Terjemahkan teks";
+"quickText.translateDescription" = "Terjemahkan teks ke bahasa antarmuka Anda, atau ke bahasa Inggris jika teks sudah menggunakan bahasa tersebut.";
+"common.unknownError" = "Kesalahan tidak diketahui";
+"Fix ${text}" = "Perbaiki ${text}";
+"Translate ${text}" = "Terjemahkan ${text}";

@@ -79,7 +79,7 @@ class QuickTextActionApplicationServiceTest {
             },
         )
 
-        val result = service.runAction(action.id, "helo")
+        val result = service.runAction(action.id, "helo", interfaceLanguage = "en")
 
         assertEquals("hello", result.text)
         assertEquals(selection, runtimeProvider.selection)

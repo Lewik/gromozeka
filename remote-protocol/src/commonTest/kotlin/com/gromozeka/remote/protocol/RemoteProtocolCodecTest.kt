@@ -1,5 +1,7 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
+
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillFile
 import com.gromozeka.domain.model.AgentSkillPackageSource
@@ -191,14 +193,17 @@ class RemoteProtocolCodecTest {
             id = "speech-availability-1",
             payload = SpeechCaptureAvailabilityResponse(
                 available = false,
-                unavailableReason = "Worker is offline",
+                unavailableReason = SpeechAvailabilityFailure(
+                    SpeechAvailabilityFailure.Code.UNAVAILABLE, diagnostic = "Worker is offline",
+                ),
             ),
         )
         val decodedAvailability = RemoteProtocolCodec.decodeServerText(
             RemoteProtocolCodec.encodeServerText(availability)
         ).payload as SpeechCaptureAvailabilityResponse
         assertFalse(decodedAvailability.available)
-        assertEquals("Worker is offline", decodedAvailability.unavailableReason)
+        assertEquals(SpeechAvailabilityFailure.Code.UNAVAILABLE, decodedAvailability.unavailableReason?.code)
+        assertEquals("Worker is offline", decodedAvailability.unavailableReason?.diagnostic)
     }
 
     @Test
@@ -739,6 +744,7 @@ class RemoteProtocolCodecTest {
             payload = RunQuickTextActionRequest(
                 actionId = QuickTextAction.FIX_TEXT_ID,
                 text = "helo",
+                interfaceLanguage = "he",
             ),
         )
         val decodedRun = RemoteProtocolCodec.decodeClientBinary(
@@ -747,6 +753,7 @@ class RemoteProtocolCodecTest {
 
         assertEquals(QuickTextAction.FIX_TEXT_ID, decodedRun.actionId)
         assertEquals("helo", decodedRun.text)
+        assertEquals("he", decodedRun.interfaceLanguage)
 
         val configuredAction = QuickTextAction.defaults().first().copy(
             agentId = AgentDefinition.Id("quick-text-agent"),

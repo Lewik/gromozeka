@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gromozeka.domain.model.Prompt
 import com.gromozeka.presentation.services.TabPromptService
 import klog.KLoggers
 
@@ -28,9 +29,10 @@ fun TabPromptsPanel(
     tabPromptService: TabPromptService,
     modifier: Modifier = Modifier,
 ) {
+    val translation by rememberUpdatedState(LocalTranslation.current)
     var availablePrompts by remember { mutableStateOf<List<TabPromptService.TabPromptOption>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(isVisible) {
         if (!isVisible) return@LaunchedEffect
@@ -42,7 +44,7 @@ fun TabPromptsPanel(
         }.onSuccess { prompts ->
             availablePrompts = prompts
         }.onFailure { throwable ->
-            error = throwable.message ?: throwable::class.simpleName ?: "Unknown error"
+            error = throwable.message ?: throwable::class.simpleName ?: translation.text("prompts.unknown_error")
             log.warn(throwable) { "Failed to load tab prompts: ${throwable.message}" }
         }
         isLoading = false
@@ -70,13 +72,13 @@ fun TabPromptsPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Agent",
+                        translation.text("prompts.panel.title"),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
 
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = translation.text("prompts.close"))
                     }
                 }
 
@@ -101,7 +103,7 @@ fun TabPromptsPanel(
 
                         error != null -> {
                             Text(
-                                text = "Failed to load prompts: $error",
+                                text = translation.text("prompts.load_failed", "error" to error.orEmpty()),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -109,7 +111,7 @@ fun TabPromptsPanel(
 
                         availablePrompts.isEmpty() -> {
                             Text(
-                                text = "No prompts available",
+                                text = translation.text("prompts.none_available"),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -168,6 +170,11 @@ private fun PromptFileItem(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
+    val promptScopeLabel = when (prompt.type) {
+        is Prompt.Type.Global -> translation.text("prompts.scope.global")
+        is Prompt.Type.Project -> translation.text("prompts.scope.project")
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -190,13 +197,13 @@ private fun PromptFileItem(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "${prompt.type} - ${prompt.id}",
+                    "$promptScopeLabel - ${prompt.id}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (isSelected) {
                     Text(
-                        "Order: ${selectedIndex + 1} of $totalSelected",
+                        translation.text("prompts.order_position", "position" to (selectedIndex + 1), "total" to totalSelected),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -212,7 +219,7 @@ private fun PromptFileItem(
                 ) {
                     Icon(
                         Icons.Default.ArrowUpward,
-                        contentDescription = "Move up",
+                        contentDescription = translation.text("prompts.move_up"),
                         tint = if (selectedIndex > 0) {
                             MaterialTheme.colorScheme.primary
                         } else {
@@ -227,7 +234,7 @@ private fun PromptFileItem(
                 ) {
                     Icon(
                         Icons.Default.ArrowDownward,
-                        contentDescription = "Move down",
+                        contentDescription = translation.text("prompts.move_down"),
                         tint = if (selectedIndex < totalSelected - 1) {
                             MaterialTheme.colorScheme.primary
                         } else {

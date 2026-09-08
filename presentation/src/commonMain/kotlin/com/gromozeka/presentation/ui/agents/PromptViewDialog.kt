@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.agents
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +18,7 @@ fun PromptViewDialog(
     onDismiss: () -> Unit,
     onEdit: (() -> Unit)? = null
 ) {
+    val translation = LocalTranslation.current
     BasicGromozekaDialog(onDismissRequest = onDismiss) {
         Surface(
             shape = MaterialTheme.shapes.large,
@@ -36,8 +38,8 @@ fun PromptViewDialog(
 
                 Text(
                     text = when (val type = prompt.type) {
-                        is Prompt.Type.Global -> "Global prompt"
-                        is Prompt.Type.Project -> "Project prompt"
+                        is Prompt.Type.Global -> translation.text("prompts.type.global")
+                        is Prompt.Type.Project -> translation.text("prompts.type.project")
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -72,14 +74,14 @@ fun PromptViewDialog(
                 ) {
                     onEdit?.let { editAction ->
                         Button(onClick = editAction) {
-                            Text("Open in IDEA")
+                            Text(translation.text("prompts.open_idea"))
                         }
                         
                         Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     TextButton(onClick = onDismiss) {
-                        Text("Close")
+                        Text(translation.text("prompts.close"))
                     }
                 }
             }

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gromozeka interface translation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "locale", "name", "direction", "messages"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "locale": {
+      "type": "string",
+      "description": "BCP 47 locale code, such as en, he, pt-BR or zh-Hant.",
+      "minLength": 2
+    },
+    "name": {
+      "type": "string",
+      "description": "Language autonym or the user's chosen personal translation name.",
+      "minLength": 1
+    },
+    "direction": {"enum": ["LTR", "RTL"]},
+    "messages": {
+      "type": "object",
+      "description": "Stable identifiers from the English source catalog. Key completeness and argument signatures are validated against that catalog.",
+      "additionalProperties": {"$ref": "#/$defs/message"}
+    }
+  },
+  "$defs": {
+    "message": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {
+          "type": "object",
+          "description": "Cardinal plural forms for the package locale; other is always required. {count} is supplied by the renderer.",
+          "required": ["other"],
+          "propertyNames": {"enum": ["zero", "one", "two", "few", "many", "other"]},
+          "additionalProperties": {"type": "string", "minLength": 1}
+        }
+      ]
+    }
+  }
+}

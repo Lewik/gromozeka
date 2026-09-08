@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.presentation.services.translation.data.Translation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -55,6 +56,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.GromozekaMarkdown
 import com.gromozeka.presentation.ui.GromozekaMarkdownNode
 import com.gromozeka.presentation.ui.visibleMarkdownBlocks
+import com.gromozeka.presentation.ui.displayTitle
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
@@ -659,6 +661,7 @@ private fun CollapseButton(
     isCollapsed: Boolean,
     onClick: () -> Unit,
 ) {
+    val localization = LocalTranslation.current
     DisableSelection {
         Box(
             modifier = Modifier
@@ -667,7 +670,7 @@ private fun CollapseButton(
         ) {
             Icon(
                 imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                contentDescription = if (isCollapsed) localization.text("runtime.expandDescription") else localization.text("runtime.collapseDescription"),
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(20.dp),
             )
@@ -680,6 +683,7 @@ private fun GenericContentItem(
     content: Conversation.Message.ContentItem,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
+    val localization = LocalTranslation.current
     when (content) {
         is Conversation.Message.ContentItem.ToolCall -> error("Tool calls require an activity segment")
 
@@ -687,14 +691,14 @@ private fun GenericContentItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(Icons.Default.Image, contentDescription = "Image")
+            Icon(Icons.Default.Image, contentDescription = localization.text("chat.attachment.image"))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center,
             ) {
                 when (val source = content.source) {
                     is Conversation.Message.ImageSource.Base64ImageSource -> Text(
-                        LocalTranslation.current.imageDisplayText.format(
+                        LocalTranslation.current.format("imageDisplayText",
                             source.mediaType,
                             source.data.length,
                         )
@@ -704,9 +708,9 @@ private fun GenericContentItem(
                     is Conversation.Message.ImageSource.FileImageSource -> Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.Image, contentDescription = "Image")
+                        Icon(Icons.Default.Image, contentDescription = localization.text("chat.attachment.image"))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("File: ${source.fileId}")
+                        Text(localization.text("chat.attachment.remoteFile", "fileId" to source.fileId))
                     }
                 }
             }
@@ -716,7 +720,7 @@ private fun GenericContentItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(Icons.Default.AttachFile, contentDescription = "Document")
+            Icon(Icons.Default.AttachFile, contentDescription = localization.text("chat.attachment.document"))
             when (val source = content.source) {
                 is Conversation.Message.DocumentSource.Base64DocumentSource ->
                     Text("${source.fileName} · ${source.mediaType}")
@@ -737,7 +741,7 @@ private fun GenericContentItem(
                     } else {
                         Icons.Default.AttachFile
                     },
-                    contentDescription = "Attachment",
+                    contentDescription = localization.text("chat.attachment.generic"),
                 )
                 Column {
                     Text(content.artifact.fileName)
@@ -761,7 +765,7 @@ private fun GenericContentItem(
         ) {
             Icon(
                 imageVector = Icons.Default.Warning,
-                contentDescription = "Parse error",
+                contentDescription = localization.text("chat.attachment.parseError"),
                 tint = MaterialTheme.colorScheme.error,
             )
             Column(modifier = Modifier.weight(1f)) {
@@ -782,6 +786,7 @@ internal fun ArtifactImagePreview(
     artifact: com.gromozeka.domain.model.Artifact.Reference,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
+    val localization = LocalTranslation.current
     var bitmap by remember(artifact.id) { mutableStateOf<ImageBitmap?>(null) }
     var failed by remember(artifact.id) { mutableStateOf(false) }
 
@@ -803,7 +808,7 @@ internal fun ArtifactImagePreview(
         )
 
         failed -> Text(
-            text = "Preview unavailable",
+            text = localization.text("chat.attachment.previewUnavailable"),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -827,6 +832,7 @@ private fun Long.formatArtifactSize(): String = when {
 
 @Composable
 private fun MessageError(message: Conversation.Message) {
+    val localization = LocalTranslation.current
     val error = message.error ?: return
     Row(
         modifier = Modifier
@@ -837,7 +843,7 @@ private fun MessageError(message: Conversation.Message) {
     ) {
         Icon(
             Icons.Default.Warning,
-            contentDescription = "Error",
+            contentDescription = localization.text("chat.error.title"),
             tint = MaterialTheme.colorScheme.error,
         )
         Text(
@@ -852,16 +858,17 @@ private fun MessageError(message: Conversation.Message) {
 private fun ContextCompactionResultItem(
     content: Conversation.Message.ContentItem.ContextCompactionResult,
 ) {
+    val localization = LocalTranslation.current
     val title = when (content.origin) {
-        Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED -> "Context compacted"
-        Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY -> "Context compacted by policy"
-        Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO -> "Provider compacted context"
-        Conversation.Message.ContentItem.ContextCompactionResult.Origin.RUNTIME_MIGRATION -> "Migration compact created"
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED -> localization.text("chat.compaction.userRequested")
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY -> localization.text("chat.compaction.policy")
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO -> localization.text("chat.compaction.provider")
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.RUNTIME_MIGRATION -> localization.text("chat.compaction.migration")
     }
     val details = when (val payload = content.payload) {
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text.trim()
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
-            providerCompactionDetails(content.providerScope?.provider, payload.state)
+            providerCompactionDetails(content.providerScope?.provider, payload.state, localization)
     }
 
     Surface(
@@ -892,17 +899,17 @@ private fun ContextCompactionResultItem(
     }
 }
 
-private fun providerCompactionDetails(provider: String?, state: JsonObject): String {
+private fun providerCompactionDetails(provider: String?, state: JsonObject, localization: Translation): String {
     val metadata = state["compact_metadata"] as? JsonObject
     val trigger = metadata?.get("trigger")?.jsonPrimitive?.contentOrNull
         ?: state["trigger"]?.jsonPrimitive?.contentOrNull
     val preTokens = metadata?.get("pre_tokens")?.jsonPrimitive?.longOrNull
         ?: metadata?.get("preTokens")?.jsonPrimitive?.longOrNull
     return buildList {
-        add(provider ?: "unknown provider")
-        add("provider-managed compaction")
+        add(provider ?: localization.text("chat.compaction.unknownProvider"))
+        add(localization.text("chat.compaction.providerManaged"))
         trigger?.let(::add)
-        preTokens?.let { add("before ${it.toString().reversed().chunked(3).joinToString(",").reversed()} tokens") }
+        preTokens?.let { add(localization.plural("chat.compaction.tokensBefore", it)) }
     }.joinToString(" · ")
 }
 
@@ -912,6 +919,7 @@ private fun InstructionChips(
     modifier: Modifier = Modifier,
 ) {
     if (instructions.isEmpty()) return
+    val translation = LocalTranslation.current
 
     DisableSelection {
         FlowRow(
@@ -925,7 +933,7 @@ private fun InstructionChips(
                     onClick = {},
                     label = {
                         Text(
-                            text = instruction.title,
+                            text = instruction.displayTitle(translation),
                             style = MaterialTheme.typography.labelSmall,
                         )
                     },

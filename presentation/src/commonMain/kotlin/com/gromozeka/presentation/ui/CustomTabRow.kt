@@ -29,6 +29,7 @@ fun CustomTabRow(
     onRenameConversation: (Conversation.Id, String) -> Unit,
     coroutineScope: CoroutineScope,
 ) {
+    val localization = LocalTranslation.current
     var conversationIdToRename by remember { mutableStateOf<Conversation.Id?>(null) }
     var renameCurrentName by remember { mutableStateOf("") }
 
@@ -45,7 +46,7 @@ fun CustomTabRow(
             divider = {},
         ) {
             // Projects tab (index 0)
-            OptionalTooltip("Проекты") {
+            OptionalTooltip(localization.text("projectsTabTooltip")) {
                 Tab(
                     selected = selectedTabIndex == 0,
                     onClick = {
@@ -56,14 +57,14 @@ fun CustomTabRow(
                     modifier = Modifier.testTag(UiTestTag.ProjectsTab.value),
                     text = {
                         Row(verticalAlignment = Alignment.Companion.CenterVertically) {
-                            Icon(Icons.Default.Folder, contentDescription = "Projects")
+                            Icon(Icons.Default.Folder, contentDescription = localization.text("projectsTabTooltip"))
                         }
                     }
                 )
             }
 
             // Agents tab (index 1) - NEW
-            OptionalTooltip("Агенты") {
+            OptionalTooltip(localization.text("chat.navigation.agents")) {
                 Tab(
                     selected = selectedTabIndex == 1,
                     onClick = {
@@ -74,13 +75,13 @@ fun CustomTabRow(
                     modifier = Modifier.testTag(UiTestTag.AgentsTab.value),
                     text = {
                         Row(verticalAlignment = Alignment.Companion.CenterVertically) {
-                            Icon(Icons.Default.Face, contentDescription = "Agents")
+                            Icon(Icons.Default.Face, contentDescription = localization.text("chat.navigation.agents"))
                         }
                     }
                 )
             }
 
-            OptionalTooltip("Настройки") {
+            OptionalTooltip(localization.text("settingsTooltip")) {
                 Tab(
                     selected = selectedTabIndex == 2,
                     onClick = {
@@ -91,17 +92,17 @@ fun CustomTabRow(
                     modifier = Modifier.testTag(UiTestTag.SettingsTab.value),
                     text = {
                         Row(verticalAlignment = Alignment.Companion.CenterVertically) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            Icon(Icons.Default.Settings, contentDescription = localization.text("settingsTooltip"))
                             if (!isCompactLayout) {
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Настройки")
+                                Text(localization.text("settingsTooltip"))
                             }
                         }
                     }
                 )
             }
 
-            OptionalTooltip("Live interpreter") {
+            OptionalTooltip(localization.text("chat.navigation.liveInterpreter")) {
                 Tab(
                     selected = selectedTabIndex == 3,
                     onClick = {
@@ -112,10 +113,10 @@ fun CustomTabRow(
                     modifier = Modifier.testTag(UiTestTag.LiveTab.value),
                     text = {
                         Row(verticalAlignment = Alignment.Companion.CenterVertically) {
-                            Icon(Icons.Default.Mic, contentDescription = "Live")
+                            Icon(Icons.Default.Mic, contentDescription = localization.text("chat.navigation.live"))
                             if (!isCompactLayout) {
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Live")
+                                Text(localization.text("chat.navigation.live"))
                             }
                         }
                     }
@@ -126,7 +127,7 @@ fun CustomTabRow(
             tabs.forEachIndexed { index, tab ->
                 val isLoading = tab.isWaitingForResponse.collectAsState().value
                 val conversation = conversations[tab.conversationId]
-                val tabTitle = conversation?.effectiveDisplayName() ?: "Conversation"
+                val tabTitle = conversation?.effectiveDisplayName(localization) ?: localization.text("chat.navigation.conversationFallback")
                 val tabIndex = index + 4
 
                 Tab(
@@ -182,7 +183,7 @@ fun CustomTabRow(
                                         .align(Alignment.Companion.CenterStart)
                                         .offset(x = (-8).dp)
                                 ) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit tab name")
+                                    Icon(Icons.Default.Edit, contentDescription = localization.text("chat.navigation.renameTab"))
                                 }
                             }
 

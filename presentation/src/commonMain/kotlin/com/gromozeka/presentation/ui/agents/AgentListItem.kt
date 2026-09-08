@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.agents
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.*
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
@@ -22,6 +23,7 @@ fun AgentListItem(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val translation = LocalTranslation.current
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -49,7 +51,7 @@ fun AgentListItem(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 AssistChip(
                                     onClick = {},
-                                    label = { Text(if (isDefault) "Global · default" else "Global") },
+                                    label = { Text(if (isDefault) translation.text("agents.scope.global_default") else translation.text("agents.scope.global")) },
                                     enabled = false
                                 )
                             }
@@ -71,13 +73,13 @@ fun AgentListItem(
                 
                 Row {
                     IconButton(onClick = onCopy) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate agent")
+                        Icon(Icons.Default.ContentCopy, contentDescription = translation.text("agents.duplicate"))
                     }
                     onSetDefault?.let { action ->
                         IconButton(onClick = action, enabled = !isDefault) {
                             Icon(
                                 Icons.Default.Star,
-                                contentDescription = if (isDefault) "Default agent" else "Set as default",
+                                contentDescription = if (isDefault) translation.text("agents.default_agent") else translation.text("agents.set_default"),
                                 tint = if (isDefault) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
@@ -87,12 +89,12 @@ fun AgentListItem(
                         }
                     }
                     IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit agent")
+                        Icon(Icons.Default.Edit, contentDescription = translation.text("agents.edit"))
                     }
                     IconButton(onClick = onDelete, enabled = !isDefault) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Delete agent",
+                            contentDescription = translation.text("agents.delete"),
                             tint = if (isDefault) {
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             } else {
@@ -106,7 +108,7 @@ fun AgentListItem(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Prompts: ${agent.prompts.size}",
+                text = translation.plural("agents.prompt_count", agent.prompts.size.toLong()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

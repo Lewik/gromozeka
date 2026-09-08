@@ -20,6 +20,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check interface translations
+        run: |
+          python3 scripts/localization.py validate
+          python3 scripts/localization.py context
+          python3 scripts/generate-native-localization.py --check
+          python3 scripts/generate-font-resources.py --check
       - name: Run Compose E2E
         run: bash e2e-tests/run.sh
       - name: Upload E2E diagnostics

@@ -36,11 +36,21 @@ class QuickTextActionApplicationService(
     override suspend fun runAction(
         actionId: QuickTextAction.Id,
         text: String,
+        interfaceLanguage: String,
     ): QuickTextActionResult {
         require(text.isNotBlank()) { "Quick text action input must not be blank" }
+        require(interfaceLanguage.isNotBlank()) { "Interface language must not be blank" }
 
         val action = listActions().firstOrNull { it.id == actionId }
             ?: error("Quick text action not found: ${actionId.value}")
+        val actionPrompt = if (
+            action.id == QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID &&
+            action.prompt == QuickTextAction.DEFAULT_TRANSLATION_PROMPT
+        ) {
+            action.prompt.replace("{interfaceLanguage}", interfaceLanguage)
+        } else {
+            action.prompt
+        }
         val agent = action.agentId?.let { agentId ->
             agentRepository.findById(agentId)
                 ?: error("Quick text action Agent not found: ${agentId.value}")
@@ -75,7 +85,7 @@ class QuickTextActionApplicationService(
                             Conversation.Message.ContentItem.UserMessage(
                                 """
                                     Action:
-                                    ${action.prompt}
+                                    ${actionPrompt}
 
                                     Input text is between the delimiter lines below.
                                     BEGIN_$delimiter

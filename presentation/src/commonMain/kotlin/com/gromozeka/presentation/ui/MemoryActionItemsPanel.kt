@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.Card
@@ -65,6 +66,7 @@ fun MemoryActionItemsPanel(
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
 ) {
+    val translation = LocalTranslation.current
     var includeClosed by remember(conversationId) { mutableStateOf(false) }
     var response by remember(conversationId) { mutableStateOf<MemoryActionItemsResponse?>(null) }
     var isLoading by remember(conversationId) { mutableStateOf(false) }
@@ -132,7 +134,7 @@ fun MemoryActionItemsPanel(
                     error != null -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = error ?: "Failed to load memory action items",
+                                text = error ?: translation.text("memory.actionItems.loadFailed"),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -142,7 +144,7 @@ fun MemoryActionItemsPanel(
                     response?.actionItems?.isEmpty() != false -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = if (includeClosed) "No memory action items" else "No active memory action items",
+                                text = if (includeClosed) translation.text("memory.actionItems.empty") else translation.text("memory.actionItems.activeEmpty"),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -174,6 +176,7 @@ private fun MemoryActionItemsHeader(
     onRefresh: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -182,13 +185,18 @@ private fun MemoryActionItemsHeader(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Memory Action Items",
+                    text = translation.text("memory.actionItems.title"),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
                 response?.let {
                     Text(
-                        text = "${it.counts.activeCount()} active / ${it.actionItems.size} shown / ${it.revision.take(8)}",
+                        text = translation.text(
+                            "memory.actionItems.summary",
+                            "activeCount" to it.counts.activeCount(),
+                            "shownCount" to it.actionItems.size,
+                            "revision" to it.revision.take(8),
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -196,11 +204,11 @@ private fun MemoryActionItemsHeader(
             }
 
             IconButton(onClick = onRefresh, enabled = !isLoading) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh memory action items")
+                Icon(Icons.Default.Refresh, contentDescription = translation.text("memory.actionItems.refreshDescription"))
             }
 
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close memory action items")
+                Icon(Icons.Default.Close, contentDescription = translation.text("memory.actionItems.closeDescription"))
             }
         }
 
@@ -208,7 +216,7 @@ private fun MemoryActionItemsHeader(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Show closed",
+                text = translation.text("memory.actionItems.showClosed"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -220,7 +228,12 @@ private fun MemoryActionItemsHeader(
             Spacer(modifier = Modifier.width(12.dp))
             response?.counts?.let { counts ->
                 Text(
-                    text = "open ${counts.open}, progress ${counts.inProgress}, blocked ${counts.blocked}",
+                    text = translation.text(
+                        "memory.actionItems.statusCounts",
+                        "openCount" to counts.open,
+                        "inProgressCount" to counts.inProgress,
+                        "blockedCount" to counts.blocked,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -231,6 +244,7 @@ private fun MemoryActionItemsHeader(
 
 @Composable
 private fun MemoryActionItemCard(actionItem: MemoryActionItem) {
+    val translation = LocalTranslation.current
     var expanded by remember(actionItem.id) { mutableStateOf(false) }
     val statusColor = actionItem.status.taskStatusColor()
 
@@ -241,7 +255,7 @@ private fun MemoryActionItemCard(actionItem: MemoryActionItem) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 MemoryActionItemPill(
-                    text = actionItem.status.name,
+                    text = actionItem.status.displayName(translation),
                     color = statusColor
                 )
 
@@ -256,7 +270,11 @@ private fun MemoryActionItemCard(actionItem: MemoryActionItem) {
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${actionItem.priority.name} / ${formatRelativeTime(actionItem.updatedAt)}",
+                        text = translation.text(
+                            "memory.actionItems.priorityAndUpdated",
+                            "priority" to actionItem.priority.displayName(translation),
+                            "updatedAt" to formatRelativeTime(actionItem.updatedAt, translation),
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -268,7 +286,11 @@ private fun MemoryActionItemCard(actionItem: MemoryActionItem) {
                 ) {
                     Icon(
                         imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Collapse actionItem" else "Expand actionItem"
+                        contentDescription = if (expanded) {
+                            translation.text("memory.actionItems.collapseDescription")
+                        } else {
+                            translation.text("memory.actionItems.expandDescription")
+                        }
                     )
                 }
             }
@@ -277,26 +299,31 @@ private fun MemoryActionItemCard(actionItem: MemoryActionItem) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 actionItem.description?.takeIf { it.isNotBlank() }?.let {
-                    MemoryActionItemField("Description", it)
+                    MemoryActionItemField(translation.text("memory.actionItems.descriptionLabel"), it)
                 }
 
-                MemoryActionItemField("Scope", actionItem.scope.displayText())
+                MemoryActionItemField(translation.text("memory.actionItems.scopeLabel"), actionItem.scope.displayText())
 
                 actionItem.dueAt?.let {
-                    MemoryActionItemField("Due", it.toString())
+                    MemoryActionItemField(translation.text("memory.actionItems.dueLabel"), it.toString())
                 }
 
                 if (actionItem.acceptanceCriteria.isNotEmpty()) {
-                    MemoryActionItemField("Acceptance", actionItem.acceptanceCriteria.joinToString("\n") { "- $it" })
+                    MemoryActionItemField(translation.text("memory.actionItems.acceptanceLabel"), actionItem.acceptanceCriteria.joinToString("\n") { "- $it" })
                 }
 
                 if (actionItem.blockers.isNotEmpty()) {
-                    MemoryActionItemField("Blockers", actionItem.blockers.joinToString("\n") { "- $it" })
+                    MemoryActionItemField(translation.text("memory.actionItems.blockersLabel"), actionItem.blockers.joinToString("\n") { "- $it" })
                 }
 
                 MemoryActionItemField(
-                    label = "Debug",
-                    value = "id=${actionItem.id.value}\nconfidence=${"%.2f".format(actionItem.confidence)}\nevidence=${actionItem.evidenceRefs.size}"
+                    label = translation.text("memory.actionItems.debugLabel"),
+                    value = translation.text(
+                        "memory.actionItems.debugDetails",
+                        "id" to actionItem.id.value,
+                        "confidence" to "%.2f".format(actionItem.confidence),
+                        "evidenceCount" to actionItem.evidenceRefs.size,
+                    )
                 )
             }
         }
@@ -362,3 +389,23 @@ private fun MemoryScope.displayText(): String =
         is MemoryScope.Environment -> text
         is MemoryScope.Document -> text
     }
+
+private fun MemoryActionItem.Status.displayName(translation: Translation): String =
+    translation.text(
+        when (this) {
+            MemoryActionItem.Status.OPEN -> "memory.actionItems.status.open"
+            MemoryActionItem.Status.IN_PROGRESS -> "memory.actionItems.status.inProgress"
+            MemoryActionItem.Status.BLOCKED -> "memory.actionItems.status.blocked"
+            MemoryActionItem.Status.DONE -> "memory.actionItems.status.done"
+            MemoryActionItem.Status.CANCELLED -> "memory.actionItems.status.cancelled"
+        }
+    )
+
+private fun MemoryActionItem.Priority.displayName(translation: Translation): String =
+    translation.text(
+        when (this) {
+            MemoryActionItem.Priority.LOW -> "memory.actionItems.priority.low"
+            MemoryActionItem.Priority.NORMAL -> "memory.actionItems.priority.normal"
+            MemoryActionItem.Priority.HIGH -> "memory.actionItems.priority.high"
+        }
+    )

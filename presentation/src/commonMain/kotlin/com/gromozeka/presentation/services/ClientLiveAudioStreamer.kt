@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
@@ -230,7 +233,7 @@ object NoOpClientLiveAudioStreamer : ClientLiveAudioStreamer {
         scope: CoroutineScope,
         onChunk: suspend (RemoteLiveAudioChunk) -> Unit,
     ): ClientLiveAudioStreamingSession =
-        error("Client live audio streaming is not available on this platform")
+        throw LocalizedTextException(localizedText("voice.clientStreamingUnavailable"))
 }
 
 fun ClientRecordedAudio.toRemoteLiveAudioChunk(sequenceNumber: Int): RemoteLiveAudioChunk =

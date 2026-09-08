@@ -39,6 +39,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import com.gromozeka.client.RemoteAuthenticationException
+import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.remote.protocol.AuthenticationErrorCode
 import com.gromozeka.remote.protocol.DeviceConnectionChallenge
 import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
@@ -57,7 +60,7 @@ data class RemoteAuthenticationInput(
 fun RemoteAuthenticationScreen(
     initialized: Boolean,
     submitting: Boolean,
-    error: String?,
+    error: Throwable?,
     onSubmit: (RemoteAuthenticationInput, deviceToken: String?) -> Unit,
     onStartDeviceConnection: suspend () -> DeviceConnectionChallenge,
     onConsumeDeviceConnection: suspend (String) -> DeviceConnectionConsumeResponse,
@@ -65,11 +68,12 @@ fun RemoteAuthenticationScreen(
     onDeviceConnected: (DeviceConnectionConsumeResponse) -> Unit,
     preferPassword: Boolean = false,
 ) {
+    val translation = LocalTranslation.current
     var usePassword by remember(initialized, preferPassword) {
         mutableStateOf(!initialized || preferPassword)
     }
     var challenge by remember(initialized) { mutableStateOf<DeviceConnectionChallenge?>(null) }
-    var connectionMessage by remember(initialized) { mutableStateOf<String?>(null) }
+    var connectionMessage by remember(initialized) { mutableStateOf<AuthenticationConnectionMessage?>(null) }
     var connectionStarting by remember(initialized) { mutableStateOf(false) }
     var restartKey by remember(initialized) { mutableIntStateOf(0) }
     val currentOnDeviceConnected by rememberUpdatedState(onDeviceConnected)
@@ -84,7 +88,10 @@ fun RemoteAuthenticationScreen(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            connectionMessage = error.message ?: "Could not start device connection"
+            connectionMessage = AuthenticationConnectionMessage(
+                AuthenticationConnectionStatus.START_FAILED,
+                error,
+            )
         } finally {
             connectionStarting = false
         }
@@ -99,28 +106,36 @@ fun RemoteAuthenticationScreen(
                 onConsumeDeviceConnection(activeChallenge.deviceToken)
             } catch (error: CancellationException) {
                 throw error
+            } catch (error: RemoteAuthenticationException) {
+                connectionMessage = AuthenticationConnectionMessage(AuthenticationConnectionStatus.RETRYING, error)
+                when (error.code) {
+                    AuthenticationErrorCode.REQUEST_FAILED,
+                    AuthenticationErrorCode.RATE_LIMITED,
+                    AuthenticationErrorCode.DEVICE_CONNECTION_RATE_LIMITED -> continue
+                    else -> return@LaunchedEffect
+                }
             } catch (_: Throwable) {
-                connectionMessage = "Connection interrupted. Retrying..."
+                connectionMessage = AuthenticationConnectionMessage(AuthenticationConnectionStatus.RETRYING)
                 continue
             }
             when (response.status) {
                 DeviceConnectionConsumeResponse.Status.PENDING -> connectionMessage = null
                 DeviceConnectionConsumeResponse.Status.CONNECTED -> {
-                    connectionMessage = "Connected"
+                    connectionMessage = AuthenticationConnectionMessage(AuthenticationConnectionStatus.CONNECTED)
                     currentOnDeviceConnected(response)
                     return@LaunchedEffect
                 }
                 DeviceConnectionConsumeResponse.Status.DENIED -> {
-                    connectionMessage = response.message ?: "Connection was denied"
+                    connectionMessage = AuthenticationConnectionMessage(AuthenticationConnectionStatus.DENIED)
                     return@LaunchedEffect
                 }
                 DeviceConnectionConsumeResponse.Status.EXPIRED -> {
-                    connectionMessage = response.message ?: "Connection code expired"
+                    connectionMessage = AuthenticationConnectionMessage(AuthenticationConnectionStatus.EXPIRED)
                     return@LaunchedEffect
                 }
             }
         }
-        connectionMessage = "Connection code expired"
+        connectionMessage = AuthenticationConnectionMessage(AuthenticationConnectionStatus.EXPIRED)
     }
 
     Surface(
@@ -142,9 +157,9 @@ fun RemoteAuthenticationScreen(
             ) {
                 Text(
                     text = when {
-                        !initialized -> "Create the first owner"
-                        usePassword -> "Sign in to Gromozeka"
-                        else -> "Connect this device"
+                        !initialized -> translation.text("auth.bootstrap.title")
+                        usePassword -> translation.text("auth.signIn.title")
+                        else -> translation.text("auth.device.title")
                     },
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -152,9 +167,9 @@ fun RemoteAuthenticationScreen(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = when {
-                        !initialized -> "The bootstrap token is printed once in the Server log."
-                        usePassword -> "Use the account stored on this Gromozeka Server."
-                        else -> "Approve this connection from a device where you are already signed in."
+                        !initialized -> translation.text("auth.bootstrap.description")
+                        usePassword -> translation.text("auth.signIn.description")
+                        else -> translation.text("auth.device.description")
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -174,7 +189,7 @@ fun RemoteAuthenticationScreen(
                         onClick = { usePassword = true },
                         enabled = !submitting,
                     ) {
-                        Text("Use username and password instead")
+                        Text(translation.text("auth.device.usePassword"))
                     }
                 } else {
                     PasswordAuthenticationContent(
@@ -190,7 +205,7 @@ fun RemoteAuthenticationScreen(
                             onClick = { usePassword = false },
                             enabled = !submitting && challenge != null,
                         ) {
-                            Text("Use connection code")
+                            Text(translation.text("auth.device.useConnectionCode"))
                         }
                     }
                 }
@@ -203,10 +218,11 @@ fun RemoteAuthenticationScreen(
 private fun DeviceConnectionChallengeContent(
     challenge: DeviceConnectionChallenge?,
     starting: Boolean,
-    message: String?,
+    message: AuthenticationConnectionMessage?,
     verificationUrl: String?,
     onRetry: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     if (starting) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -214,17 +230,21 @@ private fun DeviceConnectionChallengeContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-            Text("Creating a secure connection code...")
+            Text(translation.text("auth.device.creatingCode"))
         }
         return
     }
     if (challenge == null || verificationUrl == null) {
         message?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
+            Text(
+                text = it.failure?.authenticationErrorText(translation, it.status.messageId)
+                    ?: translation.text(it.status.messageId),
+                color = MaterialTheme.colorScheme.error,
+            )
             Spacer(Modifier.height(12.dp))
         }
         OutlinedButton(onClick = onRetry) {
-            Text("Try again")
+            Text(translation.text("auth.device.retry"))
         }
         return
     }
@@ -241,7 +261,7 @@ private fun DeviceConnectionChallengeContent(
         ) {
             Image(
                 painter = rememberQrCodePainter(verificationUrl),
-                contentDescription = "Connection QR code",
+                contentDescription = translation.text("auth.device.qrCodeDescription"),
                 modifier = Modifier.padding(14.dp),
             )
         }
@@ -251,15 +271,16 @@ private fun DeviceConnectionChallengeContent(
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = "Scan the QR code or enter this code in Settings > Security on an authorized device.",
+            text = translation.text("auth.device.instructions"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (message != null) {
             Text(
-                text = message,
+                text = message.failure?.authenticationErrorText(translation, message.status.messageId)
+                    ?: translation.text(message.status.messageId),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (message == "Connected") {
+                color = if (message.status == AuthenticationConnectionStatus.CONNECTED) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.error
@@ -273,10 +294,11 @@ private fun DeviceConnectionChallengeContent(
 private fun PasswordAuthenticationContent(
     initialized: Boolean,
     submitting: Boolean,
-    error: String?,
+    error: Throwable?,
     deviceToken: String?,
     onSubmit: (RemoteAuthenticationInput, deviceToken: String?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var username by remember(initialized) { mutableStateOf("") }
     var displayName by remember(initialized) { mutableStateOf("") }
     val bootstrapTokenState = remember(initialized) { TextFieldState() }
@@ -313,7 +335,7 @@ private fun PasswordAuthenticationContent(
         OutlinedSecretTextField(
             state = bootstrapTokenState,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Bootstrap token") },
+            label = { Text(translation.text("auth.bootstrap.tokenLabel")) },
             enabled = !submitting,
         )
         Spacer(Modifier.height(12.dp))
@@ -322,7 +344,7 @@ private fun PasswordAuthenticationContent(
         value = username,
         onValueChange = { username = it },
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("Username") },
+        label = { Text(translation.text("auth.field.username")) },
         singleLine = true,
         enabled = !submitting,
         keyboardOptions = KeyboardOptions(
@@ -337,7 +359,7 @@ private fun PasswordAuthenticationContent(
             value = displayName,
             onValueChange = { displayName = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Display name") },
+            label = { Text(translation.text("auth.field.displayName")) },
             singleLine = true,
             enabled = !submitting,
         )
@@ -346,7 +368,7 @@ private fun PasswordAuthenticationContent(
     OutlinedSecretTextField(
         state = passwordState,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("Password") },
+        label = { Text(translation.text("auth.field.password")) },
         enabled = !submitting,
         imeAction = if (initialized) ImeAction.Done else ImeAction.Next,
         onKeyboardAction = if (initialized) submit else null,
@@ -356,11 +378,11 @@ private fun PasswordAuthenticationContent(
         OutlinedSecretTextField(
             state = passwordConfirmationState,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Confirm password") },
+            label = { Text(translation.text("auth.field.confirmPassword")) },
             enabled = !submitting,
             isError = passwordMismatch,
             supportingText = if (passwordMismatch) {
-                { Text("Passwords do not match") }
+                { Text(translation.text("auth.passwordMismatch")) }
             } else {
                 null
             },
@@ -371,7 +393,7 @@ private fun PasswordAuthenticationContent(
     if (error != null) {
         Spacer(Modifier.height(12.dp))
         Text(
-            text = error,
+            text = error.authenticationErrorText(translation),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
@@ -388,7 +410,46 @@ private fun PasswordAuthenticationContent(
                 strokeWidth = 2.dp,
             )
         } else {
-            Text(if (initialized) "Sign in" else "Create owner")
+            Text(if (initialized) translation.text("auth.signIn.action") else translation.text("auth.bootstrap.action"))
         }
     }
+}
+
+private data class AuthenticationConnectionMessage(
+    val status: AuthenticationConnectionStatus,
+    val failure: Throwable? = null,
+)
+
+private enum class AuthenticationConnectionStatus(val messageId: String) {
+    START_FAILED("auth.device.startFailed"),
+    RETRYING("auth.device.retrying"),
+    CONNECTED("auth.device.connected"),
+    DENIED("auth.device.denied"),
+    EXPIRED("auth.device.codeExpired"),
+}
+
+internal fun Throwable.authenticationErrorText(
+    translation: Translation,
+    fallbackMessageId: String = "auth.error.requestFailed",
+): String = if (this is RemoteAuthenticationException) {
+    translation.text(
+        when (code) {
+            AuthenticationErrorCode.INVALID_CREDENTIALS -> "auth.error.invalidCredentials"
+            AuthenticationErrorCode.RATE_LIMITED -> "auth.error.tooManyAttempts"
+            AuthenticationErrorCode.BOOTSTRAP_REJECTED -> "auth.error.bootstrapRejected"
+            AuthenticationErrorCode.INVALID_REQUEST -> "auth.error.invalidRequest"
+            AuthenticationErrorCode.AUTHENTICATION_REQUIRED -> "auth.error.authenticationRequired"
+            AuthenticationErrorCode.HTTPS_REQUIRED -> "auth.error.httpsRequired"
+            AuthenticationErrorCode.CROSS_ORIGIN_REJECTED -> "auth.error.crossOriginRejected"
+            AuthenticationErrorCode.REQUEST_TOO_LARGE -> "auth.error.requestTooLarge"
+            AuthenticationErrorCode.REQUEST_READ_FAILED -> "auth.error.requestReadFailed"
+            AuthenticationErrorCode.RUNTIME_NOT_INITIALIZED -> "auth.error.runtimeNotInitialized"
+            AuthenticationErrorCode.DEVICE_CONNECTION_RATE_LIMITED -> "auth.error.tooManyDeviceRequests"
+            AuthenticationErrorCode.INVALID_DEVICE_CONNECTION -> "auth.error.invalidDeviceCode"
+            AuthenticationErrorCode.DEVICE_CONNECTION_FAILED -> "auth.error.deviceConnectionFailed"
+            AuthenticationErrorCode.REQUEST_FAILED -> "auth.error.requestFailed"
+        }
+    )
+} else {
+    message ?: translation.text(fallbackMessageId)
 }

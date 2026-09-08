@@ -1,5 +1,6 @@
 package com.gromozeka.client
 
+import com.gromozeka.remote.protocol.AuthenticationErrorCode
 import com.gromozeka.remote.protocol.AuthenticationErrorResponse
 import com.gromozeka.remote.protocol.AuthenticationSessionResponse
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
@@ -89,8 +90,8 @@ class RemoteAuthenticationClient(
 
     suspend fun logout() {
         val response = httpClient.post("$baseUrl/auth/logout")
-        check(response.status.isSuccess()) {
-            response.bodyAsText().ifBlank { "Logout failed with HTTP ${response.status.value}" }
+        if (!response.status.isSuccess()) {
+            throw remoteAuthenticationFailure(response.bodyAsText(), response.status.value)
         }
     }
 
@@ -105,10 +106,7 @@ class RemoteAuthenticationClient(
         if (response.status.isSuccess()) {
             return response.body()
         }
-        val message = runCatching { response.body<AuthenticationErrorResponse>().message }
-            .getOrElse { response.bodyAsText() }
-            .ifBlank { "Authentication failed with HTTP ${response.status.value}" }
-        error(message)
+        throw remoteAuthenticationFailure(response.bodyAsText(), response.status.value)
     }
 }
 
@@ -117,3 +115,21 @@ internal fun websocketUrlToHttpBase(url: String): String =
         .replaceFirst("wss://", "https://")
         .replaceFirst("ws://", "http://")
         .removeSuffix("/ws")
+
+class RemoteAuthenticationException(
+    val code: AuthenticationErrorCode,
+    val diagnosticMessage: String?,
+    val httpStatus: Int,
+) : IllegalStateException(diagnosticMessage ?: code.name)
+
+private val authenticationErrorJson = Json { ignoreUnknownKeys = true }
+
+internal fun remoteAuthenticationFailure(body: String, httpStatus: Int): RemoteAuthenticationException {
+    val response = runCatching { authenticationErrorJson.decodeFromString<AuthenticationErrorResponse>(body) }
+        .getOrNull()
+    return RemoteAuthenticationException(
+        code = response?.code ?: AuthenticationErrorCode.REQUEST_FAILED,
+        diagnosticMessage = response?.message ?: body.takeIf(String::isNotBlank),
+        httpStatus = httpStatus,
+    )
+}
