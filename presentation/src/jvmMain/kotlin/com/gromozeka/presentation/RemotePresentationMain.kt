@@ -18,7 +18,6 @@ import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.QuickTextAction
-import com.gromozeka.domain.model.UserDeviceSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -80,10 +79,7 @@ internal suspend fun startRemotePresentation(
     )
     scope.launch {
         remoteApp.components.settingsService.settingsFlow.collect { settings ->
-            val shortcuts = (settings.userDeviceSettings as? UserDeviceSettings.Desktop)
-                ?.inputSettings
-                ?.keyboardShortcuts
-                ?: return@collect
+            val shortcuts = settings.userProfile.keyboardShortcuts
             globalHotkeyController.applySettings(shortcuts) { event ->
                 when (event.phase) {
                     GlobalHotkeyEventPhase.PRESSED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {

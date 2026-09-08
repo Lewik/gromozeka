@@ -11,9 +11,7 @@ fun KeyboardShortcutValidationIssue.localizedText(): LocalizedText = when (code)
         "action" to action.localizedText(),
         "scope" to requireNotNull(scope).localizedText(),
     )
-    KeyboardShortcutValidationCode.GLOBAL_MODIFIERS_REQUIRED -> localizedText("settingsUi.shortcutGlobalRequiresModifiers")
-    KeyboardShortcutValidationCode.GLOBAL_ESCAPE_CONSUMED -> localizedText("settingsUi.shortcutEscapeConsumed")
-    KeyboardShortcutValidationCode.GLOBAL_ESCAPE_SHARED -> localizedText("settingsUi.shortcutEscapeShared")
+    KeyboardShortcutValidationCode.COMPOSER_ENTER_RESERVED -> localizedText("settingsUi.shortcutComposerEnterReserved")
     KeyboardShortcutValidationCode.CONFLICT -> localizedText(
         "settingsUi.shortcutConflict",
         "actions" to LocalizedText.Joined(conflictingActions.map { it.localizedText() }),

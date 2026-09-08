@@ -7,5 +7,7 @@ enum class ClientPlatform(
     ANDROID(showSoftwareKeyboardControls = true),
     IOS(showSoftwareKeyboardControls = true),
     WEB_DESKTOP(showSoftwareKeyboardControls = false),
-    WEB_TOUCH(showSoftwareKeyboardControls = true),
+    WEB_TOUCH(showSoftwareKeyboardControls = true);
+
+    val isBrowser: Boolean get() = this == WEB_DESKTOP || this == WEB_TOUCH
 }

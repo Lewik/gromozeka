@@ -20,7 +20,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -36,6 +35,7 @@ import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.LiveVoiceInputState
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.EnterKeyAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -45,7 +45,7 @@ import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.advancedPttGestures
-import com.gromozeka.presentation.ui.matches
+import com.gromozeka.presentation.ui.messageInputShortcuts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -87,6 +87,7 @@ internal fun MessageInput(
     onCaptureScreenshot: () -> Unit,
     onRemoveArtifact: (Artifact.Id) -> Unit,
     onInsertCurrentLocation: (() -> Unit)? = null,
+    enterKeyAction: EnterKeyAction = EnterKeyAction.NEW_LINE,
     editLastMessageShortcut: KeyboardShortcutBinding? = null,
     onEditLastUserMessage: () -> Boolean = { false },
 ) {
@@ -135,10 +136,9 @@ internal fun MessageInput(
         textFieldLineHeight + textFieldPadding.calculateTopPadding() + textFieldPadding.calculateBottomPadding(),
     )
 
-    fun submitInput() {
-        if ((userInput.isBlank() && composerArtifacts.isEmpty()) || artifactUploadInProgress) return
-        coroutineScope.launch {
-            onSendMessage()
+    val submitInput: () -> Unit = {
+        if ((userInput.isNotBlank() || composerArtifacts.isNotEmpty()) && !artifactUploadInProgress) {
+            coroutineScope.launch { onSendMessage() }
         }
     }
 
@@ -310,27 +310,14 @@ internal fun MessageInput(
                     modifier = Modifier
                         .focusRequester(inputFocusRequester)
                         .onFocusChanged { inputFocused = it.isFocused }
-                        .onPreviewKeyEvent { event ->
-                            when {
-                                editLastMessageShortcut != null &&
-                                    textFieldValue.text.isEmpty() &&
-                                    event.matches(editLastMessageShortcut) -> {
-                                    if (event.type == KeyEventType.KeyDown) {
-                                        onEditLastUserMessage()
-                                    }
-                                    editLastMessageShortcut.consumeEvent
-                                }
-
-                                event.key == Key.Enter &&
-                                    event.isShiftPressed -> {
-                                    if (event.type == KeyEventType.KeyDown) {
-                                        submitInput()
-                                    }
-                                    true
-                                }
-                                else -> false
-                            }
-                        }
+                        .messageInputShortcuts(
+                            enterKeyAction = enterKeyAction,
+                            isComposing = { textFieldValue.composition != null },
+                            isEmpty = { textFieldValue.text.isEmpty() },
+                            editLastMessageShortcut = editLastMessageShortcut,
+                            onEditLastUserMessage = onEditLastUserMessage,
+                            onSubmit = submitInput,
+                        )
                         .weight(1f)
                         .testTag(UiTestTag.MessageInput.value),
                     placeholder = { Text("") },
@@ -370,7 +357,7 @@ internal fun MessageInput(
                         },
                     ) {
                         CompactButton(
-                            onClick = ::submitInput,
+                            onClick = submitInput,
                             modifier = Modifier
                                 .size(actionButtonSize)
                                 .testTag(UiTestTag.SendButton.value),
@@ -378,7 +365,10 @@ internal fun MessageInput(
                                 isWaitingForResponse && pendingMessagesCount > 0 ->
                                     localization.plural("chat.input.queueWithPending", pendingMessagesCount.toLong())
                                 isWaitingForResponse -> localization.text("chat.input.queue")
-                                else -> LocalTranslation.current.sendMessageTooltip
+                                else -> localization.text("chat.input.sendWithShortcut", "shortcut" to when (enterKeyAction) {
+                                    EnterKeyAction.NEW_LINE -> "Shift+Enter"
+                                    EnterKeyAction.SEND_MESSAGE -> "Enter"
+                                })
                             },
                         ) {
                             Icon(

@@ -59,6 +59,7 @@ interface GlobalHotkeyController {
         handler: (GlobalHotkeyEvent) -> Unit,
     )
     fun cleanup()
+    fun setRecordingShortcut(recording: Boolean) = Unit
     fun isSupported(): Boolean = false
     fun getImplementationType(): String = "none"
 }

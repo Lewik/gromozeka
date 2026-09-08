@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.KeyboardShortcutValidator
+import com.gromozeka.domain.model.KeyboardShortcutValidationSeverity
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
@@ -201,6 +203,9 @@ class SettingsService(
     fun getLogsDirectory(): Path = Path(logPath)
 
     private fun validateSettings(settings: Settings) {
+        val shortcutErrors = KeyboardShortcutValidator.validate(settings.userProfile.keyboardShortcuts)
+            .filter { it.severity == KeyboardShortcutValidationSeverity.ERROR }
+        require(shortcutErrors.isEmpty()) { shortcutErrors.joinToString { it.message } }
         validateLanguageCode(settings.userProfile.speechSettings.speechToText.mainLanguageCode)
         validateTtsSpeed(settings.userProfile.speechSettings.textToSpeech.speed)
     }

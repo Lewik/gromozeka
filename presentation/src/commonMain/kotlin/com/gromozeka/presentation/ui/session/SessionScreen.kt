@@ -19,7 +19,6 @@ import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.KeyboardShortcutScope
 import com.gromozeka.domain.model.Settings
-import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.LiveVoiceInputState
@@ -127,12 +126,10 @@ fun SessionScreen(
         expandedActivityKeys = uiState.expandedActivityKeys,
     )
     val runtimeStrings = LocalTranslation.current.runtime
-    val editLastMessageShortcut = remember(settings.userDeviceSettings) {
-        (settings.userDeviceSettings as? UserDeviceSettings.Desktop)
-            ?.inputSettings
-            ?.keyboardShortcuts
-            ?.binding(KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE)
-            ?.takeIf { it.enabled && it.scope == KeyboardShortcutScope.FOCUSED }
+    val editLastMessageShortcut = remember(settings.userProfile.keyboardShortcuts) {
+        settings.userProfile.keyboardShortcuts
+            .binding(KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE)
+            .takeIf { it.enabled && it.scope == KeyboardShortcutScope.FOCUSED }
     }
 
     Row(
@@ -648,6 +645,7 @@ fun SessionScreen(
                             onRemoveArtifact = viewModel::removeComposerArtifact,
                             onInsertCurrentLocation = onInsertCurrentLocation,
                             editLastMessageShortcut = editLastMessageShortcut,
+                            enterKeyAction = settings.userProfile.keyboardShortcuts.enterKeyAction,
                             onEditLastUserMessage = viewModel::startEditLatestUserMessage,
                         )
 
