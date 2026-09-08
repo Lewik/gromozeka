@@ -13,7 +13,6 @@ import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.time.Duration
 
 /**
@@ -61,6 +60,10 @@ class BraveWebSearchTool(
         }
         
         return try {
+            require(request.query.isNotBlank() && request.query.length <= 600 && request.query.trim().split(Regex("\\s+")).size <= 75) {
+                "Search query must contain at most 600 characters and 75 words"
+            }
+            require(request.count in 1..20 && request.offset in 0..9) { "Search count must be 1 to 20 and offset 0 to 9" }
             val url = buildString {
                 append("https://api.search.brave.com/res/v1/web/search")
                 append("?q=").append(URLEncoder.encode(request.query, "UTF-8"))
@@ -70,17 +73,18 @@ class BraveWebSearchTool(
 
             val httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(60))
                 .header("Accept", "application/json")
                 .header("X-Subscription-Token", apiKey)
                 .GET()
                 .build()
 
-            logger.debug("Brave Web Search: ${request.query} (count=${request.count})")
-            val response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
+            logger.debug("Brave Web Search request, count={}", request.count)
+            val response = httpClient.send(httpRequest, boundedWebBody())
 
             when (response.statusCode()) {
                 200 -> {
-                    val parsed = json.decodeFromString<BraveSearchResponse>(response.body())
+                    val parsed = json.decodeFromString<BraveSearchResponse>(response.body().toString(Charsets.UTF_8))
                     mapOf<String, Any>(
                         "success" to true,
                         "results" to (parsed.web?.results?.take(request.count)?.map { result ->
@@ -94,20 +98,21 @@ class BraveWebSearchTool(
                     )
                 }
                 else -> {
-                    logger.error("Brave API error: ${response.statusCode()} - ${response.body()}")
+                    logger.warn("Brave Search HTTP status {}", response.statusCode())
                     mapOf<String, Any>(
                         "success" to false,
                         "results" to emptyList<Map<String, Any>>(),
-                        "error" to "HTTP ${response.statusCode()}: ${response.body().take(200)}"
+                        "error" to "Brave Search HTTP ${response.statusCode()}"
                     )
                 }
             }
         } catch (e: Exception) {
-            logger.error("Brave Web Search failed", e)
+            if (e is InterruptedException) Thread.currentThread().interrupt()
+            logger.warn("Brave Web Search failed: {}", e.javaClass.simpleName)
             mapOf<String, Any>(
                 "success" to false,
                 "results" to emptyList<Map<String, Any>>(),
-                "error" to "Error: ${e.message}"
+                "error" to if (e is IllegalArgumentException) "Invalid search parameters" else "Brave Search request failed (${e.javaClass.simpleName})"
             )
         }
     }

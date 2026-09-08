@@ -380,7 +380,7 @@ data class BraveWebSearchRequest(
  * @see com.gromozeka.domain.service.WebSearchService.searchWeb (when created)
  */
 interface BraveWebSearchTool : Tool<BraveWebSearchRequest, Map<String, Any>> {
-    override val metadata get() = PreloadedServerToolMetadata
+    override val metadata get() = PreloadedServerToolMetadata.copy(logInput = false)
     
     override val name: String
         get() = "brave_web_search"
