@@ -130,11 +130,14 @@ An oversized mandatory request fails before the model call.
 - Ordinary text typography; CommonMark is converted to Telegram-supported HTML.
   Code fences retain an optional language. Long responses split with valid tags,
   entities and Unicode boundaries. Raw HTML is displayed literally.
-- One editable status message, a typing heartbeat and a Stop button during work.
-  Actual tool activity and readable reasoning use expandable quotations. Tool
+- One editable reply, a typing heartbeat and a Stop button during work. The same
+  message becomes the final answer, removes Stop and keeps actual tool activity
+  and readable reasoning in expandable quotations. A separate completed-status
+  message is not left behind. Oversized answers/details still split at Telegram's
+  message limit. Tool
   labels share the UI implementation and translation catalog. Redacted/encrypted
-  reasoning is never invented or disclosed. Assistant remarks are delivered when
-  their completed blocks arrive; there is no token streaming or progress LLM.
+  reasoning is never invented or disclosed. Completed assistant remarks update
+  that message during work; there is no token streaming or progress LLM.
 - Stop validates the initiator, chat and exact status/invocation. It requests a
   safe-boundary stop of that invocation, without stopping a later request. An
   already-running tool can finish; stale buttons cannot stop the next response.
@@ -146,7 +149,8 @@ An oversized mandatory request fails before the model call.
 - 429 responses respect `retry_after`. Uncertain sends are recorded as UNKNOWN
   and are not blindly retried: Telegram `sendMessage` has no idempotency key.
   The persisted Gromozeka response remains available. Status edits are safely
-  retryable; no delivery retry reruns the model.
+  retryable, including a final answer replacing its known status message; no
+  delivery retry reruns the model.
 - Only the last 50 settled invocations/deliveries remain in adapter state;
   unfinished work and the inbox are durable. The ordinary conversation archive
   is retained independently. Telegram only retains uncollected updates for a

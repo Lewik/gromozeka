@@ -40,6 +40,7 @@ data class TelegramInvocation(
     val publishedStatusText: String? = null,
     val statusAttempted: Boolean = false,
     val nextStatusAttemptAt: Long = 0,
+    val responseTexts: List<String> = emptyList(),
 )
 
 @Serializable
@@ -50,6 +51,7 @@ data class TelegramDelivery(
     val state: State = State.PENDING,
     val retryAtEpochSeconds: Long = 0,
     val telegramMessageId: Long? = null,
+    val replacesStatus: Boolean = false,
 ) {
     @Serializable
     enum class State { PENDING, SENDING, SENT, UNKNOWN, FAILED }

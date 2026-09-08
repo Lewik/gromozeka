@@ -49,6 +49,10 @@ class TelegramHttpApi(
         }
         if (body["ok"]?.jsonPrimitive?.booleanOrNull != true) {
             val code = body["error_code"]?.jsonPrimitive?.intOrNull ?: response.statusCode()
+            if (method == "editMessageText" && code == 400 &&
+                body.string("description")?.contains("message is not modified", ignoreCase = true) == true) {
+                return@runInterruptible buildJsonObject { put("message_id", parameters.getValue("message_id")) }
+            }
             if (code >= 500) throw TelegramDeliveryUncertain()
             throw TelegramApiFailure(code, body["parameters"]?.jsonObject?.get("retry_after")?.jsonPrimitive?.longOrNull)
         }

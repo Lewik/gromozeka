@@ -148,6 +148,73 @@ class TelegramChannelTest {
         assertTrue(api.calls.none { it.second.string("text")?.contains("PRIVATE OTHER TURN") == true })
     }
 
+    @Test fun `completed answer replaces its progress message instead of adding another message`() = runBlocking {
+        val repository = MemorySession(TelegramBotState(inbox = listOf(incoming(1, listOf(route)))))
+        val gateway = FakeGateway()
+        val api = FakeApi()
+        val processor = processor(repository, gateway, api)
+        processor.initialize(); processor.synchronize()
+        val progressId = assertNotNull(repository.state.invocations.single().statusMessageId)
+        gateway.complete = true
+        processor.synchronize(); processor.synchronize()
+        assertEquals(1, api.calls.count { it.first == "sendMessage" })
+        val finalEdit = api.calls.last { it.first == "editMessageText" }.second
+        assertEquals(progressId, finalEdit.long("message_id"))
+        assertTrue(finalEdit.string("text")!!.contains("reply"))
+        assertFalse(finalEdit.string("text")!!.contains("Completed"))
+        assertTrue(finalEdit.getValue("reply_markup").jsonObject.getValue("inline_keyboard").jsonArray.isEmpty())
+        assertEquals(progressId, repository.state.deliveries.single().telegramMessageId)
+    }
+
+    @Test fun `uncertain final edit retries the same message after restart without another model call`() = runBlocking {
+        var time = 100L
+        val repository = MemorySession(TelegramBotState(inbox = listOf(incoming(1, listOf(route)))))
+        val gateway = FakeGateway()
+        val api = FakeApi()
+        fun create() = TelegramBotProcessor(connection, api, gateway, repository, { null }, now = { time })
+        val first = create()
+        first.initialize(); first.synchronize()
+        val progressId = repository.state.invocations.single().statusMessageId
+        gateway.complete = true; api.failure = TelegramDeliveryUncertain()
+        first.synchronize()
+        assertEquals(TelegramDelivery.State.PENDING, repository.state.deliveries.single().state)
+        val resumed = create()
+        resumed.initialize(); resumed.synchronize()
+        assertEquals(1, api.replyCalls)
+        time = 111; api.failure = null
+        resumed.synchronize()
+        assertEquals(TelegramDelivery.State.SENT, repository.state.deliveries.single().state)
+        assertEquals(progressId, repository.state.deliveries.single().telegramMessageId)
+        assertEquals(1, api.calls.count { it.first == "sendMessage" })
+        assertEquals(1, gateway.submissions.size)
+    }
+
+    @Test fun `crash during a known final edit remains safely retryable`() = runBlocking {
+        val progressId = 77L
+        val item = invocation().copy(submitted = true, completed = true, statusAttempted = true, statusMessageId = progressId)
+        val delivery = TelegramDelivery("final", item.id, "reply", state = TelegramDelivery.State.SENDING, replacesStatus = true)
+        val repository = MemorySession(TelegramBotState(invocations = listOf(item), deliveries = listOf(delivery)))
+        val api = FakeApi()
+        val resumed = processor(repository, FakeGateway(), api)
+        resumed.initialize(); resumed.synchronize()
+        assertEquals(TelegramDelivery.State.SENT, repository.state.deliveries.single().state)
+        assertEquals(progressId, repository.state.deliveries.single().telegramMessageId)
+        assertEquals(listOf("editMessageText"), api.calls.map { it.first })
+    }
+
+    @Test fun `unknown progress send cannot create a duplicate final reply`() = runBlocking {
+        val repository = MemorySession(TelegramBotState(inbox = listOf(incoming(1, listOf(route)))))
+        val gateway = FakeGateway()
+        val api = FakeApi().apply { statusFailure = TelegramDeliveryUncertain() }
+        val processor = processor(repository, gateway, api)
+        processor.initialize(); processor.synchronize()
+        assertNull(repository.state.invocations.single().statusMessageId)
+        gateway.complete = true
+        processor.synchronize()
+        assertEquals(TelegramDelivery.State.UNKNOWN, repository.state.deliveries.single().state)
+        assertEquals(1, api.calls.count { it.first == "sendMessage" })
+    }
+
     @Test fun `known rate limit safely retries without another model call`() = runBlocking {
         var time = 100L
         val repository = MemorySession(TelegramBotState(inbox = listOf(incoming(1, listOf(route)))))
@@ -259,9 +326,11 @@ class TelegramChannelTest {
     }
     private class FakeApi(var failure: RuntimeException? = null) : TelegramApi {
         val calls = mutableListOf<Pair<String, JsonObject>>(); var replyCalls = 0
+        var statusFailure: RuntimeException? = null
         override suspend fun call(method: String, parameters: JsonObject): JsonElement {
             calls += method to parameters
-            if (method == "sendMessage" && parameters.string("text")?.contains("reply") == true) { replyCalls++; failure?.let { throw it } }
+            if (method in setOf("sendMessage", "editMessageText") && parameters.string("text")?.contains("reply") == true) { replyCalls++; failure?.let { throw it } }
+            else if (method == "sendMessage") statusFailure?.let { throw it }
             return buildJsonObject { put("message_id", calls.size); put("date", 100) }
         }
     }

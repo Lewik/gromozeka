@@ -8,6 +8,25 @@ import java.net.URI
 import kotlin.test.*
 
 class TelegramHttpApiTest {
+    @Test fun `already applied edit is an idempotent success but other bad requests fail`(): Unit = runBlocking {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        var description = "Bad Request: message is not modified"
+        server.createContext("/") { exchange ->
+            val body = buildJsonObject { put("ok", false); put("error_code", 400); put("description", description) }.toString().encodeToByteArray()
+            exchange.sendResponseHeaders(400, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val api = TelegramHttpApi("123:test", URI("http://127.0.0.1:${server.address.port}/"))
+            val parameters = buildJsonObject { put("chat_id", -123); put("message_id", 77); put("text", "reply") }
+            assertEquals(77, api.call("editMessageText", parameters).jsonObject.long("message_id"))
+            assertFailsWith<TelegramApiFailure> { api.call("sendMessage", parameters) }
+            description = "Bad Request: message to edit not found"
+            assertFailsWith<TelegramApiFailure> { api.call("editMessageText", parameters) }
+        } finally { server.stop(0) }
+    }
+
     @Test fun `external bytes renew file paths and enforce metadata and stream limits`() = runBlocking {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         var lookups = 0

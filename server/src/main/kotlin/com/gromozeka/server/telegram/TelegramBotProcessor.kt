@@ -20,7 +20,9 @@ class TelegramBotProcessor(
     suspend fun initialize() {
         state = session.load()
         save(state.copy(deliveries = state.deliveries.map {
-            if (it.state == TelegramDelivery.State.SENDING) it.copy(state = TelegramDelivery.State.UNKNOWN) else it
+            if (it.state == TelegramDelivery.State.SENDING) it.copy(state =
+                if (it.replacesStatus && invocation(it.invocationId).statusMessageId != null) TelegramDelivery.State.PENDING
+                else TelegramDelivery.State.UNKNOWN) else it
         }))
     }
 
@@ -135,7 +137,6 @@ class TelegramBotProcessor(
     private suspend fun consumeEvent(id: String, entry: ConversationRuntimeEventLogEntry) {
         var invocation = invocation(id)
         if (entry.conversationId != invocation.binding.conversationId || entry.sequence <= invocation.eventCursor) return
-        var deliveries = state.deliveries
         val event = entry.event
         if (event is ConversationRuntimeEvent.MessageEmitted && event.turnId?.value == id) {
             val rendering = TelegramMessageRendering(invocation.binding.locale)
@@ -143,14 +144,11 @@ class TelegramBotProcessor(
             invocation = invocation.copy(failed = invocation.failed || event.message.error != null,
                 activity = (invocation.activity + activities).takeLast(30))
             if (event.message.role == Conversation.Message.Role.ASSISTANT && event.message.error == null) {
-                val additions = rendering.message(event.message, invocation.agentName).mapIndexed { index, chunk ->
-                    TelegramDelivery("${event.message.id.value}:$index", id, chunk)
-                }
-                deliveries = deliveries + additions.filter { addition -> deliveries.none { it.id == addition.id } }
+                invocation = invocation.copy(responseTexts = invocation.responseTexts + rendering.messageTexts(event.message))
             }
         }
         invocation = invocation.copy(eventCursor = entry.sequence)
-        save(state.copy(invocations = state.invocations.map { if (it.id == id) invocation else it }, deliveries = deliveries))
+        update(invocation)
     }
 
     private suspend fun applySnapshot(id: String, snapshot: ConversationRuntimeSnapshot) {
@@ -176,7 +174,7 @@ class TelegramBotProcessor(
 
     private suspend fun publishStatus(id: String) {
         val invocation = invocation(id)
-        if (!current(invocation) || invocation.nextStatusAttemptAt > now()) return
+        if (!current(invocation) || invocation.completed || invocation.nextStatusAttemptAt > now()) return
         val problem = state.deliveries.any { it.invocationId == id && it.state in setOf(TelegramDelivery.State.UNKNOWN, TelegramDelivery.State.FAILED) }
         val text = TelegramMessageRendering(invocation.binding.locale).status(invocation, problem)
         if (invocation.publishedStatusText == text || invocation.statusMessageId == null && invocation.statusAttempted) return
@@ -198,7 +196,7 @@ class TelegramBotProcessor(
             if (error.code == 429) {
                 backoff(error)
                 update(invocation(id).copy(statusAttempted = !creating, nextStatusAttemptAt = state.nextApiAttemptAt))
-            } else update(invocation(id).copy(publishedStatusText = text))
+            } else update(invocation(id).copy(publishedStatusText = text, statusAttempted = !creating))
         } catch (_: TelegramDeliveryUncertain) {
             if (!creating) update(invocation(id).copy(nextStatusAttemptAt = now() + 10))
         }
@@ -206,22 +204,42 @@ class TelegramBotProcessor(
 
     private suspend fun deliver(id: String) {
         val delivery = state.deliveries.single { it.id == id }
+        if (state.deliveries.takeWhile { it.id != id }.any { it.invocationId == delivery.invocationId &&
+                it.state in setOf(TelegramDelivery.State.PENDING, TelegramDelivery.State.SENDING) }) return
         val invocation = invocation(delivery.invocationId)
         try { gateway.validate(invocation) } catch (_: TelegramBindingRejected) {
             updateDelivery(delivery.copy(state = TelegramDelivery.State.FAILED)); return
         }
+        val replacing = delivery.replacesStatus && invocation.statusMessageId != null
+        if (delivery.replacesStatus && !replacing && invocation.statusAttempted) {
+            updateDelivery(delivery.copy(state = TelegramDelivery.State.UNKNOWN)); return
+        }
+        if (delivery.replacesStatus && !replacing) update(invocation.copy(statusAttempted = true))
         updateDelivery(delivery.copy(state = TelegramDelivery.State.SENDING))
         try {
-            val result = api.call("sendMessage", buildJsonObject {
+            val result = api.call(if (replacing) "editMessageText" else "sendMessage", buildJsonObject {
                 put("chat_id", invocation.binding.chatId); put("text", delivery.text); put("parse_mode", "HTML")
                 put("link_preview_options", buildJsonObject { put("is_disabled", true) })
-                addReply(invocation)
+                if (replacing) put("message_id", invocation.statusMessageId!!) else addReply(invocation)
+                put("reply_markup", buildJsonObject { put("inline_keyboard", JsonArray(emptyList())) })
             }).jsonObject
-            updateDelivery(delivery.copy(state = TelegramDelivery.State.SENT, telegramMessageId = checkNotNull(result.long("message_id"))))
+            val messageId = if (replacing) invocation.statusMessageId!! else checkNotNull(result.long("message_id"))
+            save(state.copy(
+                invocations = state.invocations.map { if (it.id == invocation.id && delivery.replacesStatus)
+                    it.copy(statusMessageId = messageId, publishedStatusText = delivery.text) else it },
+                deliveries = state.deliveries.map { if (it.id == id) it.copy(state = TelegramDelivery.State.SENT, telegramMessageId = messageId) else it },
+            ))
         } catch (error: TelegramApiFailure) {
-            if (error.code == 429) { backoff(error); updateDelivery(delivery.copy(retryAtEpochSeconds = state.nextApiAttemptAt)) }
+            if (error.code == 429) {
+                backoff(error)
+                if (delivery.replacesStatus && !replacing) update(invocation(id = delivery.invocationId).copy(statusAttempted = false))
+                updateDelivery(delivery.copy(retryAtEpochSeconds = state.nextApiAttemptAt))
+            }
             else updateDelivery(delivery.copy(state = TelegramDelivery.State.FAILED))
-        } catch (_: TelegramDeliveryUncertain) { updateDelivery(delivery.copy(state = TelegramDelivery.State.UNKNOWN)) }
+        } catch (_: TelegramDeliveryUncertain) {
+            updateDelivery(delivery.copy(state = if (replacing) TelegramDelivery.State.PENDING else TelegramDelivery.State.UNKNOWN,
+                retryAtEpochSeconds = if (replacing) now() + 10 else 0))
+        }
     }
 
     private suspend fun handleCallback(callback: JsonObject) {
@@ -265,7 +283,14 @@ class TelegramBotProcessor(
             inbox = state.inbox.filter { incoming -> connection.bindings.any { it.key == incoming.binding.key } }))
     }
     private fun invocation(id: String): TelegramInvocation = state.invocations.single { it.id == id }
-    private suspend fun update(invocation: TelegramInvocation) = save(state.copy(invocations = state.invocations.map { if (it.id == invocation.id) invocation else it }))
+    private suspend fun update(invocation: TelegramInvocation) {
+        val additions = if (invocation.completed && state.deliveries.none { it.invocationId == invocation.id }) {
+            TelegramMessageRendering(invocation.binding.locale).presentation(invocation).mapIndexed { index, text ->
+                TelegramDelivery("${invocation.id}:$index", invocation.id, text, replacesStatus = index == 0)
+            }
+        } else emptyList()
+        save(state.copy(invocations = state.invocations.map { if (it.id == invocation.id) invocation else it }, deliveries = state.deliveries + additions))
+    }
     private suspend fun updateDelivery(delivery: TelegramDelivery) = save(state.copy(deliveries = state.deliveries.map { if (it.id == delivery.id) delivery else it }))
     private suspend fun save(value: TelegramBotState) {
         if (value == state) return

@@ -42,6 +42,22 @@ class TelegramRenderingTest {
         assertTrue(renderer.activity(Conversation.Message.ContentItem.Thinking("Actual explanation"))!!.contains("Actual explanation"))
     }
 
-    private fun parse(html: String) = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(InputSource(StringReader("<root>$html</root>")))
+    @Test fun `answer and expandable work share one message without a completed banner`() {
+        val route = TelegramAgentRoute(AgentDefinition.Id("agent"))
+        val binding = TelegramConversationBinding(-123, conversationId = Conversation.Id("group"), initiatorTelegramUserId = 42, routes = listOf(route))
+        val invocation = TelegramInvocation("turn", "bot", User.Id("owner"), binding, route, Conversation.Message.Id("root"), 7,
+            completed = true, agentName = "Agent", responseTexts = listOf("**The answer**"),
+            activity = listOf("Actual thinking <untrusted>", "🛠 Tool activity"))
+        val text = TelegramMessageRendering("en").presentation(invocation).single()
+        assertTrue(text.startsWith("<b>The answer</b>"))
+        assertTrue(text.contains("<blockquote expandable>"))
+        assertTrue(text.contains("Actual thinking &lt;untrusted&gt;"))
+        assertFalse(text.contains("Completed"))
+        assertValidHtml(text)
+        val long = invocation.copy(responseTexts = listOf("```kotlin\n" + "Ж😀 <>&\n".repeat(1500) + "```"))
+        TelegramMessageRendering("en").presentation(long).forEach(::assertValidHtml)
+    }
+
+    private fun parse(html: String) = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(InputSource(StringReader("<root>${html.replace("<blockquote expandable>", "<blockquote expandable=\"\">")}</root>")))
     private fun assertValidHtml(html: String) { assertTrue(html.length <= 4096); parse(html) }
 }

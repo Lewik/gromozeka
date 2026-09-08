@@ -102,8 +102,10 @@ class TelegramLiveRoundTripTest {
                         check(deliveries.none { it.state in setOf(TelegramDelivery.State.FAILED, TelegramDelivery.State.UNKNOWN) }) {
                             "Telegram delivery failed or is uncertain; inspect the group before retrying"
                         }
-                        if (invocation.completed && deliveries.isNotEmpty() && deliveries.all { it.state == TelegramDelivery.State.SENT } &&
-                            invocation.publishedStatusText?.contains("Completed") == true) {
+                        if (invocation.completed && deliveries.isNotEmpty() && deliveries.all { it.state == TelegramDelivery.State.SENT }) {
+                            assertEquals(1, deliveries.size)
+                            assertEquals(invocation.statusMessageId, deliveries.single().telegramMessageId)
+                            assertFalse(invocation.publishedStatusText.orEmpty().contains("Completed"))
                             println("Telegram round trip passed: invocation=${invocation.id} status=${invocation.statusMessageId} replies=${deliveries.map { it.telegramMessageId }}")
                             break
                         }

@@ -19,38 +19,34 @@ internal class TelegramMessageRendering(private val locale: String) {
         else -> null
     }
 
-    fun status(invocation: TelegramInvocation, deliveryProblem: Boolean): String = buildString {
-        append(telegramEscape(invocation.agentName.ifBlank { "Gromozeka" }))
-        append(" · "); append(telegramEscape(telegramText(locale, invocation.statusKey)))
-        if (deliveryProblem) append(" · ⚠️ Gromozeka")
-        if (invocation.activity.isNotEmpty()) {
-            append("\n<blockquote expandable>")
-            var remaining = 2800
-            val activity = invocation.activity.joinToString("\n\n").takeLast(2800).dropWhile { it.isLowSurrogate() }
-            for (codePoint in activity.codePoints().toArray()) {
-                val escaped = telegramEscape(String(Character.toChars(codePoint)))
-                if (escaped.length > remaining) break
-                append(escaped); remaining -= escaped.length
-            }
-            append("</blockquote>")
-        }
+    fun status(invocation: TelegramInvocation, deliveryProblem: Boolean): String = presentation(invocation, deliveryProblem).first()
+
+    fun presentation(invocation: TelegramInvocation, deliveryProblem: Boolean = false): List<String> {
+        val answer = invocation.responseTexts.joinToString("\n\n")
+        val status = if (!invocation.completed || invocation.failed || invocation.stopRequested || answer.isBlank()) {
+            "${invocation.agentName.ifBlank { "Gromozeka" }} · ${telegramText(locale, invocation.statusKey)}"
+        } else ""
+        val prefix = if (invocation.binding.routes.size > 1 && status.isBlank()) "${invocation.agentName}\n" else ""
+        val footer = listOf(status, if (deliveryProblem) "⚠️ Gromozeka" else "").filter(String::isNotBlank).joinToString(" · ")
+        val activity = invocation.activity.joinToString("\n\n").takeLast(2800).dropWhile { it.isLowSurrogate() }
+        return TelegramMarkdown.render(answer, prefix, footer, activity)
     }
 
-    fun message(message: Conversation.Message, agentName: String): List<String> = message.content.flatMap { item ->
+    fun messageTexts(message: Conversation.Message): List<String> = message.content.mapNotNull { item ->
         val text = when (item) {
             is Conversation.Message.ContentItem.UserMessage -> item.text
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             else -> ""
         }
-        if (text.isBlank()) emptyList() else TelegramMarkdown.render(text, "$agentName\n")
+        text.takeIf(String::isNotBlank)
     }
 }
 
 internal object TelegramMarkdown {
     private val parser = Parser.builder().build()
 
-    fun render(markdown: String, prefix: String = ""): List<String> {
-        if (markdown.isBlank()) return emptyList()
+    fun render(markdown: String, prefix: String = "", footer: String = "", expandableText: String = ""): List<String> {
+        if (markdown.isBlank() && footer.isBlank() && expandableText.isBlank()) return emptyList()
         val output = HtmlChunks(prefix)
         fun children(node: Node, depth: Int, quoted: Boolean, render: (Node, Int, Boolean) -> Unit) {
             var child = node.firstChild
@@ -104,6 +100,13 @@ internal object TelegramMarkdown {
             }
         }
         render(parser.parse(markdown))
+        if (footer.isNotBlank()) output.text(footer)
+        if (expandableText.isNotBlank()) {
+            output.text("\n")
+            output.open("blockquote", " expandable")
+            output.text(expandableText)
+            output.close("blockquote")
+        }
         return output.finish()
     }
 
