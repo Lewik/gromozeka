@@ -101,6 +101,10 @@ calls. Provider-specific integrations and optimizations are welcome, but they
 must stay explicit, isolated, and operator-controlled rather than silently
 bypassing deployment policy.
 
+The optional [Telegram group channel](telegram-channel.md) is disabled by default
+and intended only for explicitly enabled personal deployments. It is a Server
+channel adapter using the conversation actor, not a Worker or a separate LLM loop.
+
 Before adding a runtime or distributable dependency, verify that its license
 permits the intended closed-source commercial use and distribution without
 reciprocal source-disclosure obligations. Proprietary CLIs and services should
@@ -272,9 +276,13 @@ than part of the generic Worker protocol.
 
 ## Identity And Authentication
 
-The Server owns user identity. Local username/password credentials are the
-initial login method; future OAuth or OIDC identities must attach to the same
-stable User instead of creating a parallel account model.
+The Server owns user identity. One stable User can have multiple typed identities;
+local login is optional, and password credentials are stored separately. The
+`loginAllowed` and `aiAllowed` flags independently control sign-in and AI access.
+An observed Telegram identity creates a User with both flags disabled and no
+project grants. Observation does not authenticate that person, enable Telegram
+sign-in, or automatically link them to a similarly named account. Future OAuth or
+OIDC login must attach to the same User instead of creating a parallel account model.
 
 One Server deployment is one isolated Gromozeka Runtime. A Runtime can contain
 multiple Users, Projects, and Workers, but it does not contain several pooled
