@@ -38,7 +38,7 @@ data class JapaneseTranslation(
     override val closeTabTooltip: String = "タブを閉じる",
     override val screenshotTooltip: String = "ウィンドウのスクリーンショット",
     override val sendingMessageTooltip: String = "メッセージ送信中...",
-    override val sendMessageTooltip: String = "メッセージ送信 (Shift+Enter)",
+    override val sendMessageTooltip: String = "メッセージ送信",
     override val recordingTooltip: String = "録音中...（離して停止）",
     override val pttButtonTooltip: String = "長押しで音声入力・クリックで読み上げ停止・ダブルクリックで中断",
     override val builtinStringsTooltip: String = "内蔵文字列を使用",

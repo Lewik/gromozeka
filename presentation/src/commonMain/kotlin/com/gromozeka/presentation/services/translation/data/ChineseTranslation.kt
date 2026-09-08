@@ -38,7 +38,7 @@ data class ChineseTranslation(
     override val closeTabTooltip: String = "关闭标签页",
     override val screenshotTooltip: String = "窗口截图",
     override val sendingMessageTooltip: String = "发送消息中...",
-    override val sendMessageTooltip: String = "发送消息 (Shift+Enter)",
+    override val sendMessageTooltip: String = "发送消息",
     override val recordingTooltip: String = "录音中...（松开停止）",
     override val pttButtonTooltip: String = "按住说话 · 单击停止语音 · 双击中断",
     override val builtinStringsTooltip: String = "使用内置字符串",

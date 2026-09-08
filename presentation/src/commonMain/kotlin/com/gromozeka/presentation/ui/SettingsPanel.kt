@@ -39,6 +39,8 @@ import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.client.WorkerConnectionInstructions
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.EnterKeyAction
+import com.gromozeka.domain.model.KeyboardShortcutSettings
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.KeyboardShortcutKey
@@ -109,6 +111,8 @@ private enum class SettingsSection(val title: String) {
 
 @Composable
 fun SettingsPanel(
+    clientPlatform: ClientPlatform,
+    onRecordingShortcutChange: (Boolean) -> Unit,
     isVisible: Boolean,
     settings: Settings,
     onSettingsChange: (Settings) -> Unit,
@@ -173,8 +177,7 @@ fun SettingsPanel(
         mutableStateOf(SettingsSection.AiRuntime)
     }
     val availableSections = SettingsSection.entries.filter {
-        (it != SettingsSection.Usage || canAdministerUsers) &&
-            (it != SettingsSection.Keyboard || deviceSettings is UserDeviceSettings.Desktop)
+        it != SettingsSection.Usage || canAdministerUsers
     }
 
     LaunchedEffect(
@@ -840,6 +843,8 @@ fun SettingsPanel(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                             KeyboardShortcutSettingsGroup(
+                                onRecordingShortcutChange = onRecordingShortcutChange,
+                                clientPlatform = clientPlatform,
                                 settings = settings,
                                 globalHotkeyController = globalHotkeyController,
                                 onSettingsChange = onSettingsChange,
@@ -2290,43 +2295,70 @@ internal fun SettingsGroup(
 }
 
 @Composable
-private fun KeyboardShortcutSettingsGroup(
-    settings: Settings,
+internal fun KeyboardShortcutSettingsGroup(
+    onRecordingShortcutChange: (Boolean) -> Unit,    settings: Settings,
+    clientPlatform: ClientPlatform,
     globalHotkeyController: GlobalHotkeyController,
     onSettingsChange: (Settings) -> Unit,
 ) {
-    val shortcuts = settings.desktopInputSettings.keyboardShortcuts.normalized()
+    var shortcuts by remember(settings.userProfile.keyboardShortcuts) {
+        mutableStateOf(settings.userProfile.keyboardShortcuts.normalized())
+    }
     val validationIssues = remember(shortcuts) { KeyboardShortcutValidator.validate(shortcuts) }
     val globalState by globalHotkeyController.state.collectAsState()
 
+    fun updateShortcuts(updated: KeyboardShortcutSettings) {
+        shortcuts = updated
+        if (KeyboardShortcutValidator.validate(updated).none { it.severity == KeyboardShortcutValidationSeverity.ERROR }) {
+            onSettingsChange(settings.copy(userProfile = settings.userProfile.copy(keyboardShortcuts = updated)))
+        }
+    }
+
     Box(modifier = Modifier.testTag(UiTestTag.KeyboardShortcuts.value)) {
         SettingsGroup(title = "Keyboard shortcuts") {
-            Text(
-                text = "Focused shortcuts work only inside Gromozeka. Global shortcuts stay active without raising the window.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            DropdownSettingItem(
+                label = "Enter",
+                description = when (shortcuts.enterKeyAction) {
+                    EnterKeyAction.NEW_LINE -> "Shift+Enter sends the message"
+                    EnterKeyAction.SEND_MESSAGE -> "Shift+Enter inserts a new line"
+                },
+                value = shortcuts.enterKeyAction,
+                options = EnterKeyAction.entries,
+                optionLabel = {
+                    when (it) {
+                        EnterKeyAction.NEW_LINE -> "Insert a new line"
+                        EnterKeyAction.SEND_MESSAGE -> "Send the message"
+                    }
+                },
+                onValueChange = { updateShortcuts(shortcuts.copy(enterKeyAction = it)) },
+                modifier = Modifier.testTag("keyboard-enter-action"),
             )
-            if (!globalState.available || globalState.message != null) {
+            if (validationIssues.any { it.severity == KeyboardShortcutValidationSeverity.ERROR }) {
+                Text(
+                    text = "Changes are not saved. Resolve the shortcut conflicts below.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (!clientPlatform.isBrowser && (!globalState.available || globalState.message != null)) {
                 Text(
                     text = globalState.message ?: "Global shortcuts are unavailable",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
-            } else {
-                Text(
-                    text = "Global backend: ${globalState.implementationType}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
-
             shortcuts.bindings.forEach { binding ->
                 KeyboardShortcutBindingEditor(
                     binding = binding,
+                    globalShortcutsAreLocal = clientPlatform.isBrowser,
+                    globalHotkeyController = globalHotkeyController,
+                    onRecordingShortcutChange = onRecordingShortcutChange,
                     validationIssues = validationIssues.filter { it.action == binding.action },
                     runtimeError = globalState.bindingErrors[binding.action],
                     onChange = { updated ->
-                        onSettingsChange(settings.withKeyboardShortcut(updated))
+                        updateShortcuts(shortcuts.copy(bindings = shortcuts.bindings.map {
+                            if (it.action == updated.action) updated else it
+                        }))
                     },
                 )
             }
@@ -2410,12 +2442,27 @@ private fun QuickTextActionSettingsGroup(
 @Composable
 private fun KeyboardShortcutBindingEditor(
     binding: KeyboardShortcutBinding,
+    globalShortcutsAreLocal: Boolean,
+    onRecordingShortcutChange: (Boolean) -> Unit,
+    globalHotkeyController: GlobalHotkeyController,
     validationIssues: List<com.gromozeka.domain.model.KeyboardShortcutValidationIssue>,
     runtimeError: String?,
     onChange: (KeyboardShortcutBinding) -> Unit,
 ) {
     var recording by remember(binding.action) { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    var capturedKey by remember { mutableStateOf<KeyboardShortcutKey?>(null) }
+    var manualEntry by remember { mutableStateOf(false) }
+
+    DisposableEffect(recording) {
+        if (!recording) return@DisposableEffect onDispose {}
+        globalHotkeyController.setRecordingShortcut(true)
+        onRecordingShortcutChange(true)
+        onDispose {
+            globalHotkeyController.setRecordingShortcut(false)
+            onRecordingShortcutChange(false)
+        }
+    }
 
     LaunchedEffect(recording) {
         if (recording) focusRequester.requestFocus()
@@ -2460,8 +2507,18 @@ private fun KeyboardShortcutBindingEditor(
                     onValueChange = { onChange(binding.copy(scope = it)) },
                     modifier = Modifier.weight(1f),
                 )
+                if (globalShortcutsAreLocal && binding.scope == KeyboardShortcutScope.GLOBAL) {
+                    OptionalTooltip("Works locally in this client because it runs in a browser") {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "Global shortcuts work locally in this browser",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 OutlinedButton(
-                    onClick = { recording = true },
+                    onClick = { capturedKey = null; recording = true },
                     modifier = Modifier
                         .weight(1f)
                         .testTag(UiTestTag.KeyboardShortcutCapture(binding.action.name).value)
@@ -2469,13 +2526,16 @@ private fun KeyboardShortcutBindingEditor(
                         .onPreviewKeyEvent { event ->
                             if (!recording) return@onPreviewKeyEvent false
                             val key = event.toKeyboardShortcutKey()
-                            if (event.type == KeyEventType.KeyDown && key != null) {
+                            if (event.type == KeyEventType.KeyDown && key != null && capturedKey == null) {
+                                capturedKey = key
                                 onChange(
                                     binding.copy(
                                         key = key,
                                         modifiers = event.keyboardShortcutModifiers(),
                                     )
                                 )
+                            }
+                            if (event.type == KeyEventType.KeyUp && key == capturedKey && key != null) {
                                 recording = false
                             }
                             true
@@ -2485,6 +2545,34 @@ private fun KeyboardShortcutBindingEditor(
                 }
             }
 
+            TextButton(onClick = { manualEntry = !manualEntry }) {
+                Text(if (manualEntry) "Hide manual entry" else "Choose keys manually")
+            }
+            if (manualEntry) {
+                DropdownSettingItem(
+                    label = "Key",
+                    description = "",
+                    value = binding.key,
+                    options = KeyboardShortcutKey.entries,
+                    optionLabel = { it.displayName() },
+                    onValueChange = { onChange(binding.copy(key = it)) },
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KeyboardShortcutModifier.entries.forEach { modifier ->
+                        FilterChip(
+                            selected = modifier in binding.modifiers,
+                            onClick = {
+                                onChange(binding.copy(modifiers = if (modifier in binding.modifiers) {
+                                    binding.modifiers - modifier
+                                } else {
+                                    binding.modifiers + modifier
+                                }))
+                            },
+                            label = { Text(modifier.displayName()) },
+                        )
+                    }
+                }
+            }
             if (recording) {
                 TextButton(onClick = { recording = false }) {
                     Text("Cancel recording")
@@ -2492,6 +2580,7 @@ private fun KeyboardShortcutBindingEditor(
             }
 
             if (
+                !globalShortcutsAreLocal &&
                 binding.enabled &&
                 binding.action == KeyboardShortcutAction.PUSH_TO_TALK &&
                 binding.scope == KeyboardShortcutScope.GLOBAL
@@ -2668,17 +2757,6 @@ private fun Settings.updateDesktopInputSettings(
             is UserDeviceSettings.Desktop -> copy(inputSettings = inputSettings.update())
             else -> this
         }
-    }
-
-private fun Settings.withKeyboardShortcut(binding: KeyboardShortcutBinding): Settings =
-    updateDesktopInputSettings {
-        copy(
-            keyboardShortcuts = keyboardShortcuts.normalized().copy(
-                bindings = keyboardShortcuts.normalized().bindings.map { current ->
-                    if (current.action == binding.action) binding else current
-                }
-            )
-        )
     }
 
 private fun KeyboardShortcutBinding.displayLabel(): String =

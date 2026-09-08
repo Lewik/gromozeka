@@ -44,7 +44,6 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.KeyboardShortcutAction
-import com.gromozeka.domain.model.KeyboardShortcutSettings
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.Settings
@@ -99,6 +98,7 @@ fun GromozekaAppContent(
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
 
+    var recordingShortcut by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
     var showSettingsPanel by remember { mutableStateOf(false) }
@@ -239,7 +239,9 @@ fun GromozekaAppContent(
                     }
                 }
                 .focusedKeyboardShortcuts(
-                    settings = currentSettings.desktopKeyboardShortcuts,
+                    settings = currentSettings.userProfile.keyboardShortcuts,
+                    globalShortcutsAreLocal = clientPlatform.isBrowser,
+                    enabled = !recordingShortcut,
                     holdToTalkController = keyboardPttController,
                     onActivate = { action ->
                         when (action) {
@@ -540,6 +542,8 @@ fun GromozekaAppContent(
 
                                                             2 -> {
                                                                 SettingsPanel(
+                                                                    clientPlatform = clientPlatform,
+                                                                    onRecordingShortcutChange = { recordingShortcut = it },
                                                                     isVisible = true,
                                                                     settings = currentSettings,
                                                                     onSettingsChange = onSettingsChange,
@@ -688,6 +692,8 @@ fun GromozekaAppContent(
 
                             if (!isCompactLayout) Box(modifier = Modifier.testTag(UiTestTag.SettingsPanel.value)) {
                                 SettingsPanel(
+                                    clientPlatform = clientPlatform,
+                                    onRecordingShortcutChange = { recordingShortcut = it },
                                     isVisible = showSettingsPanel,
                                     settings = currentSettings,
                                     onSettingsChange = onSettingsChange,
@@ -817,6 +823,8 @@ fun GromozekaAppContent(
                                     .testTag(UiTestTag.SettingsPanel.value)
                             ) {
                                 SettingsPanel(
+                                    clientPlatform = clientPlatform,
+                                    onRecordingShortcutChange = { recordingShortcut = it },
                                     isVisible = showSettingsPanel,
                                     settings = currentSettings,
                                     onSettingsChange = onSettingsChange,
@@ -883,12 +891,6 @@ fun GromozekaAppContent(
 }
 
 private const val ERROR_HAPTIC_GAP_MILLIS = 120L
-
-private val Settings.desktopKeyboardShortcuts: KeyboardShortcutSettings
-    get() = (userDeviceSettings as? UserDeviceSettings.Desktop)
-        ?.inputSettings
-        ?.keyboardShortcuts
-        ?: KeyboardShortcutSettings()
 
 private enum class ProjectArea {
     CONVERSATIONS,

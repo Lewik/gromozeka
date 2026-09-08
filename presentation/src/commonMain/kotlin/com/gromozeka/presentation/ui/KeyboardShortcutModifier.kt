@@ -1,6 +1,9 @@
 package com.gromozeka.presentation.ui
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -12,7 +15,7 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutActivation
@@ -27,6 +30,8 @@ import com.gromozeka.presentation.services.HoldToTalkShortcutController
 
 fun Modifier.focusedKeyboardShortcuts(
     settings: KeyboardShortcutSettings,
+    globalShortcutsAreLocal: Boolean = false,
+    enabled: Boolean = true,
     holdToTalkController: HoldToTalkShortcutController,
     onActivate: (KeyboardShortcutAction) -> Unit,
 ): Modifier = composed {
@@ -36,40 +41,63 @@ fun Modifier.focusedKeyboardShortcuts(
             .filter { it.severity == KeyboardShortcutValidationSeverity.ERROR }
             .mapTo(mutableSetOf()) { it.action }
     }
-    val pressedActions = remember { mutableSetOf<KeyboardShortcutAction>() }
+    val pressedActions = remember { mutableMapOf<KeyboardShortcutKey, KeyboardShortcutBinding>() }
+    ObservePlatformKeyReleases(
+        onRelease = { key ->
+            val released = pressedActions.remove(key)
+            if (released?.action?.activation == KeyboardShortcutActivation.HOLD) {
+                holdToTalkController.onReleased()
+            }
+        },
+        onFocusLost = {
+            if (pressedActions.values.any { it.action == KeyboardShortcutAction.PUSH_TO_TALK }) {
+                holdToTalkController.cancel()
+            }
+            pressedActions.clear()
+        },
+    )
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
 
-    DisposableEffect(normalized) {
-        onDispose {
-            if (KeyboardShortcutAction.PUSH_TO_TALK in pressedActions) {
+    LaunchedEffect(windowFocused) {
+        if (!windowFocused) {
+            if (pressedActions.values.any { it.action == KeyboardShortcutAction.PUSH_TO_TALK }) {
                 holdToTalkController.cancel()
             }
             pressedActions.clear()
         }
     }
 
-    onKeyEvent { event ->
+    DisposableEffect(normalized, enabled) {
+        onDispose {
+            if (pressedActions.values.any { it.action == KeyboardShortcutAction.PUSH_TO_TALK }) {
+                holdToTalkController.cancel()
+            }
+            pressedActions.clear()
+        }
+    }
+
+    onPreviewKeyEvent { event ->
+        if (!enabled) return@onPreviewKeyEvent false
+        val key = event.toKeyboardShortcutKey() ?: return@onPreviewKeyEvent false
+        if (event.type == KeyEventType.KeyUp) {
+            val released = pressedActions.remove(key) ?: return@onPreviewKeyEvent false
+            if (released.action.activation == KeyboardShortcutActivation.HOLD) {
+                holdToTalkController.onReleased()
+            }
+            return@onPreviewKeyEvent released.consumeEvent
+        }
         val binding = normalized.bindings.firstOrNull { candidate ->
             candidate.enabled &&
-                candidate.scope == KeyboardShortcutScope.FOCUSED &&
+                (candidate.scope == KeyboardShortcutScope.FOCUSED || globalShortcutsAreLocal) &&
                 candidate.action != KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE &&
                 candidate.action !in invalidActions &&
                 event.matches(candidate)
-        } ?: return@onKeyEvent false
+        } ?: return@onPreviewKeyEvent false
 
-        when (event.type) {
-            KeyEventType.KeyDown -> {
-                if (pressedActions.add(binding.action)) {
-                    when (binding.action.activation) {
-                        KeyboardShortcutActivation.HOLD -> holdToTalkController.onPressed()
-                        KeyboardShortcutActivation.ACTIVATE -> onActivate(binding.action)
-                    }
-                }
-            }
-            KeyEventType.KeyUp -> {
-                pressedActions.remove(binding.action)
-                if (binding.action.activation == KeyboardShortcutActivation.HOLD) {
-                    holdToTalkController.onReleased()
-                }
+        if (event.type == KeyEventType.KeyDown && pressedActions.put(key, binding) == null) {
+            when (binding.action.activation) {
+                KeyboardShortcutActivation.HOLD -> holdToTalkController.onPressed()
+                KeyboardShortcutActivation.ACTIVATE -> onActivate(binding.action)
             }
         }
         binding.consumeEvent
@@ -142,7 +170,7 @@ fun Key.toKeyboardShortcutKey(): KeyboardShortcutKey? = when (this) {
     Key.F12 -> KeyboardShortcutKey.F12
     Key.Escape -> KeyboardShortcutKey.ESCAPE
     Key.Spacebar -> KeyboardShortcutKey.SPACE
-    Key.Enter -> KeyboardShortcutKey.ENTER
+    Key.Enter, Key.NumPadEnter -> KeyboardShortcutKey.ENTER
     Key.Tab -> KeyboardShortcutKey.TAB
     Key.Backspace -> KeyboardShortcutKey.BACKSPACE
     Key.Delete -> KeyboardShortcutKey.DELETE
@@ -156,3 +184,9 @@ fun Key.toKeyboardShortcutKey(): KeyboardShortcutKey? = when (this) {
     Key.PageDown -> KeyboardShortcutKey.PAGE_DOWN
     else -> null
 }
+
+@Composable
+internal expect fun ObservePlatformKeyReleases(
+    onRelease: (KeyboardShortcutKey) -> Unit,
+    onFocusLost: () -> Unit,
+)

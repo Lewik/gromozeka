@@ -16,6 +16,7 @@ import kotlin.jvm.JvmInline
 data class UserProfile(
     val id: Id = Id("local"),
     val displayName: String = "Local user",
+    val keyboardShortcuts: KeyboardShortcutSettings = KeyboardShortcutSettings(),
     val speechSettings: SpeechSettings = SpeechSettings(),
     val agentSettings: AgentSettings = AgentSettings(),
     val memorySettings: MemorySettings = MemorySettings(),

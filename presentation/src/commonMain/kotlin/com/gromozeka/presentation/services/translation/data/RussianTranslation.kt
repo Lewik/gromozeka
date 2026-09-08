@@ -38,7 +38,7 @@ data class RussianTranslation(
     override val closeTabTooltip: String = "Закрыть таб",
     override val screenshotTooltip: String = "Скриншот окна",
     override val sendingMessageTooltip: String = "Отправка сообщения...",
-    override val sendMessageTooltip: String = "Отправить сообщение (Shift+Enter)",
+    override val sendMessageTooltip: String = "Отправить сообщение",
     override val recordingTooltip: String = "Идёт запись — отпустите, чтобы закончить",
     override val pttButtonTooltip: String = "Удерживайте для записи · клик — остановить речь · двойной клик — прервать",
     override val builtinStringsTooltip: String = "Использовать встроенные строки",

@@ -38,7 +38,7 @@ data class HebrewTranslation(
     override val closeTabTooltip: String = "סגור שונית",
     override val screenshotTooltip: String = "צילום מסך של החלון",
     override val sendingMessageTooltip: String = "שולח הודעה...",
-    override val sendMessageTooltip: String = "שלח הודעה (Shift+Enter)",
+    override val sendMessageTooltip: String = "שלח הודעה",
     override val recordingTooltip: String = "מקליט... (יש לשחרר כדי לעצור)",
     override val pttButtonTooltip: String = "לחיצה ארוכה לדיבור · לחיצה לעצירת הקראה · לחיצה כפולה להפסקה",
     override val builtinStringsTooltip: String = "השתמש במחרוזות מובנות",

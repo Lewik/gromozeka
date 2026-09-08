@@ -32,7 +32,7 @@ class KeyboardShortcutSettingsTest {
     }
 
     @Test
-    fun reportsDuplicateAndDangerousGlobalBindings() {
+    fun reportsDuplicateBindings() {
         val settings = KeyboardShortcutSettings(
             bindings = KeyboardShortcutSettings.defaultBindings().map { binding ->
                 when (binding.action) {
@@ -53,18 +53,16 @@ class KeyboardShortcutSettingsTest {
     }
 
     @Test
-    fun desktopSettingsWithoutShortcutModelUseCurrentDefaults() {
+    fun profileWithoutShortcutModelUsesCurrentDefaults() {
         val settings = Json { ignoreUnknownKeys = true }
-            .decodeFromString<UserDeviceSettings.Desktop>(
-                """{"inputSettings":{"globalPttHotkeyEnabled":true}}"""
-            )
+            .decodeFromString<UserProfile>("{}")
 
         assertEquals(
             KeyboardShortcutSettings.defaultBindings(),
-            settings.inputSettings.keyboardShortcuts.bindings,
+            settings.keyboardShortcuts.bindings,
         )
         assertTrue(
-            settings.inputSettings.keyboardShortcuts.bindings.all {
+            settings.keyboardShortcuts.bindings.all {
                 it.scope == KeyboardShortcutScope.FOCUSED
             }
         )
@@ -77,4 +75,51 @@ class KeyboardShortcutSettingsTest {
                 KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT.supportedScopes
         )
     }
+    @Test
+    fun rejectsEqualCombinationsAcrossScopesEvenWhenDisabled() {
+        val defaults = KeyboardShortcutSettings.defaultBindings()
+        val source = defaults.first { it.action == KeyboardShortcutAction.FIX_CLIPBOARD_TEXT }
+        val settings = KeyboardShortcutSettings(bindings = defaults.map {
+            if (it.action == KeyboardShortcutAction.TOGGLE_LIVE_VOICE) {
+                it.copy(key = source.key, modifiers = source.modifiers, scope = KeyboardShortcutScope.GLOBAL)
+            } else it
+        })
+        val errors = KeyboardShortcutValidator.validate(settings)
+        assertEquals(setOf(source.action, KeyboardShortcutAction.TOGGLE_LIVE_VOICE), errors.map { it.action }.toSet())
+    }
+
+    @Test
+    fun reservesOnlyEnterAndShiftEnter() {
+        for (modifiers in listOf(emptySet(), setOf(KeyboardShortcutModifier.SHIFT))) {
+            val settings = KeyboardShortcutSettings(bindings = KeyboardShortcutSettings.defaultBindings().map {
+                if (it.action == KeyboardShortcutAction.PUSH_TO_TALK) {
+                    it.copy(key = KeyboardShortcutKey.ENTER, modifiers = modifiers)
+                } else it
+            })
+            assertTrue(KeyboardShortcutValidator.validate(settings).any {
+                it.action == KeyboardShortcutAction.PUSH_TO_TALK && it.severity == KeyboardShortcutValidationSeverity.ERROR
+            })
+        }
+        val settings = KeyboardShortcutSettings(bindings = KeyboardShortcutSettings.defaultBindings().map {
+            if (it.action == KeyboardShortcutAction.PUSH_TO_TALK) {
+                it.copy(key = KeyboardShortcutKey.F4, modifiers = setOf(KeyboardShortcutModifier.ALT), scope = KeyboardShortcutScope.GLOBAL)
+            } else it
+        })
+        assertTrue(KeyboardShortcutValidator.validate(settings).isEmpty())
+    }
+
+    @Test
+    fun webSettingsRoundTripPreservesGlobalScopeAndEnterAction() {
+        val shortcuts = KeyboardShortcutSettings(
+            enterKeyAction = EnterKeyAction.SEND_MESSAGE,
+            bindings = KeyboardShortcutSettings.defaultBindings().map {
+                if (it.action == KeyboardShortcutAction.PUSH_TO_TALK) it.copy(scope = KeyboardShortcutScope.GLOBAL) else it
+            },
+        )
+        val settings = Settings(userProfile = UserProfile(keyboardShortcuts = shortcuts), userDeviceSettings = UserDeviceSettings.Web())
+        val restored = Json.decodeFromString<Settings>(Json.encodeToString(settings))
+        assertEquals(shortcuts, restored.userProfile.keyboardShortcuts)
+        assertEquals(EnterKeyAction.NEW_LINE, KeyboardShortcutSettings().enterKeyAction)
+    }
+
 }

@@ -38,7 +38,7 @@ data class ThaiTranslation(
     override val closeTabTooltip: String = "ปิดแท็บ",
     override val screenshotTooltip: String = "จับภาพหน้าจอ",
     override val sendingMessageTooltip: String = "กำลังส่งข้อความ...",
-    override val sendMessageTooltip: String = "ส่งข้อความ (Shift+Enter)",
+    override val sendMessageTooltip: String = "ส่งข้อความ",
     override val recordingTooltip: String = "กำลังบันทึก... (ปล่อยเพื่อหยุด)",
     override val pttButtonTooltip: String = "กดค้างเพื่อพูด · แตะเพื่อหยุดเสียง · แตะสองครั้งเพื่อขัดจังหวะ",
     override val builtinStringsTooltip: String = "ใช้ข้อความภายใน",
