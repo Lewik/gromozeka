@@ -34,6 +34,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         val exitCodeFile = exitCodeFile(outputFile)
         val errorFile = errorFile(outputFile).takeIf { spec.captureStandardErrorSeparately }
         var process: Process? = null
+        var workerLifetimeBinding: LocalWorkerLifetimeBinding? = null
         try {
             process = host.launch(
                 spec = spec,
@@ -50,7 +51,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
                 IllegalStateException("OS did not expose start time for command process $processTreeId")
             }
             val processTree = host.processTree(processTreeId)
-            val workerLifetimeBinding = if (
+            workerLifetimeBinding = if (
                 spec.lifetime == CommandTask.ProcessLifetime.WORKER_BOUND &&
                 processHandle.isAlive
             ) {
@@ -70,6 +71,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
                 exitCodeArtifact = exitCodeFile,
             )
         } catch (error: Throwable) {
+            runCatching { workerLifetimeBinding?.disarm() }.onFailure(error::addSuppressed)
             process?.toHandle()?.let { terminateStartupFailure(it, processTreeFile) }
             runCatching { deleteOutputArtifacts(outputFile.absolutePath) }
                 .onFailure(error::addSuppressed)
@@ -305,8 +307,12 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         override fun isAlive(): Boolean = processHandle.isAlive
 
         override fun waitFor(timeoutMillis: Long): Boolean {
-            if (processHandle.isAlive) {
-                Thread.sleep(timeoutMillis)
+            require(timeoutMillis >= 0) { "Command wait timeout must be non-negative" }
+            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
+            while (processHandle.isAlive) {
+                val remainingNanos = deadline - System.nanoTime()
+                if (remainingNanos <= 0) return false
+                TimeUnit.NANOSECONDS.sleep(minOf(remainingNanos, TimeUnit.MILLISECONDS.toNanos(TERMINATION_POLL_MILLIS)))
             }
             val stopped = !processHandle.isAlive
             if (stopped) {
@@ -350,9 +356,11 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         override fun terminateTree() {
             try {
                 processTree.terminate(processHandle)
-            } finally {
-                workerLifetimeBinding?.close()
+            } catch (error: Throwable) {
+                runCatching { workerLifetimeBinding?.disarm() }.onFailure(error::addSuppressed)
+                throw error
             }
+            workerLifetimeBinding?.disarm()
         }
     }
 
@@ -394,7 +402,9 @@ internal interface LocalCommandHost {
     fun processTree(id: Long): LocalProcessTree
 }
 
-internal interface LocalWorkerLifetimeBinding : AutoCloseable
+internal interface LocalWorkerLifetimeBinding : AutoCloseable {
+    fun disarm()
+}
 
 internal interface LocalProcessTree {
     val id: Long
@@ -473,6 +483,10 @@ internal class PosixLocalCommandHost private constructor(
     }
 
     override fun bindToWorker(processTreeId: Long, outputFile: File): LocalWorkerLifetimeBinding {
+        val processHandle = ProcessHandle.of(processTreeId).orElseThrow {
+            IllegalStateException("Command process-tree root $processTreeId stopped before Worker binding")
+        }
+        processTree(processTreeId).requireSafeTarget(processHandle)
         val watchdog = when (launcherMode) {
             "job-control" -> ProcessBuilder(
                 POSIX_SHELL_PATH,
@@ -497,13 +511,12 @@ internal class PosixLocalCommandHost private constructor(
 
             else -> error("Unsupported POSIX command launcher mode: $launcherMode")
         }
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
         return ProcessWorkerLifetimeBinding(watchdog)
     }
 
-    override fun processTree(id: Long): LocalProcessTree =
+    override fun processTree(id: Long): PosixProcessTree =
         PosixProcessTree(
             id = id,
             processGroupInspector = processGroupInspector,
@@ -608,7 +621,6 @@ internal class WindowsLocalCommandHost(
             "/C",
             watchdogFile.absolutePath,
         )
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .apply {
                 environment()[WINDOWS_PROCESS_TREE_ID_ENV] = processTreeId.toString()
@@ -650,13 +662,12 @@ internal class PosixProcessTree(
         }
     }
 
-    private fun requireSafeTarget(processHandle: ProcessHandle) {
+    internal fun requireSafeTarget(processHandle: ProcessHandle) {
         check(id > 1) { "Refusing to signal unsafe command process group $id" }
         check(processHandle.pid() == id) {
             "Refusing to signal command process group $id because it does not match command root ${processHandle.pid()}"
         }
-        val groupLeader = ProcessHandle.of(id).orElse(null)
-            ?: error("Command process group leader $id is no longer running")
+        val groupLeader = processHandle
         check(groupLeader.isAlive) { "Command process group leader $id is no longer running" }
         val targetProcessGroupId = processGroupInspector.processGroupId(groupLeader.pid())
             ?: error("Cannot resolve process group for command leader ${groupLeader.pid()}")
@@ -745,12 +756,32 @@ private class ProcessWorkerLifetimeBinding(
     private val closed = AtomicBoolean()
 
     init {
-        Thread.sleep(STARTUP_POLL_MILLIS)
-        check(watchdog.isAlive) { "Worker lifetime watchdog failed to start" }
+        try {
+            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(STARTUP_HANDSHAKE_MILLIS)
+            while (watchdog.inputStream.available() < WATCHDOG_READY.length + 1) {
+                check(watchdog.isAlive) { "Worker lifetime watchdog failed to start" }
+                check(System.nanoTime() < deadline) { "Worker lifetime watchdog did not become ready" }
+                Thread.sleep(STARTUP_POLL_MILLIS)
+            }
+            check(watchdog.inputStream.bufferedReader().readLine() == WATCHDOG_READY) {
+                "Worker lifetime watchdog returned an invalid handshake"
+            }
+        } catch (error: Throwable) {
+            runCatching { disarm() }.onFailure(error::addSuppressed)
+            throw error
+        }
     }
 
-    override fun close() {
+    override fun disarm() = finish(disarm = true)
+
+    override fun close() = finish(disarm = false)
+
+    private fun finish(disarm: Boolean) {
         if (!closed.compareAndSet(false, true)) return
+        if (disarm) {
+            watchdog.outputStream.write("disarm\n".toByteArray(StandardCharsets.US_ASCII))
+            watchdog.outputStream.flush()
+        }
         watchdog.outputStream.close()
         check(watchdog.waitFor(WATCHDOG_EXIT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             watchdog.destroyForcibly()
@@ -891,6 +922,7 @@ private const val TERMINATION_POLL_MILLIS = 25L
 private const val TASKKILL_TIMEOUT_SECONDS = 5L
 private const val PROCESS_INSPECTION_TIMEOUT_SECONDS = 5L
 private const val WATCHDOG_EXIT_TIMEOUT_SECONDS = 5L
+private const val WATCHDOG_READY = "ready"
 private const val WINDOWS_COMMAND_FILE_ENV = "GROMOZEKA_COMMAND_FILE"
 private const val WINDOWS_EXIT_FILE_ENV = "GROMOZEKA_EXIT_FILE"
 private const val WINDOWS_PROCESS_TREE_ID_ENV = "GROMOZEKA_PROCESS_TREE_ID"
@@ -953,7 +985,10 @@ private val POSIX_WATCHDOG = """
         "${'$'}1" -s KILL -- "-${'$'}2" 2>/dev/null || true
     }
     trap 'terminate_tree "${'$'}1" "${'$'}2"; exit' TERM HUP INT
-    while IFS= read -r ignored; do :; done
+    printf '%s\n' '$WATCHDOG_READY'
+    while IFS= read -r action; do
+        [ "${'$'}action" = disarm ] && exit 0
+    done
     terminate_tree "${'$'}1" "${'$'}2"
 """.trimIndent()
 private val WINDOWS_COMMAND_WRAPPER = """
@@ -969,6 +1004,10 @@ private val WINDOWS_COMMAND_WRAPPER = """
 """.trimIndent().replace("\n", "\r\n") + "\r\n"
 private val WINDOWS_WATCHDOG = """
     @echo off
-    more >NUL
+    setlocal DisableDelayedExpansion
+    echo $WATCHDOG_READY
+    set "GROMOZEKA_WATCHDOG_ACTION="
+    set /p "GROMOZEKA_WATCHDOG_ACTION="
+    if "%GROMOZEKA_WATCHDOG_ACTION%"=="disarm" exit /B 0
     "%GROMOZEKA_TASKKILL%" /PID %GROMOZEKA_PROCESS_TREE_ID% /T /F >NUL 2>&1
 """.trimIndent().replace("\n", "\r\n") + "\r\n"

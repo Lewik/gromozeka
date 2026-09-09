@@ -14,6 +14,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class LocalCommandProcessRunnerTest {
@@ -156,6 +157,15 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `Worker-bound process tree stops after abrupt Worker JVM exit`() {
+        verifyAbruptWorkerExit(CommandTask.ProcessLifetime.WORKER_BOUND)
+    }
+
+    @Test
+    fun `resumable process tree survives abrupt Worker JVM exit and can be recovered`() {
+        verifyAbruptWorkerExit(CommandTask.ProcessLifetime.RESUMABLE)
+    }
+
+    private fun verifyAbruptWorkerExit(lifetime: CommandTask.ProcessLifetime) {
         if (isWindows) return
         withTemporaryGromozekaHome { home ->
             val identityFile = File(home, "abrupt-worker-exit-processes")
@@ -167,6 +177,7 @@ class LocalCommandProcessRunnerTest {
                 CommandWorkerLifetimeTestProcess::class.java.name,
                 home.absolutePath,
                 identityFile.absolutePath,
+                lifetime.name,
             )
                 .redirectErrorStream(true)
                 .redirectOutput(helperOutput)
@@ -175,15 +186,29 @@ class LocalCommandProcessRunnerTest {
             var childPid: Long? = null
             try {
                 waitUntil(10_000) { identityFile.isFile && identityFile.readText().isNotBlank() }
-                val processIds = identityFile.readText().trim().split(' ').map(String::toLong)
-                val commandProcessTreeId = processIds[0]
-                val commandChildPid = processIds[1]
+                val identity = identityFile.readLines()
+                val commandProcessTreeId = identity[0].toLong()
+                val commandChildPid = identity[1].toLong()
                 processTreeId = commandProcessTreeId
                 childPid = commandChildPid
 
                 helper.destroyForcibly()
                 assertTrue(helper.waitFor(5_000, java.util.concurrent.TimeUnit.MILLISECONDS))
 
+                if (lifetime == CommandTask.ProcessLifetime.RESUMABLE) {
+                    val recovered = assertIs<CommandProcessRecovery.Running>(
+                        runner.recover(
+                            CommandProcessRecoverySpec(
+                                processId = commandProcessTreeId,
+                                processStartedAt = Instant.fromEpochMilliseconds(identity[2].toLong()),
+                                processTreeId = commandProcessTreeId,
+                                outputFile = identity[3],
+                            )
+                        )
+                    )
+                    assertTrue(ProcessHandle.of(commandChildPid).orElseThrow().isAlive)
+                    recovered.process.terminateTree()
+                }
                 waitUntil(10_000) {
                     ProcessHandle.of(commandProcessTreeId).map { !it.isAlive }.orElse(true) &&
                         ProcessHandle.of(commandChildPid).map { !it.isAlive }.orElse(true)
@@ -310,7 +335,8 @@ class LocalCommandProcessRunnerTest {
                 waitUntil(5_000) { identityFile.isFile && identityFile.readText().isNotBlank() }
                 val (pid, processGroupId, sessionId) = identityFile.readText().trim().split(' ').map(String::toLong)
 
-                assertEquals(process.processTreeId, pid)
+                assertNotEquals(process.processTreeId, pid)
+                assertEquals(process.processTreeId, process.processId)
                 assertEquals(process.processTreeId, processGroupId)
                 assertEquals(process.processTreeId, sessionId)
             } finally {
@@ -353,6 +379,25 @@ class LocalCommandProcessRunnerTest {
             } finally {
                 if (process.isAlive()) process.terminateTree()
                 binding.close()
+            }
+        }
+    }
+
+    @Test
+    fun `Worker lifetime binding refuses an unisolated process before starting its watchdog`() {
+        if (isWindows) return
+        withTemporaryGromozekaHome { home ->
+            val unisolated = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
+            try {
+                val error = assertFailsWith<IllegalStateException> {
+                    currentLocalCommandHost().bindToWorker(unisolated.pid(), File(home, "unused.log"))
+                }
+                assertContains(requireNotNull(error.message), "belongs to group")
+                assertTrue(unisolated.isAlive)
+            } finally {
+                unisolated.toHandle().descendants().forEach { it.destroyForcibly() }
+                unisolated.destroyForcibly()
+                unisolated.waitFor()
             }
         }
     }
@@ -664,14 +709,30 @@ internal object CommandWorkerLifetimeTestProcess {
     fun main(args: Array<String>) {
         System.setProperty("GROMOZEKA_HOME", args[0])
         val identityFile = File(args[1])
+        val childPidFile = File(args[0], "helper-child.pid")
         val process = LocalCommandProcessRunner().start(
             CommandProcessSpec(
                 executionId = "abrupt-worker-exit-task",
-                command = "sleep 30 & child=${'$'}!; printf '%s %s' ${'$'}${'$'} ${'$'}child > '${identityFile.absolutePath}'; wait",
+                command = "sleep 30 & child=${'$'}!; printf '%s' ${'$'}child > '${childPidFile.absolutePath}'; wait",
                 workingDirectory = args[0],
-                lifetime = CommandTask.ProcessLifetime.WORKER_BOUND,
+                lifetime = CommandTask.ProcessLifetime.valueOf(args[2]),
             )
         )
+        val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5)
+        while (!childPidFile.isFile || childPidFile.readText().isBlank()) {
+            check(System.nanoTime() < deadline) { "Command child did not start" }
+            Thread.sleep(10)
+        }
+        val temporaryIdentity = File("${identityFile.absolutePath}.tmp")
+        temporaryIdentity.writeText(
+            listOf(
+                process.processTreeId.toString(),
+                childPidFile.readText().trim(),
+                process.processStartedAt.toEpochMilliseconds().toString(),
+                process.outputFile,
+            ).joinToString("\n")
+        )
+        check(temporaryIdentity.renameTo(identityFile))
         while (process.isAlive()) {
             Thread.sleep(1_000)
         }
