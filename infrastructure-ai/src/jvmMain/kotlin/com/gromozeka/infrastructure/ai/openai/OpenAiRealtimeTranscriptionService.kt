@@ -219,8 +219,14 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
         when (type) {
             "session.created", "session.updated" ->
                 eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.Status(type))
-            "input_audio_buffer.speech_started" ->
-                eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.SpeechStarted)
+            "input_audio_buffer.speech_started" -> {
+                val itemId = payload["item_id"]?.jsonPrimitive?.contentOrNull
+                if (itemId.isNullOrBlank()) {
+                    eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.Failed("Speech start event is missing item_id"))
+                } else {
+                    eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.SpeechStarted(itemId))
+                }
+            }
             "input_audio_buffer.speech_stopped" ->
                 eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.SpeechStopped)
             "conversation.item.input_audio_transcription.delta" -> {
@@ -322,7 +328,7 @@ enum class OpenAiRealtimePcmByteOrder {
 
 sealed interface OpenAiRealtimeTranscriptionEvent {
     data class Status(val message: String) : OpenAiRealtimeTranscriptionEvent
-    data object SpeechStarted : OpenAiRealtimeTranscriptionEvent
+    data class SpeechStarted(val itemId: String) : OpenAiRealtimeTranscriptionEvent
     data object SpeechStopped : OpenAiRealtimeTranscriptionEvent
     data class TranscriptDelta(val itemId: String, val delta: String) : OpenAiRealtimeTranscriptionEvent
     data class TranscriptCompleted(val itemId: String, val text: String) : OpenAiRealtimeTranscriptionEvent

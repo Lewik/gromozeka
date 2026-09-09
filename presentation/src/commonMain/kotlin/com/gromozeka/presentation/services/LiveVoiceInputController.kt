@@ -10,7 +10,6 @@ import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.service.SettingsService
-import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.remote.protocol.RemoteAudioChunk
 import com.gromozeka.remote.protocol.RemoteAudioRecording
 import com.gromozeka.remote.protocol.RemotePcmAudioChunk
@@ -77,14 +76,13 @@ class NoOpLiveVoiceInputService(
 }
 
 class LiveVoiceInputController(
-    private val appViewModel: AppViewModel,
+    private val voiceInputDelivery: VoiceInputDelivery,
     private val audioRecorder: ClientAudioRecorder,
     private val audioTranscriptionService: AudioTranscriptionService,
     private val liveVoiceProviderVadService: LiveVoiceProviderVadService,
     private val clientSideSpeechToTextService: ClientSideSpeechToTextService,
     private val ttsQueue: TtsQueue,
     private val settingsService: SettingsService,
-    private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val scope: CoroutineScope,
 ) : LiveVoiceInputService {
     private val log = KLoggers.logger(this)
@@ -172,7 +170,7 @@ class LiveVoiceInputController(
 
     private suspend fun runLocalVadLiveSession() {
         val ownJob = currentCoroutineContext()[Job]
-        val utterances = Channel<ByteArray>(Channel.UNLIMITED)
+        val utterances = Channel<VoiceUtterance>(Channel.UNLIMITED)
         val microphoneGate = LiveVoiceMicrophoneGate()
         var speaking = false
         var terminalStatus: LocalizedText? = null
@@ -185,6 +183,7 @@ class LiveVoiceInputController(
             coroutineScope {
                 val collector = launch {
                     val segmenter = LiveVoiceVadSegmenter()
+                    var target: VoiceInputTarget? = null
                     try {
                         session.audioChunks.collect { chunk ->
                             when (val decision = microphoneGate.accept(ttsQueue.isPlaying.value)) {
@@ -206,6 +205,7 @@ class LiveVoiceInputController(
                             for (event in segmenter.accept(chunk)) {
                                 when (event) {
                                     LiveVoiceVadEvent.SpeechStarted -> {
+                                        target = voiceInputDelivery.captureTarget(MessageInputContext.Source.LIVE_VOICE)
                                         speaking = true
                                         _state.value = LiveVoiceInputState.SPEECH
                                         _statusMessage.value = localizedText("voice.listeningPhrase")
@@ -214,12 +214,14 @@ class LiveVoiceInputController(
 
                                     is LiveVoiceVadEvent.Utterance -> {
                                         speaking = false
-                                        utterances.send(event.pcmBigEndian)
+                                        utterances.send(VoiceUtterance(event.pcmBigEndian, target))
+                                        target = null
                                         _state.value = LiveVoiceInputState.LISTENING
                                         _statusMessage.value = localizedText("voice.transcriptionQueued")
                                     }
 
                                     LiveVoiceVadEvent.SpeechDiscarded -> {
+                                        target = null
                                         speaking = false
                                         ttsQueue.allowPlayback()
                                         _state.value = LiveVoiceInputState.LISTENING
@@ -231,15 +233,15 @@ class LiveVoiceInputController(
                     } finally {
                         val flushed = segmenter.flush()
                         if (flushed != null) {
-                            utterances.trySend(flushed)
+                            utterances.trySend(VoiceUtterance(flushed, target))
                         }
                         utterances.close()
                     }
                 }
 
                 val transcriber = launch {
-                    for (pcmBigEndian in utterances) {
-                        transcribeAndDeliver(pcmBigEndian)
+                    for (utterance in utterances) {
+                        transcribeAndDeliver(utterance)
                         if (!speaking && isActive) {
                             ttsQueue.allowPlayback()
                             _state.value = LiveVoiceInputState.LISTENING
@@ -321,12 +323,16 @@ class LiveVoiceInputController(
                 }
 
                 val receiver = launch {
+                    val targets = mutableMapOf<String, VoiceInputTarget?>()
                     providerSession?.events?.collect { event ->
                         when (event) {
                             is LiveVoiceProviderVadStatusEvent ->
                                 _statusMessage.value = localizedText("voice.providerListening")
 
                             is LiveVoiceProviderVadSpeechStartedEvent -> {
+                                if (event.itemId.isNotBlank() && event.itemId !in targets) {
+                                    targets[event.itemId] = voiceInputDelivery.captureTarget(MessageInputContext.Source.LIVE_VOICE)
+                                }
                                 _state.value = LiveVoiceInputState.SPEECH
                                 _statusMessage.value = localizedText("voice.providerListeningPhrase")
                                 ttsQueue.blockAndClear()
@@ -345,7 +351,7 @@ class LiveVoiceInputController(
                             }
 
                             is LiveVoiceProviderVadTranscriptCompletedEvent -> {
-                                deliverText(event.text, event.itemId.ifBlank { uuid7() })
+                                deliverText(event.text, event.itemId, targets.remove(event.itemId))
                                 ttsQueue.allowPlayback()
                                 _state.value = LiveVoiceInputState.LISTENING
                                 _statusMessage.value = localizedText("voice.providerListening")
@@ -390,14 +396,14 @@ class LiveVoiceInputController(
         }
     }
 
-    private suspend fun transcribeAndDeliver(pcmBigEndian: ByteArray) {
-        if (pcmBigEndian.isEmpty()) return
+    private suspend fun transcribeAndDeliver(utterance: VoiceUtterance) {
+        if (utterance.pcmBigEndian.isEmpty()) return
 
         val sessionId = uuid7()
         val text = runCatching {
             _state.value = LiveVoiceInputState.TRANSCRIBING
             _statusMessage.value = localizedText("voice.transcribingPhrase")
-            val wav = SpeechPcmWav.encode(pcm16BigEndianToLittleEndian(pcmBigEndian))
+            val wav = SpeechPcmWav.encode(pcm16BigEndianToLittleEndian(utterance.pcmBigEndian))
             val recording = RemoteAudioRecording(
                 sessionId = sessionId,
                 format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
@@ -415,42 +421,23 @@ class LiveVoiceInputController(
             return
         }
 
-        if (text.isBlank()) {
-            log.info { "Live voice transcription returned blank text: session=$sessionId" }
-            _statusMessage.value = localizedText("voice.emptyPhrase")
-            return
-        }
-
-        deliverText(text, sessionId)
+        deliverText(text, sessionId, utterance.target)
     }
 
-    private suspend fun deliverText(text: String, sessionId: String) {
+    private suspend fun deliverText(text: String, sessionId: String, target: VoiceInputTarget?) {
         if (text.isBlank()) {
             log.info { "Live voice transcription returned blank text: session=$sessionId" }
             _statusMessage.value = localizedText("voice.emptyPhrase")
             return
         }
 
-        val currentTab = appViewModel.currentTab.value
-        if (currentTab == null) {
-            log.warn { "Live voice transcription has no current tab: session=$sessionId textChars=${text.length}" }
+        if (!voiceInputDelivery.deliver(target, text)) {
+            log.warn { "Live voice transcription target is unavailable: session=$sessionId textChars=${text.length}" }
             _statusMessage.value = localizedText("voice.noConversation")
             return
         }
 
-        val messageInputContext = MessageInputContext(
-            modality = MessageInputContext.Modality.SPEECH_TO_TEXT,
-            source = MessageInputContext.Source.LIVE_VOICE,
-            clientPlatform = messageInputClientPlatform,
-            reliability = MessageInputContext.Reliability.MAY_CONTAIN_RECOGNITION_ERRORS,
-        )
-        if (settingsService.userDeviceSettings.voiceInputSettings.autoSend) {
-            log.info { "Live voice sending message: session=$sessionId textChars=${text.length}" }
-            currentTab.sendMessageToSession(text, messageInputContext = messageInputContext)
-        } else {
-            log.info { "Live voice adding composer draft: session=$sessionId textChars=${text.length}" }
-            currentTab.appendUserInput(text, messageInputContext)
-        }
+        log.info { "Live voice transcription delivered: session=$sessionId textChars=${text.length}" }
     }
 
     private suspend fun finishStopped(statusMessage: LocalizedText? = null) {
@@ -493,6 +480,8 @@ class LiveVoiceInputController(
         val job: Job?,
         val recordingSession: ClientAudioRecordingSession?,
     )
+
+    private data class VoiceUtterance(val pcmBigEndian: ByteArray, val target: VoiceInputTarget?)
 
     private companion object {
         const val AVAILABILITY_REFRESH_MILLIS = 5_000L

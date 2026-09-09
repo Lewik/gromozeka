@@ -97,6 +97,14 @@ Run the opt-in Claude Code recovery checks with an authenticated local CLI:
 They use synthetic Haiku conversations and verify both policy-triggered and
 native automatic compaction, forks, and missing-session recovery.
 
+Voice input owns its destination from the start of a recording or detected
+phrase. PTT retains that target through microphone preparation and recognition;
+continuous input carries a separate target with each queued phrase. Both use
+`VoiceInputDelivery` for auto-send and composer insertion. Delivery must never
+resolve the currently selected tab again or redirect a result when its target
+has closed. Provider VAD forwards the speech-start `item_id` through the Server
+so transcripts arriving out of order retain their original destinations.
+
 ## Interface Localization
 
 `localization/en.json` is the canonical interface catalog. Keep semantic context

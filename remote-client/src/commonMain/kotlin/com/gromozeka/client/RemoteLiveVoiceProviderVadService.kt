@@ -51,26 +51,34 @@ class RemoteLiveVoiceProviderVadService internal constructor(
                 prompt = prompt,
             )
         )
-        return LiveVoiceProviderVadSession(client, session.sessionId, session.channel)
+        return RemoteLiveVoiceProviderVadSession(client, session.sessionId, session.channel)
     }
 }
 
-class LiveVoiceProviderVadSession internal constructor(
-    private val client: GromozekaWsClient,
-    val sessionId: String,
-    private val channel: Channel<ServerPayload>,
-) {
-    val events: Flow<ServerPayload> = channel.receiveAsFlow()
+interface LiveVoiceProviderVadSession {
+    val sessionId: String
+    val events: Flow<ServerPayload>
+    suspend fun sendAudioChunk(chunk: RemotePcmAudioChunk)
+    suspend fun stop()
+    fun closeLocally()
+}
 
-    suspend fun sendAudioChunk(chunk: RemotePcmAudioChunk) {
+private class RemoteLiveVoiceProviderVadSession(
+    private val client: GromozekaWsClient,
+    override val sessionId: String,
+    private val channel: Channel<ServerPayload>,
+) : LiveVoiceProviderVadSession {
+    override val events: Flow<ServerPayload> = channel.receiveAsFlow()
+
+    override suspend fun sendAudioChunk(chunk: RemotePcmAudioChunk) {
         client.sendLiveVoiceProviderVadAudioChunk(sessionId, chunk)
     }
 
-    suspend fun stop() {
+    override suspend fun stop() {
         runCatching { client.stopLiveVoiceProviderVad(sessionId) }
     }
 
-    fun closeLocally() {
+    override fun closeLocally() {
         client.closeLiveVoiceProviderVadSession(sessionId)
     }
 }

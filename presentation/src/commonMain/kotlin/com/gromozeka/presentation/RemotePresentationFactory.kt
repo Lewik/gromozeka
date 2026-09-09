@@ -33,6 +33,7 @@ import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.UIStateStore
 import com.gromozeka.presentation.services.UiFeedbackController
+import com.gromozeka.presentation.services.VoiceInputDelivery
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.SystemAudioMuteService
 import com.gromozeka.presentation.services.NoOpTurnCompletionNotificationSink
@@ -156,6 +157,7 @@ suspend fun createRemoteAppComponents(
 
     val themeService = ThemeService().also { it.init(remoteServices.settingsService) }
     val clientSideSpeechToTextService = clientSideSpeechToTextServiceFactory(remoteServices.settingsService)
+    val voiceInputDelivery = VoiceInputDelivery(appViewModel, remoteServices.settingsService, messageInputClientPlatform)
     val pttController = RemotePttController(
         appViewModel = appViewModel,
         audioRecorder = audioRecorder,
@@ -165,18 +167,17 @@ suspend fun createRemoteAppComponents(
         systemAudioMuteService = systemAudioMuteService,
         settingsService = remoteServices.settingsService,
         uiFeedbackController = uiFeedbackController,
-        messageInputClientPlatform = messageInputClientPlatform,
+        voiceInputDelivery = voiceInputDelivery,
         scope = scope
     )
     val liveVoiceInputController = LiveVoiceInputController(
-        appViewModel = appViewModel,
+        voiceInputDelivery = voiceInputDelivery,
         audioRecorder = audioRecorder,
         audioTranscriptionService = remoteServices.audioTranscriptionService,
         liveVoiceProviderVadService = remoteServices.liveVoiceProviderVadService,
         clientSideSpeechToTextService = clientSideSpeechToTextService,
         ttsQueue = ttsQueue,
         settingsService = remoteServices.settingsService,
-        messageInputClientPlatform = messageInputClientPlatform,
         scope = scope,
     )
     val assistantAudioPresentationService = AssistantAudioPresentationService(

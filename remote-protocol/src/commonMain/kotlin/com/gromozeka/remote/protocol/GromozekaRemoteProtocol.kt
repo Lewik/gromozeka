@@ -1773,6 +1773,7 @@ data class LiveVoiceProviderVadStatusEvent(
 @SerialName("live_voice_provider_vad_speech_started")
 data class LiveVoiceProviderVadSpeechStartedEvent(
     val sessionId: String,
+    val itemId: String,
 ) : ServerPayload
 
 @Serializable

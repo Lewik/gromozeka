@@ -189,8 +189,8 @@ class LiveVoiceProviderVadApplicationService(
             when (this) {
                 is OpenAiRealtimeTranscriptionEvent.Status ->
                     LiveVoiceProviderVadStatusEvent(sessionId, message)
-                OpenAiRealtimeTranscriptionEvent.SpeechStarted ->
-                    LiveVoiceProviderVadSpeechStartedEvent(sessionId)
+                is OpenAiRealtimeTranscriptionEvent.SpeechStarted ->
+                    LiveVoiceProviderVadSpeechStartedEvent(sessionId, itemId)
                 OpenAiRealtimeTranscriptionEvent.SpeechStopped ->
                     LiveVoiceProviderVadSpeechStoppedEvent(sessionId)
                 is OpenAiRealtimeTranscriptionEvent.TranscriptDelta ->
