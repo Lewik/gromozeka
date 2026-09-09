@@ -8,6 +8,8 @@ import com.gromozeka.domain.service.CommandTask
 import kotlin.time.Instant
 import java.io.File
 import java.nio.file.Files
+import org.junit.Assume.assumeFalse
+import org.junit.Assume.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -144,7 +146,7 @@ class LocalCommandProcessRunnerTest {
                 outputFile = File(process.outputFile),
             )
 
-            binding.close()
+            binding.terminateCommand()
 
             waitUntil(5_000) {
                 ProcessHandle.of(process.processId).map { !it.isAlive }.orElse(true) &&
@@ -166,7 +168,7 @@ class LocalCommandProcessRunnerTest {
     }
 
     private fun verifyAbruptWorkerExit(lifetime: CommandTask.ProcessLifetime) {
-        if (isWindows) return
+        assumeFalse("POSIX process groups are required", isWindows)
         withTemporaryGromozekaHome { home ->
             val identityFile = File(home, "abrupt-worker-exit-processes")
             val helperOutput = File(home, "abrupt-worker-exit-helper.log")
@@ -227,7 +229,7 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `runner terminates descendant created while handling termination`() {
-        if (isWindows) return
+        assumeFalse("POSIX process groups are required", isWindows)
         withTemporaryGromozekaHome { home ->
             val readyFile = File(home, "ready")
             val lateChildPidFile = File(home, "late-child.pid")
@@ -317,7 +319,7 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `linux runner records the actual session leader as process tree id`() {
-        if (!isLinux) return
+        assumeTrue("Linux sessions are required", isLinux)
         withTemporaryGromozekaHome { home ->
             val identityFile = File(home, "process-identity")
             val process = runner.start(
@@ -347,7 +349,7 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `rejected termination does not signal through the Worker lifetime binding`() {
-        if (isWindows) return
+        assumeFalse("POSIX process groups are required", isWindows)
         withTemporaryGromozekaHome { home ->
             val process = runner.start(
                 CommandProcessSpec(
@@ -378,14 +380,14 @@ class LocalCommandProcessRunnerTest {
                 assertTrue(process.isAlive(), "The watchdog must not bypass rejected termination")
             } finally {
                 if (process.isAlive()) process.terminateTree()
-                binding.close()
+                binding.disarm()
             }
         }
     }
 
     @Test
     fun `Worker lifetime binding refuses an unisolated process before starting its watchdog`() {
-        if (isWindows) return
+        assumeFalse("POSIX process groups are required", isWindows)
         withTemporaryGromozekaHome { home ->
             val unisolated = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
             try {
@@ -404,7 +406,7 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `posix termination refuses the worker process group before sending a signal`() {
-        if (isWindows) return
+        assumeFalse("POSIX process groups are required", isWindows)
         val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
         val sentSignals = mutableListOf<String>()
         try {
@@ -437,7 +439,7 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `posix termination refuses special process group ids before sending a signal`() {
-        if (isWindows) return
+        assumeFalse("POSIX process groups are required", isWindows)
         val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
         val sentSignals = mutableListOf<String>()
         try {
@@ -466,7 +468,7 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `posix termination refuses a process group that does not match the command root`() {
-        if (isWindows) return
+        assumeFalse("POSIX process groups are required", isWindows)
         val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
         val unrelated = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
         val sentSignals = mutableListOf<String>()

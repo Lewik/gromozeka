@@ -316,7 +316,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             }
             val stopped = !processHandle.isAlive
             if (stopped) {
-                workerLifetimeBinding?.close()
+                workerLifetimeBinding?.terminateCommand()
             }
             return stopped
         }
@@ -402,8 +402,10 @@ internal interface LocalCommandHost {
     fun processTree(id: Long): LocalProcessTree
 }
 
-internal interface LocalWorkerLifetimeBinding : AutoCloseable {
+internal interface LocalWorkerLifetimeBinding {
     fun disarm()
+
+    fun terminateCommand()
 }
 
 internal interface LocalProcessTree {
@@ -680,7 +682,7 @@ internal class PosixProcessTree(
             "Refusing to signal Worker process group $id"
         }
         log.info {
-            "Terminating command process group: " +
+            "Validated command process group: " +
                 "workerPid=${ProcessHandle.current().pid()} workerPgid=$currentProcessGroupId " +
                 "commandPid=${groupLeader.pid()} commandPgid=$targetProcessGroupId"
         }
@@ -774,7 +776,7 @@ private class ProcessWorkerLifetimeBinding(
 
     override fun disarm() = finish(disarm = true)
 
-    override fun close() = finish(disarm = false)
+    override fun terminateCommand() = finish(disarm = false)
 
     private fun finish(disarm: Boolean) {
         if (!closed.compareAndSet(false, true)) return
