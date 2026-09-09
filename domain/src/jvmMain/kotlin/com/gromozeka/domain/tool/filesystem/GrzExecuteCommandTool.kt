@@ -15,6 +15,7 @@ const val GRZ_EXECUTE_COMMAND_TOOL_NAME = "grz_execute_command"
  * @property working_directory Working directory (optional, defaults to workspace root)
  * @property yield_time_ms Time to wait before returning a running task
  * @property timeout_seconds Optional hard timeout in seconds
+ * @property survive_worker_restart Whether the command may outlive the Worker process
  */
 data class ExecuteCommandRequest(
     val command: String,
@@ -30,6 +31,10 @@ data class ExecuteCommandRequest(
         minimum = 1,
     )
     val timeout_seconds: Long? = null,
+    @property:ToolParameter(
+        description = "Allow the command to outlive the Worker process. Keep false unless it must continue across Worker restarts.",
+    )
+    val survive_worker_restart: Boolean = false,
 )
 
 /**
@@ -68,6 +73,7 @@ data class ExecuteCommandRequest(
  * **Task lifecycle:**
  * - Waits briefly for short commands
  * - Returns a task ID when a command keeps running
+ * - Stops commands with the Worker unless survive_worker_restart is true
  * - Supports incremental output reads and explicit process-tree cancellation
  * - Applies a hard timeout only when timeout_seconds is provided
  * 
@@ -165,6 +171,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
             Execute a shell command as a managed task. Short commands return a terminal result; long commands return status WORKING and task_id after yield_time_ms.
             The target Worker uses its native shell: /bin/sh on macOS/Linux and cmd.exe on Windows. Match command syntax to the target WorkspaceMount and Worker.
             yield_time_ms is only the initial wait and may be from 0 to $MAX_COMMAND_INITIAL_YIELD_MILLIS; it is not the command timeout.
+            Commands stop with the Worker by default. Set survive_worker_restart=true only when uninterrupted execution across a Worker restart is required.
             Inside a Gromozeka conversation, a WORKING task automatically reports its terminal result later; do not poll merely to discover completion.
             Use grz_get_command_task only when intermediate output is needed. External MCP callers without conversation delivery must poll explicitly.
             Use grz_cancel_command_task to terminate the process tree.

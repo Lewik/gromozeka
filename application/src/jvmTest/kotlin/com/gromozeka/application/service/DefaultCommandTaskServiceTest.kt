@@ -225,12 +225,39 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
-    fun `worker restart reconnects running command and monitors it to completion`() = runBlocking {
+    fun `command is Worker-bound by default and stops with service`() = runBlocking {
         withService { service, runner, coordinator, projectDirectory ->
             val result = service.start(
                 ExecuteCommandRequest(command = "running", yield_time_ms = 0),
                 context(projectDirectory),
             )
+
+            assertEquals(CommandTask.ProcessLifetime.WORKER_BOUND, result.task.processLifetime)
+            assertEquals(CommandTask.ProcessLifetime.WORKER_BOUND, runner.lastSpec.lifetime)
+
+            service.close()
+
+            assertTrue(runner.lastProcess.terminateTreeCalled)
+            assertEquals(
+                CommandTask.Status.FAILED,
+                coordinator.findCommandTask(conversationId, result.task.id)?.status,
+            )
+        }
+    }
+
+    @Test
+    fun `worker restart reconnects running command and monitors it to completion`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(
+                    command = "running",
+                    yield_time_ms = 0,
+                    survive_worker_restart = true,
+                ),
+                context(projectDirectory),
+            )
+            assertEquals(CommandTask.ProcessLifetime.RESUMABLE, result.task.processLifetime)
+            assertEquals(CommandTask.ProcessLifetime.RESUMABLE, runner.lastSpec.lifetime)
             service.close()
             assertTrue(runner.lastProcess.isAlive())
             assertFalse(runner.lastProcess.terminateTreeCalled)
@@ -266,7 +293,11 @@ class DefaultCommandTaskServiceTest {
     fun `worker restart finalizes command that completed while offline`() = runBlocking {
         withService { service, runner, coordinator, projectDirectory ->
             val result = service.start(
-                ExecuteCommandRequest(command = "offline", yield_time_ms = 0),
+                ExecuteCommandRequest(
+                    command = "offline",
+                    yield_time_ms = 0,
+                    survive_worker_restart = true,
+                ),
                 context(projectDirectory),
             )
             service.close()
@@ -283,6 +314,41 @@ class DefaultCommandTaskServiceTest {
                 val recoveredTask = assertNotNull(coordinator.findCommandTask(conversationId, result.task.id))
                 assertEquals(CommandTask.Status.FAILED, recoveredTask.status)
                 assertEquals(7, recoveredTask.exitCode)
+            } finally {
+                recoveredService.close()
+            }
+        }
+    }
+
+    @Test
+    fun `worker restart terminates a surviving Worker-bound command`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(
+                    command = "running",
+                    yield_time_ms = 0,
+                    survive_worker_restart = true,
+                ),
+                context(projectDirectory),
+            )
+            service.close()
+            coordinator.upsertCommandTask(
+                result.task.copy(processLifetime = CommandTask.ProcessLifetime.WORKER_BOUND)
+            )
+
+            val recoveredService = DefaultCommandTaskService(
+                processRunner = runner,
+                runtimeState = runtimeState(coordinator),
+                runtimeWorkerDescriptor = objectProvider(workerDescriptor),
+            )
+            try {
+                recoveredService.recoverPersistedTasks()
+
+                assertTrue(runner.lastProcess.terminateTreeCalled)
+                assertEquals(
+                    CommandTask.Status.FAILED,
+                    coordinator.findCommandTask(conversationId, result.task.id)?.status,
+                )
             } finally {
                 recoveredService.close()
             }
@@ -597,6 +663,7 @@ class DefaultCommandTaskServiceTest {
     ) : CommandProcessRunner {
         private val nextPid = AtomicLong(1_000)
         lateinit var lastProcess: FakeRunningCommandProcess
+        lateinit var lastSpec: CommandProcessSpec
         var onStart: (FakeRunningCommandProcess) -> Unit = {}
         val deletedOutputFiles = mutableListOf<String>()
         lateinit var garbageCollectionSpec: CommandOutputGarbageCollectionSpec
@@ -606,6 +673,7 @@ class DefaultCommandTaskServiceTest {
                 processId = nextPid.incrementAndGet(),
                 outputArtifact = File(outputDirectory, "${spec.executionId}.log").apply { createNewFile() },
             ).also { process ->
+                lastSpec = spec
                 lastProcess = process
                 onStart(process)
             }

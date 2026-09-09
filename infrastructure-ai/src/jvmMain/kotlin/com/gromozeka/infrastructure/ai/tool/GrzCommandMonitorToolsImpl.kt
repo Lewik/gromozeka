@@ -174,6 +174,7 @@ private fun CommandTask.toSummary(monitorIds: List<String>): Map<String, Any> = 
     put("task_id", id.value)
     put("status", status.name)
     put("command", command)
+    put("survive_worker_restart", processLifetime == CommandTask.ProcessLifetime.RESUMABLE)
     put("worker_id", workerId.value)
     put("workspace_mount_id", workspaceMountId.value)
     processId?.let { put("process_id", it) }
