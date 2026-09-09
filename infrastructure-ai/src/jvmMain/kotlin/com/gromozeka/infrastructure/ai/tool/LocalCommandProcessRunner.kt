@@ -272,7 +272,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         return digest.joinToString("") { "%02x".format(it) }.take(12)
     }
 
-    private class LocalRunningCommandProcess(
+    internal class LocalRunningCommandProcess(
         private val process: Process?,
         private val processHandle: ProcessHandle,
         private val startedAt: Instant,

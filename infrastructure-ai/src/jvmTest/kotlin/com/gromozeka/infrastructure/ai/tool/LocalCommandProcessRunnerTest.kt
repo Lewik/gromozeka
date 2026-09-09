@@ -320,6 +320,44 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `rejected termination does not signal through the Worker lifetime binding`() {
+        if (isWindows) return
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(
+                CommandProcessSpec(
+                    executionId = "rejected-termination-task",
+                    command = "sleep 30",
+                    workingDirectory = home.absolutePath,
+                    lifetime = CommandTask.ProcessLifetime.RESUMABLE,
+                )
+            )
+            val binding = currentLocalCommandHost().bindToWorker(process.processTreeId, File(process.outputFile))
+            val guardedProcess = LocalCommandProcessRunner.LocalRunningCommandProcess(
+                process = null,
+                processHandle = ProcessHandle.of(process.processId).orElseThrow(),
+                startedAt = process.processStartedAt,
+                processTree = PosixProcessTree(
+                    id = process.processTreeId,
+                    processGroupInspector = PosixProcessGroupInspector { process.processTreeId },
+                    signalSender = PosixProcessGroupSignalSender { _, _ -> error("Unexpected signal") },
+                ),
+                workerLifetimeBinding = binding,
+                outputArtifact = File(process.outputFile),
+                errorArtifact = null,
+                exitCodeArtifact = File("${process.outputFile}.exit"),
+            )
+            try {
+                val error = assertFailsWith<IllegalStateException> { guardedProcess.terminateTree() }
+                assertContains(requireNotNull(error.message), "Worker process group")
+                assertTrue(process.isAlive(), "The watchdog must not bypass rejected termination")
+            } finally {
+                if (process.isAlive()) process.terminateTree()
+                binding.close()
+            }
+        }
+    }
+
+    @Test
     fun `posix termination refuses the worker process group before sending a signal`() {
         if (isWindows) return
         val wrapper = ProcessBuilder("/bin/sh", "-c", "sleep 30").start()
