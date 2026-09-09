@@ -4,6 +4,7 @@ import com.gromozeka.application.service.AuthenticationRejectedException
 import com.gromozeka.domain.model.AuthenticatedUser
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.FirstUserBootstrapToken
+import com.gromozeka.remote.protocol.AuthenticationErrorCode
 import com.gromozeka.remote.protocol.AuthenticationErrorResponse
 import com.gromozeka.remote.protocol.AuthenticationSessionResponse
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
@@ -75,12 +76,12 @@ internal fun Route.gromozekaAuthentication(
             )
         } catch (error: IllegalArgumentException) {
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse(error.message ?: "Invalid request"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.INVALID_REQUEST, error.message),
                 HttpStatusCode.BadRequest,
             )
         } catch (error: IllegalStateException) {
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse(error.message ?: "Bootstrap rejected"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.BOOTSTRAP_REJECTED, error.message),
                 HttpStatusCode.Conflict,
             )
         } finally {
@@ -97,7 +98,7 @@ internal fun Route.gromozekaAuthentication(
         if (retryAfterSeconds != null) {
             call.response.headers.append(HttpHeaders.RetryAfter, retryAfterSeconds.toString())
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Too many authentication attempts"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.RATE_LIMITED, "Too many authentication attempts"),
                 HttpStatusCode.TooManyRequests,
             )
             return@post
@@ -120,13 +121,13 @@ internal fun Route.gromozekaAuthentication(
         } catch (_: AuthenticationRejectedException) {
             attemptLimiter.recordFailure(remoteAddress, request.username)
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse("Invalid username or password"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.INVALID_CREDENTIALS, "Invalid username or password"),
                 HttpStatusCode.Unauthorized,
             )
         } catch (error: IllegalArgumentException) {
             attemptLimiter.recordFailure(remoteAddress, request.username)
             call.respondAuthenticationJson(
-                AuthenticationErrorResponse(error.message ?: "Invalid request"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.INVALID_REQUEST, error.message),
                 HttpStatusCode.BadRequest,
             )
         } finally {
@@ -211,7 +212,7 @@ internal suspend inline fun <reified T> ApplicationCall.respondAuthenticationJso
 internal suspend fun ApplicationCall.requireSecureAuthenticationTransport(): Boolean {
     if (isSecureTransport()) return true
     respondAuthenticationJson(
-        AuthenticationErrorResponse("Authentication requires HTTPS"),
+        AuthenticationErrorResponse(AuthenticationErrorCode.HTTPS_REQUIRED, "Authentication requires HTTPS"),
         HttpStatusCode.UpgradeRequired,
     )
     return false
@@ -220,7 +221,7 @@ internal suspend fun ApplicationCall.requireSecureAuthenticationTransport(): Boo
 internal suspend fun ApplicationCall.requireAllowedAuthenticationOrigin(): Boolean {
     if (hasAllowedBrowserOrigin()) return true
     respondAuthenticationJson(
-        AuthenticationErrorResponse("Cross-origin browser request rejected"),
+        AuthenticationErrorResponse(AuthenticationErrorCode.CROSS_ORIGIN_REJECTED, "Cross-origin browser request rejected"),
         HttpStatusCode.Forbidden,
     )
     return false
@@ -230,7 +231,7 @@ internal suspend inline fun <reified T> ApplicationCall.receiveAuthenticationReq
     val contentLength = request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
     if (contentLength != null && contentLength > MAX_AUTHENTICATION_REQUEST_BYTES) {
         respondAuthenticationJson(
-            AuthenticationErrorResponse("Authentication request is too large"),
+            AuthenticationErrorResponse(AuthenticationErrorCode.REQUEST_TOO_LARGE, "Authentication request is too large"),
             HttpStatusCode.PayloadTooLarge,
         )
         return null
@@ -238,14 +239,14 @@ internal suspend inline fun <reified T> ApplicationCall.receiveAuthenticationReq
     val body = runCatching { receiveText() }
         .getOrElse {
             respondAuthenticationJson(
-                AuthenticationErrorResponse("Authentication request could not be read"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.REQUEST_READ_FAILED, "Authentication request could not be read"),
                 HttpStatusCode.BadRequest,
             )
             return null
         }
     if (body.length > MAX_AUTHENTICATION_REQUEST_BYTES) {
         respondAuthenticationJson(
-            AuthenticationErrorResponse("Authentication request is too large"),
+            AuthenticationErrorResponse(AuthenticationErrorCode.REQUEST_TOO_LARGE, "Authentication request is too large"),
             HttpStatusCode.PayloadTooLarge,
         )
         return null
@@ -253,7 +254,7 @@ internal suspend inline fun <reified T> ApplicationCall.receiveAuthenticationReq
     return runCatching { authenticationJson.decodeFromString<T>(body) }
         .getOrElse {
             respondAuthenticationJson(
-                AuthenticationErrorResponse("Authentication request is invalid"),
+                AuthenticationErrorResponse(AuthenticationErrorCode.INVALID_REQUEST, "Authentication request is invalid"),
                 HttpStatusCode.BadRequest,
             )
             null

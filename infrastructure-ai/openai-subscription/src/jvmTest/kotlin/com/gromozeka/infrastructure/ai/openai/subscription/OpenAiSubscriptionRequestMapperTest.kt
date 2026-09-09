@@ -347,6 +347,26 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
+    fun agentAllowlistControlsHostedSearchInBothRequestFormats() {
+        for (lite in listOf(false, true)) {
+            val profile = modelProfile(slug = "gpt-5.6-luna", useResponsesLite = lite)
+            val input = AiRuntimeRequest(emptyList(), emptyList(), options = AiRuntimeOptions(
+                toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
+            ))
+            val blocked = mapper.toTransportRequest(mapper.toRequest(input, profile, "test", webSearchEnabled = true), profile)
+            assertTrue(blocked.tools.orEmpty().none { it.string("type") == "web_search" })
+            assertTrue(blocked.input.filter { it.string("type") == "additional_tools" }
+                .flatMap { it.jsonArray("tools") }.none { it.jsonObject.string("type") == "web_search" })
+            assertTrue("web_search_call.action.sources" !in blocked.include)
+            val policy = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
+                com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_SUBSCRIPTION_WEB_SEARCH.catalogEntry().selector(false),
+            ))
+            val allowed = mapper.toRequest(input.copy(options = input.options.copy(toolAccess = policy)), profile, "test", webSearchEnabled = true)
+            assertTrue(allowed.tools.orEmpty().any { it.string("type") == "web_search" })
+        }
+    }
+
+    @Test
     fun framesHostedWebSearchInsideResponsesLiteAdditionalTools() {
         val profile = modelProfile(slug = "gpt-5.6-sol", useResponsesLite = true)
         val logicalRequest = mapper.toRequest(

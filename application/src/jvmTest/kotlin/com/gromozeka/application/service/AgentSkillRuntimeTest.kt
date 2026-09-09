@@ -113,6 +113,8 @@ class AgentSkillRuntimeTest {
 
         assertTrue(prepared.systemPrompt!!.contains("\"name\":\"release-check\""))
         assertTrue(prepared.toolCatalog.tools.isEmpty())
+        assertFalse(prepared.systemPrompt.contains("`$ACTIVATE_AGENT_SKILL_TOOL_NAME`"))
+        assertFalse(prepared.systemPrompt.contains("`$READ_AGENT_SKILL_RESOURCE_TOOL_NAME`"))
     }
 
     @Test

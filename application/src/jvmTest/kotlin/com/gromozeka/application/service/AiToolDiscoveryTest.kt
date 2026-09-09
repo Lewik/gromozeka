@@ -139,6 +139,37 @@ class AiToolSearchServiceTest {
 }
 
 class AiToolRuntimeCatalogServiceTest {
+    @Test
+    fun `access policy filters core and preloaded tools`() {
+        val web = tool("public_search", "Search the public web")
+        val file = tool("grz_read_file", "Read private files")
+        val search = tool(SEARCH_TOOLS_TOOL_NAME, "Discover tools")
+        val snapshot = catalog(web, file, search)
+        val policy = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
+            com.gromozeka.domain.tool.ToolSelector.ByName(com.gromozeka.domain.tool.QualifiedToolName(web.definition.source, web.definition.name)),
+        ))
+        val configured = agent(listOf(web.definition.name, file.definition.name)).copy(toolAccess = policy)
+        val selected = service.selectTools(configured, snapshot, emptyList(), false)
+        assertEquals(listOf(web.definition.name), selected.tools.map { it.definition.name })
+        assertEquals(listOf(web.definition.name, file.definition.name), configured.tools.names)
+        assertTrue(service.selectTools(configured.copy(toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly()), snapshot, emptyList(), true).tools.isEmpty())
+        assertEquals(setOf(web.definition.name, file.definition.name, search.definition.name),
+            service.selectTools(configured.copy(toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.DenyListed()), snapshot, emptyList(), false).tools.map { it.definition.name }.toSet())
+    }
+
+    @Test
+    fun `an exact revision does not preload its replacement`() {
+        val web = tool("public_search", "Public web")
+        val snapshot = catalog(web)
+        val policy = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
+            com.gromozeka.domain.tool.ToolSelector.ExactRevision(com.gromozeka.domain.tool.ToolContractFingerprint(snapshot.entries.getValue("public_search").contractFingerprint)),
+        ))
+        val configured = agent(listOf("public_search")).copy(toolAccess = policy)
+        assertEquals(1, service.selectTools(configured, snapshot, emptyList(), false).tools.size)
+        val changed = catalog(tool("public_search", "Updated public web description"))
+        assertTrue(service.selectTools(configured, changed, emptyList(), false).tools.isEmpty())
+    }
+
     private val service = AiToolRuntimeCatalogService()
     private val conversationId = Conversation.Id("conversation")
     private val instant = Instant.fromEpochMilliseconds(0)
@@ -235,6 +266,8 @@ class AiToolRuntimeCatalogServiceTest {
             listOf("calendar_create_event", "grz_read_file", SEARCH_TOOLS_TOOL_NAME),
             selection.tools.map { it.definition.name },
         )
+        val restricted = agent().copy(toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly())
+        assertTrue(service.selectTools(restricted, catalog, messages, false).tools.isEmpty())
     }
 
     @Test
@@ -425,7 +458,7 @@ class AiToolRuntimeCatalogServiceTest {
             name = "Test",
             prompts = emptyList(),
             runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model")),
-            tools = pinnedTools,
+            tools = com.gromozeka.domain.tool.AgentPreloadedTools(pinnedTools),
             type = AgentDefinition.Type.Project,
             createdAt = instant,
             updatedAt = instant,
@@ -434,7 +467,7 @@ class AiToolRuntimeCatalogServiceTest {
     private fun catalog(vararg tools: AiToolCallback): DistributedAiToolCatalogSnapshot =
         DistributedAiToolCatalogSnapshot(
             tools = tools.toList(),
-            entries = emptyMap(),
+            entries = tools.associate { it.definition.name to DistributedAiTool(AiToolDescriptor(it.definition, it.metadata), emptyList()) },
             registrations = emptyList(),
             environmentRevision = "revision",
             environmentPrompt = "",

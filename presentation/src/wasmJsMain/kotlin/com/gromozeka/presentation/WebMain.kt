@@ -26,7 +26,9 @@ import com.gromozeka.presentation.services.BrowserUIStateStore
 import com.gromozeka.presentation.services.BrowserAttachmentAcquisitionController
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
-import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.clientErrorText
+import com.gromozeka.presentation.ui.ClientTheme
+import com.gromozeka.presentation.ui.rememberClientTranslation
 import com.gromozeka.presentation.ui.DeviceConnectionApprovalScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
@@ -53,10 +55,11 @@ fun main() {
 private fun GromozekaWebApp() {
     val scope = rememberCoroutineScope()
     val layoutHints = remember { resolveWebLayoutHints() }
+    val settingsStore = remember { BrowserRemoteClientSettingsStore() }
     var remoteApp by remember { mutableStateOf<RemoteAppComponents?>(null) }
     val currentRemoteApp by rememberUpdatedState(remoteApp)
-    var startupError by remember { mutableStateOf<String?>(null) }
-    var authenticationError by remember { mutableStateOf<String?>(null) }
+    var startupError by remember { mutableStateOf<Throwable?>(null) }
+    var authenticationError by remember { mutableStateOf<Throwable?>(null) }
     var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
     var authenticating by remember { mutableStateOf(false) }
     var pendingDeviceConnectionCode by remember {
@@ -80,15 +83,15 @@ private fun GromozekaWebApp() {
                     clientHomeDirectory = "browser",
                     clientPlatform = layoutHints.clientPlatform,
                     uiStateStore = BrowserUIStateStore(),
-                    remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
+                    remoteClientSettingsStore = settingsStore,
                     audioRecorder = BrowserClientAudioRecorder(),
                     audioPlayer = BrowserClientAudioPlayer(),
-                    attachmentAcquisitionController = BrowserAttachmentAcquisitionController(),
+                    attachmentAcquisitionControllerFactory = { BrowserAttachmentAcquisitionController() },
                     httpClient = authenticationConnection.httpClient,
                 )
             }
         }.onFailure { error ->
-            startupError = error.message ?: error.toString()
+            startupError = error
         }
     }
 
@@ -119,9 +122,15 @@ private fun GromozekaWebApp() {
         }
     }
 
+    val localization = rememberClientTranslation(remoteApp?.components?.translationService, settingsStore)
+    androidx.compose.runtime.SideEffect {
+        document.documentElement?.setAttribute("lang", localization.languageCode)
+        document.documentElement?.setAttribute("dir", localization.textDirection.name.lowercase())
+    }
+
     when {
         pendingDeviceConnectionCode != null && authenticationStatus?.authenticatedUser != null ->
-            GromozekaTheme {
+            ClientTheme(localization) {
                 DeviceConnectionApprovalScreen(
                     initialCode = requireNotNull(pendingDeviceConnectionCode),
                     preview = authenticationConnection::previewDeviceConnection,
@@ -140,7 +149,7 @@ private fun GromozekaWebApp() {
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
         )
-        authenticationStatus != null -> GromozekaTheme {
+        authenticationStatus != null -> ClientTheme(localization) {
             val status = requireNotNull(authenticationStatus)
             RemoteAuthenticationScreen(
                 initialized = status.initialized,
@@ -161,14 +170,14 @@ private fun GromozekaWebApp() {
                                 clientHomeDirectory = "browser",
                                 clientPlatform = layoutHints.clientPlatform,
                                 uiStateStore = BrowserUIStateStore(),
-                                remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
+                                remoteClientSettingsStore = settingsStore,
                                 audioRecorder = BrowserClientAudioRecorder(),
                                 audioPlayer = BrowserClientAudioPlayer(),
-                                attachmentAcquisitionController = BrowserAttachmentAcquisitionController(),
+                                attachmentAcquisitionControllerFactory = { BrowserAttachmentAcquisitionController() },
                                 httpClient = authenticationConnection.httpClient,
                             )
                         } catch (error: Throwable) {
-                            authenticationError = error.message ?: error.toString()
+                            authenticationError = error
                         }
                         authenticating = false
                     }
@@ -199,14 +208,14 @@ private fun GromozekaWebApp() {
                                 clientHomeDirectory = "browser",
                                 clientPlatform = layoutHints.clientPlatform,
                                 uiStateStore = BrowserUIStateStore(),
-                                remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
+                                remoteClientSettingsStore = settingsStore,
                                 audioRecorder = BrowserClientAudioRecorder(),
                                 audioPlayer = BrowserClientAudioPlayer(),
-                                attachmentAcquisitionController = BrowserAttachmentAcquisitionController(),
+                                attachmentAcquisitionControllerFactory = { BrowserAttachmentAcquisitionController() },
                                 httpClient = authenticationConnection.httpClient,
                             )
                         } catch (error: Throwable) {
-                            authenticationError = error.message ?: error.toString()
+                            authenticationError = error
                         }
                         authenticating = false
                     }
@@ -214,10 +223,10 @@ private fun GromozekaWebApp() {
                 preferPassword = pendingDeviceConnectionCode != null,
             )
         }
-        startupError != null -> GromozekaTheme {
+        startupError != null -> ClientTheme(localization) {
             StartupError(startupError!!)
         }
-        else -> GromozekaTheme {
+        else -> ClientTheme(localization) {
             StartupLoading()
         }
     }
@@ -279,10 +288,11 @@ private fun StartupLoading() {
 }
 
 @Composable
-private fun StartupError(message: String) {
+private fun StartupError(error: Throwable) {
+    val translation = com.gromozeka.presentation.ui.LocalTranslation.current
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Failed to start Gromozeka web client: $message")
+            Text(translation.text("bootstrap.webFailedToStart", "error" to error.clientErrorText(translation)))
         }
     }
 }

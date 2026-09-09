@@ -219,7 +219,8 @@ class AiRequestResponseGatewayCodecTest {
         val runtimeRequest = AiRuntimeRequest(
             systemPrompts = listOf("system"),
             messages = emptyList(),
-            options = AiRuntimeOptions(usagePurpose = "TEST_PURPOSE"),
+            options = AiRuntimeOptions(usagePurpose = "TEST_PURPOSE",
+                toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly()),
         )
         val runtimeResponse = AiRuntimeResponse(
             messages = emptyList(),

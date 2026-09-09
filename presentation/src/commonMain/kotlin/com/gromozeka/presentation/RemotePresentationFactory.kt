@@ -41,6 +41,7 @@ import com.gromozeka.presentation.services.TurnCompletionNotificationSink
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
@@ -69,12 +70,12 @@ suspend fun createRemoteAppComponents(
         NoOpClientSideSpeechToTextService
     },
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
-    attachmentAcquisitionController: AttachmentAcquisitionController = NoOpAttachmentAcquisitionController,
+    attachmentAcquisitionControllerFactory: (() -> Translation) -> AttachmentAcquisitionController = { NoOpAttachmentAcquisitionController },
     globalHotkeyController: GlobalHotkeyController = NoOpGlobalHotkeyController,
-    quickTextActionRunnerFactory: (QuickTextActionService, UiFeedbackController) -> QuickTextActionRunner = { _, _ ->
+    quickTextActionRunnerFactory: (QuickTextActionService, UiFeedbackController, () -> Translation) -> QuickTextActionRunner = { _, _, _ ->
         NoOpQuickTextActionRunner
     },
-    turnCompletionNotificationSink: TurnCompletionNotificationSink = NoOpTurnCompletionNotificationSink,
+    turnCompletionNotificationSinkFactory: (() -> Translation) -> TurnCompletionNotificationSink = { NoOpTurnCompletionNotificationSink },
     httpClient: HttpClient? = null,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
@@ -95,10 +96,15 @@ suspend fun createRemoteAppComponents(
         throw error
     }
 
+    val translationService = TranslationService(
+        remoteServices.translationService, remoteServices.clientSettingsService, remoteUrl, authenticatedUser.id, scope,
+    )
+    val attachmentAcquisitionController = attachmentAcquisitionControllerFactory { translationService.currentTranslation.value }
     val uiFeedbackController = UiFeedbackController()
     val quickTextActionRunner = quickTextActionRunnerFactory(
         remoteServices.quickTextActionService,
         uiFeedbackController,
+        { translationService.currentTranslation.value },
     )
     val ttsQueue = RemoteTtsQueue(remoteServices.speechSynthesisService, audioPlayer)
     val soundNotificationPlayer = ResourceSoundNotificationPlayer(
@@ -109,10 +115,11 @@ suspend fun createRemoteAppComponents(
     val messageInputClientPlatform = clientPlatform.toMessageInputClientPlatform()
     val turnCompletionNotificationService = TurnCompletionNotificationService(
         settingsService = remoteServices.settingsService,
-        sink = turnCompletionNotificationSink,
+        sink = turnCompletionNotificationSinkFactory { translationService.currentTranslation.value },
     )
 
     val appViewModel = AppViewModel(
+        currentTranslation = { translationService.currentTranslation.value },
         currentUserAuthor = Conversation.Message.Author.User(
             userId = authenticatedUser.id,
             displayName = authenticatedUser.displayName,
@@ -147,7 +154,6 @@ suspend fun createRemoteAppComponents(
     val uiStateService = UIStateService(scope, remoteServices.conversationTabLayoutService, uiStateStore)
     uiStateService.initialize(appViewModel)
 
-    val translationService = TranslationService().also { it.init(remoteServices.settingsService) }
     val themeService = ThemeService().also { it.init(remoteServices.settingsService) }
     val clientSideSpeechToTextService = clientSideSpeechToTextServiceFactory(remoteServices.settingsService)
     val pttController = RemotePttController(
@@ -212,6 +218,7 @@ suspend fun createRemoteAppComponents(
             aiUserCredentialService = remoteServices.aiUserCredentialService,
             namedSecretService = remoteServices.namedSecretService,
             userAdministrationService = remoteServices.userAdministrationService,
+            telegramService = remoteServices.telegramService,
             securityAuditService = remoteServices.securityAuditService,
             userDirectoryService = remoteServices.userDirectoryService,
             projectMembershipService = remoteServices.projectMembershipService,

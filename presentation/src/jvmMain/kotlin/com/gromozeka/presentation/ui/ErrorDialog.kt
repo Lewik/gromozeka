@@ -17,9 +17,10 @@ fun ErrorDialog(
     error: Throwable,
     onClose: () -> Unit
 ) {
+    val translation = LocalTranslation.current
     Window(
         onCloseRequest = onClose,
-        title = "Gromozeka - Initialization Error"
+        title = translation.text("bootstrap.initializationError")
     ) {
         MaterialTheme {
             Surface(
@@ -33,21 +34,21 @@ fun ErrorDialog(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Failed to start Gromozeka",
+                        text = translation.text("bootstrap.failedToStart"),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
                     )
 
                     Text(
-                        text = error.message ?: "Unknown error",
+                        text = error.message ?: translation.text("common.unknownError"),
                         style = MaterialTheme.typography.bodyLarge
                     )
 
                     Divider()
 
                     Text(
-                        text = "Stack trace:",
+                        text = translation.text("bootstrap.stackTrace"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -74,7 +75,7 @@ fun ErrorDialog(
                         onClick = onClose,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Close Application")
+                        Text(translation.text("bootstrap.closeApplication"))
                     }
                 }
             }

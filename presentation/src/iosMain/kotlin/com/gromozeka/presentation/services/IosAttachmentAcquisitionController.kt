@@ -5,6 +5,8 @@ package com.gromozeka.presentation.services
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.ArtifactUpload
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CancellableContinuation
@@ -49,7 +51,10 @@ class IosAttachmentAcquisitionController : AttachmentAcquisitionController {
 
     override suspend fun pickAttachments(): List<ArtifactUpload> =
         suspendCancellableCoroutine { continuation ->
-            check(documentDelegate == null) { "The document picker is already open" }
+            if (documentDelegate != null) {
+                throw LocalizedTextException(localizedText("client.attachment.filePickerAlreadyOpen"))
+            }
+            val viewController = visibleViewController()
             val picker = UIDocumentPickerViewController(
                 forOpeningContentTypes = listOf(UTTypeData),
                 asCopy = true,
@@ -66,12 +71,15 @@ class IosAttachmentAcquisitionController : AttachmentAcquisitionController {
                 picker.dismissViewControllerAnimated(true, null)
                 documentDelegate = null
             }
-            visibleViewController().presentViewController(picker, animated = true, completion = null)
+            viewController.presentViewController(picker, animated = true, completion = null)
         }
 
     override suspend fun captureScreenshot(): ArtifactUpload? =
         suspendCancellableCoroutine { continuation ->
-            check(screenshotDelegate == null) { "The screenshot picker is already open" }
+            if (screenshotDelegate != null) {
+                throw LocalizedTextException(localizedText("client.attachment.screenshotPickerAlreadyOpen"))
+            }
+            val viewController = visibleViewController()
             val configuration = PHPickerConfiguration().apply {
                 filter = PHPickerFilter.screenshotsFilter
                 selectionLimit = 1
@@ -86,7 +94,7 @@ class IosAttachmentAcquisitionController : AttachmentAcquisitionController {
                 picker.dismissViewControllerAnimated(true, null)
                 screenshotDelegate = null
             }
-            visibleViewController().presentViewController(picker, animated = true, completion = null)
+            viewController.presentViewController(picker, animated = true, completion = null)
         }
 
     override fun close() {
@@ -112,9 +120,9 @@ private class DocumentPickerDelegate(
                 .map { url ->
                     val scoped = url.startAccessingSecurityScopedResource()
                     try {
-                        val path = url.path ?: error("Selected file has no local path")
-                        val bytes = readFileBytes(path)
                         val fileName = url.lastPathComponent ?: "attachment"
+                        val path = url.path ?: throw unreadableFile(fileName)
+                        val bytes = readFileBytes(path, fileName)
                         ArtifactUpload(
                             fileName = fileName,
                             mediaType = fileName.fallbackMediaType(),
@@ -166,23 +174,26 @@ private class ScreenshotPickerDelegate(
             .firstOrNull { it.contains("png", ignoreCase = true) }
             ?: provider.registeredTypeIdentifiers.filterIsInstance<String>().firstOrNull()
             ?: run {
-                fail(IllegalStateException("Selected screenshot has no readable representation"))
+                fail(LocalizedTextException(localizedText("client.attachment.screenshotFailed")))
                 return
             }
 
+        val fileName = "screenshot-${Clock.System.now().toEpochMilliseconds()}.${typeIdentifier.fileExtensionForTypeIdentifier()}"
         provider.loadDataRepresentationForTypeIdentifier(typeIdentifier) { data: NSData?, error: NSError? ->
             when {
-                error != null -> fail(IllegalStateException(error.localizedDescription))
-                data == null -> fail(IllegalStateException("Selected screenshot is not readable"))
-                else -> finish(
+                error != null -> fail(LocalizedTextException(attachmentFailureText(
+                    localizedText("client.attachment.screenshotFailed"),
+                    error.localizedDescription,
+                )))
+                data == null -> fail(LocalizedTextException(localizedText("client.attachment.screenshotFailed")))
+                else -> runCatching {
                     ArtifactUpload(
-                        fileName =
-                            "screenshot-${Clock.System.now().toEpochMilliseconds()}.${typeIdentifier.fileExtensionForTypeIdentifier()}",
+                        fileName = fileName,
                         mediaType = typeIdentifier.mediaTypeForTypeIdentifier(),
-                        content = data.toByteArray(),
+                        content = data.toByteArray(fileName),
                         purpose = Artifact.Purpose.USER_SCREENSHOT,
                     )
-                )
+                }.onSuccess(::finish).onFailure(::fail)
             }
         }
     }
@@ -209,7 +220,7 @@ private fun visibleViewController(): UIViewController {
         .flatMap { scene -> scene.windows.filterIsInstance<UIWindow>() }
         .firstOrNull { it.isKeyWindow() }
         ?.rootViewController
-        ?: error("No active iOS window is available")
+        ?: throw LocalizedTextException(localizedText("client.attachment.activeWindowUnavailable"))
     var visible = root
     while (visible.presentedViewController != null) {
         visible = requireNotNull(visible.presentedViewController)
@@ -217,11 +228,9 @@ private fun visibleViewController(): UIViewController {
     return visible
 }
 
-private fun NSData.toByteArray(): ByteArray {
+private fun NSData.toByteArray(fileName: String): ByteArray {
     if (length == 0uL) return ByteArray(0)
-    require(length <= ArtifactLimits.MAX_FILE_BYTES.toULong()) {
-        "Selected screenshot exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
-    }
+    if (length > ArtifactLimits.MAX_FILE_BYTES.toULong()) throw fileTooLarge(fileName)
     return ByteArray(length.toInt()).also { output ->
         output.usePinned { pinned ->
             memcpy(pinned.addressOf(0), bytes, length)
@@ -229,25 +238,35 @@ private fun NSData.toByteArray(): ByteArray {
     }
 }
 
-private fun readFileBytes(path: String): ByteArray {
-    val file = fopen(path, "rb") ?: error("Selected file is not readable")
+private fun readFileBytes(path: String, fileName: String): ByteArray {
+    val file = fopen(path, "rb") ?: throw unreadableFile(fileName)
     try {
-        check(fseek(file, 0, SEEK_END) == 0) { "Failed to seek selected file" }
+        if (fseek(file, 0, SEEK_END) != 0) throw unreadableFile(fileName)
         val size = ftell(file)
-        require(size <= ArtifactLimits.MAX_FILE_BYTES) {
-            "Selected file exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
-        }
+        if (size < 0) throw unreadableFile(fileName)
+        if (size > ArtifactLimits.MAX_FILE_BYTES) throw fileTooLarge(fileName)
         rewind(file)
         if (size <= 0) return ByteArray(0)
         return ByteArray(size.toInt()).also { output ->
             output.usePinned { pinned ->
-                fread(pinned.addressOf(0), 1u, size.toULong(), file)
+                if (fread(pinned.addressOf(0), 1u, size.toULong(), file) != size.toULong()) {
+                    throw unreadableFile(fileName)
+                }
             }
         }
     } finally {
         fclose(file)
     }
 }
+
+private fun unreadableFile(fileName: String): LocalizedTextException =
+    LocalizedTextException(localizedText("client.attachment.readFailed", "file" to fileName))
+
+private fun fileTooLarge(fileName: String): LocalizedTextException = LocalizedTextException(localizedText(
+    "client.attachment.fileTooLarge",
+    "file" to fileName,
+    "limit" to ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024),
+))
 
 private fun String.fallbackMediaType(): String =
     substringAfterLast('.', "").lowercase().fallbackMediaTypeForExtension()

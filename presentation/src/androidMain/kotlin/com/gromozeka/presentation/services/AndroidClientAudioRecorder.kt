@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.shared.audio.SpeechPcmWav
 import java.io.ByteArrayOutputStream
@@ -82,8 +84,8 @@ class AndroidClientAudioRecorder(
 
     private suspend fun ensureMicrophonePermission() {
         if (hasMicrophonePermission()) return
-        check(permissionRequester.requestMicrophonePermission() && hasMicrophonePermission()) {
-            "Microphone permission denied"
+        if (!permissionRequester.requestMicrophonePermission() || !hasMicrophonePermission()) {
+            throw LocalizedTextException(localizedText("client.voice.microphoneDenied"))
         }
     }
 
@@ -97,7 +99,7 @@ class AndroidClientAudioRecorder(
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
         )
-        check(minBufferSize > 0) { "Android microphone does not support 16 kHz mono PCM16 recording" }
+        if (minBufferSize <= 0) throw LocalizedTextException(localizedText("client.voice.microphoneFormatUnsupported"))
         val bufferSize = max(minBufferSize, AUDIO_BUFFER_SIZE_BYTES).alignToPcm16Frame()
         val recorder = AudioRecord.Builder()
             .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
@@ -112,7 +114,7 @@ class AndroidClientAudioRecorder(
             .build()
         if (recorder.state != AudioRecord.STATE_INITIALIZED) {
             recorder.release()
-            error("Android microphone could not be initialized")
+            throw LocalizedTextException(localizedText("client.voice.microphoneInitializationFailed"))
         }
         return recorder
     }
@@ -141,8 +143,8 @@ private class AndroidClientAudioRecordingSession(
     fun start() {
         try {
             recorder.startRecording()
-            check(recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                "Android microphone did not enter the recording state"
+            if (recorder.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                throw LocalizedTextException(localizedText("client.voice.microphoneInitializationFailed"))
             }
             captureJob = scope.launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
                 captureAudio()
@@ -194,7 +196,7 @@ private class AndroidClientAudioRecordingSession(
                         .push(readBuffer.copyOf(bytesRead))
                         ?.let(::publishPcm)
                     else -> if (!terminationRequested.get()) {
-                        error("Android microphone read failed: code=$bytesRead")
+                        throw LocalizedTextException(localizedText("client.voice.audioReadFailed", "code" to bytesRead))
                     }
                 }
                 yield()

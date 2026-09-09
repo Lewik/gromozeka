@@ -1,5 +1,7 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -37,14 +39,14 @@ private const val AUDIO_FORMAT_LINEAR_PCM = 1_819_304_813
 class IosClientAudioRecorder : ClientAudioRecorder {
     override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession {
         if (!requestMicrophonePermission()) {
-            error("Microphone permission denied")
+            throw LocalizedTextException(localizedText("client.voice.microphoneDenied"))
         }
 
         configureAudioSession()
         val fileUrl = NSURL.fileURLWithPath("${NSTemporaryDirectory()}gromozeka-${uuid7()}.wav")
         try {
             val recorder = createRecorder(fileUrl)
-            check(recorder.record()) { "Failed to start iOS audio recorder" }
+            if (!recorder.record()) throw LocalizedTextException(localizedText("client.voice.microphoneInitializationFailed"))
             return IosClientAudioRecordingSession(recorder, fileUrl)
         } catch (error: Throwable) {
             deactivateAudioSession()
@@ -79,7 +81,9 @@ class IosClientAudioRecorder : ClientAudioRecorder {
     private fun configureAudioSession() {
         val session = AVAudioSession.sharedInstance()
         session.setCategory(AVAudioSessionCategoryRecord, null)
-        check(session.setActive(active = true, error = null)) { "Failed to activate iOS recording audio session" }
+        if (!session.setActive(active = true, error = null)) {
+            throw LocalizedTextException(localizedText("client.voice.microphoneInitializationFailed"))
+        }
     }
 
     private fun deactivateAudioSession() {
@@ -99,7 +103,7 @@ private class IosClientAudioRecordingSession(
     override suspend fun stop(): ClientRecordedAudio {
         recorder.stop()
         deactivateAudioSession()
-        val path = fileUrl.path ?: error("Recorded iOS audio file path is missing")
+        val path = fileUrl.path ?: throw LocalizedTextException(localizedText("client.voice.recordedFileMissing"))
         val data = readFileBytes(path)
         runCatching { NSFileManager.defaultManager.removeItemAtURL(fileUrl, null) }
 
@@ -126,10 +130,14 @@ private class IosClientAudioRecordingSession(
 
 @OptIn(ExperimentalForeignApi::class)
 private fun readFileBytes(path: String): ByteArray {
-    val file = fopen(path, "rb") ?: error("Recorded iOS audio file is not readable")
+    val file = fopen(path, "rb") ?: throw LocalizedTextException(localizedText("client.voice.recordedFileMissing"))
     try {
-        check(fseek(file, 0, SEEK_END) == 0) { "Failed to seek recorded iOS audio file" }
-        val size = ftell(file).toInt()
+        if (fseek(file, 0, SEEK_END) != 0) throw LocalizedTextException(localizedText("client.voice.recordedFileMissing"))
+        val length = ftell(file)
+        if (length < 0 || length > Int.MAX_VALUE) {
+            throw LocalizedTextException(localizedText("client.voice.recordedFileMissing"))
+        }
+        val size = length.toInt()
         rewind(file)
         if (size <= 0) {
             return ByteArray(0)
@@ -137,7 +145,9 @@ private fun readFileBytes(path: String): ByteArray {
 
         val output = ByteArray(size)
         output.usePinned { pinned ->
-            fread(pinned.addressOf(0), 1u, size.toULong(), file)
+            if (fread(pinned.addressOf(0), 1u, size.toULong(), file) != size.toULong()) {
+                throw LocalizedTextException(localizedText("client.voice.recordedFileMissing"))
+            }
         }
         return output
     } finally {

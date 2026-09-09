@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
@@ -74,6 +75,7 @@ fun ConversationParticipantsPanel(
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
 ) {
+    val localization = LocalTranslation.current
     var conversation by remember(initialConversation.id) { mutableStateOf(initialConversation) }
     var memberships by remember(initialConversation.projectId) { mutableStateOf(emptyList<ProjectMembership>()) }
     var users by remember { mutableStateOf(emptyList<UserDirectoryEntry>()) }
@@ -87,14 +89,14 @@ fun ConversationParticipantsPanel(
         conversation = initialConversation
     }
 
-    LaunchedEffect(isVisible, initialConversation.id, initialConversation.projectId) {
+    LaunchedEffect(isVisible, initialConversation.id, initialConversation.projectId, localization) {
         if (!isVisible) return@LaunchedEffect
 
         coroutineScope {
             launch {
                 conversationService.observeByProject(initialConversation.projectId)
                     .catch { failure ->
-                        error = failure.message ?: "Failed to load conversation"
+                        error = failure.message ?: localization.text("session.participants.loadConversationFailed")
                         loadedSources += ParticipantSource.CONVERSATION
                     }
                     .collect { conversations ->
@@ -111,7 +113,7 @@ fun ConversationParticipantsPanel(
             launch {
                 projectMembershipService.observe(initialConversation.projectId)
                     .catch { failure ->
-                        error = failure.message ?: "Failed to load project members"
+                        error = failure.message ?: localization.text("session.participants.loadMembersFailed")
                         loadedSources += ParticipantSource.MEMBERSHIPS
                     }
                     .collect {
@@ -122,7 +124,7 @@ fun ConversationParticipantsPanel(
             launch {
                 userDirectoryService.observe()
                     .catch { failure ->
-                        error = failure.message ?: "Failed to load users"
+                        error = failure.message ?: localization.text("session.participants.loadUsersFailed")
                         loadedSources += ParticipantSource.USERS
                     }
                     .collect {
@@ -133,7 +135,7 @@ fun ConversationParticipantsPanel(
             launch {
                 agentService.observeAll()
                     .catch { failure ->
-                        error = failure.message ?: "Failed to load agents"
+                        error = failure.message ?: localization.text("session.participants.loadAgentsFailed")
                         loadedSources += ParticipantSource.AGENTS
                     }
                     .collect {
@@ -154,14 +156,14 @@ fun ConversationParticipantsPanel(
             try {
                 val ids = if (enabled) conversation.autoRespondAgentIds + agentId else conversation.autoRespondAgentIds - agentId
                 val updated = requireNotNull(conversationService.updateAutoRespondAgentIds(conversation.id, ids)) {
-                    "Conversation not found: ${conversation.id.value}"
+                    localization.text("session.participants.conversationNotFound", "conversationId" to conversation.id.value)
                 }
                 conversation = updated
                 onConversationUpdated(updated)
             } catch (failure: kotlinx.coroutines.CancellationException) {
                 throw failure
             } catch (failure: Exception) {
-                error = failure.message ?: "Failed to update automatic responders"
+                error = failure.message ?: localization.text("session.participants.updateRespondersFailed")
             } finally {
                 updating = false
             }
@@ -176,7 +178,7 @@ fun ConversationParticipantsPanel(
             runCatching {
                 requireNotNull(
                     conversationService.updateParticipants(conversation.id, participants)
-                ) { "Conversation not found: ${conversation.id.value}" }
+                ) { localization.text("session.participants.conversationNotFound", "conversationId" to conversation.id.value) }
             }.onSuccess { updated ->
                 conversation = updated
                 onConversationUpdated(updated)
@@ -184,7 +186,7 @@ fun ConversationParticipantsPanel(
                     onCurrentUserDisconnected()
                 }
             }.onFailure { failure ->
-                error = failure.message ?: "Failed to update participants"
+                error = failure.message ?: localization.text("session.participants.updateParticipantsFailed")
             }
             updating = false
         }
@@ -208,12 +210,12 @@ fun ConversationParticipantsPanel(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Participants",
+                        text = localization.text("session.participants.title"),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close participants")
+                        Icon(Icons.Default.Close, contentDescription = localization.text("session.participants.close"))
                     }
                 }
 
@@ -238,7 +240,7 @@ fun ConversationParticipantsPanel(
                     ) {
                         if (!canManage) {
                             Text(
-                                text = "Project write permission is required to change participants.",
+                                text = localization.text("session.participants.writePermissionRequired"),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                             )
@@ -252,7 +254,7 @@ fun ConversationParticipantsPanel(
                             )
                         }
 
-                        ParticipantSectionTitle("Users", connectedUserIds.size)
+                        ParticipantSectionTitle(localization.text("session.participants.users"), connectedUserIds.size)
                         val usersById = users.associateBy(UserDirectoryEntry::id)
                         val eligibleUserIds = (memberships.map(ProjectMembership::userId) + connectedUserIds)
                             .distinct()
@@ -261,7 +263,7 @@ fun ConversationParticipantsPanel(
                             val user = usersById[userId]
                             val connected = userId in connectedUserIds
                             ParticipantRow(
-                                title = user?.displayName ?: "Unavailable user",
+                                title = user?.displayName ?: localization.text("session.participants.unavailableUser"),
                                 subtitle = user?.username?.let { "@$it" } ?: userId.value,
                                 testTagId = userId.value,
                                 agent = false,
@@ -282,7 +284,7 @@ fun ConversationParticipantsPanel(
 
                         Spacer(modifier = Modifier.height(4.dp))
                         HorizontalDivider()
-                        ParticipantSectionTitle("Agents", connectedAgentIds.size)
+                        ParticipantSectionTitle(localization.text("chat.navigation.agents"), connectedAgentIds.size)
                         val agentsById = agents.associateBy(AgentDefinition::id)
                         val eligibleAgentIds = (agents.map(AgentDefinition::id) + connectedAgentIds)
                             .distinct()
@@ -291,10 +293,10 @@ fun ConversationParticipantsPanel(
                             val agent = agentsById[agentId]
                             val connected = agentId in connectedAgentIds
                             ParticipantRow(
-                                title = agent?.name ?: "Unavailable agent",
+                                title = agent?.name ?: localization.text("session.participants.unavailableAgent"),
                                 subtitle = when (agent?.type) {
-                                    is AgentDefinition.Type.Global -> "Global agent"
-                                    is AgentDefinition.Type.Project -> "Project agent"
+                                    is AgentDefinition.Type.Global -> localization.text("session.participants.globalAgent")
+                                    is AgentDefinition.Type.Project -> localization.text("session.participants.projectAgent")
                                     null -> agentId.value
                                 },
                                 testTagId = agentId.value,
@@ -324,8 +326,9 @@ fun ConversationParticipantsPanel(
 
 @Composable
 private fun ParticipantSectionTitle(title: String, connectedCount: Int) {
+    val localization = LocalTranslation.current
     Text(
-        text = "$title · $connectedCount connected",
+        text = localization.text("session.participants.connectedCount", "section" to title, "count" to connectedCount),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
@@ -343,6 +346,7 @@ private fun ParticipantRow(
     autoRespond: Boolean = false,
     onAutoRespondChange: ((Boolean) -> Unit)? = null,
 ) {
+    val localization = LocalTranslation.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -389,7 +393,7 @@ private fun ParticipantRow(
                     enabled = enabled,
                     modifier = Modifier.testTag(UiTestTag.AgentAutoRespond(testTagId).value),
                 )
-                Text("Reply automatically to user messages", style = MaterialTheme.typography.bodySmall)
+                Text(localization.text("session.participants.automaticReplies"), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

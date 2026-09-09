@@ -4,8 +4,6 @@ import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AudioController
-import com.gromozeka.domain.service.ConversationRuntimeEventBus
-import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.TargetedAiEmbeddingProvider
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
@@ -15,6 +13,7 @@ import com.gromozeka.server.testsupport.llm.CassetteAiEmbeddingProvider
 import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteSettings
 import com.gromozeka.server.testsupport.llm.CassetteAiRuntimeProvider
 import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.context.annotation.Profile
@@ -22,6 +21,16 @@ import org.springframework.context.annotation.Profile
 @TestConfiguration(proxyBeanMethods = false)
 @Profile("e2e")
 class E2eSupportConfig {
+
+    companion object {
+        @Bean
+        @JvmStatic
+        fun cassetteProviderPriority(): BeanFactoryPostProcessor = BeanFactoryPostProcessor { factory ->
+            listOf("targetedAiRuntimeProvider", "targetedAiEmbeddingProvider").forEach {
+                factory.getBeanDefinition(it).isPrimary = false
+            }
+        }
+    }
 
     @Bean
     @Primary
@@ -69,9 +78,5 @@ class E2eSupportConfig {
     @Bean
     @Primary
     fun globalHotkeyController(): GlobalHotkeyController = NoOpGlobalHotkeyController()
-
-    @Bean
-    @Primary
-    fun conversationRuntimeEventBus(): ConversationRuntimeEventBus = InMemoryConversationRuntimeEventBus()
 
 }

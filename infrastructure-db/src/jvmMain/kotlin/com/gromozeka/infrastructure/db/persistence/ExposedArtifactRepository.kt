@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Service
+import kotlinx.serialization.json.Json
 
 @Service
 class ExposedArtifactRepository : ArtifactRepository {
@@ -29,7 +30,7 @@ class ExposedArtifactRepository : ArtifactRepository {
             it[fileName] = artifact.fileName
             it[mediaType] = artifact.mediaType
             it[sizeBytes] = artifact.sizeBytes
-            it[sha256] = artifact.sha256
+            it[contentSource] = Json.encodeToString(artifact.source)
             it[purpose] = artifact.purpose.name
             it[state] = artifact.state.name
             it[createdAt] = artifact.createdAt
@@ -109,7 +110,7 @@ class ExposedArtifactRepository : ArtifactRepository {
         fileName = this[Artifacts.fileName],
         mediaType = this[Artifacts.mediaType],
         sizeBytes = this[Artifacts.sizeBytes],
-        sha256 = this[Artifacts.sha256],
+        source = Json.decodeFromString(this[Artifacts.contentSource]),
         purpose = Artifact.Purpose.valueOf(this[Artifacts.purpose]),
         state = Artifact.State.valueOf(this[Artifacts.state]),
         createdAt = this[Artifacts.createdAt],

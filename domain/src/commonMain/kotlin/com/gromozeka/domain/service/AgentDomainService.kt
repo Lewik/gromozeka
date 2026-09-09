@@ -8,6 +8,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
+import com.gromozeka.domain.tool.AgentPreloadedTools
+import com.gromozeka.domain.tool.ToolAccessPolicy
 
 /**
  * Domain service for managing AI agent definitions.
@@ -21,6 +23,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeOverrides
  * @see AgentRepository for persistence operations
  */
 interface AgentDomainService {
+
+    suspend fun toolCatalog(projectId: Project.Id?): List<com.gromozeka.domain.tool.AgentToolCatalogEntry>
 
     /**
      * Creates new agent definition from prompts.
@@ -41,9 +45,10 @@ interface AgentDomainService {
         prompts: List<Prompt.Id>,
         runtimeSelection: AiRuntimeSelection,
         runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
-        tools: List<String> = emptyList(),
+        tools: AgentPreloadedTools = AgentPreloadedTools(),
         description: String? = null,
         skills: List<AgentSkill.Id> = emptyList(),
+        toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
     ): AgentDefinition
 
     suspend fun duplicateAgent(
@@ -88,7 +93,8 @@ interface AgentDomainService {
         skills: List<AgentSkill.Id>,
         runtimeSelection: AiRuntimeSelection,
         runtimeOverrides: AiRuntimeOverrides,
-        tools: List<String>,
+        tools: AgentPreloadedTools,
+        toolAccess: ToolAccessPolicy,
     ): AgentDefinition?
 
     /**

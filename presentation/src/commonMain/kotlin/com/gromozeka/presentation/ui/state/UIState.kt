@@ -1,5 +1,7 @@
 package com.gromozeka.presentation.ui.state
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
@@ -34,7 +36,7 @@ data class UIState(
         val userInput: String = "",
         val composerArtifacts: List<Artifact.Reference> = emptyList(),
         val composerArtifactUploadInProgress: Boolean = false,
-        val composerArtifactError: String? = null,
+        val composerArtifactError: LocalizedText? = null,
         val composerMessageInputContext: MessageInputContext? = null,
         val workspaceContextReferences: List<WorkspaceContextReference> = emptyList(),
         val isWaitingForResponse: Boolean = false,
@@ -47,6 +49,7 @@ data class UIState(
         val editMode: Boolean = false,
         val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
         val collapsedContentItems: Map<Conversation.Message.Id, Set<Int>> = emptyMap(), // messageId -> set of collapsed content item indices
+        val expandedActivityKeys: Set<String> = emptySet(),
         val lastToggledMessageId: Conversation.Message.Id? = null,
         val lastToggleAction: Boolean? = null,
         val editingMessageId: Conversation.Message.Id? = null,

@@ -23,7 +23,8 @@ import com.gromozeka.client.resolveRemoteUrl
 import com.gromozeka.client.saveRemoteUrl
 import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.presentation.ui.ChatWindow
-import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.ClientTheme
+import com.gromozeka.presentation.ui.rememberClientTranslation
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.presentation.services.DesktopNotificationPublisher
@@ -61,9 +62,9 @@ fun main(args: Array<String>) {
         var connectionAttempt by remember { mutableIntStateOf(0) }
         var connecting by remember { mutableStateOf(false) }
         var initializationError by remember {
-            mutableStateOf(initialResolution.exceptionOrNull()?.message)
+            mutableStateOf(initialResolution.exceptionOrNull())
         }
-        var authenticationError by remember { mutableStateOf<String?>(null) }
+        var authenticationError by remember { mutableStateOf<Throwable?>(null) }
         var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
         var authenticationConnection by remember { mutableStateOf<RemoteAuthenticationConnection?>(null) }
         var remoteApp by remember { mutableStateOf<RemoteStartedApp?>(null) }
@@ -169,7 +170,7 @@ fun main(args: Array<String>) {
                 throw error
             } catch (error: Throwable) {
                 log.error("Failed to initialize remote UI client: ${error.message}")
-                initializationError = error.message ?: error.toString()
+                initializationError = error
             }
             connecting = false
         }
@@ -181,6 +182,7 @@ fun main(args: Array<String>) {
             }
         }
 
+        val localization = rememberClientTranslation(remoteApp?.components?.translationService, settingsStore)
         val startedApp = remoteApp
         if (traySupported) {
             Tray(
@@ -188,24 +190,24 @@ fun main(args: Array<String>) {
                 state = trayState,
                 tooltip = when (trayPttState) {
                     PttState.IDLE -> "Gromozeka"
-                    PttState.PREPARING -> "Gromozeka - preparing microphone"
-                    PttState.RECORDING -> "Gromozeka - recording"
-                    PttState.TRANSCRIBING -> "Gromozeka - transcribing"
+                    PttState.PREPARING -> localization.runtime.preparingVoiceStatus
+                    PttState.RECORDING -> localization.runtime.recordingVoiceStatus
+                    PttState.TRANSCRIBING -> localization.runtime.transcribingVoiceStatus
                 },
                 onAction = ::showWindow,
             ) {
-                Item("Open Gromozeka", onClick = ::showWindow)
+                Item(localization.text("native.open"), onClick = ::showWindow)
                 Separator()
                 Item(
                     text = when {
-                        connecting -> "Server: connecting"
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTED -> "Server: connected"
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTING -> "Server: connecting"
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.RECONNECTING -> "Server: reconnecting"
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.OFFLINE -> "Server: offline"
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.DISCONNECTED -> "Server: disconnected"
-                        remoteUrl == null -> "Server: not configured"
-                        else -> "Server: disconnected"
+                        connecting -> localization.text("native.serverStatus", "status" to localization.runtime.connectingStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTED -> localization.text("native.serverStatus", "status" to localization.runtime.connectedStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTING -> localization.text("native.serverStatus", "status" to localization.runtime.connectingStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.RECONNECTING -> localization.text("native.serverStatus", "status" to localization.runtime.reconnectingStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.OFFLINE -> localization.text("native.serverStatus", "status" to localization.runtime.offlineStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.DISCONNECTED -> localization.text("native.serverStatus", "status" to localization.runtime.disconnectedStatus)
+                        remoteUrl == null -> localization.text("native.serverStatus", "status" to localization.text("native.notConfigured"))
+                        else -> localization.text("native.serverStatus", "status" to localization.runtime.disconnectedStatus)
                     },
                     enabled = false,
                     onClick = {},
@@ -213,10 +215,10 @@ fun main(args: Array<String>) {
                 if (trayPttState != PttState.IDLE) {
                     Item(
                         text = when (trayPttState) {
-                            PttState.PREPARING -> "Voice: preparing microphone"
-                            PttState.RECORDING -> "Voice: recording"
-                            PttState.TRANSCRIBING -> "Voice: transcribing"
-                            PttState.IDLE -> "Voice: idle"
+                            PttState.PREPARING -> localization.text("native.voiceStatus", "status" to localization.runtime.preparingVoiceStatus)
+                            PttState.RECORDING -> localization.text("native.voiceStatus", "status" to localization.runtime.recordingVoiceStatus)
+                            PttState.TRANSCRIBING -> localization.text("native.voiceStatus", "status" to localization.runtime.transcribingVoiceStatus)
+                            PttState.IDLE -> localization.text("native.voiceStatus", "status" to localization.text("native.idle"))
                         },
                         enabled = false,
                         onClick = {},
@@ -224,7 +226,7 @@ fun main(args: Array<String>) {
                 }
                 Separator()
                 Item(
-                    text = if (quitting) "Quitting..." else "Quit Gromozeka",
+                    text = if (quitting) localization.text("native.quitting") else localization.text("native.quit"),
                     enabled = !quitting,
                     onClick = ::quit,
                 )
@@ -261,7 +263,7 @@ fun main(args: Array<String>) {
                         window.requestFocus()
                     }
                 }
-                GromozekaTheme {
+                ClientTheme(localization) {
                     val status = authenticationStatus
                     if (remoteUrl != null && initializationError == null && status != null) {
                         RemoteAuthenticationScreen(
@@ -283,7 +285,7 @@ fun main(args: Array<String>) {
                                     } catch (error: CancellationException) {
                                         throw error
                                     } catch (error: Throwable) {
-                                        authenticationError = error.message ?: error.toString()
+                                        authenticationError = error
                                     }
                                     connecting = false
                                 }
@@ -310,7 +312,7 @@ fun main(args: Array<String>) {
                                     } catch (error: CancellationException) {
                                         throw error
                                     } catch (error: Throwable) {
-                                        authenticationError = error.message ?: error.toString()
+                                        authenticationError = error
                                     }
                                     connecting = false
                                 }

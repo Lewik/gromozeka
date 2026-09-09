@@ -1,5 +1,9 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
+import com.gromozeka.domain.model.SpeechAvailabilityFailure.Code
+import com.gromozeka.domain.model.SpeechAvailabilityException
+import com.gromozeka.domain.model.failSpeechAvailability
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
@@ -8,6 +12,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.SettingsProvider
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -42,12 +47,14 @@ class OpenAiRealtimeTranscriptionService(
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val clientFactory: OpenAiSdkClientFactory,
 ) {
-    fun availabilityFailure(): String? =
+    fun availabilityFailure(): SpeechAvailabilityFailure? =
         runCatching {
             resolveConfiguration()
             null
         }.getOrElse { error ->
-            error.message ?: "OpenAI realtime transcription is unavailable"
+            if (error is CancellationException) throw error
+            (error as? SpeechAvailabilityException)?.failure
+                ?: SpeechAvailabilityFailure(Code.PROVIDER_VAD_UNAVAILABLE, diagnostic = error.message)
         }
 
     suspend fun start(
@@ -66,23 +73,23 @@ class OpenAiRealtimeTranscriptionService(
         prompt: String? = null,
     ): OpenAiRealtimeTranscriptionConfiguration {
         val speechToText = settingsProvider.userProfile.speechSettings.speechToText
-        require(speechToText.enabled) { "Speech-to-text is disabled" }
-        require(speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API) {
-            "Provider VAD requires OpenAI API speech-to-text"
+        if (!speechToText.enabled) failSpeechAvailability(Code.SPEECH_TO_TEXT_DISABLED)
+        if (speechToText.engine != UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API) {
+            failSpeechAvailability(Code.PROVIDER_VAD_REQUIRES_OPENAI)
         }
-        require(speechToText.audioSource == SpeechAudioSource.CurrentClient) {
-            "Provider VAD requires current-client microphone input"
+        if (speechToText.audioSource != SpeechAudioSource.CurrentClient) {
+            failSpeechAvailability(Code.PROVIDER_VAD_REQUIRES_CLIENT_MICROPHONE)
         }
 
         val runtime = aiConfigurationProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT)
-        require(runtime.connection.enabled) {
-            "OpenAI speech-to-text connection is disabled: ${runtime.connection.id.value}"
+        if (!runtime.connection.enabled) {
+            failSpeechAvailability(Code.CONNECTION_DISABLED, "connection" to runtime.connection.id.value)
         }
-        require(runtime.connection.executionTarget == AiExecutionTarget.Server) {
-            "OpenAI realtime transcription requires a Server-targeted speech-to-text runtime"
+        if (runtime.connection.executionTarget != AiExecutionTarget.Server) {
+            failSpeechAvailability(Code.REALTIME_REQUIRES_SERVER)
         }
-        require(runtime.connection.kind == AiConnection.Kind.OPENAI_API) {
-            "Provider VAD is implemented only for OpenAI API connections"
+        if (runtime.connection.kind != AiConnection.Kind.OPENAI_API) {
+            failSpeechAvailability(Code.PROVIDER_VAD_REQUIRES_OPENAI)
         }
 
         return OpenAiRealtimeTranscriptionConfiguration(

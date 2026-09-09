@@ -2,16 +2,23 @@ package com.gromozeka.client
 
 import com.gromozeka.remote.protocol.ClientInstanceId
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
+import com.gromozeka.domain.model.TranslationSnapshot
+import com.gromozeka.domain.model.User
+import com.gromozeka.shared.localization.BundledTranslations
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @Serializable
 data class RemoteClientSettings(
     val remoteUrl: String? = null,
     val protocolEncoding: RemoteProtocolEncoding = RemoteProtocolEncoding.CBOR,
     val clientInstanceId: ClientInstanceId? = null,
+    val bootstrapLocale: String? = null,
+    val translationCache: Map<String, TranslationSnapshot> = emptyMap(),
 )
 
 interface RemoteClientSettingsStore {
@@ -44,10 +51,16 @@ fun RemoteClientSettingsStore.saveRemoteUrl(remoteUrl: String): String {
     return normalized
 }
 
+class RemoteServerAddressException(val messageKey: String) : IllegalArgumentException(messageKey)
+
+private fun addressRequire(condition: Boolean, messageKey: String) {
+    if (!condition) throw RemoteServerAddressException(messageKey)
+}
+
 fun normalizeRemoteUrl(value: String): String {
     val trimmed = value.trim()
-    require(trimmed.isNotEmpty()) { "Server address must not be empty" }
-    require(trimmed.none(Char::isWhitespace)) { "Server address must not contain whitespace" }
+    addressRequire(trimmed.isNotEmpty(), "client.serverAddress.empty")
+    addressRequire(trimmed.none(Char::isWhitespace), "client.serverAddress.whitespace")
 
     val withScheme = if ("://" in trimmed) {
         trimmed
@@ -57,23 +70,17 @@ fun normalizeRemoteUrl(value: String): String {
     }
     val scheme = withScheme.substringBefore("://").lowercase()
     val remainder = withScheme.substringAfter("://")
-    require(scheme in setOf("http", "https", "ws", "wss")) {
-        "Server address must use http://, https://, ws://, or wss://"
-    }
-    require(remainder.isNotEmpty()) { "Server address must include a host" }
-    require('@' !in remainder.substringBefore('/')) { "Server address must not contain credentials" }
-    require('?' !in remainder && '#' !in remainder) {
-        "Server address must not contain a query or fragment"
-    }
+    addressRequire(scheme in setOf("http", "https", "ws", "wss"), "client.serverAddress.scheme")
+    addressRequire(remainder.isNotEmpty(), "client.serverAddress.host")
+    addressRequire('@' !in remainder.substringBefore('/'), "client.serverAddress.credentials")
+    addressRequire('?' !in remainder && '#' !in remainder, "client.serverAddress.query")
 
     val authority = remainder.substringBefore('/')
-    require(authority.isNotEmpty()) { "Server address must include a host" }
+    addressRequire(authority.isNotEmpty(), "client.serverAddress.host")
     authority.serverHost()
     val path = remainder.substringAfter('/', missingDelimiterValue = "")
         .trimEnd('/')
-    require(path.isEmpty() || path == "ws") {
-        "Server address path must be empty or /ws"
-    }
+    addressRequire(path.isEmpty() || path == "ws", "client.serverAddress.path")
 
     val websocketScheme = when (scheme) {
         "http", "ws" -> "ws"
@@ -83,30 +90,28 @@ fun normalizeRemoteUrl(value: String): String {
 }
 
 private fun String.serverHost(): String {
-    require('@' !in this) { "Server address must not contain credentials" }
+    addressRequire('@' !in this, "client.serverAddress.credentials")
     if (startsWith('[')) {
         val closingBracket = indexOf(']')
-        require(closingBracket > 1) { "Server address contains an invalid IPv6 host" }
+        addressRequire(closingBracket > 1, "client.serverAddress.invalidIpv6")
         val host = substring(1, closingBracket)
         validateServerPort(substring(closingBracket + 1))
         return host
     }
 
-    require(count { it == ':' } <= 1) {
-        "IPv6 server addresses must use square brackets"
-    }
+    addressRequire(count { it == ':' } <= 1, "client.serverAddress.ipv6Brackets")
     val portSeparator = indexOf(':')
     val host = if (portSeparator >= 0) substring(0, portSeparator) else this
-    require(host.isNotEmpty()) { "Server address must include a host" }
+    addressRequire(host.isNotEmpty(), "client.serverAddress.host")
     validateServerPort(if (portSeparator >= 0) substring(portSeparator) else "")
     return host
 }
 
 private fun validateServerPort(suffix: String) {
     if (suffix.isEmpty()) return
-    require(suffix.startsWith(':')) { "Server address contains invalid text after the host" }
+    addressRequire(suffix.startsWith(':'), "client.serverAddress.invalidSuffix")
     val port = suffix.drop(1).toIntOrNull()
-    require(port in 1..65535) { "Server address contains an invalid port" }
+    addressRequire(port in 1..65535, "client.serverAddress.invalidPort")
 }
 
 private fun String.isLocalServerHost(): Boolean =
@@ -123,6 +128,7 @@ class RemoteClientSettingsService internal constructor(
     private val store: RemoteClientSettingsStore,
     initialSettings: RemoteClientSettings,
 ) {
+    private val mutations = Mutex()
     private val _settingsFlow = MutableStateFlow(initialSettings)
     val settingsFlow: StateFlow<RemoteClientSettings> = _settingsFlow.asStateFlow()
 
@@ -130,13 +136,33 @@ class RemoteClientSettingsService internal constructor(
         client.setEncoding(initialSettings.protocolEncoding)
     }
 
-    fun saveSettings(settings: RemoteClientSettings) {
-        store.save(settings)
-        _settingsFlow.value = settings
-        client.setEncoding(settings.protocolEncoding)
+    suspend fun saveSettings(settings: RemoteClientSettings) = mutations.withLock {
+        val updated = settings.copy(
+            bootstrapLocale = _settingsFlow.value.bootstrapLocale,
+            translationCache = _settingsFlow.value.translationCache,
+        )
+        store.save(updated)
+        _settingsFlow.value = updated
+        client.setEncoding(updated.protocolEncoding)
     }
 
-    fun updateProtocolEncoding(encoding: RemoteProtocolEncoding) {
+    suspend fun updateProtocolEncoding(encoding: RemoteProtocolEncoding) {
         saveSettings(_settingsFlow.value.copy(protocolEncoding = encoding))
     }
+
+    fun cachedTranslation(serverUrl: String, userId: User.Id): TranslationSnapshot? =
+        _settingsFlow.value.translationCache[translationCacheKey(serverUrl, userId)]
+
+    suspend fun cacheTranslation(serverUrl: String, userId: User.Id, snapshot: TranslationSnapshot) = mutations.withLock {
+        val current = _settingsFlow.value
+        val updated = current.copy(
+            bootstrapLocale = BundledTranslations.matchLocale(snapshot.selectedPackage.locale),
+            translationCache = current.translationCache + (translationCacheKey(serverUrl, userId) to snapshot),
+        )
+        store.save(updated)
+        _settingsFlow.value = updated
+    }
+
+    private fun translationCacheKey(serverUrl: String, userId: User.Id): String =
+        "${normalizeRemoteUrl(serverUrl)}\n${userId.value}"
 }

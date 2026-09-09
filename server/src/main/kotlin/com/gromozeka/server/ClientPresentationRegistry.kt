@@ -99,6 +99,17 @@ class ClientPresentationRegistry(
         }
     }
 
+    suspend fun requireIdentity(userId: User.Id, connectionId: String): RegisterClientSessionCommand = mutex.withLock {
+        val key = sessionKeysByConnection[connectionId] ?: error("Client session is not registered")
+        val session = sessionsByKey.getValue(key)
+        check(session.userId == userId && session.connectionId == connectionId) { "Client session identity changed" }
+        session.identity
+    }
+
+    suspend fun registeredClientIds(userId: User.Id): Set<String> = mutex.withLock {
+        sessionsByKey.values.filter { it.userId == userId }.map { it.identity.clientInstanceId.value }.toSet()
+    }
+
     suspend fun activate(connectionId: String, kind: ClientActivityKind) {
         deliveryMutex.withLock {
             activateAndStopPrevious(connectionId, kind)

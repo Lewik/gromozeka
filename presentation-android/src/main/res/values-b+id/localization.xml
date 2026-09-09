@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from localization/*.json by scripts/generate-native-localization.py. -->
+<resources>
+    <string name="quick_text_actions" formatted="false">"Aksi teks cepat"</string>
+    <string name="quick_text_fix" formatted="false">"Perbaiki teks"</string>
+    <string name="quick_text_translate" formatted="false">"Terjemahkan teks"</string>
+</resources>

@@ -2,6 +2,7 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
+commonmark = "0.30.0"
 java = "21"
 kotlin = "2.4.10"
 agp = "9.3.1"
@@ -45,6 +46,7 @@ qrose = "1.1.2"
 json-schema-validator = "0.5.5"
 
 [libraries]
+commonmark = { module = "org.commonmark:commonmark", version.ref = "commonmark" }
 # Ktor
 ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }

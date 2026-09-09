@@ -10,6 +10,17 @@ import kotlin.test.assertEquals
 
 class MemoryToolSupportTest {
     @Test
+    fun `memory pipeline cannot recover tools denied to the agent`() {
+        val tools = listOf(callback("public_search"), callback("private_read"))
+        val search = tools.first()
+        val policy = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
+            com.gromozeka.domain.tool.ToolSelector.ByName(com.gromozeka.domain.tool.QualifiedToolName(search.definition.source, search.definition.name)),
+        ))
+        assertEquals(listOf("public_search"), tools.forMemoryPipeline(policy).map { it.definition.name })
+        assertEquals(emptyList(), tools.forMemoryPipeline(com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly()))
+    }
+
+    @Test
     fun `memory pipeline excludes memory management and explicitly hidden tools`() {
         val tools = listOf(
             callback("regular_tool"),

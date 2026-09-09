@@ -1,0 +1,7 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"Toggle voice recording in ${applicationName}" = "在${applicationName}中切換錄音狀態";
+"Start voice recording in ${applicationName}" = "在${applicationName}中開始錄音";
+"Fix text with ${applicationName}" = "用${applicationName}修正文字";
+"Correct text with ${applicationName}" = "用${applicationName}校對文字";
+"Translate text with ${applicationName}" = "用${applicationName}翻譯文字";
+"Translate with ${applicationName}" = "用${applicationName}翻譯";

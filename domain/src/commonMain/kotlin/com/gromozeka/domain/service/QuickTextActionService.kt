@@ -15,5 +15,6 @@ interface QuickTextActionService {
     suspend fun runAction(
         actionId: QuickTextAction.Id,
         text: String,
+        interfaceLanguage: String,
     ): QuickTextActionResult
 }

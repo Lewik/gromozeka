@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskGuard
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.WorkspaceDomainService
@@ -47,6 +48,7 @@ class ConversationRuntimeExecutor(
     private val taskRunnerProvider: ObjectProvider<ConversationRuntimeTaskRunner>,
     descriptor: ConversationRuntimeExecutorDescriptor,
     @Qualifier("applicationScope") private val parentScope: CoroutineScope,
+    private val taskGuardProvider: ObjectProvider<ConversationRuntimeTaskGuard>? = null,
 ) : SmartLifecycle {
     private val log = KLoggers.logger(this)
     private val executor = descriptor.identity
@@ -296,12 +298,14 @@ class ConversationRuntimeExecutor(
         try {
             cancelInterruptedExecution(task.conversationId)
             currentCoroutineContext().ensureActive()
+            for (guard in taskGuardProvider?.orderedStream()?.use { it.toList() }.orEmpty()) guard.validate(task)
             val outcome = taskRunnerProvider.getObject().runRuntimeTask(task, executor) { message ->
                 publishRuntimeEvent(
                     ConversationRuntimeEvent.MessageEmitted(
                         conversationId = task.conversationId,
                         taskId = task.id,
                         message = message,
+                        turnId = task.turnId,
                     )
                 )
             }

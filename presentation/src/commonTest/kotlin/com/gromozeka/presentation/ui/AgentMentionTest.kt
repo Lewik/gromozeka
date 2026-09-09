@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui
 
+import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -9,17 +10,18 @@ import kotlin.test.assertIs
 import kotlin.time.Clock
 
 class AgentMentionTest {
+    private val translation = EnglishTranslation()
     @Test
     fun `reply hint uses automatic responders unless a connected agent is mentioned`() {
         val candidates = listOf(
             candidate("agent-1", "@Claude", true).copy(autoRespond = true),
             candidate("agent-2", "@Codex", true).copy(autoRespond = true),
         )
-        assertEquals("Replies: Claude, Codex", agentResponseHint("Hello", candidates))
-        assertEquals("Replies: Codex", agentResponseHint("@Codex hello", candidates))
-        assertEquals("No automatic agent response", agentResponseHint("Hello", candidates.map { it.copy(autoRespond = false) }))
-        assertEquals("Replies: Claude", agentResponseHint("Hello", candidates.map { it.copy(connected = it.name == "Claude") }))
-        assertEquals("Agent @Codex is not connected to this conversation", agentResponseHint("@Codex", candidates.map { it.copy(connected = false) }))
+        assertEquals("Replies: Claude, Codex", agentResponseHint("Hello", candidates, translation))
+        assertEquals("Replies: Codex", agentResponseHint("@Codex hello", candidates, translation))
+        assertEquals("No automatic agent response", agentResponseHint("Hello", candidates.map { it.copy(autoRespond = false) }, translation))
+        assertEquals("Replies: Claude", agentResponseHint("Hello", candidates.map { it.copy(connected = it.name == "Claude") }, translation))
+        assertEquals("Agent @Codex is not connected to this conversation", agentResponseHint("@Codex", candidates.map { it.copy(connected = false) }, translation))
     }
 
     @Test
@@ -47,7 +49,7 @@ class AgentMentionTest {
             resolveAgentMention("@Claude help", listOf(candidate("agent-1", "@Claude", connected = false)))
         )
 
-        assertEquals("Agent @Claude is not connected to this conversation", resolution.message)
+        assertEquals("Agent @Claude is not connected to this conversation", resolution.message.resolve(translation))
     }
 
     @Test

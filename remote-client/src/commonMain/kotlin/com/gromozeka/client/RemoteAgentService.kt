@@ -1,6 +1,12 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.tool.AgentToolCatalogEntry
+import com.gromozeka.remote.protocol.GetAgentToolCatalogRequest
+import com.gromozeka.remote.protocol.AgentToolCatalogResponse
+import com.gromozeka.domain.tool.AgentPreloadedTools
+import com.gromozeka.domain.tool.ToolAccessPolicy
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -26,6 +32,11 @@ import kotlinx.coroutines.flow.Flow
 internal class RemoteAgentService(
     private val client: GromozekaWsClient,
 ) : AgentDomainService, DefaultAgentProvider {
+    override suspend fun toolCatalog(projectId: Project.Id?): List<AgentToolCatalogEntry> =
+        client.requestTyped<GetAgentToolCatalogRequest, AgentToolCatalogResponse>(
+            GetAgentToolCatalogRequest(projectId)
+        ).entries
+
     override suspend fun getDefault(): AgentDefinition =
         client.requestTyped<GetDefaultAgentRequest, DefaultAgentResponse>(GetDefaultAgentRequest).agent
 
@@ -52,9 +63,10 @@ internal class RemoteAgentService(
         prompts: List<Prompt.Id>,
         runtimeSelection: AiRuntimeSelection,
         runtimeOverrides: AiRuntimeOverrides,
-        tools: List<String>,
+        tools: AgentPreloadedTools,
         description: String?,
         skills: List<AgentSkill.Id>,
+        toolAccess: ToolAccessPolicy,
     ): AgentDefinition =
         client.requestTyped<CreateAgentRequest, AgentResponse>(
             CreateAgentRequest(
@@ -66,6 +78,7 @@ internal class RemoteAgentService(
                 tools,
                 description,
                 skills,
+                toolAccess,
             )
         ).agent ?: error("Server returned null agent after create")
 
@@ -86,7 +99,8 @@ internal class RemoteAgentService(
         skills: List<AgentSkill.Id>,
         runtimeSelection: AiRuntimeSelection,
         runtimeOverrides: AiRuntimeOverrides,
-        tools: List<String>,
+        tools: AgentPreloadedTools,
+        toolAccess: ToolAccessPolicy,
     ): AgentDefinition? =
         client.requestTyped<UpdateAgentRequest, AgentResponse>(
             UpdateAgentRequest(
@@ -98,6 +112,7 @@ internal class RemoteAgentService(
                 runtimeSelection,
                 runtimeOverrides,
                 tools,
+                toolAccess,
             )
         ).agent
 

@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTurnId
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -116,8 +117,10 @@ class ConversationRuntimeDispatcher(
     suspend fun controlExecution(
         conversationId: Conversation.Id,
         action: ConversationRuntimeControlAction,
+        expectedTurnId: ConversationRuntimeTurnId? = null,
     ): Boolean {
-        val cancelledCommands = if (action == ConversationRuntimeControlAction.INTERRUPT) {
+        require(expectedTurnId == null || action == ConversationRuntimeControlAction.INTERRUPT)
+        val cancelledCommands = if (action == ConversationRuntimeControlAction.INTERRUPT && expectedTurnId == null) {
             runtimeCoordinator.requestCommandTaskCancellations(conversationId, Clock.System.now())
         } else {
             0
@@ -126,7 +129,7 @@ class ConversationRuntimeDispatcher(
             ConversationRuntimeControlAction.PAUSE -> runtimeCoordinator.requestPause(conversationId)
             ConversationRuntimeControlAction.RESUME -> runtimeCoordinator.requestResume(conversationId)
             ConversationRuntimeControlAction.STOP -> runtimeCoordinator.requestStop(conversationId)
-            ConversationRuntimeControlAction.INTERRUPT -> runtimeCoordinator.requestInterrupt(conversationId)
+            ConversationRuntimeControlAction.INTERRUPT -> runtimeCoordinator.requestInterrupt(conversationId, expectedTurnId)
         }
         val accepted = runtimeControlAccepted || cancelledCommands > 0
         if (accepted) {
@@ -203,6 +206,28 @@ class ConversationRuntimeDispatcher(
         )
         return submitRuntimeTask(task)
     }
+
+    internal suspend fun importChannelMessage(channel: com.gromozeka.domain.model.ExternalConversationChannel,
+        message: Conversation.Message, replaceOriginalId: Conversation.Message.Id?): Boolean {
+        artifactReferenceValidator.validateReferences(message.conversationId, message.content)
+        return submitChannelTask(ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("import:${message.id.value}"), conversationId = message.conversationId,
+            externalChannel = channel, payload = ConversationRuntimeTask.Payload.PostMessage(message, replaceExternalOriginalId = replaceOriginalId),
+            placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "channel:import:${message.id.value}",
+            requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.CONVERSATION_TURN), ConversationRuntimeTaskTarget.Server),
+            createdAt = message.createdAt,
+        ))
+    }
+
+    internal suspend fun invokeChannelAgent(channel: com.gromozeka.domain.model.ExternalConversationChannel,
+        conversationId: Conversation.Id, rootMessageId: Conversation.Message.Id, agentId: AgentDefinition.Id,
+        actorUserId: User.Id, invocationId: String): Boolean = submitChannelTask(ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(invocationId), conversationId = conversationId, actorUserId = actorUserId,
+            externalChannel = channel, payload = ConversationRuntimeTask.Payload.AgentResponse(rootMessageId, agentId),
+            placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "channel:invoke:$invocationId",
+            requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.CONVERSATION_TURN,
+                ConversationRuntimeCapability.MEMORY_PIPELINE), ConversationRuntimeTaskTarget.Server), createdAt = Clock.System.now(),
+        ))
 
     internal suspend fun submitHistoryMutation(
         conversationId: Conversation.Id,
@@ -338,6 +363,14 @@ class ConversationRuntimeDispatcher(
             publishRuntimeSnapshot(task.conversationId)
         }
         return accepted
+    }
+
+    private suspend fun submitChannelTask(task: ConversationRuntimeTask): Boolean {
+        if (!runtimeCoordinator.submit(task, acceptPreviouslySubmitted = true)) {
+            throw com.gromozeka.domain.service.ExternalConversationIngressDeferred()
+        }
+        publishRuntimeSnapshot(task.conversationId)
+        return true
     }
 
     private suspend fun updatePendingRuntimeTask(task: ConversationRuntimeTask): Boolean {

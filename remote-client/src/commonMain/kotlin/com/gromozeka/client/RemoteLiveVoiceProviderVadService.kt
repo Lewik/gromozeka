@@ -1,5 +1,8 @@
 package com.gromozeka.client
 
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
+import com.gromozeka.domain.model.SpeechAvailabilityException
+
 import com.gromozeka.remote.protocol.RemotePcmAudioChunk
 import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.GetLiveVoiceProviderVadAvailabilityRequest
@@ -10,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 
 interface LiveVoiceProviderVadService {
-    suspend fun unavailableReason(): String?
+    suspend fun unavailableReason(): SpeechAvailabilityFailure?
 
     suspend fun start(
         languageCode: String?,
@@ -19,21 +22,21 @@ interface LiveVoiceProviderVadService {
 }
 
 object NoOpLiveVoiceProviderVadService : LiveVoiceProviderVadService {
-    private const val unavailableReason = "Provider VAD недоступен на этом клиенте"
+    private val unavailableReason = SpeechAvailabilityFailure(SpeechAvailabilityFailure.Code.PROVIDER_VAD_UNAVAILABLE)
 
-    override suspend fun unavailableReason(): String = unavailableReason
+    override suspend fun unavailableReason(): SpeechAvailabilityFailure = unavailableReason
 
     override suspend fun start(
         languageCode: String?,
         prompt: String?,
     ): LiveVoiceProviderVadSession =
-        error(unavailableReason)
+        throw SpeechAvailabilityException(unavailableReason)
 }
 
 class RemoteLiveVoiceProviderVadService internal constructor(
     private val client: GromozekaWsClient,
 ) : LiveVoiceProviderVadService {
-    override suspend fun unavailableReason(): String? =
+    override suspend fun unavailableReason(): SpeechAvailabilityFailure? =
         client.requestTyped<GetLiveVoiceProviderVadAvailabilityRequest, LiveVoiceProviderVadAvailabilityResponse>(
             GetLiveVoiceProviderVadAvailabilityRequest
         ).unavailableReason

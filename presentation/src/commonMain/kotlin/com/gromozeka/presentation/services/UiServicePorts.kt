@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutSettings
@@ -22,7 +25,7 @@ data class AttachmentAcquisitionCapabilities(
 sealed interface AttachmentAcquisitionEvent {
     data class Acquired(val uploads: List<ArtifactUpload>) : AttachmentAcquisitionEvent
 
-    data class Failed(val message: String) : AttachmentAcquisitionEvent
+    data class Failed(val message: LocalizedText) : AttachmentAcquisitionEvent
 }
 
 interface AttachmentAcquisitionController {
@@ -56,6 +59,7 @@ interface GlobalHotkeyController {
         handler: (GlobalHotkeyEvent) -> Unit,
     )
     fun cleanup()
+    fun setRecordingShortcut(recording: Boolean) = Unit
     fun isSupported(): Boolean = false
     fun getImplementationType(): String = "none"
 }
@@ -65,7 +69,7 @@ object NoOpGlobalHotkeyController : GlobalHotkeyController {
         GlobalHotkeyState(
             available = false,
             implementationType = "none",
-            message = "Global shortcuts are unavailable on this client",
+            message = localizedText("shortcuts.unavailable"),
         )
     )
     override fun initializeService() = Unit
@@ -87,8 +91,8 @@ object NoOpQuickTextActionRunner : QuickTextActionRunner {
 data class GlobalHotkeyState(
     val available: Boolean,
     val implementationType: String,
-    val message: String? = null,
-    val bindingErrors: Map<KeyboardShortcutAction, String> = emptyMap(),
+    val message: LocalizedText? = null,
+    val bindingErrors: Map<KeyboardShortcutAction, LocalizedText> = emptyMap(),
 )
 
 data class GlobalHotkeyEvent(
@@ -177,14 +181,14 @@ object NoOpSystemAudioMuteService : SystemAudioMuteService {
 
 interface PttRecordingService {
     val state: StateFlow<PttState>
-    val statusMessage: StateFlow<String?>
-    val unavailableReason: StateFlow<String?>
+    val statusMessage: StateFlow<LocalizedText?>
+    val unavailableReason: StateFlow<LocalizedText?>
 }
 
 class NoOpPttRecordingService : PttRecordingService {
     override val state: StateFlow<PttState> = MutableStateFlow(PttState.IDLE)
-    override val statusMessage: StateFlow<String?> = MutableStateFlow(null)
-    override val unavailableReason: StateFlow<String?> = MutableStateFlow("Запись голоса недоступна")
+    override val statusMessage: StateFlow<LocalizedText?> = MutableStateFlow(null)
+    override val unavailableReason: StateFlow<LocalizedText?> = MutableStateFlow(localizedText("voice.unavailable"))
 }
 
 enum class PttState {

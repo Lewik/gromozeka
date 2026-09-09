@@ -131,7 +131,8 @@ internal class OpenAiResponsesMessageMapper(
             ?.takeIf(String::isNotBlank)
             ?.let(builder::promptCacheKey)
 
-        applyTools(builder, request.tools, request.options.toolChoice, webSearchEnabled)
+        applyTools(builder, request.tools, request.options.toolChoice, webSearchEnabled &&
+            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.isAllowed(request.options.toolAccess))
         applyReasoning(builder, request.options)
         applyResponseFormat(builder, request.options.responseFormat)
         return builder.build()

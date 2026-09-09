@@ -102,6 +102,7 @@ class ExposedRuntimeCatalogRepository(
                 it[runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
                 it[runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
                 it[toolsJson] = json.encodeToString(agent.tools)
+                it[toolAccessJson] = json.encodeToString(agent.toolAccess)
                 it[description] = agent.description
                 it[type] = agent.type.databaseValue()
                 it[createdAt] = agent.createdAt

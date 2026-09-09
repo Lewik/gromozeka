@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -178,7 +179,6 @@ internal fun <T> FollowLatestLazyColumn(
 
         if (!isAtBottom) {
             ScrollToLatestButton(
-                unreadCount = unreadKeys.size.takeIf { hasUnreadContent },
                 label = unreadLabel(unreadKeys.size).takeIf { hasUnreadContent },
                 onClick = {
                     followingLatest = true
@@ -195,10 +195,10 @@ internal fun <T> FollowLatestLazyColumn(
 
 @Composable
 private fun BoxScope.ScrollToLatestButton(
-    unreadCount: Int?,
     label: String?,
     onClick: () -> Unit,
 ) {
+    val localization = LocalTranslation.current
     val modifier = Modifier
         .align(Alignment.BottomCenter)
         .padding(12.dp)
@@ -208,7 +208,7 @@ private fun BoxScope.ScrollToLatestButton(
             onClick = onClick,
             modifier = modifier,
         ) {
-            Icon(Icons.Default.ArrowDownward, contentDescription = "Scroll to latest")
+            Icon(Icons.Default.ArrowDownward, contentDescription = localization.text("chat.history.scrollToLatest"))
         }
     } else {
         FilledTonalButton(
@@ -216,9 +216,9 @@ private fun BoxScope.ScrollToLatestButton(
             modifier = modifier,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.ArrowDownward, contentDescription = "Scroll to latest")
+                Icon(Icons.Default.ArrowDownward, contentDescription = localization.text("chat.history.scrollToLatest"))
                 Spacer(Modifier.width(6.dp))
-                Text(if (requireNotNull(unreadCount) > 0) "$unreadCount $label" else label)
+                Text(label)
             }
         }
     }

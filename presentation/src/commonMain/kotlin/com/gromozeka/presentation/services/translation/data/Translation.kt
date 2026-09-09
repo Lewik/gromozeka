@@ -1,370 +1,370 @@
 package com.gromozeka.presentation.services.translation.data
 
-import kotlinx.serialization.Serializable
+import com.gromozeka.shared.localization.BundledTranslations
+import com.gromozeka.shared.localization.TranslationCatalog
+import com.gromozeka.shared.localization.TranslationDirection
+import com.gromozeka.shared.localization.TranslationPackage
 
-@Serializable
-sealed class Translation {
-    @Serializable
-    enum class TextDirection {
-        LTR,
-        RTL
-    }
+open class Translation(val content: TranslationPackage) {
+    enum class TextDirection { LTR, RTL }
 
-    @Serializable
-    abstract class SettingsTranslation {
+    private val catalog = TranslationCatalog(content)
+    val languageCode: String get() = content.locale
+    val languageName: String get() = content.name
+    val textDirection: TextDirection get() = if (content.direction == TranslationDirection.RTL) TextDirection.RTL else TextDirection.LTR
+    val settings = SettingsTranslation(catalog)
+    val runtime = RuntimeTranslation(catalog)
+
+    fun format(key: String, vararg arguments: Any?): String = catalog.format(key, *arguments)
+
+    fun text(key: String, vararg arguments: Pair<String, Any?>): String = catalog.text(key, *arguments)
+    fun plural(key: String, count: Long, vararg arguments: Pair<String, Any?>): String = catalog.plural(key, count, *arguments)
+    fun plural(key: String, count: Int, vararg arguments: Pair<String, Any?>): String = plural(key, count.toLong(), *arguments)
+
+    class SettingsTranslation internal constructor(private val catalog: TranslationCatalog) {
         // Settings Section Titles
-        abstract val voiceSynthesisTitle: String
-        abstract val speechRecognitionTitle: String
-        abstract val aiSettingsTitle: String
-        abstract val apiKeysTitle: String
-        abstract val interfaceSettingsTitle: String
-        abstract val localizationTitle: String
-        abstract val notificationsTitle: String
-        abstract val logsAndDiagnosticsTitle: String
-        abstract val developerSettingsTitle: String
+        val voiceSynthesisTitle: String get() = catalog.template("settings.voiceSynthesisTitle")
+        val speechRecognitionTitle: String get() = catalog.template("settings.speechRecognitionTitle")
+        val aiSettingsTitle: String get() = catalog.template("settings.aiSettingsTitle")
+        val apiKeysTitle: String get() = catalog.template("settings.apiKeysTitle")
+        val interfaceSettingsTitle: String get() = catalog.template("settings.interfaceSettingsTitle")
+        val localizationTitle: String get() = catalog.template("settings.localizationTitle")
+        val notificationsTitle: String get() = catalog.template("settings.notificationsTitle")
+        val logsAndDiagnosticsTitle: String get() = catalog.template("settings.logsAndDiagnosticsTitle")
+        val developerSettingsTitle: String get() = catalog.template("settings.developerSettingsTitle")
 
         // Settings Control Labels
-        abstract val enableTtsLabel: String
-        abstract val voiceModelLabel: String
-        abstract val voiceTypeLabel: String
-        abstract val speechSpeedLabel: String
-        abstract val enableSttLabel: String
-        abstract val recognitionLanguageLabel: String
-        abstract val autoSendMessagesLabel: String
-        abstract val globalPttHotkeyLabel: String
-        abstract val muteAudioDuringPttLabel: String
-        abstract val includeCurrentTimeLabel: String
-        abstract val includeMessageTemporalContextLabel: String
-        abstract val openaiApiKeyLabel: String
-        abstract val enableBraveSearchLabel: String
-        abstract val braveApiKeyLabel: String
-        abstract val enableJinaReaderLabel: String
-        abstract val jinaApiKeyLabel: String
-        abstract val showSystemMessagesLabel: String
-        abstract val alwaysOnTopLabel: String
-        abstract val showTabsAtBottomLabel: String
-        abstract val errorSoundsLabel: String
-        abstract val activitySoundsLabel: String
-        abstract val attentionSoundsLabel: String
-        abstract val turnCompletionNotificationsLabel: String
-        abstract val soundVolumeLabel: String
-        abstract val showOriginalJsonLabel: String
-        abstract val localizationModeLabel: String
-        abstract val exportStringsButton: String
-        abstract val exportStringsTooltip: String
-        abstract val localizationModeBuiltin: String
-        abstract val localizationModeCustom: String
-        abstract val builtinLanguageLabel: String
+        val enableTtsLabel: String get() = catalog.template("settings.enableTtsLabel")
+        val voiceModelLabel: String get() = catalog.template("settings.voiceModelLabel")
+        val voiceTypeLabel: String get() = catalog.template("settings.voiceTypeLabel")
+        val speechSpeedLabel: String get() = catalog.template("settings.speechSpeedLabel")
+        val enableSttLabel: String get() = catalog.template("settings.enableSttLabel")
+        val recognitionLanguageLabel: String get() = catalog.template("settings.recognitionLanguageLabel")
+        val autoSendMessagesLabel: String get() = catalog.template("settings.autoSendMessagesLabel")
+        val globalPttHotkeyLabel: String get() = catalog.template("settings.globalPttHotkeyLabel")
+        val muteAudioDuringPttLabel: String get() = catalog.template("settings.muteAudioDuringPttLabel")
+        val includeCurrentTimeLabel: String get() = catalog.template("settings.includeCurrentTimeLabel")
+        val includeMessageTemporalContextLabel: String get() = catalog.template("settings.includeMessageTemporalContextLabel")
+        val openaiApiKeyLabel: String get() = catalog.template("settings.openaiApiKeyLabel")
+        val enableBraveSearchLabel: String get() = catalog.template("settings.enableBraveSearchLabel")
+        val braveApiKeyLabel: String get() = catalog.template("settings.braveApiKeyLabel")
+        val enableJinaReaderLabel: String get() = catalog.template("settings.enableJinaReaderLabel")
+        val jinaApiKeyLabel: String get() = catalog.template("settings.jinaApiKeyLabel")
+        val showSystemMessagesLabel: String get() = catalog.template("settings.showSystemMessagesLabel")
+        val alwaysOnTopLabel: String get() = catalog.template("settings.alwaysOnTopLabel")
+        val showTabsAtBottomLabel: String get() = catalog.template("settings.showTabsAtBottomLabel")
+        val errorSoundsLabel: String get() = catalog.template("settings.errorSoundsLabel")
+        val activitySoundsLabel: String get() = catalog.template("settings.activitySoundsLabel")
+        val attentionSoundsLabel: String get() = catalog.template("settings.attentionSoundsLabel")
+        val turnCompletionNotificationsLabel: String get() = catalog.template("settings.turnCompletionNotificationsLabel")
+        val soundVolumeLabel: String get() = catalog.template("settings.soundVolumeLabel")
+        val showOriginalJsonLabel: String get() = catalog.template("settings.showOriginalJsonLabel")
+        val localizationModeLabel: String get() = catalog.template("settings.localizationModeLabel")
+        val exportStringsButton: String get() = catalog.template("settings.exportStringsButton")
+        val exportStringsTooltip: String get() = catalog.template("settings.exportStringsTooltip")
+        val localizationModeBuiltin: String get() = catalog.template("settings.localizationModeBuiltin")
+        val localizationModeCustom: String get() = catalog.template("settings.localizationModeCustom")
+        val builtinLanguageLabel: String get() = catalog.template("settings.builtinLanguageLabel")
 
         // Settings Descriptions
-        abstract val ttsDescription: String
-        abstract val ttsModelDescription: String
-        abstract val ttsVoiceDescription: String
-        abstract val ttsSpeedDescription: String
-        abstract val sttDescription: String
-        abstract val sttLanguageDescription: String
-        abstract val autoSendDescription: String
-        abstract val globalPttDescription: String
-        abstract val muteAudioDescription: String
-        abstract val includeTimeDescription: String
-        abstract val includeMessageTemporalContextDescription: String
-        abstract val duplicateTemporalContextWarning: String
-        abstract val openaiKeyDescription: String
-        abstract val braveSearchDescription: String
-        abstract val braveApiKeyDescription: String
-        abstract val jinaReaderDescription: String
-        abstract val jinaApiKeyDescription: String
-        abstract val showSystemDescription: String
-        abstract val alwaysOnTopDescription: String
-        abstract val showTabsAtBottomDescription: String
-        abstract val errorSoundsDescription: String
-        abstract val activitySoundsDescription: String
-        abstract val attentionSoundsDescription: String
-        abstract val turnCompletionNotificationsDescription: String
-        abstract val soundVolumeDescription: String
-        abstract val showJsonDescription: String
+        val ttsDescription: String get() = catalog.template("settings.ttsDescription")
+        val ttsModelDescription: String get() = catalog.template("settings.ttsModelDescription")
+        val ttsVoiceDescription: String get() = catalog.template("settings.ttsVoiceDescription")
+        val ttsSpeedDescription: String get() = catalog.template("settings.ttsSpeedDescription")
+        val sttDescription: String get() = catalog.template("settings.sttDescription")
+        val sttLanguageDescription: String get() = catalog.template("settings.sttLanguageDescription")
+        val autoSendDescription: String get() = catalog.template("settings.autoSendDescription")
+        val globalPttDescription: String get() = catalog.template("settings.globalPttDescription")
+        val muteAudioDescription: String get() = catalog.template("settings.muteAudioDescription")
+        val includeTimeDescription: String get() = catalog.template("settings.includeTimeDescription")
+        val includeMessageTemporalContextDescription: String get() = catalog.template("settings.includeMessageTemporalContextDescription")
+        val duplicateTemporalContextWarning: String get() = catalog.template("settings.duplicateTemporalContextWarning")
+        val openaiKeyDescription: String get() = catalog.template("settings.openaiKeyDescription")
+        val braveSearchDescription: String get() = catalog.template("settings.braveSearchDescription")
+        val braveApiKeyDescription: String get() = catalog.template("settings.braveApiKeyDescription")
+        val jinaReaderDescription: String get() = catalog.template("settings.jinaReaderDescription")
+        val jinaApiKeyDescription: String get() = catalog.template("settings.jinaApiKeyDescription")
+        val showSystemDescription: String get() = catalog.template("settings.showSystemDescription")
+        val alwaysOnTopDescription: String get() = catalog.template("settings.alwaysOnTopDescription")
+        val showTabsAtBottomDescription: String get() = catalog.template("settings.showTabsAtBottomDescription")
+        val errorSoundsDescription: String get() = catalog.template("settings.errorSoundsDescription")
+        val activitySoundsDescription: String get() = catalog.template("settings.activitySoundsDescription")
+        val attentionSoundsDescription: String get() = catalog.template("settings.attentionSoundsDescription")
+        val turnCompletionNotificationsDescription: String get() = catalog.template("settings.turnCompletionNotificationsDescription")
+        val soundVolumeDescription: String get() = catalog.template("settings.soundVolumeDescription")
+        val showJsonDescription: String get() = catalog.template("settings.showJsonDescription")
 
         // Translation Override Section
-        abstract val customTranslationInfoLabel: String
-        abstract val customTranslationInfoMessage: String
-        abstract val translationOverrideStatusLabel: String
-        abstract val overrideSuccessMessage: String
-        abstract val overrideFailureMessage: String
-        abstract val refreshTranslationsLabel: String
-        abstract val refreshTranslationsDescription: String
-        abstract val refreshTranslationsButton: String
-        abstract val exportTranslationLabel: String
-        abstract val exportTranslationDescription: String
-        abstract val exportTranslationButton: String
+        val customTranslationInfoLabel: String get() = catalog.template("settings.customTranslationInfoLabel")
+        val customTranslationInfoMessage: String get() = catalog.template("settings.customTranslationInfoMessage")
+        val translationOverrideStatusLabel: String get() = catalog.template("settings.translationOverrideStatusLabel")
+        val overrideSuccessMessage: String get() = catalog.template("settings.overrideSuccessMessage")
+        val overrideFailureMessage: String get() = catalog.template("settings.overrideFailureMessage")
+        val refreshTranslationsLabel: String get() = catalog.template("settings.refreshTranslationsLabel")
+        val refreshTranslationsDescription: String get() = catalog.template("settings.refreshTranslationsDescription")
+        val refreshTranslationsButton: String get() = catalog.template("settings.refreshTranslationsButton")
+        val exportTranslationLabel: String get() = catalog.template("settings.exportTranslationLabel")
+        val exportTranslationDescription: String get() = catalog.template("settings.exportTranslationDescription")
+        val exportTranslationButton: String get() = catalog.template("settings.exportTranslationButton")
 
         // Language Selection
-        abstract val languageSelectionDescription: String
+        val languageSelectionDescription: String get() = catalog.template("settings.languageSelectionDescription")
 
         // Theming Section
-        abstract val themingTitle: String
-        abstract val themeSelectionLabel: String
-        abstract val themeSelectionDescription: String
-        abstract val customThemeInfoLabel: String
-        abstract val customThemeInfoMessage: String
-        abstract val themeOverrideStatusLabel: String
-        abstract val themeOverrideSuccessMessage: String
-        abstract val themeOverrideFailureMessage: String
-        abstract val refreshThemesLabel: String
-        abstract val refreshThemesDescription: String
-        abstract val refreshThemesButton: String
-        abstract val exportThemeLabel: String
-        abstract val exportThemeDescription: String
-        abstract val exportThemeButton: String
+        val themingTitle: String get() = catalog.template("settings.themingTitle")
+        val themeSelectionLabel: String get() = catalog.template("settings.themeSelectionLabel")
+        val themeSelectionDescription: String get() = catalog.template("settings.themeSelectionDescription")
+        val customThemeInfoLabel: String get() = catalog.template("settings.customThemeInfoLabel")
+        val customThemeInfoMessage: String get() = catalog.template("settings.customThemeInfoMessage")
+        val themeOverrideStatusLabel: String get() = catalog.template("settings.themeOverrideStatusLabel")
+        val themeOverrideSuccessMessage: String get() = catalog.template("settings.themeOverrideSuccessMessage")
+        val themeOverrideFailureMessage: String get() = catalog.template("settings.themeOverrideFailureMessage")
+        val refreshThemesLabel: String get() = catalog.template("settings.refreshThemesLabel")
+        val refreshThemesDescription: String get() = catalog.template("settings.refreshThemesDescription")
+        val refreshThemesButton: String get() = catalog.template("settings.refreshThemesButton")
+        val exportThemeLabel: String get() = catalog.template("settings.exportThemeLabel")
+        val exportThemeDescription: String get() = catalog.template("settings.exportThemeDescription")
+        val exportThemeButton: String get() = catalog.template("settings.exportThemeButton")
 
         // Theme Names
-        abstract val themeNameDark: String
-        abstract val themeNameLight: String
-        abstract val themeNameGromozeka: String
+        val themeNameDark: String get() = catalog.template("settings.themeNameDark")
+        val themeNameLight: String get() = catalog.template("settings.themeNameLight")
+        val themeNameGromozeka: String get() = catalog.template("settings.themeNameGromozeka")
 
         // Theme Errors
-        abstract val themeDeserializationError: String
-        abstract val themeFileError: String
-        abstract val themeInvalidFormat: String
+        val themeDeserializationError: String get() = catalog.template("settings.themeDeserializationError")
+        val themeFileError: String get() = catalog.template("settings.themeFileError")
+        val themeInvalidFormat: String get() = catalog.template("settings.themeInvalidFormat")
 
         // Settings UI
-        abstract val settingsTitle: String
-        abstract val closeSettingsText: String
+        val settingsTitle: String get() = catalog.template("settings.settingsTitle")
+        val closeSettingsText: String get() = catalog.template("settings.closeSettingsText")
     }
 
-    @Serializable
-    data class RuntimeTranslation(
-        val title: String = "Runtime",
-        val closePanelDescription: String = "Close runtime panel",
-        val contextLabel: String = "Context",
-        val lastUsageLabel: String = "last",
-        val threadUsageLabel: String = "thread",
-        val cacheReadUsageLabel: String = "cache read",
-        val lastCallLabel: String = "Last call",
-        val usageTitle: String = "Usage",
-        val refreshUsageDescription: String = "Refresh usage",
-        val quotaUnavailableLabel: String = "Quota unavailable",
-        val quotaStaleLabel: String = "Stale quota data",
-        val quotaUnlimitedLabel: String = "Unlimited",
-        val quotaBlockedLabel: String = "Quota exhausted",
-        val quotaResetLabel: String = "resets in",
-        val quotaObservedLabel: String = "observed",
-        val quotaAgoLabel: String = "ago",
-        val backgroundQuotaPolicyLabel: String = "Background quota policy",
-        val tokenUsageTitle: String = "Token Usage Statistics",
-        val collapseDescription: String = "Collapse",
-        val expandDescription: String = "Expand",
-        val contextWindowLabel: String = "Context Window",
-        val tokensLabel: String = "tokens",
-        val recentTurnsLabel: String = "Recent turns",
-        val inputLabel: String = "INPUT",
-        val outputLabel: String = "OUTPUT",
-        val totalLabel: String = "Total",
-        val promptLabel: String = "Prompt",
-        val cacheLabel: String = "Cache",
-        val completionLabel: String = "Completion",
-        val thinkingLabel: String = "Thinking",
-        val hiddenThinkingLabel: String = "Thinking · the provider did not return readable text",
-        val createLabel: String = "Create",
-        val readLabel: String = "Read",
-        val memoryTitle: String = "Memory",
-        val memoryQueuedStatus: String = "Queued",
-        val memoryRunningStatus: String = "Running",
-        val memoryNeedsInputStatus: String = "Needs input",
-        val memoryCompletedStatus: String = "Completed",
-        val memoryFailedStatus: String = "Failed",
-        val memoryCancelledStatus: String = "Cancelled",
-        val tasksTitle: String = "Tasks",
-        val claimedTaskLabel: String = "Claimed",
-        val runningTaskLabel: String = "Running",
-        val pendingTaskLabel: String = "Pending",
-        val toolTaskLabel: String = "Tool",
-        val killButton: String = "Kill",
-        val unknownTaskLabel: String = "Unknown",
-        val failedTaskLabel: String = "Failed",
-        val queueTitle: String = "Queue",
-        val currentTurnLabel: String = "Current turn",
-        val afterResponseLabel: String = "After response",
-        val editButton: String = "Edit",
-        val nearestToolResultPlacement: String = "After the nearest tool result",
-        val currentResponsePlacement: String = "After the current response",
-        val voiceInputReadyStatus: String = "Voice input",
-        val startVoiceCaptureHint: String = "Hold to record",
-        val preparingVoiceStatus: String = "Preparing microphone",
-        val transcribingVoiceStatus: String = "Transcribing voice...",
-        val recordingVoiceStatus: String = "Recording voice",
-        val cancelVoiceCaptureHint: String = "Release to cancel",
-        val stopVoiceCaptureHint: String = "Release to stop and transcribe",
-        val pauseRequestedStatus: String = "Pause requested",
-        val pausedStatus: String = "Paused",
-        val stoppingStatus: String = "Stopping",
-        val interruptingStatus: String = "Interrupting",
-        val commandRunningStatus: String = "Command is running",
-        val commandsRunningStatus: String = "Commands are running",
-        val monitorRunningStatus: String = "Monitor is running",
-        val monitorsRunningStatus: String = "Monitors are running",
-        val monitorEventsLabel: String = "events",
-        val monitorOnceMode: String = "once",
-        val monitorContinuousMode: String = "continuous",
-        val commandsDetailsLabel: String = "commands",
-        val monitorsDetailsLabel: String = "monitors",
-        val cancellingStatus: String = "Cancelling",
-        val toolsRunningStatus: String = "Tools",
-        val agentWorkingStatus: String = "is working",
-        val queuedStatus: String = "Queued",
-        val readyStatus: String = "Ready",
-        val pauseButton: String = "Pause",
-        val resumeButton: String = "Resume",
-        val stopButton: String = "Stop",
-        val messagePostTask: String = "Posting message",
-        val agentInvocationTask: String = "Agent invocation",
-        val historyMutationTask: String = "History change",
-        val llmCallTask: String = "LLM call",
-        val toolExecutionTask: String = "Tool execution",
-        val toolResultProcessingTask: String = "Tool result processing",
-        val memoryRecallTask: String = "Memory recall",
-        val memoryRunCompletionTask: String = "Memory result delivery",
-        val backgroundActivityDeliveryTask: String = "Background update delivery",
-        val executionIncidentTask: String = "Execution incident",
-        val modelRequestStatus: String = "Model request",
-        val historyMutationStatus: String = "Updating conversation history",
-        val toolExecutionStatus: String = "Tool is running",
-        val toolResultProcessingStatus: String = "Processing tool result",
-        val memoryRecallStatus: String = "Recalling memory",
-        val memoryRunCompletionStatus: String = "Delivering memory result",
-        val backgroundActivityDeliveryStatus: String = "Delivering background update",
-        val executionIncidentStatus: String = "Handling execution incident",
-        val pendingDetailsLabel: String = "pending",
-        val incidentsDetailsLabel: String = "incidents",
-        val disconnectedStatus: String = "Disconnected",
-        val connectingStatus: String = "Connecting",
-        val connectedStatus: String = "Connected",
-        val reconnectingStatus: String = "Reconnecting",
-        val offlineStatus: String = "Offline",
-        val closedStatus: String = "Closed",
-        val newMessagesLabel: String = "new messages",
-        val newActivityLabel: String = "New activity",
-        val readingFileActivity: String = "Reading file",
-        val editingFileActivity: String = "Editing file",
-        val searchingFilesActivity: String = "Searching files",
-        val runningTestsActivity: String = "Running tests",
-        val runningCommandActivity: String = "Running command",
-        val searchingWebActivity: String = "Searching the web",
-        val readingWebActivity: String = "Reading web page",
-        val usingBrowserActivity: String = "Using browser",
-        val capturingScreenActivity: String = "Capturing screen",
-        val observingScreenActivity: String = "Observing screen",
-        val usingComputerActivity: String = "Using computer",
-        val coordinatingAgentsActivity: String = "Coordinating agents",
-        val usingSkillActivity: String = "Loading skill",
-        val accessingMemoryActivity: String = "Accessing memory",
-        val usingToolActivity: String = "Using tool",
-        val toolActivityGroupLabel: String = "Tools",
-        val readFileToolLabel: String = "Read File",
-        val writeFileToolLabel: String = "Write File",
-        val editFileToolLabel: String = "Edit File",
-        val executeCommandToolLabel: String = "Execute Command",
-        val webSearchToolLabel: String = "Web Search",
-        val localSearchToolLabel: String = "Local Search",
-        val readUrlToolLabel: String = "Read URL",
-        val createAgentToolLabel: String = "Create Agent",
-        val tellAgentToolLabel: String = "Tell Agent",
-        val switchTabToolLabel: String = "Switch Tab",
-        val listTabsToolLabel: String = "List Tabs",
-        val testToolLabel: String = "Test",
-        val listDisplaysToolLabel: String = "List Displays",
-        val observeScreenToolLabel: String = "Observe Screen",
-        val useComputerToolLabel: String = "Use Computer",
-        val captureScreenToolLabel: String = "Capture Screen",
-        val copyText: String = "Copy",
-        val copiedText: String = "Copied",
-    )
+    class RuntimeTranslation(
+        private val catalog: TranslationCatalog = TranslationCatalog(BundledTranslations.english),
+    ) {
+        fun text(key: String): String = catalog.text(key)
+        val title: String get() = catalog.template("runtime.title")
+        val closePanelDescription: String get() = catalog.template("runtime.closePanelDescription")
+        val contextLabel: String get() = catalog.template("runtime.contextLabel")
+        val lastUsageLabel: String get() = catalog.template("runtime.lastUsageLabel")
+        val threadUsageLabel: String get() = catalog.template("runtime.threadUsageLabel")
+        val cacheReadUsageLabel: String get() = catalog.template("runtime.cacheReadUsageLabel")
+        val lastCallLabel: String get() = catalog.template("runtime.lastCallLabel")
+        val usageTitle: String get() = catalog.template("runtime.usageTitle")
+        val refreshUsageDescription: String get() = catalog.template("runtime.refreshUsageDescription")
+        val quotaUnavailableLabel: String get() = catalog.template("runtime.quotaUnavailableLabel")
+        val quotaStaleLabel: String get() = catalog.template("runtime.quotaStaleLabel")
+        val quotaUnlimitedLabel: String get() = catalog.template("runtime.quotaUnlimitedLabel")
+        val quotaBlockedLabel: String get() = catalog.template("runtime.quotaBlockedLabel")
+        val quotaResetLabel: String get() = catalog.template("runtime.quotaResetLabel")
+        val quotaObservedLabel: String get() = catalog.template("runtime.quotaObservedLabel")
+        val quotaAgoLabel: String get() = catalog.template("runtime.quotaAgoLabel")
+        val backgroundQuotaPolicyLabel: String get() = catalog.template("runtime.backgroundQuotaPolicyLabel")
+        val tokenUsageTitle: String get() = catalog.template("runtime.tokenUsageTitle")
+        val collapseDescription: String get() = catalog.template("runtime.collapseDescription")
+        val expandDescription: String get() = catalog.template("runtime.expandDescription")
+        val contextWindowLabel: String get() = catalog.template("runtime.contextWindowLabel")
+        val tokensLabel: String get() = catalog.template("runtime.tokensLabel")
+        val recentTurnsLabel: String get() = catalog.template("runtime.recentTurnsLabel")
+        val inputLabel: String get() = catalog.template("runtime.inputLabel")
+        val outputLabel: String get() = catalog.template("runtime.outputLabel")
+        val totalLabel: String get() = catalog.template("runtime.totalLabel")
+        val promptLabel: String get() = catalog.template("runtime.promptLabel")
+        val cacheLabel: String get() = catalog.template("runtime.cacheLabel")
+        val completionLabel: String get() = catalog.template("runtime.completionLabel")
+        val thinkingLabel: String get() = catalog.template("runtime.thinkingLabel")
+        val hiddenThinkingLabel: String get() = catalog.template("runtime.hiddenThinkingLabel")
+        val createLabel: String get() = catalog.template("runtime.createLabel")
+        val readLabel: String get() = catalog.template("runtime.readLabel")
+        val memoryTitle: String get() = catalog.template("runtime.memoryTitle")
+        val memoryQueuedStatus: String get() = catalog.template("runtime.memoryQueuedStatus")
+        val memoryRunningStatus: String get() = catalog.template("runtime.memoryRunningStatus")
+        val memoryNeedsInputStatus: String get() = catalog.template("runtime.memoryNeedsInputStatus")
+        val memoryCompletedStatus: String get() = catalog.template("runtime.memoryCompletedStatus")
+        val memoryFailedStatus: String get() = catalog.template("runtime.memoryFailedStatus")
+        val memoryCancelledStatus: String get() = catalog.template("runtime.memoryCancelledStatus")
+        val tasksTitle: String get() = catalog.template("runtime.tasksTitle")
+        val claimedTaskLabel: String get() = catalog.template("runtime.claimedTaskLabel")
+        val runningTaskLabel: String get() = catalog.template("runtime.runningTaskLabel")
+        val pendingTaskLabel: String get() = catalog.template("runtime.pendingTaskLabel")
+        val toolTaskLabel: String get() = catalog.template("runtime.toolTaskLabel")
+        val killButton: String get() = catalog.template("runtime.killButton")
+        val unknownTaskLabel: String get() = catalog.template("runtime.unknownTaskLabel")
+        val failedTaskLabel: String get() = catalog.template("runtime.failedTaskLabel")
+        val queueTitle: String get() = catalog.template("runtime.queueTitle")
+        val currentTurnLabel: String get() = catalog.template("runtime.currentTurnLabel")
+        val afterResponseLabel: String get() = catalog.template("runtime.afterResponseLabel")
+        val editButton: String get() = catalog.template("runtime.editButton")
+        val nearestToolResultPlacement: String get() = catalog.template("runtime.nearestToolResultPlacement")
+        val currentResponsePlacement: String get() = catalog.template("runtime.currentResponsePlacement")
+        val voiceInputReadyStatus: String get() = catalog.template("runtime.voiceInputReadyStatus")
+        val startVoiceCaptureHint: String get() = catalog.template("runtime.startVoiceCaptureHint")
+        val preparingVoiceStatus: String get() = catalog.template("runtime.preparingVoiceStatus")
+        val transcribingVoiceStatus: String get() = catalog.template("runtime.transcribingVoiceStatus")
+        val recordingVoiceStatus: String get() = catalog.template("runtime.recordingVoiceStatus")
+        val cancelVoiceCaptureHint: String get() = catalog.template("runtime.cancelVoiceCaptureHint")
+        val stopVoiceCaptureHint: String get() = catalog.template("runtime.stopVoiceCaptureHint")
+        val pauseRequestedStatus: String get() = catalog.template("runtime.pauseRequestedStatus")
+        val pausedStatus: String get() = catalog.template("runtime.pausedStatus")
+        val stoppingStatus: String get() = catalog.template("runtime.stoppingStatus")
+        val interruptingStatus: String get() = catalog.template("runtime.interruptingStatus")
+        val commandRunningStatus: String get() = catalog.template("runtime.commandRunningStatus")
+        val commandsRunningStatus: String get() = catalog.template("runtime.commandsRunningStatus")
+        val monitorRunningStatus: String get() = catalog.template("runtime.monitorRunningStatus")
+        val monitorsRunningStatus: String get() = catalog.template("runtime.monitorsRunningStatus")
+        val monitorEventsLabel: String get() = catalog.template("runtime.monitorEventsLabel")
+        val monitorOnceMode: String get() = catalog.template("runtime.monitorOnceMode")
+        val monitorContinuousMode: String get() = catalog.template("runtime.monitorContinuousMode")
+        val commandsDetailsLabel: String get() = catalog.template("runtime.commandsDetailsLabel")
+        val monitorsDetailsLabel: String get() = catalog.template("runtime.monitorsDetailsLabel")
+        val cancellingStatus: String get() = catalog.template("runtime.cancellingStatus")
+        val toolsRunningStatus: String get() = catalog.template("runtime.toolsRunningStatus")
+        val agentWorkingStatus: String get() = catalog.template("runtime.agentWorkingStatus")
+        val queuedStatus: String get() = catalog.template("runtime.queuedStatus")
+        val readyStatus: String get() = catalog.template("runtime.readyStatus")
+        val pauseButton: String get() = catalog.template("runtime.pauseButton")
+        val resumeButton: String get() = catalog.template("runtime.resumeButton")
+        val stopButton: String get() = catalog.template("runtime.stopButton")
+        val messagePostTask: String get() = catalog.template("runtime.messagePostTask")
+        val agentInvocationTask: String get() = catalog.template("runtime.agentInvocationTask")
+        val historyMutationTask: String get() = catalog.template("runtime.historyMutationTask")
+        val llmCallTask: String get() = catalog.template("runtime.llmCallTask")
+        val toolExecutionTask: String get() = catalog.template("runtime.toolExecutionTask")
+        val toolResultProcessingTask: String get() = catalog.template("runtime.toolResultProcessingTask")
+        val memoryRecallTask: String get() = catalog.template("runtime.memoryRecallTask")
+        val memoryRunCompletionTask: String get() = catalog.template("runtime.memoryRunCompletionTask")
+        val backgroundActivityDeliveryTask: String get() = catalog.template("runtime.backgroundActivityDeliveryTask")
+        val executionIncidentTask: String get() = catalog.template("runtime.executionIncidentTask")
+        val modelRequestStatus: String get() = catalog.template("runtime.modelRequestStatus")
+        val historyMutationStatus: String get() = catalog.template("runtime.historyMutationStatus")
+        val toolExecutionStatus: String get() = catalog.template("runtime.toolExecutionStatus")
+        val toolResultProcessingStatus: String get() = catalog.template("runtime.toolResultProcessingStatus")
+        val memoryRecallStatus: String get() = catalog.template("runtime.memoryRecallStatus")
+        val memoryRunCompletionStatus: String get() = catalog.template("runtime.memoryRunCompletionStatus")
+        val backgroundActivityDeliveryStatus: String get() = catalog.template("runtime.backgroundActivityDeliveryStatus")
+        val executionIncidentStatus: String get() = catalog.template("runtime.executionIncidentStatus")
+        val pendingDetailsLabel: String get() = catalog.template("runtime.pendingDetailsLabel")
+        val incidentsDetailsLabel: String get() = catalog.template("runtime.incidentsDetailsLabel")
+        val disconnectedStatus: String get() = catalog.template("runtime.disconnectedStatus")
+        val connectingStatus: String get() = catalog.template("runtime.connectingStatus")
+        val connectedStatus: String get() = catalog.template("runtime.connectedStatus")
+        val reconnectingStatus: String get() = catalog.template("runtime.reconnectingStatus")
+        val offlineStatus: String get() = catalog.template("runtime.offlineStatus")
+        val closedStatus: String get() = catalog.template("runtime.closedStatus")
+        val newMessagesLabel: String get() = catalog.template("runtime.newMessagesLabel")
+        val newActivityLabel: String get() = catalog.template("runtime.newActivityLabel")
+        val readingFileActivity: String get() = catalog.template("runtime.readingFileActivity")
+        val editingFileActivity: String get() = catalog.template("runtime.editingFileActivity")
+        val searchingFilesActivity: String get() = catalog.template("runtime.searchingFilesActivity")
+        val runningTestsActivity: String get() = catalog.template("runtime.runningTestsActivity")
+        val runningCommandActivity: String get() = catalog.template("runtime.runningCommandActivity")
+        val searchingWebActivity: String get() = catalog.template("runtime.searchingWebActivity")
+        val readingWebActivity: String get() = catalog.template("runtime.readingWebActivity")
+        val usingBrowserActivity: String get() = catalog.template("runtime.usingBrowserActivity")
+        val capturingScreenActivity: String get() = catalog.template("runtime.capturingScreenActivity")
+        val observingScreenActivity: String get() = catalog.template("runtime.observingScreenActivity")
+        val usingComputerActivity: String get() = catalog.template("runtime.usingComputerActivity")
+        val coordinatingAgentsActivity: String get() = catalog.template("runtime.coordinatingAgentsActivity")
+        val usingSkillActivity: String get() = catalog.template("runtime.usingSkillActivity")
+        val accessingMemoryActivity: String get() = catalog.template("runtime.accessingMemoryActivity")
+        val usingToolActivity: String get() = catalog.template("runtime.usingToolActivity")
+        val activityGroupLabel: String get() = catalog.template("runtime.activityGroupLabel")
+        val readFileToolLabel: String get() = catalog.template("runtime.readFileToolLabel")
+        val writeFileToolLabel: String get() = catalog.template("runtime.writeFileToolLabel")
+        val editFileToolLabel: String get() = catalog.template("runtime.editFileToolLabel")
+        val executeCommandToolLabel: String get() = catalog.template("runtime.executeCommandToolLabel")
+        val webSearchToolLabel: String get() = catalog.template("runtime.webSearchToolLabel")
+        val localSearchToolLabel: String get() = catalog.template("runtime.localSearchToolLabel")
+        val readUrlToolLabel: String get() = catalog.template("runtime.readUrlToolLabel")
+        val createAgentToolLabel: String get() = catalog.template("runtime.createAgentToolLabel")
+        val tellAgentToolLabel: String get() = catalog.template("runtime.tellAgentToolLabel")
+        val switchTabToolLabel: String get() = catalog.template("runtime.switchTabToolLabel")
+        val listTabsToolLabel: String get() = catalog.template("runtime.listTabsToolLabel")
+        val testToolLabel: String get() = catalog.template("runtime.testToolLabel")
+        val listDisplaysToolLabel: String get() = catalog.template("runtime.listDisplaysToolLabel")
+        val observeScreenToolLabel: String get() = catalog.template("runtime.observeScreenToolLabel")
+        val useComputerToolLabel: String get() = catalog.template("runtime.useComputerToolLabel")
+        val captureScreenToolLabel: String get() = catalog.template("runtime.captureScreenToolLabel")
+        val copyText: String get() = catalog.template("runtime.copyText")
+        val copiedText: String get() = catalog.template("runtime.copiedText")
+    }
 
-    abstract val languageCode: String
-    abstract val languageName: String
-    abstract val textDirection: TextDirection
+    val appName: String get() = catalog.template("appName")
+    val helloWorld: String get() = catalog.template("helloWorld")
+    val switchLanguage: String get() = catalog.template("switchLanguage")
 
-    abstract val settings: SettingsTranslation
-    abstract val runtime: RuntimeTranslation
+    val newSessionButton: String get() = catalog.template("newSessionButton")
+    val newButton: String get() = catalog.template("newButton")
+    val forkButton: String get() = catalog.template("forkButton")
+    val restartButton: String get() = catalog.template("restartButton")
+    val continueButton: String get() = catalog.template("continueButton")
+    val newSessionShort: String get() = catalog.template("newSessionShort")
+    val cancelButton: String get() = catalog.template("cancelButton")
+    val saveButton: String get() = catalog.template("saveButton")
+    val builtinStringsMode: String get() = catalog.template("builtinStringsMode")
+    val externalStringsMode: String get() = catalog.template("externalStringsMode")
 
-    abstract val appName: String
-    abstract val helloWorld: String
-    abstract val switchLanguage: String
+    val viewOriginalJson: String get() = catalog.template("viewOriginalJson")
 
-    abstract val newSessionButton: String
-    abstract val newButton: String
-    abstract val forkButton: String
-    abstract val restartButton: String
-    abstract val continueButton: String
-    abstract val newSessionShort: String
-    abstract val cancelButton: String
-    abstract val saveButton: String
-    abstract val builtinStringsMode: String
-    abstract val externalStringsMode: String
+    val renameConversationTitle: String get() = catalog.template("renameConversationTitle")
+    val conversationNameLabel: String get() = catalog.template("conversationNameLabel")
+    val projectsTabTooltip: String get() = catalog.template("projectsTabTooltip")
 
-    abstract val viewOriginalJson: String
+    val refreshSessionsTooltip: String get() = catalog.template("refreshSessionsTooltip")
+    val settingsTooltip: String get() = catalog.template("settingsTooltip")
+    val searchSessionsTooltip: String get() = catalog.template("searchSessionsTooltip")
+    val messageCountTooltip: String get() = catalog.template("messageCountTooltip")
+    val closeTabTooltip: String get() = catalog.template("closeTabTooltip")
+    val screenshotTooltip: String get() = catalog.template("screenshotTooltip")
+    val sendingMessageTooltip: String get() = catalog.template("sendingMessageTooltip")
+    val sendMessageTooltip: String get() = catalog.template("sendMessageTooltip")
+    val recordingTooltip: String get() = catalog.template("recordingTooltip")
+    val pttButtonTooltip: String get() = catalog.template("pttButtonTooltip")
+    val builtinStringsTooltip: String get() = catalog.template("builtinStringsTooltip")
+    val externalStringsTooltip: String get() = catalog.template("externalStringsTooltip")
 
-    abstract val renameConversationTitle: String
-    abstract val conversationNameLabel: String
-    abstract val projectsTabTooltip: String
+    val searchSessionsPlaceholder: String get() = catalog.template("searchSessionsPlaceholder")
 
-    abstract val refreshSessionsTooltip: String
-    abstract val settingsTooltip: String
-    abstract val searchSessionsTooltip: String
-    abstract val messageCountTooltip: String
-    abstract val closeTabTooltip: String
-    abstract val screenshotTooltip: String
-    abstract val sendingMessageTooltip: String
-    abstract val sendMessageTooltip: String
-    abstract val recordingTooltip: String
-    abstract val pttButtonTooltip: String
-    abstract val builtinStringsTooltip: String
-    abstract val externalStringsTooltip: String
+    val showJsonMenuItem: String get() = catalog.template("showJsonMenuItem")
+    val copyMarkdownMenuItem: String get() = catalog.template("copyMarkdownMenuItem")
+    val speakMenuItem: String get() = catalog.template("speakMenuItem")
 
-    abstract val searchSessionsPlaceholder: String
+    val executingStatus: String get() = catalog.template("executingStatus")
+    val errorClickToViewStatus: String get() = catalog.template("errorClickToViewStatus")
+    val successClickToViewStatus: String get() = catalog.template("successClickToViewStatus")
 
-    abstract val showJsonMenuItem: String
-    abstract val copyMarkdownMenuItem: String
-    abstract val speakMenuItem: String
+    val alwaysOnTopSuffix: String get() = catalog.template("alwaysOnTopSuffix")
+    val devModeSuffix: String get() = catalog.template("devModeSuffix")
 
-    abstract val executingStatus: String
-    abstract val errorClickToViewStatus: String
-    abstract val successClickToViewStatus: String
+    val quickActionTongueTwister: String get() = catalog.template("quickActionTongueTwister")
+    val quickActionTable: String get() = catalog.template("quickActionTable")
+    val quickActionGoogleSearch: String get() = catalog.template("quickActionGoogleSearch")
+    val quickActionFileList: String get() = catalog.template("quickActionFileList")
 
-    abstract val alwaysOnTopSuffix: String
-    abstract val devModeSuffix: String
-
-    abstract val quickActionTongueTwister: String
-    abstract val quickActionTable: String
-    abstract val quickActionGoogleSearch: String
-    abstract val quickActionFileList: String
-
-    abstract val searchingForText: String
-    abstract val enterSearchQuery: String
-    abstract val nothingFoundForText: String
-    abstract val foundSessionsText: String
-    abstract val foundSearchResultsText: String
-    abstract val loadMoreSearchResults: String
-    abstract val noSavedProjectsText: String
-    abstract val expandCollapseText: String
-    abstract val sessionsCountText: String
-    abstract val messagesCountText: String
-    abstract val noSessionsText: String
-    abstract val contextMenuHint: String
-    abstract val contentUnavailable: String
-    abstract val imageDisplayText: String
-    abstract val parseErrorText: String
-    abstract val clearSearchText: String
-    abstract val recordingText: String
-    abstract val pushToTalkText: String
+    val searchingForText: String get() = catalog.template("searchingForText")
+    val enterSearchQuery: String get() = catalog.template("enterSearchQuery")
+    val nothingFoundForText: String get() = catalog.template("nothingFoundForText")
+    val foundSessionsText: String get() = catalog.template("foundSessionsText")
+    val foundSearchResultsText: String get() = catalog.template("foundSearchResultsText")
+    val loadMoreSearchResults: String get() = catalog.template("loadMoreSearchResults")
+    val noSavedProjectsText: String get() = catalog.template("noSavedProjectsText")
+    val expandCollapseText: String get() = catalog.template("expandCollapseText")
+    val sessionsCountText: String get() = catalog.template("sessionsCountText")
+    val messagesCountText: String get() = catalog.template("messagesCountText")
+    val noSessionsText: String get() = catalog.template("noSessionsText")
+    val contextMenuHint: String get() = catalog.template("contextMenuHint")
+    val contentUnavailable: String get() = catalog.template("contentUnavailable")
+    val imageDisplayText: String get() = catalog.template("imageDisplayText")
+    val parseErrorText: String get() = catalog.template("parseErrorText")
+    val clearSearchText: String get() = catalog.template("clearSearchText")
+    val recordingText: String get() = catalog.template("recordingText")
+    val pushToTalkText: String get() = catalog.template("pushToTalkText")
 
     companion object {
-        val builtIn = listOf(
-            EnglishTranslation(),
-            RussianTranslation(),
-            HebrewTranslation(),
-            JapaneseTranslation(),
-            ChineseTranslation(),
-            ThaiTranslation(),
-        ).associateBy { it.languageCode }
+        val builtIn: Map<String, Translation> by lazy {
+            BundledTranslations.locales.associateWith { Translation(BundledTranslations.get(it)) }
+        }
     }
 }

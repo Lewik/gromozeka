@@ -20,7 +20,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -36,6 +35,7 @@ import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.LiveVoiceInputState
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.EnterKeyAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -45,7 +45,7 @@ import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.advancedPttGestures
-import com.gromozeka.presentation.ui.matches
+import com.gromozeka.presentation.ui.messageInputShortcuts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -87,9 +87,11 @@ internal fun MessageInput(
     onCaptureScreenshot: () -> Unit,
     onRemoveArtifact: (Artifact.Id) -> Unit,
     onInsertCurrentLocation: (() -> Unit)? = null,
+    enterKeyAction: EnterKeyAction = EnterKeyAction.NEW_LINE,
     editLastMessageShortcut: KeyboardShortcutBinding? = null,
     onEditLastUserMessage: () -> Boolean = { false },
 ) {
+    val localization = LocalTranslation.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val inputFocusRequester = remember { FocusRequester() }
@@ -134,10 +136,9 @@ internal fun MessageInput(
         textFieldLineHeight + textFieldPadding.calculateTopPadding() + textFieldPadding.calculateBottomPadding(),
     )
 
-    fun submitInput() {
-        if ((userInput.isBlank() && composerArtifacts.isEmpty()) || artifactUploadInProgress) return
-        coroutineScope.launch {
-            onSendMessage()
+    val submitInput: () -> Unit = {
+        if ((userInput.isNotBlank() || composerArtifacts.isNotEmpty()) && !artifactUploadInProgress) {
+            coroutineScope.launch { onSendMessage() }
         }
     }
 
@@ -146,7 +147,7 @@ internal fun MessageInput(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            text = agentResponseHint(userInput, agentMentionCandidates),
+            text = agentResponseHint(userInput, agentMentionCandidates, localization),
             modifier = Modifier.testTag(UiTestTag.AgentResponseHint.value),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
@@ -222,7 +223,7 @@ internal fun MessageInput(
                         trailingIcon = {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Remove ${artifact.fileName}",
+                                contentDescription = localization.text("chat.input.removeAttachment", "fileName" to artifact.fileName),
                                 modifier = Modifier
                                     .size(18.dp)
                                     .clickable { onRemoveArtifact(artifact.id) },
@@ -279,7 +280,7 @@ internal fun MessageInput(
                                 Text(candidate.name, style = MaterialTheme.typography.bodySmall)
                             }
                             Text(
-                                text = if (candidate.connected) "Connected" else "Disconnected",
+                                text = localization.text(if (candidate.connected) "chat.mention.participating" else "chat.mention.notParticipating"),
                                 color = if (candidate.connected) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
@@ -309,27 +310,14 @@ internal fun MessageInput(
                     modifier = Modifier
                         .focusRequester(inputFocusRequester)
                         .onFocusChanged { inputFocused = it.isFocused }
-                        .onPreviewKeyEvent { event ->
-                            when {
-                                editLastMessageShortcut != null &&
-                                    textFieldValue.text.isEmpty() &&
-                                    event.matches(editLastMessageShortcut) -> {
-                                    if (event.type == KeyEventType.KeyDown) {
-                                        onEditLastUserMessage()
-                                    }
-                                    editLastMessageShortcut.consumeEvent
-                                }
-
-                                event.key == Key.Enter &&
-                                    event.isShiftPressed -> {
-                                    if (event.type == KeyEventType.KeyDown) {
-                                        submitInput()
-                                    }
-                                    true
-                                }
-                                else -> false
-                            }
-                        }
+                        .messageInputShortcuts(
+                            enterKeyAction = enterKeyAction,
+                            isComposing = { textFieldValue.composition != null },
+                            isEmpty = { textFieldValue.text.isEmpty() },
+                            editLastMessageShortcut = editLastMessageShortcut,
+                            onEditLastUserMessage = onEditLastUserMessage,
+                            onSubmit = submitInput,
+                        )
                         .weight(1f)
                         .testTag(UiTestTag.MessageInput.value),
                     placeholder = { Text("") },
@@ -350,9 +338,9 @@ internal fun MessageInput(
                                 focusManager.clearFocus(force = true)
                             },
                             modifier = Modifier.size(actionButtonSize),
-                            tooltip = "Hide keyboard",
+                            tooltip = localization.text("chat.input.hideKeyboard"),
                         ) {
-                            Icon(Icons.Default.KeyboardHide, contentDescription = "Hide keyboard")
+                            Icon(Icons.Default.KeyboardHide, contentDescription = localization.text("chat.input.hideKeyboard"))
                         }
                     }
 
@@ -369,20 +357,23 @@ internal fun MessageInput(
                         },
                     ) {
                         CompactButton(
-                            onClick = ::submitInput,
+                            onClick = submitInput,
                             modifier = Modifier
                                 .size(actionButtonSize)
                                 .testTag(UiTestTag.SendButton.value),
                             tooltip = when {
                                 isWaitingForResponse && pendingMessagesCount > 0 ->
-                                    "Поставить в очередь ($pendingMessagesCount уже ждёт)"
-                                isWaitingForResponse -> "Поставить в очередь"
-                                else -> LocalTranslation.current.sendMessageTooltip
+                                    localization.plural("chat.input.queueWithPending", pendingMessagesCount.toLong())
+                                isWaitingForResponse -> localization.text("chat.input.queue")
+                                else -> localization.text("chat.input.sendWithShortcut", "shortcut" to when (enterKeyAction) {
+                                    EnterKeyAction.NEW_LINE -> "Shift+Enter"
+                                    EnterKeyAction.SEND_MESSAGE -> "Enter"
+                                })
                             },
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send",
+                                contentDescription = localization.text("chat.input.send"),
                             )
                         }
                     }
@@ -392,7 +383,7 @@ internal fun MessageInput(
                             onClick = onPickAttachments,
                             enabled = !artifactUploadInProgress,
                             modifier = Modifier.size(actionButtonSize),
-                            tooltip = "Attach files",
+                            tooltip = localization.text("chat.input.attachFiles"),
                         ) {
                             if (artifactUploadInProgress) {
                                 CircularProgressIndicator(
@@ -400,7 +391,7 @@ internal fun MessageInput(
                                     strokeWidth = 2.dp,
                                 )
                             } else {
-                                Icon(Icons.Default.AttachFile, contentDescription = "Attach files")
+                                Icon(Icons.Default.AttachFile, contentDescription = localization.text("chat.input.attachFiles"))
                             }
                         }
                     }
@@ -487,11 +478,11 @@ internal fun MessageInput(
                             },
                             tooltip = when (liveVoiceInputState) {
                                 LiveVoiceInputState.IDLE -> liveVoiceInputUnavailableReason
-                                    ?: "Start continuous voice input"
-                                LiveVoiceInputState.STARTING -> "Starting continuous voice input"
-                                LiveVoiceInputState.LISTENING -> "Stop continuous voice input"
-                                LiveVoiceInputState.SPEECH -> "Listening to phrase"
-                                LiveVoiceInputState.TRANSCRIBING -> "Transcribing phrase"
+                                    ?: localization.text("chat.voice.continuous.start")
+                                LiveVoiceInputState.STARTING -> localization.text("chat.voice.continuous.starting")
+                                LiveVoiceInputState.LISTENING -> localization.text("chat.voice.continuous.stop")
+                                LiveVoiceInputState.SPEECH -> localization.text("chat.voice.continuous.listeningPhrase")
+                                LiveVoiceInputState.TRANSCRIBING -> localization.text("chat.voice.continuous.transcribingPhrase")
                             },
                         ) {
                             if (
@@ -506,9 +497,9 @@ internal fun MessageInput(
                                 Icon(
                                     imageVector = if (isActive) Icons.Default.Stop else Icons.Default.Mic,
                                     contentDescription = if (isActive) {
-                                        "Stop continuous voice input"
+                                        localization.text("chat.voice.continuous.stop")
                                     } else {
-                                        "Start continuous voice input"
+                                        localization.text("chat.voice.continuous.start")
                                     },
                                 )
                             }
@@ -533,11 +524,11 @@ internal fun MessageInput(
                         CompactButton(
                             onClick = insertCurrentLocation,
                             modifier = Modifier.size(actionButtonSize),
-                            tooltip = "Insert current device location",
+                            tooltip = localization.text("chat.input.insertLocation"),
                         ) {
                             Icon(
                                 Icons.Default.LocationOn,
-                                contentDescription = "Insert location",
+                                contentDescription = localization.text("chat.input.insertLocationShort"),
                             )
                         }
                     }
@@ -628,6 +619,7 @@ private fun LiveVoiceStatus(
     statusMessage: String?,
     unavailableReason: String?,
 ) {
+    val localization = LocalTranslation.current
     if (state == LiveVoiceInputState.IDLE && statusMessage.isNullOrBlank() && unavailableReason == null) return
 
     val isActive = state != LiveVoiceInputState.IDLE
@@ -636,17 +628,17 @@ private fun LiveVoiceStatus(
         LiveVoiceInputState.IDLE -> statusMessage
             ?.takeIf(String::isNotBlank)
             ?: unavailableReason
-            ?: "Continuous voice input ready"
-        LiveVoiceInputState.STARTING -> "Starting continuous voice input"
-        LiveVoiceInputState.LISTENING -> statusMessage ?: "Listening continuously"
-        LiveVoiceInputState.SPEECH -> statusMessage ?: "Listening to phrase"
-        LiveVoiceInputState.TRANSCRIBING -> statusMessage ?: "Transcribing phrase"
+            ?: localization.text("chat.voice.continuous.ready")
+        LiveVoiceInputState.STARTING -> localization.text("chat.voice.continuous.starting")
+        LiveVoiceInputState.LISTENING -> statusMessage ?: localization.text("chat.voice.continuous.listening")
+        LiveVoiceInputState.SPEECH -> statusMessage ?: localization.text("chat.voice.continuous.listeningPhrase")
+        LiveVoiceInputState.TRANSCRIBING -> statusMessage ?: localization.text("chat.voice.continuous.transcribingPhrase")
     }
     val hint = when (state) {
-        LiveVoiceInputState.IDLE -> if (unavailableReason == null) "Tap the live microphone to keep listening" else null
+        LiveVoiceInputState.IDLE -> if (unavailableReason == null) localization.text("chat.voice.continuous.startHint") else null
         LiveVoiceInputState.STARTING -> null
-        LiveVoiceInputState.LISTENING -> "Say a phrase; it will be queued after silence"
-        LiveVoiceInputState.SPEECH -> "Finish speaking to send this phrase"
+        LiveVoiceInputState.LISTENING -> localization.text("chat.voice.continuous.queueHint")
+        LiveVoiceInputState.SPEECH -> localization.text("chat.voice.continuous.finishHint")
         LiveVoiceInputState.TRANSCRIBING -> null
     }
     val containerColor = when {
@@ -843,7 +835,8 @@ private fun VoiceCaptureStatus(
 private fun Int.asRecordingDuration(): String =
     "${this / 60}:${(this % 60).toString().padStart(2, '0')}"
 
-private fun Long.formatArtifactSize(): String = when {
+private fun Long?.formatArtifactSize(): String = when {
+    this == null -> "—"
     this >= 1024 * 1024 -> "${this / (1024 * 1024)} MB"
     this >= 1024 -> "${this / 1024} KB"
     else -> "$this B"

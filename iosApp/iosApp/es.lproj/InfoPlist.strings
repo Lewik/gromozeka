@@ -1,0 +1,3 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"NSMicrophoneUsageDescription" = "Gromozeka utiliza el micrófono para los mensajes de voz y el reconocimiento de voz.";
+"NSLocalNetworkUsageDescription" = "Gromozeka se conecta a tu servidor y a los dispositivos de la red local.";

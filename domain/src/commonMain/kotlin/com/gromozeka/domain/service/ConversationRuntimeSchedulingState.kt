@@ -71,12 +71,17 @@ data class ConversationRuntimeSchedulingState(
     fun submit(
         task: ConversationRuntimeTask,
         now: Instant,
+        acceptPreviouslySubmitted: Boolean = false,
     ): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
             "Conversation runtime task belongs to another conversation"
         }
         require(task.isRootInput()) {
             "Conversation runtime continuations must be installed by completing their parent task"
+        }
+        if (acceptPreviouslySubmitted && (task.idempotencyKey in completedIdempotencyKeys ||
+                (listOfNotNull(activeTask, continuationTask) + activeInsertions + pendingTasks).any { it.idempotencyKey == task.idempotencyKey })) {
+            return unchanged(true)
         }
         if (executionState?.controlState == ConversationExecutionState.ControlState.STOPPING ||
             executionState?.controlState == ConversationExecutionState.ControlState.INTERRUPTING
@@ -540,11 +545,20 @@ data class ConversationRuntimeSchedulingState(
     fun requestTerminalState(
         controlState: ConversationExecutionState.ControlState,
         now: Instant,
+        expectedTurnId: ConversationRuntimeTurnId? = null,
     ): ConversationRuntimeStateTransition<Boolean> {
         require(controlState == ConversationExecutionState.ControlState.STOPPING ||
             controlState == ConversationExecutionState.ControlState.INTERRUPTING
         ) {
             "Conversation runtime terminal request must stop or interrupt"
+        }
+        if (expectedTurnId != null && (activeTask ?: continuationTask)?.turnId != expectedTurnId) {
+            val removed = pendingTasks.filter { it.turnId == expectedTurnId }
+            if (removed.isEmpty()) return unchanged(false)
+            return changed(copy(
+                pendingTasks = pendingTasks.filterNot { it.turnId == expectedTurnId },
+                completedIdempotencyKeys = completedIdempotencyKeys + removed.map { it.idempotencyKey },
+            ), true)
         }
         val currentState = executionState
         if (currentState == null && activeTask == null && continuationTask == null && pendingTasks.isEmpty()) {
@@ -728,6 +742,7 @@ data class ConversationRuntimeSchedulingState(
             id = ConversationRuntimeTask.Id("${incident.task.id.value}:incident"),
             conversationId = conversationId,
             actorUserId = incident.task.actorUserId,
+            externalChannel = incident.task.externalChannel,
             payload = ConversationRuntimeTask.Payload.ExecutionIncident(incident.task.id),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "${incident.task.idempotencyKey}:incident",

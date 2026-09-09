@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,6 +46,9 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ClientLiveAudioStreamingSession
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
@@ -69,10 +74,12 @@ fun LiveInterpreterScreen(
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     isCompactLayout: Boolean = false,
 ) {
+    val translation = LocalTranslation.current
+    var sessionTargetLanguageName by remember { mutableStateOf<String?>(null) }
     val originalItems = remember { mutableStateListOf<LiveInterpreterLine>() }
     val originalDraftItems = remember { mutableStateListOf<LiveInterpreterLine>() }
     val translationItems = remember { mutableStateListOf<LiveInterpreterLine>() }
-    val statusItems = remember { mutableStateListOf<String>() }
+    val statusItems = remember { mutableStateListOf<LocalizedText>() }
     var remoteSession by remember { mutableStateOf<RemoteLiveInterpreterSession?>(null) }
     var audioSession by remember { mutableStateOf<ClientLiveAudioStreamingSession?>(null) }
     var eventsJob by remember { mutableStateOf<Job?>(null) }
@@ -126,7 +133,7 @@ fun LiveInterpreterScreen(
         }
     }
 
-    fun finishLocally(message: String) {
+    fun finishLocally(message: LocalizedText) {
         coroutineScope.launch {
             runCatching { audioSession?.stop() }
             remoteSession?.closeLocally()
@@ -145,14 +152,14 @@ fun LiveInterpreterScreen(
             if (!isRunning && !isStopping) return@launch
             isRunning = false
             isStopping = true
-            statusItems += "Stopping: flushing last audio segment..."
+            statusItems += localizedText("interpreter.flushingAudio")
             runCatching { audioSession?.stop() }
-                .onFailure { statusItems += "Failed to flush audio: ${it.message ?: it::class.simpleName}" }
+                .onFailure { statusItems += localizedText("interpreter.flushFailed", "error" to it.localizedText()) }
             audioSession = null
             runCatching { remoteSession?.stop() }
-                .onFailure { finishLocally("Failed to stop server session: ${it.message ?: it::class.simpleName}") }
+                .onFailure { finishLocally(localizedText("interpreter.stopFailed", "error" to it.localizedText())) }
             if (remoteSession == null) {
-                finishLocally("Stopped")
+                finishLocally(localizedText("interpreter.stopped"))
             }
         }
     }
@@ -164,10 +171,11 @@ fun LiveInterpreterScreen(
             originalDraftItems.clear()
             translationItems.clear()
             statusItems.clear()
-            statusItems += "Starting live interpreter..."
+            sessionTargetLanguageName = translation.languageName
+            statusItems += localizedText("interpreter.starting")
             runCatching {
                 val session = liveInterpreterService.start(
-                    targetLanguage = "ru",
+                    targetLanguage = translation.languageCode,
                     sourceLanguageCode = selectedSourceLanguage.code,
                     sourceLanguageHint = selectedSourceLanguage.hint,
                     translationRuntimeSelection = selectedTranslationModel?.let { AiRuntimeSelection(it.id) },
@@ -176,7 +184,10 @@ fun LiveInterpreterScreen(
                 eventsJob = launch {
                     session.events.collect { event ->
                         when (event) {
-                            is LiveInterpreterStatusEvent -> statusItems += event.message
+                            is LiveInterpreterStatusEvent -> statusItems += LocalizedText.Resource(
+                                event.messageKey,
+                                event.arguments.mapValues { (_, value) -> LocalizedText.Literal(value) },
+                            )
                             is LiveInterpreterTranscriptEvent -> {
                                 if (event.isFinal) {
                                     originalItems += LiveInterpreterLine(
@@ -211,8 +222,8 @@ fun LiveInterpreterScreen(
                                     text = event.text,
                                 )
                             }
-                            is LiveInterpreterStoppedEvent -> finishLocally("Stopped")
-                            is LiveInterpreterFailedEvent -> finishLocally("Error: ${event.message}")
+                            is LiveInterpreterStoppedEvent -> finishLocally(localizedText("interpreter.stopped"))
+                            is LiveInterpreterFailedEvent -> finishLocally(localizedText("interpreter.failed", "error" to event.message))
                             else -> Unit
                         }
                     }
@@ -225,7 +236,7 @@ fun LiveInterpreterScreen(
                         if (useClientSideSpeechToText) {
                             val transcript = clientSideSpeechToTextService.transcribe(
                                 chunk = chunk,
-                                language = selectedSourceLanguage.code,
+                                language = selectedSourceLanguage.code.substringBefore('-'),
                                 prompt = selectedSourceLanguage.hint,
                             ).trim()
                             if (transcript.isNotBlank()) {
@@ -236,13 +247,13 @@ fun LiveInterpreterScreen(
                                     )
                                 )
                             } else {
-                                statusItems += "Segment ${chunk.sequenceNumber}: client speech-to-text returned blank text"
+                                statusItems += localizedText("interpreter.emptySegment", "sequence" to chunk.sequenceNumber)
                             }
                         } else {
                             session.sendAudioChunk(chunk)
                         }
                     }.onFailure { error ->
-                        statusItems += "Client speech-to-text failed: ${error.message ?: error::class.simpleName}"
+                        statusItems += localizedText("interpreter.transcriptionFailed", "error" to error.localizedText())
                         runCatching { session.stop() }
                         throw error
                     }
@@ -250,9 +261,9 @@ fun LiveInterpreterScreen(
                 isRunning = true
                 isStopping = false
                 statusItems += if (useClientSideSpeechToText) {
-                    "Listening with client-side Local Whisper"
+                    localizedText("interpreter.listeningClient")
                 } else {
-                    "Listening with server speech-to-text"
+                    localizedText("interpreter.listeningServer")
                 }
             }.onFailure { error ->
                 runCatching { audioSession?.stop() }
@@ -262,7 +273,7 @@ fun LiveInterpreterScreen(
                 audioSession = null
                 remoteSession = null
                 eventsJob = null
-                statusItems += "Failed: ${error.message ?: error::class.simpleName}"
+                statusItems += localizedText("interpreter.failed", "error" to error.localizedText())
                 isRunning = false
                 isStopping = false
             }
@@ -288,13 +299,13 @@ fun LiveInterpreterScreen(
         ) {
             Column {
                 Text(
-                    "Live interpreter",
+                    translation.text("interpreter.title"),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    "Original transcript and Russian translation from rolling audio segments.",
+                    translation.text("interpreter.description"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -302,16 +313,24 @@ fun LiveInterpreterScreen(
             if (isRunning || isStopping) {
                 OutlinedButton(onClick = ::stop, enabled = isRunning) {
                     Icon(Icons.Default.Stop, contentDescription = null)
-                    Text(if (isStopping) "Stopping" else "Stop")
+                    Text(if (isStopping) translation.text("interpreter.stopping") else translation.text("interpreter.stop"))
                 }
             } else {
                 Button(onClick = ::start) {
                     Icon(Icons.Default.Mic, contentDescription = null)
-                    Text("Start")
+                    Text(translation.text("interpreter.start"))
                 }
             }
         }
 
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(translation.text("interpreter.targetLanguage"), style = MaterialTheme.typography.labelMedium)
+            Text(
+                if (isRunning || isStopping) sessionTargetLanguageName ?: translation.languageName else translation.languageName,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
         Spacer(Modifier.height(12.dp))
 
         LiveInterpreterRecognitionBackendBar(
@@ -344,18 +363,18 @@ fun LiveInterpreterScreen(
         val contentModifier = Modifier.weight(1f)
         if (isCompactLayout) {
             Column(modifier = contentModifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                LiveInterpreterColumn("Original", originalItems, Modifier.weight(1f), originalDraftItems)
-                LiveInterpreterColumn("Russian", translationItems, Modifier.weight(1f))
+                LiveInterpreterColumn(translation.text("interpreter.original"), originalItems, Modifier.weight(1f), originalDraftItems)
+                LiveInterpreterColumn(sessionTargetLanguageName ?: translation.languageName, translationItems, Modifier.weight(1f))
             }
         } else {
             Row(modifier = contentModifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LiveInterpreterColumn(
-                    "Original",
+                    translation.text("interpreter.original"),
                     originalItems,
                     Modifier.weight(1f).fillMaxHeight(),
                     originalDraftItems,
                 )
-                LiveInterpreterColumn("Russian", translationItems, Modifier.weight(1f).fillMaxHeight())
+                LiveInterpreterColumn(sessionTargetLanguageName ?: translation.languageName, translationItems, Modifier.weight(1f).fillMaxHeight())
             }
         }
 
@@ -365,22 +384,16 @@ fun LiveInterpreterScreen(
 }
 
 private enum class LiveInterpreterRecognitionBackend(
-    val label: String,
-    val description: String,
+    val labelKey: String,
+    val descriptionKey: String,
 ) {
-    ClientWhisper(
-        label = "Client Whisper",
-        description = "Transcribe locally on this client and send text to the server.",
-    ),
-    ServerStt(
-        label = "Server STT",
-        description = "Send audio chunks to the server speech-to-text pipeline.",
-    ),
+    ClientWhisper("interpreter.clientWhisper", "interpreter.clientWhisperDescription"),
+    ServerStt("interpreter.serverStt", "interpreter.serverSttDescription"),
 }
 
 private data class LiveInterpreterSourceLanguage(
     val code: String,
-    val label: String,
+    val label: LocalizedText,
     val hint: String,
 )
 
@@ -388,13 +401,16 @@ private fun liveInterpreterSourceLanguageOptions(): List<LiveInterpreterSourceLa
     listOf(
         LiveInterpreterSourceLanguage(
             "auto",
-            "Mixed / auto",
-            "The speech may freely switch between Hebrew, English, Russian, and occasional other languages. Keep recognizable foreign terms, names, acronyms, and technical words.",
-        ),
-        LiveInterpreterSourceLanguage("he", "Hebrew", "Hebrew workplace conversation, possibly with English and Russian terms"),
-        LiveInterpreterSourceLanguage("en", "English", "English workplace conversation, possibly with Hebrew and Russian terms"),
-        LiveInterpreterSourceLanguage("ru", "Russian", "Russian workplace conversation, possibly with Hebrew and English terms"),
-    )
+            localizedText("interpreter.autoLanguage"),
+            "Speech may freely switch between languages. Preserve recognizable foreign terms, names, acronyms, and technical words.",
+        )
+    ) + Translation.builtIn.values.map { language ->
+        LiveInterpreterSourceLanguage(
+            language.languageCode,
+            LocalizedText.Literal(language.languageName),
+            "Speech primarily in ${language.languageName}, possibly including words and phrases from other languages. Preserve names and technical terms.",
+        )
+    }
 
 @Composable
 private fun LiveInterpreterRecognitionBackendBar(
@@ -403,9 +419,10 @@ private fun LiveInterpreterRecognitionBackendBar(
     onBackendChange: (LiveInterpreterRecognitionBackend) -> Unit,
     enabled: Boolean,
 ) {
+    val translation = LocalTranslation.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "Recognition backend",
+            translation.text("interpreter.recognitionBackend"),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -420,12 +437,12 @@ private fun LiveInterpreterRecognitionBackendBar(
                     shape = segmentedButtonShape(index, LiveInterpreterRecognitionBackend.entries.lastIndex),
                     colors = segmentedButtonColors(selected),
                 ) {
-                    Text(backend.label)
+                    Text(translation.text(backend.labelKey))
                 }
             }
         }
         Text(
-            selectedBackend.description,
+            translation.text(selectedBackend.descriptionKey),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -439,14 +456,15 @@ private fun LiveInterpreterSourceLanguageBar(
     onSourceLanguageChange: (LiveInterpreterSourceLanguage) -> Unit,
     enabled: Boolean,
 ) {
+    val translation = LocalTranslation.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "Spoken language",
+            translation.text("interpreter.sourceLanguage"),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            sourceLanguages.forEachIndexed { index, sourceLanguage ->
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            itemsIndexed(sourceLanguages) { index, sourceLanguage ->
                 val selected = selectedSourceLanguage.code == sourceLanguage.code
                 Button(
                     onClick = { onSourceLanguageChange(sourceLanguage) },
@@ -455,7 +473,7 @@ private fun LiveInterpreterSourceLanguageBar(
                     shape = segmentedButtonShape(index, sourceLanguages.lastIndex),
                     colors = segmentedButtonColors(selected),
                 ) {
-                    Text(sourceLanguage.label)
+                    Text(sourceLanguage.label.resolve(translation))
                 }
             }
         }
@@ -469,15 +487,16 @@ private fun LiveInterpreterModelBar(
     onTranslationModelChange: (AiModelConfiguration) -> Unit,
     enabled: Boolean,
 ) {
+    val translation = LocalTranslation.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "Translation model",
+            translation.text("interpreter.translationModel"),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (translationModels.isEmpty()) {
             Text(
-                "No translation model is configured; default chat model will be used.",
+                translation.text("interpreter.noTranslationModel"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -541,6 +560,7 @@ private fun LiveInterpreterColumn(
     modifier: Modifier,
     draftLines: List<LiveInterpreterLine> = emptyList(),
 ) {
+    val translation = LocalTranslation.current
     val listState = rememberLazyListState()
     LaunchedEffect(lines.size, draftLines.size) {
         val itemCount = lines.size + draftLines.size + if (draftLines.isNotEmpty()) 1 else 0
@@ -566,7 +586,7 @@ private fun LiveInterpreterColumn(
             Spacer(Modifier.height(8.dp))
             if (lines.isEmpty() && draftLines.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No text yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(translation.text("interpreter.noText"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(
@@ -584,7 +604,7 @@ private fun LiveInterpreterColumn(
                     if (draftLines.isNotEmpty()) {
                         item(key = "draft-label") {
                             Text(
-                                text = "Pending drafts",
+                                text = translation.text("interpreter.pendingDrafts"),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -604,8 +624,9 @@ private fun LiveInterpreterColumn(
 }
 
 @Composable
-private fun LiveInterpreterStatus(items: List<String>) {
-    val last = items.lastOrNull() ?: "Idle"
+private fun LiveInterpreterStatus(items: List<LocalizedText>) {
+    val translation = LocalTranslation.current
+    val last = items.lastOrNull() ?: localizedText("interpreter.idle")
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -614,7 +635,7 @@ private fun LiveInterpreterStatus(items: List<String>) {
         ),
     ) {
         Text(
-            text = last,
+            text = last.resolve(translation),
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

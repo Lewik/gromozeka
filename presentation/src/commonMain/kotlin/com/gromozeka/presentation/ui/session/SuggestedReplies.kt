@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -53,6 +54,7 @@ internal fun SuggestedReplyChips(
     isRegenerating: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val localization = LocalTranslation.current
     if (options == null) return
 
     Row(
@@ -101,7 +103,7 @@ internal fun SuggestedReplyChips(
             } else {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Regenerate suggested replies",
+                    contentDescription = localization.text("chat.suggestions.regenerate"),
                 )
             }
         }

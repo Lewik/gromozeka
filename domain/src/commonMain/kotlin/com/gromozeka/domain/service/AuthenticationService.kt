@@ -67,6 +67,8 @@ interface UserAdministrationService {
         displayName: String,
         status: User.Status,
         role: User.Role,
+        loginAllowed: Boolean? = null,
+        aiAllowed: Boolean? = null,
     ): User
 
     suspend fun resetPassword(

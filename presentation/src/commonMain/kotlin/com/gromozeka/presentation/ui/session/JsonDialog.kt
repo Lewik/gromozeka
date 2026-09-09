@@ -21,6 +21,7 @@ fun JsonDialog(
     json: String,
     onDismiss: () -> Unit,
 ) {
+    val localization = LocalTranslation.current
     BasicGromozekaDialog(
         onDismissRequest = onDismiss,
     ) {
@@ -30,7 +31,7 @@ fun JsonDialog(
                 Row {
                     Text(LocalTranslation.current.viewOriginalJson)
                     CompactButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = localization.text("chat.dialog.close"))
                     }
                 }
 

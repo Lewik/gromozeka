@@ -59,6 +59,7 @@ class ConversationRuntimeApplicationService(
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
     ): Boolean {
+        require(actorUser.canUseAi) { "AI access is not allowed for this user" }
         requireConnectedAgent(conversationId, agentDefinitionId)
         return runtimeDispatcher.enqueueAgentInvocation(
             conversationId = conversationId,
@@ -104,11 +105,12 @@ class ConversationRuntimeApplicationService(
         userMessage: Conversation.Message,
     ): Boolean {
         val attributedMessage = userMessage.attributeAuthenticatedSubmission(actorUser)
+        requireLocalInput(conversationId)
         return runtimeDispatcher.postMessage(
             conversationId = conversationId,
             userMessage = attributedMessage,
             actorUserId = actorUser.id,
-            autoRespondAgentIds = autoResponders(conversationId, attributedMessage),
+            autoRespondAgentIds = if (actorUser.canUseAi) autoResponders(conversationId, attributedMessage) else emptySet(),
         )
     }
 
@@ -119,7 +121,7 @@ class ConversationRuntimeApplicationService(
         require(userMessage.role == Conversation.Message.Role.USER) { "Only user messages can trigger automatic responses" }
         return requireNotNull(conversationService.findById(conversationId)) {
             "Conversation not found: ${conversationId.value}"
-        }.autoRespondersFor(userMessage)
+        }.also { require(it.externalChannel == null) { "Send messages through the connected external channel" } }.autoRespondersFor(userMessage)
     }
 
     override suspend fun invokeAgent(
@@ -137,6 +139,7 @@ class ConversationRuntimeApplicationService(
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
     ): Boolean {
+        require(actorUser.canUseAi) { "AI access is not allowed for this user" }
         requireConnectedAgent(conversationId, agentDefinitionId)
         return runtimeDispatcher.invokeAgent(
             conversationId = conversationId,
@@ -152,9 +155,15 @@ class ConversationRuntimeApplicationService(
     ) {
         val conversation = conversationService.findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
+        require(conversation.externalChannel == null) { "Send messages through the connected external channel" }
         require(Conversation.Participant.Agent(agentDefinitionId) in conversation.participants) {
             "Agent ${agentDefinitionId.value} is not connected to conversation ${conversationId.value}"
         }
+    }
+
+    private suspend fun requireLocalInput(conversationId: Conversation.Id) {
+        val conversation = requireNotNull(conversationService.findById(conversationId))
+        require(conversation.externalChannel == null) { "Send messages through the connected external channel" }
     }
 
     override fun observeConversation(
@@ -183,6 +192,7 @@ class ConversationRuntimeApplicationService(
         activeGenerationStateSyncService.observe(conversationId).map { it.value }
 
     override suspend fun rememberCurrentThread(conversationId: Conversation.Id) {
+        requireLocalInput(conversationId)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val queued = memoryOperations.rememberThread(
@@ -214,6 +224,7 @@ class ConversationRuntimeApplicationService(
         conversationId: Conversation.Id,
         action: MemoryMaintenanceAction,
     ) {
+        requireLocalInput(conversationId)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val result = memoryOperations.scheduleMaintenance(

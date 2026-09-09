@@ -1,5 +1,7 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.SpeechAvailabilityException
+
 import com.gromozeka.application.service.AiUserCredentialApplicationService
 import com.gromozeka.application.service.AiSubscriptionQuotaApplicationService
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
@@ -86,6 +88,7 @@ import kotlin.time.Duration.Companion.days
 
 @Service
 class GromozekaRemoteServer(
+    private val userTranslationService: com.gromozeka.domain.service.UserTranslationService,
     private val settingsService: SettingsService,
     private val aiConfigurationService: AiConfigurationService,
     private val aiSubscriptionQuotaApplicationService: AiSubscriptionQuotaApplicationService,
@@ -127,6 +130,7 @@ class GromozekaRemoteServer(
     private val aiUserCredentialService: AiUserCredentialApplicationService,
     private val namedSecretService: NamedSecretApplicationService,
     private val userAdministrationService: UserAdministrationService,
+    private val telegramManagementService: com.gromozeka.domain.service.TelegramManagementService,
     private val securityAuditService: SecurityAuditService,
     private val userDirectoryService: UserDirectoryService,
     private val remoteAuthorization: GromozekaRemoteAuthorization,
@@ -212,6 +216,7 @@ class GromozekaRemoteServer(
                                 }
                                 val handle = suspend {
                                     handleRequest(
+                                        connectionId = connectionId,
                                         sender = sender,
                                         requestId = envelope.id,
                                         request = payload,
@@ -302,6 +307,7 @@ class GromozekaRemoteServer(
             this is CompactMessagesRequest
 
     private suspend fun handleRequest(
+        connectionId: String,
         sender: RemoteSessionSender,
         requestId: String,
         request: ClientRequest,
@@ -314,6 +320,44 @@ class GromozekaRemoteServer(
         val response = try {
             remoteAuthorization.authorize(user, request)
             when (request) {
+                GetTelegramSettingsRequest -> TelegramSettingsResponse(telegramManagementService.snapshot(user))
+                is ProbeTelegramBotRequest -> TelegramProfileResponse(telegramManagementService.probe(user, request.tokenSecretName))
+                is SaveTelegramConnectionRequest -> TelegramConnectionResponse(telegramManagementService.save(user, request.connection, request.expectedRevision))
+                is GetTelegramProfileRequest -> TelegramProfileResponse(telegramManagementService.profile(user, request.connectionId))
+                is UpdateTelegramProfileRequest -> TelegramProfileResponse(telegramManagementService.updateProfile(user, request.connectionId, request.update))
+                GetTranslationsRequest -> TranslationsResponse(
+                    userTranslationService.snapshot(user.id, clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value)
+                )
+                is GetTranslationPackageRequest -> TranslationPackageResponse(
+                    userTranslationService.getPackage(user.id, request.selectionId)
+                )
+                is SaveTranslationPackageRequest -> TranslationSavedResponse(
+                    userTranslationService.savePackage(
+                        userId = user.id,
+                        translation = com.gromozeka.shared.localization.TranslationJson.decode(request.json),
+                        expectedRevision = request.expectedRevision,
+                        packageId = request.packageId,
+                        clientInstanceId = clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
+                is DeleteTranslationPackageRequest -> TranslationsResponse(
+                    userTranslationService.deletePackage(
+                        user.id, request.selectionId, request.expectedRevision,
+                        clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
+                is SelectTranslationRequest -> TranslationsResponse(
+                    userTranslationService.select(
+                        user.id, request.selectionId, request.expectedRevision,
+                        clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
+                is SynchronizeTranslationsRequest -> TranslationsResponse(
+                    userTranslationService.setSynchronizeClients(
+                        user.id, request.synchronizeClients, request.expectedRevision,
+                        clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
+                    )
+                )
                 GetSettingsRequest -> SettingsResponse(settingsService.settings)
                 is SaveSettingsRequest -> {
                     settingsService.saveSettings(request.settings)
@@ -445,6 +489,8 @@ class GromozekaRemoteServer(
                         displayName = request.displayName,
                         status = request.status,
                         role = request.role,
+                        loginAllowed = request.loginAllowed,
+                        aiAllowed = request.aiAllowed,
                     )
                 )
                 is ResetUserPasswordRequest -> {
@@ -490,6 +536,7 @@ class GromozekaRemoteServer(
 
                 GetDefaultAgentRequest -> DefaultAgentResponse(defaultAgentProvider.getDefault())
                 is FindAgentRequest -> AgentResponse(agentDomainService.findById(request.agentId))
+                is GetAgentToolCatalogRequest -> AgentToolCatalogResponse(agentDomainService.toolCatalog(request.projectId))
                 is FindAgentsRequest -> {
                     val readableProjectIds = remoteAuthorization.readableProjectIds(user)
                     AgentsResponse(
@@ -509,6 +556,7 @@ class GromozekaRemoteServer(
                         request.tools,
                         request.description,
                         request.skills,
+                        request.toolAccess,
                     )
                 )
                 is DuplicateAgentRequest -> AgentResponse(
@@ -528,6 +576,7 @@ class GromozekaRemoteServer(
                         request.runtimeSelection,
                         request.runtimeOverrides,
                         request.tools,
+                        request.toolAccess,
                     )
                 )
                 is DeleteAgentRequest -> {
@@ -747,7 +796,7 @@ class GromozekaRemoteServer(
                 )
 
                 is RunQuickTextActionRequest -> QuickTextActionResultResponse(
-                    quickTextActionService.runAction(request.actionId, request.text)
+                    quickTextActionService.runAction(request.actionId, request.text, request.interfaceLanguage)
                 )
 
                 is SearchConversationsRequest -> {
@@ -825,7 +874,11 @@ class GromozekaRemoteServer(
             throw error
         } catch (error: Throwable) {
             log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }
-            ErrorResponse(error.message ?: "Unknown server error", error::class.simpleName)
+            ErrorResponse(
+                error.message ?: "Unknown server error",
+                error::class.simpleName,
+                (error as? SpeechAvailabilityException)?.failure,
+            )
         }
 
         sender.send(requestId, response, encoding)

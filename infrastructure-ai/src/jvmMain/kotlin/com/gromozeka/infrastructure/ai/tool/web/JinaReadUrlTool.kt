@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.time.Duration
 
 /**
@@ -56,41 +55,44 @@ class JinaReadUrlTool(
         }
         
         return try {
-            val url = "https://r.jina.ai/${request.url}"
+            val target = requirePublicWebUrl(request.url)
+            val url = "https://r.jina.ai/$target"
 
             val httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(60))
                 .header("Accept", "application/json")
                 .header("Authorization", "Bearer $apiKey")
                 .GET()
                 .build()
 
-            logger.debug("Jina Reader: ${request.url}")
-            val response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
+            logger.debug("Jina Reader request")
+            val response = httpClient.send(httpRequest, boundedWebBody())
 
             when (response.statusCode()) {
                 200 -> {
                     mapOf<String, Any>(
                         "success" to true,
-                        "content" to response.body(),
+                        "content" to response.body().toString(Charsets.UTF_8),
                         "error" to ""
                     )
                 }
                 else -> {
-                    logger.error("Jina Reader error: ${response.statusCode()} - ${response.body()}")
+                    logger.warn("Jina Reader HTTP status {}", response.statusCode())
                     mapOf<String, Any>(
                         "success" to false,
                         "content" to "",
-                        "error" to "HTTP ${response.statusCode()}: ${response.body().take(200)}"
+                        "error" to "Jina Reader HTTP ${response.statusCode()}"
                     )
                 }
             }
         } catch (e: Exception) {
-            logger.error("Jina Reader failed", e)
+            if (e is InterruptedException) Thread.currentThread().interrupt()
+            logger.warn("Jina Reader failed: {}", e.javaClass.simpleName)
             mapOf<String, Any>(
                 "success" to false,
                 "content" to "",
-                "error" to "Error: ${e.message}"
+                "error" to if (e is IllegalArgumentException) e.message.orEmpty() else "Jina Reader request failed (${e.javaClass.simpleName})"
             )
         }
     }

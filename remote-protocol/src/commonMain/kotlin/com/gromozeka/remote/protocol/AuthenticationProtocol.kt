@@ -13,9 +13,10 @@ data class AuthenticationStatusResponse(
 @Serializable
 data class AuthenticatedUserView(
     val id: User.Id,
-    val username: String,
+    val username: String?,
     val displayName: String,
     val role: User.Role,
+    val aiAllowed: Boolean = true,
 )
 
 @Serializable
@@ -42,8 +43,27 @@ data class AuthenticationSessionResponse(
 
 @Serializable
 data class AuthenticationErrorResponse(
-    val message: String,
+    val code: AuthenticationErrorCode,
+    val message: String? = null,
 )
+
+@Serializable
+enum class AuthenticationErrorCode {
+    INVALID_CREDENTIALS,
+    RATE_LIMITED,
+    BOOTSTRAP_REJECTED,
+    INVALID_REQUEST,
+    AUTHENTICATION_REQUIRED,
+    HTTPS_REQUIRED,
+    CROSS_ORIGIN_REJECTED,
+    REQUEST_TOO_LARGE,
+    REQUEST_READ_FAILED,
+    RUNTIME_NOT_INITIALIZED,
+    DEVICE_CONNECTION_RATE_LIMITED,
+    INVALID_DEVICE_CONNECTION,
+    DEVICE_CONNECTION_FAILED,
+    REQUEST_FAILED,
+}
 
 fun User.toAuthenticatedUserView(): AuthenticatedUserView =
     AuthenticatedUserView(
@@ -51,4 +71,5 @@ fun User.toAuthenticatedUserView(): AuthenticatedUserView =
         username = username,
         displayName = displayName,
         role = role,
+        aiAllowed = aiAllowed,
     )

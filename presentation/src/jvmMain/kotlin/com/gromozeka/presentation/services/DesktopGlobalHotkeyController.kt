@@ -4,6 +4,9 @@ import com.gromozeka.domain.model.KeyboardShortcutSettings
 import kotlinx.coroutines.flow.StateFlow
 
 internal class DesktopGlobalHotkeyController : GlobalHotkeyController {
+    private var settings = KeyboardShortcutSettings()
+    private var handler: (GlobalHotkeyEvent) -> Unit = {}
+    private var recordingShortcut = false
     private val delegate: GlobalHotkeyController =
         when {
             System.getProperty("os.name").contains("mac", ignoreCase = true) -> MacOsGlobalHotkeyController()
@@ -23,7 +26,23 @@ internal class DesktopGlobalHotkeyController : GlobalHotkeyController {
         settings: KeyboardShortcutSettings,
         handler: (GlobalHotkeyEvent) -> Unit,
     ) {
-        delegate.applySettings(settings, handler)
+        this.settings = settings
+        this.handler = handler
+        applyCurrentSettings()
+    }
+
+    override fun setRecordingShortcut(recording: Boolean) {
+        recordingShortcut = recording
+        applyCurrentSettings()
+    }
+
+    private fun applyCurrentSettings() {
+        val activeSettings = if (recordingShortcut) {
+            settings.copy(bindings = settings.normalized().bindings.map { it.copy(enabled = false) })
+        } else {
+            settings
+        }
+        delegate.applySettings(activeSettings, handler)
     }
 
     override fun cleanup() {

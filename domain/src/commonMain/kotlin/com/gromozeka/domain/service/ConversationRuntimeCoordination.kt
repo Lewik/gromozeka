@@ -29,6 +29,7 @@ data class ConversationRuntimeTask(
     val turnId: ConversationRuntimeTurnId = ConversationRuntimeTurnId(id.value),
     val parentTaskId: Id? = null,
     val actorUserId: User.Id? = null,
+    val externalChannel: com.gromozeka.domain.model.ExternalConversationChannel? = null,
     val payload: Payload,
     val placement: QueuedMessagePlacement,
     val idempotencyKey: String,
@@ -67,6 +68,7 @@ data class ConversationRuntimeTask(
         data class PostMessage(
             val userMessage: Conversation.Message,
             val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
+            val replaceExternalOriginalId: Conversation.Message.Id? = null,
         ) : Payload
 
         @Serializable
@@ -772,6 +774,7 @@ sealed interface ConversationRuntimeEvent {
         val taskId: ConversationRuntimeTask.Id?,
         val message: Conversation.Message,
         override val cursorSequence: Long? = null,
+        val turnId: ConversationRuntimeTurnId? = null,
     ) : ConversationRuntimeEvent
 
     @Serializable
@@ -826,7 +829,7 @@ interface ConversationRuntimeCoordinator {
      */
     val schedulingSignals: Flow<ConversationRuntimeSchedulingSignal>
 
-    suspend fun submit(task: ConversationRuntimeTask): Boolean
+    suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean = false): Boolean
 
     suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
 
@@ -991,7 +994,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun markPaused(conversationId: Conversation.Id): Boolean
     suspend fun requestResume(conversationId: Conversation.Id): Boolean
     suspend fun requestStop(conversationId: Conversation.Id): Boolean
-    suspend fun requestInterrupt(conversationId: Conversation.Id): Boolean
+    suspend fun requestInterrupt(conversationId: Conversation.Id, expectedTurnId: ConversationRuntimeTurnId? = null): Boolean
     suspend fun abort(conversationId: Conversation.Id)
     suspend fun find(conversationId: Conversation.Id): ConversationExecutionState?
 

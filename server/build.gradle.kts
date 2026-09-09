@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.commonmark)
     implementation(libs.mcp.kotlin.sdk)
     implementation(libs.klog)
     implementation(libs.spring.security.crypto)

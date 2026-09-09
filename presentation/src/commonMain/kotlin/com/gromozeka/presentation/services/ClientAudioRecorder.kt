@@ -1,5 +1,9 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.remote.protocol.RemoteAudioChunk
 import com.gromozeka.remote.protocol.RemoteAudioRecording
@@ -8,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
 interface ClientAudioRecorder {
-    val unavailableReason: String?
+    val unavailableReason: LocalizedText?
         get() = null
 
     val supportsStreamingAudioChunks: Boolean
@@ -50,8 +54,8 @@ data class ClientRecordedAudio(
 }
 
 object NoOpClientAudioRecorder : ClientAudioRecorder {
-    override val unavailableReason: String = "Запись звука недоступна на этом клиенте"
+    override val unavailableReason: LocalizedText = localizedText("voice.unavailable")
 
     override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession =
-        error("Client audio recording is not available on this platform")
+        throw LocalizedTextException(localizedText("voice.unavailable"))
 }

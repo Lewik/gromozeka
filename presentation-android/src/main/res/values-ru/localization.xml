@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from localization/*.json by scripts/generate-native-localization.py. -->
+<resources>
+    <string name="quick_text_actions" formatted="false">"Быстрые действия с текстом"</string>
+    <string name="quick_text_fix" formatted="false">"Исправить текст"</string>
+    <string name="quick_text_translate" formatted="false">"Перевести текст"</string>
+</resources>

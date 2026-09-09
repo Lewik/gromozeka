@@ -33,6 +33,7 @@ fun NamedSecretSettings(
     service: CurrentUserNamedSecretService,
     coroutineScope: CoroutineScope,
 ) {
+    val translation = LocalTranslation.current
     var secrets by remember { mutableStateOf<List<NamedSecret>>(emptyList()) }
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -58,16 +59,16 @@ fun NamedSecretSettings(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Named secrets", style = MaterialTheme.typography.titleLarge)
+        Text(translation.text("security.secrets.title"), style = MaterialTheme.typography.titleLarge)
         Text(
-            "Store durable credentials once and reference them as secret://name. Values are encrypted and are not shown again.",
+            translation.text("security.secrets.description"),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Name") },
+            label = { Text(translation.text("security.secrets.nameLabel")) },
             placeholder = { Text("github-pat") },
             singleLine = true,
         )
@@ -75,14 +76,14 @@ fun NamedSecretSettings(
             value = description,
             onValueChange = { description = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Description") },
+            label = { Text(translation.text("security.secrets.descriptionLabel")) },
             singleLine = true,
         )
         OutlinedTextField(
             value = value,
             onValueChange = { value = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Value") },
+            label = { Text(translation.text("security.secrets.valueLabel")) },
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
         )
@@ -104,7 +105,7 @@ fun NamedSecretSettings(
                 }
             },
         ) {
-            Text(if (saving) "Saving..." else "Save or rotate")
+            Text(if (saving) translation.text("security.secrets.saving") else translation.text("security.secrets.saveOrRotate"))
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) {
@@ -136,7 +137,7 @@ fun NamedSecretSettings(
                                 }
                             }
                         ) {
-                            Text("Delete")
+                            Text(translation.text("security.secrets.delete"))
                         }
                     }
                 }

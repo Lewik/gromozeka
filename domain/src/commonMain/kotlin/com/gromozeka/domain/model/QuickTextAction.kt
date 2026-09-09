@@ -24,7 +24,14 @@ data class QuickTextAction(
 
     companion object {
         val FIX_TEXT_ID = Id("fix_text_preserve_language")
-        val TRANSLATE_RU_EN_ID = Id("translate_ru_en")
+        val TRANSLATE_INTERFACE_LANGUAGE_ID = Id("translate_interface_language")
+
+        val DEFAULT_TRANSLATION_PROMPT = """
+            If the input text is in {interfaceLanguage}, translate it to English.
+            Otherwise, translate the input text to {interfaceLanguage}.
+            Preserve meaning, tone, paragraph structure, and line breaks.
+            Return only the translated text.
+        """.trimIndent()
 
         fun defaults(): List<QuickTextAction> = listOf(
             QuickTextAction(
@@ -38,15 +45,10 @@ data class QuickTextAction(
                 """.trimIndent(),
             ),
             QuickTextAction(
-                id = TRANSLATE_RU_EN_ID,
+                id = TRANSLATE_INTERFACE_LANGUAGE_ID,
                 title = "Translate",
-                description = "Translate Russian to English and non-Russian text to Russian.",
-                prompt = """
-                    If the input text is Russian, translate it to English.
-                    If the input text is not Russian, translate it to Russian.
-                    Preserve meaning, tone, paragraph structure, and line breaks.
-                    Return only the translated text.
-                """.trimIndent(),
+                description = "Translate text into your interface language, or into English if it is already in that language.",
+                prompt = DEFAULT_TRANSLATION_PROMPT,
             ),
         )
     }

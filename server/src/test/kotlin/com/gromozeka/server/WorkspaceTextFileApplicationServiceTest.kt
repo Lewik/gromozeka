@@ -52,7 +52,7 @@ class WorkspaceTextFileApplicationServiceTest {
         val reference = WorkspacePathReference(mount.id, "docs/memory.md")
         val actor = User(
             id = User.Id("user-1"),
-            username = "user",
+            identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("user")),
             displayName = "User",
             status = User.Status.ACTIVE,
             createdAt = now,

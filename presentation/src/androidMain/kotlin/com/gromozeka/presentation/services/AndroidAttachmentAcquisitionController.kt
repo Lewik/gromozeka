@@ -6,6 +6,8 @@ import android.provider.OpenableColumns
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.ArtifactUpload
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,8 +31,11 @@ class AndroidAttachmentAcquisitionController(
 
     override suspend fun pickAttachments(): List<ArtifactUpload> =
         suspendCancellableCoroutine { continuation ->
-            check(pendingPicker == null) { "The document picker is already open" }
-            val launch = launchFilePicker ?: error("Android document picker is unavailable")
+            if (pendingPicker != null) {
+                throw LocalizedTextException(localizedText("client.attachment.filePickerAlreadyOpen"))
+            }
+            val launch = launchFilePicker
+                ?: throw LocalizedTextException(localizedText("client.attachment.filePickerUnavailable"))
             pendingPicker = continuation
             continuation.invokeOnCancellation {
                 if (pendingPicker === continuation) pendingPicker = null
@@ -74,8 +79,8 @@ class AndroidAttachmentAcquisitionController(
                 cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
             }
         } ?: uri.lastPathSegment ?: "attachment"
-        require(reportedSize == null || reportedSize!! <= ArtifactLimits.MAX_FILE_BYTES) {
-            "$fileName exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
+        if (reportedSize != null && reportedSize!! > ArtifactLimits.MAX_FILE_BYTES) {
+            throw fileTooLarge(fileName)
         }
         val bytes = contentResolver.openInputStream(uri)?.use { input ->
             val output = ByteArrayOutputStream()
@@ -84,13 +89,11 @@ class AndroidAttachmentAcquisitionController(
                 val read = input.read(buffer)
                 if (read < 0) break
                 output.write(buffer, 0, read)
-                require(output.size() <= ArtifactLimits.MAX_FILE_BYTES) {
-                    "$fileName exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
-                }
+                if (output.size() > ArtifactLimits.MAX_FILE_BYTES) throw fileTooLarge(fileName)
             }
             output.toByteArray()
         }
-            ?: error("Selected file is not readable: $fileName")
+            ?: throw LocalizedTextException(localizedText("client.attachment.readFailed", "file" to fileName))
         return ArtifactUpload(
             fileName = fileName,
             mediaType = contentResolver.getType(uri) ?: fileName.fallbackMediaType(),
@@ -98,6 +101,12 @@ class AndroidAttachmentAcquisitionController(
             purpose = Artifact.Purpose.USER_ATTACHMENT,
         )
     }
+
+    private fun fileTooLarge(fileName: String): LocalizedTextException = LocalizedTextException(localizedText(
+        "client.attachment.fileTooLarge",
+        "file" to fileName,
+        "limit" to ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024),
+    ))
 
     private fun String.fallbackMediaType(): String = when (substringAfterLast('.', "").lowercase()) {
         "png" -> "image/png"

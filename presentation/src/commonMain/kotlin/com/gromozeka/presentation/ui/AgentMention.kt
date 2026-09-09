@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.ui
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.domain.model.AgentDefinition
 
 data class AgentMentionCandidate(
@@ -13,7 +16,7 @@ data class AgentMentionCandidate(
 internal sealed interface AgentMentionResolution {
     data object None : AgentMentionResolution
     data class Target(val candidate: AgentMentionCandidate) : AgentMentionResolution
-    data class Invalid(val message: String) : AgentMentionResolution
+    data class Invalid(val message: LocalizedText) : AgentMentionResolution
 }
 
 internal fun buildAgentMentionCandidates(
@@ -42,13 +45,21 @@ internal fun buildAgentMentionCandidates(
     )
 }
 
-internal fun agentResponseHint(message: String, candidates: List<AgentMentionCandidate>): String =
+internal fun agentResponseHint(
+    message: String,
+    candidates: List<AgentMentionCandidate>,
+    translation: Translation,
+): String =
     when (val mention = resolveAgentMention(message, candidates)) {
-        is AgentMentionResolution.Invalid -> mention.message
-        is AgentMentionResolution.Target -> "Replies: ${mention.candidate.name}"
+        is AgentMentionResolution.Invalid -> mention.message.resolve(translation)
+        is AgentMentionResolution.Target -> translation.text("client.mention.replies", "agents" to mention.candidate.name)
         AgentMentionResolution.None -> {
             val names = candidates.filter { it.connected && it.autoRespond }.map { it.name }
-            if (names.isEmpty()) "No automatic agent response" else "Replies: ${names.joinToString()}"
+            if (names.isEmpty()) {
+                translation.text("client.mention.noAutomaticResponse")
+            } else {
+                translation.text("client.mention.replies", "agents" to names.joinToString())
+            }
         }
     }
 
@@ -87,7 +98,7 @@ internal fun resolveAgentMention(
     return when {
         mentioned.isEmpty() -> AgentMentionResolution.None
         mentioned.size > 1 -> AgentMentionResolution.Invalid(
-            "Mention exactly one agent per message: ${mentioned.values.joinToString { it.mentionText }}"
+            localizedText("client.mention.onlyOneAgent", "mentions" to mentioned.values.joinToString { it.mentionText })
         )
         else -> {
             val candidate = mentioned.values.single()
@@ -95,7 +106,7 @@ internal fun resolveAgentMention(
                 AgentMentionResolution.Target(candidate)
             } else {
                 AgentMentionResolution.Invalid(
-                    "Agent ${candidate.mentionText} is not connected to this conversation"
+                    localizedText("client.mention.notConnected", "mention" to candidate.mentionText)
                 )
             }
         }

@@ -34,7 +34,7 @@ class PersonalAccessTokenApplicationService(
         expiresAt: Instant?,
     ): IssuedPersonalAccessToken {
         val user = identityRepository.findUserById(userId)
-            ?.takeIf { it.status == User.Status.ACTIVE }
+            ?.takeIf { it.canLogin }
             ?: error("Active user not found: ${userId.value}")
         val normalizedName = name.trim()
         require(normalizedName.length in TOKEN_NAME_LENGTH) {
@@ -116,7 +116,7 @@ class PersonalAccessTokenApplicationService(
             return null
         }
         val user = identityRepository.findUserById(token.userId)
-            ?.takeIf { it.status == User.Status.ACTIVE }
+            ?.takeIf { it.canLogin }
             ?: return null
         val lastUsedAt = token.lastUsedAt
         if (lastUsedAt == null || lastUsedAt < now - LAST_USED_TOUCH_INTERVAL) {

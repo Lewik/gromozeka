@@ -1,0 +1,7 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"Toggle voice recording in ${applicationName}" = "${applicationName}에서 음성 녹음 전환해 줘";
+"Start voice recording in ${applicationName}" = "${applicationName}에서 음성 녹음 시작해 줘";
+"Fix text with ${applicationName}" = "${applicationName}에서 텍스트 수정해 줘";
+"Correct text with ${applicationName}" = "${applicationName}에서 텍스트 교정해 줘";
+"Translate text with ${applicationName}" = "${applicationName}에서 텍스트 번역해 줘";
+"Translate with ${applicationName}" = "${applicationName}에서 번역해 줘";

@@ -347,14 +347,15 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `dispatcher interrupt cancels active task and preserves queued turns`() = runBlocking {
+    fun `dispatcher guarded interrupt cancels active task without response and preserves queued turns`() = runBlocking {
         val harness = dispatcherHarness()
         try {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
             assertTrue(harness.dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
-            assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
+            val activeTask = harness.runner.awaitStarted()
+            assertEquals(firstMessage.id.value, activeTask.id.value)
             assertTrue(
                 harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
@@ -364,7 +365,11 @@ class ConversationRuntimeDispatcherTest {
                 )
             )
 
-            assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT))
+            assertFalse(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT,
+                expectedTurnId = com.gromozeka.domain.service.ConversationRuntimeTurnId("stale")))
+            assertEquals(activeTask.id, harness.coordinator.find(conversationId)?.activeTaskId)
+            assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT,
+                expectedTurnId = activeTask.turnId))
 
             waitUntil {
                 harness.coordinator.find(conversationId)?.controlState ==
@@ -375,6 +380,14 @@ class ConversationRuntimeDispatcherTest {
                 harness.coordinator.listPending(conversationId).map { it.id.value },
             )
             assertNull(withTimeoutOrNull(350) { harness.runner.awaitStarted() })
+            assertTrue(harness.coordinator.listEventLogEntries(conversationId, null, 100)
+                .none { it.event is ConversationRuntimeEvent.MessageEmitted })
+            assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.RESUME))
+            assertEquals(secondMessage.id.value, harness.runner.awaitStarted().id.value)
+            assertFalse(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT,
+                expectedTurnId = activeTask.turnId))
+            harness.runner.releaseCurrentTask()
+            waitUntil { harness.coordinator.find(conversationId) == null }
         } finally {
             harness.close()
         }
@@ -704,6 +717,7 @@ class ConversationRuntimeDispatcherTest {
             assertTrue(replayedEvents[1] is ConversationRuntimeEvent.ExecutionCompleted)
             assertTrue(replayedEvents[2] is ConversationRuntimeEvent.ReplayCompleted)
             assertEquals(message.id.value, (replayedEvents[0] as ConversationRuntimeEvent.MessageEmitted).taskId?.value)
+            assertEquals(message.id.value, (replayedEvents[0] as ConversationRuntimeEvent.MessageEmitted).turnId?.value)
         } finally {
             harness.close()
         }
@@ -937,7 +951,7 @@ class ConversationRuntimeDispatcherTest {
 
     private fun actorUser(): User = User(
         id = User.Id("user-1"),
-        username = "user-1",
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("user-1")),
         displayName = "User One",
         status = User.Status.ACTIVE,
         role = User.Role.MEMBER,

@@ -42,6 +42,18 @@ import kotlin.test.assertFailsWith
 
 class GromozekaRemoteAuthorizationTest {
     @Test
+    fun `tool contract catalog requires project read access or global owner access`() = runBlocking {
+        val user = testUser()
+        val projectId = Project.Id("catalog-project")
+        authorization.authorize(user, com.gromozeka.remote.protocol.GetAgentToolCatalogRequest(projectId))
+        Mockito.verify(projectAccessService).requirePermission(user.id, projectId, ProjectPermission.READ)
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(user, com.gromozeka.remote.protocol.GetAgentToolCatalogRequest())
+        }
+        authorization.authorize(testUser(User.Role.OWNER), com.gromozeka.remote.protocol.GetAgentToolCatalogRequest())
+    }
+
+    @Test
     fun `automatic responder settings require conversation access and project write permission`() = runBlocking {
         val user = testUser()
         val conversation = testConversation()
@@ -313,7 +325,7 @@ class GromozekaRemoteAuthorizationTest {
 private fun testUser(role: User.Role = User.Role.MEMBER): User =
     User(
         id = User.Id("remote-authorization-user"),
-        username = "remote-authorization-user",
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("remote-authorization-user")),
         displayName = "Remote Authorization User",
         status = User.Status.ACTIVE,
         role = role,

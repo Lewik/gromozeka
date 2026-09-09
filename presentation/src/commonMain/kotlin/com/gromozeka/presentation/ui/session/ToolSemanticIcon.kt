@@ -35,6 +35,16 @@ internal fun ToolSemanticIcon(
     invocationCount: Int = 1,
 ) {
     val spec = toolIconSpec(toolName)
+    SemanticActivityIcon(spec, contentDescription, modifier, invocationCount)
+}
+
+@Composable
+internal fun SemanticActivityIcon(
+    spec: ToolIconSpec,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    invocationCount: Int = 1,
+) {
     Box(modifier = modifier.size(32.dp)) {
         Icon(
             imageVector = spec.domain,

@@ -4,9 +4,9 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -42,7 +42,9 @@ internal fun runGromozekaUiTest(
                 waitForTag(UiTestTag.AppRoot)
                 block(client)
             } catch (error: Throwable) {
-                writeSemanticsSnapshot(scenarioName, onRoot(useUnmergedTree = true).printToString())
+                runCatching {
+                    writeSemanticsSnapshot(scenarioName, onAllNodes(isRoot(), useUnmergedTree = true).printToString())
+                }.onFailure(error::addSuppressed)
                 throw error
             }
         }
@@ -59,7 +61,7 @@ internal fun ComposeUiTest.waitForTag(tag: UiTestTag, timeoutMillis: Long = 30_0
 internal fun ComposeUiTest.saveScreenshot(scenarioName: String) {
     val directory = Path.of(checkNotNull(System.getProperty("gromozeka.e2e.artifactsDir"))).resolve("screenshots")
     Files.createDirectories(directory)
-    Image.makeFromBitmap(onRoot().captureToImage().asSkiaBitmap()).use { image ->
+    Image.makeFromBitmap(onNodeWithTag(UiTestTag.AppRoot.value).captureToImage().asSkiaBitmap()).use { image ->
         checkNotNull(image.encodeToData()).use { data ->
             Files.write(directory.resolve("$scenarioName.png"), data.bytes)
         }

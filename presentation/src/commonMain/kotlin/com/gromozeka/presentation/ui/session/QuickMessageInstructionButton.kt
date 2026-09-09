@@ -5,6 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.presentation.ui.LocalTranslation
+import com.gromozeka.presentation.ui.displayTitle
+import com.gromozeka.presentation.ui.displayDescription
+import com.gromozeka.presentation.ui.displayShortLabel
 import com.gromozeka.presentation.ui.CompactButton
 
 @Composable
@@ -14,6 +18,7 @@ fun QuickMessageInstructionButton(
     onSelect: (MessageInstructionGroup, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val translation = LocalTranslation.current
     val activeIndex = group.controls.indexOfFirst { it.data.id in activeInstructionIds }
         .takeIf { it >= 0 }
         ?: group.selectedByDefault
@@ -23,10 +28,10 @@ fun QuickMessageInstructionButton(
     CompactButton(
         onClick = { onSelect(group, nextIndex) },
         modifier = modifier,
-        tooltip = "${group.title}: ${activeControl.data.title}\n${activeControl.data.description}",
+        tooltip = "${group.displayTitle(translation)}: ${activeControl.data.displayTitle(translation)}\n${activeControl.data.displayDescription(translation)}",
     ) {
         Text(
-            text = activeControl.shortLabel,
+            text = activeControl.displayShortLabel(translation),
             maxLines = 1,
             overflow = TextOverflow.Clip,
         )

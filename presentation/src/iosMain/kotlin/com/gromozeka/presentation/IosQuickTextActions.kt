@@ -1,5 +1,10 @@
 package com.gromozeka.presentation
 
+import androidx.compose.ui.text.intl.Locale
+import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.shared.localization.BundledTranslations
 import com.gromozeka.client.GromozekaRemoteServices
 import com.gromozeka.client.resolveRemoteUrl
 import com.gromozeka.domain.model.QuickTextAction
@@ -18,14 +23,35 @@ fun runIosQuickTextAction(
     text: String,
     completion: (String?, String?) -> Unit,
 ) {
+    val settingsStore = IosRemoteClientSettingsStore()
+    var translation = Translation(BundledTranslations.get(BundledTranslations.matchLocale(
+        settingsStore.load()?.bootstrapLocale ?: Locale.current.toLanguageTag()
+    )))
+    if (text.isBlank()) {
+        val titleKey = when (QuickTextAction.Id(actionId)) {
+            QuickTextAction.FIX_TEXT_ID -> "quickText.fix"
+            QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID -> "quickText.translate"
+            else -> "settingsUi.quickTextActions"
+        }
+        completion(null, translation.text("quickText.noInput", "action" to translation.text(titleKey)))
+        return
+    }
     iosQuickTextActionScope.launch {
         runCatching {
-            executeIosQuickTextAction(actionId, text)
+            executeIosQuickTextAction(actionId, text, settingsStore) { translation = it }
         }.onSuccess { result ->
             completion(result, null)
         }.onFailure { error ->
             if (error is CancellationException) throw error
-            completion(null, error.message ?: error.toString())
+            val titleKey = when (QuickTextAction.Id(actionId)) {
+                QuickTextAction.FIX_TEXT_ID -> "quickText.fix"
+                QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID -> "quickText.translate"
+                else -> "settingsUi.quickTextActions"
+            }
+            completion(null, translation.text(
+                "quickText.failed", "action" to translation.text(titleKey),
+                "error" to error.localizedText().resolve(translation),
+            ))
         }
     }
 }
@@ -33,12 +59,11 @@ fun runIosQuickTextAction(
 private suspend fun executeIosQuickTextAction(
     actionId: String,
     text: String,
+    settingsStore: IosRemoteClientSettingsStore,
+    onTranslationLoaded: (Translation) -> Unit,
 ): String {
-    require(text.isNotBlank()) { "Quick text action input must not be blank" }
-
-    val settingsStore = IosRemoteClientSettingsStore()
     val remoteUrl = settingsStore.resolveRemoteUrl(fallbackUrl = iosBundledRemoteUrl())
-        ?: error("Gromozeka server is not configured")
+        ?: throw LocalizedTextException(localizedText("quickText.serverNotConfigured"))
     val authConnection = RemoteAuthenticationConnection(
         remoteUrl = remoteUrl,
         clientLabel = "iOS quick text action",
@@ -47,7 +72,8 @@ private suspend fun executeIosQuickTextAction(
     var services: GromozekaRemoteServices? = null
     try {
         val status = authConnection.status()
-        val authenticatedUser = checkNotNull(status.authenticatedUser) { "Gromozeka is not signed in" }
+        val authenticatedUser = status.authenticatedUser
+            ?: throw LocalizedTextException(localizedText("quickText.notSignedIn"))
         services = GromozekaRemoteServices(
             url = remoteUrl,
             httpClient = authConnection.httpClient,
@@ -59,7 +85,9 @@ private suspend fun executeIosQuickTextAction(
             authenticatedUserRole = authenticatedUser.role,
         )
         services.initialize()
-        return services.quickTextActionService.runAction(QuickTextAction.Id(actionId), text).text
+        val translation = Translation(services.translationService.snapshot().selectedPackage)
+        onTranslationLoaded(translation)
+        return services.quickTextActionService.runAction(QuickTextAction.Id(actionId), text, translation.content.locale).text
     } finally {
         runCatching { services?.close() }
         runCatching { authConnection.close() }
@@ -67,6 +95,6 @@ private suspend fun executeIosQuickTextAction(
 }
 
 private fun iosBundledRemoteUrl(): String? =
-    (NSBundle.mainBundle.objectForInfoDictionaryKey("GromozekaDefaultRemoteUrl") as? String)
+    (NSBundle.mainBundle.objectForInfoDictionaryKey("GromozekaRemoteURL") as? String)
         ?.trim()
         ?.takeIf(String::isNotEmpty)

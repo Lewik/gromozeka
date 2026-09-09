@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.localizedText
+
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutActivation
 import com.gromozeka.domain.model.KeyboardShortcutBinding
@@ -83,7 +86,7 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
                 _state.value = GlobalHotkeyState(
                     available = false,
                     implementationType = IMPLEMENTATION_TYPE,
-                    message = error.message ?: "Windows global shortcut initialization failed",
+                    message = localizedText("hotkeys.initializationFailed", "error" to (error.message ?: LocalizedText.Resource("common.unknownError"))),
                 )
                 log.warn(error) { "Windows global shortcut service unavailable: ${error.message}" }
                 ready.countDown()
@@ -108,7 +111,7 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
         val normalized = settings.normalized()
         val errors = KeyboardShortcutValidator.validate(normalized)
             .filter { it.severity == KeyboardShortcutValidationSeverity.ERROR }
-            .associate { it.action to it.message }
+            .associate { it.action to it.localizedText() }
         val bindings = normalized.bindings.filter {
             it.enabled && it.scope == KeyboardShortcutScope.GLOBAL && it.action !in errors
         }
@@ -167,8 +170,8 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
         }
     }
 
-    private fun registerHotkey(id: Int, binding: KeyboardShortcutBinding): String? {
-        val loadedUser32 = user32 ?: return "Windows User32 is unavailable"
+    private fun registerHotkey(id: Int, binding: KeyboardShortcutBinding): LocalizedText? {
+        val loadedUser32 = user32 ?: return localizedText("hotkeys.backendUnavailable", "backend" to "Windows User32")
         val virtualKey = binding.key.windowsVirtualKey()
         val modifiers = binding.modifiers.windowsModifiers() or MOD_NOREPEAT
         return if (loadedUser32.RegisterHotKey(null, id, modifiers, virtualKey)) {
@@ -176,12 +179,12 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
             log.info("Registered Windows global shortcut action=${binding.action}")
             null
         } else {
-            "Shortcut registration failed (Windows error ${Native.getLastError()})"
+            localizedText("hotkeys.registrationFailed", "backend" to "Windows", "code" to Native.getLastError())
         }
     }
 
-    private fun installHoldHook(binding: KeyboardShortcutBinding): String? {
-        val loadedUser32 = user32 ?: return "Windows User32 is unavailable"
+    private fun installHoldHook(binding: KeyboardShortcutBinding): LocalizedText? {
+        val loadedUser32 = user32 ?: return localizedText("hotkeys.backendUnavailable", "backend" to "Windows User32")
         holdBinding = binding
         val callback = LowLevelKeyboardProc { code, eventType, event ->
             handleLowLevelKeyboardEvent(loadedUser32, code, eventType, event)
@@ -194,7 +197,7 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
         )
         if (hook == null) {
             holdBinding = null
-            return "Low-level keyboard hook failed (Windows error ${Native.getLastError()})"
+            return localizedText("hotkeys.windowsHookFailed", "code" to Native.getLastError())
         }
         keyboardHookCallback = callback
         keyboardHook = hook

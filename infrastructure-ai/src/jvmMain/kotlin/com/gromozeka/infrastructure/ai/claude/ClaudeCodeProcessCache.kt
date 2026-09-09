@@ -694,7 +694,7 @@ private class StreamingClaudeCodeCliProcess(
                         "CLAUDE_CODE_TRACE call=$diagnosticId phase=stdin_flushed pid=${process.pid()} " +
                             "elapsedMs=${elapsedMillis(startedAt)}"
                     }
-                    readResult(diagnosticId)
+                    readResult(diagnosticId, if (userPrompt == "/compact") null else json.parseToJsonElement(payload).jsonObject)
                 }
                 try {
                     response.await()
@@ -757,16 +757,16 @@ private class StreamingClaudeCodeCliProcess(
         }
     }
 
-    private fun readResult(diagnosticId: String): ClaudeCodeCliResponse {
+    private fun readResult(diagnosticId: String, input: JsonObject?): ClaudeCodeCliResponse {
         val startedAt = System.nanoTime()
         var eventIndex = 0
         var previousEventAt = startedAt
         val assistantMessageIds = mutableSetOf<String>()
         val jsonDiagnostics = ClaudeCodeJsonDeltaDiagnostics()
-        val parser = ClaudeCodeResultStreamParser()
+        val parser = ClaudeCodeResultStreamParser(input)
         while (true) {
             val line = stdout.readLine()
-                ?: error(
+                ?: throw claudeCodeStreamFailure(
                     "Claude Code CLI stream closed before returning a result" +
                         processExitDiagnostic() +
                         stderrDiagnostic().asDiagnosticSuffix()
@@ -880,6 +880,7 @@ private class StreamingClaudeCodeCliProcess(
         JsonObject(
             mapOf(
                 "type" to JsonPrimitive("user"),
+                "uuid" to JsonPrimitive(java.util.UUID.randomUUID().toString()),
                 "message" to JsonObject(
                     mapOf(
                         "role" to JsonPrimitive("user"),
@@ -973,7 +974,8 @@ private class ClaudeCodeUnicodeDeltaCounter {
 
 }
 
-internal class ClaudeCodeResultStreamParser {
+internal class ClaudeCodeResultStreamParser(input: JsonObject? = null) {
+    private val replayEvents = mutableListOf<JsonObject>().apply { input?.let(::add) }
     private var latestAssistantUsage: JsonObject? = null
     private val thinkingBlocks = linkedMapOf<String, ClaudeCodeThinkingBlock>()
     private val compactionBoundaries = mutableListOf<JsonObject>()
@@ -981,12 +983,18 @@ internal class ClaudeCodeResultStreamParser {
     fun accept(root: JsonObject): ClaudeCodeCliResponse? =
         when (root["type"]?.jsonPrimitive?.contentOrNull) {
             "assistant" -> {
+                replayEvents += root
                 acceptAssistant(root)
+                null
+            }
+            "user" -> {
+                replayEvents += root
                 null
             }
             "system" -> {
                 if (root["subtype"]?.jsonPrimitive?.contentOrNull == "compact_boundary") {
                     compactionBoundaries += root
+                    replayEvents += root
                 }
                 null
             }
@@ -1028,7 +1036,7 @@ internal class ClaudeCodeResultStreamParser {
         val isError = root["is_error"]?.jsonPrimitive?.booleanOrNull == true
         if (isError) {
             val message = root["result"]?.jsonPrimitive?.contentOrNull ?: root.toString()
-            error("Claude Code CLI returned an error: ${message.redactedDiagnosticPreview()}")
+            throw claudeCodeStreamFailure("Claude Code CLI returned an error: ${message.redactedDiagnosticPreview()}")
         }
 
         val usage = root["usage"] as? JsonObject
@@ -1044,6 +1052,7 @@ internal class ClaudeCodeResultStreamParser {
             raw = root,
             thinking = thinkingBlocks.values.toList(),
             compactionBoundaries = compactionBoundaries.toList(),
+            replayEvents = replayEvents.toList(),
         )
     }
 
@@ -1278,7 +1287,6 @@ private object ClaudeCodeProcessArguments {
                 add("--allowedTools")
                 add(nativeToolNames.joinToString(","))
             }
-            add("--disable-slash-commands")
             add("--setting-sources")
             add("")
             add("--input-format")
@@ -1306,3 +1314,8 @@ private object ClaudeCodeProcessArguments {
             }
         }
 }
+
+private fun claudeCodeStreamFailure(message: String): IllegalStateException =
+    if (Regex("No conversation found with session ID: [a-fA-F0-9-]{36}").containsMatchIn(message)) {
+        ClaudeCodeSessionUnavailableException(message)
+    } else IllegalStateException(message)

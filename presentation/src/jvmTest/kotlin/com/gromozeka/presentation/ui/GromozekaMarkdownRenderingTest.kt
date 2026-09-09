@@ -145,7 +145,7 @@ class GromozekaMarkdownRenderingTest {
                     if (segmented) {
                         Column {
                             rememberMessageListEntries(listOf(message), emptyMap(), emptyMap()).forEach {
-                                MessageItem(it, emptyMap(), loadArtifactContent = { byteArrayOf() })
+                                MessageItem(it, loadArtifactContent = { byteArrayOf() })
                             }
                         }
                     } else {

@@ -1,5 +1,9 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AgentPreloadedTools
+import com.gromozeka.domain.tool.AgentToolCatalogEntry
+import com.gromozeka.domain.tool.ToolAccessPolicy
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillFile
@@ -36,8 +40,20 @@ internal class ControlMcpAgentCatalogTools(
     private val skillService: AgentSkillDomainService,
     private val templateService: RuntimeCatalogTemplateService,
     private val projectAccessService: ProjectAccessService,
+    private val toolPolicyAuthority: AgentToolPolicyAuthority? = null,
 ) : ControlMcpToolProvider {
     override val tools: List<ControlMcpTool> = listOf(
+        controlMcpTool(
+            name = "grz_agent_tool_catalog",
+            description = "List source-qualified tool contracts and revisions for Agent access policy and preloading. Omit projectId for the owner-only registry view.",
+            inputSchema = ControlMcpSchemas.objectSchema(mapOf("projectId" to ControlMcpSchemas.string("Optional project id."))),
+            readOnly = true,
+        ) { input ->
+            val projectId = input.optionalString("projectId")?.let(Project::Id)
+            if (projectId == null) requireServerOwner()
+            requireScopeAccess(projectId, ProjectPermission.READ)
+            listResult("tools", AgentToolCatalogEntry.serializer(), agentService.toolCatalog(projectId))
+        },
         controlMcpTool(
             name = "grz_runtime_template_get",
             description = "Read bundled Agent, Prompt, and AI catalog templates. Templates are blueprints, not live configuration.",
@@ -93,6 +109,8 @@ internal class ControlMcpAgentCatalogTools(
         ) { input ->
             val projectId = input.optionalString("projectId")?.let(Project::Id)
             requireScopeAccess(projectId, ProjectPermission.WRITE)
+            val toolAccess = input.decodeOptionalObject("toolAccess", ToolAccessPolicy.serializer()) ?: ToolAccessPolicy.DenyListed()
+            if (callingAgentId != null) checkNotNull(toolPolicyAuthority).requireWithinCaller(this, toolAccess)
             entityResult(
                 "agent",
                 AgentDefinition.serializer(),
@@ -105,7 +123,8 @@ internal class ControlMcpAgentCatalogTools(
                         "runtimeOverrides",
                         AiRuntimeOverrides.serializer(),
                     ) ?: AiRuntimeOverrides(),
-                    tools = input.optionalStringList("tools"),
+                    tools = input.decodeOptionalObject("tools", AgentPreloadedTools.serializer()) ?: AgentPreloadedTools(),
+                    toolAccess = toolAccess,
                     description = input.optionalString("description"),
                     skills = input.optionalStringList("skillIds").map(AgentSkill::Id),
                 )
@@ -122,6 +141,8 @@ internal class ControlMcpAgentCatalogTools(
             val agentId = AgentDefinition.Id(id)
             val existing = agentService.findById(agentId) ?: notFound("Agent", id)
             requireAgentAccess(existing, ProjectPermission.WRITE)
+            val toolAccess = input.decodeObject("toolAccess", ToolAccessPolicy.serializer())
+            if (callingAgentId != null) checkNotNull(toolPolicyAuthority).requireWithinCaller(this, toolAccess)
             entityResult(
                 "agent",
                 AgentDefinition.serializer(),
@@ -136,7 +157,8 @@ internal class ControlMcpAgentCatalogTools(
                         "runtimeOverrides",
                         AiRuntimeOverrides.serializer(),
                     ) ?: AiRuntimeOverrides(),
-                    tools = input.optionalStringList("tools"),
+                    tools = input.decodeObject("tools", AgentPreloadedTools.serializer()),
+                    toolAccess = toolAccess,
                 ) ?: notFound("Agent", id),
             )
         },
@@ -157,6 +179,7 @@ internal class ControlMcpAgentCatalogTools(
             val source = agentService.findById(sourceId)
                 ?: notFound("Agent", sourceId.value)
             requireAgentAccess(source, ProjectPermission.READ)
+            if (callingAgentId != null) checkNotNull(toolPolicyAuthority).requireWithinCaller(this, source.toolAccess)
             val projectId = input.optionalString("projectId")?.let(Project::Id)
             requireScopeAccess(projectId, ProjectPermission.WRITE)
             entityResult(
@@ -454,15 +477,25 @@ private fun agentWriteSchema(
                 "runtimeOverrides",
                 ControlMcpSchemas.objectValue("Optional AiRuntimeOverrides object."),
             )
-            put("tools", ControlMcpSchemas.stringArray("Always-loaded tool names."))
+            put("tools", ControlMcpSchemas.objectValue("Preload configuration: {names: [model or qualified logical tool names]}. Blocked entries are saved but never loaded."))
+            put("toolAccess", agentToolAccessSchema())
             put("description", ControlMcpSchemas.string("Optional Agent description."))
             put("skillIds", ControlMcpSchemas.stringArray("Project Agent Skill ids."))
         },
         required = buildList {
             if (includeId) add("agentId")
+            if (includeId) addAll(listOf("tools", "toolAccess"))
             addAll(listOf("name", "promptIds", "runtimeSelection"))
         },
     )
+
+private fun agentToolAccessSchema() = ControlMcpSchemas.objectValue(
+    "ToolAccessPolicy: {type: allow_only|deny_listed, entries: [selector]}. " +
+        "Selector: {type: exact_revision, fingerprint: full_SHA256} or " +
+        "{type: by_name, tool: {source: source_id, name: logical_name}}. " +
+        "Name selectors include future revisions of that source-qualified name. " +
+        "Empty allow_only denies all; empty deny_listed adds no restriction. Use grz_agent_tool_catalog for exact identities.",
+)
 
 private fun promptWriteSchema(
     includeId: Boolean,

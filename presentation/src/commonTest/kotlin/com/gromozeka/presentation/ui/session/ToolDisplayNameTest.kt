@@ -1,12 +1,12 @@
 package com.gromozeka.presentation.ui.session
 
 import com.gromozeka.presentation.services.translation.data.RussianTranslation
-import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ToolDisplayNameTest {
-    private val english = Translation.RuntimeTranslation()
+    private val english = EnglishTranslation().runtime
     private val russian = RussianTranslation().runtime
 
     @Test
@@ -18,8 +18,8 @@ class ToolDisplayNameTest {
 
     @Test
     fun `resolves localized labels`() {
-        assertEquals("Просмотреть экран", toolDisplayName("grz_computer_observe", russian))
-        assertEquals("Выполнить команду", toolDisplayName("grz_execute_command", russian))
+        assertEquals("Наблюдение за экраном", toolDisplayName("grz_computer_observe", russian))
+        assertEquals("Выполнение команды", toolDisplayName("grz_execute_command", russian))
     }
 
     @Test

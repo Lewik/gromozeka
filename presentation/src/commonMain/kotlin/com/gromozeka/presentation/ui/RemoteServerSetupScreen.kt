@@ -26,16 +26,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.normalizeRemoteUrl
+import com.gromozeka.client.RemoteServerAddressException
 
 @Composable
 fun RemoteServerSetupScreen(
     initialAddress: String,
     connecting: Boolean,
-    connectionError: String?,
+    connectionError: Throwable?,
     onConnect: (String) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var address by remember(initialAddress) { mutableStateOf(initialAddress) }
-    var validationError by remember { mutableStateOf<String?>(null) }
+    var validationError by remember { mutableStateOf<Throwable?>(null) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -54,13 +56,13 @@ fun RemoteServerSetupScreen(
                     .fillMaxWidth(),
             ) {
                 Text(
-                    text = "Connect to Gromozeka",
+                    text = translation.text("connection.setup.title"),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Enter the address of the Gromozeka Server that owns your projects, agents, and conversations.",
+                    text = translation.text("connection.setup.description"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -72,15 +74,21 @@ fun RemoteServerSetupScreen(
                         validationError = null
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Server address") },
+                    label = { Text(translation.text("connection.setup.addressLabel")) },
                     placeholder = { Text("https://gromozeka.example") },
                     supportingText = {
-                        Text("HTTPS, WSS, HTTP, and WS addresses are supported.")
+                        Text(translation.text("connection.setup.supportedSchemes"))
                     },
                     singleLine = true,
                     enabled = !connecting,
                 )
-                val error = validationError ?: connectionError
+                val error = validationError?.let { failure ->
+                    if (failure is RemoteServerAddressException) {
+                        translation.text(failure.messageKey)
+                    } else {
+                        failure.message ?: translation.text("connection.setup.invalidAddress")
+                    }
+                } ?: connectionError?.clientErrorText(translation)
                 if (error != null) {
                     Spacer(Modifier.height(12.dp))
                     Text(
@@ -97,7 +105,7 @@ fun RemoteServerSetupScreen(
                     onClick = {
                         runCatching { normalizeRemoteUrl(address) }
                             .onSuccess(onConnect)
-                            .onFailure { validationError = it.message ?: "Invalid server address" }
+                            .onFailure { validationError = it }
                     },
                 ) {
                     if (connecting) {
@@ -107,7 +115,7 @@ fun RemoteServerSetupScreen(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Text("Connect")
+                        Text(translation.text("connection.setup.connect"))
                     }
                 }
             }

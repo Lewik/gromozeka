@@ -239,7 +239,7 @@ class AiToolRuntimeCatalogService {
         memoryEnabled: Boolean,
     ): Set<String> = buildSet {
         addConfiguredToolNames(corePreloadedToolNames, catalog)
-        addConfiguredToolNames(agent.tools, catalog)
+        addConfiguredToolNames(agent.tools.names, catalog)
         if (memoryEnabled) {
             addConfiguredToolNames(memoryPreloadedToolNames, catalog)
         }
@@ -247,6 +247,14 @@ class AiToolRuntimeCatalogService {
             .filter { tool -> tool.metadata.loadingPolicy.shouldPreload(memoryEnabled) }
             .mapTo(this) { it.definition.name }
         addAll(discoveredToolNames(messages, catalog))
+        removeAll { name ->
+            catalog.entries[name]?.let { entry ->
+                !agent.toolAccess.allows(
+                    com.gromozeka.domain.tool.QualifiedToolName(entry.descriptor.definition.source, entry.logicalName),
+                    entry.contractFingerprint,
+                )
+            } ?: (agent.toolAccess is com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly)
+        }
     }
 
     internal fun discoveredToolNames(
@@ -425,7 +433,7 @@ class SearchToolsToolCallback(
         val preparedCatalog = agentSkillRuntimeCatalogService.prepare(
             agent = agent,
             projectId = project.id,
-            toolCatalog = distributedToolCatalog.snapshot(project),
+            toolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess),
         ).toolCatalog
         val loadedToolNames = runtimeCatalogService.loadedToolNames(
             agent = agent,

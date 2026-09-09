@@ -281,7 +281,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
             AuthenticatedUser(
                 user = User(
                     id = userId,
-                    username = userId.value,
+                    identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin(userId.value)),
                     displayName = userId.value,
                     status = User.Status.ACTIVE,
                     createdAt = now,

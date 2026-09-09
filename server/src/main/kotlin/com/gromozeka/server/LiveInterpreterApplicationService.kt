@@ -71,14 +71,15 @@ class LiveInterpreterApplicationService(
         request: StartLiveInterpreterRequest,
         eventSink: suspend (ServerPayload) -> Unit,
     ): LiveInterpreterStartedResponse {
+        require(request.targetLanguage.isNotBlank()) { "Live interpreter target language must not be blank" }
         val sessionId = uuid7()
         val session = LiveInterpreterSession(
             sessionId = sessionId,
             owner = owner,
-            targetLanguage = request.targetLanguage.ifBlank { "ru" },
-            sourceLanguageCode = request.sourceLanguageCode.ifBlank { "auto" },
+            targetLanguage = request.targetLanguage,
+            sourceLanguageCode = request.sourceLanguageCode.substringBefore('-').ifBlank { "auto" },
             sourceLanguageHint = request.sourceLanguageHint.ifBlank {
-                "Hebrew, Russian, and English workplace conversation"
+                "Speech in any language, including multilingual conversation, names, and technical terms"
             },
             stabilizerRuntimeSelection = aiConfigurationProvider.runtimeSelectionFor(
                 AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER
@@ -164,7 +165,7 @@ class LiveInterpreterApplicationService(
 
         fun start() {
             job = scope.launch {
-                emit(LiveInterpreterStatusEvent(sessionId, "Live interpreter is listening"))
+                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.listening"))
                 try {
                     coroutineScope {
                         val transcriptionJob = launch { runTranscriptionLoop() }
@@ -227,7 +228,7 @@ class LiveInterpreterApplicationService(
                 "Live interpreter chunk received: session=$sessionId chunk=${chunk.sequenceNumber} " +
                     "bytes=${chunk.data.size} format=${chunk.format}"
             }
-            emit(LiveInterpreterStatusEvent(sessionId, "Transcribing segment ${chunk.sequenceNumber}"))
+            emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.transcribing", mapOf("sequence" to chunk.sequenceNumber.toString())))
             val transcript = sttService.transcribeServerOnly(
                 audioData = chunk.data,
                 format = chunk.format,
@@ -235,7 +236,7 @@ class LiveInterpreterApplicationService(
                 prompt = sourceLanguageHint,
             ).trim()
             if (transcript.isBlank()) {
-                emit(LiveInterpreterStatusEvent(sessionId, "Segment ${chunk.sequenceNumber}: no speech detected"))
+                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.noSpeech", mapOf("sequence" to chunk.sequenceNumber.toString())))
                 return
             }
 
@@ -252,7 +253,7 @@ class LiveInterpreterApplicationService(
             source: String,
         ) {
             if (transcript.isBlank()) {
-                emit(LiveInterpreterStatusEvent(sessionId, "Segment $sequenceNumber: no speech detected"))
+                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.noSpeech", mapOf("sequence" to sequenceNumber.toString())))
                 return
             }
             val draft = transcriptStateMutex.withLock {
@@ -298,7 +299,7 @@ class LiveInterpreterApplicationService(
                 return
             }
             val newestDraft = context.pendingDrafts.maxOf { it.sequenceNumber }
-            emit(LiveInterpreterStatusEvent(sessionId, "Stabilizing transcript draft $newestDraft"))
+            emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.stabilizing", mapOf("draft" to newestDraft.toString())))
             val finalizedOriginalSegments = try {
                 val response = stabilizeTranscript(context)
                 log.info {
@@ -319,7 +320,8 @@ class LiveInterpreterApplicationService(
                 emit(
                     LiveInterpreterStatusEvent(
                         sessionId = sessionId,
-                        message = "Transcript stabilization failed for draft $newestDraft: ${error.message}"
+                        messageKey = "interpreter.status.stabilizationFailed",
+                        arguments = mapOf("draft" to newestDraft.toString(), "error" to (error.message ?: error::class.simpleName.orEmpty())),
                     )
                 )
                 emptyList()
@@ -327,7 +329,7 @@ class LiveInterpreterApplicationService(
             emitPendingDrafts()
 
             if (finalizedOriginalSegments.isEmpty()) {
-                emit(LiveInterpreterStatusEvent(sessionId, "Draft $newestDraft: waiting for more speech"))
+                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.waitingForSpeech", mapOf("draft" to newestDraft.toString())))
                 return
             }
 
@@ -365,7 +367,7 @@ class LiveInterpreterApplicationService(
         }
 
         private suspend fun translateFinalizedOriginal(finalizedOriginal: LiveInterpreterFinalizedOriginal) {
-            emit(LiveInterpreterStatusEvent(sessionId, "Translating finalized transcript ${finalizedOriginal.sequenceNumber}"))
+            emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.translating", mapOf("sequence" to finalizedOriginal.sequenceNumber.toString())))
             val translation = try {
                 val context = transcriptStateMutex.withLock {
                     transcriptState.translationContext(finalizedOriginal.segments)
@@ -381,7 +383,8 @@ class LiveInterpreterApplicationService(
                 emit(
                     LiveInterpreterStatusEvent(
                         sessionId = sessionId,
-                        message = "Translation failed for finalized transcript ${finalizedOriginal.sequenceNumber}: ${error.message}"
+                        messageKey = "interpreter.status.translationFailed",
+                        arguments = mapOf("sequence" to finalizedOriginal.sequenceNumber.toString(), "error" to (error.message ?: error::class.simpleName.orEmpty())),
                     )
                 )
                 throw error
@@ -391,7 +394,7 @@ class LiveInterpreterApplicationService(
             if (trimmedTranslation.isBlank()) {
                 val errorMessage = "Translation returned blank text for finalized transcript ${finalizedOriginal.sequenceNumber}"
                 log.warn { "Live interpreter translation failed: session=$sessionId error=$errorMessage" }
-                emit(LiveInterpreterStatusEvent(sessionId, errorMessage))
+                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.emptyTranslation", mapOf("sequence" to finalizedOriginal.sequenceNumber.toString())))
                 error(errorMessage)
             }
 
@@ -511,6 +514,16 @@ private fun String.toTargetLanguageName(): String =
         "ru", "rus", "russian" -> "Russian"
         "en", "eng", "english" -> "English"
         "he", "heb", "hebrew" -> "Hebrew"
+        "ar" -> "Arabic"
+        "de" -> "German"
+        "es" -> "Spanish"
+        "fr" -> "French"
+        "id" -> "Indonesian"
+        "ja" -> "Japanese"
+        "ko" -> "Korean"
+        "pt-br" -> "Brazilian Portuguese"
+        "zh-hans" -> "Simplified Chinese"
+        "zh-hant" -> "Traditional Chinese"
         else -> this
     }
 

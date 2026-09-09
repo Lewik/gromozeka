@@ -1,0 +1,598 @@
+{
+  "schemaVersion": 1,
+  "sourceLanguage": "en",
+  "policy": {
+    "purpose": "Conceptual reference for translators and language reviewers. Definitions explain product meaning; they do not prescribe one translation for every locale or become runtime interface strings.",
+    "userTerminology": "Explicit user terminology choices and existing personal translation overrides take priority over built-in wording. Preserve those preferences consistently while retaining distinctions between concepts.",
+    "context": "Translate by semantic role and screen context, never by isolated dictionary substitution. Consult source anchors when a label is ambiguous. Product names, user data and code identifiers are not ordinary translatable prose.",
+    "consistency": "Use a consistent term for the same concept within one translation package. Related concepts may share roots, but Agent, Worker, Server, Project, Workspace and Conversation must remain distinguishable.",
+    "technicalLiterals": "Preserve exact commands, flags, URLs, paths, environment-variable names, JSON property names, serialized enum values, provider/model IDs and credential values. Translate display labels around them; a translated label must never become a control-flow identifier.",
+    "arguments": "Preserve named argument identifiers and their complete set in every plural form. Arguments may move naturally; the runtime inserts their values as data. Use argumentDescriptions and examples to determine meaning, not to replace actual runtime values.",
+    "grammar": "Use target-locale plural categories, natural word order, established software terminology and appropriate agreement. Do not mechanically preserve English capitalization or concatenate fragments that need inflection.",
+    "sharedData": "Do not translate stored user names, Prompt content, conversations, arbitrary errors or model-authored explanations as part of the UI catalog. Shared server data must not be rewritten into one viewer language.",
+    "ambiguity": "When semantic context is insufficient, flag the ambiguity for review. Do not invent a product capability or silently equate technical concepts.",
+    "scope": "Global describes resource scope within the deployment; it does not imply public Internet visibility or unrestricted permissions."
+  },
+  "terms": {
+    "gromozeka": {
+      "term": "Gromozeka",
+      "definition": "The name of this AI assistant product, comprising Compose clients, a central Server, and execution Workers.",
+      "translationGuidance": "Preserve the product name unless the user explicitly chooses a personal rendering. Do not translate it as an ordinary noun.",
+      "distinguishFrom": [
+        "generic AI model",
+        "individual Agent"
+      ],
+      "source": [
+        "docs/development-guide.md:8"
+      ]
+    },
+    "agent": {
+      "term": "Agent",
+      "definition": "A server-managed AI participant and reusable configuration of model selection, ordered prompts, tools, skills and behavior. It can participate in a Conversation.",
+      "translationGuidance": "Use one consistent target-language term for the AI participant/configuration. It does not mean a human representative or an execution machine.",
+      "distinguishFrom": [
+        "Worker",
+        "model",
+        "human employee"
+      ],
+      "source": [
+        "docs/development-guide.md:134",
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AgentDefinition.kt:11"
+      ]
+    },
+    "worker": {
+      "term": "Worker",
+      "definition": "A named trusted execution process on a particular machine or device. It advertises capabilities and executes operations assigned to that exact Worker.",
+      "translationGuidance": "Keep the distinction from Agent and Server. A translation may use an established software term; do not imply a human laborer or automatic reassignment to another machine.",
+      "distinguishFrom": [
+        "Agent",
+        "Server",
+        "human worker"
+      ],
+      "source": [
+        "docs/development-guide.md:136"
+      ]
+    },
+    "server": {
+      "term": "Server",
+      "definition": "The central service that manages users, catalogs, Conversations, turn orchestration, memory pipelines and routing to execution targets.",
+      "translationGuidance": "Use the software/network meaning. It is a distinct execution target and is not a Worker.",
+      "distinguishFrom": [
+        "Worker",
+        "client application"
+      ],
+      "source": [
+        "docs/development-guide.md:12",
+        "docs/development-guide.md:153"
+      ]
+    },
+    "client": {
+      "term": "Client",
+      "definition": "The user-facing Gromozeka application that connects to the Server, such as a desktop, browser or mobile Compose client.",
+      "translationGuidance": "Use the software-application meaning, not a customer buying services.",
+      "distinguishFrom": [
+        "Server",
+        "customer"
+      ],
+      "source": [
+        "docs/development-guide.md:12"
+      ]
+    },
+    "project": {
+      "term": "Project",
+      "definition": "A logical working context that groups relevant resources and controls project membership. Conversations belong to Projects.",
+      "translationGuidance": "Do not reduce this to a filesystem folder or Git repository. Global catalog objects can be shared across Projects in one deployment.",
+      "distinguishFrom": [
+        "Workspace",
+        "Conversation",
+        "Git repository"
+      ],
+      "source": [
+        "docs/development-guide.md:129"
+      ]
+    },
+    "conversation": {
+      "term": "Conversation",
+      "definition": "A Project-owned exchange of messages with an explicit set of connected User and Agent participants. It is not bound to one Workspace.",
+      "translationGuidance": "Use the established chat/conversation concept consistently. A Conversation may involve more than one participant or Agent.",
+      "distinguishFrom": [
+        "single message",
+        "single turn",
+        "Workspace"
+      ],
+      "source": [
+        "docs/development-guide.md:130"
+      ]
+    },
+    "workspace": {
+      "term": "Workspace",
+      "definition": "A logical Project resource; the currently implemented kind is a filesystem tree.",
+      "translationGuidance": "Use a software working-area or workspace term. It is distinct from the Project that owns it and from its path on a specific Worker.",
+      "distinguishFrom": [
+        "Project",
+        "Workspace Mount",
+        "desktop window"
+      ],
+      "source": [
+        "docs/development-guide.md:142"
+      ]
+    },
+    "workspace_mount": {
+      "term": "Workspace Mount",
+      "definition": "The binding recording that one particular Worker can access one Workspace at a Worker-local root path. Filesystem, shell and Git operations target this binding.",
+      "translationGuidance": "Mount has a filesystem-binding meaning. Preserve the combination of Worker, Workspace and local path; do not translate it as a physical mount or equate it with the Workspace itself.",
+      "distinguishFrom": [
+        "Workspace",
+        "general network drive",
+        "installation"
+      ],
+      "source": [
+        "docs/development-guide.md:144",
+        "docs/development-guide.md:146"
+      ]
+    },
+    "runtime": {
+      "term": "Runtime",
+      "definition": "Depending on the label, the executing Gromozeka system/deployment or its active server-managed configuration. A runtime catalog configures live application behavior.",
+      "translationGuidance": "In these settings it does not mean elapsed execution duration. Translate compounds from context: runtime catalog, runtime purpose and runtime overrides have different roles.",
+      "distinguishFrom": [
+        "run time measured in seconds",
+        "downloaded language runtime such as a JRE"
+      ],
+      "source": [
+        "docs/development-guide.md:262",
+        "docs/development-guide.md:345"
+      ]
+    },
+    "runtime_assignment": {
+      "term": "Runtime assignment",
+      "definition": "A configured selection of one model configuration for a Gromozeka workflow purpose such as normal chat, memory recall, or speech recognition. Optional stages can inherit a parent workflow selection.",
+      "translationGuidance": "Assignment means assigning a model to a system function, not a homework task, a job ticket or a Worker placement.",
+      "distinguishFrom": [
+        "task assignment",
+        "execution target",
+        "Agent definition"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:5"
+      ]
+    },
+    "runtime_purpose": {
+      "term": "Runtime purpose",
+      "definition": "The named application workflow or stage for which a model is selected, for example Memory read / Planner or Text-to-speech.",
+      "translationGuidance": "Render purpose as a role/function of a model call. A stage override changes the selected model for that stage.",
+      "distinguishFrom": [
+        "user objective",
+        "model identifier"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:14"
+      ]
+    },
+    "turn": {
+      "term": "Turn",
+      "definition": "One Agent response cycle in a Conversation. It may contain several model steps, tool calls/results and continuations before the final answer or termination.",
+      "translationGuidance": "Use a dialogue-cycle term. It is broader than a single model request or a single visible message; it is not physical rotation.",
+      "distinguishFrom": [
+        "model call",
+        "message",
+        "rotation"
+      ],
+      "source": [
+        "docs/development-guide.md:58",
+        "docs/development-guide.md:71"
+      ]
+    },
+    "model_call": {
+      "term": "Model call",
+      "definition": "One request to an AI provider/model and its resulting response. Multiple model calls may occur during a single Agent turn.",
+      "translationGuidance": "Call means an API/model invocation, not a telephone conversation. Usage statistics count these calls.",
+      "distinguishFrom": [
+        "turn",
+        "phone call",
+        "tool call"
+      ],
+      "source": [
+        "docs/development-guide.md:58",
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiUsageSettings.kt:197"
+      ]
+    },
+    "tool": {
+      "term": "Tool",
+      "definition": "A defined callable operation available to the AI system, with a stable contract/name and arguments, such as inspecting files, searching or controlling a browser.",
+      "translationGuidance": "Use the AI/software capability meaning. Tool identifiers remain literal even when surrounding UI labels are translated.",
+      "distinguishFrom": [
+        "physical hand tool",
+        "model",
+        "plugin as a package"
+      ],
+      "source": [
+        "docs/development-guide.md:335"
+      ]
+    },
+    "tool_call": {
+      "term": "Tool call",
+      "definition": "An invocation of one tool with arguments, followed by a tool result. The operation may run on the Server, a specific Worker or an external tool service according to its contract.",
+      "translationGuidance": "Call means invoking an operation. Keep call and result distinct. Do not imply that a requested action has already completed.",
+      "distinguishFrom": [
+        "model call",
+        "tool result"
+      ],
+      "source": [
+        "docs/development-guide.md:58",
+        "docs/development-guide.md:335"
+      ]
+    },
+    "parallel_tool_calls": {
+      "term": "Parallel tool calls",
+      "definition": "Multiple tool invocations that may be issued or executed concurrently rather than strictly one after another. The exact UI setting determines whether it controls model permission or actual scheduling.",
+      "translationGuidance": "Parallel refers to concurrency, not geometry, duplicate actions or multiple Agents. Do not claim concurrent execution when a control only permits the model to request several calls. This is a general concurrency term, not evidence that the current runtime executes every requested tool concurrently.",
+      "distinguishFrom": [
+        "duplicate tool calls",
+        "parallel Agents"
+      ],
+      "source": []
+    },
+    "response_branch": {
+      "term": "Response branch",
+      "definition": "A mutually exclusive variant of a structured model-response protocol, such as tool_calls versus final_answer.",
+      "translationGuidance": "Branch here is a protocol/control-flow alternative, not a Git branch, a department, or necessarily a forked Conversation. Preserve exact discriminator values in code or technical examples.",
+      "distinguishFrom": [
+        "Git branch",
+        "Conversation fork"
+      ],
+      "source": [
+        "docs/development-guide.md:71"
+      ]
+    },
+    "prompt": {
+      "term": "Prompt",
+      "definition": "A stored instruction or context document, usually Markdown, included in an ordered stack that shapes an Agent behavior. Prompt content is user/server-managed data.",
+      "translationGuidance": "Use the AI-instruction meaning here, not a popup dialog, a command prompt, a short UI hint or the adjective meaning quick. Translate editor labels, never the stored prompt text as part of UI localization.",
+      "distinguishFrom": [
+        "input placeholder",
+        "dialog prompt",
+        "shell prompt"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AgentDefinition.kt:25",
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/agents/PromptCreateDialog.kt:67"
+      ]
+    },
+    "skill": {
+      "term": "Skill",
+      "definition": "A project-scoped imported Agent Skill package containing instructions and possibly related files/resources. Agents can discover and load it when needed.",
+      "translationGuidance": "Use a reusable AI capability/package meaning. Do not imply human proficiency or that enabling a Skill installs software, grants permissions, or automatically executes its files.",
+      "distinguishFrom": [
+        "personal talent",
+        "Tool",
+        "Prompt alone"
+      ],
+      "source": [
+        "docs/development-guide.md:359",
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AgentSkill.kt:10"
+      ]
+    },
+    "materialization": {
+      "term": "Materialization",
+      "definition": "Making a Skill package available as actual files in a Workspace on a Worker, according to its materialization policy and available mount.",
+      "translationGuidance": "Use a concrete file-preparation/extraction meaning. It is different from loading instructions into model context and from running or installing the package. Avoid mystical or abstract realization language.",
+      "distinguishFrom": [
+        "model-readable resources",
+        "execution",
+        "software installation"
+      ],
+      "source": [
+        "docs/development-guide.md:365",
+        "docs/development-guide.md:370"
+      ]
+    },
+    "load": {
+      "term": "Load",
+      "definition": "In a UI action, read data into the application; for always-loaded tools or Skills, make definitions or instructions available in model context.",
+      "translationGuidance": "Choose wording from the object being loaded. It does not mean CPU utilization, physical cargo, installing software or executing a script.",
+      "distinguishFrom": [
+        "system load",
+        "execution",
+        "installation"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AgentDefinition.kt:26",
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AgentDefinition.kt:29"
+      ]
+    },
+    "scope": {
+      "term": "Scope",
+      "definition": "The ownership/availability boundary of a resource. In catalogs, Global applies across Projects in one deployment, while Project scope belongs to one Project. Memory scope further qualifies when information applies.",
+      "translationGuidance": "Use a contextual reach/ownership term. Global does not mean published on the Internet or accessible without authorization. Do not confuse scope with visibility of an open UI panel.",
+      "distinguishFrom": [
+        "public Internet access",
+        "Workspace path"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AgentDefinition.kt:65",
+        "docs/development-guide.md:286"
+      ]
+    },
+    "model": {
+      "term": "Model",
+      "definition": "An AI model selected from a provider; the UI may show a user-named model configuration that references the provider model identifier.",
+      "translationGuidance": "Distinguish model weights/service identity from a configured model entry and from its connection. Preserve actual model IDs and user-given display names.",
+      "distinguishFrom": [
+        "Agent",
+        "connection",
+        "model configuration"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiModelConfiguration.kt:7"
+      ]
+    },
+    "model_configuration": {
+      "term": "Model configuration",
+      "definition": "A reusable catalog entry combining a connection, a provider model ID, display name and default generation/reasoning parameters.",
+      "translationGuidance": "Translate the configurable-entry meaning. Two configurations may point to the same provider model with different parameters or connections.",
+      "distinguishFrom": [
+        "model spec",
+        "provider model ID"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiModelConfiguration.kt:7"
+      ]
+    },
+    "model_spec": {
+      "term": "Model spec",
+      "definition": "Catalog metadata describing the capabilities and limits of a provider model, such as input modalities, context window and supported reasoning controls.",
+      "translationGuidance": "Spec means specification/capability description, not a configuration chosen by a user or an implementation detail to invent.",
+      "distinguishFrom": [
+        "model configuration",
+        "prompt"
+      ],
+      "source": [
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:644"
+      ]
+    },
+    "connection": {
+      "term": "AI connection",
+      "definition": "A configured provider-access route with its kind, credentials or CLI authentication, and exact execution target. Model configurations reference it.",
+      "translationGuidance": "Connection is a catalog configuration here, not merely a currently open network socket or a connectivity indicator. Do not imply automatic fallback to another provider or machine.",
+      "distinguishFrom": [
+        "model",
+        "network online status",
+        "execution target"
+      ],
+      "source": [
+        "docs/development-guide.md:168",
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiConnection.kt:1"
+      ]
+    },
+    "execution_target": {
+      "term": "Execution target",
+      "definition": "The exact place where a configured AI or tool operation executes: the Server or one named Worker, according to the operation.",
+      "translationGuidance": "Target means destination/executor, not a goal, target value or attack target. Preserve the promise of exact routing and no silent machine fallback.",
+      "distinguishFrom": [
+        "task objective",
+        "model selection"
+      ],
+      "source": [
+        "docs/development-guide.md:168"
+      ]
+    },
+    "reasoning": {
+      "term": "Reasoning",
+      "definition": "The model reasoning/thinking behavior and provider-supported controls for it. Display settings affect reasoning information exposed by the model/provider.",
+      "translationGuidance": "Use the AI deliberation/thinking meaning, not a legal justification or a stored reason field. Do not imply access to hidden internal reasoning that the provider does not expose.",
+      "distinguishFrom": [
+        "materialization reason",
+        "memory",
+        "final answer"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiReasoning.kt:5"
+      ]
+    },
+    "reasoning_effort": {
+      "term": "Reasoning effort",
+      "definition": "A provider/model-supported qualitative level controlling reasoning, such as Low, Medium, High, Extra high or Max.",
+      "translationGuidance": "Effort is an AI control level, not CPU load, a number of Agents, an output length or a fixed time allowance. Preserve distinctions between levels.",
+      "distinguishFrom": [
+        "reasoning token budget",
+        "parallelism",
+        "reasoning display"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiReasoning.kt:50"
+      ]
+    },
+    "token": {
+      "term": "Token",
+      "definition": "A unit of text representation processed or generated by an AI model, used for context limits and usage counts. It is not necessarily one word or one character.",
+      "translationGuidance": "Use the established AI-token term consistently. Token counts are numeric quantities and pluralize according to the target locale.",
+      "distinguishFrom": [
+        "word",
+        "character",
+        "authentication token"
+      ],
+      "source": [
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiUsageSettings.kt:198"
+      ]
+    },
+    "credential_token": {
+      "term": "Authentication token",
+      "definition": "A secret credential used to authorize access to an account or browser extension, for example a per-user GitHub token or Browser Bridge extension token.",
+      "translationGuidance": "Use the security-credential meaning. Do not confuse it with model text tokens, quota units or a coupon; never modify an actual credential value.",
+      "distinguishFrom": [
+        "AI token count",
+        "quota"
+      ],
+      "source": [
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1170",
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/BrowserUseSettings.kt:480"
+      ]
+    },
+    "quota": {
+      "term": "Quota",
+      "definition": "A provider subscription usage allowance or capacity limit. Background pacing protects some capacity for foreground requests.",
+      "translationGuidance": "Keep quota distinct from money spent, per-call token limits and context-window capacity. Reserve and headroom refer to remaining allowance, not physical storage.",
+      "distinguishFrom": [
+        "API cost",
+        "context window",
+        "token budget"
+      ],
+      "source": [
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1228"
+      ]
+    },
+    "context_window": {
+      "term": "Context window",
+      "definition": "The model limit for the context/tokens it can consider in a request, according to its specification.",
+      "translationGuidance": "Window is an AI-capacity concept, not a visible application window or a time interval.",
+      "distinguishFrom": [
+        "desktop window",
+        "quota period"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiModelSpec.kt:1"
+      ]
+    },
+    "compaction": {
+      "term": "Compaction",
+      "definition": "Summarizing or condensing conversation context to fit model limits while preserving relevant information. A configured threshold determines when it may occur.",
+      "translationGuidance": "Use a context-condensation meaning, not disk defragmentation, file compression, deleting the whole Conversation or forcibly squeezing objects.",
+      "distinguishFrom": [
+        "data deletion",
+        "binary compression"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:24",
+        "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1786"
+      ]
+    },
+    "memory": {
+      "term": "Memory",
+      "definition": "Persistent semantic information the assistant can store, retrieve and maintain, including sources, claims, notes and action items within controlled banks/namespaces.",
+      "translationGuidance": "Use the assistant knowledge/remembering meaning. It is distinct from RAM, a context window and raw chat history; do not promise perfect factual truth.",
+      "distinguishFrom": [
+        "RAM",
+        "model context",
+        "chat transcript alone"
+      ],
+      "source": [
+        "docs/development-guide.md:286",
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt:346"
+      ]
+    },
+    "memory_bank": {
+      "term": "Memory bank / namespace",
+      "definition": "The trusted storage and access boundary for a set of memory records, such as a Project bank or a personal User bank.",
+      "translationGuidance": "Use an organized store/boundary meaning. This is not a financial bank, a physical memory module or a model-selectable arbitrary global area.",
+      "distinguishFrom": [
+        "financial bank",
+        "RAM module",
+        "memory scope qualifiers"
+      ],
+      "source": [
+        "docs/development-guide.md:286"
+      ]
+    },
+    "memory_claim": {
+      "term": "Claim",
+      "definition": "An atomic structured assertion about an entity, carrying subject, predicate, object/value, scope, status, validity and supporting evidence. It may be tentative, superseded or retracted.",
+      "translationGuidance": "Use a factual-assertion meaning. A claim is not automatically proven true, a complaint, a demand, a legal claim or an insurance claim.",
+      "distinguishFrom": [
+        "complaint",
+        "guaranteed fact",
+        "memory note"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt:606"
+      ]
+    },
+    "memory_note": {
+      "term": "Note",
+      "definition": "A reusable semantic memory fragment containing decisions, rationale, plans, hypotheses, lessons or context that need not be atomic factual assertions.",
+      "translationGuidance": "Use a stored note/knowledge-fragment meaning. Keep it distinct from a claim and an operational action item.",
+      "distinguishFrom": [
+        "musical note",
+        "atomic claim",
+        "action item"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt:661"
+      ]
+    },
+    "action_item": {
+      "term": "Action item",
+      "definition": "A remembered operational commitment or follow-up with lifecycle, priority, blockers, acceptance criteria and closure state.",
+      "translationGuidance": "Use a task/follow-up meaning; it is not a low-level tool action or merely a bullet point in text.",
+      "distinguishFrom": [
+        "tool call",
+        "memory claim",
+        "arbitrary list item"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt:766"
+      ]
+    },
+    "memory_source": {
+      "term": "Memory source / evidence",
+      "definition": "Original input material such as chat turns, tool outputs or imported documents, retained to support audit and repair of derived memory.",
+      "translationGuidance": "Use the evidentiary origin meaning. Source is not necessarily source code, and a derived summary must not be represented as the original quotation.",
+      "distinguishFrom": [
+        "source code",
+        "model-generated summary"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt:346"
+      ]
+    },
+    "entity": {
+      "term": "Entity",
+      "definition": "An identifiable person, organization, project, object or other subject referenced in structured memory. Canonicalization links references to a consistent identity.",
+      "translationGuidance": "Use the data/knowledge-model sense, not a supernatural being. Entity identity is distinct from the assertions stored about it.",
+      "distinguishFrom": [
+        "claim",
+        "database row in general"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt:612"
+      ]
+    },
+    "embeddings": {
+      "term": "Embeddings",
+      "definition": "Numeric vector representations of content used for semantic retrieval. Dimensions are the number of components in each vector.",
+      "translationGuidance": "Use established AI/vector terminology. Embedding is not inserting a webpage, physically embedding an object or adding a visible UI component.",
+      "distinguishFrom": [
+        "inline media embedding",
+        "model context"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:154"
+      ]
+    },
+    "recall": {
+      "term": "Memory recall",
+      "definition": "Retrieving relevant stored memory before or during an Agent response. It may include planning a search and selecting useful candidates.",
+      "translationGuidance": "Use remembering/retrieval, not product recall, revoking a credential or recalling an employee from leave.",
+      "distinguishFrom": [
+        "product recall",
+        "memory writing"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:49"
+      ]
+    },
+    "inheritance": {
+      "term": "Inherit / override",
+      "definition": "An optional setting may use its parent model/workflow value; an override replaces that value only for the named Agent or stage.",
+      "translationGuidance": "Use configuration inheritance, not genetic inheritance. Default often means no explicit override, not necessarily a fixed English-named model.",
+      "distinguishFrom": [
+        "copying a model",
+        "reassigning an execution target"
+      ],
+      "source": [
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:182",
+        "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AgentDefinition.kt:28"
+      ]
+    }
+  }
+}

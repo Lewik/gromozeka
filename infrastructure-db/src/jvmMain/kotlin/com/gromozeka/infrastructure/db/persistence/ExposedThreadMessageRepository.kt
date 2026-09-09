@@ -63,6 +63,7 @@ class ExposedThreadMessageRepository(
             .map { row ->
                 json.decodeFromString<Conversation.Message>(row[Messages.messageJson])
             }
+            .let(::resolveCurrentMessageAuthors)
     }
 
     override suspend fun deleteByThread(threadId: Conversation.Thread.Id): Unit = dbQuery {

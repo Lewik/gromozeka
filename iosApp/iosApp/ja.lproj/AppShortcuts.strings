@@ -1,0 +1,7 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"Toggle voice recording in ${applicationName}" = "${applicationName}で音声録音を切り替えて";
+"Start voice recording in ${applicationName}" = "${applicationName}で音声録音を始めて";
+"Fix text with ${applicationName}" = "${applicationName}でテキストを修正して";
+"Correct text with ${applicationName}" = "${applicationName}でテキストを校正して";
+"Translate text with ${applicationName}" = "${applicationName}でテキストを翻訳して";
+"Translate with ${applicationName}" = "${applicationName}で翻訳して";

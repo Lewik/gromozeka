@@ -39,6 +39,7 @@ data class Conversation(
     val createdAt: Instant,
     val updatedAt: Instant,
     val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
+    val externalChannel: ExternalConversationChannel? = null,
 ) {
     init {
         require(participants.any { it is Participant.User }) {
@@ -221,6 +222,7 @@ data class Conversation(
             data class User(
                 val userId: com.gromozeka.domain.model.User.Id,
                 override val displayName: String,
+                val identityKey: String? = null,
             ) : Author()
 
             @Serializable

@@ -58,7 +58,7 @@ class RuntimeCatalogTemplateApplicationService : RuntimeCatalogTemplateService {
                 prompts = promptReferences,
                 runtimeSelection = template.runtimeSelection,
                 runtimeOverrides = template.runtimeOverrides,
-                tools = template.tools,
+                tools = com.gromozeka.domain.tool.AgentPreloadedTools(template.tools),
                 description = template.description,
                 type = AgentDefinition.Type.Global,
                 createdAt = now,

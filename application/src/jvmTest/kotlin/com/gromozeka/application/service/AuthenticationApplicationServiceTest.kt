@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserIdentity
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.repository.ProjectMembershipRepository
@@ -104,6 +105,32 @@ class AuthenticationApplicationServiceTest {
         assertNull(service.authenticate(issued.token))
     }
 
+    @Test
+    fun `observed Telegram authors do not enable login AI or block bootstrap`() = runSuspend {
+        val author = repository.observeTelegramIdentity(UserIdentity.Telegram(123, "Friend", "friend"), Clock.System.now())
+        assertEquals(false, author.loginAllowed)
+        assertEquals(false, author.aiAllowed)
+        assertNull(author.username)
+        assertNull(repository.findPasswordCredential(author.id))
+        assertEquals(false, service.hasUsers())
+        assertFailsWith<AuthenticationRejectedException> {
+            service.login("friend", "some password".toCharArray(), null)
+        }
+        assertNotNull(createOwner())
+    }
+
+    @Test
+    fun `login permission is independent of AI and revocation rejects existing session`() = runSuspend {
+        val issued = createOwner()
+        repository.updateUser(issued.user.copy(aiAllowed = false))
+        assertNotNull(service.authenticate(issued.token))
+        repository.updateUser(issued.user.copy(loginAllowed = false))
+        assertNull(service.authenticate(issued.token))
+        assertFailsWith<AuthenticationRejectedException> {
+            service.login("owner", "correct horse battery staple".toCharArray(), null)
+        }
+    }
+
     private suspend fun createOwner() =
         service.createFirstUser(
             bootstrapToken = "bootstrap",
@@ -152,7 +179,7 @@ internal class FakeIdentityRepository : IdentityRepository {
     override suspend fun countUsers(): Long = users.size.toLong()
 
     override suspend fun countActiveOwners(): Long =
-        users.count { it.status == User.Status.ACTIVE && it.role == User.Role.OWNER }.toLong()
+        users.count { it.canLogin && it.role == User.Role.OWNER }.toLong()
 
     override suspend fun listUsers(): List<User> = users.sortedBy { it.username }
 
@@ -162,13 +189,23 @@ internal class FakeIdentityRepository : IdentityRepository {
     override suspend fun findUserByUsername(normalizedUsername: String): User? =
         users.singleOrNull { it.username == normalizedUsername }
 
+    override suspend fun findUserByIdentityKey(key: String): User? =
+        users.singleOrNull { user -> user.identities.any { it.key == key } }
+
+    override suspend fun observeTelegramIdentity(identity: UserIdentity.Telegram, now: kotlin.time.Instant): User {
+        val existing = findUserByIdentityKey(identity.key)
+        if (existing != null) return existing
+        return createUser(User(User.Id(identity.key), listOf(identity), identity.displayName, User.Status.ACTIVE,
+            createdAt = now, updatedAt = now, loginAllowed = false, aiAllowed = false))
+    }
+
     override suspend fun createUser(
         user: User,
-        credential: LocalPasswordCredential,
+        credential: LocalPasswordCredential?,
     ): User {
-        check(users.none { it.username == user.username })
+        check(user.username == null || users.none { it.username == user.username })
         users += user
-        credentials += credential
+        credential?.let { credentials += it }
         return user
     }
 

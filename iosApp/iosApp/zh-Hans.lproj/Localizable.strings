@@ -1,0 +1,11 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"native.shortcuts.toggleRecording" = "开始或停止录音";
+"native.shortcuts.toggleRecordingDescription" = "开始录制语音消息，或停止录音并发送消息。";
+"native.shortcuts.textParameter" = "文本";
+"quickText.fix" = "修正文本";
+"quickText.fixDescription" = "修正文本，保持原文语言不变。";
+"quickText.translate" = "翻译文本";
+"quickText.translateDescription" = "将文本译为你的界面语言；如果原文已是该语言，则译为英语。";
+"common.unknownError" = "未知错误";
+"Fix ${text}" = "修正${text}";
+"Translate ${text}" = "翻译${text}";

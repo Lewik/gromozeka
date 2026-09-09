@@ -15,6 +15,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
+import kotlinx.serialization.json.Json
 
 @Service
 class ExposedConversationRepository : ConversationRepository {
@@ -24,6 +25,7 @@ class ExposedConversationRepository : ConversationRepository {
             it[id] = conversation.id.value
             it[projectId] = conversation.projectId.value
             it[displayName] = conversation.displayName
+            it[externalChannel] = conversation.externalChannel?.let { channel -> Json.encodeToString(channel) }
             it[currentThreadId] = conversation.currentThread.value
             it[createdAt] = conversation.createdAt
             it[updatedAt] = conversation.updatedAt
@@ -190,6 +192,7 @@ class ExposedConversationRepository : ConversationRepository {
         displayName = this[Conversations.displayName],
         currentThread = Conversation.Thread.Id(this[Conversations.currentThreadId]),
         createdAt = this[Conversations.createdAt],
-        updatedAt = this[Conversations.updatedAt]
+        updatedAt = this[Conversations.updatedAt],
+        externalChannel = this[Conversations.externalChannel]?.let { Json.decodeFromString(it) },
     )
 }

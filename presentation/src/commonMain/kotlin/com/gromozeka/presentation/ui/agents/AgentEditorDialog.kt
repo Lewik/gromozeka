@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.ui.agents
 
+import com.gromozeka.presentation.ui.aiLabel
+import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -41,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.tool.*
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentTemplate
 import com.gromozeka.domain.model.Prompt
@@ -60,7 +64,8 @@ data class AgentEditorValue(
     val skills: List<AgentSkill.Id>,
     val runtimeSelection: AiRuntimeSelection,
     val runtimeOverrides: AiRuntimeOverrides,
-    val tools: List<String>,
+    val tools: AgentPreloadedTools,
+    val toolAccess: ToolAccessPolicy,
 )
 
 @Composable
@@ -72,9 +77,12 @@ fun AgentEditorDialog(
     modelConfigurations: List<AiModelConfiguration>,
     initialPromptIds: List<Prompt.Id>,
     defaultRuntimeSelection: AiRuntimeSelection,
+    toolCatalog: List<AgentToolCatalogEntry>,
+    toolCatalogError: String?,
     onSave: (AgentEditorValue) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var name by remember { mutableStateOf(agent?.name ?: template?.name.orEmpty()) }
     var description by remember {
         mutableStateOf(agent?.description ?: template?.description.orEmpty())
@@ -101,10 +109,14 @@ fun AgentEditorDialog(
         mutableStateOf(initialOverrides.reasoning?.budgetTokens?.toString().orEmpty())
     }
     var toolsText by remember {
-        mutableStateOf((agent?.tools ?: template?.tools.orEmpty()).joinToString("\n"))
+        mutableStateOf((agent?.tools?.names ?: template?.tools.orEmpty()).joinToString("\n"))
     }
+    var toolAccess by remember { mutableStateOf(agent?.toolAccess ?: ToolAccessPolicy.DenyListed()) }
+    var showToolAccess by remember { mutableStateOf(false) }
+    val preloadedTools = AgentPreloadedTools(toolsText.lineSequence().map(String::trim).filter(String::isNotBlank).distinct().toList())
+    val blockedPreloads = preloadedTools.blockedBy(toolAccess, toolCatalog)
     var modelMenuExpanded by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(translation) { mutableStateOf<String?>(null) }
 
     val includesRuntimeEnvironment = Prompt.Id("env") in selectedPromptIds
     val staticPromptIds = selectedPromptIds.filterNot { it.value == "env" }
@@ -121,9 +133,9 @@ fun AgentEditorDialog(
             ) {
                 Text(
                     when {
-                        agent != null -> "Edit agent"
-                        template != null -> "Create agent from template"
-                        else -> "Create agent"
+                        agent != null -> translation.text("agents.edit")
+                        template != null -> translation.text("agents.create_from_template")
+                        else -> translation.text("agents.create")
                     },
                     style = MaterialTheme.typography.headlineSmall,
                 )
@@ -131,12 +143,12 @@ fun AgentEditorDialog(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Name") },
+                        label = { Text(translation.text("agents.name")) },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Model", style = MaterialTheme.typography.bodySmall)
+                        Text(translation.text("agents.model"), style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(
                             onClick = { modelMenuExpanded = true },
                             modifier = Modifier.fillMaxWidth(),
@@ -167,7 +179,7 @@ fun AgentEditorDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") },
+                    label = { Text(translation.text("agents.description")) },
                     minLines = 2,
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth(),
@@ -177,7 +189,7 @@ fun AgentEditorDialog(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Available prompts", style = MaterialTheme.typography.titleMedium)
+                        Text(translation.text("agents.available_prompts"), style = MaterialTheme.typography.titleMedium)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
                                 checked = includesRuntimeEnvironment,
@@ -190,7 +202,7 @@ fun AgentEditorDialog(
                                 },
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Include runtime environment")
+                            Text(translation.text("agents.include_runtime_environment"))
                         }
                         LazyColumn(
                             modifier = Modifier.weight(1f),
@@ -214,7 +226,7 @@ fun AgentEditorDialog(
                                     Column {
                                         Text(prompt.name)
                                         Text(
-                                            if (prompt.type is Prompt.Type.Global) "Global" else "Project",
+                                            if (prompt.type is Prompt.Type.Global) translation.text("agents.scope.global") else translation.text("agents.scope.project"),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -224,14 +236,14 @@ fun AgentEditorDialog(
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Prompt order", style = MaterialTheme.typography.titleMedium)
+                        Text(translation.text("agents.prompt_order"), style = MaterialTheme.typography.titleMedium)
                         LazyColumn(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             itemsIndexed(selectedPromptIds) { index, promptId ->
                                 val title = if (promptId.value == "env") {
-                                    "Runtime environment"
+                                    translation.text("agents.runtime_environment")
                                 } else {
                                     prompts.firstOrNull { it.id == promptId }?.name ?: promptId.value
                                 }
@@ -254,7 +266,7 @@ fun AgentEditorDialog(
                                             },
                                             enabled = index > 0,
                                         ) {
-                                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
+                                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = translation.text("prompts.move_up"))
                                         }
                                         IconButton(
                                             onClick = {
@@ -264,7 +276,7 @@ fun AgentEditorDialog(
                                             },
                                             enabled = index < selectedPromptIds.lastIndex,
                                         ) {
-                                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down")
+                                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = translation.text("prompts.move_down"))
                                         }
                                     }
                                 }
@@ -274,7 +286,7 @@ fun AgentEditorDialog(
                 }
 
                 if (skills.isNotEmpty()) {
-                    Text("Skill packages", style = MaterialTheme.typography.titleMedium)
+                    Text(translation.text("agents.skill_packages"), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         skills.forEach { skill ->
                             FilterChip(
@@ -292,49 +304,59 @@ fun AgentEditorDialog(
                     }
                 }
 
-                Text("Runtime overrides", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(translation.text("agents.runtime_overrides"), style = MaterialTheme.typography.titleMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = maxOutputTokens,
                         onValueChange = { maxOutputTokens = it },
-                        label = { Text("Max output tokens") },
+                        label = { Text(translation.text("ai.model.max_output_tokens")) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.width(160.dp),
                     )
-                    AgentNullableEnumDropdown("Mode", reasoningMode, AiReasoningMode.entries) {
+                    AgentNullableEnumDropdown(translation.text("ai.reasoning.mode"), reasoningMode, AiReasoningMode.entries, { it.aiLabel(translation) }) {
                         reasoningMode = it
                     }
-                    AgentNullableEnumDropdown("Effort", reasoningEffort, AiReasoningEffort.entries) {
+                    AgentNullableEnumDropdown(translation.text("ai.reasoning.effort"), reasoningEffort, AiReasoningEffort.entries, { it.aiLabel(translation) }) {
                         reasoningEffort = it
                     }
-                    AgentNullableEnumDropdown("Display", reasoningDisplay, AiReasoningDisplay.entries) {
+                    AgentNullableEnumDropdown(translation.text("ai.reasoning.display"), reasoningDisplay, AiReasoningDisplay.entries, { it.aiLabel(translation) }) {
                         reasoningDisplay = it
                     }
                     OutlinedTextField(
                         value = reasoningBudget,
                         onValueChange = { reasoningBudget = it },
-                        label = { Text("Budget tokens") },
+                        label = { Text(translation.text("agents.budget_tokens")) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.width(160.dp),
                     )
                 }
                 OutlinedTextField(
                     value = toolsText,
                     onValueChange = { toolsText = it },
-                    label = { Text("Always-loaded tools, one per line") },
+                    label = { Text(translation.text("agents.always_loaded_tools")) },
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedButton(onClick = { showToolAccess = true }) {
+                    Text(translation.text("agents.tools.access"))
+                    Text(" · " + translation.text(if (toolAccess is ToolAccessPolicy.AllowOnly) "agents.tools.allowlist" else "agents.tools.denylist") + " (${toolAccess.entries.size})")
+                }
+                if (blockedPreloads.isNotEmpty()) Text(
+                    translation.text("agents.tools.preload_warning") + " " + blockedPreloads.joinToString(),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3,
+                )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(translation.text("agents.cancel")) }
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = {
                         runCatching {
-                            require(name.isNotBlank()) { "Name is required" }
+                            require(name.isNotBlank()) { translation.text("agents.name_required") }
                             require(selectedPromptIds.isNotEmpty()) {
-                                "Select at least one prompt or runtime environment"
+                                translation.text("agents.prompt_required")
                             }
                             val reasoning = if (
                                 reasoningMode != null ||
@@ -346,7 +368,7 @@ fun AgentEditorDialog(
                                     mode = reasoningMode,
                                     effort = reasoningEffort,
                                     display = reasoningDisplay,
-                                    budgetTokens = reasoningBudget.optionalPositiveInt("Reasoning budget"),
+                                    budgetTokens = reasoningBudget.optionalPositiveInt(translation.text("ai.reasoning.budget"), translation),
                                 )
                             } else {
                                 null
@@ -358,23 +380,21 @@ fun AgentEditorDialog(
                                 skills = selectedSkillIds,
                                 runtimeSelection = AiRuntimeSelection(modelId),
                                 runtimeOverrides = AiRuntimeOverrides(
-                                    maxOutputTokens = maxOutputTokens.optionalPositiveInt("Max output tokens"),
+                                    maxOutputTokens = maxOutputTokens.optionalPositiveInt(translation.text("ai.model.max_output_tokens"), translation),
                                     reasoning = reasoning,
                                 ),
-                                tools = toolsText.lineSequence()
-                                    .map(String::trim)
-                                    .filter(String::isNotBlank)
-                                    .distinct()
-                                    .toList(),
+                                tools = preloadedTools,
+                                toolAccess = toolAccess,
                             )
                         }.onSuccess(onSave).onFailure { error = it.message }
                     }) {
-                        Text("Save")
+                        Text(translation.text("agents.save"))
                     }
                 }
             }
         }
     }
+    if (showToolAccess) AgentToolAccessDialog(toolAccess, toolCatalog, toolCatalogError, { toolAccess = it }) { showToolAccess = false }
 }
 
 @Composable
@@ -382,17 +402,19 @@ private fun <T : Enum<T>> AgentNullableEnumDropdown(
     label: String,
     value: T?,
     options: List<T>,
+    optionLabel: (T) -> String,
     onSelect: (T?) -> Unit,
 ) {
+    val translation = LocalTranslation.current
     var expanded by remember { mutableStateOf(false) }
     Column {
         Text(label, style = MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick = { expanded = true }) {
-            Text(value?.name ?: "Default")
+            Text(value?.let(optionLabel) ?: translation.text("ai.option.default"))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("Default") },
+                text = { Text(translation.text("ai.option.default")) },
                 onClick = {
                     expanded = false
                     onSelect(null)
@@ -400,7 +422,7 @@ private fun <T : Enum<T>> AgentNullableEnumDropdown(
             )
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.name) },
+                    text = { Text(optionLabel(option)) },
                     onClick = {
                         expanded = false
                         onSelect(option)
@@ -418,9 +440,9 @@ private fun <T> List<T>.swap(first: Int, second: Int): List<T> =
         this[second] = value
     }
 
-private fun String.optionalPositiveInt(label: String): Int? {
+private fun String.optionalPositiveInt(label: String, translation: Translation): Int? {
     if (isBlank()) return null
-    val parsed = trim().toIntOrNull() ?: error("$label must be an integer")
-    require(parsed > 0) { "$label must be positive" }
+    val parsed = trim().toIntOrNull() ?: error(translation.text("ai.validation.integer", "label" to label))
+    require(parsed > 0) { translation.text("agents.validation.positive", "label" to label) }
     return parsed
 }

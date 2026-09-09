@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class KeyboardShortcutSettings(
     val bindings: List<KeyboardShortcutBinding> = defaultBindings(),
+    val enterKeyAction: EnterKeyAction = EnterKeyAction.NEW_LINE,
 ) {
     fun binding(action: KeyboardShortcutAction): KeyboardShortcutBinding =
         bindings.lastOrNull { it.action == action }
@@ -67,6 +68,18 @@ data class KeyboardShortcutSettings(
             ),
         )
     }
+}
+
+@Serializable
+enum class EnterKeyAction {
+    NEW_LINE,
+    SEND_MESSAGE;
+
+    val sendModifiers: Set<KeyboardShortcutModifier>
+        get() = when (this) {
+            NEW_LINE -> setOf(KeyboardShortcutModifier.SHIFT)
+            SEND_MESSAGE -> emptySet()
+        }
 }
 
 @Serializable
@@ -213,58 +226,53 @@ enum class KeyboardShortcutValidationSeverity {
     WARNING,
 }
 
+enum class KeyboardShortcutValidationCode {
+    UNSUPPORTED_SCOPE,
+    COMPOSER_ENTER_RESERVED,
+    CONFLICT,
+}
+
 data class KeyboardShortcutValidationIssue(
     val action: KeyboardShortcutAction,
     val severity: KeyboardShortcutValidationSeverity,
+    val code: KeyboardShortcutValidationCode,
     val message: String,
+    val scope: KeyboardShortcutScope? = null,
+    val conflictingActions: List<KeyboardShortcutAction> = emptyList(),
 )
 
 object KeyboardShortcutValidator {
     fun validate(settings: KeyboardShortcutSettings): List<KeyboardShortcutValidationIssue> {
-        val enabled = settings.normalized().bindings.filter(KeyboardShortcutBinding::enabled)
+        val bindings = settings.normalized().bindings
         return buildList {
-            enabled.forEach { binding ->
+            bindings.forEach { binding ->
                 if (binding.scope !in binding.action.supportedScopes) {
                     add(
                         KeyboardShortcutValidationIssue(
                             action = binding.action,
                             severity = KeyboardShortcutValidationSeverity.ERROR,
+                            code = KeyboardShortcutValidationCode.UNSUPPORTED_SCOPE,
+                            scope = binding.scope,
                             message = "${binding.action} does not support ${binding.scope} shortcuts",
                         )
                     )
                 }
                 if (
-                    binding.scope == KeyboardShortcutScope.GLOBAL &&
-                    binding.modifiers.isEmpty() &&
-                    binding.action != KeyboardShortcutAction.PUSH_TO_TALK
+                    binding.key == KeyboardShortcutKey.ENTER &&
+                    binding.modifiers in listOf(emptySet(), setOf(KeyboardShortcutModifier.SHIFT))
                 ) {
                     add(
                         KeyboardShortcutValidationIssue(
                             action = binding.action,
                             severity = KeyboardShortcutValidationSeverity.ERROR,
-                            message = "Global shortcuts without modifiers are only allowed for push-to-talk",
-                        )
-                    )
-                }
-                if (
-                    binding.scope == KeyboardShortcutScope.GLOBAL &&
-                    binding.key == KeyboardShortcutKey.ESCAPE
-                ) {
-                    add(
-                        KeyboardShortcutValidationIssue(
-                            action = binding.action,
-                            severity = KeyboardShortcutValidationSeverity.WARNING,
-                            message = if (binding.consumeEvent) {
-                                "Global Escape will prevent the foreground application from receiving Escape"
-                            } else {
-                                "Global Escape will also reach the foreground application"
-                            },
+                            code = KeyboardShortcutValidationCode.COMPOSER_ENTER_RESERVED,
+                            message = "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
                         )
                     )
                 }
             }
 
-            enabled.groupBy { Triple(it.scope, it.key, it.modifiers) }
+            bindings.groupBy { it.key to it.modifiers }
                 .values
                 .filter { it.size > 1 }
                 .forEach { conflicts ->
@@ -273,6 +281,8 @@ object KeyboardShortcutValidator {
                             KeyboardShortcutValidationIssue(
                                 action = binding.action,
                                 severity = KeyboardShortcutValidationSeverity.ERROR,
+                                code = KeyboardShortcutValidationCode.CONFLICT,
+                                conflictingActions = conflicts.filterNot { it.action == binding.action }.map { it.action },
                                 message = "Shortcut conflicts with ${conflicts.filterNot { it.action == binding.action }.joinToString { it.action.name }}",
                             )
                         )

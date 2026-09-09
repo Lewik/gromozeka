@@ -42,7 +42,6 @@ private data class ProjectGroup(
     val project: Project,
     val conversationIds: List<Conversation.Id>,
     val latestConversationId: Conversation.Id?,
-    val formattedTime: String,
 ) {
     val projectId get() = project.id
     val projectName get() = project.name
@@ -64,6 +63,7 @@ fun SessionListScreen(
     onManageWorkspaces: () -> Unit,
     refreshTrigger: Int = 0,
 ) {
+    val localization = LocalTranslation.current
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -93,7 +93,6 @@ fun SessionListScreen(
                 project = project,
                 conversationIds = conversations.map(Conversation::id),
                 latestConversationId = latestConversation?.id,
-                formattedTime = latestConversation?.let { formatRelativeTime(it.updatedAt) }.orEmpty(),
             )
         }.sortedByDescending { group ->
             group.latestConversationId?.let { appViewModel.conversations.value[it]?.updatedAt }
@@ -119,14 +118,14 @@ fun SessionListScreen(
                 refreshSearchResults()
             } catch (e: Exception) {
                 log.warn(e) { "Failed to rename conversation: ${e.message}" }
-                operationError = e.message ?: "Failed to rename conversation"
+                operationError = e.message ?: localization.text("search.renameConversationFailed")
             } finally {
                 mutatingConversationIds -= conversation.id.value
             }
         }
     }
 
-    LaunchedEffect(refreshTrigger, manualRefreshTrigger) {
+    LaunchedEffect(refreshTrigger, manualRefreshTrigger, localization) {
         isLoading = true
         projectService.observeRecent(limit = 100)
             .flatMapLatest { projects ->
@@ -141,7 +140,7 @@ fun SessionListScreen(
                 }
             }
             .catch { failure ->
-                operationError = failure.message ?: "Failed to observe conversations"
+                operationError = failure.message ?: localization.text("search.observeConversationsFailed")
                 isLoading = false
             }
             .collect(::applyProjects)
@@ -161,13 +160,13 @@ fun SessionListScreen(
                     onClick = onManageProjects,
                     modifier = Modifier.testTag(UiTestTag.ManageProjectsButton.value),
                 ) {
-                    Text("Projects")
+                    Text(localization.text("projectsTabTooltip"))
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
                 CompactButton(onClick = onManageWorkspaces) {
-                    Text("Workspaces")
+                    Text(localization.text("search.workspaces"))
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -235,21 +234,21 @@ fun SessionListScreen(
                                     ) {
                                         CircularProgressIndicator()
                                         Text(
-                                            text = LocalTranslation.current.searchingForText.format(searchQuery),
+                                            text = LocalTranslation.current.format("searchingForText", searchQuery),
                                             textAlign = TextAlign.Center
                                         )
                                     }
                                 } else {
                                     Text(
                                         text = if (searchQuery.isBlank()) LocalTranslation.current.enterSearchQuery
-                                        else LocalTranslation.current.nothingFoundForText.format(searchQuery),
+                                        else LocalTranslation.current.format("nothingFoundForText", searchQuery),
                                         textAlign = TextAlign.Center
                                     )
                                 }
                             }
                         } else {
                             Text(
-                                text = LocalTranslation.current.foundSearchResultsText.format(searchResults.size),
+                                text = LocalTranslation.current.plural("common.searchResultsCount", searchResults.size),
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                             currentSearchResults.forEach { hit ->
@@ -384,6 +383,7 @@ private fun ProjectGroupHeader(
     onRename: (Conversation) -> Unit,
     mutatingConversationIds: Set<String>,
 ) {
+    val localization = LocalTranslation.current
     val conversations = group.conversationIds.mapNotNull(conversationsById::get)
     val latestConversation = group.latestConversationId?.let(conversationsById::get)
     val unreadCount = group.conversationIds.count { it in unreadConversationIds }
@@ -413,7 +413,7 @@ private fun ProjectGroupHeader(
                 ) {
                     Text(text = group.projectName)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "${group.conversationIds.size} conversations")
+                        Text(text = localization.plural("search.conversationCount", group.conversationIds.size.toLong()))
                         if (unreadCount > 0) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Badge { Text(unreadCount.toString()) }
@@ -436,9 +436,9 @@ private fun ProjectGroupHeader(
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(text = latestConversation.displayPreview())
+                        Text(text = latestConversation.displayPreview(localization))
                         // Message count removed - messages are loaded separately via ConversationService
-                        Text(text = group.formattedTime)
+                        Text(text = formatRelativeTime(latestConversation.updatedAt, localization))
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -491,6 +491,7 @@ private fun ConversationItem(
     searchHit: ConversationSearchHit? = null,
     modifier: Modifier = Modifier,
 ) {
+    val localization = LocalTranslation.current
     CompactCard(
         modifier = modifier.fillMaxWidth()
     ) {
@@ -513,11 +514,11 @@ private fun ConversationItem(
                         Spacer(modifier = Modifier.width(6.dp))
                     }
                     Text(
-                        text = conversation.displayPreview(),
+                        text = conversation.displayPreview(localization),
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = conversation.displayTime()
+                        text = conversation.displayTime(localization)
                     )
                 }
 
@@ -535,7 +536,11 @@ private fun ConversationItem(
                 searchHit?.takeIf { it.matchKind == ConversationSearchHit.MatchKind.MESSAGE }?.let { hit ->
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = listOfNotNull(hit.role?.name?.lowercase(), hit.excerpt.takeIf(String::isNotBlank))
+                        text = listOfNotNull(hit.role?.let { role -> localization.text(when (role) {
+                            Conversation.Message.Role.USER -> "search.role.user"
+                            Conversation.Message.Role.ASSISTANT -> "search.role.assistant"
+                            Conversation.Message.Role.SYSTEM -> "search.role.system"
+                        }) }, hit.excerpt.takeIf(String::isNotBlank))
                             .joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.client.RemoteDeviceConnectionClient
 import com.gromozeka.domain.model.DeviceConnection
 import com.gromozeka.remote.protocol.DeviceConnectionPreview
@@ -46,6 +47,7 @@ fun DeviceConnectionApprovalScreen(
     deny: suspend (String) -> Unit,
     onDone: () -> Unit,
 ) {
+    val translation = LocalTranslation.current
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
@@ -63,13 +65,13 @@ fun DeviceConnectionApprovalScreen(
                     .fillMaxWidth(),
             ) {
                 Text(
-                    text = "Approve device connection",
+                    text = translation.text("security.deviceConnection.title"),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Check the device details before granting access.",
+                    text = translation.text("security.deviceConnection.description"),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(24.dp))
@@ -89,9 +91,10 @@ fun DeviceConnectionApprovalScreen(
 fun DeviceConnectionApprovalSettings(
     service: RemoteDeviceConnectionClient,
 ) {
-    SettingsGroup(title = "Connect a device") {
+    val translation = LocalTranslation.current
+    SettingsGroup(title = translation.text("security.deviceConnection.settingsTitle")) {
         Text(
-            text = "Enter the code shown on a new Client or Worker. Access is granted only after you review it here.",
+            text = translation.text("security.deviceConnection.settingsDescription"),
             style = MaterialTheme.typography.bodyMedium,
         )
         DeviceConnectionApprovalContent(
@@ -111,12 +114,13 @@ private fun DeviceConnectionApprovalContent(
     deny: suspend (String) -> Unit,
     onDone: (() -> Unit)? = null,
 ) {
+    val translation = LocalTranslation.current
     val scope = rememberCoroutineScope()
     var code by remember(initialCode) { mutableStateOf(initialCode) }
     var connection by remember(initialCode) { mutableStateOf<DeviceConnectionPreview?>(null) }
     var loading by remember(initialCode) { mutableStateOf(false) }
     var result by remember(initialCode) { mutableStateOf<ApprovalResult?>(null) }
-    var error by remember(initialCode) { mutableStateOf<String?>(null) }
+    var error by remember(initialCode) { mutableStateOf<DeviceApprovalError?>(null) }
 
     fun review() {
         if (code.isBlank() || loading) return
@@ -130,7 +134,7 @@ private fun DeviceConnectionApprovalContent(
                 throw cancellation
             } catch (failure: Throwable) {
                 connection = null
-                error = failure.message ?: "Connection code was not found"
+                error = DeviceApprovalError(failure, "security.deviceConnection.codeNotFound")
             } finally {
                 loading = false
             }
@@ -144,9 +148,9 @@ private fun DeviceConnectionApprovalContent(
     if (result != null) {
         Text(
             text = if (result == ApprovalResult.APPROVED) {
-                "Device approved. It can connect now."
+                translation.text("security.deviceConnection.approved")
             } else {
-                "Device connection denied."
+                translation.text("security.deviceConnection.denied")
             },
             color = if (result == ApprovalResult.APPROVED) {
                 MaterialTheme.colorScheme.primary
@@ -166,7 +170,7 @@ private fun DeviceConnectionApprovalContent(
                 }
             }
         ) {
-            Text("Done")
+            Text(translation.text("security.deviceConnection.done"))
         }
         return
     }
@@ -178,7 +182,7 @@ private fun DeviceConnectionApprovalContent(
                 code = value.uppercase().filter { it.isLetterOrDigit() || it == '-' }.take(9)
             },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Connection code") },
+            label = { Text(translation.text("security.deviceConnection.codeLabel")) },
             placeholder = { Text("ABCD-EFGH") },
             singleLine = true,
             enabled = !loading,
@@ -190,7 +194,7 @@ private fun DeviceConnectionApprovalContent(
         )
         error?.let {
             Spacer(Modifier.height(8.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+            Text(it.failure.authenticationErrorText(translation, it.fallbackMessageId), color = MaterialTheme.colorScheme.error)
         }
         Spacer(Modifier.height(12.dp))
         Button(
@@ -204,7 +208,7 @@ private fun DeviceConnectionApprovalContent(
                 )
                 Spacer(Modifier.width(8.dp))
             }
-            Text("Review")
+            Text(translation.text("security.deviceConnection.review"))
         }
         return
     }
@@ -220,18 +224,18 @@ private fun DeviceConnectionApprovalContent(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(current.deviceLabel, style = MaterialTheme.typography.titleMedium)
-            Text("Platform: ${current.platform}")
-            Text("Access: ${current.components.displayNames()}")
-            current.workerId?.let { Text("Worker: $it") }
+            Text(translation.text("security.deviceConnection.platform", "platform" to current.platform))
+            Text(translation.text("security.deviceConnection.access", "components" to current.components.displayNames(translation)))
+            current.workerId?.let { Text(translation.text("security.deviceConnection.worker", "workerId" to it)) }
             if (current.workerBindsToUser) {
-                Text("This Worker will report device context for your user, including location when enabled on the device.")
+                Text(translation.text("security.deviceConnection.contextAccess"))
             }
-            Text("Code: ${current.userCode}")
+            Text(translation.text("security.deviceConnection.code", "code" to current.userCode))
         }
     }
     error?.let {
         Spacer(Modifier.height(8.dp))
-        Text(it, color = MaterialTheme.colorScheme.error)
+        Text(it.failure.authenticationErrorText(translation, it.fallbackMessageId), color = MaterialTheme.colorScheme.error)
     }
     Spacer(Modifier.height(16.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -247,14 +251,14 @@ private fun DeviceConnectionApprovalContent(
                     } catch (cancellation: CancellationException) {
                         throw cancellation
                     } catch (failure: Throwable) {
-                        error = failure.message ?: "Device could not be approved"
+                        error = DeviceApprovalError(failure, "security.deviceConnection.approvalFailed")
                     } finally {
                         loading = false
                     }
                 }
             },
         ) {
-            Text("Approve")
+            Text(translation.text("security.deviceConnection.approve"))
         }
         OutlinedButton(
             enabled = !loading,
@@ -268,24 +272,29 @@ private fun DeviceConnectionApprovalContent(
                     } catch (cancellation: CancellationException) {
                         throw cancellation
                     } catch (failure: Throwable) {
-                        error = failure.message ?: "Device could not be denied"
+                        error = DeviceApprovalError(failure, "security.deviceConnection.denialFailed")
                     } finally {
                         loading = false
                     }
                 }
             },
         ) {
-            Text("Deny")
+            Text(translation.text("security.deviceConnection.deny"))
         }
     }
 }
 
-private fun Set<DeviceConnection.Component>.displayNames(): String =
-    sortedBy(DeviceConnection.Component::name).joinToString(" + ") {
-        when (it) {
-            DeviceConnection.Component.CLIENT -> "Client"
-            DeviceConnection.Component.WORKER -> "Worker"
-        }
+private data class DeviceApprovalError(val failure: Throwable, val fallbackMessageId: String)
+
+private fun Set<DeviceConnection.Component>.displayNames(translation: Translation): String =
+    when (this) {
+        setOf(DeviceConnection.Component.CLIENT, DeviceConnection.Component.WORKER) ->
+            translation.text("security.deviceConnection.component.clientAndWorker")
+        setOf(DeviceConnection.Component.CLIENT) ->
+            translation.text("security.deviceConnection.component.client")
+        setOf(DeviceConnection.Component.WORKER) ->
+            translation.text("security.deviceConnection.component.worker")
+        else -> ""
     }
 
 private enum class ApprovalResult {

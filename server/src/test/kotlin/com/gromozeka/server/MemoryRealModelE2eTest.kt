@@ -1532,7 +1532,7 @@ class MemoryRealModelE2eTest {
             prompts = listOf(promptId),
             runtimeSelection = ServerTestHarness.openAiSubscriptionRuntimeSelection(),
             runtimeOverrides = AiRuntimeOverrides(maxOutputTokens = 2_048),
-            tools = emptyList(),
+            tools = com.gromozeka.domain.tool.AgentPreloadedTools(),
             description = "Project agent used only for real-model memory e2e tests",
             type = AgentDefinition.Type.Project,
             createdAt = now,
@@ -3260,6 +3260,7 @@ class MemoryRealModelE2eTest {
 }
 
 @TestConfiguration(proxyBeanMethods = false)
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = ["gromozeka.test.telegram-tool-fixture"], havingValue = "false", matchIfMissing = true)
 class MemoryRealModelE2eNoToolsConfig {
     @Bean
     @Primary

@@ -32,6 +32,7 @@ enum class DeclarativeStateResource {
     PROJECT_MEMBERSHIPS,
     SETTINGS,
     QUICK_TEXT_ACTIONS,
+    TRANSLATIONS,
 }
 
 data class DeclarativeStateKey(
@@ -55,6 +56,9 @@ data class DeclarativeStateKey(
 
         fun conversationUnreadState(userId: User.Id) =
             DeclarativeStateKey(DeclarativeStateResource.CONVERSATION_UNREAD_STATE, userId.value)
+
+        fun translations(userId: User.Id) =
+            DeclarativeStateKey(DeclarativeStateResource.TRANSLATIONS, userId.value)
 
         fun projectWorkspaces(projectId: Project.Id) =
             DeclarativeStateKey(DeclarativeStateResource.PROJECT_WORKSPACES, projectId.value)

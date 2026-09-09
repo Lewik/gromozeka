@@ -72,6 +72,7 @@ class GromozekaRemoteServices(
     val clientSettingsService: RemoteClientSettingsService =
         RemoteClientSettingsService(client, clientSettingsStore, initialClientSettings)
     val connectionState: StateFlow<RemoteConnectionState> = client.connectionState
+    val translationService = RemoteTranslationService(client, authenticatedUserId)
     private val remoteSettingsService = RemoteSettingsService(
         client = client,
         scope = scope,
@@ -123,6 +124,7 @@ class GromozekaRemoteServices(
         RemoteNamedSecretService(client)
     val userAdministrationService: RemoteUserAdministrationService =
         RemoteUserAdministrationService(client)
+    val telegramService = RemoteTelegramService(client, authenticatedUserId)
     val securityAuditService: RemoteSecurityAuditService =
         RemoteSecurityAuditService(client)
     val userDirectoryService: RemoteUserDirectoryService =

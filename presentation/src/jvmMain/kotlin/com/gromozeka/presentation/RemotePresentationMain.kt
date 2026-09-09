@@ -18,7 +18,6 @@ import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.QuickTextAction
-import com.gromozeka.domain.model.UserDeviceSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,17 +50,20 @@ internal suspend fun startRemotePresentation(
             audioPlayer = DesktopClientAudioPlayer(),
             systemAudioMuteService = DesktopSystemAudioMuteService(),
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
-            attachmentAcquisitionController = DesktopAttachmentAcquisitionController(),
+            attachmentAcquisitionControllerFactory = ::DesktopAttachmentAcquisitionController,
             globalHotkeyController = globalHotkeyController,
-            quickTextActionRunnerFactory = { quickTextActionService, uiFeedbackController ->
+            quickTextActionRunnerFactory = { quickTextActionService, uiFeedbackController, currentTranslation ->
                 DesktopQuickTextActionExecutor(
                     quickTextActionService = quickTextActionService,
                     uiFeedbackController = uiFeedbackController,
                     notificationService = desktopNotificationService,
+                    currentTranslation = currentTranslation,
                 )
             },
-            turnCompletionNotificationSink = TurnCompletionNotificationSink {
-                desktopNotificationService.show("turn-completed", "Gromozeka", "Turn completed")
+            turnCompletionNotificationSinkFactory = { currentTranslation ->
+                TurnCompletionNotificationSink {
+                    desktopNotificationService.show("turn-completed", "Gromozeka", currentTranslation().text("native.turnCompleted"))
+                }
             },
             httpClient = httpClient,
         )
@@ -77,10 +79,7 @@ internal suspend fun startRemotePresentation(
     )
     scope.launch {
         remoteApp.components.settingsService.settingsFlow.collect { settings ->
-            val shortcuts = (settings.userDeviceSettings as? UserDeviceSettings.Desktop)
-                ?.inputSettings
-                ?.keyboardShortcuts
-                ?: return@collect
+            val shortcuts = settings.userProfile.keyboardShortcuts
             globalHotkeyController.applySettings(shortcuts) { event ->
                 when (event.phase) {
                     GlobalHotkeyEventPhase.PRESSED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {
@@ -99,7 +98,7 @@ internal suspend fun startRemotePresentation(
                             KeyboardShortcutAction.FIX_CLIPBOARD_TEXT ->
                                 remoteApp.components.quickTextActionRunner.run(QuickTextAction.FIX_TEXT_ID)
                             KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT ->
-                                remoteApp.components.quickTextActionRunner.run(QuickTextAction.TRANSLATE_RU_EN_ID)
+                                remoteApp.components.quickTextActionRunner.run(QuickTextAction.TRANSLATE_INTERFACE_LANGUAGE_ID)
                             else -> Unit
                         }
                     }

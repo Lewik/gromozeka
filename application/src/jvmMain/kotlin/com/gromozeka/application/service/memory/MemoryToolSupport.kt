@@ -10,6 +10,10 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDescriptor
+import com.gromozeka.domain.tool.ToolAccessPolicy
+import com.gromozeka.domain.tool.QualifiedToolName
+import com.gromozeka.domain.tool.contractFingerprint
 import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.ServerToolMetadata
 import kotlinx.serialization.json.JsonObject
@@ -34,10 +38,12 @@ val PreloadedMemoryToolMetadata = ServerToolMetadata.copy(
     loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_MEMORY_ENABLED,
 )
 
-fun List<AiToolCallback>.forMemoryPipeline(): List<AiToolCallback> =
+fun List<AiToolCallback>.forMemoryPipeline(policy: ToolAccessPolicy = ToolAccessPolicy.DenyListed()): List<AiToolCallback> =
     filter { tool ->
         tool.metadata.visibleToMemoryPipeline &&
-            tool.definition.name !in memoryManagementToolNames
+            tool.definition.name !in memoryManagementToolNames &&
+            policy.allows(QualifiedToolName(tool.definition.source, tool.definition.name),
+                AiToolDescriptor(tool.definition, tool.metadata).contractFingerprint())
     }
 
 private val memoryManagementToolNames = setOf(

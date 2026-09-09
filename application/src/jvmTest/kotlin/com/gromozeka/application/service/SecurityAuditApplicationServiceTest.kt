@@ -66,7 +66,7 @@ private fun auditUser(role: User.Role): User {
     val now = Clock.System.now()
     return User(
         id = User.Id("audit-${role.name.lowercase()}"),
-        username = "audit-${role.name.lowercase()}",
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("audit-${role.name.lowercase()}")),
         displayName = "Audit ${role.name}",
         status = User.Status.ACTIVE,
         role = role,

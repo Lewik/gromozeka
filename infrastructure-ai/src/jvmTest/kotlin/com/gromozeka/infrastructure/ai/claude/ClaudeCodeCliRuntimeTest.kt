@@ -300,6 +300,66 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun forkRecoversContextAfterProviderCompaction() = runBlocking {
+        val boundary = jsonObject(
+            "type" to JsonPrimitive("system"),
+            "subtype" to JsonPrimitive("compact_boundary"),
+            "compact_metadata" to jsonObject(
+                "trigger" to JsonPrimitive("auto"),
+                "pre_tokens" to JsonPrimitive(180_000),
+            ),
+        )
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                sessionId = "session-1",
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("First"),
+                ),
+                compactionBoundaries = listOf(boundary),
+            ),
+            response(
+                sessionId = "session-1",
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("Second"),
+                ),
+            ),
+        )
+        val runtime = runtime(executor)
+        val firstUser = userMessage("First prompt")
+        val firstResponse = runtime.call(request(messages = listOf(firstUser), tools = listOf(readFileTool())))
+
+        val compaction = firstResponse.messages.first().content.single() as
+            Conversation.Message.ContentItem.ContextCompactionResult
+        assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO, compaction.origin)
+        assertEquals("CLAUDE_CODE", compaction.providerScope?.provider)
+        assertTrue(runtime.capabilities.providerManagedAutoCompaction)
+
+        val persistedResponses = firstResponse.messages.mapIndexed { index, message ->
+            Conversation.Message(
+                id = Conversation.Message.Id("persisted-$index"),
+                conversationId = firstUser.conversationId,
+                role = Conversation.Message.Role.ASSISTANT,
+                content = message.content,
+                createdAt = Clock.System.now(),
+            )
+        }
+        runtime.call(
+            request(
+                messages = listOf(firstUser) + persistedResponses + userMessage("Second prompt"),
+                options = AiRuntimeOptions(toolContext = testToolContext() + ("threadId" to "forked-thread")),
+                tools = listOf(readFileTool()),
+            )
+        )
+
+        assertNull(executor.commands[1].resumeSessionId)
+        assertTrue(executor.commands[1].userPrompt.contains("AURORA_713"))
+        assertTrue(executor.commands[1].userPrompt.contains("Second prompt"))
+        assertFalse(executor.commands[1].userPrompt.contains("First prompt"))
+    }
+
+    @Test
     fun fallsBackToFullTranscriptWhenHistoryChangedBeforeResumePoint() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(
             response(
@@ -953,14 +1013,103 @@ class ClaudeCodeCliRuntimeTest {
         assertTrue(executor.commands.drop(1).all { it.resumeSessionId == "session-1" })
     }
 
-    private fun runtime(executor: ClaudeCodeCliExecutor): ClaudeCodeCliRuntime =
+    @Test
+    fun configuredThresholdCompactsBetweenRequestsAndRecordsPolicyOrigin() = runBlocking {
+        val boundary = Json.parseToJsonElement("""{"type":"system","subtype":"compact_boundary","compact_metadata":{"trigger":"manual"}}""").jsonObject
+        val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
+        val executor = FakeClaudeCodeCliExecutor(
+            response(structuredOutput = answer),
+            response(structuredOutput = answer, compactionBoundaries = listOf(boundary)),
+            response(structuredOutput = answer),
+        )
+        val runtime = runtime(executor)
+        val firstUser = userMessage("Original")
+        val first = runtime.call(request(listOf(firstUser), emptyList()))
+        val history = listOf(firstUser, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next"))
+        val result = runtime.call(request(history, emptyList(), AiRuntimeOptions(
+            autoCompactionThresholdTokens = 10, toolContext = testToolContext(),
+        )))
+        assertEquals("/compact", executor.commands[1].userPrompt)
+        assertTrue(executor.commands[2].userPrompt.contains("Next"))
+        val checkpoint = result.messages.first().content.single() as Conversation.Message.ContentItem.ContextCompactionResult
+        assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY, checkpoint.origin)
+        assertEquals(history.map { it.id }, checkpoint.sourceMessageIds)
+        assertTrue(runtime.capabilities.supportsAutoCompaction)
+    }
+
+    @Test
+    fun doesNotCompactBelowConfiguredThreshold() = runBlocking {
+        val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = answer), response(structuredOutput = answer))
+        val runtime = runtime(executor)
+        val firstUser = userMessage("Original")
+        val first = runtime.call(request(listOf(firstUser), emptyList()))
+        runtime.call(request(
+            listOf(firstUser, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next")),
+            emptyList(), AiRuntimeOptions(autoCompactionThresholdTokens = 11, toolContext = testToolContext()),
+        ))
+        assertEquals(2, executor.commands.size)
+        assertFalse(executor.commands.any { it.userPrompt == "/compact" })
+    }
+
+    @Test
+    fun freshSessionKeepsUnrelatedHistoryBeforePartialReadableCompaction() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))
+        val summary = assistantMessage("").copy(content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+            payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Selected middle messages"),
+            origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+        )))
+        runtime(executor).call(request(listOf(userMessage("Unrelated earlier instruction"), summary, userMessage("Next")), emptyList()))
+        assertTrue(executor.commands.single().userPrompt.contains("Unrelated earlier instruction"))
+        assertTrue(executor.commands.single().userPrompt.contains("Selected middle messages"))
+    }
+
+    @Test
+    fun recoveredNativeCheckpointReattachesImagesWithoutReplayingThinking() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))
+        val state = Json.parseToJsonElement("""{"kind":"claude_code_transcript","messages":[{"uuid":"retained","type":"user","message":{"role":"user","content":[{"type":"text","text":"Retained visual context"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"aGVsbG8="}},{"type":"thinking","thinking":"Do not flatten signed reasoning"}]}}]}""").jsonObject
+        val checkpoint = assistantMessage("").copy(content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+            payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(state),
+            origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+            providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(provider = "CLAUDE_CODE"),
+        )))
+        runtime(executor).call(request(listOf(userMessage("Old context already compacted"), checkpoint, userMessage("Next")), emptyList()))
+        val command = executor.commands.single()
+        assertFalse(command.userPrompt.contains("Old context already compacted"))
+        assertFalse(command.userPrompt.contains("Do not flatten signed reasoning"))
+        assertTrue(command.userPrompt.contains("Retained visual context"))
+        assertEquals("aGVsbG8=", command.userContentBlocks.single().getValue("source").jsonObject.getValue("data").jsonPrimitive.content)
+    }
+
+    @Test
+    fun doesNotResumeWhenTheMirroredTranscriptIsUnavailable() = runBlocking {
+        var saved: ClaudeCodeSessionState? = null
+        val sessions = object : ClaudeCodeSessionStateRepository {
+            override suspend fun find(key: ClaudeCodeSessionState.Key) = saved?.copy(replayState = null)
+            override suspend fun save(state: ClaudeCodeSessionState) = state.also { saved = it }
+            override suspend fun delete(key: ClaudeCodeSessionState.Key) { saved = null }
+        }
+        val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = answer), response(structuredOutput = answer))
+        val runtime = runtime(executor, sessions)
+        val original = userMessage("Recover this original context")
+        val first = runtime.call(request(listOf(original), emptyList()))
+        runtime.call(request(listOf(original, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next")), emptyList()))
+        assertNull(executor.commands[1].resumeSessionId)
+        assertTrue(executor.commands[1].userPrompt.contains("Recover this original context"))
+    }
+
+    private fun runtime(
+        executor: ClaudeCodeCliExecutor,
+        sessions: ClaudeCodeSessionStateRepository = InMemoryClaudeCodeSessionStateRepository(),
+    ): ClaudeCodeCliRuntime =
         ClaudeCodeCliRuntime(
             executor = executor,
             connectionId = "claude-code",
             modelConfigurationId = "claude-code-haiku",
             modelName = realClaudeModel(),
             workspaceDirectory = null,
-            sessionStateRepository = InMemoryClaudeCodeSessionStateRepository(),
+            sessionStateRepository = sessions,
             sessionLocks = java.util.concurrent.ConcurrentHashMap(),
         )
 
@@ -1018,10 +1167,15 @@ class ClaudeCodeCliRuntimeTest {
                 "cache_creation_input_tokens" to JsonPrimitive(0),
                 "cache_read_input_tokens" to JsonPrimitive(0),
             ),
+            contextUsage = jsonObject("input_tokens" to JsonPrimitive(10)),
             finishReason = "success",
             raw = jsonObject("type" to JsonPrimitive("result")),
             thinking = thinking,
             compactionBoundaries = compactionBoundaries,
+            replayEvents = compactionBoundaries.flatMap { boundary -> listOf(
+                boundary,
+                Json.parseToJsonElement("""{"type":"user","uuid":"summary","isSynthetic":true,"message":{"role":"user","content":[{"type":"text","text":"Recovery summary: keep AURORA_713."}]}}""").jsonObject,
+            ) },
         )
     }
 

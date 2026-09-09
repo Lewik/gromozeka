@@ -18,7 +18,8 @@ internal object Projects : Table("projects") {
 
 internal object Users : Table("users") {
     val id = varchar("id", 255)
-    val username = varchar("username", 128).uniqueIndex()
+    val loginAllowed = bool("login_allowed")
+    val aiAllowed = bool("ai_allowed")
     val displayName = varchar("display_name", 255)
     val status = varchar("status", 32)
     val role = varchar("role", 32)
@@ -26,6 +27,13 @@ internal object Users : Table("users") {
     val updatedAt = timestamp("updated_at")
 
     override val primaryKey = PrimaryKey(id)
+}
+
+internal object UserIdentities : Table("user_identities") {
+    val key = varchar("identity_key", 255)
+    val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE).index()
+    val identityJson = text("identity_json")
+    override val primaryKey = PrimaryKey(key)
 }
 
 internal object ProjectMemberships : Table("project_memberships") {
@@ -229,6 +237,7 @@ internal object Agents : Table("agents") {
     val runtimeSelectionJson = text("runtime_selection_json")
     val runtimeOverridesJson = text("runtime_overrides_json")
     val toolsJson = text("tools_json")
+    val toolAccessJson = text("tool_access_json")
     val description = text("description").nullable()
     val type = varchar("type", 50)
     val createdAt = timestamp("created_at")
@@ -267,6 +276,7 @@ internal object AgentSkillFiles : Table("agent_skill_files") {
 }
 
 internal object Conversations : Table("conversations") {
+    val externalChannel = text("external_channel").nullable()
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val displayName = varchar("display_name", 255)
@@ -314,8 +324,8 @@ internal object Artifacts : Table("artifacts") {
         .nullable()
     val fileName = varchar("file_name", 255)
     val mediaType = varchar("media_type", 255)
-    val sizeBytes = long("size_bytes")
-    val sha256 = varchar("sha256", 64)
+    val sizeBytes = long("size_bytes").nullable()
+    val contentSource = text("content_source")
     val purpose = varchar("purpose", 64)
     val state = varchar("state", 32)
     val createdAt = timestamp("created_at")

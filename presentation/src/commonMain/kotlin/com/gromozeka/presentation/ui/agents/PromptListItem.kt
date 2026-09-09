@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.agents
 
+import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.layout.*
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
@@ -20,6 +21,7 @@ fun PromptListItem(
     onDelete: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
+    val translation = LocalTranslation.current
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -63,8 +65,8 @@ fun PromptListItem(
                     
                     Text(
                         text = when (prompt.type) {
-                            is Prompt.Type.Global -> "Global prompt"
-                            is Prompt.Type.Project -> "Project prompt"
+                            is Prompt.Type.Global -> translation.text("prompts.type.global")
+                            is Prompt.Type.Project -> translation.text("prompts.type.project")
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -75,7 +77,7 @@ fun PromptListItem(
                     IconButton(onClick = onView) {
                         Icon(
                             Icons.Default.Visibility,
-                            contentDescription = "View prompt"
+                            contentDescription = translation.text("prompts.view")
                         )
                     }
                     
@@ -83,7 +85,7 @@ fun PromptListItem(
                         IconButton(onClick = editAction) {
                             Icon(
                                 Icons.Default.Edit,
-                                contentDescription = "Edit in IDEA"
+                                contentDescription = translation.text("prompts.edit_idea")
                             )
                         }
                     }
@@ -92,7 +94,7 @@ fun PromptListItem(
                         IconButton(onClick = deleteAction) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Delete prompt",
+                                contentDescription = translation.text("prompts.delete"),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }

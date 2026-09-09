@@ -21,7 +21,7 @@ import kotlin.time.Duration.Companion.days
 class PersonalAccessTokenApplicationServiceTest {
     private val user = User(
         id = User.Id("owner"),
-        username = "owner",
+        identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("owner")),
         displayName = "Owner",
         status = User.Status.ACTIVE,
         createdAt = Clock.System.now(),
@@ -100,7 +100,9 @@ private class TokenIdentityRepository(
     override suspend fun findUserById(id: User.Id): User? = user.takeIf { it.id == id }
     override suspend fun findUserByUsername(normalizedUsername: String): User? =
         user.takeIf { it.username == normalizedUsername }
-    override suspend fun createUser(user: User, credential: LocalPasswordCredential): User = unsupported()
+    override suspend fun createUser(user: User, credential: LocalPasswordCredential?): User = unsupported()
+    override suspend fun findUserByIdentityKey(key: String): User? = unsupported()
+    override suspend fun observeTelegramIdentity(identity: com.gromozeka.domain.model.UserIdentity.Telegram, now: Instant): User = unsupported()
     override suspend fun updateUser(user: User): User = unsupported()
     override suspend fun findPasswordCredential(userId: User.Id): LocalPasswordCredential? = null
     override suspend fun updatePasswordCredential(credential: LocalPasswordCredential) = unsupported<Unit>()

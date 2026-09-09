@@ -27,6 +27,54 @@ class ConversationArtifactApplicationServiceTest {
     private val conversation = conversation("conversation-1", "project-1")
 
     @Test
+    fun `external artifacts keep only metadata and fetch on demand`() = runBlocking {
+        var reads = 0
+        val reader = object : com.gromozeka.domain.service.ExternalArtifactContentReader {
+            override fun supports(source: Artifact.ContentSource) = source is Artifact.ContentSource.Telegram
+            override suspend fun read(artifact: Artifact, maximumBytes: Int): ByteArray {
+                reads++
+                return byteArrayOf(1, 2, 3)
+            }
+        }
+        val externalService = ConversationArtifactApplicationService(repository, contentStore, listOf(reader))
+        val artifact = externalService.registerExternal(externalArtifact())
+        assertEquals(artifact, externalService.registerExternal(artifact))
+        assertEquals(0, reads)
+        assertTrue(contentStore.listIds().isEmpty())
+        val message = userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(artifact.reference()))
+        externalService.validateReferences(conversation.id, message.content)
+        assertIs<Conversation.Message.ContentItem.ImageItem>(externalService.materialize(conversation.id, listOf(message)).single().content.single())
+        assertEquals(1, reads)
+        assertTrue(contentStore.listIds().isEmpty())
+        externalService.read(artifact.id)
+        assertEquals(2, reads)
+        val target = conversation("clone", "project-1")
+        externalService.cloneReferences(conversation.id, target, listOf(message))
+        assertEquals(2, reads)
+        assertTrue(contentStore.listIds().isEmpty())
+    }
+
+    @Test
+    fun `unavailable external media has an explicit runtime placeholder and safe garbage collection`() = runBlocking {
+        val artifact = service.registerExternal(externalArtifact())
+        val message = userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(artifact.reference()))
+        service.validateReferences(conversation.id, message.content)
+        val content = service.materialize(conversation.id, listOf(message)).single().content.single()
+        assertTrue(assertIs<Conversation.Message.ContentItem.UserMessage>(content).text.contains("not enabled"))
+        assertFailsWith<com.gromozeka.domain.service.ArtifactContentUnavailableException> { service.read(artifact.id) }
+        val draft = service.registerExternal(externalArtifact().copy(id = Artifact.Id("draft")))
+        assertEquals(ConversationArtifactApplicationService.DraftDeletionResult.DELETED, service.deleteDraft(conversation.id, draft.id))
+        assertTrue(contentStore.listIds().isEmpty())
+    }
+
+    private fun externalArtifact() = Artifact(
+        id = Artifact.Id("telegram-image"), projectId = conversation.projectId, conversationId = conversation.id,
+        createdByUserId = null, fileName = "photo.jpg", mediaType = "image/jpeg", sizeBytes = null,
+        source = Artifact.ContentSource.Telegram("bot", "telegram-file-id", "telegram-unique-id"),
+        purpose = Artifact.Purpose.USER_ATTACHMENT, createdAt = Instant.fromEpochSeconds(1),
+    )
+
+    @Test
     fun `upload stores immutable bytes and materializes an image for the runtime`() = runBlocking {
         val bytes = byteArrayOf(1, 2, 3, 4)
         val artifact = service.upload(

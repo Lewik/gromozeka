@@ -38,14 +38,15 @@ internal fun GitHubCopilotCredentialSettings(
     service: CurrentUserAiCredentialService,
     coroutineScope: CoroutineScope,
 ) {
+    val translation = LocalTranslation.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            "GitHub Copilot identity is configured per connection. Stored tokens are encrypted and are never returned to clients.",
+            translation.text("security.copilot.description"),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (connections.isEmpty()) {
-            Text("No GitHub Copilot connections are configured.")
+            Text(translation.text("security.copilot.empty"))
         }
         connections.forEach { connection ->
             GitHubCopilotCredentialCard(connection, service, coroutineScope)
@@ -59,6 +60,7 @@ private fun GitHubCopilotCredentialCard(
     service: CurrentUserAiCredentialService,
     coroutineScope: CoroutineScope,
 ) {
+    val translation = LocalTranslation.current
     var status by remember(connection.id) { mutableStateOf<AiUserCredentialStatus?>(null) }
     var busy by remember(connection.id) { mutableStateOf(false) }
     var error by remember(connection.id) { mutableStateOf<String?>(null) }
@@ -92,9 +94,9 @@ private fun GitHubCopilotCredentialCard(
                 AiConnection.GitHubCopilotAuthMode.SERVER_CLI -> Text(
                     when (val target = connection.executionTarget) {
                         AiExecutionTarget.Server ->
-                            "Uses the GitHub account logged into Copilot CLI on the Server."
+                            translation.text("security.copilot.serverCli")
                         is AiExecutionTarget.Worker ->
-                            "Uses the GitHub account logged into Copilot CLI on Worker ${target.workerId}."
+                            translation.text("security.copilot.workerCli", "workerId" to target.workerId)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -102,27 +104,27 @@ private fun GitHubCopilotCredentialCard(
                 AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN -> {
                     Text(
                         when {
-                            busy && status == null -> "Checking access..."
-                            status?.configured == true -> "Your token is configured."
-                            else -> "Your token is not configured."
+                            busy && status == null -> translation.text("security.copilot.checking")
+                            status?.configured == true -> translation.text("security.copilot.configured")
+                            else -> translation.text("security.copilot.notConfigured")
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     status?.updatedAt?.let { updatedAt ->
                         Text(
-                            "Last updated $updatedAt",
+                            translation.text("security.copilot.updatedAt", "updatedAt" to updatedAt),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     OutlinedSecretTextField(
                         state = secretState,
-                        label = { Text("GitHub user token") },
+                        label = { Text(translation.text("security.copilot.tokenLabel")) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        "Accepted token types: OAuth user token, GitHub App user token, or fine-grained personal access token.",
+                        translation.text("security.copilot.tokenTypes"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -145,7 +147,7 @@ private fun GitHubCopilotCredentialCard(
                             },
                             enabled = !busy && secretState.text.isNotBlank(),
                         ) {
-                            Text(if (status?.configured == true) "Replace" else "Configure")
+                            Text(if (status?.configured == true) translation.text("security.copilot.replace") else translation.text("security.copilot.configure"))
                         }
                         if (status?.configured == true) {
                             Spacer(Modifier.width(8.dp))
@@ -162,7 +164,7 @@ private fun GitHubCopilotCredentialCard(
                                 },
                                 enabled = !busy,
                             ) {
-                                Text("Remove")
+                                Text(translation.text("security.copilot.remove"))
                             }
                         }
                         if (busy) {

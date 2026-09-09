@@ -167,7 +167,7 @@ private object TestPersonalAccessTokenService : PersonalAccessTokenService {
 
 private val testUser = User(
     id = User.Id("user"),
-    username = "user",
+    identities = listOf(com.gromozeka.domain.model.UserIdentity.LocalLogin("user")),
     displayName = "User",
     status = User.Status.ACTIVE,
     createdAt = Instant.DISTANT_PAST,

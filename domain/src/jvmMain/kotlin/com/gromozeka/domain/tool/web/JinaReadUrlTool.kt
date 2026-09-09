@@ -401,7 +401,7 @@ data class JinaReadUrlRequest(
  * @see com.gromozeka.domain.service.WebSearchService.readUrl (when created)
  */
 interface JinaReadUrlTool : Tool<JinaReadUrlRequest, Map<String, Any>> {
-    override val metadata get() = PreloadedServerToolMetadata
+    override val metadata get() = PreloadedServerToolMetadata.copy(logInput = false)
     
     override val name: String
         get() = "jina_read_url"

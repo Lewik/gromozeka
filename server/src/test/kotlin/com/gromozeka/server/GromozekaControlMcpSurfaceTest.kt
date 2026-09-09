@@ -49,6 +49,10 @@ class GromozekaControlMcpSurfaceTest {
                     ControlMcpConversationSearchTools(
                         conversationSearchService = mock(),
                     ),
+                    ControlMcpTranslationTools(
+                        translationService = mock(),
+                        clientPresentationRegistry = mock(),
+                    ),
                 )
             )
         ).create(testControlMcpCaller())
@@ -79,6 +83,7 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_runtime_template_get",
                 "grz_agent_list",
                 "grz_agent_get",
+                "grz_agent_tool_catalog",
                 "grz_agent_create",
                 "grz_agent_update",
                 "grz_agent_duplicate",
@@ -121,6 +126,15 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_mcp_server_update",
                 "grz_mcp_server_refresh",
                 "grz_mcp_server_delete",
+                "grz_translation_list",
+                "grz_translation_source",
+                "grz_translation_get",
+                "grz_translation_validate",
+                "grz_translation_save",
+                "grz_translation_customize",
+                "grz_translation_delete",
+                "grz_translation_select",
+                "grz_translation_synchronize",
             ),
             server.tools.keys,
         )

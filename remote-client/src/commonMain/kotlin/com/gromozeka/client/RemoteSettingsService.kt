@@ -3,6 +3,8 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.KeyboardShortcutValidator
+import com.gromozeka.domain.model.KeyboardShortcutValidationSeverity
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.remote.protocol.GetSettingsRequest
 import com.gromozeka.remote.protocol.SaveSettingsRequest
@@ -53,6 +55,9 @@ internal class RemoteSettingsService(
     }
 
     override fun saveSettings(settings: Settings) {
+        val errors = KeyboardShortcutValidator.validate(settings.userProfile.keyboardShortcuts)
+            .filter { it.severity == KeyboardShortcutValidationSeverity.ERROR }
+        require(errors.isEmpty()) { errors.joinToString { it.message } }
         _settingsFlow.value = settings
         if (!persistToServer) return
         scope.launch {

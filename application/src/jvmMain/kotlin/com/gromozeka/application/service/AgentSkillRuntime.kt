@@ -61,12 +61,10 @@ class AgentSkillRuntimeCatalogService(
                 skills = skills,
                 openToolName = toolCatalog.entries.values
                     .firstOrNull { it.logicalName == ACTIVATE_AGENT_SKILL_TOOL_NAME }
-                    ?.modelName
-                    ?: ACTIVATE_AGENT_SKILL_TOOL_NAME,
+                    ?.modelName,
                 readResourceToolName = toolCatalog.entries.values
                     .firstOrNull { it.logicalName == READ_AGENT_SKILL_RESOURCE_TOOL_NAME }
-                    ?.modelName
-                    ?: READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
+                    ?.modelName,
                 materializeTool = toolCatalog.entries.values
                     .firstOrNull { it.logicalName == MATERIALIZE_AGENT_SKILL_TOOL_NAME },
                 exportDirectoryTool = toolCatalog.entries.values
@@ -373,20 +371,28 @@ private fun buildSkillHandleSchema(
 
 private fun buildAgentSkillCatalogPrompt(
     skills: List<AgentSkill>,
-    openToolName: String,
-    readResourceToolName: String,
+    openToolName: String?,
+    readResourceToolName: String?,
     materializeTool: DistributedAiTool?,
     exportDirectoryTool: DistributedAiTool?,
     importDirectoryTool: DistributedAiTool?,
 ): String =
     buildString {
         append("<agent_skills>\n")
-        append("Activate a relevant listed Skill through `")
-        append(openToolName)
-        append("` before applying it. Keep skill_id and content_hash together as its immutable handle. ")
-        append("Use `")
-        append(readResourceToolName)
-        append("` for listed text resources. ")
+        if (openToolName != null) {
+            append("Activate a relevant listed Skill through `")
+            append(openToolName)
+            append("` before applying it. Keep skill_id and content_hash together as its immutable handle. ")
+        } else {
+            append("Skill activation is unavailable under the current tool access policy. ")
+        }
+        if (readResourceToolName != null) {
+            append("Use `")
+            append(readResourceToolName)
+            append("` for listed text resources. ")
+        } else {
+            append("Skill resource reading is unavailable under the current tool access policy. ")
+        }
         append("Activation loads Skill instructions and its resource manifest; it is not an authorization step. ")
         append("Use a catalog skill_id and content_hash directly for materialization or export. ")
         if (materializeTool != null) {

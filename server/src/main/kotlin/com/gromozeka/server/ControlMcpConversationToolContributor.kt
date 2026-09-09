@@ -8,6 +8,7 @@ import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredUserId
+import com.gromozeka.domain.tool.requiredAgentDefinitionId
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -42,7 +43,7 @@ internal class ControlMcpConversationToolContributor(
                 val user = userDirectoryService.findActiveById(context.requiredUserId())
                     ?: error("Conversation control tools require an active authenticated user")
                 tool.invokeStructured(
-                    context = ControlMcpCallContext(user),
+                    context = ControlMcpCallContext(user, context.requiredAgentDefinitionId()),
                     arguments = toolInput.toArguments(),
                 ).toString()
             }

@@ -8,7 +8,6 @@ import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutKey
-import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.presentation.ui.UiTestTag
 import kotlin.test.Test
 
@@ -26,11 +25,9 @@ class KeyboardShortcutSettingsE2eTest {
         }
 
         waitUntil(timeoutMillis = 30_000) {
-            val desktopSettings = client.components.settingsService.settings.userDeviceSettings
-                as? UserDeviceSettings.Desktop
-            desktopSettings?.inputSettings?.keyboardShortcuts
-                ?.binding(KeyboardShortcutAction.PUSH_TO_TALK)
-                ?.key == KeyboardShortcutKey.F8
+            client.components.settingsService.settings.userProfile.keyboardShortcuts
+                .binding(KeyboardShortcutAction.PUSH_TO_TALK)
+                .key == KeyboardShortcutKey.F8
         }
         onNodeWithTag(captureTag.value).assertTextContains("F8")
     }

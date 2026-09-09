@@ -57,7 +57,7 @@ class LiveInterpreterSessionOwnershipTest {
     @Test
     fun `only originating connection can append or stop a session`() = runBlocking {
         val owner = owner("user-1", "connection-1")
-        val sessionId = service.start(owner, StartLiveInterpreterRequest()) {}.sessionId
+        val sessionId = service.start(owner, StartLiveInterpreterRequest(targetLanguage = "en")) {}.sessionId
         val foreignConnections = listOf(
             owner("user-1", "connection-2"),
             owner("user-2", "connection-1"),
@@ -84,9 +84,9 @@ class LiveInterpreterSessionOwnershipTest {
         val disconnectedOwner = owner("user-1", "connection-1")
         val remainingOwner = owner("user-1", "connection-2")
         val disconnectedSessionId =
-            service.start(disconnectedOwner, StartLiveInterpreterRequest()) {}.sessionId
+            service.start(disconnectedOwner, StartLiveInterpreterRequest(targetLanguage = "en")) {}.sessionId
         val remainingSessionId =
-            service.start(remainingOwner, StartLiveInterpreterRequest()) {}.sessionId
+            service.start(remainingOwner, StartLiveInterpreterRequest(targetLanguage = "en")) {}.sessionId
 
         assertEquals(1, service.stopOwnedBy(disconnectedOwner))
         assertFalse(service.stop(disconnectedOwner, StopLiveInterpreterCommand(disconnectedSessionId)))
@@ -98,7 +98,7 @@ class LiveInterpreterSessionOwnershipTest {
         val owner = owner("user-1", "connection-1")
         val eventSinkEntered = CompletableDeferred<Unit>()
         val keepEventSinkOpen = CompletableDeferred<Unit>()
-        val sessionId = service.start(owner, StartLiveInterpreterRequest()) {
+        val sessionId = service.start(owner, StartLiveInterpreterRequest(targetLanguage = "en")) {
             eventSinkEntered.complete(Unit)
             keepEventSinkOpen.await()
         }.sessionId

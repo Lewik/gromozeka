@@ -33,6 +33,11 @@ class GromozekaRemoteAuthorization(
         request: ClientRequest,
     ) {
         when (request) {
+            GetTelegramSettingsRequest,
+            is ProbeTelegramBotRequest,
+            is SaveTelegramConnectionRequest,
+            is GetTelegramProfileRequest,
+            is UpdateTelegramProfileRequest,
             GetSettingsRequest,
             is SaveSettingsRequest,
             is SaveAiCatalogRequest,
@@ -51,6 +56,12 @@ class GromozekaRemoteAuthorization(
             -> requireServerOwner(user)
 
             ListPersonalAccessTokensRequest,
+            GetTranslationsRequest,
+            is GetTranslationPackageRequest,
+            is SaveTranslationPackageRequest,
+            is DeleteTranslationPackageRequest,
+            is SelectTranslationRequest,
+            is SynchronizeTranslationsRequest,
             is CreatePersonalAccessTokenRequest,
             is RevokePersonalAccessTokenRequest,
             is GetAiUserCredentialStatusRequest,
@@ -87,6 +98,11 @@ class GromozekaRemoteAuthorization(
 
             is FindAgentRequest ->
                 requireAgent(user, request.agentId, ProjectPermission.READ)
+
+            is GetAgentToolCatalogRequest -> {
+                if (request.projectId == null) requireServerOwner(user)
+                else requireScope(user, request.projectId, ProjectPermission.READ)
+            }
 
             is FindAgentsRequest ->
                 request.projectId?.let {
@@ -242,15 +258,19 @@ class GromozekaRemoteAuthorization(
             )
 
             is DeleteConversationRequest,
-            is UpdateConversationDisplayNameRequest,
-            is UpdateConversationParticipantsRequest,
             is UpdateConversationAutoRespondersRequest,
-            is ForkConversationRequest,
             is RegenerateSuggestedRepliesRequest,
             is EditMessageRequest,
             is DeleteMessagesRequest,
             is CompactMessagesRequest,
             is MemoryActionRequest,
+            -> requireConversation(user, request.conversationId(), ProjectPermission.WRITE).also {
+                require(it.externalChannel == null) { "Manage messages through the connected external channel; detach it before editing history" }
+            }
+
+            is UpdateConversationDisplayNameRequest,
+            is UpdateConversationParticipantsRequest,
+            is ForkConversationRequest,
             is PostMessageRequest,
             is InvokeAgentRequest,
             is EnqueueAgentInvocationRequest,
@@ -335,7 +355,9 @@ class GromozekaRemoteAuthorization(
                 ProjectPermission.READ,
             )
 
-            RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE ->
+            RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
+            RemoteDeclarativeStateResource.TRANSLATIONS,
+            ->
                 if (query.scopeId != user.id.value) throw ProjectAccessDeniedException()
 
             RemoteDeclarativeStateResource.WORKSPACE_MOUNTS -> requireWorkspace(

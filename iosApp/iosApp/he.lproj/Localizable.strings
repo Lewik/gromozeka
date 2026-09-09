@@ -1,0 +1,11 @@
+/* Generated from localization/*.json by scripts/generate-native-localization.py. */
+"native.shortcuts.toggleRecording" = "התחלה או עצירה של הקלטה קולית";
+"native.shortcuts.toggleRecordingDescription" = "התחלת הקלטת הודעה קולית, או עצירת ההקלטה ושליחתה.";
+"native.shortcuts.textParameter" = "טקסט";
+"quickText.fix" = "תיקון טקסט";
+"quickText.fixDescription" = "תיקון הטקסט תוך שמירה על שפת המקור.";
+"quickText.translate" = "תרגום טקסט";
+"quickText.translateDescription" = "תרגום הטקסט לשפת הממשק שלך, או לאנגלית אם הוא כבר כתוב בשפה הזאת.";
+"common.unknownError" = "שגיאה לא ידועה";
+"Fix ${text}" = "תיקון ${text}";
+"Translate ${text}" = "תרגום ${text}";

@@ -113,8 +113,9 @@ internal class RemoteQuickTextActionService(
     override suspend fun runAction(
         actionId: QuickTextAction.Id,
         text: String,
+        interfaceLanguage: String,
     ): QuickTextActionResult =
         client.requestTyped<RunQuickTextActionRequest, QuickTextActionResultResponse>(
-            RunQuickTextActionRequest(actionId, text)
+            RunQuickTextActionRequest(actionId, text, interfaceLanguage)
         ).result
 }

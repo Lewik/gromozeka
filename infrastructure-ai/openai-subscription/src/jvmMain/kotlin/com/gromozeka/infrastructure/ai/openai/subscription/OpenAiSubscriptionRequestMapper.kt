@@ -53,7 +53,8 @@ class OpenAiSubscriptionRequestMapper {
         } else {
             request.tools.sortedBy { it.definition.name }
         }
-        val hostedWebSearchEnabled = webSearchEnabled && request.options.toolChoice !is AiToolChoice.None
+        val hostedWebSearchEnabled = webSearchEnabled && request.options.toolChoice !is AiToolChoice.None &&
+            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_SUBSCRIPTION_WEB_SEARCH.isAllowed(request.options.toolAccess)
         val effectiveTools = buildList {
             addAll(effectiveFunctionTools.map { tool -> tool.toToolJson() })
             if (hostedWebSearchEnabled) {

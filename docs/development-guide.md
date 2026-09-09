@@ -75,6 +75,45 @@ dispatch, with up to three format corrections. Tool results arrive in the next
 transcript step; remarks cannot stand in for results. Copilot likewise keeps
 external execution in Gromozeka while collecting completed SDK assistant events.
 
+Claude Code compaction notifications and replay data have separate roles. A
+`compact_boundary` is retained as message metadata; the persisted compaction
+payload contains the synthetic summary and retained native messages, including
+attachments. The Worker mirrors its CLI transcript in the session state so a
+new process can continue tracking the retained tail. A fresh or forked session
+replays the latest checkpoint and subsequent Gromozeka messages. Only an explicit
+missing-native-session error retries through that path; arbitrary provider
+failures never restart a call automatically.
+
+Configured Claude Code compaction thresholds use the last measured context usage.
+At or above the threshold, Gromozeka invokes the built-in `/compact` between model
+steps in the same CLI session, before sending the next input. The CLI's native
+auto-compaction remains active. Its `--autocompact` flag selects a window size,
+not an exact threshold, so Gromozeka does not substitute that flag for the policy.
+Safe mode disables customizations; built-in slash commands remain available for
+this explicit control operation. User messages remain wrapped as transcript data.
+
+Run the opt-in Claude Code recovery checks with an authenticated local CLI:
+`GROMOZEKA_CLAUDE_COMPACTION_LIVE=true ./gradlew :infrastructure-ai:jvmTest --tests '*ClaudeCodeCompactionLiveTest' -q`.
+They use synthetic Haiku conversations and verify both policy-triggered and
+native automatic compaction, forks, and missing-session recovery.
+
+## Interface Localization
+
+`localization/en.json` is the canonical interface catalog. Keep semantic context
+in `localization/context.json`, terminology in `localization/glossary.json`, and
+generation guidance in `localization/translator-prompt.md`. Packages remain
+ordinary JSON; update every bundled locale when adding or changing a message.
+Use the active translation in UI helpers and structured `LocalizedText` for
+messages resolved at display time. Preserve user content and raw diagnostics.
+
+Personal translation packages and shared/per-client choices belong to the
+authenticated User on the Server. Clients retain a bootstrap/offline display
+cache. The nine `grz_translation_*` MCP tools expose source context, validation,
+package management, selection, and synchronization to Agents. See
+[interface translations](../localization/README.md) for the package format,
+ownership contracts, and validation commands, and
+[Web font fallback](localization-fonts.md) for bundled font resources.
+
 ## Corporate Compatibility
 
 External integrations must respect the operator's selected provider policy. A
@@ -83,6 +122,10 @@ calls, health probes, fallback traffic, embeddings, speech, or auxiliary tool
 calls. Provider-specific integrations and optimizations are welcome, but they
 must stay explicit, isolated, and operator-controlled rather than silently
 bypassing deployment policy.
+
+The optional [Telegram group channel](telegram-channel.md) is disabled by default
+and intended only for explicitly enabled personal deployments. It is a Server
+channel adapter using the conversation actor, not a Worker or a separate LLM loop.
 
 Before adding a runtime or distributable dependency, verify that its license
 permits the intended closed-source commercial use and distribution without
@@ -133,6 +176,8 @@ credentials, raw authorization headers, or exact device locations.
   access that Conversation.
 - An **Agent** is a server-managed model, prompt, and behavior configuration. It
   is not an executor.
+  Its typed [tool access policy](agent-tool-access.md) is independent of preloading
+  and applies to ordinary tools and supported provider-native capabilities.
 - A **Worker** is a named execution process. The Server is not a Worker.
 - Workers have one resource model. Platform, advertised capabilities, ownership,
   and optional user-context binding are independent properties. A user-bound
@@ -255,9 +300,13 @@ than part of the generic Worker protocol.
 
 ## Identity And Authentication
 
-The Server owns user identity. Local username/password credentials are the
-initial login method; future OAuth or OIDC identities must attach to the same
-stable User instead of creating a parallel account model.
+The Server owns user identity. One stable User can have multiple typed identities;
+local login is optional, and password credentials are stored separately. The
+`loginAllowed` and `aiAllowed` flags independently control sign-in and AI access.
+An observed Telegram identity creates a User with both flags disabled and no
+project grants. Observation does not authenticate that person, enable Telegram
+sign-in, or automatically link them to a similarly named account. Future OAuth or
+OIDC login must attach to the same User instead of creating a parallel account model.
 
 One Server deployment is one isolated Gromozeka Runtime. A Runtime can contain
 multiple Users, Projects, and Workers, but it does not contain several pooled
