@@ -1,10 +1,12 @@
 package com.gromozeka.infrastructure.ai.tool
 
 import com.gromozeka.domain.service.CommandProcessSpec
+import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.RunningCommandProcess
 import kotlin.time.Instant
 import java.io.File
 import java.nio.file.Files
@@ -20,7 +22,12 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class LocalCommandProcessRunnerTest {
-    private val runner = LocalCommandProcessRunner()
+    private val startedProcesses = mutableListOf<RunningCommandProcess>()
+    private val localRunner = LocalCommandProcessRunner()
+    private val runner = object : CommandProcessRunner by localRunner {
+        override fun start(spec: CommandProcessSpec): RunningCommandProcess =
+            localRunner.start(spec).also(startedProcesses::add)
+    }
     private val isWindows = System.getProperty("os.name").lowercase().contains("windows")
     private val isLinux = System.getProperty("os.name").lowercase().contains("linux")
 
@@ -32,7 +39,8 @@ class LocalCommandProcessRunnerTest {
                     executionId = "large-output-task",
                     command = platformCommand(
                         posix = "i=0; while [ ${'$'}i -lt 20000 ]; do echo line-${'$'}i; i=${'$'}((i+1)); done",
-                        windows = "for /L %%i in (0,1,19999) do @echo line-%%i",
+                        windows = "powershell.exe -NoProfile -NonInteractive -Command \"" +
+                            "0..19999 | ForEach-Object { [Console]::WriteLine('line-' + ${'$'}_) }\"",
                     ),
                     workingDirectory = home.absolutePath,
                 )
@@ -80,7 +88,7 @@ class LocalCommandProcessRunnerTest {
                     executionId = "secret-environment-task",
                     command = platformCommand(
                         posix = "printf '%s' \"${'$'}GH_TOKEN\"",
-                        windows = "set /p \"=%GH_TOKEN%\" <nul",
+                        windows = "set /p \"=%GH_TOKEN%\" <nul\nexit /B 0",
                     ),
                     workingDirectory = home.absolutePath,
                     environment = mapOf("GH_TOKEN" to "actual-token"),
@@ -259,7 +267,7 @@ class LocalCommandProcessRunnerTest {
                     executionId = "completed-recovery-task",
                     command = platformCommand(
                         posix = "printf recovered; exit 7",
-                        windows = "<NUL set /P =recovered & exit /B 7",
+                        windows = "set /P \"=recovered\" <NUL\nexit /B 7",
                     ),
                     workingDirectory = home.absolutePath,
                 )
@@ -277,8 +285,8 @@ class LocalCommandProcessRunnerTest {
                 )
             )
 
-            assertTrue(recovery.exitCode == 7)
-            assertTrue(File(process.outputFile).readText() == "recovered")
+            assertEquals(7, recovery.exitCode)
+            assertEquals("recovered", File(process.outputFile).readText())
         }
     }
 
@@ -654,7 +662,7 @@ class LocalCommandProcessRunnerTest {
             executionId = taskId,
             command = platformCommand(
                 posix = "printf '$output'",
-                windows = "<NUL set /P =$output",
+                windows = "set /P \"=$output\" <NUL\nexit /B 0",
             ),
             workingDirectory = home.absolutePath,
         )
@@ -672,16 +680,32 @@ class LocalCommandProcessRunnerTest {
     private fun withTemporaryGromozekaHome(block: (File) -> Unit) {
         val previousHome = System.getProperty("GROMOZEKA_HOME")
         val home = Files.createTempDirectory("gromozeka-command-runner-test-").toFile()
+        var testFailure: Throwable? = null
         try {
             System.setProperty("GROMOZEKA_HOME", home.absolutePath)
             block(home)
+        } catch (error: Throwable) {
+            testFailure = error
+            home.walkTopDown().filter(File::isFile).forEach { artifact ->
+                println("${artifact.relativeTo(home)}: ${artifact.readText().takeLast(2_000)}")
+            }
+            throw error
         } finally {
+            val cleanup = runCatching {
+                startedProcesses.forEach { process ->
+                    if (process.isAlive()) process.terminateTree() else process.waitFor(0)
+                }
+                waitUntil(5_000) { home.deleteRecursively() }
+            }
+            startedProcesses.clear()
             if (previousHome == null) {
                 System.clearProperty("GROMOZEKA_HOME")
             } else {
                 System.setProperty("GROMOZEKA_HOME", previousHome)
             }
-            assertTrue(home.deleteRecursively())
+            cleanup.exceptionOrNull()?.let { error ->
+                testFailure?.addSuppressed(error) ?: throw error
+            }
         }
     }
 
