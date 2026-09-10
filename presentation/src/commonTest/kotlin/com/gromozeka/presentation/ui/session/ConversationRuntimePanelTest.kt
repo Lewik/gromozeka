@@ -19,8 +19,12 @@ class ConversationRuntimePanelTest {
     @Test
     fun `runtime panel distinguishes configured and provider managed compaction`() {
         assertEquals(
-            "Automatic compaction: managed by provider",
+            "Automatic compaction: 180000 tokens",
             runtimeAutoCompactionLabel(AiConnection.Kind.CLAUDE_CODE, 180_000, translation),
+        )
+        assertEquals(
+            "Automatic compaction: managed by provider",
+            runtimeAutoCompactionLabel(AiConnection.Kind.CLAUDE_CODE, null, translation),
         )
         assertEquals(
             "Automatic compaction: 180000 tokens",
