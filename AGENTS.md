@@ -66,7 +66,7 @@ Live integration checks are especially important for the first two.
 
 Sibling checkouts may be used concurrently by other development agents. Read them when a task requires comparison, but write only inside the current checkout unless the user explicitly directs otherwise. Never stop another checkout's processes or infrastructure unless the user asks.
 
-Each checkout has a local `.env` with a slot from 1 through 5: `dev=1`, `dev0=2`, `dev1=3`, `dev2=4`, `dev3=5`. Server and PostgreSQL ports are their defaults plus the slot (`8765 + slot` and `5432 + slot`). The Gradle run tasks and root Compose configuration read this file and reject inconsistent port values. Slot settings are development-only; do not apply them to `deploy/` configurations.
+Each checkout has a local `.env` with a fixed positive development slot assigned by local machine configuration. Server and PostgreSQL ports are their defaults plus the slot (`8765 + slot` and `5432 + slot`), within the valid port range. Read the machine-specific instructions for checkout assignments; do not choose free ports dynamically or reuse another checkout's slot. Keep those assignments outside this repository. Gradle validates `.env` values, and the run tasks and root Compose configuration use them. Slot settings are development-only; do not apply them to `deploy/` configurations.
 
 Use the standard commands from the checkout root:
 

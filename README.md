@@ -129,7 +129,7 @@ Create the checkout-local development configuration:
 cp .env.example .env
 ```
 
-The example uses development slot 1. Concurrent checkouts need distinct slots from 1 through 5. Set `GROMOZEKA_REMOTE_PORT` to `8765 + slot` and `GROMOZEKA_POSTGRES_PORT` to `5432 + slot`; Gradle rejects inconsistent values.
+The example uses development slot 1. Concurrent checkouts need distinct, fixed positive slot numbers assigned in local machine configuration. Set `GROMOZEKA_REMOTE_PORT` to `8765 + slot` and `GROMOZEKA_POSTGRES_PORT` to `5432 + slot`; Gradle rejects inconsistent or out-of-range ports. Keep machine-specific checkout names and slot assignments outside the repository.
 
 Start local infrastructure:
 

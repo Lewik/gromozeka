@@ -56,11 +56,16 @@ fun validateLocalDevelopmentEnvironment(environment: Map<String, String>): Map<S
         ?: error("$name must be set to an integer in .env")
 
     val slot = requiredInt("GROMOZEKA_DEV_SLOT")
-    require(slot in 1..5) { "GROMOZEKA_DEV_SLOT must be between 1 and 5" }
-    require(requiredInt("GROMOZEKA_REMOTE_PORT") == 8765 + slot) {
+    require(slot > 0) { "GROMOZEKA_DEV_SLOT must be positive" }
+    val remotePort = requiredInt("GROMOZEKA_REMOTE_PORT")
+    val postgresPort = requiredInt("GROMOZEKA_POSTGRES_PORT")
+    require(remotePort in 1..65535 && postgresPort in 1..65535) {
+        "Development server and PostgreSQL ports must be between 1 and 65535"
+    }
+    require(remotePort.toLong() == 8765L + slot) {
         "GROMOZEKA_REMOTE_PORT must equal 8765 + GROMOZEKA_DEV_SLOT"
     }
-    require(requiredInt("GROMOZEKA_POSTGRES_PORT") == 5432 + slot) {
+    require(postgresPort.toLong() == 5432L + slot) {
         "GROMOZEKA_POSTGRES_PORT must equal 5432 + GROMOZEKA_DEV_SLOT"
     }
     return environment
