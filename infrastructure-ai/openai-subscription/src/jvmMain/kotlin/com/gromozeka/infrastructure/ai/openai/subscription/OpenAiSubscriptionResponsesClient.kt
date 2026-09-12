@@ -12,6 +12,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -62,6 +63,34 @@ class OpenAiSubscriptionResponsesClient(
     private val responsesUrl = "${baseUrl.trimEnd('/')}/responses"
     private val websocketUrl = responsesUrl.toWebSocketUrl()
     private val webSocketSessions = ConcurrentHashMap<String, WebSocketSessionState>()
+
+    suspend fun search(
+        session: OpenAiSubscriptionSession,
+        conversationKey: String,
+        request: JsonObject,
+    ): String {
+        val timeoutMs = httpResponseTimeoutMs.coerceIn(1L, 120000L)
+        val builder = HttpRequest.newBuilder()
+            .uri(URI.create("${baseUrl.trimEnd('/')}/alpha/search"))
+            .timeout(Duration.ofMillis(timeoutMs))
+            .header("Authorization", "Bearer ${session.accessToken}")
+            .header("originator", OPENAI_SUBSCRIPTION_ORIGINATOR)
+            .header("User-Agent", openAiSubscriptionUserAgent(clientVersion))
+            .header("session_id", conversationKey)
+            .header("conversation_id", conversationKey)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(request.toString()))
+        session.accountId?.let { builder.header("ChatGPT-Account-Id", it) }
+        val response = httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+            .awaitHttpResponse(timeoutMs)
+        if (response.statusCode() == 401) throw OpenAiSubscriptionUnauthorizedException("Web search authentication expired")
+        if (response.statusCode() !in 200..299) throw OpenAiSubscriptionRequestException(
+            response.statusCode(), "Web search failed (HTTP ${response.statusCode()})",
+        )
+        return json.parseToJsonElement(response.body()).jsonObject["output"]?.jsonPrimitive?.contentOrNull
+            ?: throw OpenAiSubscriptionTransportException("Web search returned no text output")
+    }
 
     suspend fun create(
         session: OpenAiSubscriptionSession,

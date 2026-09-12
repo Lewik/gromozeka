@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -42,13 +43,14 @@ class OpenAiSubscriptionResponseMapper {
             outputItems.any { item -> (item["content"] as? JsonArray).orEmpty().any {
                 (it as? JsonObject)?.get("type")?.jsonPrimitive?.contentOrNull == "refusal"
             } } -> AiStepOutcome.REFUSED
-            outputItems.any { it["type"]?.jsonPrimitive?.contentOrNull == "function_call" } -> AiStepOutcome.TOOL_CALLS
+            outputItems.any { it["type"]?.jsonPrimitive?.contentOrNull == "function_call" && !it.isStandaloneWebCall() } -> AiStepOutcome.TOOL_CALLS
+            outputItems.any { it.isStandaloneWebCall() } -> AiStepOutcome.CONTINUE
             outputItems.lastOrNull { it["type"]?.jsonPrimitive?.contentOrNull == "message" }
                 ?.get("phase")?.jsonPrimitive?.contentOrNull == "commentary" -> AiStepOutcome.CONTINUE
             else -> AiStepOutcome.COMPLETE
         }
         val messages = outputItems.filterNot {
-            outcome != AiStepOutcome.TOOL_CALLS && it["type"]?.jsonPrimitive?.contentOrNull == "function_call"
+            (outcome.isFailure || outcome == AiStepOutcome.REFUSED) && it["type"]?.jsonPrimitive?.contentOrNull == "function_call"
         }.mapNotNull {
             toAssistantMessage(
                 item = it,
@@ -186,6 +188,10 @@ class OpenAiSubscriptionResponseMapper {
             ?: error("Function call is missing call_id")
         val name = this["name"]?.jsonPrimitive?.contentOrNull
             ?: error("Function call is missing name")
+        val namespace = this["namespace"]?.jsonPrimitive?.contentOrNull
+        require(namespace == null || namespace == "functions" || isStandaloneWebCall()) {
+            "Unsupported OpenAI subscription function namespace: $namespace"
+        }
         val arguments = this["arguments"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val input = json.parseOpenAiSubscriptionToolArguments(arguments)
 
@@ -194,12 +200,16 @@ class OpenAiSubscriptionResponseMapper {
                 Conversation.Message.ContentItem.ToolCall(
                     id = Conversation.Message.ContentItem.ToolCall.Id(callId),
                     call = Conversation.Message.ContentItem.ToolCall.Data(
-                        name = name,
+                        name = if (isStandaloneWebCall()) "web.run" else name,
                         input = input,
                     ),
                     state = Conversation.Message.BlockState.COMPLETE,
                 )
             ),
+            metadata = if (isStandaloneWebCall()) mapOf(
+                AI_PROVIDER_MANAGED_TOOL_METADATA_KEY to true,
+                "openaiSubscriptionProviderItems" to JsonArray(listOf(this)),
+            ) else emptyMap(),
         )
     }
 

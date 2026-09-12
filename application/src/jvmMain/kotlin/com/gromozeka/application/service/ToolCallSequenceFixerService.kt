@@ -1,6 +1,8 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
+import kotlinx.serialization.json.JsonPrimitive
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.service.ConversationDomainService
@@ -31,7 +33,7 @@ class ToolCallSequenceFixerService(
 ) {
     private val log = KLoggers.logger(this)
 
-    private data class FixedMessageSequence(
+    internal data class FixedMessageSequence(
         val messages: List<Conversation.Message>,
         val addedResults: Int,
         val convertedResults: Int,
@@ -149,7 +151,7 @@ class ToolCallSequenceFixerService(
         )
     }
     
-    private fun buildFixedMessageSequence(
+    internal fun buildFixedMessageSequence(
         messages: List<Conversation.Message>,
         conversationId: Conversation.Id
     ): FixedMessageSequence {
@@ -158,8 +160,22 @@ class ToolCallSequenceFixerService(
         var pendingToolCalls = emptyMap<ContentItem.ToolCall.Id, ContentItem.ToolCall>()
         var addedResults = 0
         var convertedResults = 0
+        val completedCallIds = normalizedSequence.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>()
+            .mapTo(mutableSetOf()) { it.toolUseId }
+        val providerManagedCallIds = normalizedSequence.filter {
+            it.providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == JsonPrimitive(true)
+        }.flatMap { it.content }.filterIsInstance<ContentItem.ToolCall>().mapTo(mutableSetOf()) { it.id }
 
         normalizedSequence.forEach { message ->
+            if (message.providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == JsonPrimitive(true) ||
+                message.content.isNotEmpty() && message.content.all { it is ContentItem.ToolResult && it.toolUseId in providerManagedCallIds }) {
+                fixedMessages += message
+                message.content.filterIsInstance<ContentItem.ToolCall>().filter { it.id !in completedCallIds }.forEach {
+                    fixedMessages += createErrorToolResult(conversationId, it)
+                    addedResults++
+                }
+                return@forEach
+            }
             val toolCalls = message.content.filterIsInstance<ContentItem.ToolCall>()
             val toolResults = message.content.filterIsInstance<ContentItem.ToolResult>()
             val unmatchedResults = toolResults.filter { it.toolUseId !in pendingToolCalls.keys }
@@ -292,6 +308,7 @@ class ToolCallSequenceFixerService(
 
     private fun Conversation.Message.isToolCallOnlyAssistantMessage(): Boolean {
         return role == Conversation.Message.Role.ASSISTANT &&
+            providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] != JsonPrimitive(true) &&
             error == null &&
             content.isNotEmpty() &&
             content.all { it is ContentItem.ToolCall }

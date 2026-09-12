@@ -12,6 +12,29 @@ import kotlin.time.Clock
 
 class ToolCallPairingServiceTest {
     @Test
+    fun `provider managed calls stay separate from application calls during persistence`() {
+        val providerCall = Conversation.Message.ContentItem.ToolCall(
+            Conversation.Message.ContentItem.ToolCall.Id("web"),
+            Conversation.Message.ContentItem.ToolCall.Data("web.run", JsonObject(emptyMap())),
+        )
+        val ordinaryCall = providerCall.copy(id = Conversation.Message.ContentItem.ToolCall.Id("ordinary"),
+            call = providerCall.call.copy(name = "read_file"))
+        val response = AiRuntimeResponse(listOf(
+            AiAssistantMessage(listOf(providerCall), mapOf(com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY to true)),
+            AiAssistantMessage(listOf(ordinaryCall)),
+        ), outcome = AiStepOutcome.TOOL_CALLS)
+        val prepared = AiConversationMessageMapper.prepareResponse(response)
+        assertEquals(listOf(ordinaryCall), prepared.toolCalls)
+        val messages = AiConversationMessageMapper.toConversationMessages(Conversation.Id("conversation"), prepared,
+            Conversation.Message.Author.Agent(com.gromozeka.domain.model.AgentDefinition.Id("agent"), "Agent"))
+        assertEquals(2, messages.size)
+        assertEquals(listOf(providerCall), messages.first().content)
+        assertEquals(listOf(ordinaryCall), messages.last().content)
+        val continuation = response.copy(messages = response.messages.take(1), outcome = AiStepOutcome.CONTINUE)
+        assertEquals(continuation, AiConversationMessageMapper.prepareResponse(continuation))
+    }
+
+    @Test
     fun `incomplete response preserves remarks without executable or replayable tool calls`() {
         val remark = Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Working."))
         val call = Conversation.Message.ContentItem.ToolCall(

@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
@@ -162,6 +163,7 @@ object AiConversationMessageMapper {
 
     private fun Conversation.Message.isToolCallOnlyAssistantMessage(): Boolean {
         return role == Conversation.Message.Role.ASSISTANT &&
+            providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] != JsonPrimitive(true) &&
             error == null &&
             content.isNotEmpty() &&
             content.all { it is Conversation.Message.ContentItem.ToolCall }

@@ -1,0 +1,7 @@
+OpenAI Codex
+Copyright 2025 OpenAI
+
+web-tool.json contains the web.run schema and description from OpenAI Codex,
+commit 53ff712a48379ce8df605e292afd6046ca88ae9b, licensed under Apache-2.0.
+The schema is serialized from SearchCommands using Codex schema normalization.
+Source: https://github.com/openai/codex/tree/53ff712a48379ce8df605e292afd6046ca88ae9b/codex-rs/ext/web-search

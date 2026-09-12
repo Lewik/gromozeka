@@ -58,7 +58,21 @@ belong behind those infrastructure boundaries rather than in domain workflows.
 Each finite model step returns an explicit `AiStepOutcome`: completion, external
 tool requests, provider continuation, truncation, refusal, or failure. The Server
 persists completed assistant blocks before executing tools. Provider continuation
-enqueues another model step under the existing turn limit without inventing a
+also covers client-executed provider tools. Their messages carry the
+`providerManagedTool` metadata flag and are excluded from application tool
+routing. The adapter executes one persisted pending call in the next finite
+step, persists its result through another continuation, and then resumes the
+model. Cancellation and the conversation iteration limit still apply.
+
+OpenAI Subscription models with `use_responses_lite=true` receive the `web.run`
+function namespace and use the subscription `/alpha/search` endpoint. Ordinary
+Responses models keep the hosted `web_search` tool. Both honor the connection's
+web-search switch and the agent's native-tool policy. Search uses the same
+connection, model, and conversation key as model execution; raw provider replay
+is restricted to that connection/model. Reference IDs and text results survive
+runtime restarts; encrypted search output is not added to visible history.
+
+Provider continuation enqueues another model step under the existing turn limit without inventing a
 user message. Incomplete or refused batches never execute external tools.
 
 Assistant remarks, readable reasoning, and opaque-reasoning placeholders are

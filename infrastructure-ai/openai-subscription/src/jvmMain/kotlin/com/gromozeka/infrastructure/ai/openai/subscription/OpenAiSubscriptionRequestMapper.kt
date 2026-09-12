@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
@@ -53,13 +54,15 @@ class OpenAiSubscriptionRequestMapper {
         } else {
             request.tools.sortedBy { it.definition.name }
         }
-        val hostedWebSearchEnabled = webSearchEnabled && request.options.toolChoice !is AiToolChoice.None &&
-            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_SUBSCRIPTION_WEB_SEARCH.isAllowed(request.options.toolAccess)
+        val searchAllowed = request.isSubscriptionWebSearchAllowed(webSearchEnabled)
+        val hostedWebSearchEnabled = searchAllowed && !modelProfile.useResponsesLite
+        val standaloneWebSearchEnabled = searchAllowed && modelProfile.useResponsesLite
         val effectiveTools = buildList {
             addAll(effectiveFunctionTools.map { tool -> tool.toToolJson() })
             if (hostedWebSearchEnabled) {
                 add(buildJsonObject { put("type", "web_search") })
             }
+            if (standaloneWebSearchEnabled) add(OpenAiSubscriptionWebSearch.toolDefinition)
         }
         val inputItems = replayWindow.messages.flatMapIndexed { index, message ->
             toInputItems(
@@ -69,6 +72,10 @@ class OpenAiSubscriptionRequestMapper {
                     message.providerMetadata["model"]?.jsonPrimitive?.contentOrNull == modelProfile.slug &&
                     message.providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId,
             )
+        }.map { item ->
+            if (modelProfile.useResponsesLite && item["type"] == JsonPrimitive("function_call") && item["namespace"] == null) {
+                JsonObject(item + ("namespace" to JsonPrimitive("functions")))
+            } else item
         }.dropOrphanFunctionCallOutputs(conversationKey)
         val instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null }
         val reasoning = buildReasoning(request.options.reasoning, modelProfile)
@@ -95,7 +102,7 @@ class OpenAiSubscriptionRequestMapper {
             requestPayload = requestPayload,
             replayWindow = replayWindow,
             effectiveToolNames = effectiveFunctionTools.map { it.definition.name } +
-                listOfNotNull("web_search".takeIf { hostedWebSearchEnabled }),
+                listOfNotNull("web_search".takeIf { hostedWebSearchEnabled }, "web.run".takeIf { standaloneWebSearchEnabled }),
             conversationKey = conversationKey,
         )
 
@@ -116,7 +123,17 @@ class OpenAiSubscriptionRequestMapper {
                 buildJsonObject {
                     put("type", "additional_tools")
                     put("role", "developer")
-                    put("tools", JsonArray(request.tools.orEmpty()))
+                    val tools = request.tools.orEmpty()
+                    val functions = tools.filter { it["type"] == JsonPrimitive("function") }
+                    put("tools", buildJsonArray {
+                        if (functions.isNotEmpty()) add(buildJsonObject {
+                            put("type", "namespace")
+                            put("name", "functions")
+                            put("description", "Gromozeka tools.")
+                            put("tools", JsonArray(functions))
+                        })
+                        tools.filterNot { it in functions }.forEach(::add)
+                    })
                 }
             )
             request.instructions?.takeIf { it.isNotBlank() }?.let { instructions ->
@@ -206,6 +223,18 @@ class OpenAiSubscriptionRequestMapper {
         replayCompactionOnly: Boolean,
         replayReasoning: Boolean,
     ): List<JsonObject> {
+        if (providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == JsonPrimitive(true)) {
+            if (replayReasoning) return (providerMetadata["openaiSubscriptionProviderItems"] as? JsonArray)
+                .orEmpty().flatMap { normalizeReplayItem(it.jsonObject, AiModelConfiguration.AssistantResponseFormat.TEXT) }
+            val text = content.joinToString("\n") { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.ToolCall -> "Web search request: ${item.call.input}"
+                    is Conversation.Message.ContentItem.ToolResult -> item.toOpenAiFunctionOutput().toString()
+                    else -> ""
+                }
+            }
+            return listOf(messageItem("assistant", JsonPrimitive(text)))
+        }
         val items = mutableListOf<JsonObject>()
         val textBuffer = mutableListOf<String>()
         val hiddenReplayItems = if (replayReasoning) providerMetadata.toHiddenReplayItems()
@@ -665,11 +694,12 @@ class OpenAiSubscriptionRequestMapper {
         val name = this["name"]?.jsonPrimitive?.contentOrNull ?: return null
         val arguments = this["arguments"]?.jsonPrimitive?.contentOrNull.orEmpty()
 
-        return functionCallItem(
+        val replayItem = functionCallItem(
             callId = callId,
             name = name,
             arguments = json.parseOpenAiSubscriptionToolArguments(arguments).toString(),
         )
+        return this["namespace"]?.let { JsonObject(replayItem + ("namespace" to it)) } ?: replayItem
     }
 
     private fun String.toCanonicalAssistantText(

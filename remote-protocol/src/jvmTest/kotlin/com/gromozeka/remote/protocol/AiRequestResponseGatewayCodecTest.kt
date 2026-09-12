@@ -223,7 +223,10 @@ class AiRequestResponseGatewayCodecTest {
                 toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly()),
         )
         val runtimeResponse = AiRuntimeResponse(
-            messages = emptyList(),
+            messages = listOf(com.gromozeka.domain.model.ai.AiAssistantMessage(
+                content = emptyList(),
+                metadata = mapOf(com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY to true),
+            )),
             outcome = AiStepOutcome.CONTINUE,
             finishReason = "test",
             usage = AiUsage(promptTokens = 10, completionTokens = 3),

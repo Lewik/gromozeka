@@ -21,6 +21,7 @@ class OpenAiSubscriptionRuntimeBackend(
     private val responsesClient: OpenAiSubscriptionResponsesClient,
     private val requestMapper: OpenAiSubscriptionRequestMapper,
     private val responseMapper: OpenAiSubscriptionResponseMapper,
+    private val webSearch: OpenAiSubscriptionWebSearch,
 ) : AiRuntimeBackend {
 
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
@@ -48,6 +49,7 @@ class OpenAiSubscriptionRuntimeBackend(
             responsesClient = responsesClient,
             requestMapper = requestMapper,
             responseMapper = responseMapper,
+            webSearch = webSearch,
         )
     }
 }
@@ -62,6 +64,7 @@ private class Runtime(
     private val responsesClient: OpenAiSubscriptionResponsesClient,
     private val requestMapper: OpenAiSubscriptionRequestMapper,
     private val responseMapper: OpenAiSubscriptionResponseMapper,
+    private val webSearch: OpenAiSubscriptionWebSearch,
 ) : AiRuntime {
     private val fallbackConversationKey = UUID.randomUUID().toString()
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
@@ -86,6 +89,8 @@ private class Runtime(
         val promptCacheKey = (request.options.toolContext["promptCacheKey"] as? String ?: rawConversationKey)
             .toOpenAiSubscriptionKey()
         try {
+            webSearch.executePending(request, session, conversationKey, connectionId, modelName, webSearchEnabled)
+                ?.let { return@withContext it }
             val modelProfile = modelsClient.getProfile(session, modelName)
             val requestBody = requestMapper.toRequest(
                 request = request,

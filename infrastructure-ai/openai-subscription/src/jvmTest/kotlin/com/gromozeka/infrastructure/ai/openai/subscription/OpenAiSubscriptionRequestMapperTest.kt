@@ -362,12 +362,12 @@ class OpenAiSubscriptionRequestMapperTest {
                 com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_SUBSCRIPTION_WEB_SEARCH.catalogEntry().selector(false),
             ))
             val allowed = mapper.toRequest(input.copy(options = input.options.copy(toolAccess = policy)), profile, "test", webSearchEnabled = true)
-            assertTrue(allowed.tools.orEmpty().any { it.string("type") == "web_search" })
+            assertTrue(allowed.tools.orEmpty().any { it.string("type") == if (lite) "namespace" else "web_search" })
         }
     }
 
     @Test
-    fun framesHostedWebSearchInsideResponsesLiteAdditionalTools() {
+    fun framesStandaloneWebSearchAndFunctionsInsideResponsesLiteNamespaces() {
         val profile = modelProfile(slug = "gpt-5.6-sol", useResponsesLite = true)
         val logicalRequest = mapper.toRequest(
             request = AiRuntimeRequest(
@@ -382,9 +382,11 @@ class OpenAiSubscriptionRequestMapperTest {
 
         val transportRequest = mapper.toTransportRequest(logicalRequest, profile)
         val additionalTools = transportRequest.input.first().jsonArray("tools")
-        assertEquals(listOf("function", "web_search"), additionalTools.map { it.jsonObject.string("type") })
+        assertEquals(listOf("namespace", "namespace"), additionalTools.map { it.jsonObject.string("type") })
+        assertEquals(listOf("functions", "web"), additionalTools.map { it.jsonObject.string("name") })
+        assertEquals("run", additionalTools.last().jsonObject.jsonArray("tools").single().jsonObject.string("name"))
         assertNull(transportRequest.tools)
-        assertTrue("web_search_call.action.sources" in transportRequest.include)
+        assertFalse("web_search_call.action.sources" in transportRequest.include)
     }
 
     @Test

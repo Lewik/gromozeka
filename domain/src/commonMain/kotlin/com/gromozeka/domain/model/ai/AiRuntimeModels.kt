@@ -6,6 +6,8 @@ import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
+const val AI_PROVIDER_MANAGED_TOOL_METADATA_KEY = "providerManagedTool"
+
 /**
  * Canonical request for one model execution step inside Gromozeka.
  *
@@ -68,11 +70,12 @@ data class AiRuntimeResponse(
     val finishReason: String? = null,
     val providerMetadata: Map<String, Any?> = emptyMap(),
     val outcome: AiStepOutcome = if (messages.any { message ->
-        message.content.any { it is Conversation.Message.ContentItem.ToolCall }
+        message.metadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] != true &&
+            message.content.any { it is Conversation.Message.ContentItem.ToolCall }
     }) AiStepOutcome.TOOL_CALLS else AiStepOutcome.COMPLETE,
 ) {
     val toolCalls: List<Conversation.Message.ContentItem.ToolCall>
-        get() = messages.flatMap { assistantMessage ->
+        get() = messages.filterNot { it.metadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == true }.flatMap { assistantMessage ->
             assistantMessage.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
         }
 }
