@@ -8,7 +8,9 @@ Installing this code alone makes no Telegram requests.
 ## Enable and configure
 
 1. Explicitly set `GROMOZEKA_TELEGRAM_ENABLED=true` in the personal Server process
-   or container. The shared deployment configuration does not forward this flag.
+   or container. For AWS, set it in `/data/gromozeka/runtime/runtime.env`; the
+   deployment forwards this opt-in flag and defaults to `false` when it is absent.
+   Recreate the Server container after changing this deployment flag.
 2. In BotFather, allow groups and disable privacy. Re-add the bot if privacy was
    changed after it joined. Group administrator permission is unnecessary.
 3. Store the BotFather token as one of the owner's existing **named secrets**.
