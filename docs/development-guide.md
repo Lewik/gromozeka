@@ -72,6 +72,16 @@ connection, model, and conversation key as model execution; raw provider replay
 is restricted to that connection/model. Reference IDs and text results survive
 runtime restarts; encrypted search output is not added to visible history.
 
+Subscription Responses Lite compaction is a separate finite model step. The
+adapter checks the configured token threshold before inference, using a local
+request estimate and the most recent persisted provider usage for the same
+connection/model. It sends `compaction_trigger`, persists the returned opaque
+`ContextCompactionResult` with bounded recent user text, and returns `CONTINUE`.
+The next step replays that checkpoint instead of the covered history, including
+after a Server restart. Compaction never dispatches tools. Ordinary Responses
+models keep server-managed `context_management` compaction. Token estimates are
+approximate; encrypted payloads and images must not be counted as base64 text.
+
 Provider continuation enqueues another model step under the existing turn limit without inventing a
 user message. Incomplete or refused batches never execute external tools.
 
@@ -515,6 +525,9 @@ separately for `gpt-5.6-luna` and `gpt-6-astra`; both use low reasoning effort:
 ```bash
 GROMOZEKA_OPENAI_SUBSCRIPTION_REAL=true GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE=/path/to/codex/auth.json GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL=gpt-5.6-luna ./gradlew :infrastructure-ai:openai-subscription:jvmTest --tests '*OpenAiSubscriptionProgressRealTest' --rerun -q
 ```
+
+This also checks automatic Lite compaction, persisted checkpoint replay on fresh
+connections, and retention of a random marker known only through a tool result.
 
 Use `--rerun` to bypass the test task cache when changing live-test environment
 variables; it does not force recompilation of every dependency.

@@ -5,3 +5,7 @@ web-tool.json contains the web.run schema and description from OpenAI Codex,
 commit 53ff712a48379ce8df605e292afd6046ca88ae9b, licensed under Apache-2.0.
 The schema is serialized from SearchCommands using Codex schema normalization.
 Source: https://github.com/openai/codex/tree/53ff712a48379ce8df605e292afd6046ca88ae9b/codex-rs/ext/web-search
+
+OpenAiSubscriptionCompaction.kt uses the opaque reasoning length estimate from
+OpenAI Codex commit a592c38c16cdd7623dacc9168926ebccedfb67d3, licensed under Apache-2.0.
+Source: https://github.com/openai/codex/blob/a592c38c16cdd7623dacc9168926ebccedfb67d3/codex-rs/core/src/context_manager/history.rs

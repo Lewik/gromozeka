@@ -22,6 +22,7 @@ class OpenAiSubscriptionRuntimeBackend(
     private val requestMapper: OpenAiSubscriptionRequestMapper,
     private val responseMapper: OpenAiSubscriptionResponseMapper,
     private val webSearch: OpenAiSubscriptionWebSearch,
+    private val compaction: OpenAiSubscriptionCompaction,
 ) : AiRuntimeBackend {
 
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
@@ -50,6 +51,7 @@ class OpenAiSubscriptionRuntimeBackend(
             requestMapper = requestMapper,
             responseMapper = responseMapper,
             webSearch = webSearch,
+            compaction = compaction,
         )
     }
 }
@@ -65,6 +67,7 @@ private class Runtime(
     private val requestMapper: OpenAiSubscriptionRequestMapper,
     private val responseMapper: OpenAiSubscriptionResponseMapper,
     private val webSearch: OpenAiSubscriptionWebSearch,
+    private val compaction: OpenAiSubscriptionCompaction,
 ) : AiRuntime {
     private val fallbackConversationKey = UUID.randomUUID().toString()
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
@@ -99,6 +102,9 @@ private class Runtime(
                 webSearchEnabled = webSearchEnabled,
                 connectionId = connectionId,
             )
+            compaction.executeIfNeeded(
+                request, requestBody, modelProfile, session, conversationKey, connectionId, modelConfigurationId,
+            )?.let { return@withContext it }
             val parsed = responsesClient.create(
                 session = session,
                 conversationKey = conversationKey,
@@ -106,7 +112,7 @@ private class Runtime(
                 modelProfile = modelProfile,
                 assistantResponseFormat = request.options.assistantResponseFormat,
             )
-            responseMapper.toRuntimeResponse(
+            val response = responseMapper.toRuntimeResponse(
                 outputItems = parsed.outputItems,
                 completed = parsed.completed,
                 conversationKey = conversationKey,
@@ -115,6 +121,7 @@ private class Runtime(
                 modelName = modelName,
                 assistantResponseFormat = request.options.assistantResponseFormat,
             )
+            compaction.recordContextUsage(requestBody, parsed, response, request.options.assistantResponseFormat)
         } catch (error: OpenAiSubscriptionUnauthorizedException) {
             if (!retryOnUnauthorized) throw error
 

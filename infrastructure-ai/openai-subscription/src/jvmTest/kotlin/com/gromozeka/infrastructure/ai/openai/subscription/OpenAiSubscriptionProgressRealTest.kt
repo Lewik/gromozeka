@@ -18,6 +18,8 @@ import java.util.Base64
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlinx.coroutines.runBlocking
@@ -32,26 +34,95 @@ import kotlinx.serialization.json.long
 
 class OpenAiSubscriptionProgressRealTest {
     @Test
+    fun compactionRetainsToolKnowledgeAcrossPersistedHistoryAndFreshConnections() = runBlocking {
+        if (System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_REAL") != "true") return@runBlocking
+        val session = authenticatedSession()
+        val model = requireNotNull(System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL"))
+        val profile = OpenAiSubscriptionModelsClient(baseUrl, clientVersion, 60_000, 30_000).getProfile(session, model)
+        assertTrue(profile.useResponsesLite)
+        val requestMapper = OpenAiSubscriptionRequestMapper()
+        val responseMapper = OpenAiSubscriptionResponseMapper()
+        fun client() = OpenAiSubscriptionResponsesClient(responseMapper, requestMapper, baseUrl, clientVersion,
+            websocketIdleMs = 30_000, websocketResponseTimeoutMs = 180_000,
+            websocketTransportTimeoutMs = 30_000, httpResponseTimeoutMs = 180_000)
+        val conversationId = Conversation.Id(UUID.randomUUID().toString())
+        val fileMarker = "COMPACT_${UUID.randomUUID()}"
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("read-file-call")
+        val history = mutableListOf(
+            message(conversationId, Conversation.Message.Role.USER, listOf(
+                Conversation.Message.ContentItem.UserMessage("Report the exact project marker from the supplied file result. Do not call more tools.")
+            )),
+            message(conversationId, Conversation.Message.Role.ASSISTANT, listOf(
+                Conversation.Message.ContentItem.ToolCall(id = callId,
+                    call = Conversation.Message.ContentItem.ToolCall.Data("read_file",
+                        Json.parseToJsonElement("""{"path":"README.md"}""")))
+            )),
+            message(conversationId, Conversation.Message.Role.USER, listOf(
+                Conversation.Message.ContentItem.ToolResult(toolUseId = callId, toolName = "read_file",
+                    result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text(
+                        (1..1000).joinToString("\n") { "Build record $it: synthetic compilation completed successfully." } +
+                            "\nThe exact project marker is $fileMarker."
+                    )))
+            )),
+        )
+        val options = AiRuntimeOptions(reasoning = AiReasoningConfig(effort = AiReasoningEffort.LOW),
+            autoCompactionThresholdTokens = 4_000)
+        fun runtimeRequest() = AiRuntimeRequest(
+            listOf("This is a synthetic protocol test. Preserve the project marker from tool results and report it exactly."),
+            history.toList(), listOf(readFileTool), options,
+        )
+        fun persist(response: AiRuntimeResponse) {
+            response.messages.forEach { assistant ->
+                val saved = message(conversationId, Conversation.Message.Role.ASSISTANT, assistant.content).copy(
+                    providerMetadata = JsonObject((response.providerMetadata + assistant.metadata).mapValues { (_, value) ->
+                        value as? JsonElement ?: when (value) {
+                            is Number -> JsonPrimitive(value)
+                            is Boolean -> JsonPrimitive(value)
+                            else -> JsonPrimitive(value.toString())
+                        }
+                    }),
+                )
+                history += Json.decodeFromString(Conversation.Message.serializer(),
+                    Json.encodeToString(Conversation.Message.serializer(), saved))
+            }
+        }
+        val initial = runtimeRequest()
+        val mapped = requestMapper.toRequest(initial, profile, conversationId.value, connectionId = connectionId)
+        val compactor = OpenAiSubscriptionCompaction(client(), requestMapper, responseMapper)
+        val compacted = assertNotNull(compactor.executeIfNeeded(initial, mapped, profile, session,
+            conversationId.value, connectionId, "live-compaction-$model"))
+        assertEquals(AiStepOutcome.CONTINUE, compacted.outcome)
+        assertTrue(compacted.toolCalls.isEmpty())
+        assertTrue(requireNotNull(compacted.contextUsage).inputTokens < 4_000)
+        persist(compacted)
+        repeat(2) { iteration ->
+            val freshClient = client()
+            val freshCompactor = OpenAiSubscriptionCompaction(freshClient, requestMapper, responseMapper)
+            val next = runtimeRequest()
+            val replay = requestMapper.toRequest(next, profile, conversationId.value, connectionId = connectionId)
+            assertTrue(replay.input.none { it.toString().contains("Build record 1000:") })
+            assertNull(freshCompactor.executeIfNeeded(next, replay, profile, session,
+                conversationId.value, connectionId, "live-compaction-$model"))
+            val parsed = freshClient.create(session, conversationId.value, replay, profile, options.assistantResponseFormat)
+            val response = responseMapper.toRuntimeResponse(parsed.outputItems, parsed.completed, conversationId.value,
+                connectionId, "live-compaction-$model", model, options.assistantResponseFormat)
+            assertEquals(AiStepOutcome.COMPLETE, response.outcome)
+            assertTrue(response.toolCalls.isEmpty())
+            assertTrue(response.messages.flatMap { it.content }
+                .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+                .any { fileMarker in it.structured.fullText }, "Compaction lost the tool result marker")
+            println("Live compaction replay: model=$model iteration=$iteration inputTokens=${response.contextUsage?.inputTokens}")
+            persist(freshCompactor.recordContextUsage(replay, parsed, response, options.assistantResponseFormat))
+            history += message(conversationId, Conversation.Message.Role.USER, listOf(
+                Conversation.Message.ContentItem.UserMessage("Repeat the same project marker. Do not use tools.")
+            ))
+        }
+    }
+
+    @Test
     fun remarksToolResultsAndFinalAnswersSurviveIncrementalAndFreshConnections() = runBlocking {
         if (System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_REAL") != "true") return@runBlocking
-
-        val authFile = requireNotNull(System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE")) {
-            "Set GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE to an existing Codex auth.json; the test never refreshes or modifies it"
-        }
-        val tokens = Json.parseToJsonElement(File(authFile).readText()).jsonObject.getValue("tokens").jsonObject
-        val accessToken = tokens.getValue("access_token").jsonPrimitive.content
-        val claims = Json.parseToJsonElement(
-            Base64.getUrlDecoder().decode(accessToken.split('.')[1]).decodeToString()
-        ).jsonObject
-        val expiresAt = claims.getValue("exp").jsonPrimitive.long
-        require(expiresAt > Clock.System.now().epochSeconds + 300) { "Codex access token needs renewal before this test" }
-        val session = OpenAiSubscriptionSession(
-            accessToken = accessToken,
-            refreshToken = "unused",
-            idToken = null,
-            accountId = tokens.getValue("account_id").jsonPrimitive.content,
-            expiresAt = expiresAt,
-        )
+        val session = authenticatedSession()
         val model = requireNotNull(System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL"))
         val profile = OpenAiSubscriptionModelsClient(baseUrl, clientVersion, 60_000, 30_000)
             .getProfile(session, model)
@@ -152,6 +223,21 @@ class OpenAiSubscriptionProgressRealTest {
             .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
             .joinToString("\n") { it.structured.fullText }
         assertTrue(marker in text, "Expected the tool result marker in the final answer")
+    }
+
+    private fun authenticatedSession(): OpenAiSubscriptionSession {
+        val authFile = requireNotNull(System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE")) {
+            "Set GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE to an existing Codex auth.json; the test never refreshes or modifies it"
+        }
+        val tokens = Json.parseToJsonElement(File(authFile).readText()).jsonObject.getValue("tokens").jsonObject
+        val accessToken = tokens.getValue("access_token").jsonPrimitive.content
+        val claims = Json.parseToJsonElement(
+            Base64.getUrlDecoder().decode(accessToken.split('.')[1]).decodeToString()
+        ).jsonObject
+        val expiresAt = claims.getValue("exp").jsonPrimitive.long
+        require(expiresAt > Clock.System.now().epochSeconds + 300) { "Codex access token needs renewal before this test" }
+        return OpenAiSubscriptionSession(accessToken, "unused", null,
+            tokens.getValue("account_id").jsonPrimitive.content, expiresAt)
     }
 
     private fun message(

@@ -242,7 +242,7 @@ class OpenAiSubscriptionRequestMapper {
             else emptyList()
         val compactionItems = content
             .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
-            .map { it.toOpenAiReplayItem() }
+            .flatMap { it.toOpenAiReplayItems() }
 
         if (replayCompactionOnly && compactionItems.isNotEmpty()) {
             return compactionItems + content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
@@ -299,7 +299,7 @@ class OpenAiSubscriptionRequestMapper {
 
                 is Conversation.Message.ContentItem.ContextCompactionResult -> {
                     flushText()
-                    items += contentItem.toOpenAiReplayItem()
+                    items += contentItem.toOpenAiReplayItems()
                 }
 
                 else -> Unit
@@ -343,13 +343,13 @@ class OpenAiSubscriptionRequestMapper {
         }
     }
 
-    private fun Conversation.Message.ContentItem.ContextCompactionResult.toOpenAiReplayItem(): JsonObject {
+    private fun Conversation.Message.ContentItem.ContextCompactionResult.toOpenAiReplayItems(): List<JsonObject> {
         return when (val currentPayload = payload) {
             is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> {
-                messageItem(
+                listOf(messageItem(
                     role = "developer",
                     content = JsonPrimitive("Earlier conversation compact:\n${currentPayload.text.trim()}"),
-                )
+                ))
             }
 
             is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState -> {
@@ -359,7 +359,11 @@ class OpenAiSubscriptionRequestMapper {
                 }
                 val replayItem = currentPayload.state["replay_item"] as? JsonObject
                     ?: error("OpenAI opaque compaction state missed replay_item")
-                replayItem.normalizeHiddenReasoningItem()
+                val retainedInput = (currentPayload.state["retained_input"] as? JsonArray).orEmpty().map { it.jsonObject }
+                require(retainedInput.all { it["type"] == JsonPrimitive("message") && it["role"] == JsonPrimitive("user") }) {
+                    "OpenAI compaction retained input must contain only user messages"
+                }
+                retainedInput + replayItem.normalizeHiddenReasoningItem()
             }
         }
     }
