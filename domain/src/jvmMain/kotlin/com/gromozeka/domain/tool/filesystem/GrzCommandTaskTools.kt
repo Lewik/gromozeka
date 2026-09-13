@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.CommandTaskOwnerToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -24,7 +25,7 @@ data class GetCommandTaskRequest(
     val wait_ms: Long = 10_000,
 )
 
-interface GrzGetCommandTaskTool : Tool<GetCommandTaskRequest, Map<String, Any>> {
+interface GrzGetCommandTaskTool : Tool<GetCommandTaskRequest, List<AiToolResult>> {
     override val name: String
         get() = GRZ_GET_COMMAND_TASK_TOOL_NAME
 
@@ -34,6 +35,7 @@ interface GrzGetCommandTaskTool : Tool<GetCommandTaskRequest, Map<String, Any>> 
     override val description: String
         get() = """
             Wait for a command task and return only bounded output starting at after_byte.
+            Output is returned as raw bytes with a safe text preview and an artifact_id for grz_save_tool_output in conversations.
             Reuse next_output_byte on the next call. Continue while status is WORKING or has_more_output is true.
             wait_ms may be from 0 to $MAX_COMMAND_TASK_WAIT_MILLIS; prefer one wait covering the expected remaining duration, capped at this limit.
             The terminal statuses are COMPLETED, FAILED, and CANCELLED.
@@ -43,7 +45,7 @@ interface GrzGetCommandTaskTool : Tool<GetCommandTaskRequest, Map<String, Any>> 
     override val requestType: Class<GetCommandTaskRequest>
         get() = GetCommandTaskRequest::class.java
 
-    override fun execute(request: GetCommandTaskRequest, context: ToolExecutionContext?): Map<String, Any>
+    override fun execute(request: GetCommandTaskRequest, context: ToolExecutionContext?): List<AiToolResult>
 }
 
 data class CancelCommandTaskRequest(

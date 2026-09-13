@@ -9,6 +9,8 @@ on:
       - '**/*CommandTask*'
       - '**/*CommandMonitor*'
       - '**/*GrzExecuteCommand*'
+      - '**/*GrzSaveToolOutput*'
+      - '**/*BinaryContent*'
   push:
     paths:
       - '.github/workflows/command-process.yml'
@@ -16,6 +18,8 @@ on:
       - '**/*CommandTask*'
       - '**/*CommandMonitor*'
       - '**/*GrzExecuteCommand*'
+      - '**/*GrzSaveToolOutput*'
+      - '**/*BinaryContent*'
 
 permissions:
   contents: read
@@ -44,7 +48,7 @@ jobs:
           ./gradlew
           :infrastructure-ai:jvmTest --tests '*LocalCommandProcessRunnerTest' --tests '*JsonSchemaGeneratorTest'
           :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
-          :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest'
+          :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest'
           :worker:assemble :server:assemble
           -q
       - name: Upload test results

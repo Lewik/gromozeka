@@ -7,6 +7,13 @@ interface ArtifactContentStore {
 
     suspend fun read(id: Artifact.Id): ByteArray
 
+    suspend fun readRange(id: Artifact.Id, offset: Long, limit: Int): ByteArray {
+        require(offset >= 0 && limit > 0)
+        val bytes = read(id)
+        require(offset <= bytes.size)
+        return bytes.copyOfRange(offset.toInt(), minOf(bytes.size.toLong(), offset + limit).toInt())
+    }
+
     suspend fun delete(id: Artifact.Id)
 
     suspend fun listIds(): Set<Artifact.Id>

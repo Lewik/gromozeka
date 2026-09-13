@@ -1,5 +1,6 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
@@ -33,14 +34,15 @@ data class CommandMonitor(
     val cancellationRequestedAt: Instant? = null,
     val exitCode: Int? = null,
     val statusMessage: String? = null,
+    val synchronizationError: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
     val completedAt: Instant? = null,
     val terminalNotificationRequestedAt: Instant? = null,
     val terminalNotificationDeliveredAt: Instant? = null,
     val terminalOutputStartByte: Long? = null,
-    val terminalOutput: String? = null,
-    val terminalErrorOutput: String? = null,
+    val terminalOutputContent: BinaryContent? = null,
+    val terminalErrorContent: BinaryContent? = null,
 ) {
     init {
         require(filterCommand.isNotBlank()) { "Command monitor filter command must not be blank" }
@@ -53,10 +55,13 @@ data class CommandMonitor(
         require(terminalNotificationDeliveredAt == null || terminalNotificationRequestedAt != null) {
             "Command monitor terminal notification cannot be delivered before it is requested"
         }
-        require((terminalOutputStartByte == null) == (terminalOutput == null)) {
+        require((terminalOutputStartByte == null) == (terminalOutputContent == null)) {
             "Command monitor terminal output and its byte offset must be stored together"
         }
     }
+
+    val terminalOutput: String? get() = terminalOutputContent?.textPreview()
+    val terminalErrorOutput: String? get() = terminalErrorContent?.textPreview()
 
     @Serializable
     @JvmInline
@@ -93,12 +98,14 @@ data class CommandMonitorEvent(
     val monitorId: CommandMonitor.Id,
     val outputStartByte: Long,
     val outputEndByte: Long,
-    val output: String,
+    val content: BinaryContent,
     val outputTruncatedBefore: Boolean,
     val occurredAt: Instant,
     val deliveryRequested: Boolean,
     val deliveredAt: Instant? = null,
 ) {
+    val output: String get() = content.textPreview().removeSuffix("\n").removeSuffix("\r")
+
     init {
         require(outputStartByte >= 0) { "Command monitor event start must be non-negative" }
         require(outputEndByte > outputStartByte) { "Command monitor event must consume output bytes" }
@@ -115,11 +122,13 @@ data class CommandMonitorEvent(
 @Serializable
 data class CommandMonitorOutput(
     val monitor: CommandMonitor,
-    val output: String,
+    val content: BinaryContent,
     val outputStartByte: Long,
     val nextOutputByte: Long,
     val hasMoreOutput: Boolean,
-)
+) {
+    val output: String get() = content.textPreview()
+}
 
 data class CommandMonitorSyncResult(
     val monitor: CommandMonitor,

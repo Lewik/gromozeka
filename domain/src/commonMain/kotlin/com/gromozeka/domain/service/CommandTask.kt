@@ -1,5 +1,6 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
@@ -27,22 +28,25 @@ data class CommandTask(
     val cancellationRequestedAt: Instant? = null,
     val exitCode: Int? = null,
     val statusMessage: String? = null,
+    val synchronizationError: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
     val completedAt: Instant? = null,
     val completionNotificationRequestedAt: Instant? = null,
     val completionNotificationDeliveredAt: Instant? = null,
     val terminalOutputStartByte: Long? = null,
-    val terminalOutput: String? = null,
+    val terminalOutputContent: BinaryContent? = null,
 ) {
     init {
         require(completionNotificationDeliveredAt == null || completionNotificationRequestedAt != null) {
             "Command completion notification cannot be delivered before it is requested"
         }
-        require((terminalOutputStartByte == null) == (terminalOutput == null)) {
+        require((terminalOutputStartByte == null) == (terminalOutputContent == null)) {
             "Command terminal output and its byte offset must be stored together"
         }
     }
+
+    val terminalOutput: String? get() = terminalOutputContent?.textPreview()
 
     @Serializable
     @JvmInline
@@ -69,11 +73,13 @@ data class CommandTask(
 @Serializable
 data class CommandTaskOutput(
     val task: CommandTask,
-    val output: String,
+    val content: BinaryContent,
     val outputStartByte: Long,
     val nextOutputByte: Long,
     val hasMoreOutput: Boolean,
-)
+) {
+    val output: String get() = content.textPreview()
+}
 
 data class CommandTaskUpsertResult(
     val task: CommandTask,

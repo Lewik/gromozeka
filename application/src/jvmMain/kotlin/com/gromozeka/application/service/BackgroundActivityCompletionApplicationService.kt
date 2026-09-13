@@ -32,7 +32,7 @@ class BackgroundActivityCompletionApplicationService(
                 DeliveryCandidate.Command(
                     task = task,
                     occurredAt = task.completedAt ?: task.updatedAt,
-                    payloadBytes = task.terminalOutput.orEmpty().toByteArray().size,
+                    payloadBytes = task.terminalOutputContent?.bytes()?.size ?: 0,
                 )
             }
         val monitors = runtimeCoordinator.findCommandMonitors(conversationId)
@@ -61,7 +61,7 @@ class BackgroundActivityCompletionApplicationService(
                         terminalNotificationIncluded = includeTerminal,
                     ),
                     occurredAt = occurredAt,
-                    payloadBytes = selectedEvents.sumOf { it.output.toByteArray().size },
+                    payloadBytes = selectedEvents.sumOf { it.content.bytes().size },
                 )
             }
         }
@@ -192,7 +192,6 @@ class BackgroundActivityCompletionApplicationService(
             task.processId?.let { put("process_id", it) }
             task.exitCode?.let { put("exit_code", it) }
             task.statusMessage?.let { put("status_message", it) }
-            put("output", task.terminalOutput.orEmpty())
             put("output_start_byte", task.terminalOutputStartByte ?: task.outputBytes)
             put("next_output_byte", task.outputBytes)
             put("output_bytes", task.outputBytes)
@@ -210,7 +209,14 @@ class BackgroundActivityCompletionApplicationService(
                 ContentItem.ToolResult(
                     toolUseId = toolCallId,
                     toolName = GRZ_GET_COMMAND_TASK_TOOL_NAME,
-                    result = listOf(ContentItem.ToolResult.Data.Text(result)),
+                    result = listOf(
+                        ContentItem.ToolResult.Data.Text(result),
+                        ContentItem.ToolResult.Data.Base64Data(
+                            data = (task.terminalOutputContent ?: com.gromozeka.domain.model.BinaryContent.EMPTY).base64,
+                            mediaType = Conversation.Message.MediaType.parse("application/octet-stream"),
+                            fileName = "command-${task.id.value}-${task.terminalOutputStartByte ?: task.outputBytes}-${task.outputBytes}.bin",
+                        ),
+                    ),
                     isError = false,
                     state = BlockState.COMPLETE,
                 )
@@ -276,13 +282,11 @@ class BackgroundActivityCompletionApplicationService(
             monitor.processId?.let { put("process_id", it) }
             monitor.exitCode?.let { put("exit_code", it) }
             monitor.statusMessage?.let { put("status_message", it) }
-            monitor.terminalErrorOutput?.takeIf(String::isNotBlank)?.let { put("error_output", it) }
             put("events", buildJsonArray {
                 delivery.events.forEach { event ->
                     add(
                         buildJsonObject {
                             put("event_id", event.id.value)
-                            put("output", event.output)
                             put("output_start_byte", event.outputStartByte)
                             put("output_end_byte", event.outputEndByte)
                             put("output_truncated_before", event.outputTruncatedBefore)
@@ -291,7 +295,6 @@ class BackgroundActivityCompletionApplicationService(
                     )
                 }
             })
-            put("output", delivery.events.joinToString("\n", transform = CommandMonitorEvent::output))
             put("output_start_byte", firstOutputByte)
             put("next_output_byte", nextOutputByte)
             put("output_bytes", monitor.outputBytes)
@@ -317,7 +320,26 @@ class BackgroundActivityCompletionApplicationService(
                 ContentItem.ToolResult(
                     toolUseId = toolCallId,
                     toolName = GRZ_GET_COMMAND_MONITOR_TOOL_NAME,
-                    result = listOf(ContentItem.ToolResult.Data.Text(result)),
+                    result = buildList {
+                        add(ContentItem.ToolResult.Data.Text(result))
+                        delivery.events.forEach { event ->
+                            add(ContentItem.ToolResult.Data.Base64Data(event.content.base64,
+                                Conversation.Message.MediaType.parse("application/octet-stream"),
+                                "monitor-${monitor.id.value}-${event.outputStartByte}-${event.outputEndByte}.bin"))
+                        }
+                        if (delivery.terminalNotificationIncluded) {
+                            monitor.terminalOutputContent?.let {
+                                add(ContentItem.ToolResult.Data.Base64Data(it.base64,
+                                    Conversation.Message.MediaType.parse("application/octet-stream"),
+                                    "monitor-${monitor.id.value}-tail-${monitor.terminalOutputStartByte}-${monitor.outputBytes}.bin"))
+                            }
+                            monitor.terminalErrorContent?.let {
+                                add(ContentItem.ToolResult.Data.Base64Data(it.base64,
+                                    Conversation.Message.MediaType.parse("application/octet-stream"),
+                                    "monitor-${monitor.id.value}-stderr-tail.bin"))
+                            }
+                        }
+                    },
                     isError = false,
                     state = BlockState.COMPLETE,
                 )
@@ -332,7 +354,7 @@ class BackgroundActivityCompletionApplicationService(
         var bytes = 0
         return take(MAX_MONITOR_EVENTS_PER_DELIVERY)
             .takeWhile { event ->
-                val eventBytes = event.output.toByteArray().size
+                val eventBytes = event.content.bytes().size
                 val accepted = bytes == 0 || bytes + eventBytes <= MAX_MONITOR_EVENT_BYTES_PER_DELIVERY
                 if (accepted) bytes += eventBytes
                 accepted

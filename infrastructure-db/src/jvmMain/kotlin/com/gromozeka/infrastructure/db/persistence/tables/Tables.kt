@@ -315,6 +315,7 @@ internal object ConversationUnreadStates : Table("conversation_unread_states") {
 }
 
 internal object Artifacts : Table("artifacts") {
+    val searchText = text("search_text").nullable()
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val conversationId = varchar("conversation_id", 255)

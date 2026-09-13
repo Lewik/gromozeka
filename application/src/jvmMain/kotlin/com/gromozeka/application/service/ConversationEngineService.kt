@@ -919,8 +919,14 @@ class ConversationEngineService(
 
         batch.messages.forEach { syntheticMessage ->
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
-                emitMessage(syntheticMessage)
+            if (conversationService.loadCurrentMessages(conversationId).none { it.id == syntheticMessage.id }) {
+                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>()
+                val persisted = artifactService.persistAndCommitToolResults(conversation, task.actorUserId, toolResults)
+                val iterator = persisted.iterator()
+                val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
+                    if (it is ContentItem.ToolResult) iterator.next() else it
+                })
+                if (addRuntimeMessageIfMissing(conversationId, storedMessage)) emitMessage(storedMessage)
             }
         }
 

@@ -267,6 +267,38 @@ heartbeat. `grz_get_worker_environment` recollects the complete profile and
 volatile capacity, process, executable, and project-mount data on the selected
 Worker when current facts are needed.
 
+## Tool Output Storage
+
+Tool results retain their original bytes as managed Artifacts. Text responses are
+stored as UTF-8; binary responses are never decoded before storage. The Server
+sends a bounded text preview to the model only after strict UTF-8 decoding.
+Invisible control characters such as NUL are displayed as literal `\u0000`;
+invalid UTF-8 produces an explicit unavailable-preview message. Valid UTF-8 alone
+does not prove that data is meaningful prose.
+
+Conversation search indexes the complete decodable tool text, including content
+past the preview limit. Existing textual tool results are backfilled by a data
+migration. Image and PDF results keep their native provider representation.
+
+`grz_save_tool_output` downloads an artifact into the selected Workspace Mount
+in bounded chunks. `mode=original` preserves exact bytes. `mode=text` strictly
+decodes `source_encoding` and writes UTF-8. Both modes validate the download before
+publishing the destination; an existing file requires `overwrite=true`.
+Artifact access is checked against its Conversation and the Worker's Project access.
+
+A command result artifact identifies the returned byte range, not necessarily the
+whole log. Commands retain the full merged stream in their Worker-local
+`output_file`; the Server retains bounded terminal tails and delivered chunks.
+These runtime tails use a base64 binary representation inside JSONB, including
+NUL and invalid UTF-8. Migrations preserve existing stored text without resetting
+the database; bytes already lost by older text decoding cannot be reconstructed.
+
+Command state synchronization retries temporary connection/database failures with
+backoff. A permanent rejected write is exposed as `synchronization_error` in the
+Worker-local result and logged; it stops write retries, preserves output files,
+and never reruns the command. Cancellation reads remain independent. After fixing
+the cause, Worker startup reconciles the saved process outcome with the Server.
+
 ## Computer Use
 
 Computer Use is pixel-based control of one exact Worker's real interactive

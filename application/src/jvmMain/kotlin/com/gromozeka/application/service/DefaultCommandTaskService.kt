@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.service.CommandProcessRecovery
@@ -48,7 +49,6 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.RandomAccessFile
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
@@ -333,6 +333,10 @@ class DefaultCommandTaskService(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
+                if (error !is com.gromozeka.domain.service.ControlPlaneUnavailableException) {
+                    log.error(error) { "Command recovery was rejected; persisted tasks and local output are retained" }
+                    return
+                }
                 consecutiveFailures += 1
                 if (
                     consecutiveFailures == 1L ||
@@ -343,7 +347,7 @@ class DefaultCommandTaskService(
                             "(attempt $consecutiveFailures): ${error::class.simpleName}: ${error.message}"
                     }
                 }
-                delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                delay(minOf(30_000L, CONTROL_PLANE_RETRY_INTERVAL_MILLIS * (1L shl minOf(consecutiveFailures - 1, 5L).toInt())))
             }
         }
     }
@@ -563,7 +567,7 @@ class DefaultCommandTaskService(
             }
             synchronizeTerminalStateUntilAvailable(activeCommand)
         } finally {
-            activeCommands.remove(activeCommand.task.id, activeCommand)
+            if (activeCommand.synchronization.rejection == null) activeCommands.remove(activeCommand.task.id, activeCommand)
             activeCommand.completed.complete(Unit)
             if (activeCommand.task.isTerminal) {
                 runCatching { garbageCollectOutputArtifacts() }
@@ -601,35 +605,52 @@ class DefaultCommandTaskService(
             updatedAt = now,
             completedAt = now,
             terminalOutputStartByte = terminalOutput.first,
-            terminalOutput = terminalOutput.second,
+            terminalOutputContent = terminalOutput.second,
         )
     }
 
     private suspend fun pollCancellationRequest(activeCommand: ActiveCommand): Boolean =
         try {
-            val task = activeCommand.task
-            runtimeState.findCommandTask(task.conversationId, task.id)
-                ?.cancellationRequestedAt != null
+            if (activeCommand.controlReads.canAttempt()) {
+                val task = activeCommand.task
+                val stored = runtimeState.findCommandTask(task.conversationId, task.id)
+                activeCommand.controlReads.succeeded()
+                stored?.cancellationRequestedAt != null
+            } else false
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            warnControlPlaneUnavailable(activeCommand, error)
+            activeCommand.controlReads.failed(error)
+            activeCommand.controlReads.rejection?.let {
+                activeCommand.task = activeCommand.task.copy(synchronizationError = it)
+                log.error(error) { "Command control request was rejected; local output is retained: ${activeCommand.task.id.value}" }
+            } ?: warnControlPlaneUnavailable(activeCommand, error)
             false
         }
 
-    private suspend fun trySynchronizeCommandTask(activeCommand: ActiveCommand): Boolean =
-        try {
+    private suspend fun trySynchronizeCommandTask(activeCommand: ActiveCommand): Boolean {
+        if (!activeCommand.synchronization.canAttempt()) {
+            return activeCommand.synchronization.rejection != null && activeCommand.task.isTerminal
+        }
+        return try {
             val task = activeCommand.task
             activeCommand.task = persistCommandTask(task)
             publishSnapshot(task.conversationId)
             activeCommand.lastControlPlaneWarningAtNanos = null
+            activeCommand.synchronization.succeeded()
             true
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            warnControlPlaneUnavailable(activeCommand, error)
-            false
+            activeCommand.synchronization.failed(error)
+            val rejection = activeCommand.synchronization.rejection
+            if (rejection != null) {
+                activeCommand.task = activeCommand.task.copy(synchronizationError = rejection)
+                log.error(error) { "Command result synchronization was rejected; local output is retained: ${activeCommand.task.id.value}" }
+            } else warnControlPlaneUnavailable(activeCommand, error)
+            rejection != null && activeCommand.task.isTerminal
         }
+    }
 
     private suspend fun synchronizeTerminalStateUntilAvailable(activeCommand: ActiveCommand) {
         while (currentCoroutineContext().isActive) {
@@ -671,7 +692,7 @@ class DefaultCommandTaskService(
                 updatedAt = now,
                 completedAt = now,
                 terminalOutputStartByte = terminalOutput.first,
-                terminalOutput = terminalOutput.second,
+                terminalOutputContent = terminalOutput.second,
         )
         persistCommandTask(completedTask)
         publishSnapshot(task.conversationId)
@@ -787,46 +808,38 @@ class DefaultCommandTaskService(
         val next = start + safeLength
         return CommandTaskOutput(
             task = task.copy(outputBytes = size),
-            output = String(chunk, StandardCharsets.UTF_8),
+            content = BinaryContent.fromBytes(chunk),
             outputStartByte = start,
             nextOutputByte = next,
             hasMoreOutput = next < size,
         )
     }
 
-    private fun terminalOutput(outputFile: String): Pair<Long, String> {
+    private fun terminalOutput(outputFile: String): Pair<Long, BinaryContent> {
         val file = File(outputFile)
         if (!file.isFile) {
-            return 0L to ""
+            return 0L to BinaryContent.EMPTY
         }
         val size = file.length()
         val requestedStart = maxOf(0L, size - MAX_TERMINAL_OUTPUT_BYTES)
         val bytes = ByteArray((size - requestedStart).toInt())
         if (bytes.isEmpty()) {
-            return 0L to ""
+            return 0L to BinaryContent.EMPTY
         }
         RandomAccessFile(file, "r").use { output ->
             output.seek(requestedStart)
             output.readFully(bytes)
         }
-        var safeStart = 0
-        while (safeStart < bytes.size && (bytes[safeStart].toInt() and 0xC0) == 0x80) {
-            safeStart += 1
-        }
-        return (requestedStart + safeStart) to
-            String(bytes, safeStart, bytes.size - safeStart, StandardCharsets.UTF_8)
+        return requestedStart to BinaryContent.fromBytes(bytes)
     }
 
     private fun retainedTerminalOutput(task: CommandTask, afterByte: Long): CommandTaskOutput {
         val tailStart = task.terminalOutputStartByte ?: task.outputBytes
-        val bytes = task.terminalOutput.orEmpty().toByteArray(StandardCharsets.UTF_8)
-        var offset = (afterByte - tailStart).coerceIn(0, bytes.size.toLong()).toInt()
-        while (offset < bytes.size && (bytes[offset].toInt() and 0xC0) == 0x80) {
-            offset += 1
-        }
+        val bytes = task.terminalOutputContent?.bytes() ?: byteArrayOf()
+        val offset = (afterByte - tailStart).coerceIn(0, bytes.size.toLong()).toInt()
         return CommandTaskOutput(
             task = task,
-            output = String(bytes, offset, bytes.size - offset, StandardCharsets.UTF_8),
+            content = BinaryContent.fromBytes(bytes.copyOfRange(offset, bytes.size)),
             outputStartByte = tailStart + offset,
             nextOutputByte = task.outputBytes,
             hasMoreOutput = false,
@@ -986,6 +999,8 @@ class DefaultCommandTaskService(
         val mutex: Mutex,
     ) {
         val completed = CompletableDeferred<Unit>()
+        val synchronization = CommandSynchronizationState()
+        val controlReads = CommandSynchronizationState()
         var lastControlPlaneWarningAtNanos: Long? = null
     }
 

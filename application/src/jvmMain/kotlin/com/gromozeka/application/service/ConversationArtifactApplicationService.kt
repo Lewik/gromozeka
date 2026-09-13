@@ -1,6 +1,8 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Artifact
+import com.gromozeka.domain.model.BinaryContent
+import com.gromozeka.domain.model.safeToolOutputText
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.domain.model.Conversation
@@ -26,10 +28,11 @@ class ConversationArtifactApplicationService(
         conversation: Conversation,
         createdByUserId: User.Id?,
         upload: ArtifactUpload,
+        artifactId: Artifact.Id = Artifact.Id(uuid7()),
     ): Artifact {
         val content = upload.content
-        require(content.isNotEmpty()) { "Artifact content must not be empty" }
-        require(content.size <= ArtifactLimits.MAX_FILE_BYTES) {
+        require((upload.purpose == Artifact.Purpose.TOOL_OUTPUT && !upload.mediaType.startsWith("image/") &&
+            upload.mediaType != "application/pdf") || content.size <= ArtifactLimits.MAX_FILE_BYTES) {
             "Artifact exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
         }
         val fileName = upload.fileName
@@ -42,7 +45,7 @@ class ConversationArtifactApplicationService(
         require(mediaType.matches(MEDIA_TYPE_PATTERN)) { "Invalid artifact media type" }
 
         val artifact = Artifact(
-            id = Artifact.Id(uuid7()),
+            id = artifactId,
             projectId = conversation.projectId,
             conversationId = conversation.id,
             createdByUserId = createdByUserId,
@@ -54,7 +57,18 @@ class ConversationArtifactApplicationService(
             createdAt = Clock.System.now(),
         )
 
-        artifactRepository.save(artifact)
+        val searchableText = if (upload.purpose == Artifact.Purpose.TOOL_OUTPUT) {
+            BinaryContent.fromBytes(content).utf8TextOrNull()?.safeToolOutputText()
+        } else null
+        val existing = artifactRepository.findById(artifact.id)
+        if (existing != null) {
+            require(existing.copy(state = artifact.state, committedAt = artifact.committedAt) == artifact.copy(createdAt = existing.createdAt)) {
+                "Artifact id refers to different content or ownership"
+            }
+            contentStore.write(existing.id, content)
+            return existing
+        }
+        artifactRepository.save(artifact, searchableText)
         return runCatching {
             contentStore.write(artifact.id, content)
             artifact
@@ -71,6 +85,18 @@ class ConversationArtifactApplicationService(
         val artifact = artifactRepository.findById(id)
             ?: error("Artifact not found: ${id.value}")
         return readContent(artifact)
+    }
+
+    suspend fun readChunk(artifact: Artifact, offset: Long, limit: Int): Pair<ByteArray, Long> {
+        require(offset >= 0 && limit in 1..com.gromozeka.domain.service.MAX_TOOL_OUTPUT_DOWNLOAD_CHUNK_BYTES)
+        if (artifact.source is Artifact.ContentSource.Managed) {
+            val size = requireNotNull(artifact.sizeBytes)
+            require(offset <= size)
+            return contentStore.readRange(artifact.id, offset, limit) to size
+        }
+        val bytes = readContent(artifact)
+        require(offset <= bytes.size)
+        return bytes.copyOfRange(offset.toInt(), minOf(bytes.size.toLong(), offset + limit).toInt()) to bytes.size.toLong()
     }
 
     suspend fun registerExternal(artifact: Artifact): Artifact {
@@ -126,28 +152,43 @@ class ConversationArtifactApplicationService(
         results: List<Conversation.Message.ContentItem.ToolResult>,
     ): List<Conversation.Message.ContentItem.ToolResult> {
         val persisted = results.map { toolResult ->
-            toolResult.copy(
-                result = toolResult.result.map data@{ data ->
-                    if (data !is Conversation.Message.ContentItem.ToolResult.Data.Base64Data) {
-                        return@data data
-                    }
-                    val artifact = upload(
-                        conversation = conversation,
-                        createdByUserId = createdByUserId,
-                        upload = ArtifactUpload(
-                            fileName = data.fileName ?: toolResult.defaultArtifactFileName(data.mediaType),
-                            mediaType = data.mediaType.value,
-                            content = Base64.getDecoder().decode(data.data),
-                            purpose = if (toolResult.effectiveToolName in SCREENSHOT_TOOL_NAMES) {
-                                Artifact.Purpose.TOOL_SCREENSHOT
-                            } else {
-                                Artifact.Purpose.TOOL_OUTPUT
-                            },
-                        ),
+            toolResult.copy(result = toolResult.result.flatMapIndexed { index, data ->
+                val upload = when (data) {
+                    is Conversation.Message.ContentItem.ToolResult.Data.Text -> ArtifactUpload(
+                        fileName = "${toolResult.effectiveToolName}-$index.txt",
+                        mediaType = "text/plain",
+                        content = data.content.encodeToByteArray(),
+                        purpose = Artifact.Purpose.TOOL_OUTPUT,
                     )
-                    Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(artifact.reference())
+                    is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> ArtifactUpload(
+                        fileName = data.fileName ?: toolResult.defaultArtifactFileName(data.mediaType),
+                        mediaType = data.mediaType.value,
+                        content = Base64.getDecoder().decode(data.data),
+                        purpose = if (toolResult.effectiveToolName in SCREENSHOT_TOOL_NAMES) {
+                            Artifact.Purpose.TOOL_SCREENSHOT
+                        } else Artifact.Purpose.TOOL_OUTPUT,
+                    )
+                    else -> return@flatMapIndexed listOf(data)
                 }
-            )
+                val identity = listOf(conversation.id.value, toolResult.toolUseId.value, index.toString(),
+                    upload.fileName, upload.mediaType, upload.content.sha256()).joinToString("\u0000")
+                val artifactId = Artifact.Id(java.util.UUID.nameUUIDFromBytes(identity.encodeToByteArray()).toString())
+                val artifact = upload(conversation, createdByUserId, upload, artifactId)
+                buildList {
+                    if (data is Conversation.Message.ContentItem.ToolResult.Data.Text ||
+                        (!upload.mediaType.startsWith("image/") && upload.mediaType != "application/pdf")) {
+                        val preview = BinaryContent.fromBytes(upload.content).textPreview()
+                        val bounded = preview.take(MAX_TOOL_PREVIEW_CHARACTERS).let {
+                            if (it.lastOrNull()?.isHighSurrogate() == true) it.dropLast(1) else it
+                        }
+                        add(Conversation.Message.ContentItem.ToolResult.Data.Text(
+                            bounded +
+                                if (preview.length > MAX_TOOL_PREVIEW_CHARACTERS) "\n[Preview truncated; save the artifact for the complete result.]" else ""
+                        ))
+                    }
+                    add(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(artifact.reference()))
+                }
+            })
         }
         validateReferences(conversation.id, persisted)
         return persisted
@@ -178,8 +219,11 @@ class ConversationArtifactApplicationService(
                 materialized[id] = MaterializedArtifact(artifact, unavailableReason = "Older attachment omitted from this request's media budget")
                 continue
             }
-            if (artifact.source !is Artifact.ContentSource.Managed && Artifact.Kind.fromMediaType(artifact.mediaType) == Artifact.Kind.FILE) {
-                materialized[id] = MaterializedArtifact(artifact, unavailableReason = "This attachment type is available for download but is not supported as AI input")
+            val toolOutputFile = artifact.purpose == Artifact.Purpose.TOOL_OUTPUT &&
+                !artifact.mediaType.startsWith("image/") && artifact.mediaType != "application/pdf"
+            val unsupportedExternalFile = external && Artifact.Kind.fromMediaType(artifact.mediaType) == Artifact.Kind.FILE
+            if (toolOutputFile || unsupportedExternalFile) {
+                materialized[id] = MaterializedArtifact(artifact, unavailableReason = "Saved output: artifact_id=${artifact.id.value}, bytes=${artifact.sizeBytes}. Use grz_save_tool_output(artifact_id, path, mode=original) to save exact bytes, even when the preview looks incorrect. Use mode=text with source_encoding for strict conversion to UTF-8.")
                 continue
             }
             if (external) externalCountRemaining--
@@ -202,11 +246,11 @@ class ConversationArtifactApplicationService(
                             materialized.getValue(item.artifact.id).asContentItem()
 
                         is Conversation.Message.ContentItem.ToolResult -> item.copy(
-                            result = item.result.map { data ->
+                            result = item.result.flatMap { data ->
                                 if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData) {
                                     materialized.getValue(data.artifact.id).asToolResultData()
                                 } else {
-                                    data
+                                    listOf(data)
                                 }
                             }
                         )
@@ -267,12 +311,16 @@ class ConversationArtifactApplicationService(
         val references = content.contentArtifactReferences()
         if (references.isEmpty()) return
 
-        require(references.size <= ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE) {
-            "A message can contain at most ${ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE} artifacts"
-        }
         val artifacts = requireArtifactReferences(conversationId, references)
+        val attachmentCount = references.count { artifacts.getValue(it.id).purpose != Artifact.Purpose.TOOL_OUTPUT }
+        require(attachmentCount <= ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE) {
+            "A message can contain at most ${ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE} attachments"
+        }
         val totalBytes = references.sumOf { reference ->
-            artifacts.getValue(reference.id).takeIf { it.source is Artifact.ContentSource.Managed }?.sizeBytes ?: 0L
+            artifacts.getValue(reference.id).takeIf {
+                it.source is Artifact.ContentSource.Managed && (it.purpose != Artifact.Purpose.TOOL_OUTPUT ||
+                    it.mediaType.startsWith("image/") || it.mediaType == "application/pdf")
+            }?.sizeBytes ?: 0L
         }
         require(totalBytes <= ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE) {
             "Message artifacts exceed the ${ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE / (1024 * 1024)} MB total limit"
@@ -423,18 +471,26 @@ class ConversationArtifactApplicationService(
                 )
             }
 
-        fun asToolResultData(): Conversation.Message.ContentItem.ToolResult.Data =
-            if (unavailableReason != null) Conversation.Message.ContentItem.ToolResult.Data.Text(
-                "[Attachment ${artifact.fileName}: $unavailableReason]"
-            ) else Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
-                data = encoded,
-                mediaType = Conversation.Message.MediaType.parse(artifact.mediaType),
-                fileName = artifact.fileName,
-            )
+        fun asToolResultData(): List<Conversation.Message.ContentItem.ToolResult.Data> = buildList {
+            if (unavailableReason != null) {
+                add(Conversation.Message.ContentItem.ToolResult.Data.Text("[Attachment ${artifact.fileName}: $unavailableReason]"))
+            } else {
+                add(Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                    data = encoded,
+                    mediaType = Conversation.Message.MediaType.parse(artifact.mediaType),
+                    fileName = artifact.fileName,
+                ))
+                add(Conversation.Message.ContentItem.ToolResult.Data.Text(
+                    "[Saved output: artifact_id=${artifact.id.value}, file=${artifact.fileName}, bytes=${artifact.sizeBytes}. " +
+                        "Use grz_save_tool_output(artifact_id, path, mode=original) to save exact bytes in a workspace.]"
+                ))
+            }
+        }
     }
 
     companion object {
         const val DEFAULT_GC_BATCH_SIZE = 100
+        private const val MAX_TOOL_PREVIEW_CHARACTERS = 64 * 1024
         private val SCREENSHOT_TOOL_NAMES = setOf(
             "grz_capture_screenshot",
             "grz_computer_observe",

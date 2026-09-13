@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.db.runtime
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
@@ -37,6 +38,52 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
+    @Test
+    fun `binary migration preserves existing command output and permits zero bytes in jsonb`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
+        val schema = "binary_migration_${UUID.randomUUID().toString().replace("-", "")}"
+        val admin = dataSource()
+        admin.connection.use { it.createStatement().use { s -> s.execute("CREATE SCHEMA $schema") } }
+        try {
+            val source = dataSource(schema).also(::createRuntimeSchema)
+            val text = "שלום \\u0000 literal\nold output"
+            val encoded = Json.encodeToString(kotlinx.serialization.json.JsonPrimitive.serializer(), kotlinx.serialization.json.JsonPrimitive(text))
+            val old = """{"conversationId":"migration","commandTasks":[{"id":"task","status":"COMPLETED","terminalOutput":$encoded}],"commandMonitors":[{"id":"monitor","terminalOutput":$encoded,"terminalErrorOutput":""}],"commandMonitorEvents":[{"id":"event","output":$encoded}]}"""
+            source.connection.use { connection ->
+                connection.createStatement().use { it.execute("CREATE TABLE artifacts(id TEXT)") }
+                connection.prepareStatement("INSERT INTO conversation_runtime_records(conversation_id,record_json) VALUES ('migration',?::jsonb)").use {
+                    it.setString(1, old)
+                    it.executeUpdate()
+                }
+                connection.createStatement().use {
+                    executeSqlResource(it, "db/migration/postgres/V60__binary_command_output.sql")
+                }
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("SELECT record_json::text FROM conversation_runtime_records WHERE conversation_id='migration'").use { row ->
+                        assertTrue(row.next())
+                        val json = Json.parseToJsonElement(row.getString(1)) as kotlinx.serialization.json.JsonObject
+                        for ((array, field) in listOf("commandTasks" to "terminalOutputContent", "commandMonitors" to "terminalOutputContent", "commandMonitorEvents" to "content")) {
+                            val item = (json.getValue(array) as kotlinx.serialization.json.JsonArray).single() as kotlinx.serialization.json.JsonObject
+                            val restored = Json.decodeFromString<BinaryContent>(item.getValue(field).toString())
+                            kotlin.test.assertContentEquals(text.encodeToByteArray(), restored.bytes())
+                            assertFalse(item.containsKey("terminalOutput"))
+                        }
+                    }
+                }
+            }
+            val coordinator = PostgresConversationRuntimeCoordinator(source, Json { encodeDefaults = true })
+            val bytes = ByteArray(1024) { it.toByte() }
+            val task = CommandTask(CommandTask.Id("raw"), Conversation.Id("raw-conversation"),
+                ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"), command = "binary", workingDirectory = "/workspace",
+                status = CommandTask.Status.COMPLETED, processId = 1, processStartedAt = null, outputFile = "/output",
+                outputBytes = bytes.size.toLong(), createdAt = Instant.fromEpochSeconds(1), updatedAt = Instant.fromEpochSeconds(2),
+                terminalOutputStartByte = 0, terminalOutputContent = BinaryContent.fromBytes(bytes))
+            coordinator.upsertCommandTask(task)
+            kotlin.test.assertContentEquals(bytes, coordinator.findCommandTask(task.conversationId, task.id)!!.terminalOutputContent!!.bytes())
+        } finally {
+            admin.connection.use { it.createStatement().use { s -> s.execute("DROP SCHEMA $schema CASCADE") } }
+        }
+    }
     @Test
     fun `claimed task remains fenced and becomes an incident when its worker is lost`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
@@ -467,7 +514,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 monitorId = monitor.id,
                 outputStartByte = 0,
                 outputEndByte = 6,
-                output = "ERROR",
+                content = BinaryContent.fromText("ERROR"),
                 outputTruncatedBefore = false,
                 occurredAt = now,
                 deliveryRequested = true,
@@ -522,8 +569,8 @@ class PostgresConversationRuntimeCoordinatorTest {
                 completedAt = Instant.fromEpochMilliseconds(3_000),
                 updatedAt = Instant.fromEpochMilliseconds(3_000),
                 terminalOutputStartByte = 0,
-                terminalOutput = "ERROR",
-                terminalErrorOutput = "",
+                terminalOutputContent = ("ERROR")?.let(BinaryContent::fromText),
+                terminalErrorContent = ("")?.let(BinaryContent::fromText),
             )
             reloadedCoordinator.synchronizeCommandMonitor(terminal)
             assertEquals(

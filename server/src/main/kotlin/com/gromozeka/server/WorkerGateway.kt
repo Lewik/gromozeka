@@ -373,7 +373,7 @@ class WorkerGatewayService(
             WorkerGatewayMessage.Response(
                 requestId = request.id,
                 status = WorkerGatewayMessage.Response.Status.FAILED,
-                errorCode = error::class.simpleName ?: "WorkerRequestFailure",
+                errorCode = workerRequestFailureCode(error),
                 errorMessage = error.message ?: "Worker request failed",
             )
         }
@@ -445,5 +445,16 @@ internal fun workerGatewayAuthentication(
             )
         }
         call.attributes.put(authenticatedWorkerGatewayKey, worker)
+    }
+}
+
+internal fun workerRequestFailureCode(error: Throwable): String {
+    val sqlState = generateSequence(error) { it.cause }
+        .filterIsInstance<java.sql.SQLException>().firstOrNull()?.sqlState
+    return when {
+        sqlState?.startsWith("08") == true || sqlState in setOf("40001", "40P01", "57P01", "57P02", "57P03", "53300") -> "DATABASE_UNAVAILABLE"
+        sqlState != null -> "DATABASE_REQUEST_REJECTED"
+        error is IllegalArgumentException || error is IllegalStateException -> "REQUEST_REJECTED"
+        else -> "INTERNAL_SERVER_ERROR"
     }
 }

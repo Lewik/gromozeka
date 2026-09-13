@@ -1,5 +1,6 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.application.service.InMemoryConversationRuntimeCoordinator
 import com.gromozeka.application.service.ServerCommandRuntimeStateService
 import com.gromozeka.domain.model.Conversation
@@ -40,6 +41,62 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class GrzCommandMonitorToolsTest {
+    @Test
+    fun `saved output preserves binary bytes and text conversion cannot damage a destination`() {
+        val root = java.nio.file.Files.createTempDirectory("tool-output-export-")
+        var bytes = ByteArray(1024 * 1024 + 257) { it.toByte() }
+        var requests = 0
+        var corruptHash = false
+        val artifactId = com.gromozeka.domain.model.Artifact.Id("artifact-1")
+        val reader = object : com.gromozeka.domain.service.ToolOutputArtifactReader {
+            override suspend fun read(
+                conversationId: Conversation.Id,
+                artifactId: com.gromozeka.domain.model.Artifact.Id,
+                offset: Long,
+                limit: Int,
+            ): com.gromozeka.domain.service.ToolOutputArtifactChunk {
+                requests++
+                val reference = com.gromozeka.domain.model.Artifact.Reference(artifactId, "output.bin",
+                    "application/octet-stream", bytes.size.toLong(), com.gromozeka.domain.model.Artifact.Purpose.TOOL_OUTPUT,
+                    com.gromozeka.domain.model.Artifact.Kind.FILE)
+                val hash = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+                return com.gromozeka.domain.service.ToolOutputArtifactChunk(reference,
+                    BinaryContent.fromBytes(bytes.copyOfRange(offset.toInt(), minOf(bytes.size, offset.toInt() + limit))),
+                    offset, bytes.size.toLong(), if (corruptHash) "0".repeat(64) else hash)
+            }
+        }
+        val tool = com.gromozeka.infrastructure.ai.tool.GrzSaveToolOutputToolImpl(reader)
+        val execution = ToolExecutionContext(mapOf("conversationId" to "conversation-1", "workspaceRootPath" to root.toString()))
+        try {
+            val original = tool.execute(com.gromozeka.domain.tool.filesystem.SaveToolOutputRequest(artifactId.value, "output.bin"), execution)
+            assertEquals(true, original["success"])
+            assertEquals(2, requests)
+            kotlin.test.assertContentEquals(bytes, java.nio.file.Files.readAllBytes(root.resolve("output.bin")))
+            corruptHash = true
+            assertEquals(false, tool.execute(com.gromozeka.domain.tool.filesystem.SaveToolOutputRequest(
+                artifactId.value, "output.bin", overwrite = true), execution)["success"])
+            kotlin.test.assertContentEquals(bytes, java.nio.file.Files.readAllBytes(root.resolve("output.bin")))
+            corruptHash = false
+            val failedText = tool.execute(com.gromozeka.domain.tool.filesystem.SaveToolOutputRequest(
+                artifactId.value, "output.bin", mode = "text", overwrite = true), execution)
+            assertEquals(false, failedText["success"])
+            kotlin.test.assertContentEquals(bytes, java.nio.file.Files.readAllBytes(root.resolve("output.bin")))
+            assertEquals(false, tool.execute(com.gromozeka.domain.tool.filesystem.SaveToolOutputRequest(
+                artifactId.value, "output.bin"), execution)["success"])
+            assertEquals(false, tool.execute(com.gromozeka.domain.tool.filesystem.SaveToolOutputRequest(
+                artifactId.value, "../outside.bin"), execution)["success"])
+            bytes = "שלום\u0000world".toByteArray(Charsets.UTF_16LE)
+            val text = tool.execute(com.gromozeka.domain.tool.filesystem.SaveToolOutputRequest(
+                artifactId.value, "decoded.txt", mode = "text", source_encoding = "UTF-16LE"), execution)
+            assertEquals(true, text["success"])
+            kotlin.test.assertContentEquals("שלום\u0000world".encodeToByteArray(), java.nio.file.Files.readAllBytes(root.resolve("decoded.txt")))
+            bytes = byteArrayOf()
+            assertEquals(true, tool.execute(com.gromozeka.domain.tool.filesystem.SaveToolOutputRequest(artifactId.value, "empty.bin"), execution)["success"])
+            assertEquals(0L, java.nio.file.Files.size(root.resolve("empty.bin")))
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
     private val now = Instant.fromEpochMilliseconds(1_000)
     private val conversationId = Conversation.Id("conversation-1")
     private val otherConversationId = Conversation.Id("conversation-2")
@@ -137,7 +194,7 @@ class GrzCommandMonitorToolsTest {
                 monitorId = monitor.id,
                 outputStartByte = byte - 1,
                 outputEndByte = byte,
-                output = "event-$byte",
+                content = BinaryContent.fromText("event-$byte"),
                 outputTruncatedBefore = false,
                 occurredAt = now,
                 deliveryRequested = false,
@@ -147,7 +204,7 @@ class GrzCommandMonitorToolsTest {
         val service = RecordingCommandMonitorService(
             getResult = CommandMonitorOutput(
                 monitor = monitor,
-                output = "bounded output",
+                content = BinaryContent.fromText("bounded output"),
                 outputStartByte = 0,
                 nextOutputByte = 100,
                 hasMoreOutput = false,
@@ -168,9 +225,12 @@ class GrzCommandMonitorToolsTest {
         assertEquals(monitor.id, service.getMonitorId)
         assertEquals(7, service.getAfterByte)
         assertEquals(12_345, service.getWaitMillis)
-        assertEquals(64, (result["events"] as List<*>).size)
-        assertTrue(result["has_more_events"] as Boolean)
-        assertTrue(result["output_is_untrusted"] as Boolean)
+        val metadata = Json.parseToJsonElement((result.first() as com.gromozeka.domain.tool.AiToolResult.Text).content).jsonObject
+        assertEquals(64, metadata.getValue("events").jsonArray.size)
+        assertEquals("true", metadata.getValue("has_more_events").jsonPrimitive.content)
+        assertEquals("true", metadata.getValue("output_is_untrusted").jsonPrimitive.content)
+        val binary = result.filterIsInstance<com.gromozeka.domain.tool.AiToolResult.Binary>().single()
+        kotlin.test.assertContentEquals("bounded output".encodeToByteArray(), binary.content)
     }
 
     @Test

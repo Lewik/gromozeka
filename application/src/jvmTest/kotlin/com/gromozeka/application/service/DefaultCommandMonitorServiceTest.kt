@@ -464,7 +464,7 @@ class DefaultCommandMonitorServiceTest {
             conversationId: Conversation.Id,
             taskId: CommandTask.Id,
         ): CommandTask? {
-            check(!unavailable) { "Control plane is unavailable" }
+            if (unavailable) throw com.gromozeka.domain.service.ControlPlaneUnavailableException("Control plane is unavailable")
             return delegate.findCommandTask(conversationId, taskId)
         }
 
@@ -472,7 +472,7 @@ class DefaultCommandMonitorServiceTest {
             conversationId: Conversation.Id,
             monitorId: CommandMonitor.Id,
         ): CommandMonitor? {
-            check(!unavailable) { "Control plane is unavailable" }
+            if (unavailable) throw com.gromozeka.domain.service.ControlPlaneUnavailableException("Control plane is unavailable")
             return delegate.findCommandMonitor(conversationId, monitorId)
         }
 
@@ -480,7 +480,7 @@ class DefaultCommandMonitorServiceTest {
             monitor: CommandMonitor,
             events: List<CommandMonitorEvent>,
         ): CommandMonitorSyncResult {
-            check(!unavailable) { "Control plane is unavailable" }
+            if (unavailable) throw com.gromozeka.domain.service.ControlPlaneUnavailableException("Control plane is unavailable")
             return delegate.synchronizeCommandMonitor(monitor, events)
         }
     }

@@ -9,7 +9,7 @@ import kotlin.time.Instant
 
 class MessageSearchTextTest {
     @Test
-    fun `search index contains only visible user and assistant text`() {
+    fun `search index contains visible messages and tool results without thinking or arguments`() {
         val message = Conversation.Message(
             id = Conversation.Message.Id("message-1"),
             conversationId = Conversation.Id("conversation-1"),
@@ -28,7 +28,7 @@ class MessageSearchTextTest {
                     toolUseId = Conversation.Message.ContentItem.ToolCall.Id("tool-call-1"),
                     toolName = "secret_tool",
                     result = listOf(
-                        Conversation.Message.ContentItem.ToolResult.Data.Text("tool output")
+                        Conversation.Message.ContentItem.ToolResult.Data.Text("tool\u0000output")
                     ),
                 ),
                 Conversation.Message.ContentItem.AssistantMessage(
@@ -43,7 +43,7 @@ class MessageSearchTextTest {
         )
 
         assertEquals(
-            "Visible user text\nVisible assistant text",
+            "Visible user text\ntool\\u0000output\nVisible assistant text",
             message.searchText(),
         )
     }

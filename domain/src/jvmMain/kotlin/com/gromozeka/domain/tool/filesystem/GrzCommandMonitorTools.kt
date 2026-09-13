@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.MAX_COMMAND_MONITOR_WAIT_MILLIS
 import com.gromozeka.domain.tool.CommandMonitorOwnerToolMetadata
@@ -64,7 +65,7 @@ data class GetCommandMonitorRequest(
     val wait_ms: Long = 10_000,
 )
 
-interface GrzGetCommandMonitorTool : Tool<GetCommandMonitorRequest, Map<String, Any>> {
+interface GrzGetCommandMonitorTool : Tool<GetCommandMonitorRequest, List<AiToolResult>> {
     override val name: String
         get() = GRZ_GET_COMMAND_MONITOR_TOOL_NAME
 
@@ -74,6 +75,7 @@ interface GrzGetCommandMonitorTool : Tool<GetCommandMonitorRequest, Map<String, 
     override val description: String
         get() = """
             Wait for a command monitor and return bounded filter output starting at after_byte.
+            Output is returned as raw bytes with a safe text preview and an artifact_id for grz_save_tool_output in conversations.
             Reuse next_output_byte on the next call. Continue while status is WORKING or has_more_output is true.
             The terminal statuses are COMPLETED, FAILED, and CANCELLED.
             Gromozeka conversations receive monitor events automatically, so call this only for explicit status or output inspection. External MCP callers must poll.
@@ -83,7 +85,7 @@ interface GrzGetCommandMonitorTool : Tool<GetCommandMonitorRequest, Map<String, 
     override val requestType: Class<GetCommandMonitorRequest>
         get() = GetCommandMonitorRequest::class.java
 
-    override fun execute(request: GetCommandMonitorRequest, context: ToolExecutionContext?): Map<String, Any>
+    override fun execute(request: GetCommandMonitorRequest, context: ToolExecutionContext?): List<AiToolResult>
 }
 
 data class CancelCommandMonitorRequest(

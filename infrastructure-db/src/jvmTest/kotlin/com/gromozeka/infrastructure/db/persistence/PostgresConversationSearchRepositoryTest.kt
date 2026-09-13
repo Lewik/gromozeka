@@ -1,6 +1,12 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.UserIdentity
+import kotlinx.serialization.json.Json
+import org.flywaydb.core.Flyway
+import org.jetbrains.exposed.v1.jdbc.Database
+import kotlin.time.Clock
 import com.gromozeka.domain.model.ConversationSearchHit
 import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.Project
@@ -18,6 +24,53 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PostgresConversationSearchRepositoryTest {
+    @Test
+    fun `fresh database migrations preserve searchable tool content beyond its message preview`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
+        val schema = "artifact_search_${UUID.randomUUID().toString().replace("-", "")}"
+        val source = dataSource("$schema,public")
+        try {
+            Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres").load().migrate()
+            Database.connect(source)
+            val now = Clock.System.now()
+            val owner = ExposedIdentityRepository().observeTelegramIdentity(UserIdentity.Telegram(123, "Owner"), now)
+            val project = ExposedProjectRepository().save(Project(Project.Id("p"), "Project", createdAt = now, lastUsedAt = now))
+            val conversation = ExposedConversationRepository().create(Conversation(
+                Conversation.Id("c"), project.id, setOf(Conversation.Participant.User(owner.id)),
+                currentThread = Conversation.Thread.Id("t"), createdAt = now, updatedAt = now,
+            ))
+            ExposedThreadRepository().save(Conversation.Thread(conversation.currentThread, conversation.id, createdAt = now, updatedAt = now))
+            val fullText = "x".repeat(70_000) + " searchable-after-preview"
+            val artifact = ExposedArtifactRepository().save(Artifact(
+                Artifact.Id("output"), project.id, conversation.id, owner.id, "stdout.bin", "application/octet-stream",
+                fullText.length.toLong(), Artifact.ContentSource.Managed("a".repeat(64)), Artifact.Purpose.TOOL_OUTPUT,
+                Artifact.State.COMMITTED, now, now,
+            ), fullText)
+            val message = Conversation.Message(
+                Conversation.Message.Id("m"), conversation.id, role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.ToolResult(
+                    Conversation.Message.ContentItem.ToolCall.Id("call"), "grz_execute_command",
+                    result = listOf(
+                        Conversation.Message.ContentItem.ToolResult.Data.Text("bounded preview"),
+                        Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(artifact.reference()),
+                    ),
+                )), createdAt = now,
+            )
+            val messages = ExposedMessageRepository(Json)
+            messages.save(message)
+            ExposedThreadMessageRepository(Json).add(conversation.currentThread, message.id, 0)
+            assertEquals(listOf(message.id), ExposedThreadMessageRepository(Json).getMessagesByThread(conversation.currentThread).map { it.id })
+            val search = PostgresConversationSearchRepository(source)
+            val found = search.search(ConversationSearchRequest("searchable-after-preview", includeMetadataMatches = false), setOf(project.id), owner.id)
+            assertEquals(listOf(message.id), found.hits.mapNotNull { it.messageId })
+            assertEquals(message, messages.findById(message.id))
+            assertTrue(search.search(ConversationSearchRequest("searchable-after-preview"), emptySet(), owner.id).hits.isEmpty())
+        } finally {
+            source.connection.use { it.createStatement().use { statement -> statement.execute("DROP SCHEMA IF EXISTS $schema CASCADE") } }
+        }
+    }
+
     @Test
     fun `search respects branches access pagination metadata and literal wildcards`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
@@ -105,6 +158,32 @@ class PostgresConversationSearchRepositoryTest {
                 participantUserId,
             )
             assertTrue(inaccessible.hits.isEmpty())
+
+            val toolJson = """{"content":[{"toolUseId":"call","result":[{"content":"binary-search\u0000needle"}]}]}"""
+            repositoryDataSource.connection.use { connection ->
+                connection.prepareStatement("UPDATE messages SET message_json = ? WHERE id = 'message-literal'").use {
+                    it.setString(1, toolJson)
+                    it.executeUpdate()
+                }
+            }
+            val migrations = org.flywaydb.core.Flyway.configure()
+                .dataSource(repositoryDataSource).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres")
+                .baselineOnMigrate(true).baselineVersion("60").load()
+            assertEquals(1, migrations.migrate().migrationsExecuted)
+            val toolMatches = repository.search(
+                ConversationSearchRequest(query = "binary-search", includeMetadataMatches = false),
+                readableProjects, participantUserId,
+            )
+            assertEquals(listOf("message-literal"), toolMatches.hits.mapNotNull { it.messageId?.value })
+            repositoryDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("SELECT message_json FROM messages WHERE id = 'message-literal'").use {
+                        assertTrue(it.next())
+                        assertEquals(toolJson, it.getString(1))
+                    }
+                }
+            }
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->

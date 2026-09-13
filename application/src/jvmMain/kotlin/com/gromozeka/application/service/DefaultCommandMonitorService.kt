@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
@@ -45,7 +46,6 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.RandomAccessFile
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 
@@ -251,6 +251,10 @@ class DefaultCommandMonitorService(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
+                if (error !is com.gromozeka.domain.service.ControlPlaneUnavailableException) {
+                    log.error(error) { "Command monitor recovery was rejected; local output is retained" }
+                    return
+                }
                 consecutiveFailures += 1
                 if (
                     consecutiveFailures == 1L ||
@@ -261,7 +265,7 @@ class DefaultCommandMonitorService(
                             "(attempt $consecutiveFailures): ${error::class.simpleName}: ${error.message}"
                     }
                 }
-                delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                delay(minOf(30_000L, CONTROL_PLANE_RETRY_INTERVAL_MILLIS * (1L shl minOf(consecutiveFailures - 1, 5L).toInt())))
             }
         }
     }
@@ -359,12 +363,13 @@ class DefaultCommandMonitorService(
                 }
             }
         } finally {
-            activeMonitors.remove(active.monitor.id, active)
+            if (active.synchronization.rejection == null) activeMonitors.remove(active.monitor.id, active)
             active.completed.complete(Unit)
         }
     }
 
     private suspend fun refreshControlPlaneState(active: ActiveMonitor) {
+        if (!active.controlReads.canAttempt()) return
         try {
             val storedMonitor = runtimeState.findCommandMonitor(
                 active.monitor.conversationId,
@@ -381,11 +386,16 @@ class DefaultCommandMonitorService(
                     active.monitor.terminalNotificationDeliveredAt ?: storedMonitor.terminalNotificationDeliveredAt,
             )
             active.sourceTask = sourceTask
+            active.controlReads.succeeded()
             active.lastControlPlaneWarningAtNanos = null
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            warnControlPlaneUnavailable(active, error)
+            active.controlReads.failed(error)
+            active.controlReads.rejection?.let {
+                active.monitor = active.monitor.copy(synchronizationError = it)
+                log.error(error) { "Command monitor control request was rejected: ${active.monitor.id.value}" }
+            } ?: warnControlPlaneUnavailable(active, error)
         }
     }
 
@@ -441,6 +451,7 @@ class DefaultCommandMonitorService(
         active: ActiveMonitor,
         flushTrailing: Boolean,
     ) {
+        if (!active.synchronization.canAttempt()) return
         val scan = scanEvents(
             monitor = active.monitor,
             scanCursor = active.scanCursor,
@@ -471,24 +482,27 @@ class DefaultCommandMonitorService(
             active.monitor = synchronize(proposed, scan.events).monitor
             active.scanCursor = scan.nextScanCursor
             active.lastControlPlaneWarningAtNanos = null
+            active.synchronization.succeeded()
             publishSnapshot(active.monitor.conversationId)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             active.scanCursor = active.monitor.eventOutputCursor
-            warnControlPlaneUnavailable(active, error)
+            recordSynchronizationFailure(active, error)
         }
     }
 
     private suspend fun trySynchronizeProgress(active: ActiveMonitor) {
+        if (!active.synchronization.canAttempt()) return
         try {
             active.monitor = synchronize(active.monitor).monitor
             active.lastControlPlaneWarningAtNanos = null
+            active.synchronization.succeeded()
             publishSnapshot(active.monitor.conversationId)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            warnControlPlaneUnavailable(active, error)
+            recordSynchronizationFailure(active, error)
         }
     }
 
@@ -515,20 +529,38 @@ class DefaultCommandMonitorService(
         monitor: CommandMonitor,
         events: List<CommandMonitorEvent>,
     ) {
-        var candidate = monitor
+        active.monitor = monitor
         while (currentCoroutineContext().isActive) {
+            active.synchronization.rejection?.let {
+                active.monitor = active.monitor.copy(synchronizationError = it)
+                return
+            }
+            if (!active.synchronization.canAttempt()) {
+                delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                continue
+            }
             try {
-                active.monitor = synchronize(candidate, events).monitor
+                active.monitor = synchronize(active.monitor, events).monitor
+                active.synchronization.succeeded()
                 active.lastControlPlaneWarningAtNanos = null
                 publishSnapshot(active.monitor.conversationId)
                 return
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                warnControlPlaneUnavailable(active, error)
-                delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
-                candidate = candidate.copy(updatedAt = Clock.System.now())
+                recordSynchronizationFailure(active, error)
             }
+        }
+    }
+
+    private fun recordSynchronizationFailure(active: ActiveMonitor, error: Throwable) {
+        active.synchronization.failed(error)
+        val rejection = active.synchronization.rejection
+        if (rejection == null) {
+            warnControlPlaneUnavailable(active, error)
+        } else {
+            active.monitor = active.monitor.copy(synchronizationError = rejection)
+            log.error(error) { "Command monitor synchronization was rejected; local output is retained: ${active.monitor.id.value}" }
         }
     }
 
@@ -658,33 +690,21 @@ class DefaultCommandMonitorService(
         lineEnd: Long,
         output: RandomAccessFile,
     ): CommandMonitorEvent {
-        var contentEnd = lineEnd
-        if (contentEnd > lineStart) {
-            output.seek(contentEnd - 1)
-            if (output.read() == '\n'.code) contentEnd -= 1
-        }
-        if (contentEnd > lineStart) {
-            output.seek(contentEnd - 1)
-            if (output.read() == '\r'.code) contentEnd -= 1
-        }
+        val contentEnd = lineEnd
         val requestedStart = maxOf(lineStart, contentEnd - MAX_EVENT_TEXT_BYTES)
         val bytes = ByteArray((contentEnd - requestedStart).toInt())
         if (bytes.isNotEmpty()) {
             output.seek(requestedStart)
             output.readFully(bytes)
         }
-        var safeStart = 0
-        while (safeStart < bytes.size && (bytes[safeStart].toInt() and 0xC0) == 0x80) {
-            safeStart += 1
-        }
-        val actualStart = requestedStart + safeStart
+        val actualStart = requestedStart
         return CommandMonitorEvent(
             id = CommandMonitorEvent.Id("${monitor.id.value}:$lineEnd"),
             conversationId = monitor.conversationId,
             monitorId = monitor.id,
             outputStartByte = actualStart,
             outputEndByte = lineEnd,
-            output = String(bytes, safeStart, bytes.size - safeStart, StandardCharsets.UTF_8),
+            content = BinaryContent.fromBytes(bytes),
             outputTruncatedBefore = actualStart > lineStart,
             occurredAt = Clock.System.now(),
             deliveryRequested = monitor.agentDefinitionId != null,
@@ -715,7 +735,7 @@ class DefaultCommandMonitorService(
         val next = start + safeLength
         return CommandMonitorOutput(
             monitor = monitor.copy(outputBytes = size),
-            output = String(bytes, 0, safeLength, StandardCharsets.UTF_8),
+            content = BinaryContent.fromBytes(bytes.copyOf(safeLength)),
             outputStartByte = start,
             nextOutputByte = next,
             hasMoreOutput = next < size,
@@ -724,14 +744,11 @@ class DefaultCommandMonitorService(
 
     private fun retainedTerminalOutput(monitor: CommandMonitor, afterByte: Long): CommandMonitorOutput {
         val tailStart = monitor.terminalOutputStartByte ?: monitor.outputBytes
-        val bytes = monitor.terminalOutput.orEmpty().toByteArray(StandardCharsets.UTF_8)
-        var offset = (afterByte - tailStart).coerceIn(0, bytes.size.toLong()).toInt()
-        while (offset < bytes.size && (bytes[offset].toInt() and 0xC0) == 0x80) {
-            offset += 1
-        }
+        val bytes = monitor.terminalOutputContent?.bytes() ?: byteArrayOf()
+        val offset = (afterByte - tailStart).coerceIn(0, bytes.size.toLong()).toInt()
         return CommandMonitorOutput(
             monitor = monitor,
-            output = String(bytes, offset, bytes.size - offset, StandardCharsets.UTF_8),
+            content = BinaryContent.fromBytes(bytes.copyOfRange(offset, bytes.size)),
             outputStartByte = tailStart + offset,
             nextOutputByte = monitor.outputBytes,
             hasMoreOutput = false,
@@ -743,14 +760,14 @@ class DefaultCommandMonitorService(
         val errorTail = readTail(errorFile, MAX_TERMINAL_ERROR_BYTES).second
         return copy(
             terminalOutputStartByte = outputTail.first,
-            terminalOutput = outputTail.second,
-            terminalErrorOutput = errorTail,
+            terminalOutputContent = outputTail.second,
+            terminalErrorContent = errorTail,
         )
     }
 
-    private fun readTail(path: String, maxBytes: Long): Pair<Long, String> {
+    private fun readTail(path: String, maxBytes: Long): Pair<Long, BinaryContent> {
         val file = File(path)
-        if (!file.isFile) return 0L to ""
+        if (!file.isFile) return 0L to BinaryContent.EMPTY
         val size = file.length()
         val requestedStart = maxOf(0L, size - maxBytes)
         val bytes = ByteArray((size - requestedStart).toInt())
@@ -760,12 +777,7 @@ class DefaultCommandMonitorService(
                 output.readFully(bytes)
             }
         }
-        var safeStart = 0
-        while (safeStart < bytes.size && (bytes[safeStart].toInt() and 0xC0) == 0x80) {
-            safeStart += 1
-        }
-        return (requestedStart + safeStart) to
-            String(bytes, safeStart, bytes.size - safeStart, StandardCharsets.UTF_8)
+        return requestedStart to BinaryContent.fromBytes(bytes)
     }
 
     private suspend fun publishSnapshot(conversationId: Conversation.Id) {
@@ -863,6 +875,8 @@ class DefaultCommandMonitorService(
         var inputClosed: Boolean = false
         var lastControlPlaneWarningAtNanos: Long? = null
         val completed = CompletableDeferred<Unit>()
+        val synchronization = CommandSynchronizationState()
+        val controlReads = CommandSynchronizationState()
     }
 
     private data class EventScan(

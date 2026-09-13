@@ -298,6 +298,7 @@ class WorkerGatewayOperationHandler(
                     ).encodeToByteArray()
                 }
 
+                WorkerGatewayOperation.ARTIFACT_CONTENT,
                 WorkerGatewayOperation.COMMAND_RUNTIME_STATE,
                 WorkerGatewayOperation.WORKSPACE_STATE,
                 WorkerGatewayOperation.AGENT_SKILL_PACKAGE,

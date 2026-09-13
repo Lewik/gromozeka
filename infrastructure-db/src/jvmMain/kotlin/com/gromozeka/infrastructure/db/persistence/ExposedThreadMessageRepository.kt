@@ -57,7 +57,7 @@ class ExposedThreadMessageRepository(
 
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> = dbQuery {
         (ThreadMessages innerJoin Messages)
-            .selectAll()
+            .select(Messages.messageJson)
             .where { ThreadMessages.threadId eq threadId.value }
             .orderBy(ThreadMessages.position, SortOrder.ASC)
             .map { row ->

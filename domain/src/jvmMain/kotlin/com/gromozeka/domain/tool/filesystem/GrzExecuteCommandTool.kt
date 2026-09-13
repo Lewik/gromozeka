@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -67,7 +68,7 @@ data class ExecuteCommandRequest(
  * **Output capture:**
  * - STDOUT and STDERR merged into one stream
  * - Full output is saved to a file under Gromozeka home
- * - Returned `output` is a bounded chunk with a byte cursor
+ * - Returns status metadata and a raw bounded output chunk with a byte cursor
  * - Exit code captured for success/failure detection
  * 
  * **Task lifecycle:**
@@ -158,7 +159,7 @@ data class ExecuteCommandRequest(
  * This tool delegates to:
  * @see com.gromozeka.domain.service.CommandTaskService
  */
-interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> {
+interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, List<AiToolResult>> {
     
     override val name: String
         get() = GRZ_EXECUTE_COMMAND_TOOL_NAME
@@ -185,11 +186,12 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
             - List directory: ls -la /path/to/dir
             - Git operations: git status, git diff, git log
             - Build operations: ./gradlew build, npm run build
+            The result contains status metadata and an output artifact with a safe text preview when UTF-8 decoding succeeds. Use grz_save_tool_output to save its exact bytes in a workspace.
             Large output is chunked; keep calling grz_get_command_task with next_output_byte or rerun a narrower command when needed.
         """.trimIndent()
     
     override val requestType: Class<ExecuteCommandRequest>
         get() = ExecuteCommandRequest::class.java
     
-    override fun execute(request: ExecuteCommandRequest, context: ToolExecutionContext?): Map<String, Any>
+    override fun execute(request: ExecuteCommandRequest, context: ToolExecutionContext?): List<AiToolResult>
 }

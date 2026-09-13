@@ -478,6 +478,57 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
+    fun `permanent synchronization rejection retains binary output without rerunning the command`() = runBlocking {
+        val directory = Files.createTempDirectory("command-rejected-result-").toFile()
+        val runner = FakeCommandProcessRunner(directory)
+        val coordinator = ToggleableCommandTaskCoordinator(InMemoryConversationRuntimeCoordinator())
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        try {
+            val started = service.start(ExecuteCommandRequest(command = "binary", yield_time_ms = 0), context(directory))
+            coordinator.rejected = true
+            val bytes = ByteArray(256) { it.toByte() }
+            File(runner.lastProcess.outputFile).writeBytes(bytes)
+            runner.lastProcess.complete(0)
+            waitUntil(2_000) { service.get(conversationId, started.task.id, 0, 0)?.task?.isTerminal == true }
+            val result = assertNotNull(service.get(conversationId, started.task.id, 0, 0))
+            assertEquals(CommandTask.Status.COMPLETED, result.task.status)
+            assertEquals(0, result.task.exitCode)
+            assertNotNull(result.task.synchronizationError)
+            kotlin.test.assertContentEquals(bytes, result.content.bytes())
+            kotlin.test.assertContentEquals(bytes, result.task.terminalOutputContent!!.bytes())
+            delay(1_200)
+            assertEquals(1, coordinator.rejectedWrites)
+            assertFalse(runner.lastProcess.terminateTreeCalled)
+            assertTrue(File(runner.lastProcess.outputFile).isFile)
+        } finally {
+            service.close()
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `rejected progress writes do not prevent server cancellation`() = runBlocking {
+        val directory = Files.createTempDirectory("command-rejected-progress-").toFile()
+        val runner = FakeCommandProcessRunner(directory)
+        val stored = InMemoryConversationRuntimeCoordinator()
+        val coordinator = ToggleableCommandTaskCoordinator(stored)
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        try {
+            val started = service.start(ExecuteCommandRequest(command = "running", yield_time_ms = 0), context(directory))
+            coordinator.rejected = true
+            runner.lastProcess.appendOutput("progress")
+            waitUntil(3_000) { coordinator.rejectedWrites == 1 }
+            stored.requestCommandTaskCancellation(conversationId, started.task.id, Clock.System.now())
+            waitUntil(3_000) { runner.lastProcess.terminateTreeCalled }
+            assertEquals(1, runner.lastProcess.terminationCount)
+            assertEquals(1, coordinator.rejectedWrites)
+        } finally {
+            service.close()
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
     fun `concurrent cancellation terminates command once`() = runBlocking {
         withService { service, runner, _, projectDirectory ->
             val result = service.start(
@@ -713,21 +764,29 @@ class DefaultCommandTaskServiceTest {
     ) : ConversationRuntimeCoordinator by delegate {
         @Volatile
         var unavailable = false
+        @Volatile
+        var rejected = false
+        var rejectedWrites = 0
 
         override suspend fun findCommandTask(
             conversationId: Conversation.Id,
             taskId: CommandTask.Id,
         ): CommandTask? {
-            check(!unavailable) { "Control plane is unavailable" }
+            if (unavailable) throw com.gromozeka.domain.service.ControlPlaneUnavailableException("Control plane is unavailable")
             return delegate.findCommandTask(conversationId, taskId)
         }
 
-        override suspend fun upsertCommandTask(task: CommandTask) =
-            if (unavailable) {
-                error("Control plane is unavailable")
+        override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+            if (rejected) {
+                rejectedWrites++
+                throw com.gromozeka.domain.service.ControlPlaneRequestRejectedException("DATABASE_REQUEST_REJECTED", "Invalid stored data")
+            }
+            return if (unavailable) {
+                throw com.gromozeka.domain.service.ControlPlaneUnavailableException("Control plane is unavailable")
             } else {
                 delegate.upsertCommandTask(task)
             }
+        }
     }
 
     private class FakeRunningCommandProcess(

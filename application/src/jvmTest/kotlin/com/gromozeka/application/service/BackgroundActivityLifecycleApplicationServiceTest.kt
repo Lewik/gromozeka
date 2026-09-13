@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
@@ -165,7 +166,7 @@ class BackgroundActivityLifecycleApplicationServiceTest {
             completedAt = at,
             completionNotificationRequestedAt = at,
             terminalOutputStartByte = 0,
-            terminalOutput = "",
+            terminalOutputContent = ("")?.let(BinaryContent::fromText),
         )
 
     private fun commandMonitor(
@@ -207,7 +208,7 @@ class BackgroundActivityLifecycleApplicationServiceTest {
             monitorId = monitor.id,
             outputStartByte = 0,
             outputEndByte = 6,
-            output = "match",
+            content = BinaryContent.fromText("match"),
             outputTruncatedBefore = false,
             occurredAt = monitor.createdAt,
             deliveryRequested = deliveryRequested,

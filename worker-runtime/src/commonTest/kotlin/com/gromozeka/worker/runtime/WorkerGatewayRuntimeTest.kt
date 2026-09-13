@@ -206,7 +206,7 @@ class WorkerGatewayRuntimeTest {
         job.cancelAndJoin()
         cancelled.await()
         assertTrue(response.await().isFailure)
-        assertFailsWith<IllegalStateException> { outbound.execute(WorkerGatewayOperation.WORKSPACE_STATE, byteArrayOf()) }
+        assertFailsWith<com.gromozeka.domain.service.ControlPlaneUnavailableException> { outbound.execute(WorkerGatewayOperation.WORKSPACE_STATE, byteArrayOf()) }
     }
 
     @Test

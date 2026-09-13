@@ -35,6 +35,48 @@ import kotlin.test.assertNull
 
 class WorkerCommandRuntimeGatewayHandlerTest {
     @Test
+    fun `artifact download checks conversation ownership and chunk boundaries`() = runBlocking {
+        val fixture = fixture()
+        val conversations = mock<ConversationRepository>()
+        val artifacts = mock<com.gromozeka.application.service.ConversationArtifactApplicationService>()
+        val access = mock<WorkerAccessService>()
+        val bytes = byteArrayOf(0, -1, 32)
+        val artifact = com.gromozeka.domain.model.Artifact(
+            id = com.gromozeka.domain.model.Artifact.Id("artifact"), projectId = fixture.conversation.projectId,
+            conversationId = fixture.conversation.id, createdByUserId = null, fileName = "data.bin",
+            mediaType = "application/octet-stream", sizeBytes = 3,
+            source = com.gromozeka.domain.model.Artifact.ContentSource.Managed("a".repeat(64)),
+            purpose = com.gromozeka.domain.model.Artifact.Purpose.TOOL_OUTPUT,
+            state = com.gromozeka.domain.model.Artifact.State.COMMITTED, createdAt = fixture.now, committedAt = fixture.now,
+        )
+        Mockito.`when`(conversations.findById(fixture.conversation.id)).thenReturn(fixture.conversation)
+        Mockito.`when`(artifacts.find(artifact.id)).thenReturn(artifact)
+        Mockito.`when`(artifacts.readChunk(artifact, 0, 1024)).thenReturn(bytes to 3L)
+        val handler = WorkerArtifactGatewayHandler(artifacts, conversations, access)
+        fun request(offset: Long = 0, limit: Int = 1024) = WorkerGatewayMessage.Request("download", WorkerGatewayOperation.ARTIFACT_CONTENT,
+            com.gromozeka.remote.protocol.WorkerArtifactCodec.encodeRequest(com.gromozeka.remote.protocol.WorkerArtifactReadRequest(
+                fixture.conversation.id, artifact.id, offset, limit)))
+        val response = com.gromozeka.remote.protocol.WorkerArtifactCodec.decodeResponse(handler.execute(fixture.identity, request()))
+        kotlin.test.assertContentEquals(bytes, response.content.bytes())
+        assertEquals(3L, response.totalBytes)
+        Mockito.verify(access).requireProjectAccess(fixture.workerId, fixture.conversation.projectId)
+        assertFailsWith<IllegalArgumentException> { handler.execute(fixture.identity, request(-1)) }
+        assertFailsWith<IllegalArgumentException> { handler.execute(fixture.identity, request(limit = 1024 * 1024 + 1)) }
+        Mockito.`when`(artifacts.find(artifact.id)).thenReturn(artifact.copy(conversationId = Conversation.Id("other")))
+        assertFailsWith<IllegalArgumentException> { handler.execute(fixture.identity, request()) }
+        Mockito.`when`(artifacts.find(artifact.id)).thenReturn(artifact.copy(state = com.gromozeka.domain.model.Artifact.State.DRAFT, committedAt = null))
+        assertFailsWith<IllegalArgumentException> { handler.execute(fixture.identity, request()) }
+        Mockito.verify(artifacts).readChunk(artifact, 0, 1024)
+    }
+
+    @Test
+    fun `database error codes distinguish transient failures from rejected data`() {
+        assertEquals("DATABASE_UNAVAILABLE", workerRequestFailureCode(java.sql.SQLException("connection lost", "08006")))
+        assertEquals("DATABASE_UNAVAILABLE", workerRequestFailureCode(RuntimeException(java.sql.SQLException("serialization", "40001"))))
+        assertEquals("DATABASE_REQUEST_REJECTED", workerRequestFailureCode(java.sql.SQLException("invalid Unicode", "22P05")))
+        assertEquals("REQUEST_REJECTED", workerRequestFailureCode(IllegalArgumentException("invalid scope")))
+    }
+    @Test
     fun `worker stores command state only in its granted execution scope`() = runBlocking {
         val fixture = fixture()
         val task = fixture.commandTask(fixture.workerId)

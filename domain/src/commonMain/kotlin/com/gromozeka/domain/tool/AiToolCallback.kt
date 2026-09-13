@@ -33,7 +33,6 @@ sealed interface AiToolResult {
         val mediaType: String,
     ) : AiToolResult {
         init {
-            require(content.isNotEmpty()) { "Binary tool result must not be empty" }
             require(fileName.isNotBlank()) { "Binary tool result file name must not be blank" }
             require(mediaType.isNotBlank()) { "Binary tool result media type must not be blank" }
         }

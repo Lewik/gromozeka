@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.io.RandomAccessFile
 
 @Service
 class LocalArtifactContentStore(
@@ -39,6 +40,17 @@ class LocalArtifactContentStore(
 
     override suspend fun read(id: Artifact.Id): ByteArray = withContext(Dispatchers.IO) {
         Files.readAllBytes(path(id))
+    }
+
+    override suspend fun readRange(id: Artifact.Id, offset: Long, limit: Int): ByteArray = withContext(Dispatchers.IO) {
+        require(offset >= 0 && limit > 0)
+        RandomAccessFile(path(id).toFile(), "r").use { file ->
+            require(offset <= file.length())
+            val bytes = ByteArray(minOf(limit.toLong(), file.length() - offset).toInt())
+            file.seek(offset)
+            file.readFully(bytes)
+            bytes
+        }
     }
 
     override suspend fun delete(id: Artifact.Id) = withContext(Dispatchers.IO) {

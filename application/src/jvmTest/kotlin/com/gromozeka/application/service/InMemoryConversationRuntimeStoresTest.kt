@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
@@ -1043,7 +1044,7 @@ class InMemoryConversationRuntimeStoresTest {
             monitorId = monitor.id,
             outputStartByte = 0,
             outputEndByte = 12,
-            output = "matched line",
+            content = BinaryContent.fromText("matched line"),
             outputTruncatedBefore = false,
             occurredAt = now,
             deliveryRequested = true,

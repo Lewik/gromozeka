@@ -14,19 +14,22 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Service
 import kotlinx.serialization.json.Json
 
 @Service
 class ExposedArtifactRepository : ArtifactRepository {
-    override suspend fun save(artifact: Artifact): Artifact = dbQuery {
+    private val metadataColumns = Artifacts.columns - Artifacts.searchText
+
+    override suspend fun save(artifact: Artifact, searchableText: String?): Artifact = dbQuery {
         Artifacts.insert {
             it[id] = artifact.id.value
             it[projectId] = artifact.projectId.value
             it[conversationId] = artifact.conversationId.value
             it[createdByUserId] = artifact.createdByUserId?.value
+            it[searchText] = searchableText
             it[fileName] = artifact.fileName
             it[mediaType] = artifact.mediaType
             it[sizeBytes] = artifact.sizeBytes
@@ -40,7 +43,7 @@ class ExposedArtifactRepository : ArtifactRepository {
     }
 
     override suspend fun findById(id: Artifact.Id): Artifact? = dbQuery {
-        Artifacts.selectAll()
+        Artifacts.select(metadataColumns)
             .where { Artifacts.id eq id.value }
             .singleOrNull()
             ?.toArtifact()
@@ -49,14 +52,14 @@ class ExposedArtifactRepository : ArtifactRepository {
     override suspend fun findByIds(ids: List<Artifact.Id>): List<Artifact> {
         if (ids.isEmpty()) return emptyList()
         return dbQuery {
-            Artifacts.selectAll()
+            Artifacts.select(metadataColumns)
                 .where { Artifacts.id inList ids.map(Artifact.Id::value) }
                 .map { it.toArtifact() }
         }
     }
 
     override suspend fun findByConversation(conversationId: Conversation.Id): List<Artifact> = dbQuery {
-        Artifacts.selectAll()
+        Artifacts.select(metadataColumns)
             .where { Artifacts.conversationId eq conversationId.value }
             .map { it.toArtifact() }
     }
@@ -72,7 +75,7 @@ class ExposedArtifactRepository : ArtifactRepository {
                 it[state] = Artifact.State.COMMITTED.name
                 it[Artifacts.committedAt] = committedAt
             }
-            val committedIds = Artifacts.selectAll()
+            val committedIds = Artifacts.select(metadataColumns)
                 .where {
                     (Artifacts.id inList values) and (Artifacts.state eq Artifact.State.COMMITTED.name)
                 }
@@ -92,7 +95,7 @@ class ExposedArtifactRepository : ArtifactRepository {
     override suspend fun findDraftsCreatedBefore(createdBefore: Instant, limit: Int): List<Artifact> {
         require(limit > 0) { "Artifact draft query limit must be positive" }
         return dbQuery {
-            Artifacts.selectAll()
+            Artifacts.select(metadataColumns)
                 .where {
                     (Artifacts.state eq Artifact.State.DRAFT.name) and
                         (Artifacts.createdAt less createdBefore)

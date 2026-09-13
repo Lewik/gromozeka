@@ -1,5 +1,7 @@
 package com.gromozeka.worker.runtime
 
+import com.gromozeka.domain.service.ControlPlaneRequestRejectedException
+import com.gromozeka.domain.service.ControlPlaneUnavailableException
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.McpServerRefreshPublisher
@@ -8,6 +10,9 @@ import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.shared.uuid.uuid7
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.SendChannel
@@ -48,7 +53,7 @@ open class WorkerGatewayOutbound(
     suspend fun detach(outgoing: SendChannel<WorkerGatewayMessage>) = mutex.withLock {
         if (activeOutgoing === outgoing) {
             activeOutgoing = null
-            val error = IllegalStateException("Worker Gateway disconnected before receiving a response")
+            val error = ControlPlaneUnavailableException("Worker Gateway disconnected before receiving a response")
             pending.values.forEach { it.completeExceptionally(error) }
             pending.clear()
             closedRequests.clear()
@@ -63,7 +68,7 @@ open class WorkerGatewayOutbound(
         val request = WorkerGatewayMessage.Request(uuid7(), operation, payload)
         val response = CompletableDeferred<WorkerGatewayMessage.Response>()
         val outgoing = mutex.withLock {
-            val channel = activeOutgoing ?: error("Worker Gateway is offline")
+            val channel = activeOutgoing ?: throw ControlPlaneUnavailableException("Worker Gateway is offline")
             check(pending.put(request.id, response) == null) { "Duplicate Worker Gateway request id" }
             channel
         }
@@ -72,10 +77,17 @@ open class WorkerGatewayOutbound(
                 outgoing.send(request)
                 response.await()
             }
-            check(result.status == WorkerGatewayMessage.Response.Status.SUCCEEDED) {
-                "Server operation failed [${result.errorCode}]: ${result.errorMessage}"
+            if (result.status != WorkerGatewayMessage.Response.Status.SUCCEEDED) {
+                val message = "Server operation failed [${result.errorCode}]: ${result.errorMessage}"
+                if (result.errorCode == "DATABASE_UNAVAILABLE") throw ControlPlaneUnavailableException(message)
+                throw ControlPlaneRequestRejectedException(result.errorCode ?: "SERVER_REQUEST_REJECTED", message)
             }
             return requireNotNull(result.payload)
+        } catch (error: TimeoutCancellationException) {
+            currentCoroutineContext().ensureActive()
+            throw ControlPlaneUnavailableException("Worker Gateway response timed out", error)
+        } catch (error: kotlinx.coroutines.channels.ClosedSendChannelException) {
+            throw ControlPlaneUnavailableException("Worker Gateway disconnected while sending a request", error)
         } finally {
             withContext(NonCancellable) {
                 mutex.withLock {

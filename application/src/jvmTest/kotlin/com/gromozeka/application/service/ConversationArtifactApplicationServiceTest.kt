@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Artifact
+import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.domain.model.Conversation
@@ -15,12 +16,72 @@ import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ConversationArtifactApplicationServiceTest {
+    @Test
+    fun `tool outputs retain all bytes with a safe preview and full searchable text`() = runBlocking {
+        val samples = listOf(
+            byteArrayOf(),
+            ByteArray(256) { it.toByte() },
+            "before\u0000after".encodeToByteArray(),
+            ("x".repeat(70_000) + " searchable-after-preview").encodeToByteArray(),
+        )
+        for ((index, bytes) in samples.withIndex()) {
+            val result = Conversation.Message.ContentItem.ToolResult(
+                toolUseId = Conversation.Message.ContentItem.ToolCall.Id("binary-$index"),
+                toolName = "grz_execute_command",
+                result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                    Base64.getEncoder().encodeToString(bytes),
+                    Conversation.Message.MediaType.parse("application/octet-stream"),
+                    "stdout.bin",
+                )),
+            )
+            val stored = service.persistAndCommitToolResults(conversation, null, listOf(result)).single()
+            val artifact = stored.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single().artifact
+            assertContentEquals(bytes, service.read(artifact.id))
+            val text = stored.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>().joinToString("\n") { it.content }
+            assertFalse(text.contains('\u0000'))
+            val replayed = service.persistAndCommitToolResults(conversation, null, listOf(result)).single()
+            assertEquals(stored, replayed)
+            val rendered = service.materialize(conversation.id, listOf(userMessage(conversation.id, stored)))
+                .single().content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>().single()
+                .result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>().joinToString("\n") { it.content }
+            assertTrue(rendered.contains(artifact.id.value))
+            assertTrue(rendered.contains("grz_save_tool_output"))
+            val cloneConversation = conversation("clone-$index", "project-1")
+            val cloned = service.cloneReferences(conversation.id, cloneConversation, listOf(userMessage(conversation.id, stored)))
+            val clonedReference = (cloned.single().content.single() as Conversation.Message.ContentItem.ToolResult)
+                .result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single().artifact
+            val cloneRendered = service.materialize(cloneConversation.id, cloned).toString()
+            assertFalse(cloneRendered.contains(artifact.id.value))
+            assertTrue(cloneRendered.contains(clonedReference.id.value))
+            when (index) {
+                0 -> assertEquals(0L, artifact.sizeBytes)
+                1 -> {
+                    assertTrue(text.contains("Cannot decode"))
+                    assertEquals(null, repository.searchableText[artifact.id])
+                }
+                2 -> {
+                    assertTrue(text.contains("before\\u0000after"))
+                    assertEquals("before\\u0000after", repository.searchableText[artifact.id])
+                }
+                3 -> {
+                    assertFalse(text.contains("searchable-after-preview"))
+                    assertTrue(repository.searchableText.getValue(artifact.id)!!.contains("searchable-after-preview"))
+                }
+            }
+            val original = BinaryContent.fromBytes(bytes)
+            val replay = kotlinx.serialization.json.Json.decodeFromString<BinaryContent>(
+                kotlinx.serialization.json.Json.encodeToString(BinaryContent.serializer(), original)
+            )
+            assertContentEquals(bytes, replay.bytes())
+        }
+    }
     private val repository = InMemoryArtifactRepository()
     private val contentStore = InMemoryArtifactContentStore()
     private val service = ConversationArtifactApplicationService(repository, contentStore)
@@ -126,7 +187,7 @@ class ConversationArtifactApplicationServiceTest {
 
         val persisted = service.persistAndCommitToolResults(conversation, null, listOf(result)).single()
         val reference = assertIs<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>(
-            persisted.result.single()
+            persisted.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single()
         ).artifact
 
         assertEquals(Artifact.Purpose.TOOL_SCREENSHOT, reference.purpose)
@@ -136,7 +197,7 @@ class ConversationArtifactApplicationServiceTest {
         val message = userMessage(conversation.id, persisted)
         val materialized = service.materialize(conversation.id, listOf(message)).single()
         val binary = assertIs<Conversation.Message.ContentItem.ToolResult.Data.Base64Data>(
-            assertIs<Conversation.Message.ContentItem.ToolResult>(materialized.content.single()).result.single()
+            assertIs<Conversation.Message.ContentItem.ToolResult>(materialized.content.single()).result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Base64Data>().single()
         )
         assertEquals("worker-screen.png", binary.fileName)
         assertContentEquals(bytes, Base64.getDecoder().decode(binary.data))
@@ -185,9 +246,8 @@ class ConversationArtifactApplicationServiceTest {
         )
         assertTrue(
             results.drop(2).all { result ->
-                result.size == 2 &&
-                    result[0] is Conversation.Message.ContentItem.ToolResult.Data.Text &&
-                    result[1] is Conversation.Message.ContentItem.ToolResult.Data.Base64Data
+                result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Base64Data>().size == 1 &&
+                    result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>().any { it.content.contains("observation_ref") }
             }
         )
     }
@@ -413,8 +473,12 @@ class ConversationArtifactApplicationServiceTest {
 
 private class InMemoryArtifactRepository : ArtifactRepository {
     private val artifacts = linkedMapOf<Artifact.Id, Artifact>()
+    val searchableText = linkedMapOf<Artifact.Id, String?>()
 
-    override suspend fun save(artifact: Artifact): Artifact = artifact.also { artifacts[it.id] = it }
+    override suspend fun save(artifact: Artifact, searchableText: String?): Artifact = artifact.also {
+        artifacts[it.id] = it
+        this.searchableText[it.id] = searchableText
+    }
 
     override suspend fun findById(id: Artifact.Id): Artifact? = artifacts[id]
 

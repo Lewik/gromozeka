@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.Conversation
 import kotlin.time.Instant
 
 interface ArtifactRepository {
-    suspend fun save(artifact: Artifact): Artifact
+    suspend fun save(artifact: Artifact, searchableText: String? = null): Artifact
 
     suspend fun findById(id: Artifact.Id): Artifact?
 

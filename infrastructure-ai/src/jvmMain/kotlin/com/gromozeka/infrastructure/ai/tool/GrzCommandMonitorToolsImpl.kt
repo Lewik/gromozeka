@@ -8,7 +8,9 @@ import com.gromozeka.domain.service.CommandMonitorService
 import com.gromozeka.domain.service.CommandMonitorSpec
 import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.gromozeka.domain.tool.filesystem.CancelCommandMonitorRequest
 import com.gromozeka.domain.tool.filesystem.GetCommandMonitorRequest
 import com.gromozeka.domain.tool.filesystem.GrzCancelCommandMonitorTool
@@ -46,7 +48,7 @@ class GrzGetCommandMonitorToolImpl(
     private val commandMonitorService: CommandMonitorService,
     private val runtimeState: CommandRuntimeStateService,
 ) : GrzGetCommandMonitorTool {
-    override fun execute(request: GetCommandMonitorRequest, context: ToolExecutionContext?): Map<String, Any> =
+    override fun execute(request: GetCommandMonitorRequest, context: ToolExecutionContext?): List<AiToolResult> =
         runBlocking {
             val conversationId = context.requiredConversationId()
             val monitorId = CommandMonitor.Id(request.monitor_id)
@@ -61,14 +63,19 @@ class GrzGetCommandMonitorToolImpl(
                         it.outputEndByte > output.outputStartByte &&
                             it.outputEndByte <= output.nextOutputByte
                     }
-                output.toResult(
-                    events = matchingEvents.take(MAX_EVENTS_PER_RESULT),
-                    hasMoreEvents = matchingEvents.size > MAX_EVENTS_PER_RESULT,
-                )
-            } ?: mapOf(
-                "success" to false,
-                "error" to "Command monitor not found: ${request.monitor_id}",
-            )
+                buildList {
+                    add(AiToolResult.Text(commandMonitorResultMapper.writeValueAsString(output.toResult(
+                        events = matchingEvents.take(MAX_EVENTS_PER_RESULT),
+                        hasMoreEvents = matchingEvents.size > MAX_EVENTS_PER_RESULT,
+                    ))))
+                    add(AiToolResult.Binary(output.content.bytes(),
+                        "monitor-${monitorId.value}-${output.outputStartByte}-${output.nextOutputByte}.bin",
+                        "application/octet-stream"))
+                    output.monitor.terminalErrorContent?.let {
+                        add(AiToolResult.Binary(it.bytes(), "monitor-${monitorId.value}-stderr-tail.bin", "application/octet-stream"))
+                    }
+                }
+            } ?: listOf(AiToolResult.Text("Command monitor not found: ${request.monitor_id}"))
         }
 }
 
@@ -130,6 +137,7 @@ private fun CommandMonitor.toResult(): Map<String, Any> = buildMap {
     put("monitor_id", id.value)
     put("command_task_id", commandTaskId.value)
     put("status", status.name)
+    synchronizationError?.let { put("synchronization_error", it) }
     put("mode", mode.name)
     put("start_from", startFrom.name)
     put("filter_command", filterCommand)
@@ -149,8 +157,6 @@ private fun CommandMonitorOutput.toResult(
 ): Map<String, Any> = buildMap {
     putAll(monitor.toResult())
     monitor.exitCode?.let { put("exit_code", it) }
-    monitor.terminalErrorOutput?.takeIf(String::isNotBlank)?.let { put("error_output", it) }
-    put("output", output)
     put("output_start_byte", outputStartByte)
     put("next_output_byte", nextOutputByte)
     put("has_more_output", hasMoreOutput)
@@ -159,7 +165,6 @@ private fun CommandMonitorOutput.toResult(
         events.map { event ->
             mapOf(
                 "event_id" to event.id.value,
-                "output" to event.output,
                 "output_start_byte" to event.outputStartByte,
                 "output_end_byte" to event.outputEndByte,
                 "output_truncated_before" to event.outputTruncatedBefore,
@@ -173,6 +178,7 @@ private fun CommandMonitorOutput.toResult(
 private fun CommandTask.toSummary(monitorIds: List<String>): Map<String, Any> = buildMap {
     put("task_id", id.value)
     put("status", status.name)
+    synchronizationError?.let { put("synchronization_error", it) }
     put("command", command)
     put("survive_worker_restart", processLifetime == CommandTask.ProcessLifetime.RESUMABLE)
     put("worker_id", workerId.value)
@@ -191,6 +197,7 @@ private fun CommandMonitor.toSummary(): Map<String, Any> = buildMap {
     put("monitor_id", id.value)
     put("command_task_id", commandTaskId.value)
     put("status", status.name)
+    synchronizationError?.let { put("synchronization_error", it) }
     put("mode", mode.name)
     put("start_from", startFrom.name)
     put("filter_command", filterCommand)
@@ -214,4 +221,5 @@ private fun ToolExecutionContext?.requiredConversationId(): Conversation.Id =
         ?.let(Conversation::Id)
         ?: error("conversationId is required in tool context")
 
+private val commandMonitorResultMapper = jacksonObjectMapper()
 private const val MAX_EVENTS_PER_RESULT = 64
