@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.service.CommandProcessRecovery
@@ -73,6 +75,7 @@ class DefaultCommandTaskService(
     private val outputGcIntervalMinutes: Long = DEFAULT_OUTPUT_GC_INTERVAL_MINUTES,
 ) : CommandTaskService {
     private val log = KLoggers.logger(this)
+    private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
     private val workerId get() = runtimeWorkerDescriptor.getObject().id
     private val supervisor = SupervisorJob()
     private val scope = CoroutineScope(supervisor + Dispatchers.IO + CoroutineName("command-tasks"))
@@ -296,6 +299,7 @@ class DefaultCommandTaskService(
     }
 
     override suspend fun cancelAll(conversationId: Conversation.Id): Int {
+        logInventoryRequest("tasks", "cancel_all")
         val tasks = runtimeState.findCommandTasks()
             .filter {
                 it.conversationId == conversationId &&
@@ -306,10 +310,11 @@ class DefaultCommandTaskService(
     }
 
     internal suspend fun recoverPersistedTasks() = lifecycleMutex.withLock {
+        logInventoryRequest("tasks", "startup_recovery")
         val tasks = runtimeState.findCommandTasks()
             .filter { it.workerId == workerId }
         runCatching {
-            garbageCollectOutputArtifacts(tasks)
+            garbageCollectOutputArtifacts(tasks, reason = "startup_recovery")
         }.onFailure { error ->
             log.warn(error) { "Failed to garbage-collect command output artifacts" }
         }
@@ -566,7 +571,7 @@ class DefaultCommandTaskService(
             activeCommands.remove(activeCommand.task.id, activeCommand)
             activeCommand.completed.complete(Unit)
             if (activeCommand.task.isTerminal) {
-                runCatching { garbageCollectOutputArtifacts() }
+                runCatching { garbageCollectOutputArtifacts(reason = "command_terminal") }
                     .onFailure { error ->
                         log.warn(error) { "Failed to apply command output retention: ${error.message}" }
                     }
@@ -675,7 +680,7 @@ class DefaultCommandTaskService(
         )
         persistCommandTask(completedTask)
         publishSnapshot(task.conversationId)
-        runCatching { garbageCollectOutputArtifacts() }
+        runCatching { garbageCollectOutputArtifacts(reason = "stored_command_terminal") }
             .onFailure { error ->
                 log.warn(error) { "Failed to apply command output retention: ${error.message}" }
             }
@@ -704,10 +709,17 @@ class DefaultCommandTaskService(
         return result.task
     }
 
+    private fun logInventoryRequest(operation: String, reason: String) {
+        inventoryLog.debug {
+            "event=command_inventory_request scope=worker operation=$operation " +
+                "worker_id=${Json.encodeToString(workerId.value)} reason=$reason"
+        }
+    }
+
     private suspend fun runOutputGarbageCollectionLoop() {
         while (currentCoroutineContext().isActive) {
             delay(outputGcIntervalMinutes.minutes)
-            runCatching { garbageCollectOutputArtifacts() }
+            runCatching { garbageCollectOutputArtifacts(reason = "periodic_output_gc") }
                 .onFailure { error ->
                     log.warn(error) { "Periodic command output garbage collection failed: ${error.message}" }
                 }
@@ -716,9 +728,12 @@ class DefaultCommandTaskService(
 
     private suspend fun garbageCollectOutputArtifacts(
         tasks: List<CommandTask>? = null,
+        reason: String,
     ) {
+        if (tasks == null) logInventoryRequest("tasks", reason)
         val workerTasks = tasks ?: runtimeState.findCommandTasks()
             .filter { it.workerId == workerId }
+        logInventoryRequest("monitors", reason)
         val workerMonitors = runtimeState.findCommandMonitors()
             .filter { it.workerId == workerId }
         val activeMonitors = workerMonitors.filterNot(CommandMonitor::isTerminal)

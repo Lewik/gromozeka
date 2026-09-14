@@ -1,5 +1,7 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.service.ConversationRuntimeCoordinator
+import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.application.service.InMemoryConversationRuntimeCoordinator
 import com.gromozeka.application.service.ServerCommandRuntimeStateService
 import com.gromozeka.domain.model.AgentDefinition
@@ -172,6 +174,49 @@ class WorkerCommandRuntimeGatewayHandlerTest {
         assertEquals(cancellationRequestedAt, stored.updatedAt)
     }
 
+    @Test
+    fun `inventory uses authenticated worker and includes its terminal records`() = runBlocking {
+        val fixture = fixture()
+        val own = fixture.commandTask(fixture.workerId)
+        val foreign = fixture.commandTask(ConversationRuntimeWorkerId("another-worker"))
+        val terminal = own.copy(
+            id = CommandTask.Id("own-terminal"),
+            conversationId = Conversation.Id("another-conversation"),
+            status = CommandTask.Status.COMPLETED,
+            completedAt = fixture.now,
+        )
+        listOf(own, foreign, terminal).forEach { fixture.coordinator.upsertCommandTask(it) }
+        val ownMonitor = fixture.commandMonitor(own)
+        val foreignMonitor = fixture.commandMonitor(foreign).copy(id = CommandMonitor.Id("foreign-monitor"))
+        val terminalMonitor = fixture.commandMonitor(terminal).copy(
+            id = CommandMonitor.Id("own-terminal-monitor"),
+            conversationId = terminal.conversationId,
+            status = CommandMonitor.Status.COMPLETED,
+            completedAt = fixture.now,
+        )
+        listOf(ownMonitor, foreignMonitor, terminalMonitor).forEach { fixture.coordinator.synchronizeCommandMonitor(it) }
+        val tasks = fixture.execute(WorkerCommandRuntimeRequest.FindCommandTasks) as WorkerCommandRuntimeResponse.CommandTasksResult
+        val monitors = fixture.execute(WorkerCommandRuntimeRequest.FindCommandMonitors) as WorkerCommandRuntimeResponse.CommandMonitorsResult
+        assertEquals(setOf(own, terminal), tasks.tasks.toSet())
+        assertEquals(setOf(ownMonitor, terminalMonitor), monitors.monitors.toSet())
+    }
+
+    @Test
+    fun `inventory is empty when only another worker has commands`() = runBlocking {
+        val fixture = fixture()
+        val foreign = fixture.commandTask(ConversationRuntimeWorkerId("another-worker"))
+        fixture.coordinator.upsertCommandTask(foreign)
+        fixture.coordinator.synchronizeCommandMonitor(fixture.commandMonitor(foreign))
+        assertEquals(
+            WorkerCommandRuntimeResponse.CommandTasksResult(emptyList()),
+            fixture.execute(WorkerCommandRuntimeRequest.FindCommandTasks),
+        )
+        assertEquals(
+            WorkerCommandRuntimeResponse.CommandMonitorsResult(emptyList()),
+            fixture.execute(WorkerCommandRuntimeRequest.FindCommandMonitors),
+        )
+    }
+
     private suspend fun fixture(): Fixture {
         val workerId = ConversationRuntimeWorkerId("worker-1")
         val now = Instant.parse("2026-07-30T00:00:00Z")
@@ -237,7 +282,14 @@ class WorkerCommandRuntimeGatewayHandlerTest {
             mount = mount,
             coordinator = coordinator,
             handler = WorkerCommandRuntimeGatewayHandler(
-                commandRuntimeStateService = state,
+                commandRuntimeStateService = object : CommandRuntimeStateService by state {
+                    override suspend fun findCommandTasks(): List<CommandTask> = error("Gateway must not request global task inventory")
+                    override suspend fun findCommandMonitors(): List<CommandMonitor> = error("Gateway must not request global monitor inventory")
+                },
+                runtimeCoordinator = object : ConversationRuntimeCoordinator by coordinator {
+                    override suspend fun findCommandTasks(): List<CommandTask> = error("Gateway must use Worker-scoped tasks")
+                    override suspend fun findCommandMonitors(): List<CommandMonitor> = error("Gateway must use Worker-scoped monitors")
+                },
                 conversationRepository = conversationRepository,
                 workspaceDomainService = workspaceService,
                 workerAccessService = workerAccessService,
