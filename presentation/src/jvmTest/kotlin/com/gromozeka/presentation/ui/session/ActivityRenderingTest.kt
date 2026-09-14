@@ -1,23 +1,125 @@
 package com.gromozeka.presentation.ui.session
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteractionCollection
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.presentation.services.theming.data.DarkTheme
+import com.gromozeka.presentation.services.theming.data.LightTheme
+import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.UiTestTag
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class ActivityRenderingTest {
+    private val textOrIcon = SemanticsMatcher.keyIsDefined(SemanticsProperties.Text) or
+        SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentDescription)
+
+    @Test
+    fun toolHeadersUseThemeColorsInsteadOfInheritedColor() {
+        for (theme in listOf(DarkTheme(), LightTheme())) {
+            for (state in ActivityState.entries) {
+                runDesktopComposeUiTest(width = 390, height = 100) {
+                    var foreground = Color.Unspecified
+                    setContent {
+                        GromozekaTheme(theme) {
+                            foreground = MaterialTheme.colorScheme.onSurfaceVariant
+                            // An unrelated ancestor must not determine the tool's foreground.
+                            CompositionLocalProvider(LocalContentColor provides Color.Magenta) {
+                                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                                    ActivityHeader(
+                                        kind = ActivityKind.Tool("grz_read_file"),
+                                        title = "Read file",
+                                        state = state,
+                                        canExpand = true,
+                                        isExpanded = false,
+                                        onToggleExpanded = {},
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    waitForIdle()
+                    onAllNodes(textOrIcon, useUnmergedTree = true).assertForeground(foreground)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun activityGroupsUseThemeColorsInEverySummaryStyle() {
+        val message = activityTestMessage(
+            "themed", Conversation.Message.ContentItem.Thinking("Readable thought"), activityTestCall("read"),
+        )
+        for (theme in listOf(DarkTheme(), LightTheme())) {
+            for (style in ActivitySummaryStyle.entries) {
+                runDesktopComposeUiTest(width = 390, height = 200) {
+                    var foreground = Color.Unspecified
+                    setContent {
+                        GromozekaTheme(theme) {
+                            foreground = MaterialTheme.colorScheme.onSurfaceVariant
+                            CompositionLocalProvider(LocalContentColor provides Color.Magenta) {
+                                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                                    ActivityTimelineFixture(listOf(message), summaryStyle = style)
+                                }
+                            }
+                        }
+                    }
+                    val groupTag = UiTestTag.ActivityGroup("themed:0:content").value
+                    onNodeWithTag(groupTag).assertIsDisplayed()
+                    onAllNodes(
+                        textOrIcon and hasAnyAncestor(hasTestTag(groupTag)),
+                        useUnmergedTree = true,
+                    ).assertForeground(foreground)
+                }
+            }
+        }
+    }
+
+    private fun SemanticsNodeInteractionCollection.assertForeground(expected: Color) {
+        val nodes = fetchSemanticsNodes()
+        assertTrue(nodes.size >= 3, "Expected text, an activity icon or summary, and an expansion icon")
+        for (index in nodes.indices) {
+            val pixels = get(index).captureToImage().toPixelMap()
+            // Allow rasterization rounding, but inspect each text/icon separately so a
+            // correctly themed label cannot hide a black icon (or the other way around).
+            val hasForeground = (0 until pixels.height).any { y ->
+                (0 until pixels.width).any { x ->
+                    val actual = pixels[x, y]
+                    abs(actual.red - expected.red) <= 0.03f &&
+                        abs(actual.green - expected.green) <= 0.03f &&
+                        abs(actual.blue - expected.blue) <= 0.03f
+                }
+            }
+            assertTrue(hasForeground, "Expected theme foreground $expected in ${nodes[index].config}")
+        }
+    }
+
     @Test
     fun hiddenReasoningIsCompactAndHasNoExpansionAction() = runDesktopComposeUiTest {
         val message = activityTestMessage("hidden", Conversation.Message.ContentItem.Thinking("", signature = "opaque-signature"))
