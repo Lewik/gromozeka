@@ -2,13 +2,19 @@ package com.gromozeka.presentation.ui.session
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PixelMap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -30,6 +36,8 @@ import com.gromozeka.presentation.services.theming.data.DarkTheme
 import com.gromozeka.presentation.services.theming.data.LightTheme
 import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.UiTestTag
+import com.gromozeka.presentation.ui.icons.Icon
+import com.gromozeka.presentation.ui.icons.Icons
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -60,12 +68,13 @@ class ActivityRenderingTest {
                                         isExpanded = false,
                                         onToggleExpanded = {},
                                     )
+                                    ExpansionColorReference()
                                 }
                             }
                         }
                     }
                     waitForIdle()
-                    onAllNodes(textOrIcon, useUnmergedTree = true).assertForeground(foreground)
+                    onAllNodes(textOrIcon, useUnmergedTree = true).assertForeground(foreground, onNodeWithTag("expansion-color-reference").captureToImage().toPixelMap())
                 }
             }
         }
@@ -86,6 +95,7 @@ class ActivityRenderingTest {
                             CompositionLocalProvider(LocalContentColor provides Color.Magenta) {
                                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                                     ActivityTimelineFixture(listOf(message), summaryStyle = style)
+                                    ExpansionColorReference()
                                 }
                             }
                         }
@@ -95,13 +105,25 @@ class ActivityRenderingTest {
                     onAllNodes(
                         textOrIcon and hasAnyAncestor(hasTestTag(groupTag)),
                         useUnmergedTree = true,
-                    ).assertForeground(foreground)
+                    ).assertForeground(foreground, onNodeWithTag("expansion-color-reference").captureToImage().toPixelMap())
                 }
             }
         }
     }
 
-    private fun SemanticsNodeInteractionCollection.assertForeground(expected: Color) {
+    @Composable
+    private fun BoxScope.ExpansionColorReference() {
+        Icon(
+            imageVector = Icons.Default.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .testTag("expansion-color-reference"),
+        )
+    }
+
+    private fun SemanticsNodeInteractionCollection.assertForeground(expected: Color, expansionReference: PixelMap) {
         val nodes = fetchSemanticsNodes()
         assertTrue(nodes.size >= 3, "Expected text, an activity icon or summary, and an expansion icon")
         for (index in nodes.indices) {
@@ -116,7 +138,21 @@ class ActivityRenderingTest {
                         abs(actual.blue - expected.blue) <= 0.03f
                 }
             }
-            assertTrue(hasForeground, "Expected theme foreground $expected in ${nodes[index].config}")
+            // A 16dp diagonal chevron can contain only antialiased pixels: none
+            // need equal its tint. Compare it against an explicitly tinted icon
+            // on the same background instead of weakening the color tolerance.
+            val matchesExpansionReference = pixels.width == expansionReference.width &&
+                pixels.height == expansionReference.height && (0 until pixels.height).all { y ->
+                    (0 until pixels.width).all { x ->
+                        val actual = pixels[x, y]
+                        val reference = expansionReference[x, y]
+                        abs(actual.red - reference.red) <= 0.02f &&
+                            abs(actual.green - reference.green) <= 0.02f &&
+                            abs(actual.blue - reference.blue) <= 0.02f &&
+                            abs(actual.alpha - reference.alpha) <= 0.02f
+                    }
+                }
+            assertTrue(hasForeground || matchesExpansionReference, "Expected theme foreground $expected in ${nodes[index].config}")
         }
     }
 
