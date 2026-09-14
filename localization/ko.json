@@ -1312,6 +1312,8 @@
     "session.participants.updateRespondersFailed": "자동 응답 에이전트를 갱신하지 못했습니다",
     "session.participants.users": "사용자",
     "session.participants.writePermissionRequired": "참여자를 변경하려면 프로젝트 쓰기 권한이 필요합니다.",
+    "session.runtime.noConnectedAgents": "이 대화에 연결된 에이전트가 없습니다",
+    "session.runtime.sharedUsageTitle": "공유 사용량 및 할당량",
     "session.runtime.agentWorking": "{agentName} 작업 중",
     "session.runtime.availableTools": {
       "other": "도구 {count}개"

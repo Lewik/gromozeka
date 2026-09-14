@@ -1340,6 +1340,8 @@
     "session.participants.updateRespondersFailed": "Automatisch antwortende Agenten konnten nicht aktualisiert werden",
     "session.participants.users": "Benutzer",
     "session.participants.writePermissionRequired": "Zum Ändern der Teilnehmer ist Schreibberechtigung für das Projekt erforderlich.",
+    "session.runtime.noConnectedAgents": "Mit dieser Unterhaltung sind keine Agenten verbunden",
+    "session.runtime.sharedUsageTitle": "Gemeinsame Nutzung und Kontingente",
     "session.runtime.agentWorking": "{agentName} arbeitet",
     "session.runtime.availableTools": {
       "one": "{count} Werkzeug",

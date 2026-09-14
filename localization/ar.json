@@ -1452,6 +1452,8 @@
     "session.participants.updateRespondersFailed": "تعذّر تحديث الوكلاء الذين يردّون تلقائيًا",
     "session.participants.users": "المستخدمون",
     "session.participants.writePermissionRequired": "يلزم إذن الكتابة في المشروع لتغيير المشاركين.",
+    "session.runtime.noConnectedAgents": "لا يوجد وكلاء متصلون بهذه المحادثة",
+    "session.runtime.sharedUsageTitle": "الاستخدام والحصص المشتركة",
     "session.runtime.agentWorking": "{agentName} يعمل",
     "session.runtime.availableTools": {
       "zero": "لا توجد أدوات",

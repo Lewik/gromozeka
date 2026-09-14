@@ -1368,6 +1368,8 @@
     "session.participants.updateRespondersFailed": "לא ניתן לעדכן את הסוכנים שמשיבים אוטומטית",
     "session.participants.users": "משתמשים",
     "session.participants.writePermissionRequired": "נדרשת הרשאת כתיבה לפרויקט כדי לשנות משתתפים.",
+    "session.runtime.noConnectedAgents": "לא מחוברים סוכנים לשיחה הזו",
+    "session.runtime.sharedUsageTitle": "נתוני שימוש ומכסות משותפים",
     "session.runtime.agentWorking": "{agentName} עובד",
     "session.runtime.availableTools": {
       "one": "כלי אחד",
