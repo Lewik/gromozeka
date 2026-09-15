@@ -38,9 +38,16 @@ function Set-DirectoryPermissions([string]$Directory, [bool]$ReadableByUsers) {
 
 function Stop-InstalledWorker {
     $Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    $ServiceDetails = Get-CimInstance Win32_Service -Filter "Name='$ServiceName'"
+    $ServiceProcess = if ($ServiceDetails -and $ServiceDetails.ProcessId -gt 0) {
+        Get-Process -Id $ServiceDetails.ProcessId -ErrorAction SilentlyContinue
+    } else { $null }
     if ($Service -and $Service.Status -ne "Stopped") {
         Stop-Service -Name $ServiceName
         $Service.WaitForStatus("Stopped", [TimeSpan]::FromSeconds(120))
+    }
+    if ($ServiceProcess -and -not $ServiceProcess.WaitForExit(120000)) {
+        throw "Worker service process did not exit; refusing to replace running program files."
     }
 }
 

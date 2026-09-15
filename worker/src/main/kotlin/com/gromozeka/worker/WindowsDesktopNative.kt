@@ -231,7 +231,10 @@ internal class WindowsDesktopPipe private constructor(private val handle: HANDLE
     }
 
     override fun close() {
-        if (closed.compareAndSet(false, true)) Kernel32.INSTANCE.CloseHandle(handle)
+        if (closed.compareAndSet(false, true)) {
+            WindowsDesktopNative.kernel.CancelIoEx(handle, null)
+            Kernel32.INSTANCE.CloseHandle(handle)
+        }
     }
 
     companion object {
@@ -292,6 +295,7 @@ internal interface DesktopKernel32 : StdCallLibrary {
     fun SetInformationJobObject(job: HANDLE, informationClass: Int, information: Pointer, size: Int): Boolean
     fun AssignProcessToJobObject(job: HANDLE, process: HANDLE): Boolean
     fun ResumeThread(thread: HANDLE): Int
+    fun CancelIoEx(handle: HANDLE, overlapped: Pointer?): Boolean
 }
 
 internal interface DesktopAdvapi32 : StdCallLibrary {

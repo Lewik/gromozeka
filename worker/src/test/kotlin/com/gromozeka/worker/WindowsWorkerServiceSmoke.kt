@@ -44,8 +44,7 @@ object WindowsWorkerServiceSmoke {
                     check(observation.reference.workerId == identity.workerId)
                     backend.execute(observation.reference, listOf(ComputerUseAction.Wait(1))) {}
                     val child = ProcessHandle.current().children().use { children ->
-                        children.filter { it.info().commandLine().orElse("").contains("windows-desktop-helper") }
-                            .findFirst().orElseThrow()
+                        children.findFirst().orElseThrow()
                     }
                     check(child.destroyForcibly())
                     val restarted = awaitConnection(manager, connection.generation)

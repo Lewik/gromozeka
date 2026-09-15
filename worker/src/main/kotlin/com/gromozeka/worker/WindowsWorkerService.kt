@@ -52,6 +52,13 @@ internal class WindowsWorkerService(private val name: String = "GromozekaWorker"
             } catch (error: Throwable) {
                 failure.set(error)
                 error.printStackTrace(System.err)
+                System.getenv("GROMOZEKA_HOME")?.let { home ->
+                    runCatching {
+                        val log = java.nio.file.Path.of(home, "logs", "worker-service-error.log")
+                        java.nio.file.Files.createDirectories(log.parent)
+                        java.nio.file.Files.writeString(log, "${java.time.Instant.now()}\n${error.stackTraceToString().take(65_536)}")
+                    }
+                }
             } finally {
                 pending.shutdownNow()
                 synchronized(statusLock) {

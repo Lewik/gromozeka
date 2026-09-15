@@ -28,6 +28,8 @@ try {
     }
     $BinaryPath = '"' + $Java + '" -cp "' + $ClassPath + '" ' + $Entry + ' service ' + $ServiceName + ' "' + $Result + '"'
     New-Service -Name $ServiceName -BinaryPathName $BinaryPath -StartupType Manual | Out-Null
+    & $Sc failure $ServiceName reset= 60 actions= restart/1000 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Cannot configure service recovery" }
     Start-Service $ServiceName
     (Get-Service $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(60))
     $Deadline = (Get-Date).AddSeconds(100)
@@ -53,12 +55,30 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Standard-user access verification failed" }
     Remove-Item $PasswordFile
     $Helpers = @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $WorkerPid -and $_.Name -eq "javaw.exe" } | Select-Object -ExpandProperty ProcessId)
+    Remove-Item $Result
+    Stop-Process -Id $WorkerPid -Force
+    Start-Sleep -Seconds 2
+    foreach ($HelperPid in $Helpers) {
+        if (Get-Process -Id $HelperPid -ErrorAction SilentlyContinue) { throw "Desktop helper survived a service process crash" }
+    }
+    $Deadline = (Get-Date).AddSeconds(100)
+    while (-not (Test-Path $Result)) {
+        if ((Get-Date) -gt $Deadline) {
+            Get-Content (Join-Path $SmokeRoot "service-error.log") -ErrorAction SilentlyContinue
+            throw "Windows service did not recover after a process crash"
+        }
+        Start-Sleep -Milliseconds 200
+    }
+    $Recovered = Get-Content $Result -Raw
+    $RecoveredPid = [int]([regex]::Match($Recovered, 'pid=(\d+)').Groups[1].Value)
+    if ($RecoveredPid -eq $WorkerPid) { throw "Service did not start a new process" }
+    $Helpers = @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $RecoveredPid -and $_.Name -eq "javaw.exe" } | Select-Object -ExpandProperty ProcessId)
     Stop-Service $ServiceName
     (Get-Service $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(60))
     foreach ($HelperPid in $Helpers) {
         if (Get-Process -Id $HelperPid -ErrorAction SilentlyContinue) { throw "Desktop helper survived service stop" }
     }
-    Write-Output "Windows service startup, desktop-helper lifecycle, and standard-user permissions verified"
+    Write-Output "Windows service startup, crash recovery, desktop-helper lifecycle, and standard-user permissions verified"
 } finally {
     if (Get-Service $ServiceName -ErrorAction SilentlyContinue) {
         Stop-Service $ServiceName -ErrorAction SilentlyContinue
