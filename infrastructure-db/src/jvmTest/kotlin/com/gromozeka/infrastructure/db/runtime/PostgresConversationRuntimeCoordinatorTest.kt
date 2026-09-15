@@ -882,7 +882,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 listOf(
                     "db/migration/postgres/V4__conversation_runtime_records.sql",
                     "db/migration/postgres/V31__conversation_runtime_ready_work.sql",
-                    "db/migration/postgres/V61__worker_command_inventory_indexes.sql",
+                    "db/migration/postgres/V62__worker_command_inventory_indexes.sql",
                 ).forEach { resource -> executeSqlResource(statement, resource) }
             }
         }

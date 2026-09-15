@@ -72,6 +72,20 @@ jobs:
     needs: metadata
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+        env:
+          POSTGRES_DB: gromozeka
+          POSTGRES_USER: gromozeka
+          POSTGRES_PASSWORD: gromozeka
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gromozeka -d gromozeka"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
@@ -79,6 +93,16 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Verify PostgreSQL migrations and Worker inventory
+        env:
+          GROMOZEKA_POSTGRES_RUNTIME_TEST: 'true'
+          GROMOZEKA_POSTGRES_URL: jdbc:postgresql://localhost:5432/gromozeka
+        run: >
+          ./gradlew :infrastructure-db:jvmTest
+          --tests '*PostgresConversationSearchRepositoryTest'
+          --tests '*PostgresConversationRuntimeCoordinatorTest'
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
       - name: Verify Server and Worker
         run: >
           ./gradlew

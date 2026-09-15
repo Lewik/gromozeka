@@ -169,7 +169,7 @@ class PostgresConversationSearchRepositoryTest {
             val migrations = org.flywaydb.core.Flyway.configure()
                 .dataSource(repositoryDataSource).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration/postgres")
-                .baselineOnMigrate(true).baselineVersion("60").load()
+                .baselineOnMigrate(true).baselineVersion("60").target("61").load()
             assertEquals(1, migrations.migrate().migrationsExecuted)
             val toolMatches = repository.search(
                 ConversationSearchRequest(query = "binary-search", includeMetadataMatches = false),
