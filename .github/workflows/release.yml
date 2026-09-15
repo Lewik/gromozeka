@@ -87,6 +87,10 @@ jobs:
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 
+  verify-windows-worker:
+    needs: metadata
+    uses: ./.github/workflows/windows-worker-service.yml
+
   verify-client:
     needs: metadata
     runs-on: ubuntu-latest
@@ -186,6 +190,7 @@ jobs:
   verify:
     needs:
       - verify-runtime
+      - verify-windows-worker
       - verify-client
       - verify-web
       - verify-e2e

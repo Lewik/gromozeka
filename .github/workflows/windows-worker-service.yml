@@ -1,6 +1,7 @@
 name: Windows Worker service
 
 on:
+  workflow_call:
   workflow_dispatch:
   push:
     paths:
@@ -21,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-worker-service-${{ github.ref }}
+  group: windows-worker-service-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
