@@ -115,8 +115,7 @@ class LocalCommandProcessRunnerTest {
                     workingDirectory = home.absolutePath,
                 )
             )
-            waitUntil(5_000) { childPidFile.exists() && childPidFile.readText().trim().isNotEmpty() }
-            val childPid = childPidFile.readText().trim().toLong()
+            val childPid = awaitChildProcess(process, childPidFile)
 
             assertTrue(ProcessHandle.of(process.processId).orElseThrow().isAlive)
             assertTrue(ProcessHandle.of(childPid).orElseThrow().isAlive)
@@ -147,8 +146,7 @@ class LocalCommandProcessRunnerTest {
                     lifetime = CommandTask.ProcessLifetime.RESUMABLE,
                 )
             )
-            waitUntil(5_000) { childPidFile.exists() && childPidFile.readText().trim().isNotEmpty() }
-            val childPid = childPidFile.readText().trim().toLong()
+            val childPid = awaitChildProcess(process, childPidFile)
             val binding = currentLocalCommandHost().bindToWorker(
                 processTreeId = process.processTreeId,
                 outputFile = File(process.outputFile),
@@ -711,6 +709,18 @@ class LocalCommandProcessRunnerTest {
 
     private fun platformCommand(posix: String, windows: String): String =
         if (isWindows) windows else posix
+
+    private fun awaitChildProcess(process: RunningCommandProcess, childPidFile: File): Long {
+        val startedAt = System.nanoTime()
+        waitUntil(if (isWindows) 30_000 else 5_000) {
+            check(process.isAlive()) {
+                "Process fixture exited before starting its child: ${File(process.outputFile).readText()}"
+            }
+            childPidFile.isFile && childPidFile.readText().trim().toLongOrNull() != null
+        }
+        println("Process-tree fixture became ready after ${(System.nanoTime() - startedAt) / 1_000_000}ms")
+        return childPidFile.readText().trim().toLong()
+    }
 
     private fun windowsProcessTreeCommand(childPidFile: File): String {
         val escapedPath = childPidFile.absolutePath.replace("'", "''")
