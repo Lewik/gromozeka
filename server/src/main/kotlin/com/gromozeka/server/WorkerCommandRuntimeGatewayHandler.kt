@@ -5,6 +5,7 @@ import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandRuntimeStateService
+import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
@@ -29,6 +30,7 @@ interface WorkerGatewayServerRequestHandler {
 @Service
 class WorkerCommandRuntimeGatewayHandler(
     private val commandRuntimeStateService: CommandRuntimeStateService,
+    private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val conversationRepository: ConversationRepository,
     private val workspaceDomainService: WorkspaceDomainService,
     private val workerAccessService: WorkerAccessService,
@@ -53,8 +55,7 @@ class WorkerCommandRuntimeGatewayHandler(
 
             WorkerCommandRuntimeRequest.FindCommandTasks ->
                 WorkerCommandRuntimeResponse.CommandTasksResult(
-                    commandRuntimeStateService.findCommandTasks()
-                        .filter { it.workerId == identity.workerId }
+                    runtimeCoordinator.findCommandTasks(workerId = identity.workerId)
                 )
 
             is WorkerCommandRuntimeRequest.FindCommandTask ->
@@ -84,8 +85,7 @@ class WorkerCommandRuntimeGatewayHandler(
 
             WorkerCommandRuntimeRequest.FindCommandMonitors ->
                 WorkerCommandRuntimeResponse.CommandMonitorsResult(
-                    commandRuntimeStateService.findCommandMonitors()
-                        .filter { it.workerId == identity.workerId }
+                    runtimeCoordinator.findCommandMonitors(workerId = identity.workerId)
                 )
 
             is WorkerCommandRuntimeRequest.FindCommandMonitor ->

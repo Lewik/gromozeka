@@ -1368,6 +1368,8 @@
     "session.participants.updateRespondersFailed": "Impossible de mettre à jour les agents qui répondent automatiquement",
     "session.participants.users": "Utilisateurs",
     "session.participants.writePermissionRequired": "L’autorisation d’écriture sur le projet est requise pour modifier les participants.",
+    "session.runtime.noConnectedAgents": "Aucun agent n’est connecté à cette conversation",
+    "session.runtime.sharedUsageTitle": "Utilisation et quotas partagés",
     "session.runtime.agentWorking": "{agentName} travaille",
     "session.runtime.availableTools": {
       "one": "{count} outil",

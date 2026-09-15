@@ -42,6 +42,15 @@ sealed interface UiTestTag {
     data object MessageSquashStatus : UiTestTag
     data object PendingMessagesPanel : UiTestTag
     data object RuntimePanel : UiTestTag
+    data object RuntimeAgentTabs : UiTestTag
+    data object RuntimeAgentConfiguration : UiTestTag
+    data object RuntimeAgentActivity : UiTestTag
+    data object RuntimeAgentUsage : UiTestTag
+    data object RuntimeSharedUsage : UiTestTag
+    data object RuntimeTokenStatistics : UiTestTag
+    data class RuntimeAgentTab(val agentId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(agentId)
+    }
     data object RuntimeButton : UiTestTag
     data object ParticipantsPanel : UiTestTag
     data object ParticipantsButton : UiTestTag

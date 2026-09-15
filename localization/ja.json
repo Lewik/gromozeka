@@ -1312,6 +1312,8 @@
     "session.participants.updateRespondersFailed": "自動応答するエージェントを更新できませんでした",
     "session.participants.users": "ユーザー",
     "session.participants.writePermissionRequired": "参加者を変更するには、プロジェクトの書き込み権限が必要です。",
+    "session.runtime.noConnectedAgents": "この会話に接続されているエージェントはいません",
+    "session.runtime.sharedUsageTitle": "共有の使用量とクォータ",
     "session.runtime.agentWorking": "{agentName} は作業中です",
     "session.runtime.availableTools": {
       "other": "ツール {count} 件"

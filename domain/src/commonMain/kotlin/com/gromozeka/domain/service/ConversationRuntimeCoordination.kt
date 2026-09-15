@@ -935,6 +935,9 @@ interface ConversationRuntimeCoordinator {
 
     suspend fun findCommandTasks(): List<CommandTask>
 
+    /** All retained commands owned by this Worker, including terminal commands needed for output GC. */
+    suspend fun findCommandTasks(workerId: ConversationRuntimeWorkerId): List<CommandTask>
+
     suspend fun findCommandTasks(conversationId: Conversation.Id): List<CommandTask>
 
     suspend fun findCommandTask(
@@ -959,6 +962,9 @@ interface ConversationRuntimeCoordinator {
     ): CommandMonitorSyncResult
 
     suspend fun findCommandMonitors(): List<CommandMonitor>
+
+    /** All retained monitors owned by this Worker, without loading unrelated conversation state. */
+    suspend fun findCommandMonitors(workerId: ConversationRuntimeWorkerId): List<CommandMonitor>
 
     suspend fun findCommandMonitors(conversationId: Conversation.Id): List<CommandMonitor>
 

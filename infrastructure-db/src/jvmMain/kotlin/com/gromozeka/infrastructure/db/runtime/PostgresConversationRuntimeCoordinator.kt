@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.db.runtime
 
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.ConcurrentHashMap
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
@@ -64,6 +67,9 @@ class PostgresConversationRuntimeCoordinator(
     private val json: Json,
 ) : ConversationRuntimeCoordinator {
     private val log = KLoggers.logger(this)
+    private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
+    // Keys are fixed operation/scope/outcome names, never Worker ids or payloads.
+    private val inventoryWarningTimes = ConcurrentHashMap<String, AtomicLong>()
 
     override val schedulingSignals: Flow<ConversationRuntimeSchedulingSignal> = flow {
         while (currentCoroutineContext().isActive) {
@@ -269,7 +275,7 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun listActiveTaskAssignments(): List<ConversationRuntimeActiveTaskAssignment> =
-        readAllRecords().mapNotNull { record ->
+        readAllRecords("active_assignments").mapNotNull { record ->
             val task = record.scheduling.activeTask ?: return@mapNotNull null
             val state = record.scheduling.executionState ?: return@mapNotNull null
             val executor = state.activeExecutor ?: return@mapNotNull null
@@ -406,7 +412,10 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun findCommandTasks(): List<CommandTask> =
-        readAllRecords().flatMap { it.commandTasks }
+        readAllRecords("tasks").flatMap { it.commandTasks }
+
+    override suspend fun findCommandTasks(workerId: ConversationRuntimeWorkerId): List<CommandTask> =
+        readWorkerInventory(WorkerCommandInventoryKind.TASKS, workerId) { json.decodeFromString<CommandTask>(it) }
 
     override suspend fun findCommandTasks(conversationId: Conversation.Id): List<CommandTask> =
         readRecord(conversationId)?.commandTasks.orEmpty()
@@ -510,7 +519,10 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun findCommandMonitors(): List<CommandMonitor> =
-        readAllRecords().flatMap { it.commandMonitors }
+        readAllRecords("monitors").flatMap { it.commandMonitors }
+
+    override suspend fun findCommandMonitors(workerId: ConversationRuntimeWorkerId): List<CommandMonitor> =
+        readWorkerInventory(WorkerCommandInventoryKind.MONITORS, workerId) { json.decodeFromString<CommandMonitor>(it) }
 
     override suspend fun findCommandMonitors(conversationId: Conversation.Id): List<CommandMonitor> =
         readRecord(conversationId)?.commandMonitors.orEmpty()
@@ -854,22 +866,97 @@ class PostgresConversationRuntimeCoordinator(
             }
         }
 
-    private suspend fun readAllRecords(): List<RuntimeRecord> =
+    private suspend fun <T> readWorkerInventory(
+        kind: WorkerCommandInventoryKind,
+        workerId: ConversationRuntimeWorkerId,
+        decode: (String) -> T,
+    ): List<T> = loggedInventoryRead("worker", kind.operation, workerId, "items") {
         withContext(Dispatchers.IO) {
+            val encodedWorkerId = json.encodeToString(workerId)
             dataSource.connection.use { connection ->
-                connection.prepareStatement(
-                    "SELECT record_json FROM conversation_runtime_records ORDER BY conversation_id"
-                ).use { statement ->
+                connection.prepareStatement(workerCommandInventorySql(kind)).use { statement ->
+                    statement.setString(1, "[$encodedWorkerId]")
+                    statement.setString(2, encodedWorkerId)
                     statement.executeQuery().use { result ->
                         buildList {
-                            while (result.next()) {
-                                add(result.runtimeRecord())
+                            while (result.next()) add(decode(result.getString("item_json")))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun readAllRecords(operation: String): List<RuntimeRecord> =
+        loggedInventoryRead("global", operation, null, "records") {
+            withContext(Dispatchers.IO) {
+                dataSource.connection.use { connection ->
+                    connection.prepareStatement(
+                        "SELECT record_json FROM conversation_runtime_records ORDER BY conversation_id"
+                    ).use { statement ->
+                        statement.executeQuery().use { result ->
+                            buildList {
+                                while (result.next()) add(result.runtimeRecord())
                             }
                         }
                     }
                 }
             }
         }
+
+    private suspend fun <T> loggedInventoryRead(
+        scope: String,
+        operation: String,
+        workerId: ConversationRuntimeWorkerId?,
+        resultUnit: String,
+        read: suspend () -> List<T>,
+    ): List<T> {
+        val started = System.nanoTime()
+        try {
+            val result = read()
+            logInventoryRead(scope, operation, workerId, resultUnit, started, result.size, null)
+            return result
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            logInventoryRead(scope, operation, workerId, resultUnit, started, null, error)
+            throw error
+        }
+    }
+
+    private fun logInventoryRead(
+        scope: String,
+        operation: String,
+        workerId: ConversationRuntimeWorkerId?,
+        resultUnit: String,
+        started: Long,
+        count: Int?,
+        error: Throwable?,
+    ) {
+        // Includes dispatch, connection acquisition and decoding; this is not pure SQL execution time.
+        val elapsedMillis = (System.nanoTime() - started) / 1_000_000
+        val status = if (error == null) "ok" else "failed"
+        val metadata = {
+            "event=command_inventory_read scope=$scope operation=$operation " +
+                "worker_id=${workerId?.let { json.encodeToString(it.value) } ?: "null"} " +
+                "elapsed_ms=$elapsedMillis result_count=${count ?: "unknown"} result_unit=$resultUnit " +
+                "status=$status error_type=${error?.javaClass?.simpleName ?: "none"}"
+        }
+        inventoryLog.debug { metadata() }
+        if (error != null || elapsedMillis >= SLOW_INVENTORY_READ_MILLIS) {
+            val outcome = if (error == null) "slow" else "failed"
+            val key = "$scope/$operation/$outcome"
+            val gate = inventoryWarningTimes.computeIfAbsent(key) { AtomicLong(Long.MIN_VALUE) }
+            val previous = gate.get()
+            val now = System.nanoTime()
+            if ((previous == Long.MIN_VALUE || now - previous >= INVENTORY_WARNING_INTERVAL_NANOS) &&
+                gate.compareAndSet(previous, now)
+            ) {
+                // Do not log exception messages/stack traces: SQL or decoder errors can contain payloads.
+                inventoryLog.warn { metadata() + " warning=$outcome warning_interval_ms=60000" }
+            }
+        }
+    }
 
     private suspend fun <T> mutateRecord(
         conversationId: Conversation.Id,
@@ -1222,7 +1309,27 @@ class PostgresConversationRuntimeCoordinator(
         const val TRACE_SNAPSHOT_LIMIT = 200
         const val TRACE_RETENTION_LIMIT = 2_000
         const val EVENT_LOG_RETENTION_LIMIT = 10_000
+        const val SLOW_INVENTORY_READ_MILLIS = 500L
+        const val INVENTORY_WARNING_INTERVAL_NANOS = 60_000_000_000L
         const val SCHEDULING_NOTIFICATION_CHANNEL = "gromozeka_conversation_runtime_ready"
         const val SCHEDULING_LISTENER_RECONNECT_DELAY_MILLIS = 1_000L
     }
 }
+
+/** Only these trusted, fixed JSON paths may be interpolated into inventory SQL. */
+internal enum class WorkerCommandInventoryKind(val fieldName: String, val operation: String) {
+    TASKS("commandTasks", "tasks"),
+    MONITORS("commandMonitors", "monitors"),
+}
+
+/** Shared with EXPLAIN tests so they inspect the actual production query. */
+internal fun workerCommandInventorySql(kind: WorkerCommandInventoryKind): String = """
+    SELECT entry.payload::text AS item_json
+    FROM conversation_runtime_records AS records
+    CROSS JOIN LATERAL jsonb_array_elements(
+        COALESCE(records.record_json -> '${kind.fieldName}', '[]'::jsonb)
+    ) WITH ORDINALITY AS entry(payload, ordinal)
+    WHERE jsonb_path_query_array(records.record_json, '$.${kind.fieldName}[*].workerId') @> CAST(? AS jsonb)
+      AND entry.payload -> 'workerId' = CAST(? AS jsonb)
+    ORDER BY records.conversation_id, entry.ordinal
+""".trimIndent()

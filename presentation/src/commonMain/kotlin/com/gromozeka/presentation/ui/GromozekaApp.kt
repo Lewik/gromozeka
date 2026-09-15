@@ -18,6 +18,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,10 +57,12 @@ import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.ConversationParticipantsPanel
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
+import com.gromozeka.presentation.ui.session.RuntimeAgentTabSelection
 import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -105,6 +108,7 @@ fun GromozekaAppContent(
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
+    val runtimeAgentTabSelection = remember(appComponents) { RuntimeAgentTabSelection() }
     var showParticipantsPanel by remember { mutableStateOf(false) }
     var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
@@ -120,6 +124,15 @@ fun GromozekaAppContent(
     val unreadConversationIds by appComponents.appViewModel.unreadConversationIds.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
+    val runtimeMetadataProjectId = currentTab?.projectId
+    LaunchedEffect(showRuntimePanel, runtimeMetadataProjectId, appComponents) {
+        val projectId = runtimeMetadataProjectId ?: return@LaunchedEffect
+        if (!showRuntimePanel) return@LaunchedEffect
+        // Keep participant tabs live even when the conversation list and Participants panel are closed.
+        appComponents.conversationService.observeByProject(projectId)
+            .catch { error -> log.warn(error) { "Failed to observe Runtime conversation participants" } }
+            .collect { appComponents.appViewModel.mergeConversationSnapshots(it) }
+    }
     val pttState by appComponents.pttService.state.collectAsState()
     val pttStatusMessage by appComponents.pttService.statusMessage.collectAsState()
     val pttUnavailableReason by appComponents.pttService.unavailableReason.collectAsState()
@@ -653,38 +666,43 @@ fun GromozekaAppContent(
                                                 }
                                             }
 
-                                            val tokenStats by tabViewModel.tokenStats.collectAsState()
-                                            val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
-                                            val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
-                                            val pendingMessages by tabViewModel.pendingMessages.collectAsState()
-                                            val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
-                                            val activeGeneration by tabViewModel.activeGeneration.collectAsState()
+                                            key(tabViewModel.conversationId) {
+                                                val tokenStats by tabViewModel.tokenStats.collectAsState()
+                                                val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
+                                                val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
+                                                val pendingMessages by tabViewModel.pendingMessages.collectAsState()
+                                                val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
+                                                val activeGeneration by tabViewModel.activeGeneration.collectAsState()
 
-                                            Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
-                                                ConversationRuntimePanel(
-                                                    isVisible = showRuntimePanel,
-                                                    agentService = appComponents.agentService,
-                                                    aiConfigurationProvider = appComponents.aiConfigurationService,
-                                                    aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
-                                                    tokenStats = tokenStats,
-                                                    isWaitingForResponse = isWaitingForResponse,
-                                                    executionPauseRequested = executionPauseRequested,
-                                                    pttState = pttState,
-                                                    pttStatusMessage = pttStatusMessage?.resolve(localization),
-                                                    pendingMessages = pendingMessages,
-                                                    runtimeSnapshot = runtimeSnapshot,
-                                                    activeGeneration = activeGeneration,
-                                                    remoteConnectionState = remoteConnectionState,
-                                                    onPause = tabViewModel::pauseExecution,
-                                                    onResume = tabViewModel::resumeExecution,
-                                                    onStop = tabViewModel::stopExecution,
-                                                    onCancelCommandTask = tabViewModel::cancelCommandTask,
-                                                    onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
-                                                    onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
-                                                    onEditPendingMessage = tabViewModel::editPendingMessage,
-                                                    onCancelPendingMessage = tabViewModel::cancelPendingMessage,
-                                                    onClose = { setRuntimePanel(false) },
-                                                )
+                                                Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
+                                                    ConversationRuntimePanel(
+                                                        isVisible = showRuntimePanel,
+                                                        conversationId = tabViewModel.conversationId,
+                                                        participants = conversations[tabViewModel.conversationId]?.participants,
+                                                        tabSelection = runtimeAgentTabSelection,
+                                                        agentService = appComponents.agentService,
+                                                        aiConfigurationProvider = appComponents.aiConfigurationService,
+                                                        aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
+                                                        tokenStats = tokenStats,
+                                                        isWaitingForResponse = isWaitingForResponse,
+                                                        executionPauseRequested = executionPauseRequested,
+                                                        pttState = pttState,
+                                                        pttStatusMessage = pttStatusMessage?.resolve(localization),
+                                                        pendingMessages = pendingMessages,
+                                                        runtimeSnapshot = runtimeSnapshot,
+                                                        activeGeneration = activeGeneration,
+                                                        remoteConnectionState = remoteConnectionState,
+                                                        onPause = tabViewModel::pauseExecution,
+                                                        onResume = tabViewModel::resumeExecution,
+                                                        onStop = tabViewModel::stopExecution,
+                                                        onCancelCommandTask = tabViewModel::cancelCommandTask,
+                                                        onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
+                                                        onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
+                                                        onEditPendingMessage = tabViewModel::editPendingMessage,
+                                                        onCancelPendingMessage = tabViewModel::cancelPendingMessage,
+                                                        onClose = { setRuntimePanel(false) },
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -780,45 +798,50 @@ fun GromozekaAppContent(
                             }
 
                             currentTab?.let { tabViewModel ->
-                                val tokenStats by tabViewModel.tokenStats.collectAsState()
-                                val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
-                                val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
-                                val pendingMessages by tabViewModel.pendingMessages.collectAsState()
-                                val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
-                                val activeGeneration by tabViewModel.activeGeneration.collectAsState()
+                                key(tabViewModel.conversationId) {
+                                    val tokenStats by tabViewModel.tokenStats.collectAsState()
+                                    val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
+                                    val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
+                                    val pendingMessages by tabViewModel.pendingMessages.collectAsState()
+                                    val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
+                                    val activeGeneration by tabViewModel.activeGeneration.collectAsState()
 
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .zIndex(2f)
-                                        .testTag(UiTestTag.RuntimePanel.value)
-                                ) {
-                                    ConversationRuntimePanel(
-                                        isVisible = showRuntimePanel,
-                                        agentService = appComponents.agentService,
-                                        aiConfigurationProvider = appComponents.aiConfigurationService,
-                                        aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
-                                        tokenStats = tokenStats,
-                                        isWaitingForResponse = isWaitingForResponse,
-                                        executionPauseRequested = executionPauseRequested,
-                                        pttState = pttState,
-                                        pttStatusMessage = pttStatusMessage?.resolve(localization),
-                                        pendingMessages = pendingMessages,
-                                        runtimeSnapshot = runtimeSnapshot,
-                                        activeGeneration = activeGeneration,
-                                        remoteConnectionState = remoteConnectionState,
-                                        onPause = tabViewModel::pauseExecution,
-                                        onResume = tabViewModel::resumeExecution,
-                                        onStop = tabViewModel::stopExecution,
-                                        onCancelCommandTask = tabViewModel::cancelCommandTask,
-                                        onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
-                                        onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
-                                        onEditPendingMessage = tabViewModel::editPendingMessage,
-                                        onCancelPendingMessage = tabViewModel::cancelPendingMessage,
-                                        onClose = { setRuntimePanel(false) },
-                                        fullScreen = true,
-                                        slideFromRight = true,
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .zIndex(2f)
+                                            .testTag(UiTestTag.RuntimePanel.value)
+                                    ) {
+                                        ConversationRuntimePanel(
+                                            isVisible = showRuntimePanel,
+                                            conversationId = tabViewModel.conversationId,
+                                            participants = conversations[tabViewModel.conversationId]?.participants,
+                                            tabSelection = runtimeAgentTabSelection,
+                                            agentService = appComponents.agentService,
+                                            aiConfigurationProvider = appComponents.aiConfigurationService,
+                                            aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
+                                            tokenStats = tokenStats,
+                                            isWaitingForResponse = isWaitingForResponse,
+                                            executionPauseRequested = executionPauseRequested,
+                                            pttState = pttState,
+                                            pttStatusMessage = pttStatusMessage?.resolve(localization),
+                                            pendingMessages = pendingMessages,
+                                            runtimeSnapshot = runtimeSnapshot,
+                                            activeGeneration = activeGeneration,
+                                            remoteConnectionState = remoteConnectionState,
+                                            onPause = tabViewModel::pauseExecution,
+                                            onResume = tabViewModel::resumeExecution,
+                                            onStop = tabViewModel::stopExecution,
+                                            onCancelCommandTask = tabViewModel::cancelCommandTask,
+                                            onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
+                                            onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
+                                            onEditPendingMessage = tabViewModel::editPendingMessage,
+                                            onCancelPendingMessage = tabViewModel::cancelPendingMessage,
+                                            onClose = { setRuntimePanel(false) },
+                                            fullScreen = true,
+                                            slideFromRight = true,
+                                        )
+                                    }
                                 }
                             }
 

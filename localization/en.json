@@ -1340,6 +1340,8 @@
     "session.participants.updateRespondersFailed": "Failed to update automatic responders",
     "session.participants.users": "Users",
     "session.participants.writePermissionRequired": "Project write permission is required to change participants.",
+    "session.runtime.noConnectedAgents": "No agents connected to this conversation",
+    "session.runtime.sharedUsageTitle": "Shared usage and quotas",
     "session.runtime.agentWorking": "{agentName} is working",
     "session.runtime.availableTools": {
       "one": "{count} tool",

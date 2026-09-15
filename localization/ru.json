@@ -1396,6 +1396,8 @@
     "session.participants.updateRespondersFailed": "Не удалось обновить список автоматически отвечающих агентов",
     "session.participants.users": "Пользователи",
     "session.participants.writePermissionRequired": "Для изменения участников нужны права на запись в проект.",
+    "session.runtime.noConnectedAgents": "В этом разговоре нет подключённых агентов",
+    "session.runtime.sharedUsageTitle": "Общая статистика и квоты",
     "session.runtime.agentWorking": "{agentName} работает",
     "session.runtime.availableTools": {
       "one": "{count} инструмент",

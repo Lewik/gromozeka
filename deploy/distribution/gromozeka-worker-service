@@ -119,8 +119,10 @@ $(environment_entry GROMOZEKA_WORKER_CONFIG)
   <true/>
   <key>KeepAlive</key>
   <true/>
+  <!-- Headless is controlled by LSBackgroundOnly. User-requested tools and
+       audio must not inherit launchd Background CPU and I/O throttling. -->
   <key>ProcessType</key>
-  <string>Background</string>
+  <string>Interactive</string>
   <key>ThrottleInterval</key>
   <integer>10</integer>
   <key>StandardOutPath</key>
