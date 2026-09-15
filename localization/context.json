@@ -10252,6 +10252,20 @@
     "description": "Read-only explanation shown to a user who cannot edit participants.",
     "args": []
   },
+  "session.runtime.noConnectedAgents": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt"
+    ],
+    "description": "Empty state in the Runtime panel when this conversation has no connected Agent participants. Other agents can still exist in the global or project catalog.",
+    "args": []
+  },
+  "session.runtime.sharedUsageTitle": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt"
+    ],
+    "description": "Heading for conversation/thread token usage and shared provider-account quotas, outside the selected Agent tab. These totals and limits must not be interpreted as exclusive to that Agent.",
+    "args": []
+  },
   "session.runtime.agentWorking": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt:1015",

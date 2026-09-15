@@ -20,6 +20,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
@@ -67,9 +70,29 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
 
+/** Inspection state only: independent of message routing and transient runtime tasks. */
+@Stable
+class RuntimeAgentTabSelection {
+    private val selectedByConversation = mutableStateMapOf<Conversation.Id, AgentDefinition.Id>()
+
+    internal fun resolve(
+        conversationId: Conversation.Id,
+        participantAgentIds: List<AgentDefinition.Id>,
+    ): AgentDefinition.Id? = selectedByConversation[conversationId]
+        ?.takeIf { it in participantAgentIds }
+        ?: participantAgentIds.firstOrNull()
+
+    internal fun select(conversationId: Conversation.Id, agentId: AgentDefinition.Id?) {
+        if (agentId == null) selectedByConversation.remove(conversationId)
+        else selectedByConversation[conversationId] = agentId
+    }
+}
+
 @Composable
 fun ConversationRuntimePanel(
     isVisible: Boolean,
+    conversationId: Conversation.Id,
+    participants: Set<Conversation.Participant>?,
     agentService: AgentDomainService,
     aiConfigurationProvider: AiConfigurationProvider,
     aiSubscriptionQuotaService: AiSubscriptionQuotaService,
@@ -94,18 +117,45 @@ fun ConversationRuntimePanel(
     modifier: Modifier = Modifier,
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
+    tabSelection: RuntimeAgentTabSelection = remember { RuntimeAgentTabSelection() },
 ) {
     val translation = LocalTranslation.current.runtime
     val aiCatalogSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
-    val activeAgentId = runtimeSnapshot?.activeTask?.payload?.agentDefinitionIdOrNull()
-    val agentLookupKey = runtimeSnapshot?.conversationId to activeAgentId
-    val currentAgent by produceState<AgentDefinition?>(null, isVisible, agentLookupKey) {
-        value = if (isVisible && activeAgentId != null) {
-            runCatching { agentService.findById(activeAgentId) }.getOrNull()
-        } else {
-            null
+    val visibleRuntime = runtimeSnapshot?.takeIf { it.conversationId == conversationId }
+    val visibleGeneration = activeGeneration?.takeIf { it.conversationId == conversationId }
+    val participantAgentIds = remember(participants) {
+        participants.orEmpty().filterIsInstance<Conversation.Participant.Agent>()
+            .map { it.agentDefinitionId }.distinct().sortedBy { it.value }
+    }
+    var agentDefinitions by remember(agentService) { mutableStateOf<List<AgentDefinition>?>(null) }
+    var agentLoadFailed by remember(agentService) { mutableStateOf(false) }
+    LaunchedEffect(isVisible, agentService) {
+        if (!isVisible) return@LaunchedEffect
+        try {
+            agentService.observeAll().collect {
+                agentDefinitions = it
+                agentLoadFailed = false
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            agentLoadFailed = true
         }
     }
+    val selectedAgentId = tabSelection.resolve(conversationId, participantAgentIds)
+    LaunchedEffect(conversationId, participants) {
+        // A temporarily missing conversation snapshot must not erase the saved selection.
+        if (participants != null) {
+            tabSelection.select(conversationId, tabSelection.resolve(conversationId, participantAgentIds))
+        }
+    }
+    val connectedAgents = participantAgentIds.mapNotNull { id ->
+        agentDefinitions?.firstOrNull { it.id == id }
+    }
+    val activeAgentId = (visibleRuntime?.activeTask ?: visibleRuntime?.continuationTask)
+        ?.payload?.agentDefinitionIdOrNull()
+    val activeAgentName = agentDefinitions?.firstOrNull { it.id == activeAgentId }?.name
+        ?: activeAgentId?.value
 
     AnimatedVisibility(
         visible = isVisible,
@@ -144,29 +194,38 @@ fun ConversationRuntimePanel(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    currentAgent?.let { agent ->
-                        RuntimeConfigurationCard(
-                            agent = agent,
-                            aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
-                        )
+                    RuntimeAgentSection(
+                        conversationId = conversationId,
+                        participantAgentIds = participantAgentIds,
+                        participantsLoaded = participants != null,
+                        agentDefinitions = agentDefinitions,
+                        agentLoadFailed = agentLoadFailed,
+                        selectedAgentId = selectedAgentId,
+                        onSelectAgent = { tabSelection.select(conversationId, it) },
+                        aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
+                        tokenStats = tokenStats,
+                        runtimeSnapshot = visibleRuntime,
+                    )
+                    // Thread usage and provider-account quotas are not owned by the selected tab.
+                    key(conversationId) {
                         RuntimeUsageCard(
                             isVisible = isVisible,
-                            agent = agent,
+                            agents = connectedAgents,
                             aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
                             tokenStats = tokenStats,
                             quotaService = aiSubscriptionQuotaService,
                         )
+                        TokenStatisticsTable(
+                            tokenStats = tokenStats,
+                            modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeTokenStatistics.value),
+                        )
                     }
-                    TokenStatisticsTable(
-                        tokenStats = tokenStats,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
 
-                RuntimeMemorySection(runtimeSnapshot)
+                RuntimeMemorySection(visibleRuntime)
 
                 RuntimeTasksSection(
-                    runtimeSnapshot = runtimeSnapshot,
+                    runtimeSnapshot = visibleRuntime,
                     onCancelCommandTask = onCancelCommandTask,
                     onCancelCommandMonitor = onCancelCommandMonitor,
                 )
@@ -180,14 +239,14 @@ fun ConversationRuntimePanel(
                 )
 
                 RuntimeStatusFooter(
-                    agentName = currentAgent?.name,
+                    agentName = activeAgentName,
                     isWaitingForResponse = isWaitingForResponse,
                     executionPauseRequested = executionPauseRequested,
                     pttState = pttState,
                     pttStatusMessage = pttStatusMessage,
                     pendingMessages = pendingMessages,
-                    runtimeSnapshot = runtimeSnapshot,
-                    activeGeneration = activeGeneration,
+                    runtimeSnapshot = visibleRuntime,
+                    activeGeneration = visibleGeneration,
                     remoteConnectionState = remoteConnectionState,
                     onPause = onPause,
                     onResume = onResume,
@@ -197,6 +256,111 @@ fun ConversationRuntimePanel(
         }
     }
 }
+
+@Composable
+private fun RuntimeAgentSection(
+    conversationId: Conversation.Id,
+    participantAgentIds: List<AgentDefinition.Id>,
+    participantsLoaded: Boolean,
+    agentDefinitions: List<AgentDefinition>?,
+    agentLoadFailed: Boolean,
+    selectedAgentId: AgentDefinition.Id?,
+    onSelectAgent: (AgentDefinition.Id) -> Unit,
+    aiCatalog: AiCatalog,
+    tokenStats: TokenUsageStatistics.ThreadTotals?,
+    runtimeSnapshot: ConversationRuntimeSnapshot?,
+) {
+    val localization = LocalTranslation.current
+    if (!participantsLoaded) {
+        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        return
+    }
+    if (participantAgentIds.isEmpty() || selectedAgentId == null) {
+        Text(localization.text("session.runtime.noConnectedAgents"))
+        return
+    }
+    SecondaryScrollableTabRow(
+        selectedTabIndex = participantAgentIds.indexOf(selectedAgentId),
+        edgePadding = 0.dp,
+        modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeAgentTabs.value),
+    ) {
+        participantAgentIds.forEach { id ->
+            Tab(
+                selected = id == selectedAgentId,
+                onClick = { onSelectAgent(id) },
+                text = {
+                    Text(
+                        agentDefinitions?.firstOrNull { it.id == id }?.name ?: id.value,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                modifier = Modifier.testTag(UiTestTag.RuntimeAgentTab(id.value).value),
+            )
+        }
+    }
+    if (agentLoadFailed) {
+        Text(
+            localization.text("session.participants.loadAgentsFailed"),
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+    val agent = agentDefinitions?.firstOrNull { it.id == selectedAgentId }
+    Box(Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeAgentConfiguration.value)) {
+        when {
+            agent != null -> RuntimeConfigurationCard(agent, aiCatalog)
+            agentDefinitions == null && !agentLoadFailed ->
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            else -> Text(localization.text("session.participants.unavailableAgent"))
+        }
+    }
+    val activeTask = runtimeSnapshot?.activeTask
+        ?.takeIf { it.payload.agentDefinitionIdOrNull() == selectedAgentId }
+        ?: runtimeSnapshot?.activeInsertions?.firstOrNull {
+            it.payload.agentDefinitionIdOrNull() == selectedAgentId
+        }
+    val queuedTask = runtimeSnapshot?.continuationTask
+        ?.takeIf { it.payload.agentDefinitionIdOrNull() == selectedAgentId }
+        ?: runtimeSnapshot?.pendingTasks?.firstOrNull {
+            it.payload.agentDefinitionIdOrNull() == selectedAgentId
+        }
+    Text(
+        text = when {
+            activeTask != null -> activeTask.payload.runtimeStatusLabel(agent?.name, localization)
+            queuedTask != null -> "${localization.runtime.pendingTaskLabel}: " +
+                queuedTask.payload.runtimeLabel(localization.runtime)
+            else -> localization.runtime.readyStatus
+        },
+        modifier = Modifier.testTag(UiTestTag.RuntimeAgentActivity.value),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    runtimeLastAgentCall(conversationId, selectedAgentId, tokenStats)?.let { call ->
+        Column(
+            modifier = Modifier.testTag(UiTestTag.RuntimeAgentUsage.value),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                localization.text("session.runtime.context.lastCall",
+                    "runtime" to "${runtimeProviderLabel(call.provider, localization)} · ${call.modelId}"),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                localization.text("session.runtime.context.lastUsage", "count" to call.totalTokens.formatWithCommas()),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+// recentCalls is bounded: show the last attributed call, not invented per-agent lifetime totals.
+internal fun runtimeLastAgentCall(
+    conversationId: Conversation.Id,
+    agentId: AgentDefinition.Id,
+    tokenStats: TokenUsageStatistics.ThreadTotals?,
+): TokenUsageStatistics? = tokenStats?.recentCalls
+    ?.filter { it.agentDefinitionId == agentId && (it.conversationId == null || it.conversationId == conversationId) }
+    ?.maxByOrNull { it.timestamp }
 
 @Composable
 private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) {
@@ -336,15 +500,15 @@ private fun RuntimeConfigurationCard(
 @Composable
 private fun RuntimeUsageCard(
     isVisible: Boolean,
-    agent: AgentDefinition,
+    agents: List<AgentDefinition>,
     aiCatalog: AiCatalog,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     quotaService: AiSubscriptionQuotaService,
 ) {
     val localization = LocalTranslation.current
     val translation = LocalTranslation.current.runtime
-    val targets = remember(agent.runtimeSelection, aiCatalog) {
-        runtimeQuotaModelConfigurations(agent, aiCatalog)
+    val targets = remember(agents.map { it.runtimeSelection }, aiCatalog) {
+        runtimeQuotaModelConfigurations(agents, aiCatalog)
     }
     val targetIds = targets.map(AiModelConfiguration::id)
     val latestCallId = tokenStats?.recentCalls?.maxByOrNull { it.timestamp }?.id?.value
@@ -400,7 +564,7 @@ private fun RuntimeUsageCard(
     if (tokenStats == null && targets.isEmpty() && backgroundPolicies.isEmpty()) return
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeSharedUsage.value),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
     ) {
         Column(
@@ -413,7 +577,7 @@ private fun RuntimeUsageCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    translation.usageTitle,
+                    localization.text("session.runtime.sharedUsageTitle"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -630,10 +794,10 @@ private fun RuntimeQuotaObservation(observation: AiSubscriptionQuotaObservation)
 }
 
 internal fun runtimeQuotaModelConfigurations(
-    agent: AgentDefinition,
+    agents: List<AgentDefinition>,
     aiCatalog: AiCatalog,
 ): List<AiModelConfiguration> = buildList {
-    add(agent.runtimeSelection)
+    addAll(agents.map { it.runtimeSelection })
     aiCatalog.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE)?.let(::add)
     aiCatalog.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE)?.let(::add)
 }.mapNotNull { selection ->
@@ -642,7 +806,7 @@ internal fun runtimeQuotaModelConfigurations(
     configuration.enabled && aiCatalog.connectionFor(configuration) is AiSubscriptionConnection
 }.distinctBy { configuration ->
     configuration.connectionId to configuration.providerModelId
-}
+}.sortedBy { it.id.value }
 
 private fun runtimeBackgroundQuotaPolicies(aiCatalog: AiCatalog) = listOf(
     AiRuntimeAssignment.Purpose.MEMORY_WRITE,

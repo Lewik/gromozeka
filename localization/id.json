@@ -1312,6 +1312,8 @@
     "session.participants.updateRespondersFailed": "Tidak dapat memperbarui agen yang membalas otomatis",
     "session.participants.users": "Pengguna",
     "session.participants.writePermissionRequired": "Izin tulis pada proyek diperlukan untuk mengubah peserta.",
+    "session.runtime.noConnectedAgents": "Tidak ada agen yang terhubung ke percakapan ini",
+    "session.runtime.sharedUsageTitle": "Penggunaan dan kuota bersama",
     "session.runtime.agentWorking": "{agentName} sedang bekerja",
     "session.runtime.availableTools": {
       "other": "{count} alat"

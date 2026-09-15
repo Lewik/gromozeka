@@ -51,6 +51,7 @@ class ConversationRuntimeExecutor(
     private val taskGuardProvider: ObjectProvider<ConversationRuntimeTaskGuard>? = null,
 ) : SmartLifecycle {
     private val log = KLoggers.logger(this)
+    private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
     private val executor = descriptor.identity
     private val capabilities = descriptor.capabilities
     private val schedulingMutex = Mutex()
@@ -388,6 +389,7 @@ class ConversationRuntimeExecutor(
     }
 
     private suspend fun recoverAbandonedServerAssignments() {
+        inventoryLog.debug { "event=command_inventory_request scope=global operation=active_assignments reason=server_session_recovery" }
         val incidents = runtimeCoordinator.listActiveTaskAssignments().mapNotNull { assignment ->
             val previousServer = assignment.executor as? ConversationRuntimeExecutorIdentity.Server
                 ?: return@mapNotNull null

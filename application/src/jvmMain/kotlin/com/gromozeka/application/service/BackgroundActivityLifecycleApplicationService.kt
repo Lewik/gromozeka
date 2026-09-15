@@ -38,6 +38,7 @@ class BackgroundActivityLifecycleApplicationService(
     @Qualifier("applicationScope") private val coroutineScope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
+    private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
     private val started = AtomicBoolean(false)
     private val changedConversations = Channel<Conversation.Id>(Channel.UNLIMITED)
 
@@ -59,6 +60,7 @@ class BackgroundActivityLifecycleApplicationService(
     }
 
     internal suspend fun reconcileAll() {
+        inventoryLog.debug { "event=command_inventory_request scope=global operation=tasks_and_monitors reason=server_startup_reconciliation" }
         val commandTasks = runtimeCoordinator.findCommandTasks()
             .filter { it.requiresCompletionNotification() }
         val monitors = runtimeCoordinator.findCommandMonitors()

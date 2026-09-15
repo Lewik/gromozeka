@@ -1312,6 +1312,8 @@
     "session.participants.updateRespondersFailed": "無法更新自動回覆者",
     "session.participants.users": "使用者",
     "session.participants.writePermissionRequired": "需要專案寫入權限才能變更參與者。",
+    "session.runtime.noConnectedAgents": "此對話未連接任何智慧體",
+    "session.runtime.sharedUsageTitle": "共用用量與配額",
     "session.runtime.agentWorking": "{agentName} 正在處理",
     "session.runtime.availableTools": {
       "other": "{count} 個工具"

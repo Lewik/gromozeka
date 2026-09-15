@@ -1,6 +1,8 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.BinaryContent
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
@@ -60,6 +62,7 @@ class DefaultCommandMonitorService(
     private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
 ) : CommandMonitorService {
     private val log = KLoggers.logger(this)
+    private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
     private val workerId get() = runtimeWorkerDescriptor.getObject().id
     private val supervisor = SupervisorJob()
     private val scope = CoroutineScope(supervisor + Dispatchers.IO + CoroutineName("command-monitors"))
@@ -219,6 +222,10 @@ class DefaultCommandMonitorService(
     }
 
     internal suspend fun recoverPersistedMonitors() = lifecycleMutex.withLock {
+        inventoryLog.debug {
+            "event=command_inventory_request scope=worker operation=monitors " +
+                "worker_id=${Json.encodeToString(workerId.value)} reason=startup_recovery"
+        }
         runtimeState.findCommandMonitors()
             .asSequence()
             .filter { it.workerId == workerId && !it.isTerminal }

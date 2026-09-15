@@ -1,6 +1,11 @@
 package com.gromozeka.infrastructure.db.runtime
 
 import com.gromozeka.domain.model.BinaryContent
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.encodeToString
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
@@ -602,6 +607,172 @@ class PostgresConversationRuntimeCoordinatorTest {
         }
     }
 
+    @Test
+    fun `worker inventory matches global filtering across mixed conversations`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val workerA = ConversationRuntimeWorkerId("inventory-worker-a")
+            val workerB = ConversationRuntimeWorkerId("inventory-worker-b")
+            val quotedWorker = ConversationRuntimeWorkerId("worker-\"quoted\\id")
+            val tasks = listOf(
+                inventoryTask("a-running", "mixed-conversation", workerA),
+                inventoryTask("b-running", "mixed-conversation", workerB),
+                inventoryTask("a-terminal", "another-conversation", workerA, terminal = true),
+                inventoryTask("quoted", "mixed-conversation", quotedWorker),
+            )
+            tasks.forEach { coordinator.upsertCommandTask(it) }
+            val monitors = tasks.map(::inventoryMonitor)
+            monitors.forEach { coordinator.synchronizeCommandMonitor(it) }
+            source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeUpdate(
+                        "INSERT INTO conversation_runtime_records(conversation_id, record_json, updated_at) " +
+                            "VALUES ('empty-conversation', '{\"conversationId\":\"empty-conversation\"}'::jsonb, CURRENT_TIMESTAMP)"
+                    )
+                }
+            }
+            val allTasks = coordinator.findCommandTasks()
+            val allMonitors = coordinator.findCommandMonitors()
+            for (worker in listOf(workerA, workerB, quotedWorker, ConversationRuntimeWorkerId("no-inventory"))) {
+                assertEquals(allTasks.filter { it.workerId == worker }, coordinator.findCommandTasks(workerId = worker))
+                assertEquals(allMonitors.filter { it.workerId == worker }, coordinator.findCommandMonitors(workerId = worker))
+            }
+            assertTrue(coordinator.findCommandTasks(workerId = workerA).any { it.isTerminal })
+            assertTrue(coordinator.findCommandMonitors(workerId = workerA).any { it.isTerminal })
+            assertEquals("\"inventory-worker-a\"", json.encodeToString(workerA))
+            println("POSTGRES_INVENTORY_FILTER_OK")
+        }
+    }
+
+    @Test
+    fun `worker inventory does not deserialize unrelated runtime fields`() = runBlocking {
+        withInventoryDatabase { source, coordinator, _ ->
+            val worker = ConversationRuntimeWorkerId("projection-worker")
+            val own = inventoryTask("own", "own-conversation", worker)
+            val foreign = inventoryTask("foreign", "foreign-conversation", ConversationRuntimeWorkerId("another-worker"))
+            listOf(own, foreign).forEach { coordinator.upsertCommandTask(it) }
+            val monitor = inventoryMonitor(own)
+            coordinator.synchronizeCommandMonitor(monitor)
+            // Valid JSON but an intentionally incompatible trace schema: inventory must not decode it,
+            // even in the selected Worker's own conversation. No real runtime data is used here.
+            source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeUpdate(
+                        "UPDATE conversation_runtime_records SET record_json = " +
+                            "jsonb_set(record_json, '{trace}', '\"not part of command inventory\"'::jsonb)"
+                    )
+                }
+            }
+            assertEquals(listOf(own), coordinator.findCommandTasks(workerId = worker))
+            assertEquals(listOf(monitor), coordinator.findCommandMonitors(workerId = worker))
+            assertEquals(emptyList(), coordinator.findCommandTasks(workerId = ConversationRuntimeWorkerId("missing")))
+            println("POSTGRES_INVENTORY_PROJECTION_OK")
+        }
+    }
+
+    @Test
+    fun `selective worker inventory uses worker identifier indexes`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val selectedWorker = ConversationRuntimeWorkerId("selected-worker")
+            val selected = inventoryTask("selected-task", "selected-conversation", selectedWorker)
+            coordinator.upsertCommandTask(selected)
+            coordinator.synchronizeCommandMonitor(inventoryMonitor(selected))
+            val unrelated = inventoryTask("template", "template-conversation", ConversationRuntimeWorkerId("other-worker"))
+            source.connection.use { connection ->
+                connection.prepareStatement(
+                    """
+                    INSERT INTO conversation_runtime_records(conversation_id, record_json, updated_at)
+                    SELECT 'bulk-' || n,
+                        jsonb_build_object(
+                            'conversationId', 'bulk-' || n,
+                            'commandTasks', jsonb_build_array(CAST(? AS jsonb) || jsonb_build_object(
+                                'id', 'bulk-task-' || n, 'conversationId', 'bulk-' || n
+                            )),
+                            'commandMonitors', jsonb_build_array(CAST(? AS jsonb) || jsonb_build_object(
+                                'id', 'bulk-monitor-' || n, 'conversationId', 'bulk-' || n,
+                                'commandTaskId', 'bulk-task-' || n
+                            ))
+                        ), CURRENT_TIMESTAMP
+                    FROM generate_series(1, 10000) AS n
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, json.encodeToString(unrelated))
+                    statement.setString(2, json.encodeToString(inventoryMonitor(unrelated)))
+                    assertEquals(10000, statement.executeUpdate())
+                }
+                connection.createStatement().use { it.execute("ANALYZE conversation_runtime_records") }
+                for ((kind, indexName) in listOf(
+                    WorkerCommandInventoryKind.TASKS to "idx_conversation_runtime_command_tasks_workers",
+                    WorkerCommandInventoryKind.MONITORS to "idx_conversation_runtime_command_monitors_workers",
+                )) {
+                    connection.prepareStatement(
+                        "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + workerCommandInventorySql(kind)
+                    ).use { statement ->
+                        val encodedWorker = json.encodeToString(selectedWorker)
+                        statement.setString(1, "[$encodedWorker]")
+                        statement.setString(2, encodedWorker)
+                        statement.executeQuery().use { result ->
+                            assertTrue(result.next())
+                            val plan = json.parseToJsonElement(result.getString(1)).jsonArray.single()
+                                .jsonObject.getValue("Plan").jsonObject
+                            assertTrue(plan.toString().contains(indexName), "Expected $indexName in plan: $plan")
+                            assertEquals(1.0, plan.getValue("Actual Rows").jsonPrimitive.double)
+                            println("POSTGRES_INVENTORY_PLAN_OK kind=${kind.operation} index=$indexName result_rows=1")
+                        }
+                    }
+                }
+            }
+            assertEquals(listOf(selected), coordinator.findCommandTasks(workerId = selectedWorker))
+            assertEquals(listOf(inventoryMonitor(selected)), coordinator.findCommandMonitors(workerId = selectedWorker))
+        }
+    }
+
+    private suspend fun withInventoryDatabase(
+        block: suspend (DataSource, PostgresConversationRuntimeCoordinator, Json) -> Unit,
+    ) {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return
+        val schema = "runtime_inventory_test_${UUID.randomUUID().toString().replace("-", "")}"
+        val admin = dataSource()
+        admin.connection.use { connection ->
+            connection.createStatement().use { it.execute("CREATE SCHEMA $schema") }
+        }
+        try {
+            val source = dataSource(schema).also(::createRuntimeSchema)
+            val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
+            block(source, PostgresConversationRuntimeCoordinator(source, json), json)
+        } finally {
+            admin.connection.use { connection ->
+                connection.createStatement().use { it.execute("DROP SCHEMA $schema CASCADE") }
+            }
+        }
+    }
+
+    private fun inventoryTask(
+        id: String,
+        conversation: String,
+        worker: ConversationRuntimeWorkerId,
+        terminal: Boolean = false,
+    ): CommandTask {
+        val now = Instant.fromEpochMilliseconds(1_000)
+        return CommandTask(
+            id = CommandTask.Id(id), conversationId = Conversation.Id(conversation), workerId = worker,
+            workspaceMountId = WorkspaceMount.Id("inventory-mount"), command = "synthetic-command-do-not-log",
+            workingDirectory = "/tmp", status = if (terminal) CommandTask.Status.COMPLETED else CommandTask.Status.WORKING,
+            processId = 100, processStartedAt = now, outputFile = "/tmp/inventory-$id.log", outputBytes = 0,
+            exitCode = if (terminal) 0 else null, completedAt = now.takeIf { terminal }, createdAt = now, updatedAt = now,
+        )
+    }
+
+    private fun inventoryMonitor(task: CommandTask): CommandMonitor = CommandMonitor(
+        id = CommandMonitor.Id("monitor-${task.id.value}"), conversationId = task.conversationId,
+        commandTaskId = task.id, workerId = task.workerId, workspaceMountId = task.workspaceMountId,
+        filterCommand = "synthetic-filter-do-not-log", mode = CommandMonitor.Mode.CONTINUOUS, startFrom = CommandMonitor.StartFrom.NOW,
+        status = if (task.isTerminal) CommandMonitor.Status.COMPLETED else CommandMonitor.Status.WORKING,
+        sourceOutputCursor = 0, processId = 101, processStartedAt = task.createdAt,
+        outputFile = "/tmp/monitor-${task.id.value}.log", errorFile = "/tmp/monitor-${task.id.value}.err",
+        outputBytes = 0, eventOutputCursor = 0, createdAt = task.createdAt, updatedAt = task.updatedAt,
+        completedAt = task.completedAt, exitCode = task.exitCode,
+    )
+
     private fun agentInvocationTask(
         conversationId: Conversation.Id,
         messageId: String,
@@ -711,6 +882,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 listOf(
                     "db/migration/postgres/V4__conversation_runtime_records.sql",
                     "db/migration/postgres/V31__conversation_runtime_ready_work.sql",
+                    "db/migration/postgres/V61__worker_command_inventory_indexes.sql",
                 ).forEach { resource -> executeSqlResource(statement, resource) }
             }
         }

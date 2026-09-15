@@ -431,6 +431,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         commandTasksByConversation.values.flatten()
     }
 
+    override suspend fun findCommandTasks(workerId: ConversationRuntimeWorkerId): List<CommandTask> =
+        mutex.withLock {
+            commandTasksByConversation.values.asSequence().flatten()
+                .filter { it.workerId == workerId }.toList()
+        }
+
     override suspend fun findCommandTasks(conversationId: Conversation.Id): List<CommandTask> =
         mutex.withLock {
             commandTasksByConversation[conversationId].orEmpty().toList()
@@ -546,6 +552,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun findCommandMonitors(): List<CommandMonitor> =
         mutex.withLock {
             commandMonitorsByConversation.values.flatten()
+        }
+
+    override suspend fun findCommandMonitors(workerId: ConversationRuntimeWorkerId): List<CommandMonitor> =
+        mutex.withLock {
+            commandMonitorsByConversation.values.asSequence().flatten()
+                .filter { it.workerId == workerId }.toList()
         }
 
     override suspend fun findCommandMonitors(conversationId: Conversation.Id): List<CommandMonitor> =

@@ -91,6 +91,7 @@ internal fun ActivityHeader(
             modifier = modifier.padding(bottom = 4.dp),
             shape = MaterialTheme.shapes.small,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ) {
             Row(
                 modifier = Modifier.then(if (canExpand) Modifier.clickable(onClick = onToggleExpanded) else Modifier)
@@ -139,6 +140,7 @@ internal fun ActivityGroupItem(
             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
                 .testTag(UiTestTag.ActivityGroup(groupKey).value),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             shape = MaterialTheme.shapes.small,
         ) {
             Row(

@@ -1368,6 +1368,8 @@
     "session.participants.updateRespondersFailed": "Não foi possível atualizar os agentes que respondem automaticamente",
     "session.participants.users": "Usuários",
     "session.participants.writePermissionRequired": "É necessário ter permissão de gravação no projeto para alterar os participantes.",
+    "session.runtime.noConnectedAgents": "Nenhum agente conectado a esta conversa",
+    "session.runtime.sharedUsageTitle": "Uso e cotas compartilhados",
     "session.runtime.agentWorking": "{agentName} está trabalhando",
     "session.runtime.availableTools": {
       "one": "{count} ferramenta",

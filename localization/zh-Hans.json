@@ -1312,6 +1312,8 @@
     "session.participants.updateRespondersFailed": "更新自动回复者失败",
     "session.participants.users": "用户",
     "session.participants.writePermissionRequired": "更改参与者需要项目写入权限。",
+    "session.runtime.noConnectedAgents": "此对话未连接任何智能体",
+    "session.runtime.sharedUsageTitle": "共享用量和配额",
     "session.runtime.agentWorking": "{agentName} 正在处理",
     "session.runtime.availableTools": {
       "other": "{count} 个工具"

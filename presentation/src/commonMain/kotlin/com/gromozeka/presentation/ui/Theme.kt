@@ -118,31 +118,33 @@ fun OptionalTooltip(
     noWrap: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    // An empty TooltipBox still creates a popup on hover, with its own semantics owner.
+    if (tooltip == null || tooltip.isBlank()) {
+        content()
+        return
+    }
+
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-        tooltip = if (tooltip != null) {
-            {
-                Surface(
-                    modifier = Modifier.wrapContentSize(),
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = MaterialTheme.colorScheme.inverseSurface,
-                    tonalElevation = 4.dp
+        tooltip = {
+            Surface(
+                modifier = Modifier.wrapContentSize(),
+                shape = MaterialTheme.shapes.extraSmall,
+                color = MaterialTheme.colorScheme.inverseSurface,
+                tonalElevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = tooltip,
-                            fontFamily = if (monospace) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default,
-                            softWrap = !noWrap,
-                            color = MaterialTheme.colorScheme.inverseOnSurface,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+                    Text(
+                        text = tooltip,
+                        fontFamily = if (monospace) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default,
+                        softWrap = !noWrap,
+                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
-        } else {
-            { }  // Empty composable
         },
         state = rememberTooltipState(),
         content = content
