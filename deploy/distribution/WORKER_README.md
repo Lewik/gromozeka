@@ -43,6 +43,45 @@ and Accessibility in **System Settings -> Privacy & Security**, then run
 `install-service` again. Use `start-service`, `stop-service`, `service-status`,
 and `uninstall-service` for the remaining service management commands.
 
+On Windows, connect the Worker first, then open PowerShell as administrator and
+install the service from the extracted distribution:
+
+```powershell
+bin\gromozeka-worker.cmd install-service
+```
+
+The installer copies the distribution to `%ProgramFiles%\Gromozeka Worker` and
+the connected configuration to `%ProgramData%\Gromozeka\Worker\worker.yaml`.
+It preserves that configuration during updates. Stop any manual instance using
+the same identity before installing the service. `GROMOZEKA_WORKER_CONFIG` can
+select the configuration to import on first installation.
+
+The automatic `GromozekaWorker` service runs as LocalSystem. Its command and file
+tools therefore have system permissions, and use the service's environment and
+credential stores, not those of the logged-in user. Standard users cannot stop
+or reconfigure the service, modify the installation, or read its private data.
+The service restarts after failure. Its credentials remain local to the service.
+
+Computer Use runs in a supervised internal helper under the active console
+user's account. This is still one registered Worker. The helper has no Worker
+Gateway connection or credential. It is connected through a local, restricted
+named pipe with process identity checks and is terminated if the service dies.
+Helper restarts and user switches invalidate existing desktop observations;
+desktop actions with an uncertain outcome are never retried automatically.
+
+Computer Use becomes usable after a console user logs in and unlocks Windows.
+Lock screens, UAC secure desktops, and selecting arbitrary RDP sessions are not
+supported by this helper. Shell commands run in service Session 0; use Computer
+Use to launch and interact with visible applications in the user's desktop.
+An ordinary interactive Worker launch still uses its desktop directly.
+
+From a newly extracted distribution, run `bin\gromozeka-worker.cmd update-service`
+as administrator to replace the installed program and bundled runtimes. Other
+commands are `start-service`, `stop-service`, `service-status`, and
+`uninstall-service`. Uninstall removes the service registration but preserves the
+installed files and private configuration. Logs are under
+`%ProgramData%\Gromozeka\Worker\logs\workers`.
+
 The package includes pinned, checksum-verified Eclipse Temurin 21 and Node.js
 runtimes. Launchers always use those private runtimes, do not change system
 Java or Node.js, and do not download executable code during startup.

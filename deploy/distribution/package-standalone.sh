@@ -81,6 +81,7 @@ else
   rm -rf "$package_root/app/browser-mcp/node_modules/.bin"
 
   if [[ "$platform" == "windows" ]]; then
+    cp "$repository_root/deploy/distribution/gromozeka-worker-service.ps1" "$package_root/bin/"
     cp "$repository_root/deploy/distribution/gromozeka-browser-mcp.cmd" "$package_root/bin/"
     cp "$repository_root/deploy/distribution/gromozeka-browser-mcp.ps1" "$package_root/bin/"
   else

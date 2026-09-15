@@ -351,8 +351,20 @@ applications with independent release archives, configuration, and lifecycle.
 Workers always connect through the standard Worker Gateway. On macOS, the
 standalone Worker can use its per-user LaunchAgent and stable helper under
 Application Support so Screen Recording, Accessibility, and microphone consent
-survive Worker updates. On Windows, run the standalone Worker in an interactive
-session so Computer Use is not isolated in service Session 0. Browser Bridge
+survive Worker updates. The Windows standalone Worker also supports an automatic
+LocalSystem service. In that mode, only the main process connects to the Gateway;
+an internal helper controls the active console user's unlocked desktop over a
+local named pipe. The helper uses that user's token and environment, receives no
+Worker credential, and belongs to a kill-on-close Windows job. The pipe checks
+both endpoint process IDs. The service's command/file tools retain LocalSystem
+permissions. Helper generations are embedded in opaque display IDs, invalidating
+observations across helper restarts and Windows logon changes without changing
+the Worker protocol. A missing interactive desktop is a transient tool error,
+not a reason to omit Computer Use from the service's advertised tool catalog.
+Lock screens, UAC secure desktops, and arbitrary RDP-session selection remain
+unsupported. See the [Worker distribution guide](../deploy/distribution/WORKER_README.md)
+for service installation, updates, permissions, and credential ownership.
+Ordinary Windows launches still control their own interactive session directly. Browser Bridge
 and Claude Code remain separately installed user tools.
 
 Deployments may attach a human-facing interactive desktop to a Worker. When

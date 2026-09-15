@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.ktor.client.websockets)
     implementation(libs.klog)
     implementation(libs.jna)
+    implementation(libs.jna.platform)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(kotlin("test"))

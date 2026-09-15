@@ -17,11 +17,25 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import org.springframework.context.annotation.Import
+import org.springframework.context.ConfigurableApplicationContext
 import java.awt.GraphicsEnvironment
 import java.io.File
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "windows-desktop-helper") {
+        check(System.getProperty("os.name").startsWith("Windows"))
+        runWindowsDesktopHelper(args.drop(1))
+        exitProcess(0)
+    }
+    if (args.firstOrNull() == "windows-service") {
+        check(System.getProperty("os.name").startsWith("Windows"))
+        System.setProperty("gromozeka.windows.service", "true")
+        WindowsWorkerService().run { started ->
+            runWorker(args.drop(1).toTypedArray()) { context -> started { context.close() } }
+        }
+        return
+    }
     if (args.firstOrNull() == "configure") {
         runCatching {
             val bootstrap = System.`in`.bufferedReader().use { it.readText() }
@@ -58,6 +72,13 @@ fun main(args: Array<String>) {
         return
     }
 
+    runWorker(args)
+}
+
+private fun runWorker(
+    args: Array<String>,
+    started: (ConfigurableApplicationContext) -> Unit = {},
+) {
     applyWorkerSystemProperties(args)
 
     val context = SpringApplicationBuilder(GromozekaWorkerApplication::class.java)
@@ -68,8 +89,12 @@ fun main(args: Array<String>) {
 
     val gateway = context.getBean(WorkerGatewayClient::class.java)
     check(gateway.isRunning) { "Worker Gateway did not start" }
-    val failure = runBlocking { gateway.awaitTermination() }
-    context.close()
+    val failure = try {
+        started(context)
+        runBlocking { gateway.awaitTermination() }
+    } finally {
+        context.close()
+    }
     if (failure != null) {
         throw IllegalStateException("Conversation runtime Worker terminated unexpectedly", failure)
     }

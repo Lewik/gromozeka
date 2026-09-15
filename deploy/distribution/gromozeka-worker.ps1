@@ -1,5 +1,10 @@
 $ErrorActionPreference = "Stop"
 $AppHome = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$ServiceCommands = @("install-service", "update-service", "uninstall-service", "start-service", "stop-service", "service-status")
+if ($args.Count -gt 0 -and $ServiceCommands -contains $args[0]) {
+    & (Join-Path $PSScriptRoot "gromozeka-worker-service.ps1") @args
+    exit $LASTEXITCODE
+}
 if (-not $env:GROMOZEKA_HOME) {
     $env:GROMOZEKA_HOME = Join-Path $HOME ".gromozeka"
 }

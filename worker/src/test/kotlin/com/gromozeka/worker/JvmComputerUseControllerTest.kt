@@ -25,8 +25,82 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import java.io.EOFException
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 class JvmComputerUseControllerTest {
+    @Test
+    fun `desktop helper preserves one worker identity and rejects an old helper generation`() {
+        val local = FakeComputerUseBackend()
+        val toHelper = LinkedBlockingQueue<String>()
+        val toService = LinkedBlockingQueue<String>()
+        val closed = AtomicBoolean()
+        fun endpoint(incoming: LinkedBlockingQueue<String>, outgoing: LinkedBlockingQueue<String>) =
+            object : DesktopHelperChannel {
+                override fun send(message: String) { check(!closed.get()); outgoing.put(message) }
+                override fun receive(interruptionCheck: () -> Unit): String {
+                    while (!closed.get()) {
+                        interruptionCheck()
+                        incoming.poll(20, TimeUnit.MILLISECONDS)?.let { return it }
+                    }
+                    throw EOFException()
+                }
+                override fun close() { closed.set(true) }
+            }
+        val service = endpoint(toService, toHelper)
+        val helper = endpoint(toHelper, toService)
+        val thread = Thread {
+            runCatching { serveDesktopHelper(helper, local) }
+        }.apply { isDaemon = true; start() }
+        var connection = DesktopHelperConnection(service, generation = "first-helper")
+        val backend = WindowsDesktopComputerUseBackend(object : DesktopSessionProvider {
+            override fun current() = connection
+            override fun close() = connection.close()
+        })
+        try {
+            val display = backend.targets().single()
+            val observed = backend.capture(Identity, display.id, 2048)
+            assertEquals(Identity.workerId, observed.reference.workerId)
+            assertEquals(Identity.sessionId, observed.reference.workerSessionId)
+            backend.execute(observed.reference, listOf(ComputerUseAction.Wait(1))) {}
+            assertEquals(1, local.executeCount)
+            connection = DesktopHelperConnection(service, generation = "replacement-helper")
+            assertFailsWith<IllegalArgumentException> {
+                backend.execute(observed.reference, listOf(ComputerUseAction.Click(ComputerUsePoint(1, 1)))) {}
+            }
+            assertEquals(1, local.executeCount)
+        } finally {
+            backend.close()
+            thread.join(2000)
+            assertTrue(!thread.isAlive)
+        }
+    }
+
+    @Test
+    fun `lost desktop helper response never repeats an action`() {
+        var sends = 0
+        val connection = DesktopHelperConnection(object : DesktopHelperChannel {
+            override fun send(message: String) { sends++ }
+            override fun receive(interruptionCheck: () -> Unit): String = throw EOFException("Helper stopped after input")
+            override fun close() {}
+        })
+        val error = assertFailsWith<ComputerUseBackendExecutionException> {
+            connection.call(DesktopHelperRequest("request-1", DesktopHelperOperation.EXECUTE))
+        }
+        assertTrue(error.mutationStarted)
+        assertEquals(1, sends)
+    }
+
+    @Test
+    fun `windows launcher quotes spaces quotes and trailing backslashes`() {
+        assertEquals("\"C:\\Program Files\\Worker\"", quoteWindowsArgument("C:\\Program Files\\Worker"))
+        assertEquals("\"C:\\path\\\\\"", quoteWindowsArgument("C:\\path\\"))
+        assertEquals("\"a\\\"b\"", quoteWindowsArgument("a\"b"))
+        assertFailsWith<IllegalArgumentException> { quoteWindowsArgument("bad\u0000argument") }
+    }
+
     @Test
     fun `observe returns a self-contained frame for the current worker process`() = runBlocking {
         val backend = FakeComputerUseBackend()

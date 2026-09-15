@@ -156,12 +156,13 @@ Upstream pty4j notice:
 
 ## Java Native Access
 
-Gromozeka uses the unmodified `net.java.dev.jna:jna` library to query native
-operating-system capabilities. JNA is distributed under the Apache License 2.0
+Gromozeka uses the unmodified `net.java.dev.jna:jna` and `jna-platform` libraries
+for native operating-system capabilities and Windows service integration.
+JNA is distributed under the Apache License 2.0
 option offered by its dual-license terms. Source and license texts for the
-distributed `5.14.0` artifact are available from:
+distributed `5.19.1` artifacts are available from:
 
-- https://github.com/java-native-access/jna/tree/5.14.0
+- https://github.com/java-native-access/jna/tree/5.19.1
 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 ## QRose

@@ -37,6 +37,14 @@ class ConversationRuntimeWorkerConfiguration {
         JvmComputerUsePlatformAccess()
 
     @Bean
+    fun computerUseBackend(platformAccess: ComputerUsePlatformAccess): ComputerUseBackend =
+        if (System.getProperty("gromozeka.windows.service") == "true") {
+            WindowsDesktopComputerUseBackend(WindowsDesktopSessionManager())
+        } else {
+            JvmComputerUseBackend(platformAccess)
+        }
+
+    @Bean
     fun conversationRuntimeWorkerDescriptor(
         properties: ConversationRuntimeWorkerProperties,
         workerEnvironmentProbe: WorkerEnvironmentProbe,

@@ -151,7 +151,6 @@ class ComputerUseBackendExecutionException(
     cause,
 )
 
-@Service
 class JvmComputerUseBackend(
     private val platformAccess: ComputerUsePlatformAccess,
 ) : ComputerUseBackend {
