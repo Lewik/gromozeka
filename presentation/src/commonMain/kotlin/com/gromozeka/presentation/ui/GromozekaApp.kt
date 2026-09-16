@@ -62,7 +62,6 @@ import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -124,15 +123,6 @@ fun GromozekaAppContent(
     val unreadConversationIds by appComponents.appViewModel.unreadConversationIds.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
-    val runtimeMetadataProjectId = currentTab?.projectId
-    LaunchedEffect(showRuntimePanel, runtimeMetadataProjectId, appComponents) {
-        val projectId = runtimeMetadataProjectId ?: return@LaunchedEffect
-        if (!showRuntimePanel) return@LaunchedEffect
-        // Keep participant tabs live even when the conversation list and Participants panel are closed.
-        appComponents.conversationService.observeByProject(projectId)
-            .catch { error -> log.warn(error) { "Failed to observe Runtime conversation participants" } }
-            .collect { appComponents.appViewModel.mergeConversationSnapshots(it) }
-    }
     val pttState by appComponents.pttService.state.collectAsState()
     val pttStatusMessage by appComponents.pttService.statusMessage.collectAsState()
     val pttUnavailableReason by appComponents.pttService.unavailableReason.collectAsState()
@@ -395,9 +385,7 @@ fun GromozekaAppContent(
                                         onTabHover = { index -> hoveredTabIndex = index },
                                         onTabHoverExit = { hoveredTabIndex = -1 },
                                         onRenameConversation = { conversationId, newName ->
-                                            coroutineScope.launch {
-                                                appComponents.appViewModel.renameConversation(conversationId, newName)
-                                            }
+                                            appComponents.appViewModel.renameConversation(conversationId, newName)
                                         },
                                         coroutineScope = coroutineScope
                                     )

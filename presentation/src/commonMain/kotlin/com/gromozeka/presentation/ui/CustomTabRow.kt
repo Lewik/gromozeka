@@ -26,7 +26,7 @@ fun CustomTabRow(
     onTabSelect: (Int?) -> Unit,
     onTabHover: (Int) -> Unit,
     onTabHoverExit: () -> Unit,
-    onRenameConversation: (Conversation.Id, String) -> Unit,
+    onRenameConversation: suspend (Conversation.Id, String) -> Unit,
     coroutineScope: CoroutineScope,
 ) {
     val localization = LocalTranslation.current
@@ -179,6 +179,7 @@ fun CustomTabRow(
                                         renameCurrentName = conversation?.displayName.orEmpty()
                                     },
                                     modifier = Modifier.Companion
+                                        .testTag(UiTestTag.SessionTabRename(index).value)
                                         .size(16.dp)
                                         .align(Alignment.Companion.CenterStart)
                                         .offset(x = (-8).dp)
@@ -199,21 +200,21 @@ fun CustomTabRow(
                     }
                 )
             }
-
-            conversationIdToRename?.let { conversationId ->
-                NameEditDialog(
-                    isOpen = true,
-                    currentName = renameCurrentName,
-                    title = LocalTranslation.current.renameConversationTitle,
-                    label = LocalTranslation.current.conversationNameLabel,
-                    maxLength = 255,
-                    onRename = { newName -> onRenameConversation(conversationId, newName) },
-                    onDismiss = {
-                        conversationIdToRename = null
-                        renameCurrentName = ""
-                    },
-                )
-            }
         }
+    }
+
+    conversationIdToRename?.let { conversationId ->
+        NameEditDialog(
+            isOpen = true,
+            currentName = renameCurrentName,
+            title = localization.renameConversationTitle,
+            label = localization.conversationNameLabel,
+            maxLength = 255,
+            onRename = { newName -> onRenameConversation(conversationId, newName) },
+            onDismiss = {
+                conversationIdToRename = null
+                renameCurrentName = ""
+            },
+        )
     }
 }

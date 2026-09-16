@@ -14,6 +14,11 @@ package com.gromozeka.presentation.ui
 sealed interface UiTestTag {
     data object AppRoot : UiTestTag
     data object TabRow : UiTestTag
+    data object NameEditDialog : UiTestTag
+    data object NameEditInput : UiTestTag
+    data object NameEditSave : UiTestTag
+    data object NameEditCancel : UiTestTag
+    data object NameEditError : UiTestTag
     data object ProjectsTab : UiTestTag
     data object ManageProjectsButton : UiTestTag
     data object ProjectManager : UiTestTag
@@ -77,6 +82,10 @@ sealed interface UiTestTag {
 
     data class KeyboardShortcutCapture(val action: String) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(action)
+    }
+
+    data class SessionTabRename(val index: Int) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(index)
     }
 
     data class SessionTab(val index: Int) : UiTestTag {

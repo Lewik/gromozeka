@@ -107,21 +107,16 @@ fun SessionListScreen(
         }
     }
 
-    fun renameConversation(conversation: Conversation, displayName: String) {
+    suspend fun renameConversation(conversation: Conversation, displayName: String) {
         if (conversation.id.value in mutatingConversationIds) return
 
-        coroutineScope.launch {
-            mutatingConversationIds += conversation.id.value
-            operationError = null
-            try {
-                appViewModel.renameConversation(conversation.id, displayName)
-                refreshSearchResults()
-            } catch (e: Exception) {
-                log.warn(e) { "Failed to rename conversation: ${e.message}" }
-                operationError = e.message ?: localization.text("search.renameConversationFailed")
-            } finally {
-                mutatingConversationIds -= conversation.id.value
-            }
+        mutatingConversationIds += conversation.id.value
+        operationError = null
+        try {
+            appViewModel.renameConversation(conversation.id, displayName)
+            refreshSearchResults()
+        } finally {
+            mutatingConversationIds -= conversation.id.value
         }
     }
 

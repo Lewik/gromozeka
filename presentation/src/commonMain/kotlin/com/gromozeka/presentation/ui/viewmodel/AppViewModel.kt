@@ -63,6 +63,20 @@ open class AppViewModel(
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
     init {
+        // Open tabs own their metadata subscriptions, independently of which UI panels are visible.
+        scope.launch {
+            tabs.map { openTabs -> openTabs.mapTo(mutableSetOf()) { it.projectId } }
+                .distinctUntilChanged()
+                .flatMapLatest { projectIds ->
+                    merge(*projectIds.map { projectId ->
+                        conversationService.observeByProject(projectId)
+                            .catch { error ->
+                                log.warn(error) { "Failed to observe conversations for project ${projectId.value}" }
+                            }
+                    }.toTypedArray())
+                }
+                .collect(::mergeConversationSnapshots)
+        }
         scope.launch {
             conversationUnreadStateService.observe()
                 .catch { error -> log.warn(error) { "Conversation unread state observation failed" } }
