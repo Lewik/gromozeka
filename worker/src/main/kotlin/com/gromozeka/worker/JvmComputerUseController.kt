@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.ComputerUseObservationReference
 import com.gromozeka.domain.service.ComputerUsePoint
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.DesktopScreenshotCapture
 import com.gromozeka.shared.uuid.uuid7
 import com.sun.jna.Library
 import com.sun.jna.Native
@@ -119,6 +120,8 @@ class JvmComputerUseController(
 }
 
 interface ComputerUseBackend {
+    val screenshots: DesktopScreenshotCapture
+
     val available: Boolean
 
     val unavailableReason: String?
@@ -154,6 +157,8 @@ class ComputerUseBackendExecutionException(
 class JvmComputerUseBackend(
     private val platformAccess: ComputerUsePlatformAccess,
 ) : ComputerUseBackend {
+    override val screenshots: DesktopScreenshotCapture = JvmDesktopScreenshotCapture(platformAccess)
+
     override val available: Boolean
         get() = unavailableReason == null
 
@@ -298,6 +303,8 @@ class JvmComputerUseBackend(
 }
 
 interface ComputerUsePlatformAccess {
+    val screenCaptureUnavailableReason: String?
+
     val unavailableReason: String?
 }
 
@@ -312,13 +319,19 @@ class JvmComputerUsePlatformAccess internal constructor(
         postEventAllowed = MacOsComputerUsePermissions::postEventAllowed,
     )
 
-    override val unavailableReason: String?
+    override val screenCaptureUnavailableReason: String?
         get() {
             if (!osName.contains("mac", ignoreCase = true)) return null
             return permissionReason(
                 permissionName = "Screen Recording",
                 allowed = screenCaptureAllowed,
-            ) ?: permissionReason(
+            )
+        }
+
+    override val unavailableReason: String?
+        get() {
+            if (!osName.contains("mac", ignoreCase = true)) return null
+            return screenCaptureUnavailableReason ?: permissionReason(
                 permissionName = "Accessibility",
                 allowed = postEventAllowed,
             )
@@ -546,17 +559,20 @@ private fun java.awt.Image.toBufferedImage(): BufferedImage {
     }
 }
 
-private fun BufferedImage.fitLongEdge(maxLongEdge: Int): BufferedImage {
+internal fun BufferedImage.fitLongEdge(maxLongEdge: Int): BufferedImage {
     val longEdge = maxOf(width, height)
     if (longEdge <= maxLongEdge) return this
     return resize(maxLongEdge.toDouble() / longEdge)
 }
 
-internal fun BufferedImage.encodeBoundedPng(): EncodedComputerUsePng {
+internal fun BufferedImage.encodeBoundedPng(
+    maxBytes: Int = MAX_SCREENSHOT_BYTES,
+    minLongEdge: Int = MIN_SCREENSHOT_LONG_EDGE,
+): EncodedComputerUsePng {
     var current = this
     while (true) {
         val encoded = current.encodePng()
-        if (encoded.size <= MAX_SCREENSHOT_BYTES || maxOf(current.width, current.height) <= MIN_SCREENSHOT_LONG_EDGE) {
+        if (encoded.size <= maxBytes || maxOf(current.width, current.height) <= minLongEdge) {
             return EncodedComputerUsePng(current.width, current.height, encoded)
         }
         current = current.resize(0.8)
@@ -593,7 +609,7 @@ private fun isMac(): Boolean = System.getProperty("os.name").contains("mac", ign
 
 private fun isWindows(): Boolean = System.getProperty("os.name").contains("windows", ignoreCase = true)
 
-private fun isUnsupportedWaylandSession(): Boolean =
+internal fun isUnsupportedWaylandSession(): Boolean =
     System.getProperty("os.name").contains("linux", ignoreCase = true) &&
         (System.getenv("XDG_SESSION_TYPE")?.equals("wayland", ignoreCase = true) == true ||
             !System.getenv("WAYLAND_DISPLAY").isNullOrBlank())

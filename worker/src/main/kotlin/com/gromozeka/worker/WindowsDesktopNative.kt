@@ -87,7 +87,11 @@ internal object WindowsDesktopNative {
         }
     }
 
-    fun launchHelper(session: WindowsDesktopSession, pipe: String): WindowsDesktopProcess {
+    fun launchHelper(session: WindowsDesktopSession, pipe: String): WindowsDesktopProcess =
+        launchProcess(session, workerJavaMainArguments() +
+            listOf("windows-desktop-helper", pipe, ProcessHandle.current().pid().toString()))
+
+    fun launchProcess(session: WindowsDesktopSession, mainArguments: List<String>): WindowsDesktopProcess {
         val token = HANDLEByReference()
         windowsCheck(terminal.WTSQueryUserToken(session.id, token), "Acquire interactive Windows user token")
         val environmentBlock = PointerByReference()
@@ -98,7 +102,7 @@ internal object WindowsDesktopNative {
             windowsCheck(environment.CreateEnvironmentBlock(environmentBlock, token.value, false), "Create user environment")
             val java = Path.of(System.getProperty("java.home"), "bin", "javaw.exe").toString()
             val command = listOf(java, "-cp", System.getProperty("java.class.path")) +
-                workerJavaMainArguments() + listOf("windows-desktop-helper", pipe, ProcessHandle.current().pid().toString())
+                mainArguments
             val startup = WinBase.STARTUPINFO().apply { lpDesktop = "winsta0\\default" }
             windowsCheck(security.CreateProcessAsUserW(
                 token.value, WString(java), (command.joinToString(" ", transform = ::quoteWindowsArgument) + '\u0000').toCharArray(),

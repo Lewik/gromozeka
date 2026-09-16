@@ -8,6 +8,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkerEnvironmentProbe
+import com.gromozeka.domain.service.DesktopScreenshotCapture
 import com.gromozeka.shared.uuid.uuid7
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -43,6 +44,9 @@ class ConversationRuntimeWorkerConfiguration {
         } else {
             JvmComputerUseBackend(platformAccess)
         }
+
+    @Bean
+    fun desktopScreenshotCapture(backend: ComputerUseBackend): DesktopScreenshotCapture = backend.screenshots
 
     @Bean
     fun conversationRuntimeWorkerDescriptor(

@@ -43,6 +43,7 @@ try {
     }
     $Outcome = Get-Content $Result -Raw
     Write-Output $Outcome
+    if ($Outcome -notmatch '(?m)^screenshot=fixture-verified\r?$') { throw "Interactive screenshot was not verified" }
     $WorkerPid = [int]([regex]::Match($Outcome, 'pid=(\d+)').Groups[1].Value)
     $Password = "Grz!$([Guid]::NewGuid().ToString('N'))a9"
     New-LocalUser -Name $TestUser -Password (ConvertTo-SecureString $Password -AsPlainText -Force) -AccountNeverExpires | Out-Null
@@ -70,6 +71,7 @@ try {
         Start-Sleep -Milliseconds 200
     }
     $Recovered = Get-Content $Result -Raw
+    if ($Recovered -notmatch '(?m)^screenshot=fixture-verified\r?$') { throw "Screenshot capture did not recover after service restart" }
     $RecoveredPid = [int]([regex]::Match($Recovered, 'pid=(\d+)').Groups[1].Value)
     if ($RecoveredPid -eq $WorkerPid) { throw "Service did not start a new process" }
     $Helpers = @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $RecoveredPid -and $_.Name -eq "javaw.exe" } | Select-Object -ExpandProperty ProcessId)
@@ -78,7 +80,7 @@ try {
     foreach ($HelperPid in $Helpers) {
         if (Get-Process -Id $HelperPid -ErrorAction SilentlyContinue) { throw "Desktop helper survived service stop" }
     }
-    Write-Output "Windows service startup, crash recovery, desktop-helper lifecycle, and standard-user permissions verified"
+    Write-Output "Windows service startup, crash recovery, interactive screenshot contents, desktop-helper lifecycle, and standard-user permissions verified"
 } finally {
     if (Get-Service $ServiceName -ErrorAction SilentlyContinue) {
         Stop-Service $ServiceName -ErrorAction SilentlyContinue

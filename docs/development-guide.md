@@ -361,6 +361,10 @@ permissions. Helper generations are embedded in opaque display IDs, invalidating
 observations across helper restarts and Windows logon changes without changing
 the Worker protocol. A missing interactive desktop is a transient tool error,
 not a reason to omit Computer Use from the service's advertised tool catalog.
+The full-desktop `grz_capture_screenshot` tool uses that same helper in service
+mode, capturing all monitors in the user session instead of the service desktop.
+On ordinary Workers, screenshot capture requires Screen Recording on macOS but
+does not require Accessibility permission or the COMPUTER_USE capability.
 Lock screens, UAC secure desktops, and arbitrary RDP-session selection remain
 unsupported. See the [Worker distribution guide](../deploy/distribution/WORKER_README.md)
 for service installation, updates, permissions, and credential ownership.

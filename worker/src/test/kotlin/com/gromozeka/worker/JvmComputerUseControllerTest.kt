@@ -11,6 +11,11 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
+import com.gromozeka.domain.service.DesktopScreenshotCapture
+import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
+import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.worker.CaptureScreenshotRequest
+import com.gromozeka.infrastructure.ai.tool.worker.GrzCaptureScreenshotToolImpl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Clock
@@ -22,6 +27,7 @@ import java.util.Random
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertContentEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -34,6 +40,7 @@ class JvmComputerUseControllerTest {
     @Test
     fun `desktop helper preserves one worker identity and rejects an old helper generation`() {
         val local = FakeComputerUseBackend()
+        var desktopUnlocked = true
         val toHelper = LinkedBlockingQueue<String>()
         val toService = LinkedBlockingQueue<String>()
         val closed = AtomicBoolean()
@@ -52,7 +59,9 @@ class JvmComputerUseControllerTest {
         val service = endpoint(toService, toHelper)
         val helper = endpoint(toHelper, toService)
         val thread = Thread {
-            runCatching { serveDesktopHelper(helper, local) }
+            runCatching {
+                serveDesktopHelper(helper, local) { check(desktopUnlocked) { "Desktop is locked" } }
+            }
         }.apply { isDaemon = true; start() }
         var connection = DesktopHelperConnection(service, generation = "first-helper")
         val backend = WindowsDesktopComputerUseBackend(object : DesktopSessionProvider {
@@ -60,6 +69,13 @@ class JvmComputerUseControllerTest {
             override fun close() = connection.close()
         })
         try {
+            val screenshots = ConversationRuntimeWorkerConfiguration().desktopScreenshotCapture(backend)
+            val tool = GrzCaptureScreenshotToolImpl(Identity.workerId.value, screenshots)
+            val context = ToolExecutionContext(mapOf(TOOL_CONTEXT_WORKER_ID to Identity.workerId.value))
+            val screenshot = tool.execute(CaptureScreenshotRequest(1920), context)
+            assertContentEquals(byteArrayOf(7, 8, 9), screenshot.content)
+            assertEquals(1920, local.desktopCaptureLongEdge)
+            assertEquals(0, local.captureCount)
             val display = backend.targets().single()
             val observed = backend.capture(Identity, display.id, 2048)
             assertEquals(Identity.workerId, observed.reference.workerId)
@@ -71,6 +87,11 @@ class JvmComputerUseControllerTest {
                 backend.execute(observed.reference, listOf(ComputerUseAction.Click(ComputerUsePoint(1, 1)))) {}
             }
             assertEquals(1, local.executeCount)
+            desktopUnlocked = false
+            val locked = assertFailsWith<IllegalStateException> {
+                tool.execute(CaptureScreenshotRequest(), context)
+            }
+            assertEquals("Desktop is locked", locked.message)
         } finally {
             backend.close()
             thread.join(2000)
@@ -272,6 +293,8 @@ class JvmComputerUseControllerTest {
 
         assertTrue(missingScreenCapture.unavailableReason.orEmpty().contains("Screen Recording"))
         assertTrue(missingInput.unavailableReason.orEmpty().contains("Accessibility"))
+        assertNull(missingInput.screenCaptureUnavailableReason)
+        assertTrue(missingScreenCapture.screenCaptureUnavailableReason.orEmpty().contains("Screen Recording"))
         assertNull(available.unavailableReason)
     }
 
@@ -322,6 +345,16 @@ class JvmComputerUseControllerTest {
         )
 
     private class FakeComputerUseBackend : ComputerUseBackend {
+        var desktopCaptureLongEdge: Int? = null
+        override val screenshots: DesktopScreenshotCapture = object : DesktopScreenshotCapture {
+            override val available = true
+            override val unavailableReason: String? = null
+            override fun capture(maxLongEdge: Int): ByteArray {
+                desktopCaptureLongEdge = maxLongEdge
+                return byteArrayOf(7, 8, 9)
+            }
+        }
+
         var unavailableReasonValue: String? = null
         override val available: Boolean get() = unavailableReasonValue == null
         override val unavailableReason: String? get() = unavailableReasonValue

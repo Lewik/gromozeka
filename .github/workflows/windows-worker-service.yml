@@ -6,6 +6,9 @@ on:
   push:
     paths:
       - 'worker/**'
+      - 'domain/src/commonMain/kotlin/com/gromozeka/domain/service/DesktopScreenshotCapture.kt'
+      - 'infrastructure-ai/src/jvmMain/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
+      - 'infrastructure-ai/src/jvmTest/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
       - 'deploy/distribution/gromozeka-worker*'
       - 'deploy/distribution/package-standalone.sh'
       - 'scripts/test-windows-worker-service.ps1'
@@ -13,6 +16,9 @@ on:
   pull_request:
     paths:
       - 'worker/**'
+      - 'domain/src/commonMain/kotlin/com/gromozeka/domain/service/DesktopScreenshotCapture.kt'
+      - 'infrastructure-ai/src/jvmMain/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
+      - 'infrastructure-ai/src/jvmTest/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
       - 'deploy/distribution/gromozeka-worker*'
       - 'deploy/distribution/package-standalone.sh'
       - 'scripts/test-windows-worker-service.ps1'
@@ -41,7 +47,7 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
       - name: Build Worker and verify Computer Use contracts
-        run: ./gradlew :worker:assemble :worker:test --tests '*JvmComputerUseControllerTest' -q
+        run: ./gradlew :worker:assemble :worker:test --tests '*JvmComputerUseControllerTest' :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' -q
       - name: Verify real Windows service and standard-user permissions
         if: runner.os == 'Windows'
         shell: powershell

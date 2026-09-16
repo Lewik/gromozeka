@@ -6,6 +6,7 @@ import com.gromozeka.domain.service.ComputerUseDisplayId
 import com.gromozeka.domain.service.ComputerUseObservation
 import com.gromozeka.domain.service.ComputerUseObservationReference
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.DesktopScreenshotCapture
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.Base64
@@ -17,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 @Serializable
-internal enum class DesktopHelperOperation { TARGETS, CAPTURE, EXECUTE, CANCEL }
+internal enum class DesktopHelperOperation { TARGETS, CAPTURE, CAPTURE_DESKTOP, EXECUTE, CANCEL }
 
 @Serializable
 internal data class DesktopHelperRequest(
@@ -114,6 +115,19 @@ internal interface DesktopSessionProvider : AutoCloseable {
 internal class WindowsDesktopComputerUseBackend(
     private val sessions: DesktopSessionProvider,
 ) : ComputerUseBackend, AutoCloseable {
+    override val screenshots: DesktopScreenshotCapture = object : DesktopScreenshotCapture {
+        override val available: Boolean = true
+        override val unavailableReason: String? = null
+
+        override fun capture(maxLongEdge: Int): ByteArray {
+            require(maxLongEdge in 1024..4096) { "maxLongEdge must be between 1024 and 4096" }
+            val response = sessions.current().call(
+                request(DesktopHelperOperation.CAPTURE_DESKTOP).copy(maxLongEdge = maxLongEdge),
+            )
+            return Base64.getDecoder().decode(checkNotNull(response.png))
+        }
+    }
+
     override val available: Boolean = true
     override val unavailableReason: String? = null
 
@@ -199,6 +213,11 @@ internal fun serveDesktopHelper(
                     check()
                     when (request.operation) {
                         DesktopHelperOperation.TARGETS -> DesktopHelperResponse(request.id, displays = backend.targets())
+                        DesktopHelperOperation.CAPTURE_DESKTOP -> {
+                            val png = backend.screenshots.capture(request.maxLongEdge)
+                            check()
+                            DesktopHelperResponse(request.id, png = Base64.getEncoder().encodeToString(png))
+                        }
                         DesktopHelperOperation.CAPTURE -> {
                             val observed = backend.capture(
                                 requireNotNull(request.identity), requireNotNull(request.displayId), request.maxLongEdge,

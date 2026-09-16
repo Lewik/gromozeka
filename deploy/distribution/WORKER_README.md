@@ -70,6 +70,9 @@ Helper restarts and user switches invalidate existing desktop observations;
 desktop actions with an uncertain outcome are never retried automatically.
 
 Computer Use becomes usable after a console user logs in and unlocks Windows.
+The standalone screenshot tool also uses the helper and captures the complete
+user desktop across all monitors. A missing or locked user desktop returns an
+error instead of capturing the service's Session 0 desktop.
 Lock screens, UAC secure desktops, and selecting arbitrary RDP sessions are not
 supported by this helper. Shell commands run in service Session 0; use Computer
 Use to launch and interact with visible applications in the user's desktop.
