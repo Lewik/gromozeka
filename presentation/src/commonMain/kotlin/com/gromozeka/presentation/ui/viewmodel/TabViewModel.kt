@@ -338,7 +338,7 @@ class TabViewModel(
             try {
                 val page = conversationHistoryService.loadPage(conversationId, request)
                 historyMutex.withLock {
-                    applyHistoryPage(page, replace || page.reset || historyThreadId != page.threadId)
+                    applyHistoryPage(page, replace || page.reset || historyThreadId != page.threadId, preserveAnchor = request.positionHint != null)
                     historyEventsDuringLoad.filter { event ->
                         (event.cursorSequence?.let { it > page.eventSequence } != false) &&
                             (event.historyThreadId == null || event.historyThreadId == page.threadId)
@@ -365,7 +365,7 @@ class TabViewModel(
         }
     }
 
-    private fun applyHistoryPage(page: ConversationHistoryPage, replace: Boolean) {
+    private fun applyHistoryPage(page: ConversationHistoryPage, replace: Boolean, preserveAnchor: Boolean) {
         val anchorPosition = historyAnchor.value?.let { historyPositions[it] }
         val optimistic = _allMessages.value.filter { it.id !in historyPositions }
         val retainedDetails = if (replace) emptyMap() else {
@@ -383,7 +383,7 @@ class TabViewModel(
             if (page.messages.firstOrNull()?.position?.let { it < (historyPositions.values.minOrNull() ?: Int.MAX_VALUE) } == true) _olderHistory.value = page.older
             if (page.messages.lastOrNull()?.position?.let { it > (historyPositions.values.maxOrNull() ?: -1) } == true) _newerHistory.value = page.newer
         }
-        if (replace && anchorPosition != null && page.messages.none { it.message.id == historyAnchor.value }) {
+        if (replace && preserveAnchor && anchorPosition != null && page.messages.none { it.message.id == historyAnchor.value }) {
             _messageFocusRequest.value = page.messages.minByOrNull { kotlin.math.abs(it.position - anchorPosition) }?.message?.id
         }
         historyThreadId = page.threadId

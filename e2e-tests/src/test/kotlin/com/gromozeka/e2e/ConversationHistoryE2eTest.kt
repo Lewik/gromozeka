@@ -56,6 +56,11 @@ class ConversationHistoryE2eTest {
         waitForTag(UiTestTag.MessageItem("${conversation.id.value}-20"))
         assertTrue(tab.allMessages.value.size <= 50)
         saveScreenshot("history-search-target")
+        onNodeWithTag(UiTestTag.UnreadMessagesButton.value).performClick()
+        waitForTag(UiTestTag.MessageItem("${conversation.id.value}-1199"))
+        onNodeWithTag(UiTestTag.MessageItem("${conversation.id.value}-1199").value).assertIsDisplayed()
+        tab.requestMessageFocus(Conversation.Message.Id("${conversation.id.value}-20"))
+        waitForTag(UiTestTag.MessageItem("${conversation.id.value}-20"))
         tab.toggleHistorySelection(ConversationMessageSelection.ALL)
         waitUntil(timeoutMillis = 10_000) { tab.uiState.value.selectedMessageIds.size == 1_200 }
         tab.clearMessageSelection()

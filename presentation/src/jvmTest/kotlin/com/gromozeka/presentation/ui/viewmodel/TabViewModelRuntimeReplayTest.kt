@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.Project
@@ -185,6 +186,25 @@ class TabViewModelRuntimeReplayTest {
         assertEquals(listOf(call), viewModel.allMessages.value)
         assertEquals(result, viewModel.toolResultsMap.value[callId.value])
         assertEquals(ConversationHistoryCursor(threadId, 0), viewModel.newerHistory.value)
+    }
+
+    @Test
+    fun `jumping to latest does not restore the previous scroll anchor`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val threadId = Conversation.Thread.Id("thread-1")
+        fun message(id: String) = Conversation.Message(
+            id = Conversation.Message.Id(id), conversationId = conversationId, role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(id)), createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        val old = message("old")
+        var response = ConversationHistoryPage(threadId, listOf(ConversationHistoryMessage(0, old)))
+        val viewModel = viewModel(backgroundScope, MutableSharedFlow()) { response }
+        runCurrent()
+        viewModel.rememberHistoryAnchor(old.id)
+        response = ConversationHistoryPage(threadId, listOf(ConversationHistoryMessage(100, message("latest"))))
+        viewModel.loadLatestHistory()
+        runCurrent()
+        assertNull(viewModel.messageFocusRequest.value)
     }
 
     @Test
