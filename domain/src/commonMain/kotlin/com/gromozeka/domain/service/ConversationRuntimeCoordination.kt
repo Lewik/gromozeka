@@ -766,6 +766,7 @@ sealed interface ConversationRuntimeEvent {
     data class ReplayCompleted(
         override val conversationId: Conversation.Id,
         override val cursorSequence: Long?,
+        val historyReset: Boolean = false,
     ) : ConversationRuntimeEvent
 
     @Serializable
@@ -775,6 +776,9 @@ sealed interface ConversationRuntimeEvent {
         val message: Conversation.Message,
         override val cursorSequence: Long? = null,
         val turnId: ConversationRuntimeTurnId? = null,
+        val historyThreadId: Conversation.Thread.Id? = null,
+        val historyPosition: Int? = null,
+        val hasMoreContent: Boolean = false,
     ) : ConversationRuntimeEvent
 
     @Serializable
@@ -1019,6 +1023,8 @@ interface ConversationRuntimeCoordinator {
     suspend fun listPending(conversationId: Conversation.Id): List<ConversationRuntimeTask>
 
     suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot
+
+    suspend fun lastEventSequence(conversationId: Conversation.Id): Long = snapshot(conversationId).lastEventSequence
 
     suspend fun recordEvent(event: ConversationRuntimeEvent): ConversationRuntimeEventLogEntry
 

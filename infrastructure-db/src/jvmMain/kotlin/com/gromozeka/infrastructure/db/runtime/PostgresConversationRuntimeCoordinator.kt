@@ -732,6 +732,17 @@ class PostgresConversationRuntimeCoordinator(
         return record.snapshot()
     }
 
+    override suspend fun lastEventSequence(conversationId: Conversation.Id): Long = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT COALESCE((record_json ->> 'eventSequence')::bigint, 0) FROM conversation_runtime_records WHERE conversation_id = ?"
+            ).use { statement ->
+                statement.setString(1, conversationId.value)
+                statement.executeQuery().use { rows -> if (rows.next()) rows.getLong(1) else 0L }
+            }
+        }
+    }
+
     override suspend fun recordEvent(event: ConversationRuntimeEvent): ConversationRuntimeEventLogEntry =
         mutateRecord(event.conversationId, createIfMissing = true) { record ->
             val sequence = record.eventSequence + 1
@@ -763,11 +774,28 @@ class PostgresConversationRuntimeCoordinator(
         afterSequence: Long?,
         limit: Int,
     ): List<ConversationRuntimeEventLogEntry> {
-        val entries = readRecord(conversationId)?.eventLog.orEmpty()
-        return if (afterSequence == null) {
-            entries.takeLast(limit)
-        } else {
-            entries.filter { it.sequence > afterSequence }.take(limit)
+        require(limit > 0)
+        val direction = if (afterSequence == null) "DESC" else "ASC"
+        return withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    """
+                    SELECT entry FROM conversation_runtime_records records,
+                        LATERAL jsonb_array_elements(COALESCE(records.record_json -> 'eventLog', '[]'::jsonb)) entry
+                    WHERE records.conversation_id = ? AND (entry ->> 'sequence')::bigint > ?
+                    ORDER BY (entry ->> 'sequence')::bigint $direction LIMIT ?
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, conversationId.value)
+                    statement.setLong(2, afterSequence ?: 0L)
+                    statement.setInt(3, limit)
+                    statement.executeQuery().use { rows ->
+                        buildList {
+                            while (rows.next()) add(json.decodeFromString<ConversationRuntimeEventLogEntry>(rows.getString(1)))
+                        }.sortedBy { it.sequence }
+                    }
+                }
+            }
         }
     }
 

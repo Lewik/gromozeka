@@ -1,6 +1,12 @@
 package com.gromozeka.client
 
+import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationMessageSelection
+import com.gromozeka.domain.model.ConversationHistoryPage
+import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.ConversationSearchPage
 import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.QuickTextAction
@@ -59,6 +65,23 @@ internal class RemoteAiUsageReportService(
 internal class RemoteConversationHistoryService(
     private val client: GromozekaWsClient,
 ) : ConversationHistoryService {
+    private val historyJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private fun historyPath(conversationId: Conversation.Id) = "/api/conversations/${conversationId.value}/history"
+
+    private suspend fun readHistory(path: String): String = withTimeout(30_000) { client.getServerResource(path) }
+
+    override suspend fun loadPage(conversationId: Conversation.Id, request: ConversationHistoryPageRequest): ConversationHistoryPage =
+        historyJson.decodeFromString(readHistory(historyPath(conversationId) + "?request=" + historyJson.encodeToString(request).encodeURLParameter()))
+
+    override suspend fun loadMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message =
+        historyJson.decodeFromString(readHistory(historyPath(conversationId) + "/messages/${messageId.value}"))
+
+    override suspend fun selectMessageIds(conversationId: Conversation.Id, selection: ConversationMessageSelection): List<Conversation.Message.Id> =
+        historyJson.decodeFromString(readHistory(historyPath(conversationId) + "/selection/${selection.name}"))
+
+    override suspend fun latestUserMessage(conversationId: Conversation.Id): Conversation.Message? =
+        historyJson.decodeFromString(readHistory(historyPath(conversationId) + "/latest-user-message"))
+
     override suspend fun editMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,

@@ -1787,6 +1787,8 @@
     "voice.transcriptionWorkerMissing": "Worker {worker} untuk suara ke teks tidak ditemukan",
     "voice.unavailable": "Perekaman suara tidak tersedia pada klien ini",
     "voice.workerAudioRequired": "Pilih mikrofon Worker untuk merekam audio pada Worker",
-    "voice.workerInputUnavailable": "Input audio {input} tidak tersedia pada Worker {worker}"
+    "voice.workerInputUnavailable": "Input audio {input} tidak tersedia pada Worker {worker}",
+    "chat.history.loadOlder": "Muat pesan sebelumnya",
+    "chat.history.loadFull": "Muat pesan lengkap"
   }
 }

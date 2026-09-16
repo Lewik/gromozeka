@@ -1861,6 +1861,8 @@
     "voice.transcriptionWorkerMissing": "No se encontró el Worker de transcripción de voz {worker}",
     "voice.unavailable": "La grabación de voz no está disponible en este cliente",
     "voice.workerAudioRequired": "Selecciona un micrófono de Worker para capturar audio en un Worker",
-    "voice.workerInputUnavailable": "La entrada de audio {input} no está disponible en el Worker {worker}"
+    "voice.workerInputUnavailable": "La entrada de audio {input} no está disponible en el Worker {worker}",
+    "chat.history.loadOlder": "Cargar mensajes anteriores",
+    "chat.history.loadFull": "Cargar mensaje completo"
   }
 }

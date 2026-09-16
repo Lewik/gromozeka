@@ -46,6 +46,15 @@ revision, and then reuse the existing typed read request for the current
 snapshot. Reconnect starts from a fresh snapshot; it does not replay missed
 declarative mutations. Conversation messages and other ordered event streams
 remain separate because they cannot be safely conflated.
+The conversation timeline reads bounded pages over authenticated HTTP separately
+from the command WebSocket. Pages use thread/position cursors and include an event
+watermark; the client subscribes after that watermark and applies message events
+incrementally. A replay gap resets the visible page instead of replaying an
+unbounded backlog. Completion events do not reload history. Timeline previews omit
+provider replay state and signatures; the full persisted messages remain available
+for model context and explicit detail/edit reads. Older pages preserve scroll
+anchors, and search loads a page around its target message.
+
 Active model-call presentation is a separate cumulative state-sync snapshot.
 It is intentionally transient: losing it must not affect model execution,
 conversation history, cancellation, or terminal runtime events.

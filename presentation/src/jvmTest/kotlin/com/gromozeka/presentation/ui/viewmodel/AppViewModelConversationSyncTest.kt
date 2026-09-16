@@ -146,7 +146,12 @@ class AppViewModelConversationSyncTest {
                 if (name.startsWith("observe")) emptyFlow<Nothing>() else error(name)
             },
             conversationService = conversationService,
-            conversationHistoryService = stub(),
+            conversationHistoryService = stub { name, _ ->
+                when {
+                    name.startsWith("loadPage") -> com.gromozeka.domain.model.ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+                    else -> error("Unexpected history method: $name")
+                }
+            },
             settingsService = settings,
             scope = scope,
             attachmentAcquisitionController = NoOpAttachmentAcquisitionController,

@@ -64,6 +64,7 @@ internal object E2eEnvironment {
             val clientId = UUID.randomUUID().toString()
             val connection = RemoteAuthenticationConnection(server.remoteUrl, "Compose E2E $clientId")
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val historyNetwork = HistoryNetworkProbe(connection.httpClient)
             val homeDirectory = artifactsDirectory.resolve("clients/$clientId")
             Files.createDirectories(homeDirectory)
 
@@ -85,7 +86,7 @@ internal object E2eEnvironment {
                         httpClient = connection.httpClient,
                     )
                 }
-                E2eClient(app.components, app, connection, scope, onClose, { openClient() })
+                E2eClient(app.components, app, connection, scope, onClose, { openClient() }, historyNetwork, { conversation, messages -> seedHistory(database, conversation, messages) })
             } catch (error: Throwable) {
                 scope.cancel()
                 connection.close()
@@ -126,6 +127,8 @@ internal class E2eClient(
     private val scope: CoroutineScope,
     private val onClose: () -> Unit,
     val openAnotherClient: () -> E2eClient,
+    val historyNetwork: HistoryNetworkProbe,
+    val seedHistory: (com.gromozeka.domain.model.Conversation, List<com.gromozeka.domain.model.Conversation.Message>) -> Unit,
 ) : AutoCloseable {
     override fun close() {
         app.close()

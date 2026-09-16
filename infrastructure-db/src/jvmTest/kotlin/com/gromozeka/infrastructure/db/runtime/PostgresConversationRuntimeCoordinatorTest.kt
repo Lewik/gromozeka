@@ -44,6 +44,34 @@ import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
     @Test
+    fun `event cursor and bounded replay do not decode unrelated runtime payloads`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
+        val schema = "history_cursor_${UUID.randomUUID().toString().replace("-", "")}"
+        val admin = dataSource()
+        admin.connection.use { it.createStatement().use { statement -> statement.execute("CREATE SCHEMA $schema") } }
+        try {
+            val source = dataSource(schema).also(::createRuntimeSchema)
+            val coordinator = PostgresConversationRuntimeCoordinator(source, Json { encodeDefaults = true })
+            val conversationId = Conversation.Id("cursor")
+            assertEquals(0L, coordinator.lastEventSequence(conversationId))
+            repeat(5) {
+                coordinator.recordEvent(com.gromozeka.domain.service.ConversationRuntimeEvent.ExecutionCompleted(conversationId, shouldNotifyUser = false))
+            }
+            source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("UPDATE conversation_runtime_records SET record_json = jsonb_set(record_json, '{commandTasks}', '[{\"intentionallyInvalid\":true}]'::jsonb)")
+                }
+            }
+            assertEquals(5L, coordinator.lastEventSequence(conversationId))
+            assertEquals(listOf(4L, 5L), coordinator.listEventLogEntries(conversationId, null, 2).map { it.sequence })
+            assertEquals(listOf(2L, 3L), coordinator.listEventLogEntries(conversationId, 1, 2).map { it.sequence })
+            assertTrue(coordinator.listEventLogEntries(conversationId, 5, 2).isEmpty())
+        } finally {
+            admin.connection.use { it.createStatement().use { statement -> statement.execute("DROP SCHEMA $schema CASCADE") } }
+        }
+    }
+
+    @Test
     fun `binary migration preserves existing command output and permits zero bytes in jsonb`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
         val schema = "binary_migration_${UUID.randomUUID().toString().replace("-", "")}"

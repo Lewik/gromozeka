@@ -3,6 +3,17 @@ package com.gromozeka.presentation.ui.viewmodel
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationHistoryPage
+import com.gromozeka.domain.model.ConversationHistoryPageRequest
+import com.gromozeka.domain.model.ConversationHistoryMessage
+import com.gromozeka.domain.model.ConversationHistoryCursor
+import com.gromozeka.domain.model.ConversationMessageSelection
+import com.gromozeka.domain.model.SquashType
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlin.test.assertTrue
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
@@ -23,6 +34,7 @@ import com.gromozeka.presentation.ui.state.UIState
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -37,56 +49,14 @@ class TabViewModelRuntimeReplayTest {
     @Test
     fun `historical message replay does not reactivate an idle runtime`() = runTest {
         val conversationId = Conversation.Id("conversation-1")
-        val projectId = Project.Id("project-1")
         val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 4)
-        val settingsService = TestSettingsService()
-        val viewModel = TabViewModel(
-            conversationId = conversationId,
-            projectId = projectId,
-            currentUserAuthor = Conversation.Message.Author.User(User.Id("user-1"), "User"),
-            agentService = stub { methodName ->
-                when {
-                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
-                    else -> unsupported(methodName)
-                }
-            },
-            conversationRuntimeService = stub { methodName ->
-                when {
-                    methodName.startsWith("observeConversation") -> runtimeEvents
-                    methodName.startsWith("observeActiveGeneration") -> emptyFlow<ActiveGenerationSnapshot?>()
-                    else -> unsupported(methodName)
-                }
-            },
-            conversationService = stub { methodName ->
-                when {
-                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
-                    methodName.startsWith("loadCurrentMessages") -> emptyList<Conversation.Message>()
-                    else -> unsupported(methodName)
-                }
-            },
-            conversationHistoryService = stub(),
-            settingsService = settingsService,
-            scope = backgroundScope,
-            initialTabUiState = UIState.Tab(
-                projectId = projectId,
-                conversationId = conversationId,
-                tabId = "tab-1",
-            ),
-            attachmentAcquisitionController = NoOpAttachmentAcquisitionController,
-            artifactTransferService = stub(),
-            tokenStatsService = stub { methodName ->
-                when {
-                    methodName.startsWith("getTokenStats") -> null
-                    else -> unsupported(methodName)
-                }
-            },
-            messageInputClientPlatform = MessageInputContext.ClientPlatform.DESKTOP,
-            turnCompletionNotificationService = TurnCompletionNotificationService(
-                settingsService,
-                NoOpTurnCompletionNotificationSink,
-            ),
-        )
+        var historyLoads = 0
+        val viewModel = viewModel(backgroundScope, runtimeEvents) {
+            historyLoads++
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
 
+        runCurrent()
         runtimeEvents.emit(
             ConversationRuntimeEvent.SnapshotUpdated(
                 conversationId = conversationId,
@@ -126,8 +96,176 @@ class TabViewModelRuntimeReplayTest {
         runtimeEvents.emit(ConversationRuntimeEvent.ReplayCompleted(conversationId, 2))
         runCurrent()
 
+        assertEquals(1, historyLoads, "Replaying a completion must not download the entire history again")
         assertFalse(viewModel.isWaitingForResponse.value)
         assertFalse(viewModel.uiState.value.isWaitingForResponse)
+    }
+
+    @Test
+    fun `incoming messages remain visible while a page waits and after replacement`() = runTest {
+        val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 8)
+        val conversationId = Conversation.Id("conversation-1")
+        val threadId = Conversation.Thread.Id("thread-1")
+        fun message(position: Int) = Conversation.Message(
+            id = Conversation.Message.Id("message-$position"), conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Message $position")),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        fun page(range: IntRange, sequence: Long) = ConversationHistoryPage(
+            threadId, range.map { ConversationHistoryMessage(it, message(it)) },
+            older = range.first.takeIf { it > 0 }?.let { ConversationHistoryCursor(threadId, it) },
+            eventSequence = sequence,
+        )
+        var response = page(10..19, 100)
+        var gate: CompletableDeferred<Unit>? = null
+        val viewModel = viewModel(backgroundScope, events) {
+            val result = response
+            gate?.await()
+            result
+        }
+        runCurrent()
+        events.emit(ConversationRuntimeEvent.ReplayCompleted(conversationId, 100))
+        runCurrent()
+        response = page(0..9, 100)
+        gate = CompletableDeferred()
+        viewModel.loadOlderHistory()
+        runCurrent()
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            conversationId, taskId = null, message = message(20), cursorSequence = 101,
+            historyThreadId = threadId, historyPosition = 20,
+        ))
+        runCurrent()
+        assertTrue(viewModel.historyLoading.value)
+        assertEquals(message(20), viewModel.allMessages.value.last())
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals((0..20).map { message(it).id }, viewModel.allMessages.value.map { it.id })
+        response = page(10..20, 101)
+        gate = CompletableDeferred()
+        viewModel.loadLatestHistory()
+        runCurrent()
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            conversationId, taskId = null, message = message(21), cursorSequence = 102,
+            historyThreadId = threadId, historyPosition = 21,
+        ))
+        runCurrent()
+        assertEquals(message(21), viewModel.allMessages.value.last())
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals((10..21).map { message(it).id }, viewModel.allMessages.value.map { it.id })
+    }
+
+    @Test
+    fun `a tool result outside the loaded window still completes its visible call`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val threadId = Conversation.Thread.Id("thread-1")
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
+        val call = Conversation.Message(
+            id = Conversation.Message.Id("call-message"), conversationId = conversationId,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(Conversation.Message.ContentItem.ToolCall(callId,
+                Conversation.Message.ContentItem.ToolCall.Data("tool", JsonObject(emptyMap())))),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 8)
+        val viewModel = viewModel(backgroundScope, events) {
+            ConversationHistoryPage(threadId, listOf(ConversationHistoryMessage(0, call)),
+                newer = ConversationHistoryCursor(threadId, 0), eventSequence = 1)
+        }
+        backgroundScope.launch { viewModel.toolResultsMap.collect {} }
+        runCurrent()
+        val result = Conversation.Message.ContentItem.ToolResult(callId, "tool",
+            listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("Completed outside the page")), isError = true)
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            conversationId, taskId = null, message = call.copy(id = Conversation.Message.Id("result"), content = listOf(result)),
+            cursorSequence = 2, historyThreadId = threadId, historyPosition = 20,
+        ))
+        runCurrent()
+        assertEquals(listOf(call), viewModel.allMessages.value)
+        assertEquals(result, viewModel.toolResultsMap.value[callId.value])
+        assertEquals(ConversationHistoryCursor(threadId, 0), viewModel.newerHistory.value)
+    }
+
+    @Test
+    fun `replay gap reloads one page while ordinary replay completion does not`() = runTest {
+        val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 8)
+        var loads = 0
+        val viewModel = viewModel(backgroundScope, events) {
+            loads++
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList(), eventSequence = loads.toLong())
+        }
+        runCurrent()
+        events.emit(ConversationRuntimeEvent.ReplayCompleted(Conversation.Id("conversation-1"), 1))
+        runCurrent()
+        assertEquals(1, loads)
+        events.emit(ConversationRuntimeEvent.ReplayCompleted(Conversation.Id("conversation-1"), 2, historyReset = true))
+        runCurrent()
+        assertEquals(2, loads)
+        assertFalse(viewModel.historyLoading.value)
+    }
+
+    private fun viewModel(
+        scope: CoroutineScope,
+        runtimeEvents: MutableSharedFlow<ConversationRuntimeEvent>,
+        loadPage: suspend (ConversationHistoryPageRequest) -> ConversationHistoryPage,
+    ): TabViewModel {
+        val conversationId = Conversation.Id("conversation-1")
+        val projectId = Project.Id("project-1")
+        val settingsService = TestSettingsService()
+        return TabViewModel(
+            conversationId = conversationId,
+            projectId = projectId,
+            currentUserAuthor = Conversation.Message.Author.User(User.Id("user-1"), "User"),
+            agentService = stub { methodName ->
+                when {
+                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    else -> unsupported(methodName)
+                }
+            },
+            conversationRuntimeService = stub { methodName ->
+                when {
+                    methodName.startsWith("observeConversation") -> runtimeEvents
+                    methodName.startsWith("observeActiveGeneration") -> emptyFlow<ActiveGenerationSnapshot?>()
+                    else -> unsupported(methodName)
+                }
+            },
+            conversationService = stub { methodName ->
+                when {
+                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    else -> unsupported(methodName)
+                }
+            },
+            conversationHistoryService = object : ConversationHistoryService {
+                override suspend fun loadPage(conversationId: Conversation.Id, request: ConversationHistoryPageRequest) = loadPage(request)
+                override suspend fun loadMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message = error("Unused")
+                override suspend fun selectMessageIds(conversationId: Conversation.Id, selection: ConversationMessageSelection): List<Conversation.Message.Id> = error("Unused")
+                override suspend fun latestUserMessage(conversationId: Conversation.Id): Conversation.Message? = error("Unused")
+                override suspend fun editMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id, newContent: List<Conversation.Message.ContentItem>): Conversation? = error("Unused")
+                override suspend fun deleteMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>): Conversation? = error("Unused")
+                override suspend fun compactMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>, strategy: SquashType): Conversation = error("Unused")
+            },
+            settingsService = settingsService,
+            scope = scope,
+            initialTabUiState = UIState.Tab(
+                projectId = projectId,
+                conversationId = conversationId,
+                tabId = "tab-1",
+            ),
+            attachmentAcquisitionController = NoOpAttachmentAcquisitionController,
+            artifactTransferService = stub(),
+            tokenStatsService = stub { methodName ->
+                when {
+                    methodName.startsWith("getTokenStats") -> null
+                    else -> unsupported(methodName)
+                }
+            },
+            messageInputClientPlatform = MessageInputContext.ClientPlatform.DESKTOP,
+            turnCompletionNotificationService = TurnCompletionNotificationService(
+                settingsService,
+                NoOpTurnCompletionNotificationSink,
+            ),
+        )
     }
 
     private class TestSettingsService : SettingsService {

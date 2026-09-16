@@ -724,6 +724,30 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
+    fun `reconnect beyond retained events requests a history reset instead of partial replay`() = runBlocking {
+        val harness = dispatcherHarness()
+        try {
+            repeat(10_002) {
+                harness.coordinator.recordEvent(ConversationRuntimeEvent.ExecutionCompleted(conversationId, shouldNotifyUser = false))
+            }
+            val event = withTimeout(TEST_EVENT_TIMEOUT_MS) {
+                harness.dispatcher.observeConversation(conversationId, afterEventSequence = 1).take(1).toList().single()
+            }
+            assertTrue(event is ConversationRuntimeEvent.ReplayCompleted)
+            assertTrue(event.historyReset)
+            assertEquals(10_002L, event.cursorSequence)
+            val caughtUp = withTimeout(TEST_EVENT_TIMEOUT_MS) {
+                harness.dispatcher.observeConversation(conversationId, afterEventSequence = 10_002).take(1).toList().single()
+            }
+            assertTrue(caughtUp is ConversationRuntimeEvent.ReplayCompleted)
+            assertFalse(caughtUp.historyReset)
+            assertEquals(10_002L, caughtUp.cursorSequence)
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
     fun `runtime stays Server-owned while preserving exact workspace execution target`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val eventBus = InMemoryConversationRuntimeEventBus()

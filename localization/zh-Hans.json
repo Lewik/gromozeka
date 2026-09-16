@@ -1787,6 +1787,8 @@
     "voice.transcriptionWorkerMissing": "找不到执行语音识别的工作节点 {worker}",
     "voice.unavailable": "此客户端无法录音",
     "voice.workerAudioRequired": "要在工作节点上采集音频，请选择工作节点的麦克风",
-    "voice.workerInputUnavailable": "工作节点 {worker} 上的音频输入 {input} 不可用"
+    "voice.workerInputUnavailable": "工作节点 {worker} 上的音频输入 {input} 不可用",
+    "chat.history.loadOlder": "加载更早的消息",
+    "chat.history.loadFull": "加载完整消息"
   }
 }

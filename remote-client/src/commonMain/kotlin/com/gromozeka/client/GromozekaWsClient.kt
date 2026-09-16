@@ -288,6 +288,11 @@ internal class GromozekaWsClient(
         )
         registryMutex.withLock {
             conversationSubscriptions[subscriptionId] = subscription
+            if (afterEventSequence != null) {
+                conversationEventSequences[conversationId] = maxOf(
+                    afterEventSequence, conversationEventSequences[conversationId] ?: 0L,
+                )
+            }
         }
 
         runCatching {
@@ -313,11 +318,13 @@ internal class GromozekaWsClient(
                     val previousSequence = registryMutex.withLock {
                         conversationEventSequences[conversationId] ?: 0L
                     }
-                    if (cursorSequence <= previousSequence) {
+                    if (cursorSequence <= previousSequence && event !is ConversationReplayCompletedEvent) {
                         continue
                     }
                     registryMutex.withLock {
-                        conversationEventSequences[conversationId] = cursorSequence
+                        conversationEventSequences[conversationId] = if (event is ConversationReplayCompletedEvent && event.historyReset) {
+                            cursorSequence
+                        } else maxOf(previousSequence, cursorSequence)
                     }
                 }
                 when (event) {
@@ -326,6 +333,9 @@ internal class GromozekaWsClient(
                             conversationId = event.conversationId,
                             taskId = event.taskId,
                             message = event.message,
+                            historyThreadId = event.historyThreadId,
+                            historyPosition = event.historyPosition,
+                            hasMoreContent = event.hasMoreContent,
                             cursorSequence = event.cursorSequence,
                         )
                     )
@@ -346,6 +356,7 @@ internal class GromozekaWsClient(
                     )
                     is ConversationReplayCompletedEvent -> emit(
                         ConversationRuntimeEvent.ReplayCompleted(
+                            historyReset = event.historyReset,
                             conversationId = event.conversationId,
                             cursorSequence = event.cursorSequence,
                         )
@@ -806,10 +817,7 @@ internal class GromozekaWsClient(
         subscription: ConversationSubscription,
     ): GromozekaClientEnvelope {
         val replayAfterSequence = registryMutex.withLock {
-            listOfNotNull(
-                subscription.initialAfterEventSequence,
-                conversationEventSequences[subscription.conversationId],
-            ).maxOrNull()
+            conversationEventSequences[subscription.conversationId] ?: subscription.initialAfterEventSequence
         }
         return GromozekaClientEnvelope(
             id = uuid7(),

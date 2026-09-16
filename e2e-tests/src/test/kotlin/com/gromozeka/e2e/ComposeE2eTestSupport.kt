@@ -42,6 +42,7 @@ internal fun runGromozekaUiTest(
                 waitForTag(UiTestTag.AppRoot)
                 block(client)
             } catch (error: Throwable) {
+                mainClock.autoAdvance = false
                 runCatching {
                     writeSemanticsSnapshot(scenarioName, onAllNodes(isRoot(), useUnmergedTree = true).printToString())
                 }.onFailure(error::addSuppressed)

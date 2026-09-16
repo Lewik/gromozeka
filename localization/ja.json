@@ -1787,6 +1787,8 @@
     "voice.transcriptionWorkerMissing": "音声認識を実行するワーカー {worker} が見つかりません",
     "voice.unavailable": "このクライアントでは音声録音を利用できません",
     "voice.workerAudioRequired": "ワーカーで録音するには、ワーカーのマイクを選択してください",
-    "voice.workerInputUnavailable": "音声入力 {input} はワーカー {worker} で利用できません"
+    "voice.workerInputUnavailable": "音声入力 {input} はワーカー {worker} で利用できません",
+    "chat.history.loadOlder": "以前のメッセージを読み込む",
+    "chat.history.loadFull": "メッセージ全体を読み込む"
   }
 }

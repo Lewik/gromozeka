@@ -1787,6 +1787,8 @@
     "voice.transcriptionWorkerMissing": "找不到執行語音辨識的工作節點 {worker}",
     "voice.unavailable": "此用戶端無法錄音",
     "voice.workerAudioRequired": "若要在工作節點上擷取音訊，請選擇工作節點的麥克風",
-    "voice.workerInputUnavailable": "工作節點 {worker} 上的音訊輸入 {input} 無法使用"
+    "voice.workerInputUnavailable": "工作節點 {worker} 上的音訊輸入 {input} 無法使用",
+    "chat.history.loadOlder": "載入較早的訊息",
+    "chat.history.loadFull": "載入完整訊息"
   }
 }

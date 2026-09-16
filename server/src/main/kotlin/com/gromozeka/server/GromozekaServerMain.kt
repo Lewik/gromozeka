@@ -170,6 +170,7 @@ fun main(args: Array<String>) {
                 contactService = mobileWorkerContactService,
             )
             gromozekaArtifacts(artifactService, authenticationService, remoteAuthorization)
+            gromozekaHistory(context.getBean(com.gromozeka.application.service.ConversationHistoryReadService::class.java), authenticationService, remoteAuthorization)
             gromozekaInteractiveWorkerAccess(
                 interactiveAccessService = interactiveWorkerAccessService,
                 authenticationService = authenticationService,

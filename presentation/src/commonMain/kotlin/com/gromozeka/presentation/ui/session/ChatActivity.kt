@@ -70,7 +70,7 @@ internal fun MessageListEntry.activityReferenceOrNull(): ActivityReference? {
     return ActivityReference(message, activity.contentIndex, activity.activity, isFirstInMessage, isLastInMessage)
 }
 
-internal fun groupActivityEntries(entries: List<MessageListEntry>): List<MessageListEntry> {
+internal fun groupActivityEntries(entries: List<MessageListEntry>, preservedGroupStarts: Set<String> = emptySet()): List<MessageListEntry> {
     val activityOnlyMessageIds = entries.groupBy { it.message.id }
         .filterValues { messageEntries -> messageEntries.all { it.segment is MessageSegment.Activity } }
         .keys
@@ -98,6 +98,7 @@ internal fun groupActivityEntries(entries: List<MessageListEntry>): List<Message
             result += entry
             continue
         }
+        if (reference.key in preservedGroupStarts && pending.isNotEmpty()) flushPending()
         val previous = pending.lastOrNull()
         if (previous != null && previous.message.id != reference.message.id) {
             val canJoin = previous.message.id in activityOnlyMessageIds &&

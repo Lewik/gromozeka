@@ -99,6 +99,7 @@ class GromozekaRemoteServer(
     private val agentSkillDomainService: AgentSkillDomainService,
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
+    private val conversationHistoryReadService: com.gromozeka.application.service.ConversationHistoryReadService,
     private val conversationHistoryRuntimeService: ConversationHistoryRuntimeApplicationService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
     private val conversationUnreadStateService: UserConversationUnreadStateService,
@@ -893,7 +894,16 @@ class GromozekaRemoteServer(
         try {
             sessionAccessGuard.requireConversationRead(authenticatedSession, command.conversationId)
             var liveEventsStarted = false
-            conversationRuntimeDispatcher.observeConversation(command.conversationId, command.afterEventSequence)
+            val checkpoint = conversationHistoryReadService.eventCheckpoint(command.conversationId)
+            val historyReset = command.afterEventSequence?.let { checkpoint - it > 100 || checkpoint < it } == true
+            val replayAfter = if (historyReset || command.afterEventSequence == null) checkpoint else command.afterEventSequence
+            if (historyReset) sender.send(command.subscriptionId, ConversationReplayCompletedEvent(
+                subscriptionId = command.subscriptionId,
+                conversationId = command.conversationId,
+                cursorSequence = checkpoint,
+                historyReset = true,
+            ), encoding)
+            conversationRuntimeDispatcher.observeConversation(command.conversationId, replayAfter)
                 .collect { event ->
                     val currentUser = sessionAccessGuard.requireConversationRead(
                         authenticatedSession,
@@ -906,6 +916,7 @@ class GromozekaRemoteServer(
                             sender.send(
                                 command.subscriptionId,
                                 ConversationReplayCompletedEvent(
+                                    historyReset = event.historyReset,
                                     subscriptionId = command.subscriptionId,
                                     conversationId = event.conversationId,
                                     cursorSequence = event.cursorSequence,
@@ -914,13 +925,17 @@ class GromozekaRemoteServer(
                             )
                         }
                         is ConversationRuntimeEvent.MessageEmitted -> {
+                            val view = conversationHistoryReadService.eventMessage(command.conversationId, event.message) ?: return@collect
                             sender.send(
                                 command.subscriptionId,
                                 MessageUpsertedEvent(
                                     subscriptionId = command.subscriptionId,
                                     conversationId = event.conversationId,
                                     taskId = event.taskId,
-                                    message = event.message,
+                                    message = view.second.message,
+                                    historyThreadId = view.first,
+                                    historyPosition = view.second.position,
+                                    hasMoreContent = view.second.hasMoreContent,
                                     cursorSequence = event.cursorSequence,
                                 ),
                                 encoding,

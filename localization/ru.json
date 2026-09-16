@@ -1898,6 +1898,8 @@
     "voice.transcriptionWorkerMissing": "Воркер {worker} для распознавания речи не найден",
     "voice.unavailable": "Запись голоса недоступна на этом клиенте",
     "voice.workerAudioRequired": "Выберите микрофон воркера, чтобы записывать звук на воркере",
-    "voice.workerInputUnavailable": "Аудиовход {input} недоступен на воркере {worker}"
+    "voice.workerInputUnavailable": "Аудиовход {input} недоступен на воркере {worker}",
+    "chat.history.loadOlder": "Загрузить старые сообщения",
+    "chat.history.loadFull": "Загрузить сообщение полностью"
   }
 }

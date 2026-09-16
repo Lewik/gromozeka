@@ -1861,6 +1861,8 @@
     "voice.transcriptionWorkerMissing": "Le Worker {worker} de reconnaissance vocale est introuvable",
     "voice.unavailable": "L’enregistrement vocal est indisponible sur ce client",
     "voice.workerAudioRequired": "Sélectionnez un microphone de Worker pour capturer l’audio sur un Worker",
-    "voice.workerInputUnavailable": "L’entrée audio {input} est indisponible sur le Worker {worker}"
+    "voice.workerInputUnavailable": "L’entrée audio {input} est indisponible sur le Worker {worker}",
+    "chat.history.loadOlder": "Charger les messages précédents",
+    "chat.history.loadFull": "Charger le message complet"
   }
 }

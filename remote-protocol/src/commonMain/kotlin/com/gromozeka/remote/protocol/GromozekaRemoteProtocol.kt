@@ -1603,6 +1603,9 @@ data class MessageUpsertedEvent(
     val taskId: ConversationRuntimeTask.Id?,
     val message: Conversation.Message,
     val cursorSequence: Long? = null,
+    val historyThreadId: Conversation.Thread.Id? = null,
+    val historyPosition: Int? = null,
+    val hasMoreContent: Boolean = false,
 ) : ServerPayload
 
 @Serializable
@@ -1669,6 +1672,7 @@ data class ConversationReplayCompletedEvent(
     val subscriptionId: String,
     val conversationId: Conversation.Id,
     val cursorSequence: Long? = null,
+    val historyReset: Boolean = false,
 ) : ServerPayload
 
 @Serializable

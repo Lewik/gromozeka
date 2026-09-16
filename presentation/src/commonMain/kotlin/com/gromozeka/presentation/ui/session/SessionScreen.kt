@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationMessageSelection
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.KeyboardShortcutScope
@@ -92,6 +93,14 @@ fun SessionScreen(
     // All data comes from ViewModel
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val allMessages by viewModel.allMessages.collectAsState()
+    val olderHistory by viewModel.olderHistory.collectAsState()
+    val newerHistory by viewModel.newerHistory.collectAsState()
+    val historyLoading by viewModel.historyLoading.collectAsState()
+    val historyActivityRevision by viewModel.historyActivityRevision.collectAsState()
+    val historyError by viewModel.historyError.collectAsState()
+    val deferredHistory by viewModel.deferredHistoryMessages.collectAsState()
+    val selectedHistoryKinds by viewModel.selectedHistoryKinds.collectAsState()
+    val displayedHistoryCount = filteredHistory.size.toString() + if (olderHistory != null || newerHistory != null) "+" else ""
     val externalChannel by viewModel.externalChannel.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
@@ -247,7 +256,7 @@ fun SessionScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.ChatBubbleOutline, contentDescription = localization.text("session.toolbar.messages"))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("${filteredHistory.size}")
+                                    Text(displayedHistoryCount)
                                 }
                             }
 
@@ -386,64 +395,13 @@ fun SessionScreen(
                                 )
                             }
 
-                            val selectedIndices = remember(allMessages, filteredHistory, uiState.selectedMessageIds) {
-                                buildSet {
-                                    val allMessageIds = allMessages.mapTo(mutableSetOf()) { it.id }
-                                    if (allMessageIds.isNotEmpty() && allMessageIds.all { it in uiState.selectedMessageIds }) {
-                                        add(0)
-                                    }
-
-                                    val userMessages = filteredHistory.filter { it.role == Conversation.Message.Role.USER }
-                                    if (userMessages.isNotEmpty() && userMessages.all { it.id in uiState.selectedMessageIds }) {
-                                        add(1)
-                                    }
-
-                                    val assistantMessages =
-                                        filteredHistory.filter { it.role == Conversation.Message.Role.ASSISTANT }
-                                    if (assistantMessages.isNotEmpty() && assistantMessages.all { it.id in uiState.selectedMessageIds }) {
-                                        add(2)
-                                    }
-
-                                    val thinkingMessages = filteredHistory.filter { message ->
-                                        message.content.any {
-                                            (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
-                                        }
-                                    }
-                                    if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
-                                        add(3)
-                                    }
-
-                                    val toolMessages = filteredHistory.filter { message ->
-                                        message.content.any { it is Conversation.Message.ContentItem.ToolCall }
-                                    }
-                                    if (toolMessages.isNotEmpty() && toolMessages.all { it.id in uiState.selectedMessageIds }) {
-                                        add(4)
-                                    }
-
-                                    val plainMessages = filteredHistory.filter { message ->
-                                        message.content.none {
-                                            (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
-                                        } &&
-                                                message.content.none { it is Conversation.Message.ContentItem.ToolCall }
-                                    }
-                                    if (plainMessages.isNotEmpty() && plainMessages.all { it.id in uiState.selectedMessageIds }) {
-                                        add(5)
-                                    }
-                                }
-                            }
+                            val selectedIndices = selectedHistoryKinds.map { it.ordinal }.toSet()
 
                             ToggleButtonGroup(
                                 options = selectionOptions,
                                 selectedIndices = selectedIndices,
                                 onToggle = { index ->
-                                    when (index) {
-                                        0 -> viewModel.toggleSelectAll(allMessages.map { it.id }.toSet())
-                                        1 -> viewModel.toggleSelectUserMessages()
-                                        2 -> viewModel.toggleSelectAssistantMessages()
-                                        3 -> viewModel.toggleSelectThinkingMessages()
-                                        4 -> viewModel.toggleSelectToolMessages()
-                                        5 -> viewModel.toggleSelectPlainMessages()
-                                    }
+                                    viewModel.toggleHistorySelection(ConversationMessageSelection.entries[index])
                                 }
                             )
 
@@ -564,12 +522,34 @@ fun SessionScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                if (historyLoading) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().testTag("history-loading"))
+                }
+                if (historyError != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(historyError.orEmpty(), modifier = Modifier.weight(1f))
+                        TextButton(onClick = viewModel::retryHistory) { Text(localization.text("chat.error.retry")) }
+                    }
+                }
+                if (olderHistory != null) {
+                    TextButton(onClick = viewModel::loadOlderHistory, enabled = !historyLoading) {
+                        Text(localization.text("chat.history.loadOlder"))
+                    }
+                }
                 key(viewModel.conversationId) {
                     FollowLatestLazyColumn(
                         items = messageEntries,
+                        hasOlderItems = olderHistory != null,
+                        hasNewerItems = newerHistory != null,
+                        isLoadingHistory = historyLoading,
+                        onLoadOlder = viewModel::loadOlderHistory,
+                        onLoadNewer = viewModel::loadNewerHistory,
+                        onLoadLatest = viewModel::loadLatestHistory,
+                        onVisibleItemChanged = { viewModel.rememberHistoryAnchor(it?.message?.id) },
                         itemKey = MessageListEntry::key,
                         unreadKey = { it.message.id },
                         contentRevision = messageEntries,
+                        unreadRevision = historyActivityRevision,
                         unreadLabel = { count ->
                             if (count > 0) {
                                 localization.plural("chat.history.unreadMessages", count.toLong())
@@ -584,6 +564,12 @@ fun SessionScreen(
                         },
                         modifier = Modifier.weight(1f),
                     ) { entry, pauseFollowingLatest ->
+                        if ((entry.isFirstInMessage || entry.segment is MessageSegment.Activity) && viewModel.hasDeferredHistoryContent(entry.message, deferredHistory)) {
+                            TextButton(
+                                onClick = { pauseFollowingLatest(); viewModel.loadHistoryDetails(entry.message.id) },
+                                modifier = Modifier.testTag("history-details:${entry.message.id.value}"),
+                            ) { Text(localization.text("chat.history.loadFull")) }
+                        }
                         MessageItem(
                             entry = entry,
                             workspaceRootPath = null,

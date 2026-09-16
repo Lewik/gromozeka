@@ -161,66 +161,70 @@ internal fun rememberMessageListEntries(
     val entries = mutableListOf<MessageListEntry>()
 
     for (message in messages) {
-        val segments = mutableListOf<MessageSegment>()
-        val collapsedItems = collapsedContentItems[message.id].orEmpty()
+        key(message.id.value) {
+            val segments = mutableListOf<MessageSegment>()
+            val collapsedItems = collapsedContentItems[message.id].orEmpty()
 
-        for (contentIndex in message.content.indices) {
-            val content = message.content[contentIndex]
-            when (content) {
-                is Conversation.Message.ContentItem.UserMessage -> {
-                    if (content.text.isNotBlank()) {
-                        segments += rememberMarkdownSegments(
-                            messageId = message.id,
-                            contentIndex = contentIndex,
-                            kind = MarkdownKind.USER,
-                            text = content.text,
-                            isCollapsed = false,
-                        )
-                        if (message.instructions.isNotEmpty()) {
-                            segments += MessageSegment.Instructions(contentIndex)
+            for (contentIndex in message.content.indices) {
+                val content = message.content[contentIndex]
+                when (content) {
+                    is Conversation.Message.ContentItem.UserMessage -> {
+                        if (content.text.isNotBlank()) {
+                            segments += rememberMarkdownSegments(
+                                messageId = message.id,
+                                contentIndex = contentIndex,
+                                kind = MarkdownKind.USER,
+                                text = content.text,
+                                isCollapsed = false,
+                            )
+                            if (message.instructions.isNotEmpty()) {
+                                segments += MessageSegment.Instructions(contentIndex)
+                            }
                         }
                     }
-                }
 
-                is Conversation.Message.ContentItem.Thinking ->
-                    segments += MessageSegment.Activity(contentIndex, ChatActivity.Reasoning(content))
+                    is Conversation.Message.ContentItem.Thinking ->
+                        segments += MessageSegment.Activity(contentIndex, ChatActivity.Reasoning(content))
 
-                is Conversation.Message.ContentItem.ToolCall ->
-                    segments += MessageSegment.Activity(contentIndex, ChatActivity.Tool(content, toolResultsMap[content.id.value]))
+                    is Conversation.Message.ContentItem.ToolCall ->
+                        segments += MessageSegment.Activity(contentIndex, ChatActivity.Tool(content, toolResultsMap[content.id.value]))
 
-                is Conversation.Message.ContentItem.AssistantMessage -> {
-                    val text = content.structured.fullText.trim()
-                    if (text.isNotEmpty()) {
-                        segments += rememberMarkdownSegments(
-                            messageId = message.id,
-                            contentIndex = contentIndex,
-                            kind = MarkdownKind.ASSISTANT,
-                            text = text,
-                            isCollapsed = contentIndex in collapsedItems,
-                        )
+                    is Conversation.Message.ContentItem.AssistantMessage -> {
+                        val text = content.structured.fullText.trim()
+                        if (text.isNotEmpty()) {
+                            segments += rememberMarkdownSegments(
+                                messageId = message.id,
+                                contentIndex = contentIndex,
+                                kind = MarkdownKind.ASSISTANT,
+                                text = text,
+                                isCollapsed = contentIndex in collapsedItems,
+                            )
+                        }
                     }
-                }
 
-                is Conversation.Message.ContentItem.ToolResult -> Unit
-                else -> segments += MessageSegment.Content(contentIndex, content)
+                    is Conversation.Message.ContentItem.ToolResult -> Unit
+                    else -> segments += MessageSegment.Content(contentIndex, content)
+                }
+            }
+
+            if (message.error != null) {
+                segments += MessageSegment.Error
+            }
+
+            segments.forEachIndexed { index, segment ->
+                entries += MessageListEntry(
+                    message = message,
+                    segment = segment,
+                    isFirstInMessage = index == 0,
+                    isLastInMessage = index == segments.lastIndex,
+                )
             }
         }
-
-        if (message.error != null) {
-            segments += MessageSegment.Error
-        }
-
-        segments.forEachIndexed { index, segment ->
-            entries += MessageListEntry(
-                message = message,
-                segment = segment,
-                isFirstInMessage = index == 0,
-                isLastInMessage = index == segments.lastIndex,
-            )
-        }
     }
-
-    return expandActivityEntries(groupActivityEntries(entries), expandedActivityKeys)
+    val groupStarts = remember { mutableSetOf<String>() }
+    val grouped = groupActivityEntries(entries, groupStarts)
+    grouped.filter { it.segment is MessageSegment.ActivityGroup }.forEach { groupStarts += it.sourceKey }
+    return expandActivityEntries(grouped, expandedActivityKeys)
 }
 
 @Composable

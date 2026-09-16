@@ -46,9 +46,17 @@ internal fun <T> FollowLatestLazyColumn(
     unreadKey: (T) -> Any = itemKey,
     contentRevision: Any?,
     unreadLabel: (Int) -> String,
+    unreadRevision: Any? = contentRevision,
     focusKey: Any? = null,
     focusItemKey: (T) -> Any? = itemKey,
     onFocusConsumed: () -> Unit = {},
+    hasOlderItems: Boolean = false,
+    hasNewerItems: Boolean = false,
+    isLoadingHistory: Boolean = false,
+    onLoadOlder: () -> Unit = {},
+    onLoadNewer: () -> Unit = {},
+    onLoadLatest: () -> Unit = {},
+    onVisibleItemChanged: (T?) -> Unit = {},
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     itemContent: @Composable LazyItemScope.(T, pauseFollowingLatest: () -> Unit) -> Unit,
@@ -60,7 +68,7 @@ internal fun <T> FollowLatestLazyColumn(
     var unreadKeys by remember { mutableStateOf(emptySet<Any>()) }
     var previousItemKeys by remember { mutableStateOf<List<Any>?>(null) }
     var previousUnreadKeys by remember { mutableStateOf<Set<Any>?>(null) }
-    var previousContentRevision by remember { mutableStateOf<Any?>(null) }
+    var previousUnreadRevision by remember { mutableStateOf<Any?>(null) }
     var followScrollsInProgress by remember { mutableIntStateOf(0) }
     val isAtBottom by remember {
         derivedStateOf {
@@ -104,17 +112,20 @@ internal fun <T> FollowLatestLazyColumn(
 
     val itemKeys = items.map(itemKey)
     val currentUnreadKeys = items.mapTo(linkedSetOf(), unreadKey)
-    LaunchedEffect(itemKeys, contentRevision) {
+    LaunchedEffect(itemKeys, contentRevision, unreadRevision) {
         val previousItems = previousItemKeys
         val previousUnread = previousUnreadKeys
-        val contentChanged = previousItems != null && (
-            previousItems != itemKeys || previousContentRevision != contentRevision
-        )
-        val addedUnreadKeys = if (previousUnread == null) emptySet() else currentUnreadKeys - previousUnread
+        val prependOnly = previousItems != null && itemKeys.size > previousItems.size && itemKeys.takeLast(previousItems.size) == previousItems
+        val previousLastUnread = previousItemKeys?.lastOrNull()?.let { previousLast ->
+            items.indexOfLast { itemKey(it) == previousLast }
+        } ?: -1
+        val appendedUnreadKeys = if (previousLastUnread >= 0) items.drop(previousLastUnread + 1).mapTo(mutableSetOf(), unreadKey) else emptySet()
+        val addedUnreadKeys = if (previousUnread == null || prependOnly) emptySet() else (currentUnreadKeys - previousUnread).intersect(appendedUnreadKeys)
 
+        val unreadChanged = previousUnreadRevision != unreadRevision
+        previousUnreadRevision = unreadRevision
         previousItemKeys = itemKeys
         previousUnreadKeys = currentUnreadKeys
-        previousContentRevision = contentRevision
 
         when {
             items.isEmpty() -> {
@@ -124,7 +135,7 @@ internal fun <T> FollowLatestLazyColumn(
             }
 
             followingLatest -> performFollowLatestScroll(items.size)
-            contentChanged -> {
+            previousItems != null && !prependOnly && unreadChanged -> {
                 hasUnreadContent = true
                 unreadKeys = unreadKeys + addedUnreadKeys
             }
@@ -163,6 +174,16 @@ internal fun <T> FollowLatestLazyColumn(
             }
     }
 
+    LaunchedEffect(listState, items, hasOlderItems, hasNewerItems, isLoadingHistory) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.key } }.distinctUntilChanged().collect { keys ->
+            val first = items.indexOfFirst { itemKey(it) in keys }
+            val last = items.indexOfLast { itemKey(it) in keys }
+            onVisibleItemChanged(items.getOrNull(first))
+            if (!isLoadingHistory && !followingLatest && first in 0..2 && hasOlderItems) onLoadOlder()
+            if (!isLoadingHistory && last >= items.size - 3 && last >= 0 && hasNewerItems) onLoadNewer()
+        }
+    }
+
     Box(modifier = modifier) {
         val pauseFollowingLatest = { followingLatest = false }
         LazyColumn(
@@ -177,16 +198,15 @@ internal fun <T> FollowLatestLazyColumn(
             }
         }
 
-        if (!isAtBottom) {
+        if (!isAtBottom || hasNewerItems) {
             ScrollToLatestButton(
                 label = unreadLabel(unreadKeys.size).takeIf { hasUnreadContent },
                 onClick = {
                     followingLatest = true
                     hasUnreadContent = false
                     unreadKeys = emptySet()
-                    coroutineScope.launch {
-                        performFollowLatestScroll(items.size)
-                    }
+                    if (hasNewerItems) onLoadLatest()
+                    else coroutineScope.launch { performFollowLatestScroll(items.size) }
                 },
             )
         }

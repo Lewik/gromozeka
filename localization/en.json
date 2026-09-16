@@ -1824,6 +1824,8 @@
     "voice.transcriptionWorkerMissing": "Speech-to-text Worker {worker} was not found",
     "voice.unavailable": "Voice recording is unavailable on this client",
     "voice.workerAudioRequired": "Select a Worker microphone to capture audio on a Worker",
-    "voice.workerInputUnavailable": "Audio input {input} is unavailable on Worker {worker}"
+    "voice.workerInputUnavailable": "Audio input {input} is unavailable on Worker {worker}",
+    "chat.history.loadOlder": "Load older messages",
+    "chat.history.loadFull": "Load full message"
   }
 }

@@ -21,6 +21,11 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationHistoryPage
+import com.gromozeka.domain.model.ConversationHistoryPageRequest
+import com.gromozeka.domain.model.ConversationHistoryCursor
+import com.gromozeka.domain.model.ConversationMessageSelection
+import kotlinx.coroutines.Job
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.MessageInstructionTextShortcut
 import com.gromozeka.domain.model.MessageInputContext
@@ -91,7 +96,10 @@ class TabViewModel(
     var jsonToShow by mutableStateOf<String?>(null)
 
     fun requestMessageFocus(messageId: Conversation.Message.Id) {
-        _messageFocusRequest.value = messageId
+        scope.launch {
+            if (_allMessages.value.none { it.id == messageId }) loadHistoryPage(ConversationHistoryPageRequest(around = messageId), replace = true)
+            _messageFocusRequest.value = messageId
+        }
     }
 
     fun consumeMessageFocus(messageId: Conversation.Message.Id) {
@@ -127,6 +135,99 @@ class TabViewModel(
 
     private val _allMessages = MutableStateFlow<List<Conversation.Message>>(emptyList())
     val allMessages: StateFlow<List<Conversation.Message>> = _allMessages.asStateFlow()
+    private val _historyActivityRevision = MutableStateFlow(0L)
+    val historyActivityRevision = _historyActivityRevision.asStateFlow()
+    private val historyMutex = Mutex()
+    private val historyRequestMutex = Mutex()
+    private val historyEventsDuringLoad = mutableListOf<ConversationRuntimeEvent.MessageEmitted>()
+    private val historyPositions = mutableMapOf<Conversation.Message.Id, Int>()
+    private var historyThreadId: Conversation.Thread.Id? = null
+    private var historySequence = 0L
+    private val historyAnchor = MutableStateFlow<Conversation.Message.Id?>(null)
+    private var runtimeObservationJob: Job? = null
+    private val relatedHistoryMessages = MutableStateFlow<List<Conversation.Message>>(emptyList())
+    private val _olderHistory = MutableStateFlow<ConversationHistoryCursor?>(null)
+    val olderHistory = _olderHistory.asStateFlow()
+    private val _newerHistory = MutableStateFlow<ConversationHistoryCursor?>(null)
+    val newerHistory = _newerHistory.asStateFlow()
+    private val _historyLoading = MutableStateFlow(false)
+    val historyLoading = _historyLoading.asStateFlow()
+    private val _historyError = MutableStateFlow<String?>(null)
+    val historyError = _historyError.asStateFlow()
+    private val _deferredHistoryMessages = MutableStateFlow<Set<Conversation.Message.Id>>(emptySet())
+    val deferredHistoryMessages = _deferredHistoryMessages.asStateFlow()
+    private val _selectedHistoryKinds = MutableStateFlow<Set<ConversationMessageSelection>>(emptySet())
+    val selectedHistoryKinds = _selectedHistoryKinds.asStateFlow()
+    private val historyDetailLoads = MutableStateFlow<Set<Conversation.Message.Id>>(emptySet())
+
+    fun rememberHistoryAnchor(messageId: Conversation.Message.Id?) { historyAnchor.value = messageId }
+
+    fun loadOlderHistory() {
+        val cursor = _olderHistory.value ?: return
+        if (_historyLoading.value) return
+        scope.launch { loadHistoryPage(ConversationHistoryPageRequest(before = cursor)) }
+    }
+
+    fun loadNewerHistory() {
+        val cursor = _newerHistory.value ?: return
+        if (_historyLoading.value) return
+        scope.launch { loadHistoryPage(ConversationHistoryPageRequest(after = cursor)) }
+    }
+
+    fun loadLatestHistory() {
+        scope.launch { loadHistoryPage(ConversationHistoryPageRequest(), replace = true) }
+    }
+
+    fun retryHistory() { scope.launch { loadMessages() } }
+
+    fun loadHistoryDetails(messageId: Conversation.Message.Id) {
+        val source = _allMessages.value.firstOrNull { it.id == messageId } ?: return
+        val callIds = source.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().map { it.id }.toSet()
+        val related = relatedHistoryMessages.value + _allMessages.value
+        val ids = setOf(messageId) + related.filter { message -> message.content.any {
+            it is Conversation.Message.ContentItem.ToolResult && it.toolUseId in callIds
+        } }.map { it.id }
+        ids.filter { it in _deferredHistoryMessages.value }.forEach { id ->
+            scope.launch {
+                val previous = historyDetailLoads.getAndUpdate { it + id }
+                if (id in previous) return@launch
+                try {
+                    val full = conversationHistoryService.loadMessage(conversationId, id)
+                    historyMutex.withLock {
+                        _allMessages.update { messages -> messages.map { if (it.id == id) full else it } }
+                        relatedHistoryMessages.update { messages -> messages.map { if (it.id == id) full else it } }
+                        _deferredHistoryMessages.update { it - id }
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    _historyError.value = error.message
+                } finally {
+                    historyDetailLoads.update { it - id }
+                }
+            }
+        }
+    }
+
+    fun hasDeferredHistoryContent(message: Conversation.Message, deferred: Set<Conversation.Message.Id>): Boolean {
+        if (message.id in deferred) return true
+        val calls = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().map { it.id }.toSet()
+        return (relatedHistoryMessages.value + _allMessages.value).any { candidate -> candidate.id in deferred && candidate.content.any {
+            it is Conversation.Message.ContentItem.ToolResult && it.toolUseId in calls
+        } }
+    }
+
+    fun toggleHistorySelection(kind: ConversationMessageSelection) {
+        scope.launch {
+            try {
+                val ids = conversationHistoryService.selectMessageIds(conversationId, kind).toSet()
+                val selected = ids.isNotEmpty() && ids.all { it in _uiState.value.selectedMessageIds }
+                _uiState.update { it.copy(selectedMessageIds = if (selected) it.selectedMessageIds - ids else it.selectedMessageIds + ids) }
+                _selectedHistoryKinds.value = if (selected) emptySet() else setOf(kind)
+            } catch (error: CancellationException) { throw error
+            } catch (error: Exception) { _historyError.value = error.message }
+        }
+    }
     val externalChannel = conversationService.observeByProject(projectId).map { conversations ->
         conversations.firstOrNull { it.id == conversationId }?.externalChannel
     }.stateIn(scope, SharingStarted.WhileSubscribed(5000), null)
@@ -208,47 +309,101 @@ class TabViewModel(
         _uiState.update { it.copy(isWaitingForResponse = false) }
 
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            observeRuntimeEvents()
-        }
-
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             observeActiveGeneration()
         }
 
         scope.launch {
-            loadMessages(preserveRuntimeMessages = true)
+            loadMessages()
             loadTokenStats()
         }
     }
 
-    private suspend fun loadMessages(preserveRuntimeMessages: Boolean = false) {
-        try {
-            val messages = conversationService.loadCurrentMessages(conversationId)
-            if (preserveRuntimeMessages) {
-                mergeLoadedMessages(messages)
-            } else {
-                _allMessages.value = messages
+    private suspend fun loadMessages() {
+        val request = historyMutex.withLock {
+            val anchor = historyAnchor.value
+            ConversationHistoryPageRequest(around = anchor, positionHint = anchor?.let { historyPositions[it] })
+        }
+        loadHistoryPage(request, replace = true)
+    }
+
+    private suspend fun loadHistoryPage(request: ConversationHistoryPageRequest, replace: Boolean = false) {
+        historyRequestMutex.withLock {
+            if (request.before != null && request.before != _olderHistory.value) return
+            if (request.after != null && request.after != _newerHistory.value) return
+            historyMutex.withLock {
+                _historyLoading.value = true
+                _historyError.value = null
+                historyEventsDuringLoad.clear()
             }
-
-            log.debug { "Loaded ${messages.size} messages for conversation $conversationId" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to load messages for conversation $conversationId" }
+            try {
+                val page = conversationHistoryService.loadPage(conversationId, request)
+                historyMutex.withLock {
+                    applyHistoryPage(page, replace || page.reset || historyThreadId != page.threadId)
+                    historyEventsDuringLoad.filter { event ->
+                        (event.cursorSequence?.let { it > page.eventSequence } != false) &&
+                            (event.historyThreadId == null || event.historyThreadId == page.threadId)
+                    }.forEach(::applyHistoryEvent)
+                }
+                if (runtimeObservationJob == null) {
+                    runtimeObservationJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                        observeRuntimeEvents(page.eventSequence)
+                    }
+                }
+            } catch (error: kotlinx.coroutines.TimeoutCancellationException) {
+                _historyError.value = "History request timed out"
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _historyError.value = error.message ?: "History could not be loaded"
+                log.error(error) { "Failed to load conversation history page" }
+            } finally {
+                historyMutex.withLock {
+                    historyEventsDuringLoad.clear()
+                    _historyLoading.value = false
+                }
+            }
         }
     }
 
-    private fun mergeLoadedMessages(loadedMessages: List<Conversation.Message>) {
-        _allMessages.update { currentMessages ->
-            val loadedIds = loadedMessages.map { it.id }.toSet()
-            val runtimeOnlyMessages = currentMessages.filterNot { it.id in loadedIds }
-
-            (loadedMessages + runtimeOnlyMessages)
-                .sortedWith(compareBy<Conversation.Message> { it.createdAt }.thenBy { it.id.value })
+    private fun applyHistoryPage(page: ConversationHistoryPage, replace: Boolean) {
+        val anchorPosition = historyAnchor.value?.let { historyPositions[it] }
+        val optimistic = _allMessages.value.filter { it.id !in historyPositions }
+        val retainedDetails = if (replace) emptyMap() else {
+            (_allMessages.value + relatedHistoryMessages.value)
+                .filter { it.id !in _deferredHistoryMessages.value }.associateBy { it.id }
+        }
+        if (replace) {
+            historyPositions.clear()
+            relatedHistoryMessages.value = emptyList()
+            _deferredHistoryMessages.value = emptySet()
+            _olderHistory.value = page.older
+            _newerHistory.value = page.newer
+            historySequence = page.eventSequence
+        } else {
+            if (page.messages.firstOrNull()?.position?.let { it < (historyPositions.values.minOrNull() ?: Int.MAX_VALUE) } == true) _olderHistory.value = page.older
+            if (page.messages.lastOrNull()?.position?.let { it > (historyPositions.values.maxOrNull() ?: -1) } == true) _newerHistory.value = page.newer
+        }
+        if (replace && anchorPosition != null && page.messages.none { it.message.id == historyAnchor.value }) {
+            _messageFocusRequest.value = page.messages.minByOrNull { kotlin.math.abs(it.position - anchorPosition) }?.message?.id
+        }
+        historyThreadId = page.threadId
+        page.messages.forEach { historyPositions[it.message.id] = it.position }
+        val existing = (if (replace) optimistic else _allMessages.value).associateBy { it.id }
+        _allMessages.value = (page.messages.associate { it.message.id to it.message } + existing).values
+            .sortedWith(compareBy<Conversation.Message> { historyPositions[it.id] ?: Int.MAX_VALUE }.thenBy { it.createdAt })
+        relatedHistoryMessages.update { previous ->
+            (previous + page.relatedMessages.map { retainedDetails[it.message.id] ?: it.message })
+                .associateBy { it.id }.values.toList()
+        }
+        _deferredHistoryMessages.update { previous ->
+            previous + (page.messages + page.relatedMessages)
+                .filter { it.hasMoreContent && it.message.id !in retainedDetails }.map { it.message.id }
         }
     }
 
-    private suspend fun observeRuntimeEvents() {
+    private suspend fun observeRuntimeEvents(afterSequence: Long) {
         try {
-            conversationRuntimeService.observeConversation(conversationId).collect { event ->
+            conversationRuntimeService.observeConversation(conversationId, afterSequence).collect { event ->
                 handleRuntimeEvent(event)
             }
         } catch (error: CancellationException) {
@@ -277,8 +432,24 @@ class TabViewModel(
     private suspend fun handleRuntimeEvent(event: ConversationRuntimeEvent) {
         when (event) {
             is ConversationRuntimeEvent.SnapshotUpdated -> applyRuntimeSnapshot(event.snapshot)
-            is ConversationRuntimeEvent.ReplayCompleted -> runtimeReplayCompleted = true
-            is ConversationRuntimeEvent.MessageEmitted -> upsertRuntimeMessage(event.message)
+            is ConversationRuntimeEvent.ReplayCompleted -> {
+                if (event.historyReset) loadMessages()
+                runtimeReplayCompleted = true
+            }
+            is ConversationRuntimeEvent.MessageEmitted -> {
+                val needsRefresh = historyMutex.withLock {
+                    if (_historyLoading.value) historyEventsDuringLoad += event
+                    if (event.cursorSequence?.let { it <= historySequence } == true) return@withLock false
+                    if (event.historyThreadId != null && event.historyThreadId != historyThreadId) {
+                        true
+                    } else {
+                        applyHistoryEvent(event)
+                        if (runtimeReplayCompleted) _historyActivityRevision.update { it + 1 }
+                        false
+                    }
+                }
+                if (needsRefresh) loadMessages()
+            }
             is ConversationRuntimeEvent.HistoryChanged -> loadMessages()
             is ConversationRuntimeEvent.ExecutionCompleted -> {
                 finishRuntimeExecution()
@@ -292,6 +463,35 @@ class TabViewModel(
                 finishRuntimeExecution()
             }
         }
+    }
+
+    private fun applyHistoryEvent(event: ConversationRuntimeEvent.MessageEmitted) {
+        val results = event.message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+        if (results.isNotEmpty()) {
+            val resultIds = results.mapTo(mutableSetOf()) { it.toolUseId }
+            val referenced = _allMessages.value.any { message -> message.content.any {
+                it is Conversation.Message.ContentItem.ToolCall && it.id in resultIds
+            } }
+            if (referenced) {
+                relatedHistoryMessages.update { previous ->
+                    previous.filterNot { it.id == event.message.id } + event.message
+                }
+                _deferredHistoryMessages.update { if (event.hasMoreContent) it + event.message.id else it - event.message.id }
+            }
+        }
+        val position = event.historyPosition
+        if (position != null) {
+            val first = historyPositions.values.minOrNull() ?: position
+            val last = historyPositions.values.maxOrNull() ?: (position - 1)
+            if (position < first) return
+            if (position > last + 1) {
+                _newerHistory.value = historyThreadId?.let { ConversationHistoryCursor(it, last) }
+                return
+            }
+            historyPositions[event.message.id] = position
+        }
+        _deferredHistoryMessages.update { if (event.hasMoreContent) it + event.message.id else it - event.message.id }
+        upsertRuntimeMessage(event.message)
     }
 
     private fun applyRuntimeSnapshot(snapshot: ConversationRuntimeSnapshot) {
@@ -317,23 +517,20 @@ class TabViewModel(
         _uiState.update { it.copy(isWaitingForResponse = isRuntimeActive) }
     }
 
-    private suspend fun upsertRuntimeMessage(message: Conversation.Message) {
+    private fun upsertRuntimeMessage(message: Conversation.Message) {
         _pendingMessages.update { pendingMessages ->
             pendingMessages.filterNot { it.userMessage.id == message.id }
         }
 
-        val messages = _allMessages.value.toMutableList()
-        val existingIndex = messages.indexOfFirst { it.id == message.id }
-
-        if (existingIndex != -1) {
-            messages[existingIndex] = message
-            log.debug { "Updated existing message ${message.id}" }
-        } else {
-            messages.add(message)
-            log.debug { "Added new message ${message.id}" }
+        _allMessages.update { current ->
+            val existingIndex = current.indexOfFirst { it.id == message.id }
+            if (existingIndex != -1) {
+                current.toMutableList().also { it[existingIndex] = message }
+            } else {
+                current + message
+            }
         }
-
-        _allMessages.value = messages
+        log.debug { "Applied runtime message ${message.id}" }
         if (message.error != null) {
             log.error { "Stream error: ${message.error}" }
             log.error { "Message with error: id=${message.id}, role=${message.role}, content.size=${message.content.size}" }
@@ -341,9 +538,10 @@ class TabViewModel(
     }
 
     private suspend fun finishRuntimeExecution() {
-        loadMessages()
-        loadTokenStats()
-        notifyMemoryActionItemsMayHaveChanged()
+        if (runtimeReplayCompleted) {
+            scope.launch { loadTokenStats() }
+            notifyMemoryActionItemsMayHaveChanged()
+        }
         log.debug { "Conversation runtime completed" }
         currentRequestJob = null
         _activeToolExecutions.value = emptyList()
@@ -388,9 +586,8 @@ class TabViewModel(
     )
 
     val toolResultsMap: StateFlow<Map<String, Conversation.Message.ContentItem.ToolResult>> =
-        allMessages
-            .map { messages ->
-                messages
+        combine(allMessages, relatedHistoryMessages) { messages, related ->
+                (related + messages)
                     .flatMap { message ->
                         message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
                     }
@@ -765,7 +962,7 @@ class TabViewModel(
 
         val userMessage = pendingMessage.userMessage
 
-        _allMessages.value += userMessage
+        _allMessages.update { it + userMessage }
         _isWaitingForResponse.value = true
         _executionPauseRequested.value = false
         _uiState.update {
@@ -929,7 +1126,7 @@ class TabViewModel(
         }
     }
 
-    fun stopExecution() {
+    fun stopExecution(): Job =
         scope.launch {
             val accepted = runCatching {
                 conversationRuntimeService.controlExecution(conversationId, ConversationRuntimeControlAction.STOP)
@@ -941,7 +1138,6 @@ class TabViewModel(
                 _runtimeTrace.value = emptyList()
             }
         }
-    }
 
     fun pickAttachments() {
         acquireAndUploadAttachments(attachmentAcquisitionController::pickAttachments)
@@ -1065,6 +1261,7 @@ class TabViewModel(
     }
 
     fun toggleMessageSelection(messageId: Conversation.Message.Id) {
+        _selectedHistoryKinds.value = emptySet()
         _uiState.update { currentState ->
             val selectedIds = currentState.selectedMessageIds
             val wasSelected = messageId in selectedIds
@@ -1090,6 +1287,7 @@ class TabViewModel(
     }
 
     fun toggleMessageSelectionRange(messageId: Conversation.Message.Id, isShiftPressed: Boolean) {
+        _selectedHistoryKinds.value = emptySet()
         if (!isShiftPressed || _uiState.value.lastToggledMessageId == null) {
             toggleMessageSelection(messageId)
             return
@@ -1128,6 +1326,9 @@ class TabViewModel(
     }
 
     fun toggleActivityExpansion(key: String) {
+        if (key !in _uiState.value.expandedActivityKeys) {
+            key.split(':').getOrNull(1)?.let { loadHistoryDetails(Conversation.Message.Id(it)) }
+        }
         _uiState.update { current ->
             val expanded = current.expandedActivityKeys
             current.copy(expandedActivityKeys = if (key in expanded) expanded - key else expanded + key)
@@ -1154,142 +1355,30 @@ class TabViewModel(
     }
 
     fun clearMessageSelection() {
+        _selectedHistoryKinds.value = emptySet()
         _uiState.update { it.copy(selectedMessageIds = emptySet()) }
     }
 
-    fun toggleSelectAll(allMessageIds: Set<Conversation.Message.Id>) {
-        _uiState.update { currentState ->
-            val allSelected = currentState.selectedMessageIds.size == allMessageIds.size && 
-                             allMessageIds.isNotEmpty()
-            if (allSelected) {
-                currentState.copy(selectedMessageIds = emptySet())
-            } else {
-                currentState.copy(selectedMessageIds = allMessageIds)
-            }
-        }
-    }
-
-    fun toggleSelectUserMessages() {
-        val filteredHistory = filteredMessages.value
-        val userMessageIds = filteredHistory
-            .filter { it.role == Conversation.Message.Role.USER }
-            .map { it.id }
-            .toSet()
-        
-        if (userMessageIds.isEmpty()) return
-        
-        _uiState.update { currentState ->
-            val allSelected = userMessageIds.all { it in currentState.selectedMessageIds }
-            if (allSelected) {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - userMessageIds)
-            } else {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + userMessageIds)
-            }
-        }
-    }
-
-    fun toggleSelectAssistantMessages() {
-        val filteredHistory = filteredMessages.value
-        val assistantMessageIds = filteredHistory
-            .filter { it.role == Conversation.Message.Role.ASSISTANT }
-            .map { it.id }
-            .toSet()
-        
-        if (assistantMessageIds.isEmpty()) return
-        
-        _uiState.update { currentState ->
-            val allSelected = assistantMessageIds.all { it in currentState.selectedMessageIds }
-            if (allSelected) {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - assistantMessageIds)
-            } else {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + assistantMessageIds)
-            }
-        }
-    }
-
-    fun toggleSelectThinkingMessages() {
-        val filteredHistory = filteredMessages.value
-        val thinkingMessageIds = filteredHistory
-            .filter { message ->
-                message.content.any { (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true }
-            }
-            .map { it.id }
-            .toSet()
-        
-        if (thinkingMessageIds.isEmpty()) return
-        
-        _uiState.update { currentState ->
-            val allSelected = thinkingMessageIds.all { it in currentState.selectedMessageIds }
-            if (allSelected) {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - thinkingMessageIds)
-            } else {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + thinkingMessageIds)
-            }
-        }
-    }
-
-    fun toggleSelectToolMessages() {
-        val toolMessageIds = allMessages.value
-            .filter { message ->
-                message.content.any {
-                    it is Conversation.Message.ContentItem.ToolCall ||
-                        it is Conversation.Message.ContentItem.ToolResult
-                }
-            }
-            .map { it.id }
-            .toSet()
-        
-        if (toolMessageIds.isEmpty()) return
-        
-        _uiState.update { currentState ->
-            val allSelected = toolMessageIds.all { it in currentState.selectedMessageIds }
-            if (allSelected) {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - toolMessageIds)
-            } else {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + toolMessageIds)
-            }
-        }
-    }
-
-    fun toggleSelectPlainMessages() {
-        val filteredHistory = filteredMessages.value
-        val plainMessageIds = filteredHistory
-            .filter { message -> 
-                message.content.none { (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true } &&
-                message.content.none { it is Conversation.Message.ContentItem.ToolCall }
-            }
-            .map { it.id }
-            .toSet()
-        
-        if (plainMessageIds.isEmpty()) return
-        
-        _uiState.update { currentState ->
-            val allSelected = plainMessageIds.all { it in currentState.selectedMessageIds }
-            if (allSelected) {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - plainMessageIds)
-            } else {
-                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + plainMessageIds)
-            }
-        }
-    }
-
     fun startEditMessage(messageId: Conversation.Message.Id) {
-        val message = _allMessages.value.find { it.id == messageId } ?: return
-        val text = message.editableText() ?: return
-
-        _uiState.update {
-            it.copy(
-                editingMessageId = messageId,
-                editingMessageText = text
-            )
+        scope.launch {
+            try {
+                val message = conversationHistoryService.loadMessage(conversationId, messageId)
+                val text = message.editableText() ?: return@launch
+                _uiState.update { it.copy(editingMessageId = messageId, editingMessageText = text) }
+            } catch (error: CancellationException) { throw error
+            } catch (error: Exception) { _historyError.value = error.message }
         }
     }
 
     fun startEditLatestUserMessage(): Boolean {
-        val message = _allMessages.value.lastOrNull { candidate ->
-            candidate.role == Conversation.Message.Role.USER && candidate.editableText() != null
-        } ?: return false
-        startEditMessage(message.id)
+        scope.launch {
+            try {
+                val message = conversationHistoryService.latestUserMessage(conversationId) ?: return@launch
+                val text = message.editableText() ?: return@launch
+                _uiState.update { it.copy(editingMessageId = message.id, editingMessageText = text) }
+            } catch (error: CancellationException) { throw error
+            } catch (error: Exception) { _historyError.value = error.message }
+        }
         return true
     }
 
@@ -1311,8 +1400,7 @@ class TabViewModel(
         val newText = _uiState.value.editingMessageText
 
         try {
-            val message = _allMessages.value.find { it.id == editingId }
-                ?: throw LocalizedTextException(localizedText("client.message.noLongerAvailable"))
+            val message = conversationHistoryService.loadMessage(conversationId, editingId)
             val newContent = message.withEditedText(newText)
 
             conversationHistoryService.editMessage(conversationId, editingId, newContent)

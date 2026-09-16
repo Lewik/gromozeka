@@ -337,11 +337,16 @@ class ConversationRuntimeDispatcher(
         val subscription = runtimeEventBus.subscribe(conversationId)
         try {
             var emittedEventSequence = afterEventSequence ?: 0L
-            replayRuntimeEvents(conversationId, afterEventSequence) { event ->
+            val firstMissing = afterEventSequence?.let {
+                runtimeCoordinator.listEventLogEntries(conversationId, it, 1).firstOrNull()?.sequence
+            }
+            val historyReset = firstMissing != null && firstMissing > emittedEventSequence + 1
+            if (historyReset) emittedEventSequence = runtimeCoordinator.lastEventSequence(conversationId)
+            replayRuntimeEvents(conversationId, if (historyReset) emittedEventSequence else afterEventSequence) { event ->
                 event.cursorSequence?.let { emittedEventSequence = maxOf(emittedEventSequence, it) }
                 emit(event)
             }
-            emit(ConversationRuntimeEvent.ReplayCompleted(conversationId, emittedEventSequence))
+            emit(ConversationRuntimeEvent.ReplayCompleted(conversationId, emittedEventSequence, historyReset))
             subscription.events.collect { event ->
                 val cursorSequence = event.cursorSequence
                 if (cursorSequence != null &&

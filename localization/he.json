@@ -1861,6 +1861,8 @@
     "voice.transcriptionWorkerMissing": "רכיב הביצוע {worker} לזיהוי דיבור לא נמצא",
     "voice.unavailable": "הקלטה קולית אינה זמינה בלקוח הזה",
     "voice.workerAudioRequired": "כדי להקליט אודיו ברכיב ביצוע, יש לבחור במיקרופון של רכיב ביצוע",
-    "voice.workerInputUnavailable": "קלט האודיו {input} אינו זמין ברכיב הביצוע {worker}"
+    "voice.workerInputUnavailable": "קלט האודיו {input} אינו זמין ברכיב הביצוע {worker}",
+    "chat.history.loadOlder": "טעינת הודעות קודמות",
+    "chat.history.loadFull": "טעינת ההודעה המלאה"
   }
 }
