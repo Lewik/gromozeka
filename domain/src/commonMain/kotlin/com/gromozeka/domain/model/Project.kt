@@ -163,9 +163,16 @@ sealed interface RuntimeEnvironmentContext {
         override val workspaceRootPath: String? = null
     }
 
+    /** Identity of the conversation being executed, independent of the client's active tab. */
+    data class ConversationInfo(
+        val id: Conversation.Id,
+        val displayName: String,
+    )
+
     data class ProjectBound(
         val project: Project,
         override val executor: RuntimeEnvironmentExecutor,
+        val conversation: ConversationInfo? = null,
     ) : RuntimeEnvironmentContext {
         override val workspaceRootPath: String? = null
     }

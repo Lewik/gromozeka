@@ -1045,6 +1045,10 @@ class ConversationEngineService(
         val runtimeContext = RuntimeEnvironmentContext.ProjectBound(
             project = project,
             executor = executor.toRuntimeEnvironmentExecutor(),
+            conversation = RuntimeEnvironmentContext.ConversationInfo(
+                id = conversation.id,
+                displayName = conversation.displayName,
+            ),
         )
         val resolvedRuntime = aiConfigurationProvider.resolveAiRuntime(agent.runtimeSelection)
         val provider = resolvedRuntime.connection.kind.provider
