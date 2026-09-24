@@ -31,6 +31,7 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.spring.boot.starter.test)
             }
         }
     }

@@ -1,6 +1,16 @@
 package com.gromozeka.infrastructure.ai.runtime
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
+import com.gromozeka.domain.service.AiRuntime
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlin.test.assertEquals
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -11,6 +21,37 @@ import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
 class AiRuntimeInputValidatorTest {
+    @Test
+    fun `runtime wrapper projects before validation and tags call and stream replay with branch`() = runBlocking {
+        val source = message(image("image/bmp", "AQID"))
+        val summary = source.copy(id = Conversation.Message.Id("summary"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Image description"),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                sourceMessageIds = listOf(source.id),
+            )))
+        val captured = mutableListOf<AiRuntimeRequest>()
+        val response = AiRuntimeResponse(listOf(AiAssistantMessage(listOf(
+            Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Answer")),
+        ))))
+        val delegate = object : AiRuntime {
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                captured += request
+                return response
+            }
+            override fun stream(request: AiRuntimeRequest) = flowOf(response).also { captured += request }
+        }
+        val wrapper = AiInputValidatingRuntime(
+            runtime = runtime(AiConnection.OpenAiApi(CONNECTION_ID, "OpenAI", true)), delegate = delegate,
+        )
+        val request = AiRuntimeRequest(emptyList(), listOf(source, summary),
+            options = AiRuntimeOptions(toolContext = mapOf("threadId" to "thread")))
+        assertEquals("thread", wrapper.call(request).messages.single().metadata[AI_REPLAY_THREAD_METADATA_KEY])
+        assertEquals("thread", wrapper.stream(request).toList().single().messages.single().metadata[AI_REPLAY_THREAD_METADATA_KEY])
+        assertEquals(listOf(listOf(summary), listOf(summary)), captured.map { it.messages })
+    }
+
     @Test
     fun `OpenAI accepts supported image and document inputs`() {
         val runtime = runtime(

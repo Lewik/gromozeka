@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -31,7 +32,8 @@ internal class ContextCompactionCommitService(
         expectedThreadId: Conversation.Thread.Id,
         result: Conversation.Message.ContentItem.ContextCompactionResult,
     ): Conversation {
-        require(result.sourceMessageIds.size >= 2) { "Need at least 2 source messages to compact" }
+        val minimum = if (result.strategy == Conversation.Message.ContentItem.ContextCompactionResult.Strategy.CONCATENATE) 2 else 1
+        require(result.sourceMessageIds.size >= minimum) { "Need at least $minimum source message(s) to compact" }
         require(result.sourceMessageIds.distinct().size == result.sourceMessageIds.size) {
             "Duplicate compaction source message IDs are not allowed"
         }
@@ -50,12 +52,6 @@ internal class ContextCompactionCommitService(
         require(toolCallPairingService.includePairedToolMessages(messages, sourceIdSet) == sourceIdSet) {
             "Compaction source messages must include complete tool call/result pairs"
         }
-        ensureMessagesAreNotCoveredByCompaction(
-            messages = messages,
-            targetMessageIds = sourceIdSet,
-            operation = "compact",
-            allowLatestReadableCompaction = true,
-        )
         val orderedSourceIds = links.map { it.messageId }.filter(sourceIdSet::contains)
         require(orderedSourceIds == result.sourceMessageIds) {
             "Compaction source messages must be in current conversation order"
@@ -66,7 +62,12 @@ internal class ContextCompactionCommitService(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(result),
+            content = listOf(result.copy(
+                invalidatedReplayMessageIds = (result.invalidatedReplayMessageIds + messages
+                    .drop(messages.indexOfFirst { it.id in sourceIdSet })
+                    .filter { it.role == Conversation.Message.Role.ASSISTANT && it.id !in sourceIdSet }
+                    .map { it.id }).distinct(),
+            )),
             createdAt = now,
         )
         val newThread = Conversation.Thread(
@@ -77,17 +78,23 @@ internal class ContextCompactionCommitService(
             updatedAt = now,
         )
 
-        val lastSourceId = orderedSourceIds.last()
+        // A newly derived summary must not be inserted inside an existing full
+        // checkpoint's immutable prefix (nor disappear behind that checkpoint).
+        val insertionIndex = maxOf(messages.indexOfLast { it.id in sourceIdSet },
+            messages.indexOfLast { it.isFullContextCompaction() })
+        val insertionAnchorId = messages[insertionIndex].id
         var nextPosition = 0
-        val newLinks = links.mapNotNull { link ->
-            when {
-                link.messageId == lastSourceId -> link.copy(
+        // Retain immutable sources, including full checkpoints. Context projection hides
+        // covered nodes; retaining them also preserves protection and enables later edits
+        // of selectively covered sources without losing their provenance.
+        val newLinks = buildList {
+            links.forEach { link ->
+                add(link.copy(threadId = newThread.id, position = nextPosition++))
+                if (link.messageId == insertionAnchorId) add(link.copy(
                     threadId = newThread.id,
                     messageId = compactionMessage.id,
                     position = nextPosition++,
-                )
-                link.messageId in sourceIdSet -> null
-                else -> link.copy(threadId = newThread.id, position = nextPosition++)
+                ))
             }
         }
         check(

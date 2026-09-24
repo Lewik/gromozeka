@@ -754,6 +754,7 @@
     "client.message.initial": "Готов работать над этим проектом",
     "client.message.noLongerAvailable": "Сообщение больше недоступно",
     "client.message.rejected": "Система выполнения диалога отклонила сообщение",
+    "client.message.selectAtLeastOne": "Выберите хотя бы одно сообщение",
     "client.message.selectAtLeastTwo": "Выберите хотя бы два сообщения",
     "client.message.submissionFailed": "Не удалось отправить сообщение",
     "client.serverAddress.credentials": "Адрес сервера не должен содержать учётные данные",

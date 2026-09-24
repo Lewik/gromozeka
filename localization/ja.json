@@ -697,6 +697,7 @@
     "client.message.initial": "このプロジェクトで作業を始めましょう",
     "client.message.noLongerAvailable": "このメッセージは利用できなくなりました",
     "client.message.rejected": "会話の実行処理がメッセージを受け付けませんでした",
+    "client.message.selectAtLeastOne": "メッセージを1件以上選択してください",
     "client.message.selectAtLeastTwo": "メッセージを2件以上選択してください",
     "client.message.submissionFailed": "メッセージを送信できませんでした",
     "client.serverAddress.credentials": "サーバーアドレスに認証情報を含めることはできません",

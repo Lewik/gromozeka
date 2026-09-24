@@ -14,6 +14,8 @@ class ConversationMessageProjectionTest {
             Conversation.Message.ContentItem.ContextCompactionResult(
                 payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(buildJsonObject { put("encrypted", "opaque-secret") }),
                 origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                sourceMessageIds = listOf(Conversation.Message.Id("source")),
             ),
         )).copy(providerMetadata = buildJsonObject {
             put("providerReplay", "replay-secret")
@@ -27,6 +29,9 @@ class ConversationMessageProjectionTest {
         assertTrue(encoded.contains("Readable reasoning"))
         assertTrue(encoded.contains("automatic"))
         assertFalse(view.hasMoreContent)
+        val checkpoint = view.message.content.filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>().single()
+        assertTrue(checkpoint.coversAllPrevious)
+        assertEquals(listOf(Conversation.Message.Id("source")), checkpoint.sourceMessageIds)
         assertEquals("signature-secret", (original.content.first() as Conversation.Message.ContentItem.Thinking).signature)
     }
 

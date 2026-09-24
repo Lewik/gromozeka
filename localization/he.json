@@ -735,6 +735,7 @@
     "client.message.initial": "מוכן לעבוד על הפרויקט הזה",
     "client.message.noLongerAvailable": "ההודעה כבר אינה זמינה",
     "client.message.rejected": "מערכת הרצת השיחה דחתה את ההודעה",
+    "client.message.selectAtLeastOne": "יש לבחור לפחות הודעה אחת",
     "client.message.selectAtLeastTwo": "יש לבחור לפחות שתי הודעות",
     "client.message.submissionFailed": "לא ניתן לשלוח את ההודעה",
     "client.serverAddress.credentials": "כתובת השרת אינה יכולה להכיל פרטי גישה",

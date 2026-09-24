@@ -1,6 +1,10 @@
 package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.withoutProviderReplay
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.serialization.Serializable
@@ -123,4 +127,24 @@ data class AiUsage(
 
     val totalTokens: Int
         get() = totalInputTokens + totalOutputTokens
+}
+
+/** Marks the immutable branch against which provider-native assistant state was generated. */
+const val AI_REPLAY_THREAD_METADATA_KEY = "gromozekaReplayThreadId"
+
+fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
+    AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION -> name
+    else -> null
+}
+
+fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Conversation.Message> {
+    val currentThread = options.toolContext["threadId"] as? String
+    return ConversationContext(messages).messagesForProvider(nativeProvider).map { message ->
+        val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
+        if (currentThread != null && sourceThread != currentThread) {
+            // Legacy raw states without branch attribution are replayed as portable content.
+            // Newly produced thinking remains reusable until the branch changes again.
+            message.withoutProviderReplay()
+        } else message
+    }
 }

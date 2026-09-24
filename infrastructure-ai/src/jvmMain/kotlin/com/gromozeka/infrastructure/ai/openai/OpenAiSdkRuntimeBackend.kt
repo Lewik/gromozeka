@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
@@ -142,7 +143,7 @@ internal class OpenAiSdkMessageMapper(
             }
         }
 
-        val messages = request.messages.flatMap(::toMessageParams)
+        val messages = request.projectedMessages().flatMap(::toMessageParams)
         require(messages.isNotEmpty()) { "OpenAI SDK request must contain at least one message" }
         builder.messages(messages)
 

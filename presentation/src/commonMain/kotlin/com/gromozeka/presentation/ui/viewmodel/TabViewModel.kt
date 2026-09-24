@@ -25,6 +25,7 @@ import com.gromozeka.domain.model.ConversationHistoryPage
 import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.ConversationHistoryCursor
 import com.gromozeka.domain.model.ConversationMessageSelection
+import com.gromozeka.domain.model.ConversationContext
 import kotlinx.coroutines.Job
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.MessageInstructionTextShortcut
@@ -1360,9 +1361,11 @@ class TabViewModel(
     }
 
     fun startEditMessage(messageId: Conversation.Message.Id) {
+        if (messageId in ConversationContext(_allMessages.value).protectedMessageIds()) return
         scope.launch {
             try {
                 val message = conversationHistoryService.loadMessage(conversationId, messageId)
+                if (messageId in ConversationContext(_allMessages.value).protectedMessageIds()) return@launch
                 val text = message.editableText() ?: return@launch
                 _uiState.update { it.copy(editingMessageId = messageId, editingMessageText = text) }
             } catch (error: CancellationException) { throw error
@@ -1374,6 +1377,7 @@ class TabViewModel(
         scope.launch {
             try {
                 val message = conversationHistoryService.latestUserMessage(conversationId) ?: return@launch
+                if (message.id in ConversationContext(_allMessages.value).protectedMessageIds()) return@launch
                 val text = message.editableText() ?: return@launch
                 _uiState.update { it.copy(editingMessageId = message.id, editingMessageText = text) }
             } catch (error: CancellationException) { throw error
@@ -1441,10 +1445,12 @@ class TabViewModel(
         squashType: SquashType,
     ) {
         val selectedIds = _uiState.value.selectedMessageIds
-        if (selectedIds.size < 2) {
+        val minimum = if (squashType == SquashType.CONCATENATE) 2 else 1
+        if (selectedIds.size < minimum) {
             _messageSquashState.value = MessageSquashUiState.Failed(
                 squashType,
-                localizedText("client.message.selectAtLeastTwo"),
+                if (minimum == 2) localizedText("client.message.selectAtLeastTwo")
+                else localizedText("client.message.selectAtLeastOne"),
             )
             return
         }

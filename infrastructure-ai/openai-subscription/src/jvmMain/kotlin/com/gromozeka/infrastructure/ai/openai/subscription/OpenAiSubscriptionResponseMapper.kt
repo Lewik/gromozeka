@@ -271,6 +271,7 @@ class OpenAiSubscriptionResponseMapper {
                     ),
                     origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
                     strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+                    coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
                     providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
                         provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
                         connectionId = connectionId,

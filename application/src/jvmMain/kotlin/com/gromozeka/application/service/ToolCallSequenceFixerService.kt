@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import kotlinx.serialization.json.JsonPrimitive
 import com.gromozeka.domain.model.Conversation.Message.BlockState
@@ -276,7 +277,7 @@ class ToolCallSequenceFixerService(
     }
 
     private fun Conversation.Message.hasCompactionReplayAnchor(): Boolean =
-        content.any { it is ContentItem.ContextCompactionResult }
+        isFullContextCompaction()
 
     private fun List<Conversation.Message>.mergeAdjacentToolCallMessages(): List<Conversation.Message> {
         if (size < 2) return this

@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiContextUsage
@@ -356,6 +357,7 @@ internal class ClaudeCodeCliRuntime(
     }
 
     private fun sessionStateKey(request: AiRuntimeRequest): ClaudeCodeSessionState.Key? {
+        if (request.options.usagePurpose == "MESSAGE_SQUASH") return null
         val conversationId = request.options.toolContext["conversationId"].contextString()
             ?.takeIf { it.isNotBlank() }
             ?: request.messages.lastOrNull()?.conversationId?.value
@@ -520,16 +522,8 @@ internal class ClaudeCodeCliRuntime(
             "New Gromozeka messages since the previous Claude Code session turn:"
         }
         val attachments = ClaudeCodeAttachmentCollector()
-        val replayMessages = if (plan.resumeSessionId == null) {
-            val anchor = plan.messagesToSend.indexOfLast { message ->
-                message.content.any { item ->
-                    item is Conversation.Message.ContentItem.ContextCompactionResult &&
-                        item.payload is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState &&
-                        item.providerScope?.provider == AiConnection.Kind.CLAUDE_CODE.name
-                }
-            }
-            plan.messagesToSend.drop(anchor.coerceAtLeast(0))
-        } else plan.messagesToSend
+        val replayMessages = ConversationContext(plan.messagesToSend)
+            .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name)
         val prompt = listOf(
             "$header\n\n${messagesToTranscript(replayMessages, attachments)}",
             contract?.reminder(),
@@ -572,6 +566,7 @@ internal class ClaudeCodeCliRuntime(
                             Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY
                         else Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
                         strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+                        coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
                         sourceMessageIds = request.messages.map { it.id },
                         providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
                             provider = AiConnection.Kind.CLAUDE_CODE.name,

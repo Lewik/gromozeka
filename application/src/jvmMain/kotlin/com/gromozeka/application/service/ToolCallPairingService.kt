@@ -69,31 +69,25 @@ class ToolCallPairingService {
         messageIds: Collection<Conversation.Message.Id>,
     ): Set<Conversation.Message.Id> {
         val pairingMap = buildPairingMap(messages)
-        val selectedToolCallIds = messages
-            .filter { it.id in messageIds }
-            .flatMap(Conversation.Message::content)
-            .mapNotNull { content ->
-                when (content) {
-                    is Conversation.Message.ContentItem.ToolCall ->
-                        content.id.takeIf { pairingMap[it]?.toolResult != null }
-                    is Conversation.Message.ContentItem.ToolResult ->
-                        content.toolUseId.takeIf { pairingMap[it]?.toolCall != null }
+        val selected = messageIds.toMutableSet()
+        do {
+            val before = selected.size
+            val calls = messages.filter { it.id in selected }.flatMap { it.content }.mapNotNull { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.ToolCall -> item.id.takeIf { pairingMap[it]?.toolResult != null }
+                    is Conversation.Message.ContentItem.ToolResult -> item.toolUseId.takeIf { pairingMap[it]?.toolCall != null }
                     else -> null
                 }
-            }
-            .toSet()
-
-        return messageIds.toSet() + messages
-            .filter { message ->
-                message.content.any { content ->
-                    when (content) {
-                        is Conversation.Message.ContentItem.ToolCall -> content.id in selectedToolCallIds
-                        is Conversation.Message.ContentItem.ToolResult -> content.toolUseId in selectedToolCallIds
-                        else -> false
-                    }
+            }.toSet()
+            messages.filter { message -> message.content.any { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.ToolCall -> item.id in calls
+                    is Conversation.Message.ContentItem.ToolResult -> item.toolUseId in calls
+                    else -> false
                 }
-            }
-            .map(Conversation.Message::id)
+            } }.forEach { selected += it.id }
+        } while (selected.size != before)
+        return selected
     }
 
 }

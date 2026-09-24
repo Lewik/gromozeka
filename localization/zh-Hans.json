@@ -697,6 +697,7 @@
     "client.message.initial": "准备好开始处理此项目了",
     "client.message.noLongerAvailable": "此消息已不可用",
     "client.message.rejected": "对话运行系统拒绝了此消息",
+    "client.message.selectAtLeastOne": "请至少选择一条消息",
     "client.message.selectAtLeastTwo": "请至少选择两条消息",
     "client.message.submissionFailed": "提交消息失败",
     "client.serverAddress.credentials": "服务器地址不能包含认证信息",

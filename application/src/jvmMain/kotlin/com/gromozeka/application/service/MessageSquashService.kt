@@ -1,6 +1,8 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -28,7 +30,8 @@ class MessageSquashService internal constructor(
         messageIds: List<Conversation.Message.Id>,
         strategy: SquashType,
     ): Conversation {
-        require(messageIds.size >= 2) { "Need at least 2 messages to compact" }
+        val minimum = if (strategy == SquashType.CONCATENATE) 2 else 1
+        require(messageIds.size >= minimum) { "Need at least $minimum message(s) to compact" }
         require(messageIds.distinct().size == messageIds.size) { "Duplicate message IDs are not allowed" }
 
         val conversation = conversationRepository.findById(conversationId)
@@ -41,24 +44,24 @@ class MessageSquashService internal constructor(
 
         val sourceIdSet = toolCallPairingService.includePairedToolMessages(allMessages, messageIds)
         val sourceMessageIds = allMessages.map(Conversation.Message::id).filter(sourceIdSet::contains)
-        ensureMessagesAreNotCoveredByCompaction(
-            messages = allMessages,
-            targetMessageIds = sourceIdSet,
-            operation = "compact",
-            allowLatestReadableCompaction = true,
-        )
+        require(allMessages.filter { it.id in sourceIdSet }.all { message ->
+            message.content.none { it.state == Conversation.Message.BlockState.STREAMING }
+        }) { "Wait for selected messages to finish streaming before compaction" }
+        val readableMessages = ConversationContext(allMessages)
+            .messagesForProvider(provider = null, selection = sourceIdSet)
+        val selectedText = MessageCompactionTextRenderer.render(readableMessages)
 
         val generated = when (strategy) {
             SquashType.CONCATENATE -> GeneratedCompaction(
-                text = MessageCompactionTextRenderer.render(allMessages.filter { it.id in sourceIdSet }),
+                text = selectedText,
                 providerScope = null,
                 promptTemplate = null,
             )
 
             SquashType.DISTILL, SquashType.SUMMARIZE -> generateWithAi(
                 conversation = conversation,
-                allMessages = allMessages,
-                sourceIdSet = sourceIdSet,
+                selectedText = selectedText,
+                sourceCount = sourceIdSet.size,
                 strategy = strategy,
             )
         }
@@ -68,6 +71,7 @@ class MessageSquashService internal constructor(
             origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
             strategy = strategy.toCompactionStrategy(),
             sourceMessageIds = sourceMessageIds,
+            coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
             providerScope = generated.providerScope,
             promptTemplate = generated.promptTemplate,
         )
@@ -77,33 +81,36 @@ class MessageSquashService internal constructor(
 
     private suspend fun generateWithAi(
         conversation: Conversation,
-        allMessages: List<Conversation.Message>,
-        sourceIdSet: Set<Conversation.Message.Id>,
+        selectedText: String,
+        sourceCount: Int,
         strategy: SquashType,
     ): GeneratedCompaction {
         val runtimeSelection = aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH)
         val resolvedRuntime = aiConfigurationProvider.resolveAiRuntime(runtimeSelection)
         val promptTemplate = strategy.promptTemplate()
-        val markedMessages = allMessages.map { message ->
-            if (message.id in sourceIdSet) message.asCompactionSelection() else message
-        }
         val commandMessage = Conversation.Message(
             id = Conversation.Message.Id("compaction-command"),
             conversationId = conversation.id,
             role = Conversation.Message.Role.USER,
-            content = listOf(Conversation.Message.ContentItem.UserMessage(strategy.promptText())),
+            content = listOf(Conversation.Message.ContentItem.UserMessage(
+                strategy.promptText() + "\n\n<selection>\n" +
+                    selectedText.replace("</selection", "< /selection", ignoreCase = true) + "\n</selection>"
+            )),
             createdAt = kotlin.time.Clock.System.now(),
         )
 
         log.info {
-            "Starting AI compaction: strategy=$strategy sourceCount=${sourceIdSet.size} " +
+            "Starting AI compaction: strategy=$strategy sourceCount=$sourceCount " +
                 "runtime=${runtimeSelection.modelConfigurationId.value}"
         }
         val response = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null).call(
             AiRuntimeRequest(
                 systemPrompts = emptyList(),
-                messages = markedMessages + commandMessage,
+                // A fresh service request, not a replay of the live conversation.
+                // Historical raw provider messages must not override selection text.
+                messages = listOf(commandMessage),
                 options = AiRuntimeOptions(
+                    toolChoice = AiToolChoice.None,
                     toolContext = mapOf(
                         "conversationId" to conversation.id.value,
                         "threadId" to conversation.currentThread.value,
@@ -126,27 +133,6 @@ class MessageSquashService internal constructor(
             ),
             promptTemplate = promptTemplate,
         )
-    }
-
-    private fun Conversation.Message.asCompactionSelection(): Conversation.Message {
-        val content = MessageCompactionTextRenderer.render(listOf(this))
-            .replace("</selection", "< /selection", ignoreCase = true)
-        val selection = "<selection>\n$content\n</selection>"
-        val selectedContent = when (role) {
-            Conversation.Message.Role.USER -> listOf(Conversation.Message.ContentItem.UserMessage(selection))
-            Conversation.Message.Role.ASSISTANT -> listOf(
-                Conversation.Message.ContentItem.AssistantMessage(
-                    Conversation.Message.StructuredText(fullText = selection)
-                )
-            )
-            Conversation.Message.Role.SYSTEM -> listOf(
-                Conversation.Message.ContentItem.System(
-                    level = Conversation.Message.ContentItem.System.SystemLevel.INFO,
-                    content = selection,
-                )
-            )
-        }
-        return copy(content = selectedContent)
     }
 
     private data class GeneratedCompaction(

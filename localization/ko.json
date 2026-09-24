@@ -697,6 +697,7 @@
     "client.message.initial": "이 프로젝트에서 작업할 준비가 되었습니다",
     "client.message.noLongerAvailable": "이 메시지는 더 이상 사용할 수 없습니다",
     "client.message.rejected": "대화 런타임이 메시지를 거부했습니다",
+    "client.message.selectAtLeastOne": "메시지를 하나 이상 선택하세요",
     "client.message.selectAtLeastTwo": "메시지를 두 개 이상 선택하세요",
     "client.message.submissionFailed": "메시지를 보내지 못했습니다",
     "client.serverAddress.credentials": "서버 주소에는 인증 정보를 넣을 수 없습니다",

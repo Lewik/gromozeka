@@ -792,6 +792,7 @@
     "client.message.initial": "جاهز للعمل على هذا المشروع",
     "client.message.noLongerAvailable": "لم تعد الرسالة متاحة",
     "client.message.rejected": "رفضت منظومة تشغيل المحادثة الرسالة",
+    "client.message.selectAtLeastOne": "اختر رسالة واحدة على الأقل",
     "client.message.selectAtLeastTwo": "حدّد رسالتين على الأقل",
     "client.message.submissionFailed": "تعذّر إرسال الرسالة",
     "client.serverAddress.credentials": "يجب ألا يحتوي عنوان الخادم على بيانات اعتماد",

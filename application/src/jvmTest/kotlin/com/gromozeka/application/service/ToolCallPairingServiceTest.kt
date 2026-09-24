@@ -91,6 +91,23 @@ class ToolCallPairingServiceTest {
         assertEquals(setOf(toolCallMessage.id, toolResultMessage.id), selected)
     }
 
+    @Test
+    fun `pair selection expands transitively across messages containing several calls`() {
+        fun call(id: String) = Conversation.Message.ContentItem.ToolCall(
+            Conversation.Message.ContentItem.ToolCall.Id(id),
+            Conversation.Message.ContentItem.ToolCall.Data("read_file", JsonObject(emptyMap())),
+        )
+        fun result(id: String) = Conversation.Message.ContentItem.ToolResult(
+            Conversation.Message.ContentItem.ToolCall.Id(id), "read_file",
+            listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done")),
+        )
+        val first = message("first", Conversation.Message.Role.ASSISTANT, call("a"))
+        val bridge = message("bridge", Conversation.Message.Role.ASSISTANT, result("a")).copy(content = listOf(result("a"), call("b")))
+        val last = message("last", Conversation.Message.Role.USER, result("b"))
+        assertEquals(setOf(first.id, bridge.id, last.id),
+            ToolCallPairingService().includePairedToolMessages(listOf(first, bridge, last), listOf(first.id)))
+    }
+
     private fun message(
         id: String,
         role: Conversation.Message.Role,

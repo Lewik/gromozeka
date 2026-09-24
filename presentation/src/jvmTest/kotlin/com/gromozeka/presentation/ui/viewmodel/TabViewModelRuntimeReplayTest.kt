@@ -225,9 +225,66 @@ class TabViewModelRuntimeReplayTest {
         assertFalse(viewModel.historyLoading.value)
     }
 
+    @Test
+    fun `editing a projected page still fetches the full original text`() = runTest {
+        val full = Conversation.Message(
+            id = Conversation.Message.Id("source"), conversationId = Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Complete original text, not a preview")),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        val preview = full.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("Complete")))
+        val viewModel = viewModel(backgroundScope, MutableSharedFlow(), loadMessage = { full }, latestUserMessage = { full }) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), listOf(ConversationHistoryMessage(0, preview, hasMoreContent = true)))
+        }
+        runCurrent()
+        viewModel.startEditMessage(full.id)
+        runCurrent()
+        assertEquals(full.id, viewModel.uiState.value.editingMessageId)
+        assertEquals(full.editableText(), viewModel.uiState.value.editingMessageText)
+        viewModel.cancelEditMessage()
+        viewModel.startEditLatestUserMessage()
+        runCurrent()
+        assertEquals(full.editableText(), viewModel.uiState.value.editingMessageText)
+    }
+
+    @Test
+    fun `loaded full checkpoint blocks both edit entry points but selective summary does not`() = runTest {
+        for (coverage in Conversation.Message.ContentItem.ContextCompactionResult.Coverage.entries) {
+            val source = Conversation.Message(
+                id = Conversation.Message.Id("source"), conversationId = Conversation.Id("conversation-1"),
+                role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.UserMessage("Original text")),
+                createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+            )
+            val summary = source.copy(id = Conversation.Message.Id("summary"), role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                    payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Summary"),
+                    origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    sourceMessageIds = listOf(source.id), coverage = coverage,
+                )))
+            var detailLoads = 0
+            val viewModel = viewModel(backgroundScope, MutableSharedFlow(), loadMessage = { detailLoads++; source }, latestUserMessage = { source }) {
+                ConversationHistoryPage(Conversation.Thread.Id("thread-1"), listOf(ConversationHistoryMessage(0, source), ConversationHistoryMessage(1, summary)))
+            }
+            runCurrent()
+            val locked = coverage == Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS
+            viewModel.startEditMessage(source.id)
+            runCurrent()
+            assertEquals(if (locked) null else source.id, viewModel.uiState.value.editingMessageId)
+            assertEquals(if (locked) 0 else 1, detailLoads)
+            viewModel.cancelEditMessage()
+            viewModel.startEditLatestUserMessage()
+            runCurrent()
+            assertEquals(if (locked) null else source.id, viewModel.uiState.value.editingMessageId)
+        }
+    }
+
     private fun viewModel(
         scope: CoroutineScope,
         runtimeEvents: MutableSharedFlow<ConversationRuntimeEvent>,
+        loadMessage: suspend (Conversation.Message.Id) -> Conversation.Message = { error("Unused") },
+        latestUserMessage: suspend () -> Conversation.Message? = { error("Unused") },
         loadPage: suspend (ConversationHistoryPageRequest) -> ConversationHistoryPage,
     ): TabViewModel {
         val conversationId = Conversation.Id("conversation-1")
@@ -258,9 +315,9 @@ class TabViewModelRuntimeReplayTest {
             },
             conversationHistoryService = object : ConversationHistoryService {
                 override suspend fun loadPage(conversationId: Conversation.Id, request: ConversationHistoryPageRequest) = loadPage(request)
-                override suspend fun loadMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message = error("Unused")
+                override suspend fun loadMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message = loadMessage(messageId)
                 override suspend fun selectMessageIds(conversationId: Conversation.Id, selection: ConversationMessageSelection): List<Conversation.Message.Id> = error("Unused")
-                override suspend fun latestUserMessage(conversationId: Conversation.Id): Conversation.Message? = error("Unused")
+                override suspend fun latestUserMessage(conversationId: Conversation.Id): Conversation.Message? = latestUserMessage()
                 override suspend fun editMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id, newContent: List<Conversation.Message.ContentItem>): Conversation? = error("Unused")
                 override suspend fun deleteMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>): Conversation? = error("Unused")
                 override suspend fun compactMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>, strategy: SquashType): Conversation = error("Unused")

@@ -35,6 +35,30 @@ import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
     @Test
+    fun selectiveReadableSummaryDoesNotTruncateEarlierUnselectedHistory() {
+        fun text(id: String, text: String) = Conversation.Message(
+            id = Conversation.Message.Id(id), conversationId = conversationId, role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(text)), createdAt = createdAt,
+        )
+        val earlier = text("a", "Keep earlier instruction")
+        val source = text("b", "Covered original")
+        val summary = text("s", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(
+            Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Selective summary"),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                sourceMessageIds = listOf(source.id),
+            ),
+        ))
+        val input = mapper.toRequest(AiRuntimeRequest(emptyList(), listOf(earlier, source, summary, text("d", "Tail"))),
+            modelName = "gpt-5", conversationKey = "test").input.toString()
+        assertTrue(input.contains("Keep earlier instruction"))
+        assertTrue(input.contains("Selective summary"))
+        assertTrue(input.contains("Tail"))
+        assertFalse(input.contains("Covered original"))
+    }
+
+    @Test
     fun `opaque reasoning marker is replayed exactly once and only to its provider scope`() {
         val raw = Json.parseToJsonElement("""{"type":"reasoning","id":"rs-1","summary":[],"encrypted_content":"opaque"}""").jsonObject
         val runtime = OpenAiSubscriptionResponseMapper().toRuntimeResponse(
@@ -658,6 +682,7 @@ class OpenAiSubscriptionRequestMapperTest {
                         },
                     ),
                     origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                    coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
                     providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
                         provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
                     ),

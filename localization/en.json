@@ -716,6 +716,7 @@
     "client.message.initial": "Ready to work on this project",
     "client.message.noLongerAvailable": "The message is no longer available",
     "client.message.rejected": "Conversation runtime rejected the message",
+    "client.message.selectAtLeastOne": "Select at least one message",
     "client.message.selectAtLeastTwo": "Select at least two messages",
     "client.message.submissionFailed": "Failed to submit message",
     "client.serverAddress.credentials": "Server address must not contain credentials",

@@ -462,8 +462,21 @@ data class Conversation(
                 val sourceMessageIds: List<Id> = emptyList(),
                 val providerScope: ProviderScope? = null,
                 val promptTemplate: PromptTemplateReference? = null,
+                val coverage: Coverage,
+                // Kept turns produced against the pre-compaction history must not replay
+                // signed thinking or provider-native copies of that old history.
+                val invalidatedReplayMessageIds: List<Id> = emptyList(),
                 override val state: BlockState = BlockState.COMPLETE,
             ) : ContentItem() {
+                val coversAllPrevious: Boolean
+                    get() = coverage == Coverage.ALL_PREVIOUS
+
+                @Serializable
+                enum class Coverage {
+                    SELECTED_MESSAGES,
+                    ALL_PREVIOUS,
+                }
+
                 @Serializable
                 enum class Origin {
                     USER_REQUESTED,

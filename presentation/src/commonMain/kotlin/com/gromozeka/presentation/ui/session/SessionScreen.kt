@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationMessageSelection
+import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.KeyboardShortcutScope
@@ -409,6 +410,9 @@ fun SessionScreen(
 
                             // Action buttons
                             val messageSquashRunning = messageSquashState is MessageSquashUiState.Running
+                            val protectedMessageIds = remember(allMessages) {
+                                ConversationContext(allMessages).protectedMessageIds()
+                            }
                             val selectedMessage = remember(allMessages, uiState.selectedMessageIds) {
                                 uiState.selectedMessageIds.singleOrNull()?.let { selectedMessageId ->
                                     allMessages.firstOrNull { it.id == selectedMessageId }
@@ -420,7 +424,7 @@ fun SessionScreen(
                                     selectedMessage?.let { viewModel.startEditMessage(it.id) }
                                 },
                                 modifier = Modifier.testTag(UiTestTag.EditSelectedMessageButton.value),
-                                enabled = selectedMessage?.editableText() != null && !messageSquashRunning,
+                                enabled = selectedMessage?.editableText() != null && selectedMessage.id !in protectedMessageIds && !messageSquashRunning,
                                 tooltip = localization.text("chat.selection.editHint")
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -458,7 +462,7 @@ fun SessionScreen(
                                         viewModel.distillSelectedMessages()
                                     }
                                 },
-                                enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
+                                enabled = uiState.selectedMessageIds.isNotEmpty() && !messageSquashRunning,
                                 tooltip = localization.text("chat.selection.distillHint")
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -477,7 +481,7 @@ fun SessionScreen(
                                         viewModel.summarizeSelectedMessages()
                                     }
                                 },
-                                enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
+                                enabled = uiState.selectedMessageIds.isNotEmpty() && !messageSquashRunning,
                                 tooltip = localization.text("chat.selection.summarizeHint")
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -496,7 +500,7 @@ fun SessionScreen(
                                         viewModel.deleteSelectedMessages()
                                     }
                                 },
-                                enabled = uiState.selectedMessageIds.isNotEmpty() && !messageSquashRunning,
+                                enabled = uiState.selectedMessageIds.isNotEmpty() && uiState.selectedMessageIds.none { it in protectedMessageIds } && !messageSquashRunning,
                                 tooltip = localization.text("chat.selection.deleteHint")
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
