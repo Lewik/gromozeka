@@ -5130,11 +5130,18 @@
     "description": "Server rejected a request to enqueue/post a user message. Not a model safety refusal.",
     "args": []
   },
+  "client.message.selectAtLeastOne": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/viewmodel/TabViewModel.kt"
+    ],
+    "description": "Validation hint: distilling or summarizing a selection requires at least one message.",
+    "args": []
+  },
   "client.message.selectAtLeastTwo": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/viewmodel/TabViewModel.kt:1348"
     ],
-    "description": "Validation hint: merging/distilling/summarizing selected messages requires two or more selected messages.",
+    "description": "Validation hint: concatenating selected messages requires two or more selected messages.",
     "args": []
   },
   "client.message.submissionFailed": {

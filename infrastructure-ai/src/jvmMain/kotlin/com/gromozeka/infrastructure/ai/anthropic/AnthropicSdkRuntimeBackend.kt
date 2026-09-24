@@ -31,6 +31,7 @@ import com.anthropic.models.messages.ToolResultBlockParam
 import com.anthropic.models.messages.ToolUnion
 import com.anthropic.models.messages.ToolUseBlockParam
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -245,7 +246,7 @@ internal class AnthropicSdkMessageMapper(
             }
         }
 
-        val messages = request.messages.mapNotNull { toMessageParam(it, modelName) }
+        val messages = request.projectedMessages().mapNotNull { toMessageParam(it, modelName) }
         require(messages.isNotEmpty()) { "Anthropic request must contain at least one user or assistant message" }
         builder.messages(messages)
 

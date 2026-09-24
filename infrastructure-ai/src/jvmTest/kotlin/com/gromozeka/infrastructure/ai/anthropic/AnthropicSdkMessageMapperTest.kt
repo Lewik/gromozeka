@@ -28,6 +28,28 @@ import kotlin.test.assertTrue
 class AnthropicSdkMessageMapperTest {
 
     @Test
+    fun `API and Bedrock project selective summaries without dropping earlier context`() {
+        val earlier = requestWithoutJsonSchema().messages.single().copy(id = Conversation.Message.Id("a"), content = listOf(Conversation.Message.ContentItem.UserMessage("Earlier instruction")))
+        val source = earlier.copy(id = Conversation.Message.Id("b"), content = listOf(Conversation.Message.ContentItem.UserMessage("Covered original")))
+        val summary = earlier.copy(id = Conversation.Message.Id("s"), role = Conversation.Message.Role.ASSISTANT, content = listOf(
+            Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Selective summary"),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                sourceMessageIds = listOf(source.id),
+            ),
+        ))
+        for (kind in listOf(AiConnection.Kind.ANTHROPIC_API, AiConnection.Kind.ANTHROPIC_BEDROCK)) {
+            val params = AnthropicSdkMessageMapper(kind).toCreateParams("claude-sonnet-4-20250514",
+                requestWithoutJsonSchema().copy(messages = listOf(earlier, source, summary)))
+            val payload = com.anthropic.core.jsonMapper().writeValueAsString(params.messages())
+            assertTrue(payload.contains("Earlier instruction"))
+            assertTrue(payload.contains("Selective summary"))
+            assertFalse(payload.contains("Covered original"))
+        }
+    }
+
+    @Test
     fun `preserves signed empty and redacted thinking and content order through a tool turn`() {
         val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, "anthropic-test", "claude-opus-5")
         val native = com.anthropic.core.jsonMapper().readValue("""{

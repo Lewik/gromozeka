@@ -337,6 +337,7 @@ class AiToolRuntimeCatalogServiceTest {
                             "Earlier conversation."
                         ),
                         origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                        coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
                     )
                 ),
             ),

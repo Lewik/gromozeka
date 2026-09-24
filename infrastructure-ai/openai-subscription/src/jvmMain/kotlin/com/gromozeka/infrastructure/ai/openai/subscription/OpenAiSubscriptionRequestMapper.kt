@@ -1,6 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.isFullContextCompaction
+import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -48,7 +50,7 @@ class OpenAiSubscriptionRequestMapper {
         webSearchEnabled: Boolean = false,
         connectionId: String? = null,
     ): OpenAiSubscriptionResponsesRequest {
-        val replayWindow = request.messages.toReplayWindow()
+        val replayWindow = request.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name).toReplayWindow()
         val effectiveFunctionTools = if (request.options.toolChoice is AiToolChoice.None) {
             emptyList()
         } else {
@@ -789,7 +791,7 @@ class OpenAiSubscriptionRequestMapper {
     }
 
     private fun List<Conversation.Message>.toReplayWindow(): ReplayWindow {
-        val compactionAnchorIndex = indexOfLast { it.containsOpenAiCompactionReplayItem() }
+        val compactionAnchorIndex = indexOfLast { it.isFullContextCompaction() && it.containsOpenAiCompactionReplayItem() }
         if (compactionAnchorIndex < 0) {
             return ReplayWindow(
                 messages = this,

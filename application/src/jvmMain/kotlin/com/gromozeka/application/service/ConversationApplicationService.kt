@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.User
@@ -318,24 +319,29 @@ class ConversationApplicationService(
         
         val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
         val sourceMessagesById = messageRepo.findByIds(sourceLinks.map { it.messageId }).associateBy { it.id }
+        val activeSourceMessages = sourceLinks.map { link ->
+            sourceMessagesById[link.messageId]
+                ?: error("Message ${link.messageId.value} disappeared while forking conversation")
+        }
         val sourceMessages = artifactService.cloneReferences(
             sourceConversationId = sourceConversation.id,
             targetConversation = newConversation,
-            messages = sourceLinks.map { link ->
-                sourceMessagesById[link.messageId]
-                    ?: error("Message ${link.messageId.value} disappeared while forking conversation")
-            },
+            messages = activeSourceMessages,
         )
-        
-        val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
-        
+
+        // Allocate all IDs before copying: coverage and replay-invalidations belong to
+        // the fork, while originalIds remain immutable provenance back to the source.
+        val messageIdMap = sourceMessages.associate { it.id to Conversation.Message.Id(uuid7()) }
         for (message in sourceMessages) {
-            val newMessageId = Conversation.Message.Id(uuid7())
-            messageIdMap[message.id] = newMessageId
-            
             val newMessage = message.copy(
-                id = newMessageId,
+                id = messageIdMap.getValue(message.id),
                 conversationId = newConversationId,
+                content = message.content.map { item ->
+                    if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
+                        sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
+                        invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
+                    ) else item
+                },
                 createdAt = now
             )
             messageRepo.save(newMessage)
@@ -534,12 +540,13 @@ class ConversationApplicationService(
 
         threadRepo.save(newThread)
 
-        val newLinks = links.map { link ->
-            if (link.messageId == messageId) {
-                link.copy(threadId = newThread.id, messageId = editedMessage.id)
-            } else {
-                link.copy(threadId = newThread.id)
-            }
+        val invalidated = ConversationContext(messages).dependentSummaryIds(setOf(messageId))
+        val newLinks = links.filterNot { it.messageId in invalidated }.mapIndexed { index, link ->
+            link.copy(
+                threadId = newThread.id,
+                messageId = if (link.messageId == messageId) editedMessage.id else link.messageId,
+                position = index,
+            )
         }
 
         threadMessageRepo.addBatch(newLinks)
@@ -586,40 +593,10 @@ class ConversationApplicationService(
         }
         ensureMessagesAreNotCoveredByCompaction(messages, messageIds.toSet(), "delete")
 
-        // Build pairing map to identify paired ToolCalls/ToolResults
-        val pairingMap = toolCallPairingService.buildPairingMap(messages)
-        
-        // Collect all ToolCall IDs from deleted messages (both from ToolCall and ToolResult content)
-        // These are IDs of tool calls that will be removed from thread
-        val deletingToolCallIds = targetMessages
-            .flatMap { it.content }
-            .flatMap { content ->
-                when (content) {
-                    is Conversation.Message.ContentItem.ToolCall -> 
-                        if (pairingMap[content.id]?.toolResult != null) listOf(content.id) else emptyList()
-                    is Conversation.Message.ContentItem.ToolResult -> 
-                        if (pairingMap[content.toolUseId]?.toolCall != null) listOf(content.toolUseId) else emptyList()
-                    else -> emptyList()
-                }
-            }
-            .toSet()
-        
-        // Find messages containing the paired ToolCalls/ToolResults that must also be deleted
-        val pairedMessageIds = messages
-            .filter { it.id !in messageIds }
-            .filter { message ->
-                message.content.any { content ->
-                    when (content) {
-                        is Conversation.Message.ContentItem.ToolResult -> content.toolUseId in deletingToolCallIds
-                        is Conversation.Message.ContentItem.ToolCall -> content.id in deletingToolCallIds
-                        else -> false
-                    }
-                }
-            }
-            .map { it.id }
-            .toSet()
-        
-        val allIdsToDelete = messageIds.toSet() + pairedMessageIds
+        val requestedDeletes = toolCallPairingService.includePairedToolMessages(messages, messageIds)
+        // Pair expansion must not bypass a full checkpoint's protected prefix.
+        ensureMessagesAreNotCoveredByCompaction(messages, requestedDeletes, "delete")
+        val allIdsToDelete = requestedDeletes + ConversationContext(messages).dependentSummaryIds(requestedDeletes)
 
         val newThread = Conversation.Thread(
             id = Conversation.Thread.Id(uuid7()),
@@ -641,7 +618,7 @@ class ConversationApplicationService(
 
         conversationRepo.updateCurrentThread(conversationId, newThread.id)
 
-        log.debug("Deleted ${messageIds.size} message(s) + ${pairedMessageIds.size} paired, created new thread ${newThread.id}")
+        log.debug("Deleted ${messageIds.size} selected message(s), ${allIdsToDelete.size} including pairs and dependent summaries; created new thread ${newThread.id}")
 
         return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }

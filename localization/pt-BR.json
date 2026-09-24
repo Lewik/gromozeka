@@ -735,6 +735,7 @@
     "client.message.initial": "Pronto para trabalhar neste projeto",
     "client.message.noLongerAvailable": "A mensagem não está mais disponível",
     "client.message.rejected": "O ambiente de execução da conversa rejeitou a mensagem",
+    "client.message.selectAtLeastOne": "Selecione pelo menos uma mensagem",
     "client.message.selectAtLeastTwo": "Selecione pelo menos duas mensagens",
     "client.message.submissionFailed": "Não foi possível enviar a mensagem",
     "client.serverAddress.credentials": "O endereço do servidor não pode conter credenciais",

@@ -30,6 +30,25 @@ import kotlinx.serialization.json.put
 
 class OpenAiSubscriptionCompactionTest {
     @Test
+    fun selectiveSummaryAtTheEndDoesNotSuppressRequiredNativeCompaction() = runBlocking {
+        Fixture().use { fixture ->
+            val original = request()
+            val source = original.messages.last()
+            val summary = source.copy(id = Conversation.Message.Id("selective"), role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Continue implementation"),
+                    origin = ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                    sourceMessageIds = listOf(source.id),
+                )))
+            val request = original.copy(messages = original.messages + summary)
+            val mapped = fixture.mapper.toRequest(request, profile, "conversation", connectionId = "connection")
+            assertEquals(AiStepOutcome.CONTINUE, fixture.compact(request, mapped)?.outcome)
+            assertEquals(1, fixture.requests.size)
+        }
+    }
+
+    @Test
     fun compactsBeforeInferenceAndReplaysThePersistedCheckpointAfterRestart() = runBlocking {
         Fixture().use { fixture ->
             val request = request()

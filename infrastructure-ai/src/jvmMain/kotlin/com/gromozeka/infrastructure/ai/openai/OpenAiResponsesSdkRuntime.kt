@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -111,7 +112,7 @@ internal class OpenAiResponsesMessageMapper(
         webSearchEnabled: Boolean,
         request: AiRuntimeRequest,
     ): ResponseCreateParams {
-        val input = request.messages.flatMap(::toInputItems)
+        val input = request.projectedMessages().flatMap(::toInputItems)
         require(input.isNotEmpty()) { "OpenAI Responses request must contain at least one input item" }
 
         val builder = ResponseCreateParams.builder()

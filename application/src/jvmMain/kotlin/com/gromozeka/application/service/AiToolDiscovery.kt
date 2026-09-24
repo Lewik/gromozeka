@@ -2,6 +2,8 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
@@ -305,10 +307,9 @@ class AiToolRuntimeCatalogService {
     }
 
     private fun List<Conversation.Message>.afterLastCompaction(): List<Conversation.Message> {
-        val compactionIndex = indexOfLast { message ->
-            message.content.any { it is Conversation.Message.ContentItem.ContextCompactionResult }
-        }
-        return if (compactionIndex < 0) this else drop(compactionIndex + 1)
+        val projected = ConversationContext(this).messages()
+        val compactionIndex = projected.indexOfLast { it.isFullContextCompaction() }
+        return if (compactionIndex < 0) projected else projected.drop(compactionIndex + 1)
     }
 
     private fun parseToolNames(result: String): List<String> = runCatching {

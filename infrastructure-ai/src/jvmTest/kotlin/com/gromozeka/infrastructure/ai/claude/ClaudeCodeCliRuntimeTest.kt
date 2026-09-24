@@ -1058,6 +1058,7 @@ class ClaudeCodeCliRuntimeTest {
         val summary = assistantMessage("").copy(content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
             payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Selected middle messages"),
             origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+            coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
         )))
         runtime(executor).call(request(listOf(userMessage("Unrelated earlier instruction"), summary, userMessage("Next")), emptyList()))
         assertTrue(executor.commands.single().userPrompt.contains("Unrelated earlier instruction"))
@@ -1071,6 +1072,7 @@ class ClaudeCodeCliRuntimeTest {
         val checkpoint = assistantMessage("").copy(content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
             payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(state),
             origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+            coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
             providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(provider = "CLAUDE_CODE"),
         )))
         runtime(executor).call(request(listOf(userMessage("Old context already compacted"), checkpoint, userMessage("Next")), emptyList()))
@@ -1097,6 +1099,47 @@ class ClaudeCodeCliRuntimeTest {
         runtime.call(request(listOf(original, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next")), emptyList()))
         assertNull(executor.commands[1].resumeSessionId)
         assertTrue(executor.commands[1].userPrompt.contains("Recover this original context"))
+    }
+
+    @Test
+    fun messageSquashDoesNotResumeOrOverwriteTheMainSession() = runBlocking {
+        val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
+        val executor = FakeClaudeCodeCliExecutor(
+            response(sessionId = "main", structuredOutput = answer),
+            response(sessionId = "helper", structuredOutput = answer),
+            response(sessionId = "main", structuredOutput = answer),
+        )
+        val runtime = runtime(executor)
+        val original = userMessage("Original main context")
+        val first = runtime.call(request(listOf(original), emptyList()))
+        runtime.call(request(listOf(userMessage("Summarize selected material")), emptyList(), AiRuntimeOptions(
+            usagePurpose = "MESSAGE_SQUASH", toolContext = testToolContext(),
+        )))
+        runtime.call(request(listOf(original, assistantMessage("").copy(content = first.messages.single().content),
+            userMessage("Continue main")), emptyList()))
+        assertNull(executor.commands[1].resumeSessionId)
+        assertFalse(executor.commands[1].userPrompt.contains("Original main context"))
+        assertEquals("main", executor.commands[2].resumeSessionId)
+        assertFalse(executor.commands[2].userPrompt.contains("Summarize selected material"))
+    }
+
+    @Test
+    fun selectiveCompactionOmitsCoveredSourcesButKeepsUnrelatedEarlierContext() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))
+        val earlier = userMessage("Unrelated earlier instruction")
+        val source = userMessage("Source no longer sent")
+        val summary = assistantMessage("").copy(content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+            payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Selected summary"),
+            origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+            coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+            sourceMessageIds = listOf(source.id),
+        )))
+        runtime(executor).call(request(listOf(earlier, source, summary, userMessage("Next")), emptyList()))
+        val prompt = executor.commands.single().userPrompt
+        assertTrue(prompt.contains("Unrelated earlier instruction"))
+        assertTrue(prompt.contains("Selected summary"))
+        assertFalse(prompt.contains("Source no longer sent"))
     }
 
     private fun runtime(

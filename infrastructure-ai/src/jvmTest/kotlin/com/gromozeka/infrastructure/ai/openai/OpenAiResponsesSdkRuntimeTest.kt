@@ -28,6 +28,42 @@ import kotlin.test.assertTrue
 
 class OpenAiResponsesSdkRuntimeTest {
     @Test
+    fun `both OpenAI APIs project selective and foreign opaque compactions`() {
+        val earlier = userMessage().copy(id = Conversation.Message.Id("a"), content = listOf(Conversation.Message.ContentItem.UserMessage("Earlier instruction")))
+        val source = earlier.copy(id = Conversation.Message.Id("b"), content = listOf(Conversation.Message.ContentItem.UserMessage("Covered original")))
+        val selective = earlier.copy(id = Conversation.Message.Id("s"), role = Conversation.Message.Role.ASSISTANT, content = listOf(
+            Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Selective summary"),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                sourceMessageIds = listOf(source.id),
+            ),
+        ))
+        val opaque = selective.copy(id = Conversation.Message.Id("checkpoint"), content = listOf(
+            Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(JsonObject(mapOf("encrypted_content" to JsonPrimitive("opaque")))),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                sourceMessageIds = listOf(earlier.id, source.id, selective.id),
+                providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(provider = "OPENAI_SUBSCRIPTION"),
+            ),
+        ))
+        for (messages in listOf(listOf(earlier, source, selective), listOf(earlier, source, selective, opaque))) {
+            val input = request(messages = messages)
+            val payloads = listOf(
+                com.openai.core.jsonMapper().writeValueAsString(mapper.toCreateParams("gpt-5", false, input).input()),
+                com.openai.core.jsonMapper().writeValueAsString(OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_API).toCreateParams("gpt-5", input).messages()),
+            )
+            payloads.forEach { payload ->
+                assertTrue(payload.contains("Earlier instruction"))
+                assertTrue(payload.contains("Selective summary"))
+                assertFalse(payload.contains("Covered original"))
+                assertFalse(payload.contains("encrypted_content"))
+            }
+        }
+    }
+
+    @Test
     fun `preserves commentary phase and opaque reasoning in native response order`() {
         val native = com.openai.core.jsonMapper().readValue("""{
             "id":"resp-1","model":"gpt-5-2025-08-07","status":"completed","output":[
@@ -41,7 +77,8 @@ class OpenAiResponsesSdkRuntimeTest {
         assertEquals(AiStepOutcome.TOOL_CALLS, response.outcome)
         assertTrue((response.messages.first().content.single() as Conversation.Message.ContentItem.Thinking).isVisible)
         assertEquals("commentary", response.messages[1].metadata["phase"])
-        val messages = response.messages.map { message -> userMessage().copy(
+        val messages = response.messages.mapIndexed { index, message -> userMessage().copy(
+            id = Conversation.Message.Id("assistant-$index"),
             role = Conversation.Message.Role.ASSISTANT,
             content = message.content,
             providerMetadata = JsonObject((response.providerMetadata + message.metadata).mapValues { (_, value) ->

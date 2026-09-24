@@ -697,6 +697,7 @@
     "client.message.initial": "已準備好處理此專案",
     "client.message.noLongerAvailable": "此訊息已無法使用",
     "client.message.rejected": "對話執行系統拒絕了這則訊息",
+    "client.message.selectAtLeastOne": "請至少選擇一則訊息",
     "client.message.selectAtLeastTwo": "請至少選取兩則訊息",
     "client.message.submissionFailed": "無法提交訊息",
     "client.serverAddress.credentials": "伺服器位址不得包含憑證",

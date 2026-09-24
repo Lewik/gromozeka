@@ -4,12 +4,12 @@ import com.gromozeka.domain.model.Conversation
 
 internal object MessageCompactionTextRenderer {
     fun render(messages: List<Conversation.Message>): String =
-        messages.joinToString("\n\n") { message ->
+        messages.mapNotNull { message ->
             val content = message.content.mapNotNull(::renderContentItem)
                 .filter(String::isNotBlank)
                 .joinToString("\n")
-            "[${message.role.name.lowercase()}]\n$content"
-        }.trim().also { require(it.isNotBlank()) { "Selected messages contain no readable content" } }
+            content.takeIf(String::isNotBlank)?.let { "[${message.role.name.lowercase()}]\n$it" }
+        }.joinToString("\n\n").trim().also { require(it.isNotBlank()) { "Selected messages contain no readable content" } }
 
     private fun renderContentItem(item: Conversation.Message.ContentItem): String? = when (item) {
         is Conversation.Message.ContentItem.UserMessage -> item.text
@@ -47,7 +47,7 @@ internal object MessageCompactionTextRenderer {
         is Conversation.Message.ContentItem.ContextCompactionResult -> when (val payload = item.payload) {
             is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
             is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
-                "[context_compaction:${item.providerScope?.provider ?: "unknown"}]"
+                error("Opaque compaction must be recovered from its original messages before rendering")
         }
         is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
     }

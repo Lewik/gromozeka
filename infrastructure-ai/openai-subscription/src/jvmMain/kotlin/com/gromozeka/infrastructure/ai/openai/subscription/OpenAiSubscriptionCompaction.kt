@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
+import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -40,9 +41,7 @@ class OpenAiSubscriptionCompaction(
     ): AiRuntimeResponse? {
         val threshold = request.options.autoCompactionThresholdTokens ?: return null
         if (!modelProfile.useResponsesLite || requestBody.input.isEmpty()) return null
-        val lastCheckpoint = request.messages.indexOfLast { message ->
-            message.content.any { it is ContextCompactionResult }
-        }
+        val lastCheckpoint = request.messages.indexOfLast { it.isFullContextCompaction() }
         if (lastCheckpoint >= 0 && lastCheckpoint == request.messages.lastIndex) return null
         val estimatedTokens = estimateContextTokens(
             request.messages.drop(lastCheckpoint.coerceAtLeast(0)), requestBody, connectionId,

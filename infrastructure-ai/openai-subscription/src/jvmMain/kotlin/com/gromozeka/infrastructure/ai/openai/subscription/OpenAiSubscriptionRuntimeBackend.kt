@@ -87,7 +87,10 @@ private class Runtime(
         retryOnUnauthorized: Boolean,
     ): AiRuntimeResponse = withContext(Dispatchers.IO) {
         val session = authService.getValidSession()
-        val rawConversationKey = request.options.toolContext["conversationId"] as? String ?: fallbackConversationKey
+        val baseConversationKey = request.options.toolContext["conversationId"] as? String ?: fallbackConversationKey
+        val rawConversationKey = if (request.options.usagePurpose == "MESSAGE_SQUASH") {
+            "$baseConversationKey:message-squash:$fallbackConversationKey"
+        } else baseConversationKey
         val conversationKey = rawConversationKey.toOpenAiSubscriptionKey()
         val promptCacheKey = (request.options.toolContext["promptCacheKey"] as? String ?: rawConversationKey)
             .toOpenAiSubscriptionKey()

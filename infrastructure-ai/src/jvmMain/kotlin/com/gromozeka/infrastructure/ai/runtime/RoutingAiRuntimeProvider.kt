@@ -4,6 +4,11 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
+import com.gromozeka.domain.model.ai.nativeCompactionProvider
+import com.gromozeka.domain.model.ai.projectedMessages
+import kotlinx.coroutines.flow.map
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.DirectAiRuntimeProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
@@ -48,13 +53,28 @@ class AiInputValidatingRuntime(
         get() = delegate.capabilities
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
-        AiRuntimeInputValidator.requireSupported(runtime, request.messages)
-        return delegate.call(request)
+        val prepared = prepare(request)
+        AiRuntimeInputValidator.requireSupported(runtime, prepared.messages)
+        return delegate.call(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request else prepared)
+            .withReplayScope(request)
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> {
-        AiRuntimeInputValidator.requireSupported(runtime, request.messages)
-        return delegate.stream(request)
+        val prepared = prepare(request)
+        AiRuntimeInputValidator.requireSupported(runtime, prepared.messages)
+        return delegate.stream(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request else prepared)
+            .map { it.withReplayScope(request) }
+    }
+
+    private fun prepare(request: AiRuntimeRequest): AiRuntimeRequest = request.copy(
+        messages = request.projectedMessages(runtime.connection.kind.nativeCompactionProvider()),
+    )
+
+    private fun AiRuntimeResponse.withReplayScope(request: AiRuntimeRequest): AiRuntimeResponse {
+        // Claude Code keeps canonical history fingerprints in its own session store.
+        if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) return this
+        val thread = request.options.toolContext["threadId"] as? String ?: return this
+        return copy(messages = messages.map { it.copy(metadata = it.metadata + (AI_REPLAY_THREAD_METADATA_KEY to thread)) })
     }
 }
 

@@ -697,6 +697,7 @@
     "client.message.initial": "Siap mengerjakan proyek ini",
     "client.message.noLongerAvailable": "Pesan tidak lagi tersedia",
     "client.message.rejected": "Sistem eksekusi percakapan menolak pesan",
+    "client.message.selectAtLeastOne": "Pilih setidaknya satu pesan",
     "client.message.selectAtLeastTwo": "Pilih setidaknya dua pesan",
     "client.message.submissionFailed": "Tidak dapat mengirim pesan",
     "client.serverAddress.credentials": "Alamat server tidak boleh berisi kredensial",

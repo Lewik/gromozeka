@@ -21,6 +21,7 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.MessageInstructionTextShortcut
 import com.gromozeka.domain.model.MessageInputContext
@@ -1274,6 +1275,7 @@ class TabViewModel(
     }
 
     fun startEditMessage(messageId: Conversation.Message.Id) {
+        if (messageId in ConversationContext(_allMessages.value).protectedMessageIds()) return
         val message = _allMessages.value.find { it.id == messageId } ?: return
         val text = message.editableText() ?: return
 
@@ -1286,8 +1288,9 @@ class TabViewModel(
     }
 
     fun startEditLatestUserMessage(): Boolean {
+        val protectedIds = ConversationContext(_allMessages.value).protectedMessageIds()
         val message = _allMessages.value.lastOrNull { candidate ->
-            candidate.role == Conversation.Message.Role.USER && candidate.editableText() != null
+            candidate.role == Conversation.Message.Role.USER && candidate.id !in protectedIds && candidate.editableText() != null
         } ?: return false
         startEditMessage(message.id)
         return true
@@ -1353,10 +1356,12 @@ class TabViewModel(
         squashType: SquashType,
     ) {
         val selectedIds = _uiState.value.selectedMessageIds
-        if (selectedIds.size < 2) {
+        val minimum = if (squashType == SquashType.CONCATENATE) 2 else 1
+        if (selectedIds.size < minimum) {
             _messageSquashState.value = MessageSquashUiState.Failed(
                 squashType,
-                localizedText("client.message.selectAtLeastTwo"),
+                if (minimum == 2) localizedText("client.message.selectAtLeastTwo")
+                else localizedText("client.message.selectAtLeastOne"),
             )
             return
         }

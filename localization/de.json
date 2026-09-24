@@ -716,6 +716,7 @@
     "client.message.initial": "Bereit, an diesem Projekt zu arbeiten",
     "client.message.noLongerAvailable": "Die Nachricht ist nicht mehr verfügbar",
     "client.message.rejected": "Die Unterhaltungslaufzeit hat die Nachricht abgelehnt",
+    "client.message.selectAtLeastOne": "Wähle mindestens eine Nachricht aus",
     "client.message.selectAtLeastTwo": "Wähle mindestens zwei Nachrichten aus",
     "client.message.submissionFailed": "Nachricht konnte nicht gesendet werden",
     "client.serverAddress.credentials": "Die Serveradresse darf keine Zugangsdaten enthalten",
