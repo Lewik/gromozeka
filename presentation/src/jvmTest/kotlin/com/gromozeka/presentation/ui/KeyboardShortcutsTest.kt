@@ -13,7 +13,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.gromozeka.domain.model.*
-import com.gromozeka.presentation.services.HoldToTalkShortcutController
+import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpPttEventHandler
 import com.gromozeka.presentation.services.NoOpLiveVoiceInputService
@@ -38,10 +38,10 @@ class KeyboardShortcutsTest {
                     onRegenerateSuggestedReplies = {},
                     onSendMessage = { submitted.add(input.value); input.value = "" },
                     coroutineScope = rememberCoroutineScope(), pttEventHandler = NoOpPttEventHandler, pttState = PttState.IDLE,
-                    pttStatusMessage = null, pttUnavailableReason = null,
+                    pttUnavailableReason = null,
                     liveVoiceInputService = NoOpLiveVoiceInputService(), liveVoiceInputState = LiveVoiceInputState.IDLE,
-                    liveVoiceInputStatusMessage = null, liveVoiceInputUnavailableReason = null,
-                    showLiveVoiceButton = false, showPttButton = false, compactVoiceMode = false,
+                    liveVoiceInputUnavailableReason = null,
+                    showLiveVoiceButton = false, showPttButton = false,
                     clientPlatform = ClientPlatform.DESKTOP, instructionGroups = emptyList(),
                     activeInstructionIds = emptySet(), onSelectInstruction = { _, _ -> },
                     composerArtifacts = emptyList(), artifactUploadInProgress = false, artifactError = null,
@@ -169,7 +169,7 @@ class KeyboardShortcutsTest {
             val scope = rememberCoroutineScope()
             MaterialTheme {
                 Box(Modifier.focusedKeyboardShortcuts(settings, true, enabled.value,
-                    HoldToTalkShortcutController(NoOpPttEventHandler, scope), { activations++ })) {
+                    UnifiedGestureDetector(NoOpPttEventHandler, scope), { activations++ })) {
                     OutlinedTextField(value.value, { value.value = it }, modifier = Modifier.testTag("input"))
                 }
             }
@@ -192,6 +192,38 @@ class KeyboardShortcutsTest {
         runOnIdle {
             assertEquals(2, activations)
             assertEquals(KeyboardShortcutScope.GLOBAL, settings.binding(KeyboardShortcutAction.FIX_CLIPBOARD_TEXT).scope)
+        }
+    }
+
+    @Test
+    fun doubleEscapeStillInterruptsWhenRecordingIsUnavailable() = runComposeUiTest {
+        val actions = mutableListOf<com.gromozeka.presentation.services.PTTEvent>()
+        val handler = object : com.gromozeka.presentation.services.PttEventHandler {
+            override val canRecord = false
+            override fun initialize() = Unit
+            override suspend fun handlePTTEvent(event: com.gromozeka.presentation.services.PTTEvent) { actions += event }
+            override suspend fun handlePTTRelease() = error("No recording to release")
+            override suspend fun handlePTTCancel() = error("No recording to cancel")
+        }
+        setContent {
+            val scope = rememberCoroutineScope()
+            val detector = androidx.compose.runtime.remember { UnifiedGestureDetector(handler, scope) }
+            MaterialTheme {
+                Box(Modifier.focusedKeyboardShortcuts(KeyboardShortcutSettings(bindings = KeyboardShortcutSettings.defaultBindings().map {
+                    if (it.action == KeyboardShortcutAction.PUSH_TO_TALK) it.copy(enabled = true) else it
+                }), true, true, detector, {})) {
+                    OutlinedTextField("draft", {}, modifier = Modifier.testTag("input"))
+                }
+            }
+        }
+        onNodeWithTag("input").performClick().performKeyInput {
+            pressKey(Key.Escape)
+            pressKey(Key.Escape)
+        }
+        waitUntil { actions.size == 2 }
+        runOnIdle {
+            assertEquals(listOf(com.gromozeka.presentation.services.PTTEvent.SINGLE_CLICK,
+                com.gromozeka.presentation.services.PTTEvent.DOUBLE_CLICK), actions)
         }
     }
 

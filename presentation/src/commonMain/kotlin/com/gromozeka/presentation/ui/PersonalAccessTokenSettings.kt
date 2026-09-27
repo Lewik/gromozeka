@@ -10,7 +10,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -88,7 +87,7 @@ fun PersonalAccessTokenSettings(
         }
 
         if (loading) {
-            CircularProgressIndicator()
+            GromozekaLoadingIndicator()
         } else if (tokens.isEmpty()) {
             Text(
                 text = translation.text("security.tokens.empty"),

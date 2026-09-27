@@ -4,6 +4,14 @@
   "name": "Français",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "Envoyer",
+    "chat.voice.afterDictation.input": "Dans le champ",
+    "chat.voice.afterDictation.sendHint": "Après la dictée : envoyer immédiatement. Cliquez pour laisser le texte dans le champ.",
+    "chat.voice.afterDictation.inputHint": "Après la dictée : laisser le texte dans le champ. Cliquez pour envoyer immédiatement.",
+    "chat.input.moreActions": "Autres actions",
+    "chat.activity.uploading": "Envoi des pièces jointes",
+    "chat.activity.suggestions": "Génération des réponses suggérées",
+    "chat.navigation.conversations": "Conversations",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1697,7 +1705,7 @@
     "settingsUi.generateThemeFromWindow": "Générer un thème à partir d’une fenêtre",
     "settingsUi.globalBackend": "Moteur des raccourcis globaux : {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "Les raccourcis globaux sont indisponibles",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Maintenez pour enregistrer ; relâchez pour transcrire et envoyer. Un appui bref est ignoré.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Maintenez pour enregistrer, relâchez pour transcrire. Un appui arrête la lecture ; deux interrompent le tour.",
     "settingsUi.hostedSearch": "Recherche hébergée par {connection}",
     "settingsUi.inlineWithTheAnswer": "Avec la réponse",
     "settingsUi.instructionAliases": "{group} : alias de {instruction}",
@@ -1864,6 +1872,14 @@
     "voice.workerAudioRequired": "Sélectionnez un microphone de Worker pour capturer l’audio sur un Worker",
     "voice.workerInputUnavailable": "L’entrée audio {input} est indisponible sur le Worker {worker}",
     "chat.history.loadOlder": "Charger les messages précédents",
-    "chat.history.loadFull": "Charger le message complet"
+    "chat.history.loadFull": "Charger le message complet",
+    "chat.composer.placeholder": "Écrivez ou dictez…",
+    "chat.voice.mode.auto": "Auto",
+    "chat.voice.mode.draft": "Brouillon",
+    "chat.voice.control.hint": "Maintenez pour enregistrer. Un clic arrête la lecture ; un double clic interrompt le tour.",
+    "chat.voice.control.interruptHint": "Un clic arrête la lecture ; un double clic interrompt le tour.",
+    "chat.activity.idle": "Aucune tâche active",
+    "chat.activity.details": "Détails de l’exécution",
+    "chat.activity.more": "{count} autres"
   }
 }

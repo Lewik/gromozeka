@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -160,7 +159,7 @@ internal fun LocalizationSettings(translationService: TranslationService) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (busy) CircularProgressIndicator()
+        if (busy) GromozekaLoadingIndicator()
         operationError?.let { error ->
             Text(
                 translation.text("localization.failed", "error" to (error.message ?: error.toString())),

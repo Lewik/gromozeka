@@ -49,7 +49,9 @@ fun TelegramSettingsPanel(service: RemoteTelegramService, secrets: CurrentUserNa
         Text(tr.text("telegram.description"))
         if (snapshot?.serverEnabled == false) Text(tr.text("telegram.serverDisabled"), color = MaterialTheme.colorScheme.error)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (busy || snapshot == null) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (busy || snapshot == null) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { GromozekaLoadingIndicator() }
+        }
         TelegramChoice(tr.text("telegram.tokenSecret"), secretName, secretNames.map { it to it }) { secretName = it }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(enabled = !busy && secretName.isNotBlank() && snapshot?.serverEnabled == true, onClick = {

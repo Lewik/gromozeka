@@ -4,6 +4,14 @@
   "name": "繁體中文",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "傳送",
+    "chat.voice.afterDictation.input": "留在輸入框",
+    "chat.voice.afterDictation.sendHint": "聽寫後立即傳送。點擊改為將文字留在輸入框。",
+    "chat.voice.afterDictation.inputHint": "聽寫後將文字留在輸入框。點擊改為立即傳送。",
+    "chat.input.moreActions": "更多操作",
+    "chat.activity.uploading": "正在上傳附件",
+    "chat.activity.suggestions": "正在產生建議回覆",
+    "chat.navigation.conversations": "對話",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1623,7 +1631,7 @@
     "settingsUi.generateThemeFromWindow": "根據視窗產生佈景主題",
     "settingsUi.globalBackend": "全域快捷鍵後端：{backend}",
     "settingsUi.globalShortcutsAreUnavailable": "無法使用全域快捷鍵",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "按住錄音，放開後轉寫並傳送。快速點按不會保留錄音。",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "按住錄音，放開轉寫。單擊停止朗讀，雙擊中斷目前回合。",
     "settingsUi.hostedSearch": "{connection} 代管搜尋",
     "settingsUi.inlineWithTheAnswer": "與答案一併產生",
     "settingsUi.instructionAliases": "{group}：{instruction} 的別名",
@@ -1790,6 +1798,14 @@
     "voice.workerAudioRequired": "若要在工作節點上擷取音訊，請選擇工作節點的麥克風",
     "voice.workerInputUnavailable": "工作節點 {worker} 上的音訊輸入 {input} 無法使用",
     "chat.history.loadOlder": "載入較早的訊息",
-    "chat.history.loadFull": "載入完整訊息"
+    "chat.history.loadFull": "載入完整訊息",
+    "chat.composer.placeholder": "輸入或口述…",
+    "chat.voice.mode.auto": "自動",
+    "chat.voice.mode.draft": "草稿",
+    "chat.voice.control.hint": "按住錄音。按一下停止朗讀，按兩下中斷目前回合。",
+    "chat.voice.control.interruptHint": "按一下停止朗讀，按兩下中斷目前回合。",
+    "chat.activity.idle": "沒有執行中的工作",
+    "chat.activity.details": "執行詳情",
+    "chat.activity.more": "還有 {count} 項"
   }
 }

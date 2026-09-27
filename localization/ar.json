@@ -4,6 +4,14 @@
   "name": "العربية",
   "direction": "RTL",
   "messages": {
+    "chat.voice.afterDictation.send": "إرسال",
+    "chat.voice.afterDictation.input": "في الحقل",
+    "chat.voice.afterDictation.sendHint": "بعد الإملاء: إرسال فورًا. انقر لترك النص في حقل الإدخال بدلًا من ذلك.",
+    "chat.voice.afterDictation.inputHint": "بعد الإملاء: ترك النص في حقل الإدخال. انقر للإرسال فورًا بدلًا من ذلك.",
+    "chat.input.moreActions": "إجراءات أخرى",
+    "chat.activity.uploading": "جارٍ رفع المرفقات",
+    "chat.activity.suggestions": "جارٍ إنشاء الردود المقترحة",
+    "chat.navigation.conversations": "المحادثات",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1808,7 +1816,7 @@
     "settingsUi.generateThemeFromWindow": "إنشاء سمة من نافذة",
     "settingsUi.globalBackend": "نظام الاختصارات العامة: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "الاختصارات العامة غير متاحة",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "اضغط مطولًا للتسجيل، وأفلت للتفريغ النصي والإرسال. تُتجاهل النقرة السريعة.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "اضغط مطولاً للتسجيل وأفلت للتحويل إلى نص. ضغطة توقف النطق؛ ضغطتان تقاطعان الجولة.",
     "settingsUi.hostedSearch": "البحث المستضاف لدى {connection}",
     "settingsUi.inlineWithTheAnswer": "مع الإجابة",
     "settingsUi.instructionAliases": "{group}: أسماء بديلة لـ {instruction}",
@@ -1975,6 +1983,14 @@
     "voice.workerAudioRequired": "اختر ميكروفون عامل تنفيذ لالتقاط الصوت على عامل تنفيذ",
     "voice.workerInputUnavailable": "مدخل الصوت {input} غير متاح على عامل التنفيذ {worker}",
     "chat.history.loadOlder": "تحميل الرسائل الأقدم",
-    "chat.history.loadFull": "تحميل الرسالة كاملة"
+    "chat.history.loadFull": "تحميل الرسالة كاملة",
+    "chat.composer.placeholder": "اكتب أو أمْلِ…",
+    "chat.voice.mode.auto": "تلقائي",
+    "chat.voice.mode.draft": "مسودة",
+    "chat.voice.control.hint": "اضغط مطولًا للتسجيل. نقرة لإيقاف الصوت؛ نقرتان لمقاطعة الدور.",
+    "chat.voice.control.interruptHint": "نقرة لإيقاف الصوت؛ نقرتان لمقاطعة الدور.",
+    "chat.activity.idle": "لا توجد مهام نشطة",
+    "chat.activity.details": "تفاصيل التنفيذ",
+    "chat.activity.more": "{count} أخرى"
   }
 }

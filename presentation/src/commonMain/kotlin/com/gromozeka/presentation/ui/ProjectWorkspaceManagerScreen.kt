@@ -23,7 +23,6 @@ import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -127,7 +126,7 @@ fun ProjectManagerScreen(
         error?.let { ManagerError(it.message ?: translation.text("projects.operationFailed")) }
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                GromozekaLoadingIndicator()
             }
         } else {
             ManagerMasterDetail(
@@ -344,7 +343,7 @@ fun WorkspaceManagerScreen(
         Spacer(Modifier.height(10.dp))
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                GromozekaLoadingIndicator()
             }
         } else {
             ManagerMasterDetail(
@@ -754,7 +753,7 @@ private fun ProjectMembersDialog(
             ) {
                 error?.let { ManagerError(it.message ?: translation.text("projects.operationFailed")) }
                 if (loading) {
-                    CircularProgressIndicator()
+                    GromozekaLoadingIndicator()
                 } else {
                     val usersById = users.associateBy(UserDirectoryEntry::id)
                     LazyColumn(

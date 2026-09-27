@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -202,10 +201,7 @@ private fun DeviceConnectionApprovalContent(
             enabled = code.isNotBlank() && !loading,
         ) {
             if (loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                )
+                GromozekaLoadingIndicator(modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
             }
             Text(translation.text("security.deviceConnection.review"))

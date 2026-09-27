@@ -604,6 +604,10 @@ class TabViewModel(
         _uiState.update { currentState -> currentState.withSelectedMessageInstruction(group, controlIndex) }
     }
 
+    fun setVoiceAutoSend(enabled: Boolean) {
+        _uiState.update { it.copy(voiceAutoSend = enabled) }
+    }
+
     fun updateUserInput(input: String) {
         _messageSubmissionError.value = null
         val claimedInput = claimedUserInput

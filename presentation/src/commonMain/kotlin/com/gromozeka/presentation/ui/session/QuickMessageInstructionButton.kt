@@ -3,6 +3,8 @@ package com.gromozeka.presentation.ui.session
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
+import com.gromozeka.presentation.ui.GromozekaTheme
 import androidx.compose.ui.text.style.TextOverflow
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.LocalTranslation
@@ -27,7 +29,7 @@ fun QuickMessageInstructionButton(
 
     CompactButton(
         onClick = { onSelect(group, nextIndex) },
-        modifier = modifier,
+        modifier = modifier.size(GromozekaTheme.controls.minHeight),
         tooltip = "${group.displayTitle(translation)}: ${activeControl.data.displayTitle(translation)}\n${activeControl.data.displayDescription(translation)}",
     ) {
         Text(

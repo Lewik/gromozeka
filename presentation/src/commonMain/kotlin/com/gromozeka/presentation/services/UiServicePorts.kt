@@ -180,12 +180,14 @@ object NoOpSystemAudioMuteService : SystemAudioMuteService {
 }
 
 interface PttRecordingService {
+    val target: StateFlow<VoiceInputTarget?>
     val state: StateFlow<PttState>
     val statusMessage: StateFlow<LocalizedText?>
     val unavailableReason: StateFlow<LocalizedText?>
 }
 
 class NoOpPttRecordingService : PttRecordingService {
+    override val target: StateFlow<VoiceInputTarget?> = MutableStateFlow(null)
     override val state: StateFlow<PttState> = MutableStateFlow(PttState.IDLE)
     override val statusMessage: StateFlow<LocalizedText?> = MutableStateFlow(null)
     override val unavailableReason: StateFlow<LocalizedText?> = MutableStateFlow(localizedText("voice.unavailable"))
@@ -199,14 +201,13 @@ enum class PttState {
 }
 
 enum class PTTEvent {
-    BUTTON_DOWN,
     SINGLE_CLICK,
     DOUBLE_CLICK,
     SINGLE_PUSH,
-    DOUBLE_PUSH
 }
 
 interface PttEventHandler {
+    val canRecord: Boolean get() = true
     fun initialize()
     suspend fun handlePTTEvent(event: PTTEvent)
     suspend fun handlePTTRelease()
@@ -214,6 +215,7 @@ interface PttEventHandler {
 }
 
 object NoOpPttEventHandler : PttEventHandler {
+    override val canRecord: Boolean = false
     override fun initialize() = Unit
     override suspend fun handlePTTEvent(event: PTTEvent) = Unit
     override suspend fun handlePTTRelease() = Unit

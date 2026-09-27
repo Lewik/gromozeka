@@ -58,10 +58,7 @@ fun SearchPanel(
             tooltip = LocalTranslation.current.searchSessionsTooltip
         ) {
             if (isSearching) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
+                GromozekaLoadingIndicator(modifier = Modifier.size(16.dp))
             } else {
                 Icon(Icons.Default.Search, LocalTranslation.current.searchSessionsTooltip)
             }

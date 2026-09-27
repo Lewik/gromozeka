@@ -1554,7 +1554,7 @@ private fun DistributionSettings(distributionService: RemoteDistributionService)
                     .padding(32.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                GromozekaLoadingIndicator()
             }
         }
 
@@ -1724,10 +1724,7 @@ private fun WorkerEnrollmentSettings(
             },
         ) {
             if (enrollmentState is WorkerEnrollmentState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                )
+                GromozekaLoadingIndicator(modifier = Modifier.size(18.dp))
             } else {
                 Text(translation.text("settingsUi.generateOneTimeToken"))
             }
@@ -2154,10 +2151,7 @@ private fun WebToolSettingsEditor(
                 },
             ) {
                 if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                    )
+                    GromozekaLoadingIndicator(modifier = Modifier.size(18.dp))
                 } else {
                     Text(translation.text("settingsUi.saveWebTools"))
                 }

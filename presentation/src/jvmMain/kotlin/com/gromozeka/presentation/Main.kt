@@ -265,7 +265,7 @@ fun main(args: Array<String>) {
                 }
                 ClientTheme(localization) {
                     val status = authenticationStatus
-                    if (remoteUrl != null && initializationError == null && status != null) {
+                    if (remoteUrl != null && initializationError == null && status != null && status.authenticatedUser == null) {
                         RemoteAuthenticationScreen(
                             initialized = status.initialized,
                             submitting = connecting,
@@ -285,7 +285,11 @@ fun main(args: Array<String>) {
                                     } catch (error: CancellationException) {
                                         throw error
                                     } catch (error: Throwable) {
-                                        authenticationError = error
+                                        if (authenticationStatus?.authenticatedUser != null) {
+                                            initializationError = error
+                                        } else {
+                                            authenticationError = error
+                                        }
                                     }
                                     connecting = false
                                 }
@@ -312,12 +316,18 @@ fun main(args: Array<String>) {
                                     } catch (error: CancellationException) {
                                         throw error
                                     } catch (error: Throwable) {
-                                        authenticationError = error
+                                        if (authenticationStatus?.authenticatedUser != null) {
+                                            initializationError = error
+                                        } else {
+                                            authenticationError = error
+                                        }
                                     }
                                     connecting = false
                                 }
                             },
                         )
+                    } else if (remoteUrl != null && initializationError == null) {
+                        com.gromozeka.presentation.ui.ClientStartupLoadingScreen()
                     } else {
                         RemoteServerSetupScreen(
                             initialAddress = remoteUrl.orEmpty(),

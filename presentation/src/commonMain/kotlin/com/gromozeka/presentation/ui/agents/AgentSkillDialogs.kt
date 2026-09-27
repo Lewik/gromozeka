@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -26,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.presentation.ui.GromozekaMarkdown
 import com.gromozeka.presentation.ui.session.BasicGromozekaDialog
+import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
 
 @Composable
 fun AgentSkillDetailsDialog(
@@ -113,7 +113,7 @@ fun AgentSkillDetailsDialog(
                         Text(translation.text("agents.skills.model_readable_only"))
                     }
                     if (updating) {
-                        CircularProgressIndicator()
+                        GromozekaLoadingIndicator()
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -144,7 +143,7 @@ fun NameEditDialog(
                 modifier = Modifier.testTag(UiTestTag.NameEditSave.value),
             ) {
                 if (isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    GromozekaLoadingIndicator(modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(localization.saveButton)

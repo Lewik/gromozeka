@@ -26,13 +26,13 @@ import com.gromozeka.domain.model.KeyboardShortcutScope
 import com.gromozeka.domain.model.KeyboardShortcutSettings
 import com.gromozeka.domain.model.KeyboardShortcutValidationSeverity
 import com.gromozeka.domain.model.KeyboardShortcutValidator
-import com.gromozeka.presentation.services.HoldToTalkShortcutController
+import com.gromozeka.presentation.services.UnifiedGestureDetector
 
 fun Modifier.focusedKeyboardShortcuts(
     settings: KeyboardShortcutSettings,
     globalShortcutsAreLocal: Boolean = false,
     enabled: Boolean = true,
-    holdToTalkController: HoldToTalkShortcutController,
+    pttGestureDetector: UnifiedGestureDetector,
     onActivate: (KeyboardShortcutAction) -> Unit,
 ): Modifier = composed {
     val normalized = remember(settings) { settings.normalized() }
@@ -46,12 +46,12 @@ fun Modifier.focusedKeyboardShortcuts(
         onRelease = { key ->
             val released = pressedActions.remove(key)
             if (released?.action?.activation == KeyboardShortcutActivation.HOLD) {
-                holdToTalkController.onReleased()
+                pttGestureDetector.onGestureUp()
             }
         },
         onFocusLost = {
             if (pressedActions.values.any { it.action == KeyboardShortcutAction.PUSH_TO_TALK }) {
-                holdToTalkController.cancel()
+                pttGestureDetector.cancelGesture()
             }
             pressedActions.clear()
         },
@@ -61,7 +61,7 @@ fun Modifier.focusedKeyboardShortcuts(
     LaunchedEffect(windowFocused) {
         if (!windowFocused) {
             if (pressedActions.values.any { it.action == KeyboardShortcutAction.PUSH_TO_TALK }) {
-                holdToTalkController.cancel()
+                pttGestureDetector.cancelGesture()
             }
             pressedActions.clear()
         }
@@ -70,7 +70,7 @@ fun Modifier.focusedKeyboardShortcuts(
     DisposableEffect(normalized, enabled) {
         onDispose {
             if (pressedActions.values.any { it.action == KeyboardShortcutAction.PUSH_TO_TALK }) {
-                holdToTalkController.cancel()
+                pttGestureDetector.cancelGesture()
             }
             pressedActions.clear()
         }
@@ -82,7 +82,7 @@ fun Modifier.focusedKeyboardShortcuts(
         if (event.type == KeyEventType.KeyUp) {
             val released = pressedActions.remove(key) ?: return@onPreviewKeyEvent false
             if (released.action.activation == KeyboardShortcutActivation.HOLD) {
-                holdToTalkController.onReleased()
+                pttGestureDetector.onGestureUp()
             }
             return@onPreviewKeyEvent released.consumeEvent
         }
@@ -96,7 +96,7 @@ fun Modifier.focusedKeyboardShortcuts(
 
         if (event.type == KeyEventType.KeyDown && pressedActions.put(key, binding) == null) {
             when (binding.action.activation) {
-                KeyboardShortcutActivation.HOLD -> holdToTalkController.onPressed()
+                KeyboardShortcutActivation.HOLD -> pttGestureDetector.onGestureDown()
                 KeyboardShortcutActivation.ACTIVATE -> onActivate(binding.action)
             }
         }

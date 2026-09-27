@@ -11,10 +11,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
+import com.gromozeka.presentation.ui.CompactIconButton
+import com.gromozeka.presentation.ui.GromozekaTheme
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -31,7 +33,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TokenUsageStatistics
@@ -44,20 +45,16 @@ import com.gromozeka.domain.model.ai.AiSubscriptionQuotaObservation
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiSubscriptionQuotaService
-import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.QueuedMessagePlacement
-import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.LocalTranslation
-import com.gromozeka.presentation.ui.RemoteConnectionStatus
 import com.gromozeka.presentation.ui.TokenStatisticsTable
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
@@ -65,10 +62,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
+import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
 
 /** Inspection state only: independent of message routing and transient runtime tasks. */
 @Stable
@@ -98,16 +95,8 @@ fun ConversationRuntimePanel(
     aiSubscriptionQuotaService: AiSubscriptionQuotaService,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     isWaitingForResponse: Boolean,
-    executionPauseRequested: Boolean,
-    pttState: PttState,
-    pttStatusMessage: String?,
     pendingMessages: List<PendingUserMessage>,
     runtimeSnapshot: ConversationRuntimeSnapshot?,
-    activeGeneration: ActiveGenerationSnapshot?,
-    remoteConnectionState: RemoteConnectionState,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit,
     onCancelCommandTask: (CommandTask.Id) -> Unit,
     onCancelCommandMonitor: (CommandMonitor.Id) -> Unit,
     onSendInCurrentTurn: (String) -> Unit,
@@ -118,11 +107,11 @@ fun ConversationRuntimePanel(
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
     tabSelection: RuntimeAgentTabSelection = remember { RuntimeAgentTabSelection() },
+    replyRoutingContent: @Composable () -> Unit = {},
 ) {
     val translation = LocalTranslation.current.runtime
     val aiCatalogSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
     val visibleRuntime = runtimeSnapshot?.takeIf { it.conversationId == conversationId }
-    val visibleGeneration = activeGeneration?.takeIf { it.conversationId == conversationId }
     val participantAgentIds = remember(participants) {
         participants.orEmpty().filterIsInstance<Conversation.Participant.Agent>()
             .map { it.agentDefinitionId }.distinct().sortedBy { it.value }
@@ -152,11 +141,6 @@ fun ConversationRuntimePanel(
     val connectedAgents = participantAgentIds.mapNotNull { id ->
         agentDefinitions?.firstOrNull { it.id == id }
     }
-    val activeAgentId = (visibleRuntime?.activeTask ?: visibleRuntime?.continuationTask)
-        ?.payload?.agentDefinitionIdOrNull()
-    val activeAgentName = agentDefinitions?.firstOrNull { it.id == activeAgentId }?.name
-        ?: activeAgentId?.value
-
     AnimatedVisibility(
         visible = isVisible,
         enter = if (slideFromRight) slideInHorizontally(initialOffsetX = { it }) else expandHorizontally(),
@@ -172,7 +156,7 @@ fun ConversationRuntimePanel(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(GromozekaTheme.spacing.contentPadding)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -183,9 +167,15 @@ fun ConversationRuntimePanel(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = translation.closePanelDescription)
-                    }
+                    CompactIconButton(
+                        onClick = onClose,
+                        icon = Icons.Default.Close,
+                        contentDescription = translation.closePanelDescription,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    )
                 }
 
                 Column(
@@ -194,6 +184,7 @@ fun ConversationRuntimePanel(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    replyRoutingContent()
                     RuntimeAgentSection(
                         conversationId = conversationId,
                         participantAgentIds = participantAgentIds,
@@ -238,20 +229,7 @@ fun ConversationRuntimePanel(
                     onCancel = onCancelPendingMessage,
                 )
 
-                RuntimeStatusFooter(
-                    agentName = activeAgentName,
-                    isWaitingForResponse = isWaitingForResponse,
-                    executionPauseRequested = executionPauseRequested,
-                    pttState = pttState,
-                    pttStatusMessage = pttStatusMessage,
-                    pendingMessages = pendingMessages,
-                    runtimeSnapshot = visibleRuntime,
-                    activeGeneration = visibleGeneration,
-                    remoteConnectionState = remoteConnectionState,
-                    onPause = onPause,
-                    onResume = onResume,
-                    onStop = onStop,
-                )
+
             }
         }
     }
@@ -272,7 +250,7 @@ private fun RuntimeAgentSection(
 ) {
     val localization = LocalTranslation.current
     if (!participantsLoaded) {
-        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        GromozekaLoadingIndicator(modifier = Modifier.size(20.dp))
         return
     }
     if (participantAgentIds.isEmpty() || selectedAgentId == null) {
@@ -310,7 +288,7 @@ private fun RuntimeAgentSection(
         when {
             agent != null -> RuntimeConfigurationCard(agent, aiCatalog)
             agentDefinitions == null && !agentLoadFailed ->
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                GromozekaLoadingIndicator(modifier = Modifier.size(20.dp))
             else -> Text(localization.text("session.participants.unavailableAgent"))
         }
     }
@@ -587,10 +565,7 @@ private fun RuntimeUsageCard(
                         enabled = !isLoading,
                     ) {
                         if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                            )
+                            GromozekaLoadingIndicator(modifier = Modifier.size(20.dp))
                         } else {
                             Icon(Icons.Default.Refresh, contentDescription = translation.refreshUsageDescription)
                         }
@@ -1129,165 +1104,6 @@ private fun PendingMessageGroup(
     }
 }
 
-@Composable
-private fun RuntimeStatusFooter(
-    agentName: String?,
-    isWaitingForResponse: Boolean,
-    executionPauseRequested: Boolean,
-    pttState: PttState,
-    pttStatusMessage: String?,
-    pendingMessages: List<PendingUserMessage>,
-    runtimeSnapshot: ConversationRuntimeSnapshot?,
-    activeGeneration: ActiveGenerationSnapshot?,
-    remoteConnectionState: RemoteConnectionState,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit,
-) {
-    val localization = LocalTranslation.current
-    val translation = LocalTranslation.current.runtime
-    val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
-    val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
-    val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
-    val runningTools = runtimeSnapshot?.runningToolActivities(localization).orEmpty().distinct()
-    val activeTask = runtimeSnapshot?.activeTask
-    val activeGenerationElapsedSeconds by produceState(
-        initialValue = activeGeneration?.elapsedSeconds() ?: 0L,
-        key1 = activeGeneration?.generationId,
-    ) {
-        val generation = activeGeneration ?: return@produceState
-        while (true) {
-            value = generation.elapsedSeconds()
-            delay(1_000)
-        }
-    }
-    val controlState = runtimeSnapshot?.state?.controlState
-    val controllableRuntimeHasWork = runtimeSnapshot?.state != null || activeTask != null || activeGeneration != null ||
-        runtimeSnapshot?.pendingTasks.orEmpty().isNotEmpty() || activeCommands.isNotEmpty() || runningTools.isNotEmpty()
-    val runtimeHasWork = controllableRuntimeHasWork || activeMonitors.isNotEmpty()
-    val isPaused = executionPauseRequested ||
-        controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ||
-        controlState == ConversationExecutionState.ControlState.PAUSED
-    val isStopping = controlState == ConversationExecutionState.ControlState.STOPPING ||
-        controlState == ConversationExecutionState.ControlState.INTERRUPTING
-    val isReady = !isWaitingForResponse && !runtimeHasWork && pendingMessages.isEmpty() &&
-        pttState == PttState.IDLE && voiceError == null
-    val statusText = when {
-        voiceError != null -> voiceError
-        pttState == PttState.PREPARING -> translation.preparingVoiceStatus
-        pttState == PttState.TRANSCRIBING -> translation.transcribingVoiceStatus
-        pttState == PttState.RECORDING -> translation.recordingVoiceStatus
-        controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ->
-            translation.pauseRequestedStatus
-        controlState == ConversationExecutionState.ControlState.PAUSED -> translation.pausedStatus
-        controlState == ConversationExecutionState.ControlState.STOPPING -> translation.stoppingStatus
-        controlState == ConversationExecutionState.ControlState.INTERRUPTING -> translation.interruptingStatus
-        executionPauseRequested -> translation.pauseRequestedStatus
-        runningTools.size == 1 -> runningTools.single()
-        runningTools.size > 1 -> runningTools.joinToString(" · ")
-        activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName, localization)
-        isWaitingForResponse -> agentName?.let { localization.text("session.runtime.agentWorking", "agentName" to it) }
-            ?: translation.agentInvocationTask
-        activeCommands.isNotEmpty() -> localization.plural("session.runtime.commandsRunning", activeCommands.size.toLong())
-        activeMonitors.isNotEmpty() -> localization.plural("session.runtime.monitorsRunning", activeMonitors.size.toLong())
-        pendingMessages.isNotEmpty() -> localization.text("session.runtime.queuedCount", "count" to pendingMessages.size)
-        else -> translation.readyStatus
-    }
-    val detailText = activeGeneration?.detailsText(activeGenerationElapsedSeconds, localization)
-        ?: runtimeSnapshot?.runtimeDetailsText(localization)
-        ?.takeIf { it.isNotBlank() }
-        ?: runtimeSnapshot?.trace?.lastOrNull()?.runtimeTraceText(localization)
-    val containerColor = when {
-        voiceError != null -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f)
-        isReady -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-    }
-    val contentColor = when {
-        voiceError != null -> MaterialTheme.colorScheme.onErrorContainer
-        isReady -> MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val icon = when {
-        voiceError != null -> Icons.Default.ErrorOutline
-        pttState == PttState.RECORDING -> Icons.Default.FiberManualRecord
-        isReady -> Icons.Default.CheckCircle
-        pendingMessages.isEmpty() -> Icons.Default.HourglassTop
-        else -> Icons.AutoMirrored.Filled.PlaylistAddCheck
-    }
-
-    Spacer(modifier = Modifier.height(12.dp))
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 64.dp)
-            .testTag(UiTestTag.ConversationProgressStrip.value),
-        color = containerColor,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (pttState == PttState.PREPARING || pttState == PttState.TRANSCRIBING) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = statusText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = contentColor,
-                    )
-                    if (!detailText.isNullOrBlank() && !isReady && voiceError == null) {
-                        Text(
-                            text = detailText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = contentColor.copy(alpha = 0.78f),
-                        )
-                    }
-                }
-                if ((isWaitingForResponse || controllableRuntimeHasWork) && !isStopping) {
-                    TextButton(onClick = if (isPaused) onResume else onPause) {
-                        Text(if (isPaused) translation.resumeButton else translation.pauseButton)
-                    }
-                    TextButton(onClick = onStop) {
-                        Text(translation.stopButton)
-                    }
-                }
-            }
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 10.dp),
-                color = contentColor.copy(alpha = 0.15f),
-            )
-            RemoteConnectionStatus(
-                state = remoteConnectionState,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            )
-        }
-    }
-}
-
-private fun ActiveGenerationSnapshot.elapsedSeconds(): Long =
-    (Clock.System.now() - startedAt).inWholeSeconds.coerceAtLeast(0)
-
-private fun ActiveGenerationSnapshot.detailsText(elapsedSeconds: Long, localization: Translation): String = buildList {
-    add(localization.text("session.runtime.duration.seconds", "seconds" to elapsedSeconds))
-    add("#$iteration")
-    add(modelName)
-    add(localization.plural("session.runtime.inputMessages", inputMessageCount.toLong()))
-    add(localization.plural("session.runtime.inputBlocks", inputContentItemCount.toLong()))
-    add(localization.plural("session.runtime.systemPrompts", systemPromptCount.toLong()))
-    add(localization.plural("session.runtime.availableTools", availableToolCount.toLong()))
-    add(runtimeProviderLabel(provider, localization))
-}.joinToString(" · ")
-
 private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translation.RuntimeTranslation): String =
     when (this) {
         is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
@@ -1303,7 +1119,7 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
         is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentTask
     }
 
-private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
+internal fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
     agentName: String?,
     localization: Translation,
 ): String {

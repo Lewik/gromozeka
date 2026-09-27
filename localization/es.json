@@ -4,6 +4,14 @@
   "name": "Español",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "Enviar",
+    "chat.voice.afterDictation.input": "Al campo",
+    "chat.voice.afterDictation.sendHint": "Tras dictar: enviar de inmediato. Pulsa para dejar el texto en el campo.",
+    "chat.voice.afterDictation.inputHint": "Tras dictar: dejar el texto en el campo. Pulsa para enviarlo de inmediato.",
+    "chat.input.moreActions": "Más acciones",
+    "chat.activity.uploading": "Subiendo archivos adjuntos",
+    "chat.activity.suggestions": "Generando respuestas sugeridas",
+    "chat.navigation.conversations": "Conversaciones",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1697,7 +1705,7 @@
     "settingsUi.generateThemeFromWindow": "Generar tema a partir de una ventana",
     "settingsUi.globalBackend": "Implementación de atajos globales: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "Los atajos globales no están disponibles",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Mantén pulsado para grabar; suelta para transcribir y enviar. Se descartan las pulsaciones breves.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Mantén pulsado para grabar y suelta para transcribir. Una pulsación detiene la voz; dos interrumpen el turno.",
     "settingsUi.hostedSearch": "Búsqueda alojada de {connection}",
     "settingsUi.inlineWithTheAnswer": "Junto con la respuesta",
     "settingsUi.instructionAliases": "{group}: alias de {instruction}",
@@ -1864,6 +1872,14 @@
     "voice.workerAudioRequired": "Selecciona un micrófono de Worker para capturar audio en un Worker",
     "voice.workerInputUnavailable": "La entrada de audio {input} no está disponible en el Worker {worker}",
     "chat.history.loadOlder": "Cargar mensajes anteriores",
-    "chat.history.loadFull": "Cargar mensaje completo"
+    "chat.history.loadFull": "Cargar mensaje completo",
+    "chat.composer.placeholder": "Escribe o dicta…",
+    "chat.voice.mode.auto": "Auto",
+    "chat.voice.mode.draft": "Borrador",
+    "chat.voice.control.hint": "Mantén pulsado para grabar. Un clic detiene la voz; doble clic interrumpe el turno.",
+    "chat.voice.control.interruptHint": "Un clic detiene la voz; doble clic interrumpe el turno.",
+    "chat.activity.idle": "No hay tareas activas",
+    "chat.activity.details": "Detalles de ejecución",
+    "chat.activity.more": "{count} más"
   }
 }

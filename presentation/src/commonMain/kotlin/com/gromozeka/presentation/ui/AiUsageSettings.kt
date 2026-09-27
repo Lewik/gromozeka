@@ -13,7 +13,6 @@ import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -131,7 +130,7 @@ internal fun AiUsageSettings(service: AiUsageReportService) {
         )
 
         when {
-            loading && report == null -> CircularProgressIndicator()
+            loading && report == null -> GromozekaLoadingIndicator()
             error != null -> Text(
                 translation.text("ai.usage.load_failed", "error" to error.orEmpty()),
                 color = MaterialTheme.colorScheme.error,

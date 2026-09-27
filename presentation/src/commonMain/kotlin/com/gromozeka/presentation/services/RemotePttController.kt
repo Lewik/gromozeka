@@ -42,11 +42,12 @@ class RemotePttController(
 ) : PttEventHandler, PttRecordingService {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
+    private val _target = MutableStateFlow<VoiceInputTarget?>(null)
+    override val target: StateFlow<VoiceInputTarget?> = _target
     private val _state = MutableStateFlow(PttState.IDLE)
     private val _statusMessage = MutableStateFlow<LocalizedText?>(null)
     private val _unavailableReason = MutableStateFlow<LocalizedText?>(localizedText("voice.checkingAvailability"))
     private var captureLifecycle: CaptureLifecycle? = null
-    private var armedWorkerCapture: ArmedWorkerCapture? = null
 
     override val state: StateFlow<PttState> = _state
     override val statusMessage: StateFlow<LocalizedText?> = _statusMessage
@@ -63,23 +64,30 @@ class RemotePttController(
         }
     }
 
+    override val canRecord: Boolean
+        get() = _state.value == PttState.IDLE && _unavailableReason.value == null &&
+            settingsService.userProfile.speechSettings.speechToText.enabled
+
     override fun initialize() = Unit
 
     override suspend fun handlePTTEvent(event: PTTEvent) {
         log.info { "PTT event received: event=$event state=${_state.value}" }
         when (event) {
-            PTTEvent.BUTTON_DOWN -> handleButtonDown()
-            PTTEvent.SINGLE_PUSH,
-            PTTEvent.DOUBLE_PUSH -> confirmHold()
+            PTTEvent.SINGLE_PUSH -> if (canRecord) beginRecording(
+                settingsService.userProfile.speechSettings.speechToText.audioSource,
+                voiceInputDelivery.captureTarget(MessageInputContext.Source.PUSH_TO_TALK),
+            )
             PTTEvent.SINGLE_CLICK -> stopCurrentTts("single click")
-            PTTEvent.DOUBLE_CLICK -> interruptCurrentSession()
+            PTTEvent.DOUBLE_CLICK -> {
+                stopCurrentTts("double click")
+                interruptCurrentSession()
+            }
         }
     }
 
     override suspend fun handlePTTRelease() {
         log.info { "PTT release received: state=${_state.value}" }
         val release = mutex.withLock {
-            armedWorkerCapture = null
             when (val current = captureLifecycle) {
                 null -> ReleaseAction.None
                 is CaptureLifecycle.Preparing -> {
@@ -106,6 +114,8 @@ class RemotePttController(
     }
 
     private suspend fun transcribeAndDeliver(capture: CaptureLifecycle.Recording) {
+        voiceInputDelivery.transcriptionStarted(capture.session.sessionId, capture.target)
+        var failure: LocalizedText? = null
         val text = try {
             runCatching {
                 when (val session = capture.session) {
@@ -115,7 +125,8 @@ class RemotePttController(
                 }
             }.getOrElse { error ->
                 if (error is CancellationException) throw error
-                reportError(localizedText("voice.recognitionFailed", "error" to error.localizedText()))
+                failure = localizedText("voice.recognitionFailed", "error" to error.localizedText())
+                reportError(requireNotNull(failure))
                 log.warn(error) {
                     "PTT recording or transcription failed: " +
                         "session=${capture.session.sessionId} error=${error.message}"
@@ -125,6 +136,7 @@ class RemotePttController(
         } finally {
             restoreSystemAudioAfterPtt(capture.systemAudioMuted)
             finishPtt()
+            voiceInputDelivery.transcriptionFinished(capture.session.sessionId, failure)
         }
 
         if (text.isBlank()) {
@@ -151,7 +163,6 @@ class RemotePttController(
     override suspend fun handlePTTCancel() {
         log.info { "PTT cancel received: state=${_state.value}" }
         val cancellation = mutex.withLock {
-            armedWorkerCapture = null
             when (val current = captureLifecycle) {
                 null -> {
                     _statusMessage.value = null
@@ -203,28 +214,6 @@ class RemotePttController(
         appViewModel.sendInterruptToCurrentSession()
     }
 
-    private suspend fun handleButtonDown() {
-        val target = voiceInputDelivery.captureTarget(MessageInputContext.Source.PUSH_TO_TALK)
-        when (val source = settingsService.userProfile.speechSettings.speechToText.audioSource) {
-            SpeechAudioSource.CurrentClient -> beginRecording(source, target)
-            is SpeechAudioSource.WorkerInput -> mutex.withLock {
-                if (_state.value != PttState.IDLE || captureLifecycle != null || armedWorkerCapture != null) {
-                    log.info { "PTT Worker hold skipped: state=${_state.value}" }
-                    return
-                }
-                armedWorkerCapture = ArmedWorkerCapture(source, target)
-                _statusMessage.value = null
-            }
-        }
-    }
-
-    private suspend fun confirmHold() {
-        val capture = mutex.withLock {
-            armedWorkerCapture?.also { armedWorkerCapture = null }
-        } ?: return
-        beginRecording(capture.source, capture.target)
-    }
-
     private suspend fun beginRecording(source: SpeechAudioSource, target: VoiceInputTarget?) {
         val preparation = mutex.withLock {
             if (_state.value != PttState.IDLE || captureLifecycle != null) {
@@ -232,6 +221,7 @@ class RemotePttController(
                 return
             }
 
+            _target.value = target
             _statusMessage.value = null
             log.info { "PTT recording start requested" }
             _state.value = PttState.PREPARING
@@ -480,11 +470,6 @@ class RemotePttController(
             override val systemAudioMuted: Boolean,
         ) : CaptureLifecycle
     }
-
-    private data class ArmedWorkerCapture(
-        val source: SpeechAudioSource.WorkerInput,
-        val target: VoiceInputTarget?,
-    )
 
     private sealed interface ActiveRecordingSession {
         val sessionId: String

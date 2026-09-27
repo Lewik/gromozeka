@@ -22,8 +22,8 @@ class RemotePttRoutingTest {
     @Test fun `auto send stays in the recording tab when selection changes during recording`() = routing(true, SwitchPoint.RECORDING)
     @Test fun `draft target survives slow microphone preparation and early release`() = routing(false, SwitchPoint.PREPARING)
     @Test fun `auto send target survives slow microphone preparation and early release`() = routing(true, SwitchPoint.PREPARING)
-    @Test fun `worker draft target is captured before hold confirmation`() = routing(false, SwitchPoint.WORKER_ARMED)
-    @Test fun `worker auto send target is captured before hold confirmation`() = routing(true, SwitchPoint.WORKER_ARMED)
+    @Test fun `worker draft target is captured when recording starts`() = routing(false, SwitchPoint.WORKER_RECORDING)
+    @Test fun `worker auto send target is captured when recording starts`() = routing(true, SwitchPoint.WORKER_RECORDING)
     @Test fun `closing the target never redirects a draft to its neighbor`() = routing(false, SwitchPoint.CLOSED)
     @Test fun `closing the target never redirects auto send to its neighbor`() = routing(true, SwitchPoint.CLOSED)
     @Test fun `recording without a target never attaches to a later selection`() = missingTarget(false)
@@ -37,7 +37,8 @@ class RemotePttRoutingTest {
         fixture.app.selectTab(-1)
         runCurrent()
         val controller = fixture.controller(backgroundScope)
-        controller.handlePTTEvent(PTTEvent.BUTTON_DOWN)
+        runCurrent()
+        controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
         runCurrent()
         fixture.app.selectTab(0)
         runCurrent()
@@ -60,14 +61,15 @@ class RemotePttRoutingTest {
         val cancelled = CompletableDeferred<Unit>()
         fixture.recorder.preparation = cancelled
         val controller = fixture.controller(backgroundScope)
-        controller.handlePTTEvent(PTTEvent.BUTTON_DOWN)
+        runCurrent()
+        controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
         runCurrent()
         controller.handlePTTCancel()
         runCurrent()
         fixture.app.selectTab(1)
         runCurrent()
         fixture.recorder.preparation = CompletableDeferred(Unit)
-        controller.handlePTTEvent(PTTEvent.BUTTON_DOWN)
+        controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
         runCurrent()
         cancelled.complete(Unit)
         runCurrent()
@@ -84,7 +86,7 @@ class RemotePttRoutingTest {
 
     private fun routing(autoSend: Boolean, switchPoint: SwitchPoint) = runTest {
         val fixture = VoiceInputTestFixture(backgroundScope, autoSend)
-        if (switchPoint == SwitchPoint.WORKER_ARMED) fixture.settings.saveSettings { copy(userProfile = userProfile.copy(
+        if (switchPoint == SwitchPoint.WORKER_RECORDING) fixture.settings.saveSettings { copy(userProfile = userProfile.copy(
             speechSettings = userProfile.speechSettings.copy(speechToText = userProfile.speechSettings.speechToText.copy(
                 audioSource = SpeechAudioSource.WorkerInput(ConversationRuntimeWorkerId("worker"), WorkerAudioInput.SystemDefault.id),
             )),
@@ -98,15 +100,15 @@ class RemotePttRoutingTest {
         original.updateUserInput("Original draft")
         other.updateUserInput("Other draft")
         val controller = fixture.controller(backgroundScope)
-        if (switchPoint == SwitchPoint.PREPARING) fixture.recorder.preparation = CompletableDeferred()
-        controller.handlePTTEvent(PTTEvent.BUTTON_DOWN)
         runCurrent()
-        if (switchPoint in setOf(SwitchPoint.PREPARING, SwitchPoint.RECORDING, SwitchPoint.WORKER_ARMED)) {
+        if (switchPoint == SwitchPoint.PREPARING) fixture.recorder.preparation = CompletableDeferred()
+        controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
+        runCurrent()
+        if (switchPoint in setOf(SwitchPoint.PREPARING, SwitchPoint.RECORDING, SwitchPoint.WORKER_RECORDING)) {
             fixture.app.selectTab(1)
             runCurrent()
         }
-        if (switchPoint == SwitchPoint.WORKER_ARMED) {
-            controller.handlePTTEvent(PTTEvent.BUTTON_DOWN)
+        if (switchPoint == SwitchPoint.WORKER_RECORDING) {
             controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
             runCurrent()
         }
@@ -137,7 +139,7 @@ class RemotePttRoutingTest {
         }
     }
 
-    private enum class SwitchPoint { PREPARING, RECORDING, RECOGNITION, WORKER_ARMED, CLOSED }
+    private enum class SwitchPoint { PREPARING, RECORDING, RECOGNITION, WORKER_RECORDING, CLOSED }
 
     private fun VoiceInputTestFixture.controller(scope: CoroutineScope) = RemotePttController(
         appViewModel = app,

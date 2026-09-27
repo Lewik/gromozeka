@@ -25,6 +25,7 @@ fun Modifier.advancedPttGestures(
                 requireUnconsumed = false,
                 pass = PointerEventPass.Initial,
             )
+            down.consume()
             gestureDetector.onGestureDown()
 
             var gestureFinished = false
@@ -38,6 +39,7 @@ fun Modifier.advancedPttGestures(
                         gestureFinished = true
                         break
                     }
+                    change.consume()
                     if (!change.pressed) {
                         gestureDetector.onGestureUp()
                         gestureFinished = true

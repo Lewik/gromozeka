@@ -3,10 +3,12 @@ package com.gromozeka.presentation.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -20,6 +22,7 @@ import org.jetbrains.compose.resources.DrawableResource
 @Composable
 fun GromozekaTheme(
     currentTheme: Theme = DarkTheme(),
+    density: UiDensity = UiDensity.COMPACT,
     content: @Composable () -> Unit,
 ) {
     // Create basic ColorScheme from current theme data - only required fields for now
@@ -98,17 +101,38 @@ fun GromozekaTheme(
         extraLarge = RoundedCornerShape(baseRadius * 3f)    // 24dp / 66dp
     )
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        shapes = shapes,
-        content = content
-    )
+    val controls = when (density) {
+        UiDensity.COMPACT -> ControlMetrics.Compact
+        UiDensity.TOUCH -> ControlMetrics.Touch
+    }
+    CompositionLocalProvider(
+        LocalUiSpacing provides UiSpacing(),
+        LocalControlMetrics provides controls,
+        LocalMinimumInteractiveComponentSize provides controls.minHeight,
+        LocalContentColor provides colorScheme.onBackground,
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            shapes = shapes,
+            content = content,
+        )
+    }
 }
 
-// Keep existing compact components for backward compatibility
+// Shared defaults for compact controls
 object CompactButtonDefaults {
-    val ContentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    val ContentPadding: PaddingValues
+        @Composable get() = PaddingValues(
+            horizontal = GromozekaTheme.controls.horizontalPadding,
+            vertical = GromozekaTheme.controls.verticalPadding,
+        )
     val CornerRadius = 8.dp
+
+    @Composable
+    fun tonalColors(selected: Boolean = false): ButtonColors = ButtonDefaults.buttonColors(
+        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+    )
 }
 
 @Composable
@@ -170,7 +194,7 @@ fun CompactButton(
     OptionalTooltip(tooltip, monospace = tooltipMonospace, noWrap = tooltipNoWrap) {
         Button(
             onClick = onClick,
-            modifier = modifier, // Removed fixed height for global UI scaling compatibility
+            modifier = modifier.defaultMinSize(minHeight = GromozekaTheme.controls.minHeight),
             enabled = enabled,
             shape = shape,
             colors = colors,
@@ -184,6 +208,30 @@ fun CompactButton(
 }
 
 
+/** Square secondary action using the same metrics and styling as text buttons. */
+@Composable
+fun CompactIconButton(
+    onClick: () -> Unit,
+    icon: DrawableResource,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    tooltip: String? = contentDescription,
+    colors: ButtonColors = CompactButtonDefaults.tonalColors(),
+) {
+    CompactButton(
+        onClick = onClick,
+        modifier = modifier.size(GromozekaTheme.controls.minHeight),
+        enabled = enabled,
+        tooltip = tooltip,
+        colors = colors,
+        elevation = null,
+        contentPadding = PaddingValues(0.dp),
+    ) {
+        Icon(icon, contentDescription, Modifier.size(GromozekaTheme.controls.iconSize))
+    }
+}
+
 @Composable
 fun CompactCard(
     modifier: Modifier = Modifier,
@@ -196,7 +244,18 @@ fun CompactCard(
     )
 }
 
-// === Custom Segmented Button Group using CompactButton ===
+/** Adjacent buttons share straight inner edges and retain the theme's outer corners. */
+@Composable
+internal fun joinedButtonShape(index: Int, count: Int): CornerBasedShape {
+    val shape = MaterialTheme.shapes.small
+    val square = CornerSize(0.dp)
+    return shape.copy(
+        topStart = if (index == 0) shape.topStart else square,
+        bottomStart = if (index == 0) shape.bottomStart else square,
+        topEnd = if (index == count - 1) shape.topEnd else square,
+        bottomEnd = if (index == count - 1) shape.bottomEnd else square,
+    )
+}
 
 @Composable
 fun CustomSegmentedButtonGroup(
@@ -205,82 +264,31 @@ fun CustomSegmentedButtonGroup(
     onSelectionChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Извлекаем радиус из темы для консистентности
-    val cornerRadius = CompactButtonDefaults.CornerRadius // 8.dp, синхронизирован с MaterialTheme.shapes.small
-
-    Row(
-        modifier = modifier, // .height(CompactButtonDefaults.ButtonHeight), // Removed: conflicts with global UI scaling
-        horizontalArrangement = Arrangement.Start
-    ) {
+    Row(modifier, horizontalArrangement = Arrangement.Start) {
         options.forEachIndexed { index, option ->
             val isSelected = index == selectedIndex
-            val isFirst = index == 0
-            val isLast = index == options.size - 1
-            val isSingle = options.size == 1
-
-            // Определяем форму кнопки используя глобальные shapes
-            val shape = when {
-                isSingle -> MaterialTheme.shapes.small
-                isFirst -> RoundedCornerShape(
-                    topStart = cornerRadius,
-                    bottomStart = cornerRadius,
-                    topEnd = 0.dp,
-                    bottomEnd = 0.dp
-                )
-
-                isLast -> RoundedCornerShape(
-                    topStart = 0.dp,
-                    bottomStart = 0.dp,
-                    topEnd = cornerRadius,
-                    bottomEnd = cornerRadius
-                )
-
-                else -> RoundedCornerShape(0.dp)
-            }
-
-            OptionalTooltip(option.tooltip) {
-                Button(
-                    onClick = { onSelectionChange(index) },
-                    modifier = Modifier, // .height(CompactButtonDefaults.ButtonHeight), // Removed: conflicts with global UI scaling
-                    contentPadding = CompactButtonDefaults.ContentPadding,
-                    shape = shape,
-                    colors = if (isSelected) {
-                        // Активная кнопка - стандартные цвета
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        // Неактивная кнопка - фон как у окна
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    border = if (!isSelected) {
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                    } else null
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = option.text,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
+            CompactButton(
+                onClick = { onSelectionChange(index) },
+                shape = joinedButtonShape(index, options.size),
+                tooltip = option.tooltip,
+                colors = if (isSelected) ButtonDefaults.buttonColors() else ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Text(option.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
 }
-
 
 data class SegmentedButtonOption(
     val text: String,
     val tooltip: String? = null,
 )
 
-// === Toggle Button Group (for independent toggles, not radio buttons) ===
-
+// Independent toggles, not radio buttons.
 data class ToggleButtonOption(
     val icon: DrawableResource,
     val tooltip: String? = null,
@@ -293,60 +301,22 @@ fun ToggleButtonGroup(
     onToggle: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cornerRadius = CompactButtonDefaults.CornerRadius
-
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.Start
-    ) {
+    Row(modifier, horizontalArrangement = Arrangement.Start) {
         options.forEachIndexed { index, option ->
             val isSelected = index in selectedIndices
-            val isFirst = index == 0
-            val isLast = index == options.size - 1
-            val isSingle = options.size == 1
-
-            val shape = when {
-                isSingle -> MaterialTheme.shapes.small
-                isFirst -> RoundedCornerShape(
-                    topStart = cornerRadius,
-                    bottomStart = cornerRadius,
-                    topEnd = 0.dp,
-                    bottomEnd = 0.dp
-                )
-
-                isLast -> RoundedCornerShape(
-                    topStart = 0.dp,
-                    bottomStart = 0.dp,
-                    topEnd = cornerRadius,
-                    bottomEnd = cornerRadius
-                )
-
-                else -> RoundedCornerShape(0.dp)
-            }
-
-            OptionalTooltip(option.tooltip) {
-                Button(
-                    onClick = { onToggle(index) },
-                    modifier = Modifier,
-                    contentPadding = CompactButtonDefaults.ContentPadding,
-                    shape = shape,
-                    colors = if (isSelected) {
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    border = if (!isSelected) {
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                    } else null
-                ) {
-                    Icon(
-                        option.icon,
-                        contentDescription = option.tooltip
-                    )
-                }
+            CompactButton(
+                onClick = { onToggle(index) },
+                modifier = Modifier.size(GromozekaTheme.controls.minHeight),
+                contentPadding = PaddingValues(0.dp),
+                shape = joinedButtonShape(index, options.size),
+                tooltip = option.tooltip,
+                colors = if (isSelected) ButtonDefaults.buttonColors() else ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Icon(option.icon, contentDescription = option.tooltip)
             }
         }
     }

@@ -1,10 +1,5 @@
 package com.gromozeka.presentation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -14,8 +9,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.uikit.OnFocusBehavior
 import androidx.compose.ui.window.ComposeUIViewController
 import com.gromozeka.client.resolveRemoteUrl
@@ -145,7 +138,7 @@ private fun GromozekaIosApp() {
                 clientPlatform = ClientPlatform.IOS,
             )
 
-            remoteUrl != null && startupError == null && authenticationStatus != null ->
+            remoteUrl != null && startupError == null && authenticationStatus != null && authenticationStatus?.authenticatedUser == null ->
                 RemoteAuthenticationScreen(
                     initialized = requireNotNull(authenticationStatus).initialized,
                     submitting = connecting,
@@ -178,7 +171,11 @@ private fun GromozekaIosApp() {
                                     httpClient = connection.httpClient,
                                 )
                             } catch (error: Throwable) {
-                                authenticationError = error
+                                if (authenticationStatus?.authenticatedUser != null) {
+                                    startupError = error
+                                } else {
+                                    authenticationError = error
+                                }
                             }
                             connecting = false
                         }
@@ -252,7 +249,6 @@ private suspend fun handleActionButtonEvents(app: RemoteAppComponents) {
 private suspend fun toggleActionButtonConversation(app: RemoteAppComponents) {
     when (app.components.pttService.state.value) {
         PttState.IDLE -> {
-            app.components.pttEventRouter.handlePTTEvent(PTTEvent.BUTTON_DOWN)
             app.components.pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_PUSH)
         }
 
@@ -263,13 +259,7 @@ private suspend fun toggleActionButtonConversation(app: RemoteAppComponents) {
 }
 
 @Composable
-private fun StartupLoading() {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    }
-}
+private fun StartupLoading() = com.gromozeka.presentation.ui.ClientStartupLoadingScreen()
 
 private const val ActionButtonCommandCounterKey = "gromozeka.actionButton.commandCounter"
 private const val ActionButtonHandledCommandCounterKey = "gromozeka.actionButton.handledCommandCounter"

@@ -97,7 +97,7 @@ fun TabPromptsPanel(
                                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator()
+                                GromozekaLoadingIndicator()
                             }
                         }
 

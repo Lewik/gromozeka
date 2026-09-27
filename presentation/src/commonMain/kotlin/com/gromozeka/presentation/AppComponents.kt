@@ -80,6 +80,7 @@ data class AppComponents(
     val globalHotkeyController: GlobalHotkeyController,
     val pttEventRouter: PttEventHandler,
     val pttService: PttRecordingService,
+    val voiceInputDelivery: com.gromozeka.presentation.services.VoiceInputDelivery,
     val liveVoiceInputService: LiveVoiceInputService,
     val uiFeedbackController: UiFeedbackController,
     val uiStateService: UIStateService,

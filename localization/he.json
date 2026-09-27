@@ -4,6 +4,14 @@
   "name": "עברית",
   "direction": "RTL",
   "messages": {
+    "chat.voice.afterDictation.send": "שליחה",
+    "chat.voice.afterDictation.input": "לשדה",
+    "chat.voice.afterDictation.sendHint": "לאחר ההכתבה: לשלוח מיד. לחצו כדי להשאיר את הטקסט בשדה במקום זאת.",
+    "chat.voice.afterDictation.inputHint": "לאחר ההכתבה: להשאיר את הטקסט בשדה. לחצו כדי לשלוח מיד במקום זאת.",
+    "chat.input.moreActions": "פעולות נוספות",
+    "chat.activity.uploading": "העלאת קבצים מצורפים",
+    "chat.activity.suggestions": "יצירת תשובות מוצעות",
+    "chat.navigation.conversations": "שיחות",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1697,7 +1705,7 @@
     "settingsUi.generateThemeFromWindow": "יצירת ערכת נושא מחלון",
     "settingsUi.globalBackend": "מערכת הקיצורים הגלובליים: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "קיצורים גלובליים אינם זמינים",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "החזיקו להקלטה; שחררו לתמלול ולשליחה. לחיצה קצרה אינה נשמרת.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "החזיקו להקלטה ושחררו לתמלול. לחיצה עוצרת הקראה; לחיצה כפולה מפסיקה את התור.",
     "settingsUi.hostedSearch": "חיפוש בצד {connection}",
     "settingsUi.inlineWithTheAnswer": "יחד עם התשובה",
     "settingsUi.instructionAliases": "{group}: כינויים ל־{instruction}",
@@ -1864,6 +1872,14 @@
     "voice.workerAudioRequired": "כדי להקליט אודיו ברכיב ביצוע, יש לבחור במיקרופון של רכיב ביצוע",
     "voice.workerInputUnavailable": "קלט האודיו {input} אינו זמין ברכיב הביצוע {worker}",
     "chat.history.loadOlder": "טעינת הודעות קודמות",
-    "chat.history.loadFull": "טעינת ההודעה המלאה"
+    "chat.history.loadFull": "טעינת ההודעה המלאה",
+    "chat.composer.placeholder": "כתבו או הכתיבו…",
+    "chat.voice.mode.auto": "אוטומטי",
+    "chat.voice.mode.draft": "טיוטה",
+    "chat.voice.control.hint": "החזיקו להקלטה. לחיצה לעצירת ההקראה; לחיצה כפולה להפסקת הסבב.",
+    "chat.voice.control.interruptHint": "לחיצה לעצירת ההקראה; לחיצה כפולה להפסקת הסבב.",
+    "chat.activity.idle": "אין משימות פעילות",
+    "chat.activity.details": "פרטי ביצוע",
+    "chat.activity.more": "עוד {count}"
   }
 }

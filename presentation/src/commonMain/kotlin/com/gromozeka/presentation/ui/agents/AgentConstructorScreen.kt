@@ -17,7 +17,6 @@ import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -59,6 +58,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
 
 private enum class RuntimeCatalogTab(val titleKey: String) {
     Agents("agents.catalog.tab.agents"),
@@ -304,7 +304,7 @@ fun AgentConstructorScreen(
 
         when {
             isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                GromozekaLoadingIndicator()
             }
 
             selectedTab == RuntimeCatalogTab.Agents -> LazyColumn(

@@ -48,6 +48,7 @@ enum class LiveVoiceInputState {
 }
 
 interface LiveVoiceInputService {
+    val target: StateFlow<VoiceInputTarget?>
     val state: StateFlow<LiveVoiceInputState>
     val statusMessage: StateFlow<LocalizedText?>
     val unavailableReason: StateFlow<LocalizedText?>
@@ -61,11 +62,13 @@ interface LiveVoiceInputService {
 class NoOpLiveVoiceInputService(
     reason: LocalizedText = localizedText("voice.liveUnavailable"),
 ) : LiveVoiceInputService {
+    private val _target = MutableStateFlow<VoiceInputTarget?>(null)
     private val _state = MutableStateFlow(LiveVoiceInputState.IDLE)
     private val _statusMessage = MutableStateFlow<LocalizedText?>(null)
     private val _unavailableReason = MutableStateFlow<LocalizedText?>(reason)
 
     override val state: StateFlow<LiveVoiceInputState> = _state
+    override val target: StateFlow<VoiceInputTarget?> = _target
     override val statusMessage: StateFlow<LocalizedText?> = _statusMessage
     override val unavailableReason: StateFlow<LocalizedText?> = _unavailableReason
 
@@ -87,6 +90,7 @@ class LiveVoiceInputController(
 ) : LiveVoiceInputService {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
+    private val _target = MutableStateFlow<VoiceInputTarget?>(null)
     private val _state = MutableStateFlow(LiveVoiceInputState.IDLE)
     private val _statusMessage = MutableStateFlow<LocalizedText?>(null)
     private val _unavailableReason = MutableStateFlow<LocalizedText?>(null)
@@ -94,6 +98,7 @@ class LiveVoiceInputController(
     private var recordingSession: ClientAudioRecordingSession? = null
 
     override val state: StateFlow<LiveVoiceInputState> = _state
+    override val target: StateFlow<VoiceInputTarget?> = _target
     override val statusMessage: StateFlow<LocalizedText?> = _statusMessage
     override val unavailableReason: StateFlow<LocalizedText?> = _unavailableReason
 
@@ -110,6 +115,7 @@ class LiveVoiceInputController(
     }
 
     override suspend fun start() {
+        _target.value = voiceInputDelivery.captureTarget(MessageInputContext.Source.LIVE_VOICE)
         val reason = refreshAvailability()
         if (reason != null) {
             _statusMessage.value = reason
@@ -206,6 +212,7 @@ class LiveVoiceInputController(
                                 when (event) {
                                     LiveVoiceVadEvent.SpeechStarted -> {
                                         target = voiceInputDelivery.captureTarget(MessageInputContext.Source.LIVE_VOICE)
+                                        _target.value = target
                                         speaking = true
                                         _state.value = LiveVoiceInputState.SPEECH
                                         _statusMessage.value = localizedText("voice.listeningPhrase")
@@ -324,14 +331,17 @@ class LiveVoiceInputController(
 
                 val receiver = launch {
                     val targets = mutableMapOf<String, VoiceInputTarget?>()
+                    var speechItemId: String? = null
                     providerSession?.events?.collect { event ->
                         when (event) {
                             is LiveVoiceProviderVadStatusEvent ->
                                 _statusMessage.value = localizedText("voice.providerListening")
 
                             is LiveVoiceProviderVadSpeechStartedEvent -> {
+                                speechItemId = event.itemId
                                 if (event.itemId.isNotBlank() && event.itemId !in targets) {
                                     targets[event.itemId] = voiceInputDelivery.captureTarget(MessageInputContext.Source.LIVE_VOICE)
+                                    _target.value = targets[event.itemId]
                                 }
                                 _state.value = LiveVoiceInputState.SPEECH
                                 _statusMessage.value = localizedText("voice.providerListeningPhrase")
@@ -339,6 +349,8 @@ class LiveVoiceInputController(
                             }
 
                             is LiveVoiceProviderVadSpeechStoppedEvent -> {
+                                speechItemId?.let { voiceInputDelivery.transcriptionStarted(it, targets[it]) }
+                                speechItemId = null
                                 _state.value = LiveVoiceInputState.TRANSCRIBING
                                 _statusMessage.value = localizedText("voice.providerTranscribing")
                             }
@@ -351,7 +363,8 @@ class LiveVoiceInputController(
                             }
 
                             is LiveVoiceProviderVadTranscriptCompletedEvent -> {
-                                deliverText(event.text, event.itemId, targets.remove(event.itemId))
+                                val delivered = deliverText(event.text, event.itemId, targets.remove(event.itemId))
+                                voiceInputDelivery.transcriptionFinished(event.itemId, if (delivered) null else _statusMessage.value)
                                 ttsQueue.allowPlayback()
                                 _state.value = LiveVoiceInputState.LISTENING
                                 _statusMessage.value = localizedText("voice.providerListening")
@@ -400,6 +413,7 @@ class LiveVoiceInputController(
         if (utterance.pcmBigEndian.isEmpty()) return
 
         val sessionId = uuid7()
+        voiceInputDelivery.transcriptionStarted(sessionId, utterance.target)
         val text = runCatching {
             _state.value = LiveVoiceInputState.TRANSCRIBING
             _statusMessage.value = localizedText("voice.transcribingPhrase")
@@ -418,29 +432,33 @@ class LiveVoiceInputController(
             if (error is CancellationException) throw error
             log.warn(error) { "Live voice transcription failed: session=$sessionId error=${error.message}" }
             _statusMessage.value = localizedText("voice.phraseTranscriptionFailed", "error" to error.localizedText())
+            voiceInputDelivery.transcriptionFinished(sessionId, _statusMessage.value)
             return
         }
 
-        deliverText(text, sessionId, utterance.target)
+        val delivered = deliverText(text, sessionId, utterance.target)
+        voiceInputDelivery.transcriptionFinished(sessionId, if (delivered) null else _statusMessage.value)
     }
 
-    private suspend fun deliverText(text: String, sessionId: String, target: VoiceInputTarget?) {
+    private suspend fun deliverText(text: String, sessionId: String, target: VoiceInputTarget?): Boolean {
         if (text.isBlank()) {
             log.info { "Live voice transcription returned blank text: session=$sessionId" }
             _statusMessage.value = localizedText("voice.emptyPhrase")
-            return
+            return false
         }
 
         if (!voiceInputDelivery.deliver(target, text)) {
             log.warn { "Live voice transcription target is unavailable: session=$sessionId textChars=${text.length}" }
             _statusMessage.value = localizedText("voice.noConversation")
-            return
+            return false
         }
 
         log.info { "Live voice transcription delivered: session=$sessionId textChars=${text.length}" }
+        return true
     }
 
     private suspend fun finishStopped(statusMessage: LocalizedText? = null) {
+        voiceInputDelivery.cancelTranscriptions(MessageInputContext.Source.LIVE_VOICE)
         ttsQueue.allowPlayback()
         _state.value = LiveVoiceInputState.IDLE
         _statusMessage.value = statusMessage

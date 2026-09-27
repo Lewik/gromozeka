@@ -4,6 +4,14 @@
   "name": "English",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "Send",
+    "chat.voice.afterDictation.input": "To input",
+    "chat.voice.afterDictation.sendHint": "After dictation: send immediately. Click to keep the text in the input instead.",
+    "chat.voice.afterDictation.inputHint": "After dictation: keep the text in the input. Click to send immediately instead.",
+    "chat.input.moreActions": "More actions",
+    "chat.activity.uploading": "Uploading attachments",
+    "chat.activity.suggestions": "Generating suggested replies",
+    "chat.navigation.conversations": "Conversations",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1660,7 +1668,7 @@
     "settingsUi.generateThemeFromWindow": "Generate Theme from Window",
     "settingsUi.globalBackend": "Global backend: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "Global shortcuts are unavailable",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Hold to record; release to transcribe and send. A quick tap is discarded.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Hold to record; release to transcribe. Tap to stop speech; double-tap to interrupt the turn.",
     "settingsUi.hostedSearch": "{connection} hosted search",
     "settingsUi.inlineWithTheAnswer": "Inline with the answer",
     "settingsUi.instructionAliases": "{group}: {instruction} aliases",
@@ -1827,6 +1835,14 @@
     "voice.workerAudioRequired": "Select a Worker microphone to capture audio on a Worker",
     "voice.workerInputUnavailable": "Audio input {input} is unavailable on Worker {worker}",
     "chat.history.loadOlder": "Load older messages",
-    "chat.history.loadFull": "Load full message"
+    "chat.history.loadFull": "Load full message",
+    "chat.composer.placeholder": "Message or dictate…",
+    "chat.voice.mode.auto": "Auto",
+    "chat.voice.mode.draft": "Draft",
+    "chat.voice.control.hint": "Hold to record. Click to stop speech; double-click to interrupt this turn.",
+    "chat.voice.control.interruptHint": "Click to stop speech; double-click to interrupt this turn.",
+    "chat.activity.idle": "No active tasks",
+    "chat.activity.details": "Execution details",
+    "chat.activity.more": "+{count} more"
   }
 }

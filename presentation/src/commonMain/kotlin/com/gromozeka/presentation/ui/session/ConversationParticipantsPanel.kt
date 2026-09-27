@@ -23,7 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +57,7 @@ import com.gromozeka.remote.protocol.UserDirectoryEntry
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
 
 @Composable
 fun ConversationParticipantsPanel(
@@ -222,7 +222,7 @@ fun ConversationParticipantsPanel(
                 val allSourcesLoaded = loadedSources.size == ParticipantSource.entries.size
                 if (!allSourcesLoaded) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        GromozekaLoadingIndicator()
                     }
                 } else {
                     val currentMembership = memberships.firstOrNull { it.userId == currentUserId }

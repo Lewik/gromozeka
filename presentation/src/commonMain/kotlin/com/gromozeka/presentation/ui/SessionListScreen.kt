@@ -6,7 +6,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Badge
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -208,7 +207,7 @@ fun SessionListScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    GromozekaLoadingIndicator()
                 }
             } else {
                 Column(
@@ -227,7 +226,7 @@ fun SessionListScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        CircularProgressIndicator()
+                                        GromozekaLoadingIndicator()
                                         Text(
                                             text = LocalTranslation.current.format("searchingForText", searchQuery),
                                             textAlign = TextAlign.Center
@@ -274,10 +273,7 @@ fun SessionListScreen(
                                     modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally),
                                 ) {
                                     if (isLoadingMore) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            strokeWidth = 2.dp,
-                                        )
+                                        GromozekaLoadingIndicator(modifier = Modifier.size(16.dp))
                                     } else {
                                         Text(LocalTranslation.current.loadMoreSearchResults)
                                     }
@@ -548,10 +544,7 @@ private fun ConversationItem(
             Spacer(modifier = Modifier.width(12.dp))
 
             if (isMutating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                )
+                GromozekaLoadingIndicator(modifier = Modifier.size(20.dp))
             } else {
                 OptionalTooltip(tooltip = LocalTranslation.current.renameConversationTitle) {
                     IconButton(onClick = { onRename(conversation) }) {

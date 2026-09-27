@@ -34,6 +34,7 @@ data class UIState(
         val conversationId: Conversation.Id,
         val activeMessageInstructionIds: Set<String> = emptySet(),
         val userInput: String = "",
+        val voiceAutoSend: Boolean? = null,
         val composerArtifacts: List<Artifact.Reference> = emptyList(),
         val composerArtifactUploadInProgress: Boolean = false,
         val composerArtifactError: LocalizedText? = null,

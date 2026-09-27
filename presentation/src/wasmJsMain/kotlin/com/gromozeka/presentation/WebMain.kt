@@ -2,7 +2,6 @@ package com.gromozeka.presentation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -149,7 +148,7 @@ private fun GromozekaWebApp() {
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
         )
-        authenticationStatus != null -> ClientTheme(localization) {
+        authenticationStatus != null && authenticationStatus?.authenticatedUser == null -> ClientTheme(localization) {
             val status = requireNotNull(authenticationStatus)
             RemoteAuthenticationScreen(
                 initialized = status.initialized,
@@ -177,7 +176,11 @@ private fun GromozekaWebApp() {
                                 httpClient = authenticationConnection.httpClient,
                             )
                         } catch (error: Throwable) {
-                            authenticationError = error
+                            if (authenticationStatus?.authenticatedUser != null) {
+                                startupError = error
+                            } else {
+                                authenticationError = error
+                            }
                         }
                         authenticating = false
                     }
@@ -215,7 +218,11 @@ private fun GromozekaWebApp() {
                                 httpClient = authenticationConnection.httpClient,
                             )
                         } catch (error: Throwable) {
-                            authenticationError = error
+                            if (authenticationStatus?.authenticatedUser != null) {
+                                startupError = error
+                            } else {
+                                authenticationError = error
+                            }
                         }
                         authenticating = false
                     }
@@ -279,13 +286,7 @@ private fun resolveWebLayoutHints(): WebLayoutHints {
 }
 
 @Composable
-private fun StartupLoading() {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    }
-}
+private fun StartupLoading() = com.gromozeka.presentation.ui.ClientStartupLoadingScreen()
 
 @Composable
 private fun StartupError(error: Throwable) {

@@ -25,7 +25,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -179,7 +178,7 @@ fun AiCatalogSettings(
             modifier = modifier.fillMaxWidth().height(120.dp),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator()
+            GromozekaLoadingIndicator()
         }
         return
     }
@@ -254,10 +253,7 @@ fun AiCatalogSettings(
                                 enabled = isDirty && !isSaving,
                             ) {
                                 if (isSaving) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.width(18.dp).height(18.dp),
-                                        strokeWidth = 2.dp,
-                                    )
+                                    GromozekaLoadingIndicator(modifier = Modifier.width(18.dp).height(18.dp))
                                 } else {
                                     Text(translation.text("ai.action.save"))
                                 }

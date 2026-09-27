@@ -1,4 +1,20 @@
 {
+  "chat.voice.afterDictation.send": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Accessibility state label for the icon-only dictation mode: send recognized text immediately.","args":[]},
+  "chat.voice.afterDictation.input": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Accessibility state label for the icon-only dictation mode: keep recognized text in the input field.","args":[]},
+  "chat.voice.afterDictation.sendHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Tooltip/accessibility label describing automatic sending after dictation and the click action to switch modes.","args":[]},
+  "chat.voice.afterDictation.inputHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Tooltip/accessibility label describing retaining dictated text in the input and the click action to switch modes.","args":[]},
+  "chat.input.moreActions": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Composer menu for infrequent actions: attachments, screenshot and regenerating suggested replies.","args":[]},
+  "chat.activity.uploading": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Background status while attachments are being uploaded for this conversation.","args":[]},
+  "chat.activity.suggestions": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Background status while suggested replies are being generated for this conversation.","args":[]},
+  "chat.navigation.conversations": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/CustomTabRow.kt"],"description":"Title of the open-conversation picker on narrow screens when a utility tab is selected.","args":[]},
+  "chat.composer.placeholder": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Composer placeholder inviting typed or dictated input.","args":[]},
+  "chat.voice.mode.auto": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Short label: dictated text is sent automatically.","args":[]},
+  "chat.voice.mode.draft": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Short label: dictated text is appended to the draft.","args":[]},
+  "chat.voice.control.hint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"PTT control gestures: hold for capture; single click stops TTS; double click interrupts the turn.","args":[]},
+  "chat.voice.control.interruptHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Interruption gestures available even when voice capture is unavailable.","args":[]},
+  "chat.activity.idle": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Status bar when the current conversation has no active execution.","args":[]},
+  "chat.activity.details": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Opens the runtime inspection panel from the status bar.","args":[]},
+  "chat.activity.more": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Number of additional active items beyond the compact status view.","args":["count"]},
   "chat.history.loadOlder": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"],"description":"Load the previous page of conversation history.","args":[]},
   "chat.history.loadFull": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"],"description":"Fetch the complete message or tool result when the history shows a bounded preview.","args":[]},
   "chat.input.sendWithShortcut": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Composer keyboard shortcut settings: Send message ({shortcut})","args":["shortcut"]},
@@ -12990,7 +13006,7 @@
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:2714"
     ],
-    "description": "Explains push-to-talk timing: holding records, releasing submits for transcription, and a very short tap is discarded.",
+    "description": "Keyboard PTT gestures: hold to record, release to transcribe, tap to stop speech, double-tap to interrupt the current turn.",
     "args": [],
     "literal": "Hold to record; release to transcribe and send. A quick tap is discarded."
   },

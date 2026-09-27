@@ -4,6 +4,14 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "Kirim",
+    "chat.voice.afterDictation.input": "Ke kolom",
+    "chat.voice.afterDictation.sendHint": "Setelah mendikte: langsung kirim. Klik untuk membiarkan teks di kolom input.",
+    "chat.voice.afterDictation.inputHint": "Setelah mendikte: biarkan teks di kolom input. Klik untuk langsung mengirim.",
+    "chat.input.moreActions": "Tindakan lainnya",
+    "chat.activity.uploading": "Mengunggah lampiran",
+    "chat.activity.suggestions": "Membuat saran balasan",
+    "chat.navigation.conversations": "Percakapan",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1623,7 +1631,7 @@
     "settingsUi.generateThemeFromWindow": "Buat tema dari jendela",
     "settingsUi.globalBackend": "Mesin pintasan global: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "Pintasan global tidak tersedia",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Tahan untuk merekam; lepaskan untuk mentranskripsikan dan mengirim. Ketukan singkat diabaikan.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Tahan untuk merekam, lepas untuk transkripsi. Tekan sekali untuk menghentikan suara; dua kali untuk menghentikan giliran.",
     "settingsUi.hostedSearch": "Pencarian yang dihosting {connection}",
     "settingsUi.inlineWithTheAnswer": "Bersama jawaban",
     "settingsUi.instructionAliases": "{group}: alias {instruction}",
@@ -1790,6 +1798,14 @@
     "voice.workerAudioRequired": "Pilih mikrofon Worker untuk merekam audio pada Worker",
     "voice.workerInputUnavailable": "Input audio {input} tidak tersedia pada Worker {worker}",
     "chat.history.loadOlder": "Muat pesan sebelumnya",
-    "chat.history.loadFull": "Muat pesan lengkap"
+    "chat.history.loadFull": "Muat pesan lengkap",
+    "chat.composer.placeholder": "Tulis atau dikte…",
+    "chat.voice.mode.auto": "Otomatis",
+    "chat.voice.mode.draft": "Draf",
+    "chat.voice.control.hint": "Tahan untuk merekam. Klik menghentikan suara; klik ganda menginterupsi giliran.",
+    "chat.voice.control.interruptHint": "Klik menghentikan suara; klik ganda menginterupsi giliran.",
+    "chat.activity.idle": "Tidak ada tugas aktif",
+    "chat.activity.details": "Detail eksekusi",
+    "chat.activity.more": "{count} lainnya"
   }
 }

@@ -23,7 +23,6 @@ import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -69,6 +68,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import org.intellij.markdown.ast.ASTNode
+import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
 
 internal data class MessageListEntry(
     val message: Conversation.Message,
@@ -825,7 +825,7 @@ internal fun ArtifactImagePreview(
                 .height(72.dp),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator()
+            GromozekaLoadingIndicator()
         }
     }
 }

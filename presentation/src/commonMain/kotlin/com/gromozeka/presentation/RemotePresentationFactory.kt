@@ -231,6 +231,7 @@ suspend fun createRemoteAppComponents(
             globalHotkeyController = globalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,
+            voiceInputDelivery = voiceInputDelivery,
             liveVoiceInputService = liveVoiceInputController,
             uiFeedbackController = uiFeedbackController,
             uiStateService = uiStateService,

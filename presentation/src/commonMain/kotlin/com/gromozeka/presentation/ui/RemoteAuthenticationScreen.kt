@@ -15,7 +15,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -229,7 +228,7 @@ private fun DeviceConnectionChallengeContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+            GromozekaLoadingIndicator(modifier = Modifier.size(28.dp))
             Text(translation.text("auth.device.creatingCode"))
         }
         return
@@ -404,11 +403,7 @@ private fun PasswordAuthenticationContent(
         onClick = submit,
     ) {
         if (submitting) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = 2.dp,
-            )
+            GromozekaLoadingIndicator(modifier = Modifier.size(18.dp))
         } else {
             Text(if (initialized) translation.text("auth.signIn.action") else translation.text("auth.bootstrap.action"))
         }

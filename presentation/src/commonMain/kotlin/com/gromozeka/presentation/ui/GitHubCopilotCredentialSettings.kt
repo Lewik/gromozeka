@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -169,7 +168,7 @@ private fun GitHubCopilotCredentialCard(
                         }
                         if (busy) {
                             Spacer(Modifier.width(10.dp))
-                            CircularProgressIndicator(modifier = Modifier.width(18.dp), strokeWidth = 2.dp)
+                            GromozekaLoadingIndicator(modifier = Modifier.width(18.dp))
                         }
                     }
                 }

@@ -10,7 +10,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.test.v2.runDesktopComposeUiTest
+import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.UiTestTag
 import kotlin.test.Test
@@ -30,28 +34,14 @@ class SuggestedRepliesTest {
     }
 
     @Test
-    fun suggestionsRemainAfterSelectionAndRefreshCanBeRequested() = runDesktopComposeUiTest {
-        var options by mutableStateOf(replyOptions("first"))
-        var regeneratedSource: Conversation.Message.Id? = null
+    fun emptySuggestionsHaveNoRowAndSelectionKeepsNonemptySuggestions() = runComposeUiTest {
+        var options by mutableStateOf(replyOptions("first").copy(values = emptyList()))
         setContent {
-            MaterialTheme {
-                SuggestedReplyChips(
-                    options = options,
-                    onSuggestionSelected = {},
-                    onRegenerate = { regeneratedSource = it },
-                    isRegenerating = false,
-                )
-            }
+            MaterialTheme { SuggestedReplyChips(options, onSuggestionSelected = {}) }
         }
-
+        onNodeWithTag(UiTestTag.SuggestedReplies.value).assertDoesNotExist()
+        runOnIdle { options = replyOptions("second") }
         onNodeWithTag(UiTestTag.SuggestedReply(0).value).performClick()
-        onNodeWithTag(UiTestTag.SuggestedReplies.value).assertIsDisplayed()
-        onNodeWithTag(UiTestTag.SuggestedRepliesRefresh.value).performClick()
-
-        runOnIdle {
-            assertEquals(Conversation.Message.Id("first"), regeneratedSource)
-            options = replyOptions("second")
-        }
         onNodeWithTag(UiTestTag.SuggestedReplies.value).assertIsDisplayed()
     }
 
@@ -101,19 +91,16 @@ class SuggestedRepliesTest {
         )
     }
 
-    private fun verifySuggestionSelection(width: Int, height: Int) = runDesktopComposeUiTest(
-        width = width,
-        height = height,
-    ) {
+    private fun verifySuggestionSelection(width: Int, height: Int) = runComposeUiTest {
         var selected: String? = null
         setContent {
             MaterialTheme {
-                SuggestedReplyChips(
-                    options = replyOptions("assistant"),
-                    onSuggestionSelected = { selected = it },
-                    onRegenerate = {},
-                    isRegenerating = false,
-                )
+                Box(Modifier.size(width.dp, height.dp)) {
+                    SuggestedReplyChips(
+                        options = replyOptions("assistant"),
+                        onSuggestionSelected = { selected = it },
+                    )
+                }
             }
         }
 

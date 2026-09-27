@@ -4,6 +4,14 @@
   "name": "Deutsch",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "Senden",
+    "chat.voice.afterDictation.input": "Ins Feld",
+    "chat.voice.afterDictation.sendHint": "Nach dem Diktieren sofort senden. Klicken, um den Text stattdessen im Eingabefeld zu lassen.",
+    "chat.voice.afterDictation.inputHint": "Nach dem Diktieren den Text im Eingabefeld lassen. Klicken, um stattdessen sofort zu senden.",
+    "chat.input.moreActions": "Weitere Aktionen",
+    "chat.activity.uploading": "Anhänge werden hochgeladen",
+    "chat.activity.suggestions": "Antwortvorschläge werden erstellt",
+    "chat.navigation.conversations": "Unterhaltungen",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1660,7 +1668,7 @@
     "settingsUi.generateThemeFromWindow": "Design aus einem Fenster erstellen",
     "settingsUi.globalBackend": "Dienst für globale Tastenkürzel: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "Globale Tastenkürzel nicht verfügbar",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Zum Aufnehmen gedrückt halten; zum Transkribieren und Senden loslassen. Kurzes Antippen wird verworfen.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Zum Aufnehmen halten, zum Transkribieren loslassen. Kurz drücken stoppt die Sprachausgabe; zweimal unterbricht den Durchlauf.",
     "settingsUi.hostedSearch": "Von {connection} bereitgestellte Suche",
     "settingsUi.inlineWithTheAnswer": "Zusammen mit der Antwort",
     "settingsUi.instructionAliases": "{group}: Aliasse für {instruction}",
@@ -1827,6 +1835,14 @@
     "voice.workerAudioRequired": "Wähle ein Worker-Mikrofon aus, um Audio auf einem Worker aufzunehmen",
     "voice.workerInputUnavailable": "Der Audioeingang {input} ist auf Worker {worker} nicht verfügbar",
     "chat.history.loadOlder": "Ältere Nachrichten laden",
-    "chat.history.loadFull": "Vollständige Nachricht laden"
+    "chat.history.loadFull": "Vollständige Nachricht laden",
+    "chat.composer.placeholder": "Schreiben oder diktieren…",
+    "chat.voice.mode.auto": "Auto",
+    "chat.voice.mode.draft": "Entwurf",
+    "chat.voice.control.hint": "Zum Aufnehmen gedrückt halten. Klicken stoppt die Sprachausgabe; Doppelklicken unterbricht den Durchlauf.",
+    "chat.voice.control.interruptHint": "Klicken stoppt die Sprachausgabe; Doppelklicken unterbricht den Durchlauf.",
+    "chat.activity.idle": "Keine aktiven Aufgaben",
+    "chat.activity.details": "Ausführungsdetails",
+    "chat.activity.more": "{count} weitere"
   }
 }

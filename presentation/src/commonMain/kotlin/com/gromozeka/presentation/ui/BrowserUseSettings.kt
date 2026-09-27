@@ -15,7 +15,6 @@ import androidx.compose.foundation.text.input.clearText
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -152,7 +151,7 @@ internal fun BrowserUseSettings(
         }
 
         when (val state = loadState) {
-            BrowserUseLoadState.Loading -> CircularProgressIndicator()
+            BrowserUseLoadState.Loading -> GromozekaLoadingIndicator()
 
             is BrowserUseLoadState.Failed -> {
                 Text(state.message ?: translation.text("browser.error.load_connections"), color = MaterialTheme.colorScheme.error)
@@ -434,7 +433,7 @@ private fun BrowserConnectionCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CircularProgressIndicator()
+                GromozekaLoadingIndicator()
                 Text(translation.text("browser.screenshot.capturing"))
             }
 

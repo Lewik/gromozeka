@@ -52,9 +52,7 @@ fun LoadingScreen(
 
                 when (val state = loadingState) {
                     is LoadingViewModel.LoadingState.Initializing -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(48.dp)
-                        )
+                        GromozekaLoadingIndicator(modifier = Modifier.size(80.dp))
                         Text(
                             text = translation.text("bootstrap.initializing"),
                             style = MaterialTheme.typography.bodyLarge
@@ -62,9 +60,7 @@ fun LoadingScreen(
                     }
 
                     is LoadingViewModel.LoadingState.LoadingMCP -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(48.dp)
-                        )
+                        GromozekaLoadingIndicator(modifier = Modifier.size(80.dp))
                         Text(
                             text = translation.text("bootstrap.loadingMcp"),
                             style = MaterialTheme.typography.bodyLarge,

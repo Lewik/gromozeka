@@ -4,6 +4,14 @@
   "name": "Português (Brasil)",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "Enviar",
+    "chat.voice.afterDictation.input": "No campo",
+    "chat.voice.afterDictation.sendHint": "Após ditar: enviar imediatamente. Clique para deixar o texto no campo.",
+    "chat.voice.afterDictation.inputHint": "Após ditar: deixar o texto no campo. Clique para enviar imediatamente.",
+    "chat.input.moreActions": "Mais ações",
+    "chat.activity.uploading": "Enviando anexos",
+    "chat.activity.suggestions": "Gerando sugestões de resposta",
+    "chat.navigation.conversations": "Conversas",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1697,7 +1705,7 @@
     "settingsUi.generateThemeFromWindow": "Gerar tema a partir da janela",
     "settingsUi.globalBackend": "Serviço de atalhos globais: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "Atalhos globais indisponíveis",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Segure para gravar; solte para transcrever e enviar. Um toque rápido é descartado.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Segure para gravar e solte para transcrever. Um toque para a fala; dois interrompem o turno.",
     "settingsUi.hostedSearch": "Pesquisa hospedada de {connection}",
     "settingsUi.inlineWithTheAnswer": "Junto com a resposta",
     "settingsUi.instructionAliases": "{group}: apelidos de {instruction}",
@@ -1864,6 +1872,14 @@
     "voice.workerAudioRequired": "Selecione um microfone de Worker para capturar áudio em um Worker",
     "voice.workerInputUnavailable": "A entrada de áudio {input} não está disponível no Worker {worker}",
     "chat.history.loadOlder": "Carregar mensagens anteriores",
-    "chat.history.loadFull": "Carregar mensagem completa"
+    "chat.history.loadFull": "Carregar mensagem completa",
+    "chat.composer.placeholder": "Escreva ou dite…",
+    "chat.voice.mode.auto": "Auto",
+    "chat.voice.mode.draft": "Rascunho",
+    "chat.voice.control.hint": "Segure para gravar. Um clique para a voz; dois cliques interrompem o turno.",
+    "chat.voice.control.interruptHint": "Um clique para a voz; dois cliques interrompem o turno.",
+    "chat.activity.idle": "Nenhuma tarefa ativa",
+    "chat.activity.details": "Detalhes da execução",
+    "chat.activity.more": "Mais {count}"
   }
 }

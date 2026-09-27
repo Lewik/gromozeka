@@ -8,7 +8,7 @@ import com.gromozeka.presentation.services.DesktopGlobalHotkeyController
 import com.gromozeka.presentation.services.DesktopQuickTextActionExecutor
 import com.gromozeka.presentation.services.DesktopNotificationService
 import com.gromozeka.presentation.services.GlobalHotkeyEventPhase
-import com.gromozeka.presentation.services.HoldToTalkShortcutController
+import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
@@ -73,9 +73,9 @@ internal suspend fun startRemotePresentation(
     }
     File(remoteApp.components.settingsService.homeDirectory).mkdirs()
     System.setProperty("GROMOZEKA_HOME", remoteApp.components.settingsService.homeDirectory)
-    val globalHoldToTalkController = HoldToTalkShortcutController(
-        pttEventHandler = remoteApp.components.pttEventRouter,
-        coroutineScope = scope,
+    val globalHoldToTalkController = UnifiedGestureDetector(
+        handler = remoteApp.components.pttEventRouter,
+        scope = scope,
     )
     scope.launch {
         remoteApp.components.settingsService.settingsFlow.collect { settings ->
@@ -83,13 +83,13 @@ internal suspend fun startRemotePresentation(
             globalHotkeyController.applySettings(shortcuts) { event ->
                 when (event.phase) {
                     GlobalHotkeyEventPhase.PRESSED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {
-                        globalHoldToTalkController.onPressed()
+                        globalHoldToTalkController.onGestureDown()
                     }
                     GlobalHotkeyEventPhase.RELEASED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {
-                        globalHoldToTalkController.onReleased()
+                        globalHoldToTalkController.onGestureUp()
                     }
                     GlobalHotkeyEventPhase.CANCELLED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {
-                        globalHoldToTalkController.cancel()
+                        globalHoldToTalkController.cancelGesture()
                     }
                     GlobalHotkeyEventPhase.TRIGGERED -> scope.launch {
                         when (event.action) {

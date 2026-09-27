@@ -1,17 +1,16 @@
 package com.gromozeka.presentation.ui.session
 
+import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
-import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.AgentPreloadedTools
 import com.gromozeka.domain.tool.ToolAccessPolicy
-import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import kotlinx.coroutines.CancellationException
@@ -50,8 +49,9 @@ class ConversationRuntimePanelUiTest {
     fun inspectingBetaDoesNotFollowAlphasWork() = runComposeUiTest {
         val fixture = Fixture()
         val runtime = mutableStateOf(fixture.snapshot(active = fixture.llmTask(fixture.alpha)))
-        setContent { fixture.Panel(runtime.value) }
+        setContent { fixture.Panel(runtime.value, replyRoutingContent = { Text("Replies: Alpha") }) }
         onNodeWithTag(UiTestTag.RuntimeAgentTab("beta").value).performClick()
+        onNodeWithText("Replies: Alpha").assertExists()
         onNodeWithText("Model B").assertExists()
         onNodeWithTag(UiTestTag.RuntimeAgentActivity.value).assertTextEquals(translation.runtime.readyStatus)
         runOnIdle { runtime.value = fixture.snapshot(active = fixture.toolTask(fixture.alpha)) }
@@ -275,6 +275,7 @@ class ConversationRuntimePanelUiTest {
             isVisible: Boolean = true,
             fullScreen: Boolean = false,
             tokenStats: TokenUsageStatistics.ThreadTotals? = null,
+            replyRoutingContent: @Composable () -> Unit = {},
         ) {
             MaterialTheme {
                 ConversationRuntimePanel(
@@ -282,19 +283,14 @@ class ConversationRuntimePanelUiTest {
                     conversationId = conversationId,
                     participants = participants,
                     tabSelection = tabSelection,
+                    replyRoutingContent = replyRoutingContent,
                     agentService = agentService,
                     aiConfigurationProvider = provider,
                     aiSubscriptionQuotaService = quotaService,
                     tokenStats = tokenStats,
                     isWaitingForResponse = runtime?.activeTask != null || runtime?.continuationTask != null,
-                    executionPauseRequested = false,
-                    pttState = PttState.IDLE,
-                    pttStatusMessage = null,
                     pendingMessages = emptyList(),
                     runtimeSnapshot = runtime,
-                    activeGeneration = null,
-                    remoteConnectionState = RemoteConnectionState(RemoteConnectionState.Status.CONNECTED),
-                    onPause = {}, onResume = {}, onStop = {},
                     onCancelCommandTask = {}, onCancelCommandMonitor = {},
                     onSendInCurrentTurn = {}, onEditPendingMessage = {}, onCancelPendingMessage = {}, onClose = {},
                     fullScreen = fullScreen,

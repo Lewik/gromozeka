@@ -4,6 +4,14 @@
   "name": "Русский",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "Сразу",
+    "chat.voice.afterDictation.input": "В поле",
+    "chat.voice.afterDictation.sendHint": "После диктовки — отправить сразу. Нажмите, чтобы оставлять текст в поле.",
+    "chat.voice.afterDictation.inputHint": "После диктовки — оставить текст в поле. Нажмите, чтобы отправлять сразу.",
+    "chat.input.moreActions": "Другие действия",
+    "chat.activity.uploading": "Загрузка вложений",
+    "chat.activity.suggestions": "Генерация предлагаемых ответов",
+    "chat.navigation.conversations": "Разговоры",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1734,7 +1742,7 @@
     "settingsUi.generateThemeFromWindow": "Создать тему по окну",
     "settingsUi.globalBackend": "Система глобальных сочетаний клавиш: {backend}",
     "settingsUi.globalShortcutsAreUnavailable": "Глобальные сочетания клавиш недоступны",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Удерживайте для записи; отпустите для распознавания и отправки. Короткое нажатие игнорируется.",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "Удерживайте для записи, отпустите для распознавания. Нажатие останавливает озвучку, двойное — прерывает ход.",
     "settingsUi.hostedSearch": "Поиск на стороне {connection}",
     "settingsUi.inlineWithTheAnswer": "Вместе с ответом",
     "settingsUi.instructionAliases": "{group}: псевдонимы «{instruction}»",
@@ -1901,6 +1909,14 @@
     "voice.workerAudioRequired": "Выберите микрофон воркера, чтобы записывать звук на воркере",
     "voice.workerInputUnavailable": "Аудиовход {input} недоступен на воркере {worker}",
     "chat.history.loadOlder": "Загрузить старые сообщения",
-    "chat.history.loadFull": "Загрузить сообщение полностью"
+    "chat.history.loadFull": "Загрузить сообщение полностью",
+    "chat.composer.placeholder": "Напишите или надиктуйте…",
+    "chat.voice.mode.auto": "Авто",
+    "chat.voice.mode.draft": "Черновик",
+    "chat.voice.control.hint": "Удерживайте для записи. Клик — остановить озвучку; двойной — прервать текущий ход.",
+    "chat.voice.control.interruptHint": "Клик — остановить озвучку; двойной — прервать текущий ход.",
+    "chat.activity.idle": "Нет активных задач",
+    "chat.activity.details": "Подробности выполнения",
+    "chat.activity.more": "Ещё {count}"
   }
 }

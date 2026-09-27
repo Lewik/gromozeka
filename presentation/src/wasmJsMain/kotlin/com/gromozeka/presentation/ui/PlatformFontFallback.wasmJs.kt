@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +40,8 @@ import org.jetbrains.skia.Data
 import org.jetbrains.skia.FontMgr
 import org.jetbrains.skia.impl.use
 import org.jetbrains.skiko.loadBytesFromPath
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 
 @Composable
 actual fun PlatformFontFallback(translation: Translation, content: @Composable () -> Unit) {
@@ -91,7 +92,7 @@ actual fun PlatformFontFallback(translation: Translation, content: @Composable (
                         .clearAndSetSemantics { contentDescription = translation.text("bootstrap.initializing") },
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(color = Color(0xFF75ACFF))
+                    GromozekaLoadingIndicator(Modifier.size(80.dp))
                 }
             }
         }

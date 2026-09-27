@@ -1,6 +1,5 @@
 package com.gromozeka.presentation.ui.session
 
-import com.gromozeka.presentation.ui.LocalTranslation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -9,8 +8,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,12 +47,9 @@ internal fun latestSuggestedReplies(messages: List<Conversation.Message>): Sugge
 internal fun SuggestedReplyChips(
     options: SuggestedReplyOptions?,
     onSuggestionSelected: (String) -> Unit,
-    onRegenerate: (Conversation.Message.Id) -> Unit,
-    isRegenerating: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val localization = LocalTranslation.current
-    if (options == null) return
+    if (options == null || options.values.isEmpty()) return
 
     Row(
         modifier = modifier
@@ -87,25 +81,6 @@ internal fun SuggestedReplyChips(
                     .pointerHoverIcon(PointerIcon.Hand)
                     .testTag(UiTestTag.SuggestedReply(index).value),
             )
-        }
-        IconButton(
-            onClick = { onRegenerate(options.sourceMessageId) },
-            enabled = !isRegenerating,
-            modifier = Modifier
-                .pointerHoverIcon(PointerIcon.Hand)
-                .testTag(UiTestTag.SuggestedRepliesRefresh.value),
-        ) {
-            if (isRegenerating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = localization.text("chat.suggestions.regenerate"),
-                )
-            }
         }
     }
 }

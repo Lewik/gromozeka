@@ -10,7 +10,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -50,9 +51,8 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
-import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.presentation.AppComponents
-import com.gromozeka.presentation.services.HoldToTalkShortcutController
+import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.ConversationParticipantsPanel
@@ -65,6 +65,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
+import androidx.compose.foundation.layout.size
 
 @Composable
 fun GromozekaApp(
@@ -75,7 +76,10 @@ fun GromozekaApp(
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
     val currentTheme by appComponents.themeService.currentTheme.collectAsState()
-    GromozekaTheme(currentTheme = currentTheme) {
+    GromozekaTheme(
+        currentTheme = currentTheme,
+        density = if (clientPlatform.showSoftwareKeyboardControls) UiDensity.TOUCH else UiDensity.COMPACT,
+    ) {
         val currentTranslation by appComponents.translationService.currentTranslation.collectAsState()
         TranslationProvider(currentTranslation) {
             GromozekaAppContent(
@@ -124,13 +128,16 @@ fun GromozekaAppContent(
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
     val pttState by appComponents.pttService.state.collectAsState()
+    val pttTarget by appComponents.pttService.target.collectAsState()
+    val liveVoiceTarget by appComponents.liveVoiceInputService.target.collectAsState()
+    val voiceTranscriptions by appComponents.voiceInputDelivery.transcriptions.collectAsState()
     val pttStatusMessage by appComponents.pttService.statusMessage.collectAsState()
     val pttUnavailableReason by appComponents.pttService.unavailableReason.collectAsState()
     val liveVoiceInputState by appComponents.liveVoiceInputService.state.collectAsState()
     val liveVoiceInputStatusMessage by appComponents.liveVoiceInputService.statusMessage.collectAsState()
     val liveVoiceInputUnavailableReason by appComponents.liveVoiceInputService.unavailableReason.collectAsState()
     val keyboardPttController = remember {
-        HoldToTalkShortcutController(appComponents.pttEventRouter, coroutineScope)
+        UnifiedGestureDetector(appComponents.pttEventRouter, coroutineScope)
     }
     val isWindowFocused = LocalWindowInfo.current.isWindowFocused
     val reportsComposeWindowFocus =
@@ -249,7 +256,7 @@ fun GromozekaAppContent(
                     settings = currentSettings.userProfile.keyboardShortcuts,
                     globalShortcutsAreLocal = clientPlatform.isBrowser,
                     enabled = !recordingShortcut,
-                    holdToTalkController = keyboardPttController,
+                    pttGestureDetector = keyboardPttController,
                     onActivate = { action ->
                         when (action) {
                             KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> coroutineScope.launch {
@@ -277,7 +284,7 @@ fun GromozekaAppContent(
             when {
                 !initialized -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        GromozekaLoadingIndicator(Modifier.size(80.dp))
                     }
                 }
 
@@ -295,7 +302,7 @@ fun GromozekaAppContent(
                             with(scaledDensity) { maxWidth.toPx() }.toDp()
                         }
                         val isCompactLayout = forceCompactLayout || unscaledMaxWidth < 700.dp
-                        val contentPadding = if (isCompactLayout) 8.dp else 16.dp
+                        val contentPadding = if (isCompactLayout) GromozekaTheme.spacing.panelPadding else GromozekaTheme.spacing.contentPadding
                         val setSettingsPanel: (Boolean) -> Unit = { visible ->
                             showSettingsPanel = visible
                             if (visible && isCompactLayout) {
@@ -387,7 +394,6 @@ fun GromozekaAppContent(
                                         onRenameConversation = { conversationId, newName ->
                                             appComponents.appViewModel.renameConversation(conversationId, newName)
                                         },
-                                        coroutineScope = coroutineScope
                                     )
                                 }
 
@@ -397,7 +403,7 @@ fun GromozekaAppContent(
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(modifier = Modifier.weight(1f)) {
-                                        Column(modifier = Modifier.weight(1f).padding(contentPadding)) {
+                                        Column(modifier = Modifier.weight(1f).padding(if ((currentTabIndex ?: -1) < 0) contentPadding else 0.dp)) {
                                             Box(modifier = Modifier.weight(1f)) {
                                                 if (currentTabIndex == -3) {
                                                     LiveInterpreterScreen(
@@ -413,6 +419,7 @@ fun GromozekaAppContent(
                                                     val tabViewModel = currentTab!!
                                                     SessionScreen(
                                                         viewModel = tabViewModel,
+                                                        contentPadding = contentPadding,
                                                         onNewSession = createNewSessionInCurrentProject,
                                                         onForkSession = {
                                                             coroutineScope.launch {
@@ -457,6 +464,10 @@ fun GromozekaAppContent(
                                                         liveVoiceInputState = liveVoiceInputState,
                                                         liveVoiceInputStatusMessage = liveVoiceInputStatusMessage?.resolve(localization),
                                                         liveVoiceInputUnavailableReason = liveVoiceInputUnavailableReason?.resolve(localization),
+                                                        pttTarget = pttTarget,
+                                                        liveVoiceTarget = liveVoiceTarget,
+                                                        voiceTranscriptions = voiceTranscriptions,
+                                                        remoteConnectionState = remoteConnectionState,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,
@@ -657,10 +668,8 @@ fun GromozekaAppContent(
                                             key(tabViewModel.conversationId) {
                                                 val tokenStats by tabViewModel.tokenStats.collectAsState()
                                                 val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
-                                                val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
                                                 val pendingMessages by tabViewModel.pendingMessages.collectAsState()
                                                 val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
-                                                val activeGeneration by tabViewModel.activeGeneration.collectAsState()
 
                                                 Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
                                                     ConversationRuntimePanel(
@@ -668,21 +677,14 @@ fun GromozekaAppContent(
                                                         conversationId = tabViewModel.conversationId,
                                                         participants = conversations[tabViewModel.conversationId]?.participants,
                                                         tabSelection = runtimeAgentTabSelection,
+                                                        replyRoutingContent = { RuntimeReplyRouting(tabViewModel) },
                                                         agentService = appComponents.agentService,
                                                         aiConfigurationProvider = appComponents.aiConfigurationService,
                                                         aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
                                                         tokenStats = tokenStats,
                                                         isWaitingForResponse = isWaitingForResponse,
-                                                        executionPauseRequested = executionPauseRequested,
-                                                        pttState = pttState,
-                                                        pttStatusMessage = pttStatusMessage?.resolve(localization),
                                                         pendingMessages = pendingMessages,
                                                         runtimeSnapshot = runtimeSnapshot,
-                                                        activeGeneration = activeGeneration,
-                                                        remoteConnectionState = remoteConnectionState,
-                                                        onPause = tabViewModel::pauseExecution,
-                                                        onResume = tabViewModel::resumeExecution,
-                                                        onStop = tabViewModel::stopExecution,
                                                         onCancelCommandTask = tabViewModel::cancelCommandTask,
                                                         onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
                                                         onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
@@ -789,10 +791,8 @@ fun GromozekaAppContent(
                                 key(tabViewModel.conversationId) {
                                     val tokenStats by tabViewModel.tokenStats.collectAsState()
                                     val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
-                                    val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
                                     val pendingMessages by tabViewModel.pendingMessages.collectAsState()
                                     val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
-                                    val activeGeneration by tabViewModel.activeGeneration.collectAsState()
 
                                     Box(
                                         modifier = Modifier
@@ -805,21 +805,14 @@ fun GromozekaAppContent(
                                             conversationId = tabViewModel.conversationId,
                                             participants = conversations[tabViewModel.conversationId]?.participants,
                                             tabSelection = runtimeAgentTabSelection,
+                                            replyRoutingContent = { RuntimeReplyRouting(tabViewModel) },
                                             agentService = appComponents.agentService,
                                             aiConfigurationProvider = appComponents.aiConfigurationService,
                                             aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
                                             tokenStats = tokenStats,
                                             isWaitingForResponse = isWaitingForResponse,
-                                            executionPauseRequested = executionPauseRequested,
-                                            pttState = pttState,
-                                            pttStatusMessage = pttStatusMessage?.resolve(localization),
                                             pendingMessages = pendingMessages,
                                             runtimeSnapshot = runtimeSnapshot,
-                                            activeGeneration = activeGeneration,
-                                            remoteConnectionState = remoteConnectionState,
-                                            onPause = tabViewModel::pauseExecution,
-                                            onResume = tabViewModel::resumeExecution,
-                                            onStop = tabViewModel::stopExecution,
                                             onCancelCommandTask = tabViewModel::cancelCommandTask,
                                             onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
                                             onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
@@ -940,3 +933,18 @@ private fun DeviceLocationSnapshot.toInputText(localization: Translation): Strin
         provider?.let { append(", provider=$it") }
         append(", capturedAt=$capturedAt")
     })
+
+/** Draft routing is observed here, so typing does not recompose the application shell. */
+@Composable
+private fun RuntimeReplyRouting(viewModel: TabViewModel) {
+    val state by viewModel.uiState.collectAsState()
+    val candidates by viewModel.agentMentionCandidates.collectAsState()
+    val externalChannel by viewModel.externalChannel.collectAsState()
+    if (externalChannel != null) return
+    Text(
+        text = agentResponseHint(state.userInput, candidates, LocalTranslation.current),
+        modifier = Modifier.testTag(UiTestTag.AgentResponseHint.value),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}

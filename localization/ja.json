@@ -4,6 +4,14 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
+    "chat.voice.afterDictation.send": "送信",
+    "chat.voice.afterDictation.input": "入力欄へ",
+    "chat.voice.afterDictation.sendHint": "音声入力後にすぐ送信します。クリックすると入力欄に残す設定に切り替わります。",
+    "chat.voice.afterDictation.inputHint": "音声入力後にテキストを入力欄に残します。クリックするとすぐ送信する設定に切り替わります。",
+    "chat.input.moreActions": "その他の操作",
+    "chat.activity.uploading": "添付ファイルをアップロード中",
+    "chat.activity.suggestions": "返信候補を生成中",
+    "chat.navigation.conversations": "会話",
     "chat.input.sendWithShortcut": "Send message ({shortcut})",
     "settingsUi.shortcutComposerEnterReserved": "Enter and Shift+Enter are reserved for sending messages and inserting new lines",
     "settingsUi.shiftEnterSends": "Shift+Enter sends the message",
@@ -1623,7 +1631,7 @@
     "settingsUi.generateThemeFromWindow": "ウィンドウからテーマを生成",
     "settingsUi.globalBackend": "グローバルキー処理方式：{backend}",
     "settingsUi.globalShortcutsAreUnavailable": "グローバルショートカットを利用できません",
-    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "長押しで録音し、離すと文字起こしして送信します。短いタップは破棄します。",
+    "settingsUi.holdToRecordReleaseToTranscribeAndSend": "長押しで録音、離すと文字起こし。短く押すと読み上げを停止、2回押すとターンを中断します。",
     "settingsUi.hostedSearch": "{connection} のホスト型検索",
     "settingsUi.inlineWithTheAnswer": "回答と一緒に生成",
     "settingsUi.instructionAliases": "{group}：{instruction} の別名",
@@ -1790,6 +1798,14 @@
     "voice.workerAudioRequired": "ワーカーで録音するには、ワーカーのマイクを選択してください",
     "voice.workerInputUnavailable": "音声入力 {input} はワーカー {worker} で利用できません",
     "chat.history.loadOlder": "以前のメッセージを読み込む",
-    "chat.history.loadFull": "メッセージ全体を読み込む"
+    "chat.history.loadFull": "メッセージ全体を読み込む",
+    "chat.composer.placeholder": "入力または音声で入力…",
+    "chat.voice.mode.auto": "自動",
+    "chat.voice.mode.draft": "下書き",
+    "chat.voice.control.hint": "長押しで録音。クリックで読み上げを停止、ダブルクリックで現在の処理を中断します。",
+    "chat.voice.control.interruptHint": "クリックで読み上げを停止、ダブルクリックで現在の処理を中断します。",
+    "chat.activity.idle": "実行中のタスクはありません",
+    "chat.activity.details": "実行の詳細",
+    "chat.activity.more": "ほか{count}件"
   }
 }

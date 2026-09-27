@@ -2,6 +2,8 @@ package com.gromozeka.presentation.ui.icons
 
 import androidx.compose.material3.Icon as MaterialIcon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.layout.size
+import com.gromozeka.presentation.ui.GromozekaTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +38,8 @@ object Icons {
         val DesktopWindows = Res.drawable.msr_desktop_windows
         val DeveloperBoard = Res.drawable.msr_developer_board
         val Download = Res.drawable.msr_download
+        val DictationSend = Res.drawable.composer_dictation_send
+        val DictationInput = Res.drawable.composer_dictation_input
         val Edit = Res.drawable.msr_edit
         val Error = Res.drawable.msr_error
         val ErrorOutline = Res.drawable.msr_error
@@ -62,6 +66,10 @@ object Icons {
         val ListAlt = Res.drawable.msr_list_alt
         val LocationOn = Res.drawable.msr_location_on
         val MergeType = Res.drawable.msr_merge_type
+        val RuntimePanel = Res.drawable.composer_runtime_panel
+        val Pause = Res.drawable.composer_pause
+        val Play = Res.drawable.composer_play
+        val VoiceWave = Res.drawable.composer_voice_wave
         val Mic = Res.drawable.msr_mic
         val MicOff = Res.drawable.msr_mic_off
         val OpenInNew = Res.drawable.msr_open_in_new
@@ -119,7 +127,7 @@ fun Icon(
     MaterialIcon(
         painter = painterResource(imageVector),
         contentDescription = contentDescription,
-        modifier = modifier,
+        modifier = modifier.size(GromozekaTheme.controls.iconSize),
         tint = tint,
     )
 }
