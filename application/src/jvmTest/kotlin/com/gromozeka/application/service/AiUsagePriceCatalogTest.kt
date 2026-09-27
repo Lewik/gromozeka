@@ -29,6 +29,20 @@ class AiUsagePriceCatalogTest {
     }
 
     @Test
+    fun pricesOpus55IncludingPromptCacheAndLeavesClaudeCodeUnpriced() {
+        val usage = AiUsage(promptTokens = 1_000_000, completionTokens = 1_000_000,
+            cacheCreationTokens = 1_000_000, cacheReadTokens = 1_000_000)
+        val price = AiUsagePriceCatalog.price(AiConnection.Kind.ANTHROPIC_API, "claude-opus-5-5", usage, 1_000_000)
+        assertEquals(4_000_000_000L, price?.inputNanoUsdPerMillion)
+        assertEquals(5_000_000_000L, price?.cacheCreationNanoUsdPerMillion)
+        assertEquals(200_000_000L, price?.cacheReadNanoUsdPerMillion)
+        assertEquals(20_000_000_000L, price?.outputNanoUsdPerMillion)
+        assertEquals(29_200_000_000L, price?.estimatedCostNanoUsd)
+        assertEquals("2026-09-22", price?.catalogVersion)
+        assertNull(AiUsagePriceCatalog.price(AiConnection.Kind.CLAUDE_CODE, "claude-opus-5-5", usage, 1_000_000))
+    }
+
+    @Test
     fun appliesOpenAiLongContextTierToTheRecordedSnapshot() {
         val price = AiUsagePriceCatalog.price(
             connectionKind = AiConnection.Kind.OPENAI_API,

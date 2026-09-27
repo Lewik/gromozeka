@@ -339,6 +339,9 @@ internal class ClaudeCodeCliRuntime(
     private fun validateReasoning(reasoning: AiReasoningConfig?) {
         if (reasoning == null) return
 
+        require(modelName != "claude-opus-5-5" || reasoning.mode != AiReasoningMode.DISABLED) {
+            "Claude Opus 5.5 requires adaptive thinking; use effort instead of disabling thinking"
+        }
         require(reasoning.mode != AiReasoningMode.TOKEN_BUDGET && reasoning.budgetTokens == null) {
             "Claude Code does not support fixed thinking token budgets; use adaptive thinking and effort"
         }

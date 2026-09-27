@@ -1,5 +1,22 @@
 [
   {
+    "id": "claude-opus-5-5",
+    "provider": "ANTHROPIC",
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1000000,
+        "maxOutputTokens": 128000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
+    },
+    "reasoning": {
+      "modes": ["ADAPTIVE"],
+      "efforts": ["LOW", "MEDIUM", "HIGH", "XHIGH", "MAX"],
+      "displays": ["SUMMARIZED", "OMITTED"]
+    }
+  },
+  {
     "id": "claude-opus-5",
     "provider": "ANTHROPIC",
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],

@@ -206,7 +206,12 @@ private class AnthropicSdkRuntime(
             client.messages().create(params)
         }
 
-        return messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
+        val mapped = messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
+        val transformations = mapped.providerMetadata["inputTransformations"] as? JsonArray
+        if (!transformations.isNullOrEmpty()) {
+            log.info { "Anthropic transformed thinking blocks: model=$modelName transformations=$transformations" }
+        }
+        return mapped
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
@@ -255,7 +260,7 @@ internal class AnthropicSdkMessageMapper(
         }
 
         applyTools(builder, request.tools, request.options.toolChoice)
-        applyThinking(builder, request.options.reasoning)
+        applyThinking(builder, modelName, request.options.reasoning)
         applyOutputConfig(builder, request.options)
 
         return builder.build()
@@ -265,6 +270,16 @@ internal class AnthropicSdkMessageMapper(
         modelName: String,
         options: AiRuntimeOptions,
     ) {
+        if (modelName == CLAUDE_OPUS_5_5) {
+            require(options.reasoning?.mode !in setOf(AiReasoningMode.DISABLED, AiReasoningMode.TOKEN_BUDGET) &&
+                options.reasoning?.budgetTokens == null) {
+                "Claude Opus 5.5 requires adaptive thinking; use effort instead of disabling thinking or setting a token budget"
+            }
+            require(options.toolChoice == AiToolChoice.Auto || options.toolChoice == AiToolChoice.None) {
+                "Claude Opus 5.5 does not support forced tool choice; use auto or none"
+            }
+            return
+        }
         if (modelName != CLAUDE_OPUS_5) return
 
         val reasoning = options.reasoning ?: return
@@ -326,6 +341,7 @@ internal class AnthropicSdkMessageMapper(
                 "reportedModel" to message.model().asString(),
                 "messageId" to message.id(),
                 "contentBlockCount" to message.content().size,
+                "inputTransformations" to message._additionalProperties()["input_transformations"]?.toKotlinxJsonElement(),
             )
         )
     }
@@ -606,8 +622,21 @@ internal class AnthropicSdkMessageMapper(
 
     private fun applyThinking(
         builder: MessageCreateParams.Builder,
+        modelName: String,
         reasoning: AiReasoningConfig?,
     ) {
+        if (modelName == CLAUDE_OPUS_5_5) {
+            // History compaction/edits and dynamic prompts intentionally change the prefix.
+            // Let Anthropic discard only invalidated thinking rather than reject those turns.
+            builder.putAdditionalHeader("anthropic-beta", "thinking-binding-controls-2026-08-01")
+            builder.thinking(
+                ThinkingConfigAdaptive.builder()
+                    .display(adaptiveDisplay(reasoning?.display))
+                    .putAdditionalProperty("block_binding", JsonValue.from(mapOf("prefix_mismatch_behavior" to "drop_block")))
+                    .build()
+            )
+            return
+        }
         when (reasoning?.mode) {
             null -> Unit
             AiReasoningMode.ADAPTIVE -> builder.thinking(
@@ -789,6 +818,7 @@ internal class AnthropicSdkMessageMapper(
 
     companion object {
         private const val CLAUDE_OPUS_5 = "claude-opus-5"
+        private const val CLAUDE_OPUS_5_5 = "claude-opus-5-5"
         private const val DEFAULT_MAX_TOKENS = 8192
         private const val DEFAULT_THINKING_BUDGET_TOKENS = 16_000
         private val ANTHROPIC_TEXT_DOCUMENT_TYPES = setOf(

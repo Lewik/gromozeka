@@ -94,7 +94,7 @@ class AiUsageRecorder(
 }
 
 internal object AiUsagePriceCatalog {
-    private val effectiveAt = Instant.parse("2026-08-19T00:00:00Z")
+    private val effectiveAt = Instant.parse("2026-09-22T00:00:00Z")
 
     fun price(
         connectionKind: AiConnection.Kind,
@@ -110,7 +110,7 @@ internal object AiUsagePriceCatalog {
                 usage.totalOutputTokens.toLong() * rates.output
         ) / 1_000_000L
         return TokenUsageStatistics.PriceSnapshot(
-            catalogVersion = "2026-08-19",
+            catalogVersion = "2026-09-22",
             effectiveAt = effectiveAt,
             inputNanoUsdPerMillion = rates.input,
             cacheCreationNanoUsdPerMillion = rates.cacheCreation,
@@ -154,6 +154,7 @@ internal object AiUsagePriceCatalog {
 
     private fun anthropicRates(modelId: String): Rates? =
         when (modelId) {
+            "claude-opus-5-5" -> Rates(4_000_000_000, 5_000_000_000, 200_000_000, 20_000_000_000)
             "claude-opus-5" -> Rates(5_000_000_000, 6_250_000_000, 500_000_000, 25_000_000_000)
             "claude-sonnet-5" -> Rates(2_000_000_000, 2_500_000_000, 200_000_000, 10_000_000_000)
             "claude-fable-5", "claude-mythos-5" ->

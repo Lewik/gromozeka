@@ -382,6 +382,35 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun passesOpus55ModelAndAdaptiveEffortToClaudeCode() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))
+        runtime(executor, modelName = "claude-opus-5-5").call(request(
+            messages = listOf(userMessage("Reply with OK")), tools = emptyList(),
+            options = AiRuntimeOptions(assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                reasoning = AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE, effort = AiReasoningEffort.MEDIUM,
+                    display = AiReasoningDisplay.SUMMARIZED), toolContext = testToolContext())))
+        val command = executor.commands.single()
+        assertEquals(AiReasoningMode.ADAPTIVE, command.reasoningMode)
+        val args = ProcessClaudeCodeCliExecutor("claude").buildArgs(command, "/tmp/gromozeka-system.md")
+        assertTrue(args.windowed(2).contains(listOf("--model", "claude-opus-5-5")))
+        assertTrue(args.windowed(2).contains(listOf("--effort", "medium")))
+    }
+
+    @Test
+    fun opus55RejectsDisabledThinkingBeforeLaunchingClaudeCode() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("unused"))))
+        val error = assertFailsWith<IllegalArgumentException> {
+            runtime(executor, modelName = "claude-opus-5-5").call(request(
+                messages = listOf(userMessage("Reply with OK")), tools = emptyList(),
+                options = AiRuntimeOptions(reasoning = AiReasoningConfig(mode = AiReasoningMode.DISABLED))))
+        }
+        assertTrue(error.message.orEmpty().contains("requires adaptive thinking"))
+        assertTrue(executor.commands.isEmpty())
+    }
+
+    @Test
     fun passesConfiguredOpus5ReasoningToClaudeCode() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(
             response(
@@ -1145,12 +1174,13 @@ class ClaudeCodeCliRuntimeTest {
     private fun runtime(
         executor: ClaudeCodeCliExecutor,
         sessions: ClaudeCodeSessionStateRepository = InMemoryClaudeCodeSessionStateRepository(),
+        modelName: String = realClaudeModel(),
     ): ClaudeCodeCliRuntime =
         ClaudeCodeCliRuntime(
             executor = executor,
             connectionId = "claude-code",
             modelConfigurationId = "claude-code-haiku",
-            modelName = realClaudeModel(),
+            modelName = modelName,
             workspaceDirectory = null,
             sessionStateRepository = sessions,
             sessionLocks = java.util.concurrent.ConcurrentHashMap(),

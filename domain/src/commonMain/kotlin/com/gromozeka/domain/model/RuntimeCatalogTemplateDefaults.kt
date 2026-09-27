@@ -110,11 +110,18 @@ object RuntimeCatalogTemplateDefaults {
             displayName = "GPT-5.6 Luna via GitHub Copilot",
         ),
         AiModelConfiguration(
+            id = AiModelConfiguration.Id("anthropic-opus-5-5"),
+            connectionId = AiConnection.Id("anthropic-direct"),
+            providerModelId = "claude-opus-5-5",
+            displayName = "Claude Opus 5.5",
+            defaultParameters = opusDefaultParameters(AiReasoningEffort.MEDIUM),
+        ),
+        AiModelConfiguration(
             id = AiModelConfiguration.Id("anthropic-opus-5"),
             connectionId = AiConnection.Id("anthropic-direct"),
             providerModelId = "claude-opus-5",
             displayName = "Claude Opus 5",
-            defaultParameters = opus5DefaultParameters(),
+            defaultParameters = opusDefaultParameters(AiReasoningEffort.HIGH),
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("anthropic-sonnet-4.7"),
@@ -174,11 +181,11 @@ object RuntimeCatalogTemplateDefaults {
             selection = AiRuntimeSelection(AiModelConfiguration.Id(modelConfigurationId)),
         )
 
-    private fun opus5DefaultParameters(): AiModelConfiguration.DefaultParameters =
+    private fun opusDefaultParameters(effort: AiReasoningEffort): AiModelConfiguration.DefaultParameters =
         AiModelConfiguration.DefaultParameters(
             reasoning = AiReasoningConfig(
                 mode = AiReasoningMode.ADAPTIVE,
-                effort = AiReasoningEffort.HIGH,
+                effort = effort,
                 display = AiReasoningDisplay.SUMMARIZED,
             )
         )

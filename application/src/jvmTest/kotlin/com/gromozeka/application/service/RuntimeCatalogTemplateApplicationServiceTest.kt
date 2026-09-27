@@ -35,6 +35,23 @@ class RuntimeCatalogTemplateApplicationServiceTest {
     }
 
     @Test
+    fun exposesClaudeOpus55WithAlwaysOnThinkingAndMediumEffort() {
+        val catalog = RuntimeCatalogTemplateApplicationService().getTemplates().aiCatalog
+        val spec = catalog.modelSpecs.single { it.provider == AiProvider.ANTHROPIC && it.id == "claude-opus-5-5" }
+        assertEquals(1_000_000, spec.contextWindowTokens)
+        assertEquals(128_000, spec.maxOutputTokens)
+        assertEquals(800_000, spec.autoCompactionThresholdTokens)
+        assertEquals(setOf(AiReasoningMode.ADAPTIVE), spec.reasoning?.modes)
+        assertEquals(AiReasoningEffort.entries.toSet(), spec.reasoning?.efforts)
+        assertEquals(setOf(AiReasoningDisplay.SUMMARIZED, AiReasoningDisplay.OMITTED), spec.reasoning?.displays)
+        val configuration = catalog.modelConfigurations.single { it.providerModelId == spec.id }
+        assertEquals(AiModelConfiguration.Id("anthropic-opus-5-5"), configuration.id)
+        assertEquals(AiReasoningMode.ADAPTIVE, configuration.defaultParameters.reasoning?.mode)
+        assertEquals(AiReasoningEffort.MEDIUM, configuration.defaultParameters.reasoning?.effort)
+        assertEquals(AiReasoningDisplay.SUMMARIZED, configuration.defaultParameters.reasoning?.display)
+    }
+
+    @Test
     fun exposesClaudeOpus5ForConfiguredAnthropicConnections() {
         val catalog = RuntimeCatalogTemplateApplicationService().getTemplates().aiCatalog
         val spec = catalog.modelSpecs.single {

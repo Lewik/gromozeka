@@ -8,6 +8,8 @@ import kotlinx.serialization.json.JsonPrimitive
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiReasoningDisplay
+import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiReasoningMode
@@ -51,41 +53,43 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun `preserves signed empty and redacted thinking and content order through a tool turn`() {
-        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, "anthropic-test", "claude-opus-5")
-        val native = com.anthropic.core.jsonMapper().readValue("""{
-            "id":"msg-1","model":"claude-opus-5-snapshot","stop_reason":"tool_use",
-            "usage":{"input_tokens":10,"output_tokens":20},
-            "content":[
-                {"type":"thinking","thinking":"","signature":"signed-empty"},
-                {"type":"text","text":"I will check."},
-                {"type":"tool_use","id":"call-1","name":"check","input":{}},
-                {"type":"text","text":"And compare the results."},
-                {"type":"redacted_thinking","data":"opaque-redacted"}
-            ]
-        }""", com.anthropic.models.messages.Message::class.java)
-        val response = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA)
-        assertEquals(AiStepOutcome.TOOL_CALLS, response.outcome)
-        val thinking = response.messages.single().content.filterIsInstance<Conversation.Message.ContentItem.Thinking>()
-        assertTrue(thinking.all { it.isVisible })
-        assertEquals("signed-empty", thinking.first().signature)
-        assertEquals(Conversation.Message.ContentItem.Thinking.Kind.REDACTED, thinking.last().kind)
-        val assistant = requestWithoutJsonSchema().messages.single().copy(
-            role = Conversation.Message.Role.ASSISTANT,
-            content = response.messages.single().content,
-            providerMetadata = JsonObject(response.messages.single().metadata.mapValues { (_, value) ->
-                value as? JsonElement ?: JsonPrimitive(value.toString())
-            }),
-        )
-        val replay = mapper.toCreateParams("claude-opus-5", requestWithoutJsonSchema().copy(messages = listOf(assistant)))
-            .messages().single().content().asBlockParams()
-        val json = kotlinx.serialization.json.Json
-        assertEquals(
-            json.parseToJsonElement(com.anthropic.core.jsonMapper().writeValueAsString(native.content())),
-            json.parseToJsonElement(com.anthropic.core.jsonMapper().writeValueAsString(replay)),
-        )
-        val foreign = mapper.toCreateParams("claude-other", requestWithoutJsonSchema().copy(messages = listOf(assistant)))
-            .messages().single().content().asBlockParams()
-        assertFalse(foreign.any { it.isThinking() || it.isRedactedThinking() })
+        for (model in listOf("claude-opus-5", "claude-opus-5-5")) {
+            val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, "anthropic-test", model)
+            val native = com.anthropic.core.jsonMapper().readValue("""{
+                "id":"msg-1","model":"$model-snapshot","stop_reason":"tool_use",
+                "usage":{"input_tokens":10,"output_tokens":20},
+                "content":[
+                    {"type":"thinking","thinking":"","signature":"signed-empty"},
+                    {"type":"text","text":"I will check."},
+                    {"type":"tool_use","id":"call-1","name":"check","input":{}},
+                    {"type":"text","text":"And compare the results."},
+                    {"type":"redacted_thinking","data":"opaque-redacted"}
+                ]
+            }""", com.anthropic.models.messages.Message::class.java)
+            val response = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA)
+            assertEquals(AiStepOutcome.TOOL_CALLS, response.outcome)
+            val thinking = response.messages.single().content.filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+            assertTrue(thinking.all { it.isVisible })
+            assertEquals("signed-empty", thinking.first().signature)
+            assertEquals(Conversation.Message.ContentItem.Thinking.Kind.REDACTED, thinking.last().kind)
+            val assistant = requestWithoutJsonSchema().messages.single().copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = response.messages.single().content,
+                providerMetadata = JsonObject(response.messages.single().metadata.mapValues { (_, value) ->
+                    value as? JsonElement ?: JsonPrimitive(value.toString())
+                }),
+            )
+            val replay = mapper.toCreateParams(model, requestWithoutJsonSchema().copy(messages = listOf(assistant)))
+                .messages().single().content().asBlockParams()
+            val json = kotlinx.serialization.json.Json
+            assertEquals(
+                json.parseToJsonElement(com.anthropic.core.jsonMapper().writeValueAsString(native.content())),
+                json.parseToJsonElement(com.anthropic.core.jsonMapper().writeValueAsString(replay)),
+            )
+            val foreign = mapper.toCreateParams("claude-other", requestWithoutJsonSchema().copy(messages = listOf(assistant)))
+                .messages().single().content().asBlockParams()
+            assertFalse(foreign.any { it.isThinking() || it.isRedactedThinking() })
+        }
     }
 
     @Test
@@ -144,6 +148,74 @@ class AnthropicSdkMessageMapperTest {
 
         assertTrue(params.system().orElseThrow().isString())
         assertFalse(params.cacheControl().isPresent)
+    }
+
+    @Test
+    fun opus55UsesSummarizedAdaptiveThinkingAndSupportsMutableConversationPrefixes() {
+        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val params = mapper.toCreateParams("claude-opus-5-5", requestWithJsonSchema())
+        val thinking = params.thinking().orElseThrow().asAdaptive()
+        assertEquals("summarized", thinking.display().orElseThrow().asString())
+        val binding = com.anthropic.core.jsonMapper().writeValueAsString(thinking._additionalProperties()["block_binding"])
+        assertEquals("{\"prefix_mismatch_behavior\":\"drop_block\"}", binding)
+        assertTrue(params._headers().values("anthropic-beta").contains("thinking-binding-controls-2026-08-01"))
+        assertTrue(params.outputConfig().orElseThrow().format().isPresent)
+        assertTrue(params.toolChoice().isEmpty)
+    }
+
+    @Test
+    fun opus55SupportsAllEffortsAndExplicitOmittedDisplay() {
+        for (effort in AiReasoningEffort.entries) {
+            val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API).toCreateParams(
+                "claude-opus-5-5", requestWithoutJsonSchema(AiReasoningConfig(
+                    mode = AiReasoningMode.ADAPTIVE, effort = effort, display = AiReasoningDisplay.OMITTED)))
+            assertEquals(effort.name.lowercase(), params.outputConfig().orElseThrow().effort().orElseThrow().asString())
+            assertEquals("omitted", params.thinking().orElseThrow().asAdaptive().display().orElseThrow().asString())
+        }
+    }
+
+    @Test
+    fun opus55RejectsDisabledAndBudgetedThinkingBeforeCallingProvider() {
+        for (reasoning in listOf(
+            AiReasoningConfig(mode = AiReasoningMode.DISABLED),
+            AiReasoningConfig(mode = AiReasoningMode.TOKEN_BUDGET, budgetTokens = 1024),
+            AiReasoningConfig(budgetTokens = 1024),
+        )) {
+            val error = assertFailsWith<IllegalArgumentException> {
+                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+                    .toCreateParams("claude-opus-5-5", requestWithoutJsonSchema(reasoning))
+            }
+            assertTrue(error.message.orEmpty().contains("requires adaptive thinking"))
+        }
+    }
+
+    @Test
+    fun opus55AcceptsAutoOrNoneButRejectsForcedToolChoice() {
+        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        for (choice in listOf(AiToolChoice.Auto, AiToolChoice.None)) {
+            mapper.toCreateParams("claude-opus-5-5", requestWithoutJsonSchema().copy(options = AiRuntimeOptions(toolChoice = choice)))
+        }
+        for (choice in listOf(AiToolChoice.RequiredAny, AiToolChoice.RequiredTool("check"))) {
+            val error = assertFailsWith<IllegalArgumentException> {
+                mapper.toCreateParams("claude-opus-5-5", requestWithoutJsonSchema().copy(options = AiRuntimeOptions(toolChoice = choice)))
+            }
+            assertTrue(error.message.orEmpty().contains("does not support forced tool choice"))
+        }
+    }
+
+    @Test
+    fun recordsProviderThinkingTransformationsWithoutLosingTheReply() {
+        val native = com.anthropic.core.jsonMapper().readValue("""{
+            "id":"msg-1","model":"claude-opus-5-5","stop_reason":"end_turn",
+            "usage":{"input_tokens":10,"output_tokens":20},
+            "content":[{"type":"text","text":"OK"}],
+            "input_transformations":[{"type":"thinking_dropped","path":"messages.1.content.0","reason":"prefix_binding_mismatch"}]
+        }""", com.anthropic.models.messages.Message::class.java)
+        val result = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+            .toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.TEXT)
+        assertEquals(AiStepOutcome.COMPLETE, result.outcome)
+        assertTrue(result.providerMetadata["inputTransformations"].toString().contains("prefix_binding_mismatch"))
+        assertEquals("OK", result.messages.single().content.filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>().single().structured.fullText)
     }
 
     @Test
