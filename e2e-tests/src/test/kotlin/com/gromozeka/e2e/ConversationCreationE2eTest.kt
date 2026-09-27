@@ -111,10 +111,12 @@ class ConversationCreationE2eTest {
                     conversation to agents
                 }
                 waitForTag(UiTestTag.MessageInput)
+                onNodeWithTag(UiTestTag.RuntimeButton.value).performClick()
                 waitUntil(timeoutMillis = 30_000) {
                     onAllNodesWithText("Replies: Alpha").fetchSemanticsNodes().isNotEmpty()
                 }
                 onNodeWithTag(UiTestTag.AgentResponseHint.value).assertTextContains("Replies: Alpha")
+                onNodeWithTag(UiTestTag.RuntimeButton.value).performClick()
                 onNodeWithTag(UiTestTag.ParticipantsButton.value).performClick()
                 waitForTag(UiTestTag.AgentAutoRespond(agents.first().id.value))
                 saveScreenshot("automatic-responder-checkbox")
