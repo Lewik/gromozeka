@@ -8,6 +8,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
@@ -69,6 +70,9 @@ class CopyableMarkdownBlockTest {
             }
         }
 
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodesWithTag(UiTestTag.CopyableMarkdownBlock.value).fetchSemanticsNodes().size == 1
+        }
         onNodeWithTag(UiTestTag.CopyableMarkdownBlock.value).assertIsDisplayed()
         onNodeWithTag(UiTestTag.CopyableMarkdownButton.value).performClick()
         onNodeWithTag(UiTestTag.CopyableMarkdownButton.value).assertContentDescriptionEquals("Copied")
