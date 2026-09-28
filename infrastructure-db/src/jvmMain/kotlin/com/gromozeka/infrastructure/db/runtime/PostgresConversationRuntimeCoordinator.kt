@@ -20,6 +20,8 @@ import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingState
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeTurnId
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
@@ -202,7 +204,7 @@ class PostgresConversationRuntimeCoordinator(
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
-        readRecord(conversationId)?.scheduling?.confirmActiveTaskOwner(taskId, executor) ?: false
+        find(conversationId)?.let { it.activeTaskId == taskId && it.activeExecutor == executor } ?: false
 
     override suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
@@ -211,7 +213,11 @@ class PostgresConversationRuntimeCoordinator(
         message: String,
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.TOOLS),
+        ) { record ->
             val transition = record.scheduling.recordActiveTaskIncident(
                 taskId = taskId,
                 executor = executor,
@@ -235,7 +241,11 @@ class PostgresConversationRuntimeCoordinator(
         message: String,
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.TOOLS),
+        ) { record ->
             val transition = record.scheduling.recordActiveTaskIncident(
                 taskId = taskId,
                 executor = executor,
@@ -275,7 +285,7 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun listActiveTaskAssignments(): List<ConversationRuntimeActiveTaskAssignment> =
-        readAllRecords("active_assignments").mapNotNull { record ->
+        readActiveSchedulingRecords().mapNotNull { record ->
             val task = record.scheduling.activeTask ?: return@mapNotNull null
             val state = record.scheduling.executionState ?: return@mapNotNull null
             val executor = state.activeExecutor ?: return@mapNotNull null
@@ -291,7 +301,13 @@ class PostgresConversationRuntimeCoordinator(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
     ): ConversationRuntimeTaskIncident? =
-        readRecord(conversationId)?.scheduling?.findIncident(taskId)
+        readJson(conversationId, """
+            SELECT entry FROM conversation_runtime_records,
+                LATERAL jsonb_array_elements(COALESCE(scheduling -> 'incidents', '[]'::jsonb))
+                    WITH ORDINALITY AS items(entry, ordinal)
+            WHERE conversation_id = ? AND entry #>> '{task,id}' = ?
+            ORDER BY ordinal DESC LIMIT 1
+        """.trimIndent(), taskId.value)?.let { json.decodeFromString(it) }
 
     override suspend fun finishIfIdle(conversationId: Conversation.Id): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
@@ -306,7 +322,11 @@ class PostgresConversationRuntimeCoordinator(
         conversationId: Conversation.Id,
         execution: ConversationRuntimeToolExecution,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.TOOLS),
+        ) { record ->
             val state = record.scheduling.executionState ?: return@mutateRecord false
             if (state.activeTaskId != execution.runtimeTaskId || state.activeExecutor != execution.executor) {
                 return@mutateRecord false
@@ -340,7 +360,11 @@ class PostgresConversationRuntimeCoordinator(
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.TOOLS),
+        ) { record ->
             val state = record.scheduling.executionState ?: return@mutateRecord false
             if (state.activeTaskId != taskId || state.activeExecutor != executor) {
                 return@mutateRecord false
@@ -356,7 +380,11 @@ class PostgresConversationRuntimeCoordinator(
         conversationId: Conversation.Id,
         operation: ConversationRuntimeMemoryOperation,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = true) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = true,
+            components = setOf(RuntimeComponent.MEMORY),
+        ) { record ->
             val operations = record.memoryOperations.toMutableList()
             val existingIndex = operations.indexOfFirst { it.runId == operation.runId }
             if (existingIndex >= 0 && operations[existingIndex] == operation) {
@@ -373,7 +401,11 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult =
-        mutateRecord(task.conversationId, createIfMissing = true) { record ->
+        mutateRecord(
+            task.conversationId,
+            createIfMissing = true,
+            components = setOf(RuntimeComponent.COMMANDS, RuntimeComponent.MONITORS),
+        ) { record ->
             val tasks = record.commandTasks.toMutableList()
             val existingIndex = tasks.indexOfFirst { it.id == task.id }
             val existing = tasks.getOrNull(existingIndex)
@@ -398,6 +430,7 @@ class PostgresConversationRuntimeCoordinator(
                 .sortedBy { it.createdAt }
             val retainedTaskIds = retainedTasks.mapTo(mutableSetOf()) { it.id }
             val evictedTasks = tasks.filterNot { it.id in retainedTaskIds }
+            if (retainedTasks == record.commandTasks) return@mutateRecord CommandTaskUpsertResult(storedTask, evictedTasks)
             record.commandTasks = retainedTasks
             if (previousStatus != storedTask.status) {
                 record.appendTrace(
@@ -412,25 +445,29 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun findCommandTasks(): List<CommandTask> =
-        readAllRecords("tasks").flatMap { it.commandTasks }
+        readInventory<CommandTask>(RuntimeComponent.COMMANDS)
 
     override suspend fun findCommandTasks(workerId: ConversationRuntimeWorkerId): List<CommandTask> =
         readWorkerInventory(WorkerCommandInventoryKind.TASKS, workerId) { json.decodeFromString<CommandTask>(it) }
 
     override suspend fun findCommandTasks(conversationId: Conversation.Id): List<CommandTask> =
-        readRecord(conversationId)?.commandTasks.orEmpty()
+        readInventory<CommandTask>(RuntimeComponent.COMMANDS, conversationId)
 
     override suspend fun findCommandTask(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
-    ): CommandTask? = readRecord(conversationId)?.commandTasks?.firstOrNull { it.id == taskId }
+    ): CommandTask? = readInventory<CommandTask>(RuntimeComponent.COMMANDS, conversationId, taskId.value).firstOrNull()
 
     override suspend fun requestCommandTaskCancellation(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
         requestedAt: Instant,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.COMMANDS),
+        ) { record ->
             record.requestCommandTaskCancellation(conversationId, taskId, requestedAt)
         }
 
@@ -438,7 +475,11 @@ class PostgresConversationRuntimeCoordinator(
         conversationId: Conversation.Id,
         requestedAt: Instant,
     ): Int =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.COMMANDS),
+        ) { record ->
             record.commandTasks
                 .filter { it.status == CommandTask.Status.WORKING }
                 .count { task ->
@@ -450,7 +491,11 @@ class PostgresConversationRuntimeCoordinator(
         monitor: CommandMonitor,
         events: List<CommandMonitorEvent>,
     ): CommandMonitorSyncResult =
-        mutateRecord(monitor.conversationId, createIfMissing = true) { record ->
+        mutateRecord(
+            monitor.conversationId,
+            createIfMissing = true,
+            components = setOf(RuntimeComponent.MONITORS, RuntimeComponent.MONITOR_EVENTS),
+        ) { record ->
             require(events.all { it.conversationId == monitor.conversationId && it.monitorId == monitor.id }) {
                 "Command monitor events must belong to the synchronized monitor"
             }
@@ -496,8 +541,7 @@ class PostgresConversationRuntimeCoordinator(
                 .sortedBy { it.createdAt }
             val retainedIds = retainedMonitors.mapTo(mutableSetOf()) { it.id }
             val evictedMonitors = monitors.filterNot { it.id in retainedIds }
-            record.commandMonitors = retainedMonitors
-            record.commandMonitorEvents = storedEvents
+            val retainedEvents = storedEvents
                 .filter { it.monitorId in retainedIds }
                 .partition { it.deliveryRequested && it.deliveredAt == null }
                 .let { (pending, delivered) ->
@@ -506,6 +550,11 @@ class PostgresConversationRuntimeCoordinator(
                 }
                 .sortedBy { it.occurredAt }
 
+            if (retainedMonitors == record.commandMonitors && retainedEvents == record.commandMonitorEvents) {
+                return@mutateRecord CommandMonitorSyncResult(storedMonitor, evictedMonitors)
+            }
+            record.commandMonitors = retainedMonitors
+            record.commandMonitorEvents = retainedEvents
             if (previousStatus != storedMonitor.status) {
                 record.appendTrace(
                     conversationId = storedMonitor.conversationId,
@@ -519,34 +568,36 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun findCommandMonitors(): List<CommandMonitor> =
-        readAllRecords("monitors").flatMap { it.commandMonitors }
+        readInventory<CommandMonitor>(RuntimeComponent.MONITORS)
 
     override suspend fun findCommandMonitors(workerId: ConversationRuntimeWorkerId): List<CommandMonitor> =
         readWorkerInventory(WorkerCommandInventoryKind.MONITORS, workerId) { json.decodeFromString<CommandMonitor>(it) }
 
     override suspend fun findCommandMonitors(conversationId: Conversation.Id): List<CommandMonitor> =
-        readRecord(conversationId)?.commandMonitors.orEmpty()
+        readInventory<CommandMonitor>(RuntimeComponent.MONITORS, conversationId)
 
     override suspend fun findCommandMonitor(
         conversationId: Conversation.Id,
         monitorId: CommandMonitor.Id,
     ): CommandMonitor? =
-        readRecord(conversationId)?.commandMonitors?.firstOrNull { it.id == monitorId }
+        readInventory<CommandMonitor>(RuntimeComponent.MONITORS, conversationId, monitorId.value).firstOrNull()
 
     override suspend fun findCommandMonitorEvents(
         conversationId: Conversation.Id,
         monitorId: CommandMonitor.Id?,
     ): List<CommandMonitorEvent> =
-        readRecord(conversationId)?.commandMonitorEvents
-            .orEmpty()
-            .filter { monitorId == null || it.monitorId == monitorId }
+        readInventory<CommandMonitorEvent>(RuntimeComponent.MONITOR_EVENTS, conversationId, monitorId?.value, "monitorId")
 
     override suspend fun markCommandMonitorEventsDelivered(
         conversationId: Conversation.Id,
         eventIds: Set<CommandMonitorEvent.Id>,
         deliveredAt: Instant,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.MONITOR_EVENTS),
+        ) { record ->
             if (eventIds.isEmpty()) return@mutateRecord false
             var changed = false
             record.commandMonitorEvents = record.commandMonitorEvents.map { event ->
@@ -569,7 +620,11 @@ class PostgresConversationRuntimeCoordinator(
         monitorId: CommandMonitor.Id,
         deliveredAt: Instant,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.MONITORS),
+        ) { record ->
             val index = record.commandMonitors.indexOfFirst { it.id == monitorId }
             if (index < 0) return@mutateRecord false
             val monitor = record.commandMonitors[index]
@@ -594,7 +649,11 @@ class PostgresConversationRuntimeCoordinator(
         monitorId: CommandMonitor.Id,
         requestedAt: Instant,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.MONITORS),
+        ) { record ->
             record.requestCommandMonitorCancellation(conversationId, monitorId, requestedAt)
         }
 
@@ -650,7 +709,11 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun requestInterrupt(conversationId: Conversation.Id, expectedTurnId: com.gromozeka.domain.service.ConversationRuntimeTurnId?): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.COMMANDS),
+        ) { record ->
             val current = record.scheduling.activeTask ?: record.scheduling.continuationTask
             val transition = record.scheduling.requestTerminalState(
                 ConversationExecutionState.ControlState.INTERRUPTING,
@@ -674,7 +737,11 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun abort(conversationId: Conversation.Id) {
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(
+            conversationId,
+            createIfMissing = false,
+            components = setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.TOOLS),
+        ) { record ->
             record.scheduling = record.scheduling.abort(Clock.System.now()).state
             record.toolExecutions = emptyList()
             record.bumpRevision()
@@ -683,7 +750,7 @@ class PostgresConversationRuntimeCoordinator(
     }
 
     override suspend fun find(conversationId: Conversation.Id): ConversationExecutionState? =
-        readRecord(conversationId)?.scheduling?.executionState
+        readJson(conversationId, "SELECT scheduling -> 'executionState' FROM conversation_runtime_records WHERE conversation_id = ?")?.let { json.decodeFromString(it) }
 
     override suspend fun cancelByMessageId(
         conversationId: Conversation.Id,
@@ -720,22 +787,51 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     override suspend fun listPending(conversationId: Conversation.Id): List<ConversationRuntimeTask> =
-        readRecord(conversationId)?.scheduling?.listPending().orEmpty()
+        readJson(conversationId, """
+            SELECT CASE WHEN jsonb_typeof(scheduling -> 'continuationTask') = 'object'
+                THEN jsonb_build_array(scheduling -> 'continuationTask') ELSE '[]'::jsonb END
+                || COALESCE(scheduling -> 'pendingTasks', '[]'::jsonb)
+            FROM conversation_runtime_records WHERE conversation_id = ?
+        """.trimIndent())?.let { json.decodeFromString<List<ConversationRuntimeTask>>(it) }.orEmpty()
 
-    override suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot {
-        val record = readRecord(conversationId) ?: return ConversationRuntimeSnapshot(
-            revision = 0,
-            conversationId = conversationId,
-            state = null,
-            pendingTasks = emptyList(),
-        )
-        return record.snapshot()
+    override suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot =
+        readJson(conversationId, """
+            SELECT jsonb_build_object('conversationId', conversation_id, 'lastEventSequence', event_sequence)
+                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions')
+            FROM conversation_runtime_records WHERE conversation_id = ?
+        """.trimIndent())?.let { json.decodeFromString(it) } ?: ConversationRuntimeSchedulingSnapshot(conversationId)
+
+    override suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
+            connection.isReadOnly = true
+            connection.autoCommit = false
+            try {
+                val record = connection.loadRecord(conversationId, RuntimeComponent.entries.toSet() - RuntimeComponent.MONITOR_EVENTS, snapshot = true)
+                    ?: RuntimeRecord(conversationId)
+                connection.prepareStatement("SELECT entry_json FROM conversation_runtime_trace WHERE conversation_id = ? ORDER BY sequence DESC LIMIT ?").use { statement ->
+                    statement.setString(1, conversationId.value)
+                    statement.setInt(2, TRACE_SNAPSHOT_LIMIT)
+                    statement.executeQuery().use { rows ->
+                        record.trace = buildList {
+                            while (rows.next()) add(json.decodeFromString<ConversationRuntimeTraceEntry>(rows.getString(1)))
+                        }.asReversed()
+                    }
+                }
+                val result = record.snapshot()
+                connection.commit()
+                result
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            }
+        }
     }
 
     override suspend fun lastEventSequence(conversationId: Conversation.Id): Long = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
             connection.prepareStatement(
-                "SELECT COALESCE((record_json ->> 'eventSequence')::bigint, 0) FROM conversation_runtime_records WHERE conversation_id = ?"
+                "SELECT event_sequence FROM conversation_runtime_records WHERE conversation_id = ?"
             ).use { statement ->
                 statement.setString(1, conversationId.value)
                 statement.executeQuery().use { rows -> if (rows.next()) rows.getLong(1) else 0L }
@@ -744,7 +840,7 @@ class PostgresConversationRuntimeCoordinator(
     }
 
     override suspend fun recordEvent(event: ConversationRuntimeEvent): ConversationRuntimeEventLogEntry =
-        mutateRecord(event.conversationId, createIfMissing = true) { record ->
+        mutateRecord(event.conversationId, createIfMissing = true, components = setOf()) { record ->
             val sequence = record.eventSequence + 1
             record.eventSequence = sequence
             val entry = ConversationRuntimeEventLogEntry(
@@ -753,7 +849,7 @@ class PostgresConversationRuntimeCoordinator(
                 event = event,
                 createdAt = Clock.System.now(),
             )
-            record.eventLog = (record.eventLog + entry).takeLast(EVENT_LOG_RETENTION_LIMIT)
+            record.eventLog = record.eventLog + entry
             record.appendTrace(
                 conversationId = event.conversationId,
                 taskId = when (event) {
@@ -780,10 +876,9 @@ class PostgresConversationRuntimeCoordinator(
             dataSource.connection.use { connection ->
                 connection.prepareStatement(
                     """
-                    SELECT entry FROM conversation_runtime_records records,
-                        LATERAL jsonb_array_elements(COALESCE(records.record_json -> 'eventLog', '[]'::jsonb)) entry
-                    WHERE records.conversation_id = ? AND (entry ->> 'sequence')::bigint > ?
-                    ORDER BY (entry ->> 'sequence')::bigint $direction LIMIT ?
+                    SELECT entry_json FROM conversation_runtime_events
+                    WHERE conversation_id = ? AND sequence > ?
+                    ORDER BY sequence $direction LIMIT ?
                     """.trimIndent()
                 ).use { statement ->
                     statement.setString(1, conversationId.value)
@@ -799,13 +894,44 @@ class PostgresConversationRuntimeCoordinator(
         }
     }
 
+    override suspend fun findEmittedMessageIds(
+        conversationId: Conversation.Id,
+        turnId: ConversationRuntimeTurnId,
+        afterSequence: Long,
+    ): Set<Conversation.Message.Id> = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("""
+                SELECT message_id FROM conversation_runtime_events
+                WHERE conversation_id = ? AND turn_id = ? AND sequence > ? AND message_id IS NOT NULL
+                ORDER BY sequence
+            """.trimIndent()).use { statement ->
+                statement.setString(1, conversationId.value)
+                statement.setString(2, turnId.value)
+                statement.setLong(3, afterSequence)
+                statement.executeQuery().use { rows -> buildSet { while (rows.next()) add(Conversation.Message.Id(rows.getString(1))) } }
+            }
+        }
+    }
+
+    override suspend fun findHistoryChanged(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+    ): ConversationRuntimeEvent.HistoryChanged? = readJson(conversationId, """
+        SELECT entry_json FROM conversation_runtime_events
+        WHERE conversation_id = ? AND task_id = ?
+            AND event_type = 'com.gromozeka.domain.service.ConversationRuntimeEvent.HistoryChanged'
+        ORDER BY sequence DESC LIMIT 1
+    """.trimIndent(), taskId.value)?.let {
+        json.decodeFromString<ConversationRuntimeEventLogEntry>(it).event as ConversationRuntimeEvent.HistoryChanged
+    }
+
     override suspend fun listReadyWorkItems(limit: Int): List<ConversationRuntimeWorkItem> {
         require(limit > 0) { "Conversation runtime ready-work limit must be positive" }
         return withContext(Dispatchers.IO) {
             dataSource.connection.use { connection ->
                 connection.prepareStatement(
                     """
-                    SELECT ready_task_id, record_json
+                    SELECT ready_task_id, jsonb_build_object('conversationId', conversation_id, 'scheduling', scheduling - 'completedIdempotencyKeys' - 'incidents') AS record_json
                     FROM conversation_runtime_records
                     WHERE ready_task_id IS NOT NULL
                     ORDER BY ready_at, conversation_id
@@ -882,17 +1008,53 @@ class PostgresConversationRuntimeCoordinator(
             dataSource.connection
         }
 
-    private suspend fun readRecord(conversationId: Conversation.Id): RuntimeRecord? =
+    private suspend fun readJson(conversationId: Conversation.Id, sql: String, key: String? = null): String? =
         withContext(Dispatchers.IO) {
             dataSource.connection.use { connection ->
-                connection.prepareStatement("SELECT record_json FROM conversation_runtime_records WHERE conversation_id = ?").use { statement ->
+                connection.prepareStatement(sql).use { statement ->
                     statement.setString(1, conversationId.value)
-                    statement.executeQuery().use { result ->
-                        if (result.next()) result.runtimeRecord() else null
+                    if (key != null) statement.setString(2, key)
+                    statement.executeQuery().use { rows ->
+                        if (rows.next()) rows.getString(1)?.takeUnless { it == "null" } else null
                     }
                 }
             }
         }
+
+    private suspend inline fun <reified T> readInventory(
+        component: RuntimeComponent,
+        conversationId: Conversation.Id? = null,
+        itemId: String? = null,
+        idField: String = "id",
+    ): List<T> {
+        require(idField == "id" || idField == "monitorId")
+        return withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                val filters = buildList {
+                    if (conversationId != null) add("conversation_id = ?")
+                    if (itemId != null) add("entry ->> '$idField' = ?")
+                }
+                val where = if (filters.isEmpty()) "" else "WHERE " + filters.joinToString(" AND ")
+                connection.prepareStatement("SELECT entry FROM conversation_runtime_records, LATERAL jsonb_array_elements(${component.column}) WITH ORDINALITY AS items(entry, ordinal) $where ORDER BY conversation_id, ordinal").use { statement ->
+                    var index = 1
+                    if (conversationId != null) statement.setString(index++, conversationId.value)
+                    if (itemId != null) statement.setString(index, itemId)
+                    statement.executeQuery().use { rows ->
+                        buildList { while (rows.next()) add(json.decodeFromString<T>(rows.getString(1))) }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun readActiveSchedulingRecords(): List<RuntimeRecord> = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            val filter = "WHERE jsonb_typeof(scheduling -> 'activeTask') = 'object'"
+            connection.prepareStatement("SELECT jsonb_build_object('conversationId', conversation_id, 'scheduling', scheduling - 'completedIdempotencyKeys' - 'incidents') AS record_json FROM conversation_runtime_records $filter ORDER BY conversation_id").use { statement ->
+                statement.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.runtimeRecord()) } }
+            }
+        }
+    }
 
     private suspend fun <T> readWorkerInventory(
         kind: WorkerCommandInventoryKind,
@@ -914,23 +1076,6 @@ class PostgresConversationRuntimeCoordinator(
             }
         }
     }
-
-    private suspend fun readAllRecords(operation: String): List<RuntimeRecord> =
-        loggedInventoryRead("global", operation, null, "records") {
-            withContext(Dispatchers.IO) {
-                dataSource.connection.use { connection ->
-                    connection.prepareStatement(
-                        "SELECT record_json FROM conversation_runtime_records ORDER BY conversation_id"
-                    ).use { statement ->
-                        statement.executeQuery().use { result ->
-                            buildList {
-                                while (result.next()) add(result.runtimeRecord())
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
     private suspend fun <T> loggedInventoryRead(
         scope: String,
@@ -989,31 +1134,41 @@ class PostgresConversationRuntimeCoordinator(
     private suspend fun <T> mutateRecord(
         conversationId: Conversation.Id,
         createIfMissing: Boolean,
+        components: Set<RuntimeComponent> = setOf(RuntimeComponent.SCHEDULING),
         block: (RuntimeRecord) -> T,
-    ): T =
-        withContext(Dispatchers.IO) {
-            dataSource.connection.use { connection ->
-                connection.autoCommit = false
-                try {
-                    val record = connection.lockRecord(conversationId)
-                        ?: if (createIfMissing) connection.insertAndLockRecord(conversationId) else RuntimeRecord(conversationId)
-                    val schedulingStateBefore = record.schedulingState()
-                    val result = block(record)
-                    if (createIfMissing || connection.recordExists(conversationId)) {
-                        connection.upsertRecord(record)
+    ): T = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                var stored = connection.loadRecord(conversationId, components, lock = true)
+                if (stored == null && createIfMissing) {
+                    connection.prepareStatement("INSERT INTO conversation_runtime_records(conversation_id, scheduling) VALUES (?, ?) ON CONFLICT DO NOTHING").use { statement ->
+                        statement.setString(1, conversationId.value)
+                        statement.setObject(2, jsonb(json.encodeToString(ConversationRuntimeSchedulingState(conversationId))))
+                        statement.executeUpdate()
                     }
-                    val schedulingStateChanged = schedulingStateBefore != record.schedulingState()
-                    if (schedulingStateChanged) {
+                    stored = checkNotNull(connection.loadRecord(conversationId, components, lock = true))
+                }
+                val record = stored ?: RuntimeRecord(conversationId)
+                val before = record.copy()
+                val result = block(record)
+                if (stored != null && record != before) {
+                    val changedComponents = RuntimeComponent.entries.filter { record.componentValue(it) != before.componentValue(it) }
+                    check(components.containsAll(changedComponents)) { "Runtime mutation changed an unloaded component" }
+                    connection.updateRecord(record, changedComponents)
+                    connection.appendJournal(record)
+                    if (RuntimeComponent.SCHEDULING in changedComponents && before.schedulingState() != record.schedulingState()) {
                         connection.notifySchedulingChanged(conversationId)
                     }
-                    connection.commit()
-                    result
-                } catch (error: Throwable) {
-                    connection.rollback()
-                    throw error
                 }
+                connection.commit()
+                result
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
             }
         }
+    }
 
     private fun Connection.notifySchedulingChanged(conversationId: Conversation.Id) {
         prepareStatement("SELECT pg_notify(?, ?)").use { statement ->
@@ -1023,73 +1178,138 @@ class PostgresConversationRuntimeCoordinator(
         }
     }
 
-    private fun Connection.lockRecord(conversationId: Conversation.Id): RuntimeRecord? =
-        prepareStatement("SELECT record_json FROM conversation_runtime_records WHERE conversation_id = ? FOR UPDATE").use { statement ->
-            statement.setString(1, conversationId.value)
-            statement.executeQuery().use { result ->
-                if (result.next()) result.runtimeRecord() else null
+    private fun Connection.loadRecord(
+        conversationId: Conversation.Id,
+        components: Set<RuntimeComponent>,
+        lock: Boolean = false,
+        snapshot: Boolean = false,
+    ): RuntimeRecord? {
+        val fields = buildList {
+            add("'conversationId', conversation_id, 'revision', revision, 'eventSequence', event_sequence, 'traceSequence', trace_sequence")
+            components.forEach { component ->
+                val expression = if (snapshot && component == RuntimeComponent.SCHEDULING) "scheduling - 'completedIdempotencyKeys'" else component.column
+                add("'${component.field}', $expression")
             }
-        }
-
-    private fun Connection.insertAndLockRecord(conversationId: Conversation.Id): RuntimeRecord {
-        val record = RuntimeRecord(conversationId)
-        prepareStatement(
-            """
-            INSERT INTO conversation_runtime_records(conversation_id, record_json, updated_at)
-            VALUES (?, CAST(? AS jsonb), ?)
-            ON CONFLICT (conversation_id) DO NOTHING
-            """.trimIndent()
-        ).use { statement ->
+        }.joinToString(", ")
+        val suffix = if (lock) " FOR UPDATE" else ""
+        return prepareStatement("SELECT jsonb_build_object($fields) AS record_json FROM conversation_runtime_records WHERE conversation_id = ?$suffix").use { statement ->
             statement.setString(1, conversationId.value)
-            statement.setString(2, json.encodeToString(record))
-            statement.setTimestamp(3, Clock.System.now().toTimestamp())
-            statement.executeUpdate()
+            statement.executeQuery().use { result -> if (result.next()) result.runtimeRecord() else null }
         }
-        return lockRecord(conversationId) ?: record
     }
 
-    private fun Connection.recordExists(conversationId: Conversation.Id): Boolean =
-        prepareStatement("SELECT 1 FROM conversation_runtime_records WHERE conversation_id = ?").use { statement ->
-            statement.setString(1, conversationId.value)
-            statement.executeQuery().use { it.next() }
+    private fun Connection.updateRecord(record: RuntimeRecord, components: List<RuntimeComponent>) {
+        val assignments = buildList {
+            add("revision = ?, event_sequence = ?, trace_sequence = ?, updated_at = ?")
+            components.forEach { add("${it.column} = ?") }
+            if (RuntimeComponent.SCHEDULING in components) add("ready_task_id = ?, ready_at = ?")
+        }.joinToString(", ")
+        prepareStatement("UPDATE conversation_runtime_records SET $assignments WHERE conversation_id = ?").use { statement ->
+            statement.setLong(1, record.revision)
+            statement.setLong(2, record.eventSequence)
+            statement.setLong(3, record.traceSequence)
+            statement.setTimestamp(4, Clock.System.now().toTimestamp())
+            var index = 5
+            components.forEach { statement.setObject(index++, jsonb(record.encodeComponent(it))) }
+            if (RuntimeComponent.SCHEDULING in components) {
+                val ready = record.readyWorkItem()
+                statement.setString(index++, ready?.taskId?.value)
+                statement.setTimestamp(index++, ready?.createdAt?.toTimestamp())
+            }
+            statement.setString(index, record.conversationId.value)
+            check(statement.executeUpdate() == 1) { "Locked runtime record disappeared" }
         }
+    }
 
-    private fun Connection.upsertRecord(record: RuntimeRecord) {
-        val readyWorkItem = record.readyWorkItem()
-        prepareStatement(
-            """
-            INSERT INTO conversation_runtime_records(
-                conversation_id,
-                record_json,
-                updated_at,
-                ready_task_id,
-                ready_at
+    private fun Connection.appendJournal(record: RuntimeRecord) {
+        if (record.trace.isNotEmpty()) {
+            prepareStatement("INSERT INTO conversation_runtime_trace(conversation_id, sequence, created_at, entry_json) VALUES (?, ?, ?, ?)").use { statement ->
+                record.trace.forEach { entry ->
+                    statement.setString(1, record.conversationId.value)
+                    statement.setLong(2, entry.sequence)
+                    statement.setTimestamp(3, entry.createdAt.toTimestamp())
+                    statement.setObject(4, jsonb(json.encodeToString(entry)))
+                    statement.addBatch()
+                }
+                statement.executeBatch()
+            }
+            pruneJournal("conversation_runtime_trace", record.conversationId, TRACE_RETENTION_LIMIT)
+        }
+        if (record.eventLog.isNotEmpty()) {
+            prepareStatement("INSERT INTO conversation_runtime_events(conversation_id, sequence, created_at, event_type, task_id, turn_id, message_id, entry_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").use { statement ->
+                record.eventLog.forEach { entry ->
+                    val event = entry.event
+                    val encodedEntry = json.encodeToJsonElement(ConversationRuntimeEventLogEntry.serializer(), entry)
+                    val encodedEvent = (encodedEntry as kotlinx.serialization.json.JsonObject).getValue("event")
+                    val eventType = (encodedEvent as kotlinx.serialization.json.JsonObject).getValue("type")
+                        .let { (it as kotlinx.serialization.json.JsonPrimitive).content }
+                    statement.setString(1, record.conversationId.value)
+                    statement.setLong(2, entry.sequence)
+                    statement.setTimestamp(3, entry.createdAt.toTimestamp())
+                    statement.setString(4, eventType)
+                    statement.setString(5, when (event) {
+                        is ConversationRuntimeEvent.MessageEmitted -> event.taskId?.value
+                        is ConversationRuntimeEvent.HistoryChanged -> event.taskId.value
+                        else -> null
+                    })
+                    statement.setString(6, (event as? ConversationRuntimeEvent.MessageEmitted)?.turnId?.value)
+                    statement.setString(7, (event as? ConversationRuntimeEvent.MessageEmitted)?.message?.id?.value)
+                    statement.setObject(8, jsonb(encodedEntry.toString()))
+                    statement.addBatch()
+                }
+                statement.executeBatch()
+            }
+            pruneJournal("conversation_runtime_events", record.conversationId, EVENT_LOG_RETENTION_LIMIT)
+        }
+    }
+
+    private fun Connection.pruneJournal(table: String, conversationId: Conversation.Id, limit: Int) {
+        prepareStatement("""
+            DELETE FROM $table WHERE conversation_id = ? AND sequence < (
+                SELECT sequence FROM $table WHERE conversation_id = ?
+                ORDER BY sequence DESC OFFSET ? LIMIT 1
             )
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (conversation_id) DO UPDATE
-            SET record_json = EXCLUDED.record_json,
-                updated_at = EXCLUDED.updated_at,
-                ready_task_id = EXCLUDED.ready_task_id,
-                ready_at = EXCLUDED.ready_at
-            """.trimIndent()
-        ).use { statement ->
-            statement.setString(1, record.conversationId.value)
-            statement.setObject(2, jsonb(record))
-            statement.setTimestamp(3, Clock.System.now().toTimestamp())
-            statement.setString(4, readyWorkItem?.taskId?.value)
-            statement.setTimestamp(5, readyWorkItem?.createdAt?.toTimestamp())
+        """.trimIndent()).use { statement ->
+            statement.setString(1, conversationId.value)
+            statement.setString(2, conversationId.value)
+            statement.setInt(3, limit - 1)
             statement.executeUpdate()
         }
     }
 
-    private fun ResultSet.runtimeRecord(): RuntimeRecord =
-        json.decodeFromString(getString("record_json"))
+    private fun RuntimeRecord.componentValue(component: RuntimeComponent): Any = when (component) {
+        RuntimeComponent.SCHEDULING -> scheduling
+        RuntimeComponent.TOOLS -> toolExecutions
+        RuntimeComponent.MEMORY -> memoryOperations
+        RuntimeComponent.COMMANDS -> commandTasks
+        RuntimeComponent.MONITORS -> commandMonitors
+        RuntimeComponent.MONITOR_EVENTS -> commandMonitorEvents
+    }
 
-    private fun jsonb(record: RuntimeRecord): PGobject =
-        PGobject().apply {
-            type = "jsonb"
-            value = json.encodeToString(record)
-        }
+    private fun RuntimeRecord.encodeComponent(component: RuntimeComponent): String = when (component) {
+        RuntimeComponent.SCHEDULING -> json.encodeToString(scheduling)
+        RuntimeComponent.TOOLS -> json.encodeToString(toolExecutions)
+        RuntimeComponent.MEMORY -> json.encodeToString(memoryOperations)
+        RuntimeComponent.COMMANDS -> json.encodeToString(commandTasks)
+        RuntimeComponent.MONITORS -> json.encodeToString(commandMonitors)
+        RuntimeComponent.MONITOR_EVENTS -> json.encodeToString(commandMonitorEvents)
+    }
+
+    private enum class RuntimeComponent(val field: String, val column: String) {
+        SCHEDULING("scheduling", "scheduling"),
+        TOOLS("toolExecutions", "tool_executions"),
+        MEMORY("memoryOperations", "memory_operations"),
+        COMMANDS("commandTasks", "command_tasks"),
+        MONITORS("commandMonitors", "command_monitors"),
+        MONITOR_EVENTS("commandMonitorEvents", "command_monitor_events"),
+    }
+
+    private fun ResultSet.runtimeRecord(): RuntimeRecord = json.decodeFromString(getString("record_json"))
+
+    private fun jsonb(encoded: String): PGobject = PGobject().apply {
+        type = "jsonb"
+        value = encoded
+    }
 
     @Serializable
     private data class RuntimeRecord(
@@ -1231,7 +1451,7 @@ class PostgresConversationRuntimeCoordinator(
                 message = message,
                 createdAt = Clock.System.now(),
             )
-            trace = (trace + entry).takeLast(TRACE_RETENTION_LIMIT)
+            trace = trace + entry
             return entry
         }
 
@@ -1346,8 +1566,8 @@ class PostgresConversationRuntimeCoordinator(
 
 /** Only these trusted, fixed JSON paths may be interpolated into inventory SQL. */
 internal enum class WorkerCommandInventoryKind(val fieldName: String, val operation: String) {
-    TASKS("commandTasks", "tasks"),
-    MONITORS("commandMonitors", "monitors"),
+    TASKS("command_tasks", "tasks"),
+    MONITORS("command_monitors", "monitors"),
 }
 
 /** Shared with EXPLAIN tests so they inspect the actual production query. */
@@ -1355,9 +1575,9 @@ internal fun workerCommandInventorySql(kind: WorkerCommandInventoryKind): String
     SELECT entry.payload::text AS item_json
     FROM conversation_runtime_records AS records
     CROSS JOIN LATERAL jsonb_array_elements(
-        COALESCE(records.record_json -> '${kind.fieldName}', '[]'::jsonb)
+        records.${kind.fieldName}
     ) WITH ORDINALITY AS entry(payload, ordinal)
-    WHERE jsonb_path_query_array(records.record_json, '$.${kind.fieldName}[*].workerId') @> CAST(? AS jsonb)
+    WHERE jsonb_path_query_array(records.${kind.fieldName}, '$[*].workerId') @> CAST(? AS jsonb)
       AND entry.payload -> 'workerId' = CAST(? AS jsonb)
     ORDER BY records.conversation_id, entry.ordinal
 """.trimIndent()

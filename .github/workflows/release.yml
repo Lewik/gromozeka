@@ -101,6 +101,7 @@ jobs:
           ./gradlew :infrastructure-db:jvmTest
           --tests '*PostgresConversationSearchRepositoryTest'
           --tests '*PostgresConversationRuntimeCoordinatorTest'
+          --tests '*CompactionCoverageMigrationTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
       - name: Verify Server and Worker

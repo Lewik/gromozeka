@@ -1,5 +1,17 @@
 package com.gromozeka.infrastructure.db.runtime
 
+import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
+import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingState
+import com.gromozeka.domain.service.ConversationHistoryMutationKind
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.JsonArray
+import kotlin.test.assertFailsWith
 import com.gromozeka.domain.model.BinaryContent
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonPrimitive
@@ -59,7 +71,7 @@ class PostgresConversationRuntimeCoordinatorTest {
             }
             source.connection.use { connection ->
                 connection.createStatement().use { statement ->
-                    statement.execute("UPDATE conversation_runtime_records SET record_json = jsonb_set(record_json, '{commandTasks}', '[{\"intentionallyInvalid\":true}]'::jsonb)")
+                    statement.execute("UPDATE conversation_runtime_records SET command_tasks = '[{\"intentionallyInvalid\":true}]'::jsonb")
                 }
             }
             assertEquals(5L, coordinator.lastEventSequence(conversationId))
@@ -78,7 +90,7 @@ class PostgresConversationRuntimeCoordinatorTest {
         val admin = dataSource()
         admin.connection.use { it.createStatement().use { s -> s.execute("CREATE SCHEMA $schema") } }
         try {
-            val source = dataSource(schema).also(::createRuntimeSchema)
+            val source = dataSource(schema).also(::createLegacyRuntimeSchema)
             val text = "שלום \\u0000 literal\nold output"
             val encoded = Json.encodeToString(kotlinx.serialization.json.JsonPrimitive.serializer(), kotlinx.serialization.json.JsonPrimitive(text))
             val old = """{"conversationId":"migration","commandTasks":[{"id":"task","status":"COMPLETED","terminalOutput":$encoded}],"commandMonitors":[{"id":"monitor","terminalOutput":$encoded,"terminalErrorOutput":""}],"commandMonitorEvents":[{"id":"event","output":$encoded}]}"""
@@ -104,6 +116,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                     }
                 }
             }
+            source.connection.use { c -> c.createStatement().use { executeSqlResource(it, "db/migration/postgres/V64__split_conversation_runtime_storage.sql") } }
             val coordinator = PostgresConversationRuntimeCoordinator(source, Json { encodeDefaults = true })
             val bytes = ByteArray(1024) { it.toByte() }
             val task = CommandTask(CommandTask.Id("raw"), Conversation.Id("raw-conversation"),
@@ -363,7 +376,7 @@ class PostgresConversationRuntimeCoordinatorTest {
         }
 
         try {
-            val runtimeDataSource = dataSource(schema).also(::createRuntimeSchema)
+            val runtimeDataSource = dataSource(schema).also(::createLegacyRuntimeSchema)
             runtimeDataSource.connection.use { connection ->
                 connection.prepareStatement(
                     """
@@ -402,6 +415,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 }
             }
 
+            runtimeDataSource.connection.use { c -> c.createStatement().use { executeSqlResource(it, "db/migration/postgres/V64__split_conversation_runtime_storage.sql") } }
             val coordinator = PostgresConversationRuntimeCoordinator(
                 runtimeDataSource,
                 Json {
@@ -653,8 +667,8 @@ class PostgresConversationRuntimeCoordinatorTest {
             source.connection.use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeUpdate(
-                        "INSERT INTO conversation_runtime_records(conversation_id, record_json, updated_at) " +
-                            "VALUES ('empty-conversation', '{\"conversationId\":\"empty-conversation\"}'::jsonb, CURRENT_TIMESTAMP)"
+                        "INSERT INTO conversation_runtime_records(conversation_id, scheduling) " +
+                            "VALUES ('empty-conversation', '{\"conversationId\":\"empty-conversation\"}'::jsonb)"
                     )
                 }
             }
@@ -685,8 +699,8 @@ class PostgresConversationRuntimeCoordinatorTest {
             source.connection.use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeUpdate(
-                        "UPDATE conversation_runtime_records SET record_json = " +
-                            "jsonb_set(record_json, '{trace}', '\"not part of command inventory\"'::jsonb)"
+                        "INSERT INTO conversation_runtime_trace(conversation_id, sequence, created_at, entry_json) " +
+                            "SELECT conversation_id, 99, CURRENT_TIMESTAMP, '\"not part of command inventory\"'::jsonb FROM conversation_runtime_records"
                     )
                 }
             }
@@ -708,18 +722,15 @@ class PostgresConversationRuntimeCoordinatorTest {
             source.connection.use { connection ->
                 connection.prepareStatement(
                     """
-                    INSERT INTO conversation_runtime_records(conversation_id, record_json, updated_at)
-                    SELECT 'bulk-' || n,
-                        jsonb_build_object(
-                            'conversationId', 'bulk-' || n,
-                            'commandTasks', jsonb_build_array(CAST(? AS jsonb) || jsonb_build_object(
-                                'id', 'bulk-task-' || n, 'conversationId', 'bulk-' || n
-                            )),
-                            'commandMonitors', jsonb_build_array(CAST(? AS jsonb) || jsonb_build_object(
-                                'id', 'bulk-monitor-' || n, 'conversationId', 'bulk-' || n,
-                                'commandTaskId', 'bulk-task-' || n
-                            ))
-                        ), CURRENT_TIMESTAMP
+                    INSERT INTO conversation_runtime_records(conversation_id, scheduling, command_tasks, command_monitors)
+                    SELECT 'bulk-' || n, jsonb_build_object('conversationId', 'bulk-' || n),
+                        jsonb_build_array(CAST(? AS jsonb) || jsonb_build_object(
+                            'id', 'bulk-task-' || n, 'conversationId', 'bulk-' || n
+                        )),
+                        jsonb_build_array(CAST(? AS jsonb) || jsonb_build_object(
+                            'id', 'bulk-monitor-' || n, 'conversationId', 'bulk-' || n,
+                            'commandTaskId', 'bulk-task-' || n
+                        ))
                     FROM generate_series(1, 10000) AS n
                     """.trimIndent()
                 ).use { statement ->
@@ -752,6 +763,204 @@ class PostgresConversationRuntimeCoordinatorTest {
             assertEquals(listOf(selected), coordinator.findCommandTasks(workerId = selectedWorker))
             assertEquals(listOf(inventoryMonitor(selected)), coordinator.findCommandMonitors(workerId = selectedWorker))
         }
+    }
+
+    @Test
+    fun `scheduling is independent of journals and unrelated components and noops do not rewrite rows`() = runBlocking {
+        withInventoryDatabase { source, coordinator, _ ->
+            val conversationId = Conversation.Id("isolated-scheduling")
+            val task = agentInvocationTask(conversationId, "queued", Instant.fromEpochSeconds(1))
+            val owner = worker("worker-1", "session-1")
+            assertTrue(coordinator.submit(task))
+            source.connection.use { c -> c.createStatement().use { s ->
+                s.execute("UPDATE conversation_runtime_records SET command_tasks = '[\"invalid\"]', memory_operations = '[\"invalid\"]'")
+                s.execute("UPDATE conversation_runtime_trace SET entry_json = '\"invalid\"'")
+            } }
+            assertEquals(task.id, coordinator.listReadyWorkItems(10).single().taskId)
+            assertEquals(listOf(task), coordinator.listPending(conversationId))
+            assertTrue(coordinator.schedulingSnapshot(conversationId).containsTask(task.id))
+            assertEquals(task, coordinator.claim(task, owner))
+            assertTrue(coordinator.confirmActiveTaskOwner(conversationId, task.id, executor(owner)))
+            assertEquals(task, coordinator.listActiveTaskAssignments().single().task)
+            assertEquals(task.id, coordinator.find(conversationId)!!.activeTaskId)
+            assertTrue(coordinator.markActiveTaskStarted(conversationId, task.id, executor(owner), Instant.fromEpochSeconds(2)))
+            val before = runtimeRowFingerprint(source)
+            assertNull(coordinator.claim(task, owner))
+            assertFalse(coordinator.submit(task))
+            assertTrue(coordinator.markActiveTaskStarted(conversationId, task.id, executor(owner), Instant.fromEpochSeconds(3)))
+            assertFalse(coordinator.requestCommandMonitorCancellation(conversationId, CommandMonitor.Id("missing"), Instant.fromEpochSeconds(4)))
+            assertEquals(before, runtimeRowFingerprint(source))
+            assertTrue(coordinator.completeActiveTask(conversationId, task.id, executor(owner), ConversationRuntimeTaskOutcome.CompleteTurn))
+        }
+    }
+
+    @Test
+    fun `incident transitions still clear tool executions and duplicate command writes are noops`() = runBlocking {
+        withInventoryDatabase { source, coordinator, _ ->
+            val command = inventoryTask("command", "cleanup", ConversationRuntimeWorkerId("worker-1"))
+            coordinator.upsertCommandTask(command)
+            val before = runtimeRowFingerprint(source)
+            coordinator.upsertCommandTask(command)
+            assertEquals(before, runtimeRowFingerprint(source))
+            for (deliveryFailure in listOf(false, true)) {
+                val task = agentInvocationTask(Conversation.Id("cleanup-$deliveryFailure"), "task-$deliveryFailure", Instant.fromEpochSeconds(1))
+                val owner = worker("worker-1", "session-1")
+                assertTrue(coordinator.submit(task))
+                assertEquals(task, coordinator.claim(task, owner))
+                assertTrue(coordinator.upsertToolExecution(task.conversationId, ConversationRuntimeToolExecution(
+                    toolCallId = Conversation.Message.ContentItem.ToolCall.Id("tool"), toolName = "test",
+                    status = ConversationRuntimeToolExecution.Status.RUNNING, runtimeTaskId = task.id,
+                    executor = executor(owner), startedAt = task.createdAt,
+                )))
+                if (deliveryFailure) coordinator.recordClaimedTaskDeliveryFailure(task.conversationId, task.id, executor(owner), "failed", null)
+                else {
+                    coordinator.markActiveTaskStarted(task.conversationId, task.id, executor(owner), task.createdAt)
+                    coordinator.markActiveTaskInDoubt(task.conversationId, task.id, executor(owner), "lost", null)
+                }
+                assertTrue(coordinator.snapshot(task.conversationId).toolExecutions.isEmpty())
+                coordinator.abort(task.conversationId)
+            }
+        }
+    }
+
+    @Test
+    fun `journal failures roll back state counters and traces together`() = runBlocking {
+        withInventoryDatabase { source, coordinator, _ ->
+            val conversationId = Conversation.Id("atomic")
+            val event = ConversationRuntimeEvent.ExecutionCompleted(conversationId)
+            coordinator.recordEvent(event)
+            val before = coordinator.snapshot(conversationId)
+            source.connection.use { c -> c.createStatement().use { it.execute("ALTER TABLE conversation_runtime_events ADD CHECK (sequence < 2)") } }
+            assertFailsWith<java.sql.SQLException> { coordinator.recordEvent(event) }
+            assertEquals(before, coordinator.snapshot(conversationId))
+            assertEquals(listOf(1L), coordinator.listEventLogEntries(conversationId, null, 100).map { it.sequence })
+            source.connection.use { c -> c.createStatement().use { it.execute("ALTER TABLE conversation_runtime_trace ADD CHECK (sequence < 2)") } }
+            val task = agentInvocationTask(conversationId, "rolled-back", Instant.fromEpochSeconds(1))
+            assertFailsWith<java.sql.SQLException> { coordinator.submit(task) }
+            assertEquals(before, coordinator.snapshot(conversationId))
+            assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+        }
+    }
+
+    @Test
+    fun `concurrent journal appends allocate unique cursors and retain bounded ordered replay`() = runBlocking {
+        withInventoryDatabase { source, coordinator, _ ->
+            val conversationId = Conversation.Id("concurrent")
+            val event = ConversationRuntimeEvent.ExecutionCompleted(conversationId)
+            val entries = kotlinx.coroutines.coroutineScope {
+                (1..24).map { async { coordinator.recordEvent(event) } }.awaitAll()
+            }
+            assertEquals((1L..24L).toList(), entries.map { it.sequence }.sorted())
+            assertEquals(24L, coordinator.lastEventSequence(conversationId))
+            source.connection.use { c -> c.createStatement().use { s ->
+                s.execute("INSERT INTO conversation_runtime_events SELECT conversation_id, n, created_at, event_type, task_id, turn_id, message_id, jsonb_set(entry_json, '{sequence}', to_jsonb(n)) FROM conversation_runtime_events CROSS JOIN generate_series(25,10000) n WHERE sequence=1")
+                s.execute("INSERT INTO conversation_runtime_trace SELECT conversation_id, n, created_at, jsonb_set(entry_json, '{sequence}', to_jsonb(n)) FROM conversation_runtime_trace CROSS JOIN generate_series(25,2000) n WHERE sequence=1")
+                s.execute("UPDATE conversation_runtime_records SET event_sequence=10000, trace_sequence=2000")
+            } }
+            assertEquals(10001L, coordinator.recordEvent(event).sequence)
+            assertEquals((2L..10001L).toList(), coordinator.listEventLogEntries(conversationId, 0, 20000).map { it.sequence })
+            assertEquals(listOf(10000L, 10001L), coordinator.listEventLogEntries(conversationId, null, 2).map { it.sequence })
+            assertEquals((1802L..2001L).toList(), coordinator.snapshot(conversationId).trace.map { it.sequence })
+            source.connection.use { c -> c.createStatement().use { s ->
+                s.executeQuery("SELECT count(*), min(sequence) FROM conversation_runtime_trace").use { r ->
+                    assertTrue(r.next()); assertEquals(2000, r.getInt(1)); assertEquals(2L, r.getLong(2))
+                }
+                s.execute("UPDATE conversation_runtime_records SET scheduling='\"invalid\"', command_tasks='\"invalid\"'")
+            } }
+            assertEquals(10002L, coordinator.recordEvent(event).sequence)
+        }
+    }
+
+    @Test
+    fun `targeted history and turn lookups skip unrelated event payloads`() = runBlocking {
+        withInventoryDatabase { source, coordinator, _ ->
+            val conversationId = Conversation.Id("lookup")
+            val task = agentInvocationTask(conversationId, "message", Instant.fromEpochSeconds(1))
+            val message = task.requireAgentInvocation().userMessage
+            coordinator.recordEvent(ConversationRuntimeEvent.MessageEmitted(conversationId, task.id, message, turnId = task.turnId))
+            coordinator.recordEvent(ConversationRuntimeEvent.MessageEmitted(conversationId, task.id, message, turnId = task.turnId))
+            val history = ConversationRuntimeEvent.HistoryChanged(conversationId, task.id, ConversationHistoryMutationKind.COMPACT)
+            coordinator.recordEvent(history)
+            coordinator.recordEvent(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
+            source.connection.use { c -> c.createStatement().use { it.execute("UPDATE conversation_runtime_events SET entry_json='\"invalid\"' WHERE task_id IS NULL OR message_id IS NOT NULL") } }
+            assertEquals(setOf(message.id), coordinator.findEmittedMessageIds(conversationId, task.turnId, 0))
+            assertTrue(coordinator.findEmittedMessageIds(conversationId, task.turnId, 2).isEmpty())
+            assertEquals(history, coordinator.findHistoryChanged(conversationId, task.id))
+            assertNull(coordinator.findHistoryChanged(conversationId, ConversationRuntimeTask.Id("absent")))
+        }
+    }
+
+    @Test
+    fun `storage migration preserves all components journal payloads and cursor gaps`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
+        val schema = "runtime_migration_${UUID.randomUUID().toString().replace("-", "")}"
+        val admin = dataSource()
+        admin.connection.use { c -> c.createStatement().use { it.execute("CREATE SCHEMA $schema") } }
+        try {
+            val source = dataSource(schema).also(::createLegacyRuntimeSchema)
+            val json = Json { encodeDefaults = true }
+            val id = Conversation.Id("migrated")
+            val task = agentInvocationTask(id, "pending", Instant.fromEpochSeconds(1))
+            val scheduling = ConversationRuntimeSchedulingState(id, pendingTasks = listOf(task), completedIdempotencyKeys = setOf("completed-key"))
+            val command = inventoryTask("bytes", id.value, ConversationRuntimeWorkerId("worker-1")).copy(
+                terminalOutputStartByte = 0, outputBytes = 3, terminalOutputContent = BinaryContent.fromBytes(byteArrayOf(0, -1, 65)))
+            val event = ConversationRuntimeEventLogEntry(42, id, ConversationRuntimeEvent.MessageEmitted(id, task.id, task.requireAgentInvocation().userMessage, turnId = task.turnId), Instant.fromEpochSeconds(1))
+            val trace = ConversationRuntimeTraceEntry(sequence = 55, conversationId = id, taskId = task.id, executor = null,
+                kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED, status = ConversationRuntimeTraceEntry.Status.STARTED,
+                message = "trace", createdAt = Instant.fromEpochSeconds(1))
+            val original = buildJsonObject {
+                put("conversationId", id.value); put("revision", 60); put("eventSequence", 80); put("traceSequence", 90)
+                put("scheduling", json.encodeToJsonElement(ConversationRuntimeSchedulingState.serializer(), scheduling))
+                put("commandTasks", json.encodeToJsonElement(kotlinx.serialization.builtins.ListSerializer(CommandTask.serializer()), listOf(command)))
+                put("commandMonitors", json.encodeToJsonElement(kotlinx.serialization.builtins.ListSerializer(CommandMonitor.serializer()), listOf(inventoryMonitor(command))))
+                put("toolExecutions", JsonArray(emptyList())); put("memoryOperations", JsonArray(emptyList())); put("commandMonitorEvents", JsonArray(emptyList()))
+                put("eventLog", JsonArray(listOf(json.encodeToJsonElement(ConversationRuntimeEventLogEntry.serializer(), event))))
+                put("trace", JsonArray(listOf(json.encodeToJsonElement(ConversationRuntimeTraceEntry.serializer(), trace))))
+            }
+            source.connection.use { c ->
+                c.prepareStatement("INSERT INTO conversation_runtime_records(conversation_id,record_json,ready_task_id,ready_at) VALUES (?,?::jsonb,?,?)").use { s ->
+                    s.setString(1, id.value); s.setString(2, original.toString()); s.setString(3, task.id.value)
+                    s.setTimestamp(4, java.sql.Timestamp.from(java.time.Instant.ofEpochSecond(1))); s.executeUpdate()
+                }
+                c.autoCommit = false
+                c.createStatement().use { s ->
+                    s.execute("UPDATE conversation_runtime_records SET record_json = jsonb_set(record_json, '{eventSequence}', '0')")
+                    assertFailsWith<java.sql.SQLException> {
+                        executeSqlResource(s, "db/migration/postgres/V64__split_conversation_runtime_storage.sql")
+                    }
+                }
+                c.rollback()
+                c.autoCommit = true
+                c.createStatement().use { s ->
+                    s.execute("CREATE TEMP TABLE original AS SELECT record_json FROM conversation_runtime_records")
+                    executeSqlResource(s, "db/migration/postgres/V64__split_conversation_runtime_storage.sql")
+                    s.executeQuery("""SELECT scheduling = record_json->'scheduling' AND command_tasks = record_json->'commandTasks'
+                        AND command_monitors = record_json->'commandMonitors' AND tool_executions = record_json->'toolExecutions'
+                        AND memory_operations = record_json->'memoryOperations' AND command_monitor_events = record_json->'commandMonitorEvents'
+                        AND (SELECT jsonb_agg(entry_json ORDER BY sequence) FROM conversation_runtime_events) = record_json->'eventLog'
+                        AND (SELECT jsonb_agg(entry_json ORDER BY sequence) FROM conversation_runtime_trace) = record_json->'trace'
+                        FROM conversation_runtime_records, original""").use { r -> assertTrue(r.next()); assertTrue(r.getBoolean(1)) }
+                }
+            }
+            val coordinator = PostgresConversationRuntimeCoordinator(source, json)
+            val snapshot = coordinator.snapshot(id)
+            assertEquals(60L, snapshot.revision); assertEquals(80L, snapshot.lastEventSequence)
+            assertEquals(listOf(task), snapshot.pendingTasks); assertEquals(listOf(trace), snapshot.trace)
+            assertEquals(listOf(command), snapshot.commandTasks)
+            assertEquals(listOf(event), coordinator.listEventLogEntries(id, 0, 100))
+            assertEquals(setOf(task.requireAgentInvocation().userMessage.id), coordinator.findEmittedMessageIds(id, task.turnId, 0))
+            assertEquals(task.id, coordinator.listReadyWorkItems(10).single().taskId)
+            assertEquals(81L, coordinator.recordEvent(ConversationRuntimeEvent.ExecutionCompleted(id)).sequence)
+            assertEquals(91L, coordinator.snapshot(id).trace.last().sequence)
+        } finally {
+            admin.connection.use { c -> c.createStatement().use { it.execute("DROP SCHEMA $schema CASCADE") } }
+        }
+    }
+
+    private fun runtimeRowFingerprint(source: DataSource): String = source.connection.use { c ->
+        c.createStatement().use { s -> s.executeQuery("SELECT xmin::text || ':' || row_to_json(r)::text FROM conversation_runtime_records r").use { r ->
+            check(r.next()); r.getString(1)
+        } }
     }
 
     private suspend fun withInventoryDatabase(
@@ -905,6 +1114,11 @@ class PostgresConversationRuntimeCoordinatorTest {
         )
 
     private fun createRuntimeSchema(dataSource: DataSource) {
+        createLegacyRuntimeSchema(dataSource)
+        dataSource.connection.use { c -> c.createStatement().use { executeSqlResource(it, "db/migration/postgres/V64__split_conversation_runtime_storage.sql") } }
+    }
+
+    private fun createLegacyRuntimeSchema(dataSource: DataSource) {
         dataSource.connection.use { connection ->
             connection.createStatement().use { statement ->
                 listOf(
@@ -920,12 +1134,7 @@ class PostgresConversationRuntimeCoordinatorTest {
         statement: java.sql.Statement,
         resource: String,
     ) {
-        checkNotNull(javaClass.classLoader.getResource(resource))
-            .readText()
-            .split(';')
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .forEach(statement::execute)
+        statement.execute(checkNotNull(javaClass.classLoader.getResource(resource)).readText())
     }
 
     private companion object {

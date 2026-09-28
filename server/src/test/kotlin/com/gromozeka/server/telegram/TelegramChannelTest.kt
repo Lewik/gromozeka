@@ -314,13 +314,13 @@ class TelegramChannelTest {
                 ConversationRuntimeEvent.MessageEmitted(binding.conversationId, null, textMessage("reply-${invocation.id}", "reply"), turnId = ConversationRuntimeTurnId(invocation.id)),
             ).mapIndexed { index, event -> ConversationRuntimeEventLogEntry(index + 1L, binding.conversationId, event, instant) }.filter { it.sequence > invocation.eventCursor }
         }
-        override suspend fun snapshot(binding: TelegramConversationBinding): ConversationRuntimeSnapshot {
+        override suspend fun snapshot(binding: TelegramConversationBinding): ConversationRuntimeSchedulingSnapshot {
             val pending = active?.takeUnless { complete }?.let {
                 ConversationRuntimeTask(ConversationRuntimeTask.Id(it.id), binding.conversationId, payload = ConversationRuntimeTask.Payload.AgentResponse(it.rootMessageId, route.agentId),
                     placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = it.id,
                     requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server), createdAt = instant)
             }
-            return ConversationRuntimeSnapshot(1, binding.conversationId, null, pendingTasks = listOfNotNull(pending), lastEventSequence = if (complete) 2 else 0)
+            return ConversationRuntimeSchedulingSnapshot(binding.conversationId, null, pendingTasks = listOfNotNull(pending), lastEventSequence = if (complete) 2 else 0)
         }
         override suspend fun stop(invocation: TelegramInvocation): Boolean { stops += invocation.id; return true }
     }

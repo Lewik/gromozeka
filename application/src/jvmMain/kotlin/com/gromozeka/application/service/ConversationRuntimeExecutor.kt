@@ -211,7 +211,7 @@ class ConversationRuntimeExecutor(
         item: ConversationRuntimeWorkItem,
         error: Throwable,
     ) {
-        val snapshot = runtimeCoordinator.snapshot(item.conversationId)
+        val snapshot = runtimeCoordinator.schedulingSnapshot(item.conversationId)
         val claimedTask = snapshot.activeTask
             ?.takeIf { it.id == item.taskId && snapshot.state?.activeExecutor == executor }
         if (claimedTask != null) {

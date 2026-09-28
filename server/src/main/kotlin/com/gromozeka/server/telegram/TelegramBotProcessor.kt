@@ -151,7 +151,7 @@ class TelegramBotProcessor(
         update(invocation)
     }
 
-    private suspend fun applySnapshot(id: String, snapshot: ConversationRuntimeSnapshot) {
+    private suspend fun applySnapshot(id: String, snapshot: ConversationRuntimeSchedulingSnapshot) {
         val invocation = invocation(id)
         check(snapshot.conversationId == invocation.binding.conversationId)
         val tasks = listOfNotNull(snapshot.activeTask, snapshot.continuationTask) + snapshot.pendingTasks + snapshot.activeInsertions

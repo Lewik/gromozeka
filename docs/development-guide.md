@@ -276,6 +276,32 @@ heartbeat. `grz_get_worker_environment` recollects the complete profile and
 volatile capacity, process, executable, and project-mount data on the selected
 Worker when current facts are needed.
 
+## Runtime Persistence
+
+PostgreSQL stores the scheduling state, tool executions, memory operations,
+commands, monitors, and monitor delivery state in separate JSONB columns.
+Runtime transitions lock one conversation row and read and update only the
+components they use. Unchanged operations do not rewrite the row.
+
+Durable replay events and diagnostic traces occupy separate append-only rows,
+retaining the latest 10,000 events and 2,000 traces per conversation. A transition
+commits its state, counters, new journal entries, and scheduling notification
+atomically. Existing cursors and payloads survive the storage migration.
+Ordinary scheduling and command inventory reads never load these journals.
+The UI snapshot reads its state and latest 200 traces from one consistent
+PostgreSQL snapshot; targeted Telegram and history lookups select event metadata
+or a single matching event.
+
+Run the storage and migration checks against the checkout's PostgreSQL slot:
+
+```bash
+GROMOZEKA_POSTGRES_RUNTIME_TEST=true \
+GROMOZEKA_POSTGRES_URL=jdbc:postgresql://localhost:<slot-postgres-port>/gromozeka \
+./gradlew :infrastructure-db:jvmTest \
+  --tests '*PostgresConversationRuntimeCoordinatorTest' \
+  --tests '*CompactionCoverageMigrationTest' -q
+```
+
 ## Tool Output Storage
 
 Tool results retain their original bytes as managed Artifacts. Text responses are

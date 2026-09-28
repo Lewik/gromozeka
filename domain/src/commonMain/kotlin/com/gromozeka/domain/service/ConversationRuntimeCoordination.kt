@@ -729,6 +729,22 @@ data class ConversationRuntimeSnapshot(
 )
 
 @Serializable
+data class ConversationRuntimeSchedulingSnapshot(
+    val conversationId: Conversation.Id,
+    @SerialName("executionState") val state: ConversationExecutionState? = null,
+    val activeTask: ConversationRuntimeTask? = null,
+    val activeInsertions: List<ConversationRuntimeTask> = emptyList(),
+    val continuationTask: ConversationRuntimeTask? = null,
+    val pendingTasks: List<ConversationRuntimeTask> = emptyList(),
+    val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
+    val lastEventSequence: Long = 0,
+) {
+    fun containsTask(taskId: ConversationRuntimeTask.Id): Boolean =
+        activeTask?.id == taskId || activeInsertions.any { it.id == taskId } ||
+            continuationTask?.id == taskId || pendingTasks.any { it.id == taskId }
+}
+
+@Serializable
 data class ConversationRuntimeWorkItem(
     val conversationId: Conversation.Id,
     val reason: Reason,
@@ -826,6 +842,40 @@ data class ConversationRuntimeEventLogEntry(
 )
 
 interface ConversationRuntimeCoordinator {
+    suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot {
+        val snapshot = snapshot(conversationId)
+        return ConversationRuntimeSchedulingSnapshot(
+            conversationId, snapshot.state, snapshot.activeTask, snapshot.activeInsertions,
+            snapshot.continuationTask, snapshot.pendingTasks, snapshot.incidents, snapshot.lastEventSequence,
+        )
+    }
+
+    suspend fun findEmittedMessageIds(
+        conversationId: Conversation.Id,
+        turnId: ConversationRuntimeTurnId,
+        afterSequence: Long,
+    ): Set<Conversation.Message.Id> {
+        var cursor = afterSequence
+        val ids = mutableSetOf<Conversation.Message.Id>()
+        while (true) {
+            val entries = listEventLogEntries(conversationId, cursor, 1_000)
+            entries.forEach { entry ->
+                val event = entry.event
+                if (event is ConversationRuntimeEvent.MessageEmitted && event.turnId == turnId) ids += event.message.id
+            }
+            if (entries.size < 1_000) return ids
+            cursor = entries.last().sequence
+        }
+    }
+
+    suspend fun findHistoryChanged(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+    ): ConversationRuntimeEvent.HistoryChanged? =
+        listEventLogEntries(conversationId, null, 10_000).asReversed()
+            .mapNotNull { it.event as? ConversationRuntimeEvent.HistoryChanged }
+            .firstOrNull { it.taskId == taskId }
+
     /**
      * Local wakeups for scheduling-state changes. PostgreSQL remains the durable source of truth.
      *

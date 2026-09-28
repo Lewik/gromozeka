@@ -26,19 +26,7 @@ class TelegramRequestEnricher(
         check(request.options.toolContext["agentDefinitionId"] == invocation.route.agentId.value)
         access.requireUser(invocation)
         val ownMessageIds = mutableSetOf(rootUserMessageId)
-        var cursor = invocation.startedAfterEventSequence
-        var count = 0
-        while (true) {
-            val events = coordinator.listEventLogEntries(conversationId, cursor, 100)
-            if (events.isEmpty()) break
-            for (entry in events) {
-                val event = entry.event
-                if (event is ConversationRuntimeEvent.MessageEmitted && event.turnId == turnId) ownMessageIds += event.message.id
-            }
-            cursor = events.last().sequence
-            count += events.size
-            check(count <= 100000) { "Telegram turn event history exceeds the safety limit" }
-        }
+        ownMessageIds += coordinator.findEmittedMessageIds(conversationId, turnId, invocation.startedAfterEventSequence)
         return materialize(invocation, model, request, ownMessageIds)
     }
 

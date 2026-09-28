@@ -102,7 +102,7 @@ class CompactionCoverageMigrationTest {
                 }
             }
             assertFailsWith<SerializationException> { Json.decodeFromJsonElement<Conversation.Message>(oldFull) }
-            assertEquals(1, flyway(source).load().migrate().migrationsExecuted)
+            assertEquals(1, flyway(source).target("63").load().migrate().migrationsExecuted)
             source.connection.use { connection ->
                 val messages = readMessages(connection)
                 assertEquals(3, messages.size)
@@ -127,7 +127,7 @@ class CompactionCoverageMigrationTest {
                     }
                 }
             }
-            assertEquals(0, flyway(source).load().migrate().migrationsExecuted)
+            assertEquals(0, flyway(source).target("63").load().migrate().migrationsExecuted)
         }
     }
 

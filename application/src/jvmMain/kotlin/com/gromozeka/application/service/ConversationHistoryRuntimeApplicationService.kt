@@ -6,7 +6,6 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.ConversationHistoryMutation
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
-import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -67,14 +66,14 @@ class ConversationHistoryRuntimeApplicationService(
             error(incident.message)
         }
 
-        var cursor = runtimeCoordinator.snapshot(conversationId).lastEventSequence
+        var cursor = runtimeCoordinator.lastEventSequence(conversationId)
         val accepted = runtimeDispatcher.submitHistoryMutation(
             conversationId = conversationId,
             taskId = taskId,
             mutation = mutation,
             actorUserId = actorUser.id,
         )
-        if (!accepted && !runtimeCoordinator.snapshot(conversationId).containsTask(taskId)) {
+        if (!accepted && !runtimeCoordinator.schedulingSnapshot(conversationId).containsTask(taskId)) {
             if (findCompletedMutation(conversationId, taskId) != null) return
             runtimeCoordinator.findTaskIncident(conversationId, taskId)?.let { incident ->
                 error(incident.message)
@@ -102,25 +101,11 @@ class ConversationHistoryRuntimeApplicationService(
         }
     }
 
-    private fun ConversationRuntimeSnapshot.containsTask(
-        taskId: ConversationRuntimeTask.Id,
-    ): Boolean =
-        activeTask?.id == taskId ||
-            activeInsertions.any { it.id == taskId } ||
-            continuationTask?.id == taskId ||
-            pendingTasks.any { it.id == taskId }
-
     private suspend fun findCompletedMutation(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
     ): ConversationRuntimeEvent.HistoryChanged? =
-        runtimeCoordinator.listEventLogEntries(
-            conversationId = conversationId,
-            afterSequence = null,
-            limit = EVENT_BATCH_SIZE,
-        ).asSequence()
-            .mapNotNull { it.event as? ConversationRuntimeEvent.HistoryChanged }
-            .firstOrNull { it.taskId == taskId }
+        runtimeCoordinator.findHistoryChanged(conversationId, taskId)
 
     private companion object {
         const val EVENT_BATCH_SIZE = 1_000

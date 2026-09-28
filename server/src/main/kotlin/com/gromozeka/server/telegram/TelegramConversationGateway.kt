@@ -14,7 +14,7 @@ interface TelegramConversationGateway {
     suspend fun cursor(binding: TelegramConversationBinding): Long
     suspend fun submit(invocation: TelegramInvocation)
     suspend fun events(invocation: TelegramInvocation): List<ConversationRuntimeEventLogEntry>
-    suspend fun snapshot(binding: TelegramConversationBinding): ConversationRuntimeSnapshot
+    suspend fun snapshot(binding: TelegramConversationBinding): ConversationRuntimeSchedulingSnapshot
     suspend fun stop(invocation: TelegramInvocation): Boolean
 }
 
@@ -64,14 +64,14 @@ class TelegramRuntimeGateway(
         message.artifacts.forEach { artifacts.registerExternal(it) }
         ingress.importMessage(connection.channel(message.binding), message.message, message.replaceOriginalId)
     }
-    override suspend fun cursor(binding: TelegramConversationBinding): Long = coordinator.snapshot(binding.conversationId).lastEventSequence
+    override suspend fun cursor(binding: TelegramConversationBinding): Long = coordinator.lastEventSequence(binding.conversationId)
     override suspend fun submit(invocation: TelegramInvocation) {
         ingress.invokeAgent(ExternalConversationChannel("telegram", invocation.connectionId, invocation.binding.key),
             invocation.binding.conversationId, invocation.rootMessageId, invocation.route.agentId, access.requireUser(invocation), invocation.id)
     }
     override suspend fun events(invocation: TelegramInvocation): List<ConversationRuntimeEventLogEntry> =
         coordinator.listEventLogEntries(invocation.binding.conversationId, invocation.eventCursor, 100)
-    override suspend fun snapshot(binding: TelegramConversationBinding): ConversationRuntimeSnapshot = coordinator.snapshot(binding.conversationId)
+    override suspend fun snapshot(binding: TelegramConversationBinding): ConversationRuntimeSchedulingSnapshot = coordinator.schedulingSnapshot(binding.conversationId)
     override suspend fun stop(invocation: TelegramInvocation): Boolean =
         ingress.stop(invocation.binding.conversationId, ConversationRuntimeTurnId(invocation.id))
 }
