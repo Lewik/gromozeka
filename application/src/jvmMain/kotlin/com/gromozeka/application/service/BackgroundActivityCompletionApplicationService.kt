@@ -96,7 +96,7 @@ class BackgroundActivityCompletionApplicationService(
     }
 
     suspend fun hasPendingConversationWork(conversationId: Conversation.Id): Boolean =
-        runtimeCoordinator.snapshot(conversationId).pendingTasks
+        runtimeCoordinator.schedulingSnapshot(conversationId).pendingTasks
             .any { it.payload !is ConversationRuntimeTask.Payload.BackgroundActivityCompletion }
 
     suspend fun markDelivered(batch: Batch, deliveredAt: Instant) {

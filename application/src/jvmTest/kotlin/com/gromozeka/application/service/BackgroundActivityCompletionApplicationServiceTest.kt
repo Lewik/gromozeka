@@ -9,6 +9,8 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeCoordinator
+import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -193,7 +195,12 @@ class BackgroundActivityCompletionApplicationServiceTest {
     @Test
     fun `only non-background pending work suppresses a dedicated model wakeup`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val service = BackgroundActivityCompletionApplicationService(coordinator)
+        val service = BackgroundActivityCompletionApplicationService(
+            object : ConversationRuntimeCoordinator by coordinator {
+                override suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot =
+                    error("Pending-work checks must not load the full runtime snapshot")
+            }
+        )
 
         coordinator.submit(backgroundCompletionRuntimeTask("delivery-1"))
         assertFalse(service.hasPendingConversationWork(conversationId))
