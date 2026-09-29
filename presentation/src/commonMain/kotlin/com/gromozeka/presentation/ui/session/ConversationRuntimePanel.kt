@@ -5,6 +5,8 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -42,14 +44,12 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiSubscriptionConnection
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaObservation
-import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
-import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -66,6 +66,14 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
 import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
+
+enum class RuntimeInspectionSection { COMMANDS, MONITORS, PROBLEMS }
+
+data class RuntimeInspectionRequest(
+    val conversationId: Conversation.Id,
+    val section: RuntimeInspectionSection,
+    val sequence: Long,
+)
 
 /** Inspection state only: independent of message routing and transient runtime tasks. */
 @Stable
@@ -108,6 +116,7 @@ fun ConversationRuntimePanel(
     slideFromRight: Boolean = false,
     tabSelection: RuntimeAgentTabSelection = remember { RuntimeAgentTabSelection() },
     replyRoutingContent: @Composable () -> Unit = {},
+    inspectionRequest: RuntimeInspectionRequest? = null,
 ) {
     val translation = LocalTranslation.current.runtime
     val aiCatalogSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
@@ -213,12 +222,12 @@ fun ConversationRuntimePanel(
                     }
                 }
 
-                RuntimeMemorySection(visibleRuntime)
-
+                // Memory activity UI is hidden while the memory subsystem is being redesigned.
                 RuntimeTasksSection(
                     runtimeSnapshot = visibleRuntime,
                     onCancelCommandTask = onCancelCommandTask,
                     onCancelCommandMonitor = onCancelCommandMonitor,
+                    inspectionRequest = inspectionRequest?.takeIf { isVisible && it.conversationId == conversationId },
                 )
 
                 PendingMessagesSection(
@@ -339,82 +348,6 @@ internal fun runtimeLastAgentCall(
 ): TokenUsageStatistics? = tokenStats?.recentCalls
     ?.filter { it.agentDefinitionId == agentId && (it.conversationId == null || it.conversationId == conversationId) }
     ?.maxByOrNull { it.timestamp }
-
-@Composable
-private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) {
-    val localization = LocalTranslation.current
-    val operations = runtimeSnapshot?.memoryOperations.orEmpty()
-    if (operations.isEmpty()) return
-
-    val translation = LocalTranslation.current.runtime
-    val visibleOperations = operations
-        .sortedWith(
-            compareByDescending<ConversationRuntimeMemoryOperation> {
-                it.status == MemoryRun.Status.QUEUED || it.status == MemoryRun.Status.RUNNING
-            }.thenByDescending { it.updatedAt }
-        )
-        .take(4)
-
-    Spacer(modifier = Modifier.height(12.dp))
-    Card(
-        modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-        ),
-    ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Text(
-                translation.memoryTitle,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                visibleOperations.forEach { operation ->
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = runtimeMemoryOperationLabel(operation.operation, localization),
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Text(
-                                text = operation.status.runtimeMemoryStatusLabel(translation),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        operation.progress?.let { progress ->
-                            if (progress.totalUnits > 0 &&
-                                (operation.status == MemoryRun.Status.QUEUED ||
-                                    operation.status == MemoryRun.Status.RUNNING)
-                            ) {
-                                LinearProgressIndicator(
-                                    progress = {
-                                        (progress.completedUnits.toFloat() / progress.totalUnits).coerceIn(0f, 1f)
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                        Text(
-                            text = operation.summary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun RuntimeConfigurationCard(
@@ -831,6 +764,7 @@ private fun RuntimeTasksSection(
     runtimeSnapshot: ConversationRuntimeSnapshot?,
     onCancelCommandTask: (CommandTask.Id) -> Unit,
     onCancelCommandMonitor: (CommandMonitor.Id) -> Unit,
+    inspectionRequest: RuntimeInspectionRequest?,
 ) {
     val localization = LocalTranslation.current
     val appTranslation = localization
@@ -840,14 +774,29 @@ private fun RuntimeTasksSection(
     val runningTools = runtimeSnapshot?.runningToolActivities(localization).orEmpty()
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
-    val incidents = runtimeSnapshot?.incidents.orEmpty()
+    val turnProblems = runtimeSnapshot?.lastTurn?.problems.orEmpty()
+    val incidents = runtimeSnapshot?.incidents.orEmpty().filterNot { incident ->
+        turnProblems.any { it.key == "incident:${incident.task.id.value}" }
+    }
+    val commandsRequester = remember { BringIntoViewRequester() }
+    val monitorsRequester = remember { BringIntoViewRequester() }
+    val problemsRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(inspectionRequest) {
+        when (inspectionRequest?.section) {
+            RuntimeInspectionSection.COMMANDS -> commandsRequester.bringIntoView()
+            RuntimeInspectionSection.MONITORS -> monitorsRequester.bringIntoView()
+            RuntimeInspectionSection.PROBLEMS -> problemsRequester.bringIntoView()
+            null -> Unit
+        }
+    }
     if (
         activeTask == null &&
         pendingTasks.isEmpty() &&
         runningTools.isEmpty() &&
         activeCommands.isEmpty() &&
         activeMonitors.isEmpty() &&
-        incidents.isEmpty()
+        incidents.isEmpty() &&
+        turnProblems.isEmpty()
     ) {
         return
     }
@@ -868,6 +817,18 @@ private fun RuntimeTasksSection(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                if (turnProblems.isNotEmpty()) {
+                    Column(Modifier.fillMaxWidth().bringIntoViewRequester(problemsRequester)
+                        .testTag("runtime-turn-problems"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(localization.text("chat.activity.turnProblems", "count" to turnProblems.size),
+                            style = MaterialTheme.typography.labelLarge)
+                        turnProblems.forEach { problem ->
+                            Text(problem.message, style = MaterialTheme.typography.bodySmall,
+                                color = if (problem.outcomeUnknown) Color(0xFFFE8B17) else MaterialTheme.colorScheme.error)
+                        }
+                        HorizontalDivider()
+                    }
+                }
                 activeTask?.let { task ->
                     RuntimeTaskRow(
                         if (runtimeSnapshot.state?.activeTaskStartedAt == null) {
@@ -882,82 +843,86 @@ private fun RuntimeTasksSection(
                     RuntimeTaskRow(translation.pendingTaskLabel, task.payload.runtimeLabel(translation))
                 }
                 runningTools.forEach { caption -> RuntimeTaskRow(translation.toolTaskLabel, caption) }
-                activeCommands.forEach { commandTask ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Terminal,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = commandTask.command,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodySmall,
+                Column(Modifier.fillMaxWidth().bringIntoViewRequester(commandsRequester)) {
+                    activeCommands.forEach { commandTask ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Terminal,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
                             )
-                            Text(
-                                text = commandTask.outputBytes.formatBytes(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        TextButton(onClick = { onCancelCommandTask(commandTask.id) }) {
-                            Text(translation.killButton)
-                        }
-                    }
-                }
-                activeMonitors.forEach { monitor ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.testTag(UiTestTag.CommandMonitorItem(monitor.id.value).value),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Visibility,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = monitor.filterCommand,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Text(
-                                text = buildList {
-                                    add(monitor.mode.runtimeMonitorModeLabel(translation))
-                                    add(localization.text("session.runtime.monitorEventCount", "count" to monitor.eventCount))
-                                    add(monitor.workerId.value)
-                                }.joinToString(" · "),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            monitor.lastEventPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = preview,
-                                    maxLines = 2,
+                                    text = commandTask.command,
+                                    maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                Text(
+                                    text = "${commandTask.workerId.value} · ${commandTask.outputBytes.formatBytes()}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                            TextButton(onClick = { onCancelCommandTask(commandTask.id) }) {
+                                Text(translation.killButton)
+                            }
                         }
-                        TextButton(
-                            onClick = { onCancelCommandMonitor(monitor.id) },
-                            enabled = monitor.cancellationRequestedAt == null,
+                    }
+                }
+                Column(Modifier.fillMaxWidth().bringIntoViewRequester(monitorsRequester)) {
+                    activeMonitors.forEach { monitor ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.testTag(UiTestTag.CommandMonitorItem(monitor.id.value).value),
                         ) {
-                            Text(
-                                if (monitor.cancellationRequestedAt == null) {
-                                    appTranslation.cancelButton
-                                } else {
-                                    translation.cancellingStatus
-                                }
+                            Icon(
+                                imageVector = Icons.Default.Visibility,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = monitor.filterCommand,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                Text(
+                                    text = buildList {
+                                        add(monitor.mode.runtimeMonitorModeLabel(translation))
+                                        add(localization.text("session.runtime.monitorEventCount", "count" to monitor.eventCount))
+                                        add(monitor.workerId.value)
+                                    }.joinToString(" · "),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                monitor.lastEventPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                                    Text(
+                                        text = preview,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            TextButton(
+                                onClick = { onCancelCommandMonitor(monitor.id) },
+                                enabled = monitor.cancellationRequestedAt == null,
+                            ) {
+                                Text(
+                                    if (monitor.cancellationRequestedAt == null) {
+                                        appTranslation.cancelButton
+                                    } else {
+                                        translation.cancellingStatus
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -1155,16 +1120,6 @@ private fun ConversationRuntimeTask.Payload.agentDefinitionIdOrNull(): AgentDefi
     is ConversationRuntimeTask.Payload.ExecutionIncident,
     -> null
 }
-
-private fun MemoryRun.Status.runtimeMemoryStatusLabel(translation: Translation.RuntimeTranslation): String =
-    when (this) {
-        MemoryRun.Status.QUEUED -> translation.memoryQueuedStatus
-        MemoryRun.Status.RUNNING -> translation.memoryRunningStatus
-        MemoryRun.Status.NEEDS_INPUT -> translation.memoryNeedsInputStatus
-        MemoryRun.Status.SUCCESS, MemoryRun.Status.PARTIAL -> translation.memoryCompletedStatus
-        MemoryRun.Status.FAILED -> translation.memoryFailedStatus
-        MemoryRun.Status.CANCELLED -> translation.memoryCancelledStatus
-    }
 
 private fun CommandMonitor.Mode.runtimeMonitorModeLabel(
     translation: Translation.RuntimeTranslation,

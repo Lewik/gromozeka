@@ -4,6 +4,7 @@
   "name": "Español",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "Problemas en la respuesta actual/última: {count}",
     "chat.voice.afterDictation.send": "Enviar",
     "chat.voice.afterDictation.input": "Al campo",
     "chat.voice.afterDictation.sendHint": "Tras dictar: enviar de inmediato. Pulsa para dejar el texto en el campo.",
@@ -1878,7 +1879,7 @@
     "chat.voice.mode.draft": "Borrador",
     "chat.voice.control.hint": "Mantén pulsado para grabar. Un clic detiene la voz; doble clic interrumpe el turno.",
     "chat.voice.control.interruptHint": "Un clic detiene la voz; doble clic interrumpe el turno.",
-    "chat.activity.idle": "No hay tareas activas",
+    "chat.activity.idle": "Listo",
     "chat.activity.details": "Detalles de ejecución",
     "chat.activity.more": "{count} más"
   }

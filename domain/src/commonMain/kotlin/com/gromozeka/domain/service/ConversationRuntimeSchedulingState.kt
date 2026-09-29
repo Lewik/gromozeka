@@ -16,6 +16,7 @@ data class ConversationRuntimeSchedulingState(
     val pendingTurnTerminationInstructions: List<Conversation.Message.Instruction.PreviousTurnTerminated> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val completedIdempotencyKeys: Set<String> = emptySet(),
+    val lastTurn: ConversationRuntimeTurnSummary? = null,
 ) {
     init {
         require(executionState == null || executionState.conversationId == conversationId) {
@@ -199,6 +200,10 @@ data class ConversationRuntimeSchedulingState(
                     updatedAt = now,
                 ),
                 activeTask = claimedTask,
+                // A queued message or safe-point insertion is not a new agent turn.
+                lastTurn = if (claimedTask.isAgentWork() && lastTurn?.turnId != claimedTask.turnId) {
+                    ConversationRuntimeTurnSummary(claimedTask.turnId, now)
+                } else lastTurn,
                 continuationTask = continuationTask?.takeUnless { it.id == claimedTask.id },
                 pendingTasks = if (continuationTask?.id == claimedTask.id) {
                     pendingTasks

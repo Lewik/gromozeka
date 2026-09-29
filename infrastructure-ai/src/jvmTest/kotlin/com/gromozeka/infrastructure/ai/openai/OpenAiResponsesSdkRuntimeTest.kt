@@ -93,6 +93,50 @@ class OpenAiResponsesSdkRuntimeTest {
     }
 
     @Test
+    fun `hosted search is completed display activity with native replay and no duplicate sources`() {
+        val native = com.openai.core.jsonMapper().readValue("""{
+            "id":"resp-search","model":"gpt-5","status":"completed","output":[
+                {"type":"web_search_call","id":"ws-1","status":"completed","action":{
+                    "type":"search","queries":["Example"],"sources":[
+                        {"type":"url","url":"https://example.com/cited"},
+                        {"type":"url","url":"https://example.com/unused"}
+                    ]
+                }},
+                {"type":"message","id":"msg-1","role":"assistant","status":"completed","content":[{
+                    "type":"output_text","text":"[Example](https://example.com/cited)","annotations":[
+                        {"type":"url_citation","start_index":0,"end_index":36,"title":"Example","url":"https://example.com/cited"}
+                    ]
+                }]}
+            ]
+        }""", com.openai.models.responses.Response::class.java)
+        val response = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.TEXT)
+        assertEquals(AiStepOutcome.COMPLETE, response.outcome)
+        assertTrue(response.toolCalls.isEmpty(), "Hosted search must never be dispatched again")
+        val activity = response.messages.first()
+        val call = activity.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().single()
+        val result = activity.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>().single()
+        assertEquals("web_search", call.call.name)
+        assertEquals(call.id, result.toolUseId)
+        assertFalse(result.isError)
+        assertTrue(activity.content.none { it is Conversation.Message.ContentItem.System })
+        assertTrue((result.result.single() as Conversation.Message.ContentItem.ToolResult.Data.Text).content.contains("https://example.com/unused"))
+        val answer = response.messages.last().content.filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>().single()
+        assertEquals("[Example](https://example.com/cited)", answer.structured.fullText)
+        val messages = response.messages.mapIndexed { index, message -> userMessage().copy(
+            id = Conversation.Message.Id("search-$index"), role = Conversation.Message.Role.ASSISTANT,
+            content = message.content,
+            providerMetadata = JsonObject((response.providerMetadata + message.metadata).mapValues { (_, value) ->
+                value as? JsonElement ?: JsonPrimitive(value.toString())
+            }),
+        ) }
+        val replay = mapper.toCreateParams("gpt-5", true, request(messages = messages)).input().get().asResponse()
+        assertEquals(
+            kotlinx.serialization.json.Json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(native.output())),
+            kotlinx.serialization.json.Json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(replay)),
+        )
+    }
+
+    @Test
     fun `truncated tool arguments are not mapped to executable calls`() {
         val native = com.openai.core.jsonMapper().readValue("""{
             "id":"resp-1","model":"gpt-5","status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},

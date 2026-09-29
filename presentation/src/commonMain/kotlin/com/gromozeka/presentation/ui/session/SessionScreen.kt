@@ -83,6 +83,7 @@ fun SessionScreen(
     onShowParticipantsPanelChange: (Boolean) -> Unit,
     showRuntimePanel: Boolean,
     onShowRuntimePanelChange: (Boolean) -> Unit,
+    onInspectRuntime: (RuntimeInspectionSection) -> Unit = { onShowRuntimePanelChange(true) },
 
     // Context extraction
     onExtractContexts: (() -> Unit)? = null,
@@ -679,6 +680,7 @@ fun SessionScreen(
                         onDetails = { onShowRuntimePanelChange(true) },
                         runtimePanelVisible = showRuntimePanel,
                         onToggleRuntimePanel = { onShowRuntimePanelChange(!showRuntimePanel) },
+                        onInspectRuntime = onInspectRuntime,
                     )
                 }
                 DisableSelection {

@@ -4,6 +4,7 @@
   "name": "한국어",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "현재/마지막 응답의 문제: {count}",
     "chat.voice.afterDictation.send": "전송",
     "chat.voice.afterDictation.input": "입력란에",
     "chat.voice.afterDictation.sendHint": "음성 입력 후 바로 전송합니다. 클릭하면 텍스트를 입력란에 남깁니다.",
@@ -1804,7 +1805,7 @@
     "chat.voice.mode.draft": "초안",
     "chat.voice.control.hint": "길게 눌러 녹음합니다. 클릭하면 음성을 멈추고, 두 번 클릭하면 현재 턴을 중단합니다.",
     "chat.voice.control.interruptHint": "클릭하면 음성을 멈추고, 두 번 클릭하면 현재 턴을 중단합니다.",
-    "chat.activity.idle": "실행 중인 작업 없음",
+    "chat.activity.idle": "준비됨",
     "chat.activity.details": "실행 세부 정보",
     "chat.activity.more": "{count}개 더"
   }

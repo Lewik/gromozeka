@@ -57,6 +57,7 @@ import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.ConversationParticipantsPanel
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
+import com.gromozeka.presentation.ui.session.RuntimeInspectionRequest
 import com.gromozeka.presentation.ui.session.RuntimeAgentTabSelection
 import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.shared.uuid.uuid7
@@ -112,6 +113,7 @@ fun GromozekaAppContent(
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
     val runtimeAgentTabSelection = remember(appComponents) { RuntimeAgentTabSelection() }
+    var runtimeInspectionRequest by remember { mutableStateOf<RuntimeInspectionRequest?>(null) }
     var showParticipantsPanel by remember { mutableStateOf(false) }
     var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
@@ -477,6 +479,12 @@ fun GromozekaAppContent(
                                                         onShowParticipantsPanelChange = setParticipantsPanel,
                                                         showRuntimePanel = showRuntimePanel,
                                                         onShowRuntimePanelChange = setRuntimePanel,
+                                                        onInspectRuntime = { section ->
+                                                            runtimeInspectionRequest = RuntimeInspectionRequest(
+                                                                tabViewModel.conversationId, section, (runtimeInspectionRequest?.sequence ?: 0) + 1,
+                                                            )
+                                                            setRuntimePanel(true)
+                                                        },
                                                         onRememberThread = {
                                                             coroutineScope.launch {
                                                                 runCatching { appComponents.appViewModel.rememberCurrentThread() }
@@ -685,6 +693,7 @@ fun GromozekaAppContent(
                                                         isWaitingForResponse = isWaitingForResponse,
                                                         pendingMessages = pendingMessages,
                                                         runtimeSnapshot = runtimeSnapshot,
+                                                        inspectionRequest = runtimeInspectionRequest,
                                                         onCancelCommandTask = tabViewModel::cancelCommandTask,
                                                         onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
                                                         onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
@@ -813,6 +822,7 @@ fun GromozekaAppContent(
                                             isWaitingForResponse = isWaitingForResponse,
                                             pendingMessages = pendingMessages,
                                             runtimeSnapshot = runtimeSnapshot,
+                                            inspectionRequest = runtimeInspectionRequest,
                                             onCancelCommandTask = tabViewModel::cancelCommandTask,
                                             onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
                                             onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,

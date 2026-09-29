@@ -21,6 +21,7 @@ import com.gromozeka.domain.service.ConversationRuntimeSchedulingState
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeTurnSummary
 import com.gromozeka.domain.service.ConversationRuntimeTurnId
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
@@ -339,6 +340,13 @@ class PostgresConversationRuntimeCoordinator(
                 executions += execution
             }
             record.toolExecutions = executions
+            if (execution.status == ConversationRuntimeToolExecution.Status.FAILED || execution.isError == true) {
+                record.recordTurnProblem(record.scheduling.activeTask?.turnId, ConversationRuntimeTurnSummary.Problem(
+                    key = "tool:${execution.toolCallId.value}",
+                    message = execution.toolName,
+                    occurredAt = execution.completedAt ?: execution.startedAt,
+                ))
+            }
             record.appendTrace(
                 conversationId = conversationId,
                 taskId = execution.runtimeTaskId,
@@ -797,7 +805,7 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot =
         readJson(conversationId, """
             SELECT jsonb_build_object('conversationId', conversation_id, 'lastEventSequence', event_sequence)
-                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions')
+                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn')
             FROM conversation_runtime_records WHERE conversation_id = ?
         """.trimIndent())?.let { json.decodeFromString(it) } ?: ConversationRuntimeSchedulingSnapshot(conversationId)
 
@@ -840,7 +848,30 @@ class PostgresConversationRuntimeCoordinator(
     }
 
     override suspend fun recordEvent(event: ConversationRuntimeEvent): ConversationRuntimeEventLogEntry =
-        mutateRecord(event.conversationId, createIfMissing = true, components = setOf()) { record ->
+        mutateRecord(event.conversationId, createIfMissing = true, components =
+            if (event is ConversationRuntimeEvent.MessageEmitted && (event.message.error != null ||
+                event.message.content.any { it is Conversation.Message.ContentItem.ToolResult && it.isError })) {
+                setOf(RuntimeComponent.SCHEDULING)
+            } else emptySet()
+        ) { record ->
+            if (event is ConversationRuntimeEvent.MessageEmitted) {
+                event.message.error?.let { error ->
+                    record.recordTurnProblem(event.turnId, ConversationRuntimeTurnSummary.Problem(
+                        key = "message:${event.message.id.value}", message = error.message,
+                        occurredAt = event.message.createdAt,
+                    ))
+                }
+                event.message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+                    .filter { it.isError }.forEach { result ->
+                        val detail = result.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
+                            .joinToString("\n") { it.content }.take(2_000)
+                        record.recordTurnProblem(event.turnId, ConversationRuntimeTurnSummary.Problem(
+                            key = "tool:${result.toolUseId.value}",
+                            message = listOf(result.toolName, detail).filter(String::isNotBlank).joinToString(": "),
+                            occurredAt = event.message.createdAt,
+                        ))
+                    }
+            }
             val sequence = record.eventSequence + 1
             record.eventSequence = sequence
             val entry = ConversationRuntimeEventLogEntry(
@@ -931,7 +962,7 @@ class PostgresConversationRuntimeCoordinator(
             dataSource.connection.use { connection ->
                 connection.prepareStatement(
                     """
-                    SELECT ready_task_id, jsonb_build_object('conversationId', conversation_id, 'scheduling', scheduling - 'completedIdempotencyKeys' - 'incidents') AS record_json
+                    SELECT ready_task_id, jsonb_build_object('conversationId', conversation_id, 'scheduling', scheduling - 'completedIdempotencyKeys' - 'incidents' - 'lastTurn') AS record_json
                     FROM conversation_runtime_records
                     WHERE ready_task_id IS NOT NULL
                     ORDER BY ready_at, conversation_id
@@ -1050,7 +1081,7 @@ class PostgresConversationRuntimeCoordinator(
     private suspend fun readActiveSchedulingRecords(): List<RuntimeRecord> = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
             val filter = "WHERE jsonb_typeof(scheduling -> 'activeTask') = 'object'"
-            connection.prepareStatement("SELECT jsonb_build_object('conversationId', conversation_id, 'scheduling', scheduling - 'completedIdempotencyKeys' - 'incidents') AS record_json FROM conversation_runtime_records $filter ORDER BY conversation_id").use { statement ->
+            connection.prepareStatement("SELECT jsonb_build_object('conversationId', conversation_id, 'scheduling', scheduling - 'completedIdempotencyKeys' - 'incidents' - 'lastTurn') AS record_json FROM conversation_runtime_records $filter ORDER BY conversation_id").use { statement ->
                 statement.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.runtimeRecord()) } }
             }
         }
@@ -1341,6 +1372,7 @@ class PostgresConversationRuntimeCoordinator(
                 commandTasks = commandTasks,
                 commandMonitors = commandMonitors,
                 incidents = scheduling.incidents,
+                lastTurn = scheduling.lastTurn,
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),
                 lastEventSequence = eventSequence,
             )
@@ -1455,7 +1487,17 @@ class PostgresConversationRuntimeCoordinator(
             return entry
         }
 
+        fun recordTurnProblem(turnId: ConversationRuntimeTurnId?, problem: ConversationRuntimeTurnSummary.Problem) {
+            val turn = scheduling.lastTurn?.takeIf { it.turnId == turnId } ?: return
+            scheduling = scheduling.copy(lastTurn = turn.copy(problems = turn.problems.filterNot { it.key == problem.key } + problem))
+        }
+
         fun recordIncidentTrace(incident: ConversationRuntimeTaskIncident) {
+            recordTurnProblem(incident.task.turnId, ConversationRuntimeTurnSummary.Problem(
+                key = "incident:${incident.task.id.value}", message = incident.message,
+                occurredAt = incident.occurredAt,
+                outcomeUnknown = incident.kind == ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN,
+            ))
             appendTrace(
                 conversationId = conversationId,
                 taskId = incident.task.id,

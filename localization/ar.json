@@ -4,6 +4,7 @@
   "name": "العربية",
   "direction": "RTL",
   "messages": {
+    "chat.activity.turnProblems": "مشكلات الرد الحالي/الأخير: {count}",
     "chat.voice.afterDictation.send": "إرسال",
     "chat.voice.afterDictation.input": "في الحقل",
     "chat.voice.afterDictation.sendHint": "بعد الإملاء: إرسال فورًا. انقر لترك النص في حقل الإدخال بدلًا من ذلك.",
@@ -1989,7 +1990,7 @@
     "chat.voice.mode.draft": "مسودة",
     "chat.voice.control.hint": "اضغط مطولًا للتسجيل. نقرة لإيقاف الصوت؛ نقرتان لمقاطعة الدور.",
     "chat.voice.control.interruptHint": "نقرة لإيقاف الصوت؛ نقرتان لمقاطعة الدور.",
-    "chat.activity.idle": "لا توجد مهام نشطة",
+    "chat.activity.idle": "جاهز",
     "chat.activity.details": "تفاصيل التنفيذ",
     "chat.activity.more": "{count} أخرى"
   }

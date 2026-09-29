@@ -4,6 +4,7 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "現在／最後の応答の問題：{count}",
     "chat.voice.afterDictation.send": "送信",
     "chat.voice.afterDictation.input": "入力欄へ",
     "chat.voice.afterDictation.sendHint": "音声入力後にすぐ送信します。クリックすると入力欄に残す設定に切り替わります。",
@@ -1804,7 +1805,7 @@
     "chat.voice.mode.draft": "下書き",
     "chat.voice.control.hint": "長押しで録音。クリックで読み上げを停止、ダブルクリックで現在の処理を中断します。",
     "chat.voice.control.interruptHint": "クリックで読み上げを停止、ダブルクリックで現在の処理を中断します。",
-    "chat.activity.idle": "実行中のタスクはありません",
+    "chat.activity.idle": "準備完了",
     "chat.activity.details": "実行の詳細",
     "chat.activity.more": "ほか{count}件"
   }

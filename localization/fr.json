@@ -4,6 +4,7 @@
   "name": "Français",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "Problèmes dans la réponse actuelle/précédente : {count}",
     "chat.voice.afterDictation.send": "Envoyer",
     "chat.voice.afterDictation.input": "Dans le champ",
     "chat.voice.afterDictation.sendHint": "Après la dictée : envoyer immédiatement. Cliquez pour laisser le texte dans le champ.",
@@ -1878,7 +1879,7 @@
     "chat.voice.mode.draft": "Brouillon",
     "chat.voice.control.hint": "Maintenez pour enregistrer. Un clic arrête la lecture ; un double clic interrompt le tour.",
     "chat.voice.control.interruptHint": "Un clic arrête la lecture ; un double clic interrompt le tour.",
-    "chat.activity.idle": "Aucune tâche active",
+    "chat.activity.idle": "Prêt",
     "chat.activity.details": "Détails de l’exécution",
     "chat.activity.more": "{count} autres"
   }

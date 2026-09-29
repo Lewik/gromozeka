@@ -4,6 +4,7 @@
   "name": "Русский",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "Проблем в текущем/последнем ответе: {count}",
     "chat.voice.afterDictation.send": "Сразу",
     "chat.voice.afterDictation.input": "В поле",
     "chat.voice.afterDictation.sendHint": "После диктовки — отправить сразу. Нажмите, чтобы оставлять текст в поле.",
@@ -1915,7 +1916,7 @@
     "chat.voice.mode.draft": "Черновик",
     "chat.voice.control.hint": "Удерживайте для записи. Клик — остановить озвучку; двойной — прервать текущий ход.",
     "chat.voice.control.interruptHint": "Клик — остановить озвучку; двойной — прервать текущий ход.",
-    "chat.activity.idle": "Нет активных задач",
+    "chat.activity.idle": "Готов",
     "chat.activity.details": "Подробности выполнения",
     "chat.activity.more": "Ещё {count}"
   }

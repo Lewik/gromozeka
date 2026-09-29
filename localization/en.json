@@ -4,6 +4,7 @@
   "name": "English",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "Issues in the current/last response: {count}",
     "chat.voice.afterDictation.send": "Send",
     "chat.voice.afterDictation.input": "To input",
     "chat.voice.afterDictation.sendHint": "After dictation: send immediately. Click to keep the text in the input instead.",
@@ -1841,7 +1842,7 @@
     "chat.voice.mode.draft": "Draft",
     "chat.voice.control.hint": "Hold to record. Click to stop speech; double-click to interrupt this turn.",
     "chat.voice.control.interruptHint": "Click to stop speech; double-click to interrupt this turn.",
-    "chat.activity.idle": "No active tasks",
+    "chat.activity.idle": "Ready",
     "chat.activity.details": "Execution details",
     "chat.activity.more": "+{count} more"
   }

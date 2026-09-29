@@ -134,6 +134,10 @@ private fun extractKeyParameters(
             if (it.length > 60) it.take(57) + "..." else it
         }
         "brave_web_search", "brave_local_search" -> json["query"]?.jsonPrimitive?.content.orEmpty()
+        "web_search" -> (json["queries"] as? JsonArray)?.map { it.jsonPrimitive.content }
+            ?.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+            ?: json["query"]?.jsonPrimitive?.content
+            ?: json["url"]?.jsonPrimitive?.content.orEmpty()
         "jina_read_url" -> json["url"]?.jsonPrimitive?.content.orEmpty().let {
             if (it.length > 50) it.take(47) + "..." else it
         }

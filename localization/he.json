@@ -4,6 +4,7 @@
   "name": "עברית",
   "direction": "RTL",
   "messages": {
+    "chat.activity.turnProblems": "בעיות בתשובה הנוכחית/האחרונה: {count}",
     "chat.voice.afterDictation.send": "שליחה",
     "chat.voice.afterDictation.input": "לשדה",
     "chat.voice.afterDictation.sendHint": "לאחר ההכתבה: לשלוח מיד. לחצו כדי להשאיר את הטקסט בשדה במקום זאת.",
@@ -1878,7 +1879,7 @@
     "chat.voice.mode.draft": "טיוטה",
     "chat.voice.control.hint": "החזיקו להקלטה. לחיצה לעצירת ההקראה; לחיצה כפולה להפסקת הסבב.",
     "chat.voice.control.interruptHint": "לחיצה לעצירת ההקראה; לחיצה כפולה להפסקת הסבב.",
-    "chat.activity.idle": "אין משימות פעילות",
+    "chat.activity.idle": "מוכן",
     "chat.activity.details": "פרטי ביצוע",
     "chat.activity.more": "עוד {count}"
   }

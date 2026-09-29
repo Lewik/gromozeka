@@ -4,6 +4,7 @@
   "name": "Deutsch",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "Probleme in der aktuellen/letzten Antwort: {count}",
     "chat.voice.afterDictation.send": "Senden",
     "chat.voice.afterDictation.input": "Ins Feld",
     "chat.voice.afterDictation.sendHint": "Nach dem Diktieren sofort senden. Klicken, um den Text stattdessen im Eingabefeld zu lassen.",
@@ -1841,7 +1842,7 @@
     "chat.voice.mode.draft": "Entwurf",
     "chat.voice.control.hint": "Zum Aufnehmen gedrückt halten. Klicken stoppt die Sprachausgabe; Doppelklicken unterbricht den Durchlauf.",
     "chat.voice.control.interruptHint": "Klicken stoppt die Sprachausgabe; Doppelklicken unterbricht den Durchlauf.",
-    "chat.activity.idle": "Keine aktiven Aufgaben",
+    "chat.activity.idle": "Bereit",
     "chat.activity.details": "Ausführungsdetails",
     "chat.activity.more": "{count} weitere"
   }

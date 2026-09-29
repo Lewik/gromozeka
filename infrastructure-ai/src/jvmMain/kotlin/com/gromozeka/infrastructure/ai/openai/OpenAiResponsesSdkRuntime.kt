@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.projectedMessages
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -157,6 +158,7 @@ internal class OpenAiResponsesMessageMapper(
             val mapped = when {
                 item.isMessage() -> item.asMessage().toAssistantMessage(assistantResponseFormat, outcome != AiStepOutcome.COMPLETE)
                 item.isFunctionCall() -> if (outcome == AiStepOutcome.TOOL_CALLS) item.asFunctionCall().toAssistantMessage() else null
+                item.isWebSearchCall() -> item.asWebSearchCall().toSearchActivity()
                 item.isReasoning() -> item.asReasoning().let { reasoning ->
                     val thinking = buildList {
                         reasoning.summary().map { it.text().trim() }.filter(String::isNotBlank).forEach(::add)
@@ -187,9 +189,11 @@ internal class OpenAiResponsesMessageMapper(
         }
         val model = response.model().providerModelId()
 
-        val sourceUrls = outputItems
-            .filter { it.isWebSearchCall() }
-            .flatMap { it.asWebSearchCall().sourceUrls() }
+        // The answer cites used sources, not every page considered by hosted search.
+        // The complete search inventory belongs to the expandable tool activity.
+        val sourceUrls = outputItems.filter { it.isMessage() }.flatMap { it.asMessage().content() }
+            .filter { it.isOutputText() }.flatMap { it.asOutputText().annotations() }
+            .filter { it.isUrlCitation() }.map { it.asUrlCitation().url() }
 
         val usage = response.usage().getOrNull()?.toAiUsage()
         return AiRuntimeResponse(
@@ -520,19 +524,8 @@ internal class OpenAiResponsesMessageMapper(
     ): Conversation.Message.ContentItem.AssistantMessage {
         val structured = if (progress) AssistantResponseParser.parseProgress(text(), assistantResponseFormat)
             else AssistantResponseParser.parse(text(), assistantResponseFormat)
-        val citations = annotations().filter { it.isUrlCitation() }
-            .map { it.asUrlCitation() }
-            .distinctBy { it.url() }
-        val fullText = if (citations.isEmpty()) {
-            structured.fullText
-        } else {
-            val sources = citations.joinToString("\n") { citation ->
-                "- [${citation.title().escapeMarkdownLinkText()}](${citation.url()})"
-            }
-            "${structured.fullText}\n\nSources:\n$sources"
-        }
         return Conversation.Message.ContentItem.AssistantMessage(
-            structured = structured.copy(fullText = fullText),
+            structured = structured,
             state = Conversation.Message.BlockState.COMPLETE,
         )
     }
@@ -592,7 +585,34 @@ internal class OpenAiResponsesMessageMapper(
         }
     }
 
-    private fun String.escapeMarkdownLinkText(): String = replace("[", "\\[").replace("]", "\\]")
+    private fun ResponseFunctionWebSearch.toSearchActivity(): AiAssistantMessage {
+        val callId = Conversation.Message.ContentItem.ToolCall.Id(id())
+        val action = json.parseToJsonElement(jsonMapper().writeValueAsString(action())).jsonObject
+        val sources = sourceUrls().distinct()
+        val complete = status().asString() == "completed"
+        return AiAssistantMessage(
+            content = listOf(
+                Conversation.Message.ContentItem.ToolCall(
+                    id = callId,
+                    call = Conversation.Message.ContentItem.ToolCall.Data(
+                        name = "web_search",
+                        input = JsonObject(action.filterKeys { it != "sources" }),
+                    ),
+                ),
+                Conversation.Message.ContentItem.ToolResult(
+                    toolUseId = callId,
+                    toolName = "web_search",
+                    result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text(
+                        sources.joinToString("\n") { "- <$it>" }.ifBlank { status().asString() },
+                    )),
+                    isError = !complete,
+                ),
+            ),
+            // Hosted search has already run; this is history/UI, never a client tool dispatch.
+            // Its native output item is retained by the common mapping below for exact replay.
+            metadata = mapOf(AI_PROVIDER_MANAGED_TOOL_METADATA_KEY to true),
+        )
+    }
 
     private fun ResponseFunctionWebSearch.sourceUrls(): List<String> {
         val action = action()

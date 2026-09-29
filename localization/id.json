@@ -4,6 +4,7 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "Masalah pada respons saat ini/terakhir: {count}",
     "chat.voice.afterDictation.send": "Kirim",
     "chat.voice.afterDictation.input": "Ke kolom",
     "chat.voice.afterDictation.sendHint": "Setelah mendikte: langsung kirim. Klik untuk membiarkan teks di kolom input.",
@@ -1804,7 +1805,7 @@
     "chat.voice.mode.draft": "Draf",
     "chat.voice.control.hint": "Tahan untuk merekam. Klik menghentikan suara; klik ganda menginterupsi giliran.",
     "chat.voice.control.interruptHint": "Klik menghentikan suara; klik ganda menginterupsi giliran.",
-    "chat.activity.idle": "Tidak ada tugas aktif",
+    "chat.activity.idle": "Siap",
     "chat.activity.details": "Detail eksekusi",
     "chat.activity.more": "{count} lainnya"
   }

@@ -138,7 +138,7 @@ class ComposerPanelTest {
         var stops = 0
         setContent {
             GromozekaTheme {
-                ComposerPanel(Modifier.width(500.dp)) {
+                ComposerPanel(Modifier.width(880.dp)) {
                     ConversationActivityBar(
                         runtime = null, generation = null, isWaiting = true,
                         pauseRequested = paused, tokenStats = null, voice = emptyList(), tabId = "tab",
@@ -280,10 +280,10 @@ class ComposerPanelTest {
         toggle.performClick().assertIsSelected()
         onNodeWithTag("runtime-content").assertIsDisplayed()
         // Clicking a status opens details; unlike the dedicated toggle, it never closes them.
-        repeat(2) { onNodeWithText("No active tasks").performClick() }
+        repeat(2) { onNodeWithText("Ready").performClick() }
         toggle.assertIsSelected()
         toggle.performClick()
-        onNodeWithText("No active tasks").performClick()
+        onNodeWithText("Ready").performClick()
         toggle.assertIsSelected()
     }
 
@@ -382,6 +382,11 @@ class ComposerPanelTest {
             runOnIdle {
                 waiting = symbol != "composer-ready-symbol"
                 paused = symbol == "composer-static-symbol"
+            }
+            for (tag in listOf("composer-pause-execution", "composer-stop-execution")) {
+                val control = onNodeWithTag(tag)
+                control.assertIsDisplayed().assertWidthIsEqualTo(controlSize).assertHeightIsEqualTo(controlSize)
+                if (waiting) control.assertIsEnabled() else control.assertIsNotEnabled()
             }
             val squareNode = onNodeWithTag("composer-state-indicator")
             squareNode.assertWidthIsEqualTo(controlSize).assertHeightIsEqualTo(controlSize)

@@ -4,6 +4,7 @@
   "name": "Português (Brasil)",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "Problemas na resposta atual/última: {count}",
     "chat.voice.afterDictation.send": "Enviar",
     "chat.voice.afterDictation.input": "No campo",
     "chat.voice.afterDictation.sendHint": "Após ditar: enviar imediatamente. Clique para deixar o texto no campo.",
@@ -1878,7 +1879,7 @@
     "chat.voice.mode.draft": "Rascunho",
     "chat.voice.control.hint": "Segure para gravar. Um clique para a voz; dois cliques interrompem o turno.",
     "chat.voice.control.interruptHint": "Um clique para a voz; dois cliques interrompem o turno.",
-    "chat.activity.idle": "Nenhuma tarefa ativa",
+    "chat.activity.idle": "Pronto",
     "chat.activity.details": "Detalhes da execução",
     "chat.activity.more": "Mais {count}"
   }

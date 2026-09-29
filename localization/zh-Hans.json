@@ -4,6 +4,7 @@
   "name": "简体中文",
   "direction": "LTR",
   "messages": {
+    "chat.activity.turnProblems": "当前／上次回复中的问题：{count}",
     "chat.voice.afterDictation.send": "发送",
     "chat.voice.afterDictation.input": "留在输入框",
     "chat.voice.afterDictation.sendHint": "听写后立即发送。点击改为将文本留在输入框。",
@@ -1804,7 +1805,7 @@
     "chat.voice.mode.draft": "草稿",
     "chat.voice.control.hint": "按住录音。单击停止朗读，双击中断当前轮次。",
     "chat.voice.control.interruptHint": "单击停止朗读，双击中断当前轮次。",
-    "chat.activity.idle": "没有运行中的任务",
+    "chat.activity.idle": "就绪",
     "chat.activity.details": "执行详情",
     "chat.activity.more": "还有 {count} 项"
   }

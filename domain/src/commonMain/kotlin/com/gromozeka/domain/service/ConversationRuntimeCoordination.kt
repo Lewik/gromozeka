@@ -204,6 +204,12 @@ data class ConversationRuntimeTask(
 
     fun isContinuation(): Boolean = !isRootInput()
 
+    fun isAgentWork(): Boolean = when (payload) {
+        is Payload.AgentInvocation, is Payload.AgentResponse, is Payload.LlmCall,
+        is Payload.ToolExecution, is Payload.ToolResultProcessing, is Payload.MemoryRecall -> true
+        else -> false
+    }
+
     private fun Payload.isRootInput(): Boolean =
         when (this) {
             is Payload.PostMessage,
@@ -705,6 +711,22 @@ data class ConversationRuntimeTraceEntry(
     }
 }
 
+/** Problems remain attached to the whole agent turn, including after it finishes. */
+@Serializable
+data class ConversationRuntimeTurnSummary(
+    val turnId: ConversationRuntimeTurnId,
+    val startedAt: Instant,
+    val problems: List<Problem> = emptyList(),
+) {
+    @Serializable
+    data class Problem(
+        val key: String,
+        val message: String,
+        val occurredAt: Instant,
+        val outcomeUnknown: Boolean = false,
+    )
+}
+
 /**
  * Backend-owned read model for clients.
  *
@@ -725,6 +747,7 @@ data class ConversationRuntimeSnapshot(
     val commandMonitors: List<CommandMonitor> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
+    val lastTurn: ConversationRuntimeTurnSummary? = null,
     val lastEventSequence: Long = 0,
 )
 

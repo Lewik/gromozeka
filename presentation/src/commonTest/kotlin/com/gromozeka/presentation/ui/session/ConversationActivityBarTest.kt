@@ -33,14 +33,14 @@ class ConversationActivityBarTest {
     }
 
     @Test
-    fun `memory progress and recognition do not hide each other`() {
+    fun `memory operations stay out of the foreground status while their UI is disabled`() {
         val runtime = snapshot().copy(memoryOperations = listOf(
             ConversationRuntimeMemoryOperation(MemoryRun.Id("memory"), "memory_enrich_context", MemoryRun.Status.RUNNING,
                 "Reading context", MemoryRun.Progress(totalUnits = 4, completedUnits = 1), now, updatedAt = now),
         ))
         val rows = executionActivities(runtime, null, true, listOf(first), "a", translation)
-        assertEquals(3, rows.size)
-        assertEquals(0.25f, rows.last().progress)
+        assertEquals(listOf("voice:first", "agent"), rows.map { it.id })
+        assertTrue(rows.all { it.progress == null })
         assertFalse(runtime.hasControllableWork())
     }
 
