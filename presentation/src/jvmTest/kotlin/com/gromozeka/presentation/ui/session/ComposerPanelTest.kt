@@ -280,10 +280,10 @@ class ComposerPanelTest {
         toggle.performClick().assertIsSelected()
         onNodeWithTag("runtime-content").assertIsDisplayed()
         // Clicking a status opens details; unlike the dedicated toggle, it never closes them.
-        repeat(2) { onNodeWithText("Ready").performClick() }
+        repeat(2) { onNode(hasText("Ready") and hasClickAction()).performClick() }
         toggle.assertIsSelected()
         toggle.performClick()
-        onNodeWithText("Ready").performClick()
+        onNode(hasText("Ready") and hasClickAction()).performClick()
         toggle.assertIsSelected()
     }
 
