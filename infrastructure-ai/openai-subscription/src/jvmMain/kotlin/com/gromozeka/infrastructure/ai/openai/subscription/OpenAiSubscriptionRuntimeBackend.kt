@@ -88,7 +88,7 @@ private class Runtime(
     ): AiRuntimeResponse = withContext(Dispatchers.IO) {
         val session = authService.getValidSession()
         val baseConversationKey = request.options.toolContext["conversationId"] as? String ?: fallbackConversationKey
-        val rawConversationKey = if (request.options.usagePurpose == "MESSAGE_SQUASH") {
+        val rawConversationKey = if (request.options.usagePurpose in setOf("MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW")) {
             "$baseConversationKey:message-squash:$fallbackConversationKey"
         } else baseConversationKey
         val conversationKey = rawConversationKey.toOpenAiSubscriptionKey()

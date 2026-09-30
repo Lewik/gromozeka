@@ -775,6 +775,7 @@ private fun RuntimeTasksSection(
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
     val turnProblems = runtimeSnapshot?.lastTurn?.problems.orEmpty()
+    val collaborationRequests = runtimeSnapshot?.agentRequests.orEmpty()
     val incidents = runtimeSnapshot?.incidents.orEmpty().filterNot { incident ->
         turnProblems.any { it.key == "incident:${incident.task.id.value}" }
     }
@@ -796,7 +797,7 @@ private fun RuntimeTasksSection(
         activeCommands.isEmpty() &&
         activeMonitors.isEmpty() &&
         incidents.isEmpty() &&
-        turnProblems.isEmpty()
+        turnProblems.isEmpty() && collaborationRequests.isEmpty()
     ) {
         return
     }
@@ -817,6 +818,7 @@ private fun RuntimeTasksSection(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                runtimeSnapshot?.let { AgentCollaborationRequests(collaborationRequests, it.conversationId) }
                 if (turnProblems.isNotEmpty()) {
                     Column(Modifier.fillMaxWidth().bringIntoViewRequester(problemsRequester)
                         .testTag("runtime-turn-problems"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1075,7 +1077,7 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
         is ConversationRuntimeTask.Payload.AgentInvocation -> translation.agentInvocationTask
         is ConversationRuntimeTask.Payload.AgentResponse -> translation.agentInvocationTask
         is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationTask
-        is ConversationRuntimeTask.Payload.LlmCall -> translation.llmCallTask
+        is ConversationRuntimeTask.Payload.LlmCall, is ConversationRuntimeTask.Payload.ResponseReview -> translation.llmCallTask
         is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionTask
         is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingTask
         is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallTask
@@ -1096,7 +1098,7 @@ internal fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
             localization.text("session.runtime.agentWorking", "agentName" to it)
         } ?: translation.agentInvocationTask
         is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationStatus
-        is ConversationRuntimeTask.Payload.LlmCall -> translation.modelRequestStatus
+        is ConversationRuntimeTask.Payload.LlmCall, is ConversationRuntimeTask.Payload.ResponseReview -> translation.modelRequestStatus
         is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus
         is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingStatus
         is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallStatus
@@ -1110,6 +1112,7 @@ private fun ConversationRuntimeTask.Payload.agentDefinitionIdOrNull(): AgentDefi
     is ConversationRuntimeTask.Payload.AgentInvocation -> agentDefinitionId
     is ConversationRuntimeTask.Payload.AgentResponse -> agentDefinitionId
     is ConversationRuntimeTask.Payload.LlmCall -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.ResponseReview -> agentDefinitionId
     is ConversationRuntimeTask.Payload.ToolExecution -> agentDefinitionId
     is ConversationRuntimeTask.Payload.ToolResultProcessing -> agentDefinitionId
     is ConversationRuntimeTask.Payload.MemoryRecall -> agentDefinitionId

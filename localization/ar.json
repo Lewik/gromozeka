@@ -4,6 +4,13 @@
   "name": "العربية",
   "direction": "RTL",
   "messages": {
+    "collaboration.title": "طلبات بين الوكلاء",
+    "collaboration.working": "قيد العمل",
+    "collaboration.waitingUser": "بانتظار ردك",
+    "collaboration.waitingResult": "بانتظار نتيجة",
+    "collaboration.completed": "مكتمل",
+    "collaboration.cancelled": "ملغى",
+    "collaboration.blocked": "محظور",
     "chat.activity.turnProblems": "مشكلات الرد الحالي/الأخير: {count}",
     "chat.voice.afterDictation.send": "إرسال",
     "chat.voice.afterDictation.input": "في الحقل",

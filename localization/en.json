@@ -4,6 +4,13 @@
   "name": "English",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "Inter-agent requests",
+    "collaboration.working": "Working",
+    "collaboration.waitingUser": "Waiting for you",
+    "collaboration.waitingResult": "Waiting for a result",
+    "collaboration.completed": "Completed",
+    "collaboration.cancelled": "Cancelled",
+    "collaboration.blocked": "Blocked",
     "chat.activity.turnProblems": "Issues in the current/last response: {count}",
     "chat.voice.afterDictation.send": "Send",
     "chat.voice.afterDictation.input": "To input",

@@ -4,6 +4,13 @@
   "name": "Português (Brasil)",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "Solicitações entre agentes",
+    "collaboration.working": "Em andamento",
+    "collaboration.waitingUser": "Aguardando sua resposta",
+    "collaboration.waitingResult": "Aguardando resultado",
+    "collaboration.completed": "Concluído",
+    "collaboration.cancelled": "Cancelado",
+    "collaboration.blocked": "Bloqueado",
     "chat.activity.turnProblems": "Problemas na resposta atual/última: {count}",
     "chat.voice.afterDictation.send": "Enviar",
     "chat.voice.afterDictation.input": "No campo",

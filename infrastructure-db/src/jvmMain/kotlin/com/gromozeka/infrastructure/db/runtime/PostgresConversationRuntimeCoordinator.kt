@@ -68,6 +68,7 @@ import javax.sql.DataSource
 class PostgresConversationRuntimeCoordinator(
     private val dataSource: DataSource,
     private val json: Json,
+    private val collaborationRepository: com.gromozeka.domain.repository.AgentCollaborationRepository? = null,
 ) : ConversationRuntimeCoordinator {
     private val log = KLoggers.logger(this)
     private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
@@ -826,7 +827,18 @@ class PostgresConversationRuntimeCoordinator(
                         }.asReversed()
                     }
                 }
-                val result = record.snapshot()
+                // Use this same read transaction: nested pool acquisitions can deadlock
+                // when many conversation snapshots are loading concurrently.
+                val requests = if (collaborationRepository == null) emptyList() else connection.prepareStatement(
+                    "SELECT record_json::text FROM agent_requests WHERE source_conversation_id = ? OR target_conversation_id = ? " +
+                        "ORDER BY (state IN ('WORKING','WAITING_USER','WAITING_RESULT')) DESC, (record_json ->> 'createdAt') DESC, id LIMIT 32"
+                ).use { statement ->
+                    statement.setString(1, conversationId.value); statement.setString(2, conversationId.value)
+                    statement.executeQuery().use { rows -> buildList {
+                        while (rows.next()) add(json.decodeFromString<com.gromozeka.domain.model.AgentRequest>(rows.getString(1)))
+                    } }
+                }
+                val result = record.snapshot().copy(agentRequests = requests)
                 connection.commit()
                 result
             } catch (error: Throwable) {

@@ -4,6 +4,13 @@
   "name": "简体中文",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "代理间请求",
+    "collaboration.working": "处理中",
+    "collaboration.waitingUser": "等待你的回复",
+    "collaboration.waitingResult": "等待结果",
+    "collaboration.completed": "已完成",
+    "collaboration.cancelled": "已取消",
+    "collaboration.blocked": "已阻止",
     "chat.activity.turnProblems": "当前／上次回复中的问题：{count}",
     "chat.voice.afterDictation.send": "发送",
     "chat.voice.afterDictation.input": "留在输入框",

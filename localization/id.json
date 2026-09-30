@@ -4,6 +4,13 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "Permintaan antaragen",
+    "collaboration.working": "Sedang bekerja",
+    "collaboration.waitingUser": "Menunggu jawaban Anda",
+    "collaboration.waitingResult": "Menunggu hasil",
+    "collaboration.completed": "Selesai",
+    "collaboration.cancelled": "Dibatalkan",
+    "collaboration.blocked": "Diblokir",
     "chat.activity.turnProblems": "Masalah pada respons saat ini/terakhir: {count}",
     "chat.voice.afterDictation.send": "Kirim",
     "chat.voice.afterDictation.input": "Ke kolom",

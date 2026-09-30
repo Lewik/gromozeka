@@ -256,6 +256,7 @@ class ParallelToolExecutor(
             val parentJob = coroutineContext[Job]
             val cancellableToolContext = toolContext
                 .withValue(TOOL_CONTEXT_TOOL_NAME, toolName)
+                .withValue("toolCallId", toolCall.id.value)
                 .withCancellationSignal(
                     ToolCancellationSignal {
                         if (parentJob?.isActive == false) {

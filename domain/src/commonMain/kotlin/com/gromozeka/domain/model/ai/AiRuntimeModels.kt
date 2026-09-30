@@ -9,6 +9,9 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import com.gromozeka.domain.model.COLLABORATION_ORIGINAL_CONTENT
 
 const val AI_PROVIDER_MANAGED_TOOL_METADATA_KEY = "providerManagedTool"
 
@@ -139,7 +142,10 @@ fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
 
 fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Conversation.Message> {
     val currentThread = options.toolContext["threadId"] as? String
-    return ConversationContext(messages).messagesForProvider(nativeProvider).map { message ->
+    // UI corrections never rewrite signed/native provider history. Restore the actual
+    // generated blocks before compaction projection or native-session reconciliation.
+    val originalMessages = originalCollaborationMessages()
+    return ConversationContext(originalMessages).messagesForProvider(nativeProvider).map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
         if (currentThread != null && sourceThread != currentThread) {
             // Legacy raw states without branch attribution are replayed as portable content.
@@ -147,4 +153,12 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
             message.withoutProviderReplay()
         } else message
     }
+}
+
+/** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */
+fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> = messages.map { message ->
+    val original = message.providerMetadata[COLLABORATION_ORIGINAL_CONTENT]
+    if (original != null && message.role == Conversation.Message.Role.ASSISTANT && message.author is Conversation.Message.Author.Agent) {
+        message.copy(content = Json.decodeFromJsonElement<List<Conversation.Message.ContentItem>>(original))
+    } else message
 }

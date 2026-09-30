@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import com.gromozeka.domain.model.ai.nativeCompactionProvider
 import com.gromozeka.domain.model.ai.projectedMessages
+import com.gromozeka.domain.model.ai.originalCollaborationMessages
 import kotlinx.coroutines.flow.map
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.DirectAiRuntimeProvider
@@ -55,14 +56,14 @@ class AiInputValidatingRuntime(
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         val prepared = prepare(request)
         AiRuntimeInputValidator.requireSupported(runtime, prepared.messages)
-        return delegate.call(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request else prepared)
+        return delegate.call(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request.copy(messages = request.originalCollaborationMessages()) else prepared)
             .withReplayScope(request)
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> {
         val prepared = prepare(request)
         AiRuntimeInputValidator.requireSupported(runtime, prepared.messages)
-        return delegate.stream(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request else prepared)
+        return delegate.stream(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request.copy(messages = request.originalCollaborationMessages()) else prepared)
             .map { it.withReplayScope(request) }
     }
 

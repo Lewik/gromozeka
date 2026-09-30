@@ -6,6 +6,7 @@ import com.gromozeka.domain.repository.PositionedConversationMessage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 object ConversationMessageProjection {
     fun project(entry: PositionedConversationMessage, textBudget: Int = 16_384): ConversationHistoryMessage {
@@ -50,16 +51,21 @@ object ConversationMessageProjection {
                 else -> item
             }
         }
+        // Keep only the tiny presentation flag, never the original provider response/replay data.
+        val presentationMetadata = entry.message.providerMetadata.filter { (key, value) ->
+            key == "collaborationReceipt" && value == JsonPrimitive(true) &&
+                entry.message.role == Conversation.Message.Role.SYSTEM
+        }
         var projected = entry.message.copy(
             content = content,
-            providerMetadata = JsonObject(entry.message.providerMetadata.filterKeys { it == "compactionBoundary" }),
+            providerMetadata = JsonObject(entry.message.providerMetadata.filterKeys { it == "compactionBoundary" } + presentationMetadata),
         )
         if (Json.encodeToString(projected).encodeToByteArray().size > MAX_MESSAGE_BYTES) {
             deferred = true
             projected = projected.copy(
                 instructions = emptyList(),
                 originalIds = emptyList(),
-                providerMetadata = JsonObject(emptyMap()),
+                providerMetadata = JsonObject(presentationMetadata),
                 author = when (val author = projected.author) {
                     is Conversation.Message.Author.User -> author.copy(displayName = author.displayName.take(256), identityKey = null)
                     is Conversation.Message.Author.Agent -> author.copy(displayName = author.displayName.take(256))

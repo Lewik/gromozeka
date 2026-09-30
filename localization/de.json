@@ -4,6 +4,13 @@
   "name": "Deutsch",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "Anfragen zwischen Agenten",
+    "collaboration.working": "In Arbeit",
+    "collaboration.waitingUser": "Wartet auf deine Antwort",
+    "collaboration.waitingResult": "Wartet auf ein Ergebnis",
+    "collaboration.completed": "Abgeschlossen",
+    "collaboration.cancelled": "Abgebrochen",
+    "collaboration.blocked": "Blockiert",
     "chat.activity.turnProblems": "Probleme in der aktuellen/letzten Antwort: {count}",
     "chat.voice.afterDictation.send": "Senden",
     "chat.voice.afterDictation.input": "Ins Feld",

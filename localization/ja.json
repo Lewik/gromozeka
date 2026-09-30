@@ -4,6 +4,13 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "エージェント間の依頼",
+    "collaboration.working": "作業中",
+    "collaboration.waitingUser": "返信待ち",
+    "collaboration.waitingResult": "結果待ち",
+    "collaboration.completed": "完了",
+    "collaboration.cancelled": "キャンセル済み",
+    "collaboration.blocked": "ブロック中",
     "chat.activity.turnProblems": "現在／最後の応答の問題：{count}",
     "chat.voice.afterDictation.send": "送信",
     "chat.voice.afterDictation.input": "入力欄へ",

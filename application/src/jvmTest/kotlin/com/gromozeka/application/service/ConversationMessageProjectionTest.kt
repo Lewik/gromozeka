@@ -53,6 +53,25 @@ class ConversationMessageProjectionTest {
         assertEquals(500_000, ((original.content.single() as Conversation.Message.ContentItem.ImageItem).source as Conversation.Message.ImageSource.Base64ImageSource).data.length)
     }
 
+    @Test
+    fun collaborationReceiptFlagSurvivesBothNormalAndOversizedTimelineProjection() {
+        val original = message(listOf(Conversation.Message.ContentItem.System(
+            Conversation.Message.ContentItem.System.SystemLevel.INFO, "Routing receipt",
+        ))).copy(role = Conversation.Message.Role.SYSTEM, providerMetadata = buildJsonObject {
+            put("collaborationReceipt", true)
+            put("gromozekaCollaborationOriginalContent", "private-original-response")
+            put("providerReplay", "private-replay")
+        })
+        for (candidate in listOf(original, original.copy(originalIds = List(2_000) { Conversation.Message.Id("large-original-id-$it") }))) {
+            val view = ConversationMessageProjection.project(PositionedConversationMessage(9, candidate))
+            assertEquals(JsonPrimitive(true), view.message.providerMetadata["collaborationReceipt"])
+            assertFalse(Json.encodeToString(view).contains("private-"))
+            assertTrue(Json.encodeToString(view).encodeToByteArray().size <= ConversationMessageProjection.MAX_MESSAGE_BYTES)
+        }
+        val assistant = ConversationMessageProjection.project(PositionedConversationMessage(9, original.copy(role = Conversation.Message.Role.ASSISTANT)))
+        assertFalse(assistant.message.providerMetadata.containsKey("collaborationReceipt"))
+    }
+
     private fun message(content: List<Conversation.Message.ContentItem>) = Conversation.Message(
         id = Conversation.Message.Id("message"), conversationId = Conversation.Id("conversation"),
         role = Conversation.Message.Role.ASSISTANT, content = content,

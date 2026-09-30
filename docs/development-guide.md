@@ -302,6 +302,36 @@ GROMOZEKA_POSTGRES_URL=jdbc:postgresql://localhost:<slot-postgres-port>/gromozek
   --tests '*CompactionCoverageMigrationTest' -q
 ```
 
+## Experimental Cross-Thread Collaboration
+
+Enable only on an isolated Server with `GROMOZEKA_COLLABORATION_ENABLED=true`.
+The default is off. Open two conversations in one project, connect agents using
+one AI connection and identical tool policies, and name the conversations.
+`grz_agent_sessions` discovers eligible endpoints; `grz_agent_request` submits
+work without waiting; `grz_agent_reply` completes a request. `grz_agent_message`
+is context-only and does not start a model turn. Results are queued automatically.
+Runtime displays the requests, waits, and stored results. No UI tab is required
+for server-side delivery. User input and safe-point steering remain available.
+
+Text-only completion with open collaboration obligations is retained as a draft
+and passed through a separate, tool-free check on the selected provider. The
+check chooses human text, request dispositions and CONTINUE/ASK_USER/WAIT/COMPLETE.
+It has one format correction at most. Runtime validates request IDs and wait
+handles, preserves native generated content for provider replay, and records
+actual delivery in a durable outbox. A stale decision cannot commit over queued
+safe-point input. Failed or interrupted reviews retain their draft; they do not
+silently publish it or rerun the original model call.
+
+This first iteration deliberately rejects cross-project/provider-connection
+communication and history-branch changes. Telegram and other externally bound
+conversations keep their ordinary turn lifecycle: no collaboration prompt or response
+review, and collaboration tools are hidden from both the catalog and tool discovery.
+Direct collaboration calls from those channels remain rejected.
+Completed peer results are not human TTS. Read-only delegation constraints are copied into the recipient context;
+ordinary tool execution still uses the existing approval/policy mechanisms.
+The experiment does not enable external protocols, create agents, or move
+workspace files between sessions. Do not enable it in production yet.
+
 ## Tool Output Storage
 
 Tool results retain their original bytes as managed Artifacts. Text responses are

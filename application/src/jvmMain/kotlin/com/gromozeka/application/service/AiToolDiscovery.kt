@@ -431,10 +431,13 @@ class SearchToolsToolCallback(
             "Agent ${agent.id.value} does not belong to project ${project.id.value}"
         }
 
+        val conversation = conversationDomainService.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+        require(conversation.projectId == project.id) { "Conversation belongs to another project" }
         val preparedCatalog = agentSkillRuntimeCatalogService.prepare(
             agent = agent,
             projectId = project.id,
-            toolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess),
+            toolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess, conversation),
         ).toolCatalog
         val loadedToolNames = runtimeCatalogService.loadedToolNames(
             agent = agent,

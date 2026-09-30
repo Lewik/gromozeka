@@ -4,6 +4,13 @@
   "name": "עברית",
   "direction": "RTL",
   "messages": {
+    "collaboration.title": "בקשות בין סוכנים",
+    "collaboration.working": "בעבודה",
+    "collaboration.waitingUser": "ממתין לתשובתך",
+    "collaboration.waitingResult": "ממתין לתוצאה",
+    "collaboration.completed": "הושלם",
+    "collaboration.cancelled": "בוטל",
+    "collaboration.blocked": "חסום",
     "chat.activity.turnProblems": "בעיות בתשובה הנוכחית/האחרונה: {count}",
     "chat.voice.afterDictation.send": "שליחה",
     "chat.voice.afterDictation.input": "לשדה",

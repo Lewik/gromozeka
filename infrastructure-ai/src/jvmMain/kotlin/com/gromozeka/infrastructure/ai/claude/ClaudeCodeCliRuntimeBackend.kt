@@ -360,7 +360,7 @@ internal class ClaudeCodeCliRuntime(
     }
 
     private fun sessionStateKey(request: AiRuntimeRequest): ClaudeCodeSessionState.Key? {
-        if (request.options.usagePurpose == "MESSAGE_SQUASH") return null
+        if (request.options.usagePurpose in setOf("MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW")) return null
         val conversationId = request.options.toolContext["conversationId"].contextString()
             ?.takeIf { it.isNotBlank() }
             ?: request.messages.lastOrNull()?.conversationId?.value

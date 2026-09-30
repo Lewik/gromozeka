@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.AGENT_COLLABORATION_TOOL_NAMES
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
@@ -77,6 +79,7 @@ class DistributedAiToolCatalog(
     suspend fun snapshot(
         project: Project,
         toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
+        conversation: Conversation? = null,
     ): DistributedAiToolCatalogSnapshot {
         val now = Clock.System.now()
         val staleBefore = now - ConversationRuntimeTiming.workerRegistrationStaleAfter
@@ -157,7 +160,10 @@ class DistributedAiToolCatalog(
                 )
             }
         val entries = (workerEntries + serverEntries).filterValues { entry ->
-            toolAccess.allows(QualifiedToolName(entry.descriptor.definition.source, entry.logicalName), entry.contractFingerprint)
+            val collaborationUnavailable = conversation?.externalChannel != null &&
+                entry.descriptor.definition.source == "gromozeka" && entry.logicalName in AGENT_COLLABORATION_TOOL_NAMES
+            !collaborationUnavailable && toolAccess.allows(
+                QualifiedToolName(entry.descriptor.definition.source, entry.logicalName), entry.contractFingerprint)
         }.toSortedMap()
         val callbacks = entries.values.map(::modelCallback)
         val environmentTopology = buildEnvironmentTopology(

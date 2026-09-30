@@ -104,6 +104,10 @@ data class ConversationRuntimeTask(
         }
 
         @Serializable
+        @SerialName("response_review")
+        data class ResponseReview(val draftId: String, val agentDefinitionId: AgentDefinition.Id) : Payload
+
+        @Serializable
         @SerialName("tool_execution")
         data class ToolExecution(
             val rootUserMessageId: Conversation.Message.Id,
@@ -206,7 +210,7 @@ data class ConversationRuntimeTask(
 
     fun isAgentWork(): Boolean = when (payload) {
         is Payload.AgentInvocation, is Payload.AgentResponse, is Payload.LlmCall,
-        is Payload.ToolExecution, is Payload.ToolResultProcessing, is Payload.MemoryRecall -> true
+        is Payload.ToolExecution, is Payload.ToolResultProcessing, is Payload.MemoryRecall, is Payload.ResponseReview -> true
         else -> false
     }
 
@@ -221,6 +225,7 @@ data class ConversationRuntimeTask(
             is Payload.ExecutionIncident -> true
 
             is Payload.LlmCall,
+            is Payload.ResponseReview,
             is Payload.ToolExecution,
             is Payload.ToolResultProcessing,
             is Payload.MemoryRecall -> false
@@ -251,7 +256,7 @@ data class ConversationRuntimeTask(
                 is ConversationHistoryMutation.Delete,
                 -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
             }
-            is Payload.LlmCall -> setOf(
+            is Payload.LlmCall, is Payload.ResponseReview -> setOf(
                 ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
@@ -748,6 +753,7 @@ data class ConversationRuntimeSnapshot(
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
     val lastTurn: ConversationRuntimeTurnSummary? = null,
+    val agentRequests: List<com.gromozeka.domain.model.AgentRequest> = emptyList(),
     val lastEventSequence: Long = 0,
 )
 

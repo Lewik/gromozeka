@@ -114,6 +114,26 @@ class DistributedAiToolRoutingTest {
     )
 
     @Test
+    fun `external channels hide collaboration tools and routes without changing ordinary conversations`() = runBlocking {
+        val names = com.gromozeka.domain.model.AGENT_COLLABORATION_TOOL_NAMES
+        val collaborationTools = names.map { name -> conversationRuntimeTool.copy(
+            definition = conversationRuntimeTool.definition.copy(name = name)) }
+        val catalog = distributedCatalog(InMemoryConversationRuntimeWorkerRegistry(),
+            TestWorkspaceDomainService(listOf(project), emptyList(), emptyList()),
+            collaborationTools + conversationRuntimeTool)
+        val normal = conversation(project.id)
+        val telegram = normal.copy(externalChannel = com.gromozeka.domain.model.ExternalConversationChannel("telegram", "test", "chat"))
+        val external = catalog.snapshot(project, conversation = telegram)
+        assertTrue(external.entries.values.none { it.logicalName in names })
+        assertTrue(external.tools.none { it.definition.name in names })
+        assertTrue(names.none { it in external.environmentPrompt })
+        assertTrue(external.entries.values.any { it.logicalName == conversationRuntimeTool.definition.name })
+        val ordinary = catalog.snapshot(project, conversation = normal)
+        assertTrue(ordinary.entries.values.map { it.logicalName }.containsAll(names))
+        assertNotEquals(external.environmentRevision, ordinary.environmentRevision)
+    }
+
+    @Test
     fun `conversation runtime tools execute on Server without an explicit target`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val workspaceService = TestWorkspaceDomainService(

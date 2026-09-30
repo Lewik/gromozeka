@@ -39,6 +39,7 @@ class ConversationRuntimeApplicationService(
     private val activeGenerationStateSyncService: ActiveGenerationStateSyncService,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val conversationService: ConversationDomainService,
+    private val collaboration: AgentCollaborationService? = null,
 ) : ConversationRuntimeService, ConversationRuntimeIngressService {
     private val log = KLoggers.logger(this)
 
@@ -78,7 +79,14 @@ class ConversationRuntimeApplicationService(
     override suspend fun controlExecution(
         conversationId: Conversation.Id,
         action: ConversationRuntimeControlAction,
-    ): Boolean = runtimeDispatcher.controlExecution(conversationId, action)
+    ): Boolean {
+        val accepted = runtimeDispatcher.controlExecution(conversationId, action)
+        // A durable peer/user wait remains cancellable after the foreground turn has ended.
+        val cancelledCollaboration = if (action in setOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
+            collaboration?.cancelConversation(conversationId) == true
+        } else false
+        return accepted || cancelledCollaboration
+    }
 
     override suspend fun cancelCommandTask(
         conversationId: Conversation.Id,

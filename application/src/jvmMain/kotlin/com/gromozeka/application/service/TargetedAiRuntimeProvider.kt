@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.requireSupportsInputs
 import com.gromozeka.domain.model.ai.projectedMessages
+import com.gromozeka.domain.model.ai.originalCollaborationMessages
 import com.gromozeka.domain.model.ai.nativeCompactionProvider
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRequestResponseExecutionClient
@@ -101,6 +102,14 @@ class TargetedAiRuntimeProvider(
         override val capabilities: AiRuntimeCapabilities,
     ) : AiRuntime {
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            // Normalize on Server too: an older Worker must not replay the UI correction
+            // as if the provider had generated it. Reviewer sessions are explicitly isolated.
+            val reviewerId = request.options.toolContext["agentResponseDraftId"] as? String
+            val forwarded = if (request.options.usagePurpose == "AGENT_RESPONSE_REVIEW" && reviewerId != null) {
+                val isolated = "response-review:$reviewerId"
+                request.copy(messages = request.messages.map { it.copy(conversationId = com.gromozeka.domain.model.Conversation.Id(isolated)) },
+                    options = request.options.copy(toolContext = request.options.toolContext + mapOf("conversationId" to isolated, "threadId" to isolated)))
+            } else request.copy(messages = request.originalCollaborationMessages())
             runtime.modelSpec.requireSupportsInputs(request.projectedMessages(runtime.connection.kind.nativeCompactionProvider()))
             return remoteClient().call(
                 target = workerTargetResolver.requireRegistered(
@@ -109,7 +118,7 @@ class TargetedAiRuntimeProvider(
                 ),
                 runtime = runtime,
                 workspaceRootPath = null,
-                request = request,
+                request = forwarded,
             )
         }
 

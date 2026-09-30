@@ -4,6 +4,13 @@
   "name": "繁體中文",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "代理間請求",
+    "collaboration.working": "處理中",
+    "collaboration.waitingUser": "等待你的回覆",
+    "collaboration.waitingResult": "等待結果",
+    "collaboration.completed": "已完成",
+    "collaboration.cancelled": "已取消",
+    "collaboration.blocked": "已封鎖",
     "chat.activity.turnProblems": "目前／上次回覆中的問題：{count}",
     "chat.voice.afterDictation.send": "傳送",
     "chat.voice.afterDictation.input": "留在輸入框",

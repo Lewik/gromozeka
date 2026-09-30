@@ -4,6 +4,13 @@
   "name": "Русский",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "Межагентские запросы",
+    "collaboration.working": "В работе",
+    "collaboration.waitingUser": "Ждёт вашего ответа",
+    "collaboration.waitingResult": "Ждёт результат",
+    "collaboration.completed": "Завершено",
+    "collaboration.cancelled": "Отменено",
+    "collaboration.blocked": "Заблокировано",
     "chat.activity.turnProblems": "Проблем в текущем/последнем ответе: {count}",
     "chat.voice.afterDictation.send": "Сразу",
     "chat.voice.afterDictation.input": "В поле",

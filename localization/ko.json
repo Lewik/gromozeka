@@ -4,6 +4,13 @@
   "name": "한국어",
   "direction": "LTR",
   "messages": {
+    "collaboration.title": "에이전트 간 요청",
+    "collaboration.working": "진행 중",
+    "collaboration.waitingUser": "답변 대기",
+    "collaboration.waitingResult": "결과 대기",
+    "collaboration.completed": "완료",
+    "collaboration.cancelled": "취소됨",
+    "collaboration.blocked": "차단됨",
     "chat.activity.turnProblems": "현재/마지막 응답의 문제: {count}",
     "chat.voice.afterDictation.send": "전송",
     "chat.voice.afterDictation.input": "입력란에",

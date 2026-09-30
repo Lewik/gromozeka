@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.AgentEndpoint
+import com.gromozeka.domain.model.AgentResponseDecision
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
@@ -118,6 +120,8 @@ class ConversationEngineService(
     private val pendingSecretRevealService: PendingSecretRevealService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val requestEnrichers: List<ConversationRequestEnricher> = emptyList(),
+    private val collaboration: AgentCollaborationService? = null,
+    private val responseReview: AgentResponseReviewService? = null,
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -143,6 +147,7 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.HistoryMutation ->
                 runHistoryMutationStep(task, executor, payload)
             is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, executor, payload, emitMessage)
+            is ConversationRuntimeTask.Payload.ResponseReview -> runResponseReviewStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.ToolExecution ->
                 toolExecutionTaskService.run(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.ToolResultProcessing ->
@@ -229,6 +234,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         requireActorConnected(task, conversation)
+        if (collaboration?.validateMessage(payload.userMessage) == false) return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
         appendUserMessageWithAutomaticMemory(
             conversationId = conversationId,
@@ -285,6 +291,7 @@ class ConversationEngineService(
         }
 
         if (payload.iteration > MAX_TOOL_LOOP_ITERATIONS) {
+            collaboration?.failRequest(payload.rootUserMessageId, "Recipient reached the execution iteration limit")
             val errorMessage = AiConversationMessageMapper.createErrorMessage(
                 conversationId,
                 "Tool execution loop exceeded maximum iterations ($MAX_TOOL_LOOP_ITERATIONS)",
@@ -320,6 +327,10 @@ class ConversationEngineService(
             ),
             groups = settingsProvider.userProfile.messageInstructionGroups,
         )
+        // External channels keep their existing turn lifecycle; collaboration is opt-out for the whole turn.
+        val collaboration = collaboration.takeIf { conversation.externalChannel == null }
+        val collaborationRequests = if (collaboration != null && task.actorUserId != null)
+            collaboration.context(AgentEndpoint(conversation.id, conversation.currentThread, payload.agentDefinitionId), requireNotNull(task.actorUserId)) else emptyList()
         val toolSelection = aiToolRuntimeCatalogService.selectTools(
             agent = context.agent,
             catalog = context.toolCatalog,
@@ -330,6 +341,7 @@ class ConversationEngineService(
         var runtimeRequest = AiRuntimeRequest(
             systemPrompts = buildList {
                 addAll(context.runtimeSystemPrompts)
+                if (collaboration != null) add(collaboration.prompt(AgentEndpoint(conversation.id, conversation.currentThread, payload.agentDefinitionId), collaborationRequests))
                 toolSelection.unavailableToolsSystemPrompt()?.let(::add)
             },
             messages = runtimeMessages,
@@ -397,6 +409,7 @@ class ConversationEngineService(
                 throw e
             } catch (e: Exception) {
                 log.error(e) { "Chat call error" }
+                collaboration?.failRequest(payload.rootUserMessageId, "Recipient model call failed: ${e::class.simpleName}")
                 if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
                     throw e
                 }
@@ -447,6 +460,18 @@ class ConversationEngineService(
                 ),
             )
             .withRuntimeMessageIds(task.id, "assistant")
+        if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && collaboration != null && responseReview != null) {
+            val draft = responseReview.prepare(task, payload, conversation, currentMessages, mappedAssistantMessages)
+            if (draft != null) return ConversationRuntimeTaskOutcome.Continue(
+                ConversationRuntimeTask(
+                    id = ConversationRuntimeTask.Id("${draft.id}:check"), conversationId = conversationId,
+                    turnId = task.turnId, parentTaskId = task.id, actorUserId = task.actorUserId,
+                    payload = ConversationRuntimeTask.Payload.ResponseReview(draft.id, payload.agentDefinitionId),
+                    placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "${draft.id}:check",
+                    requirements = task.requirements, createdAt = Clock.System.now(),
+                )
+            )
+        }
         val assistantMessages = when {
             outcome != AiStepOutcome.COMPLETE -> mappedAssistantMessages.withSuggestedReplies(emptyList())
             context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.DISABLED ->
@@ -487,6 +512,7 @@ class ConversationEngineService(
             }
         }
         if (outcome.isFailure) {
+            collaboration?.failRequest(payload.rootUserMessageId, "Recipient model response was incomplete or failed")
             val errorMessage = AiConversationMessageMapper.createErrorMessage(
                 conversationId,
                 "Model response ${outcome.name.lowercase()}: ${runtimeResponse.finishReason ?: "unspecified reason"}. No actions were executed.",
@@ -495,6 +521,7 @@ class ConversationEngineService(
             return ConversationRuntimeTaskOutcome.CompleteTurn
         }
         if (outcome == AiStepOutcome.REFUSED) {
+            collaboration?.failRequest(payload.rootUserMessageId, "Recipient model refused the request")
             return ConversationRuntimeTaskOutcome.CompleteTurn
         }
         if (outcome == AiStepOutcome.CONTINUE) {
@@ -584,6 +611,75 @@ class ConversationEngineService(
         return memoryRecallTask
             ?.let { ConversationRuntimeTaskOutcome.Continue(it) }
             ?: ConversationRuntimeTaskOutcome.CompleteTurn
+    }
+
+    private suspend fun runResponseReviewStep(
+        task: ConversationRuntimeTask, executor: ConversationRuntimeExecutorIdentity,
+        payload: ConversationRuntimeTask.Payload.ResponseReview,
+        emitMessage: suspend (Conversation.Message) -> Unit,
+    ): ConversationRuntimeTaskOutcome {
+        val service = requireNotNull(responseReview) { "Collaboration review is disabled; draft retained" }
+        val collaboration = requireNotNull(collaboration)
+        val draft = requireNotNull(collaboration.repository.findDraft(payload.draftId)) { "Missing response draft" }
+        val conversation = requireNotNull(conversationService.findById(task.conversationId))
+        require(draft.endpoint.threadId == conversation.currentThread && draft.actorUserId == task.actorUserId && draft.endpoint.agentId == payload.agentDefinitionId)
+        requireActorConnected(task, conversation)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        suspend fun continueAfterNewInput(): ConversationRuntimeTaskOutcome {
+            // Keep the actual provider output for replay, but do not publish this stale draft as an answer.
+            service.acceptedMessages(draft, AgentResponseDecision(null, AgentResponseDecision.Next.CONTINUE, emptyList(), emptyList())).forEach {
+                if (addRuntimeMessageIfMissing(conversation.id, it)) emitMessage(it)
+            }
+            emitQueuedRuntimeMessagesAtSafePoint(conversation.id, task.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT,
+                conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
+                context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled)
+            return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
+                payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
+        }
+        ensureRuntimeTaskOwner(conversation.id, task.id, executor)
+        if (runtimeCoordinator.listPending(conversation.id).any { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }) return continueAfterNewInput()
+        val priorTextContinues = conversationService.loadCurrentMessages(conversation.id).count {
+            it.id.value.startsWith(draft.turnId + ":") && it.providerMetadata["collaborationNext"] == JsonPrimitive("CONTINUE")
+        }
+        if (priorTextContinues >= 4) {
+            collaboration.repository.failDraft(draft.id, "Too many text-only continuations")
+            collaboration.failRequest(draft.rootMessageId, "Recipient stopped after repeated text-only continuations")
+            error("Repeated text-only continuation; draft retained, user input required")
+        }
+        val decision = try {
+            service.review(draft, context.runtime, AiRuntimeOptions(
+                reasoning = context.agent.runtimeOverrides.reasoning,
+                toolContext = mapOf(TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
+                    TOOL_CONTEXT_THREAD_ID to conversation.currentThread.value, TOOL_CONTEXT_PROJECT_ID to conversation.projectId.value,
+                    TOOL_CONTEXT_USER_ID to draft.actorUserId.value, TOOL_CONTEXT_AGENT_DEFINITION_ID to payload.agentDefinitionId.value),
+            ))
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            collaboration.repository.failDraft(draft.id, error::class.simpleName ?: "Review failed")
+            collaboration.failRequest(draft.rootMessageId, "Recipient response review failed; draft retained for inspection")
+            throw IllegalStateException("Response review failed; unpublished draft retained for inspection", error)
+        }
+        ensureRuntimeTaskOwner(conversation.id, task.id, executor)
+        if (!service.apply(draft, task.id.value, decision)) return continueAfterNewInput()
+        service.acceptedMessages(draft, decision).forEach { message ->
+            ensureRuntimeTaskOwner(conversation.id, task.id, executor)
+            if (addRuntimeMessageIfMissing(conversation.id, message)) emitMessage(message)
+        }
+        // This receipt describes real committed routing, not a fabricated tool result.
+        val receipt = Conversation.Message(
+            id = Conversation.Message.Id("${draft.id}:receipt"), conversationId = conversation.id,
+            role = Conversation.Message.Role.SYSTEM,
+            content = listOf(ContentItem.System(ContentItem.System.SystemLevel.INFO,
+                "Collaboration decision: next=${decision.next}; results queued=${decision.requests.filter { it.state == com.gromozeka.domain.model.AgentRequest.State.COMPLETED }.map { it.requestId }}; waitFor=${decision.waitFor}. This is a runtime receipt, not a new user request.")),
+            providerMetadata = buildJsonObject { put("synthetic", true); put("collaborationReceipt", true) },
+            createdAt = Clock.System.now(),
+        )
+        if (addRuntimeMessageIfMissing(conversation.id, receipt)) emitMessage(receipt)
+        return if (decision.next == AgentResponseDecision.Next.CONTINUE) {
+            ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
+                payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
+        } else if (decision.userText == null) ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+        else ConversationRuntimeTaskOutcome.CompleteTurn
     }
 
     private suspend fun publishActiveGeneration(snapshot: ActiveGenerationSnapshot) {
@@ -942,7 +1038,7 @@ class ConversationEngineService(
                     rootUserMessageId = batch.resultMessageId,
                     agentDefinitionId = batch.agentDefinitionId,
                     iteration = 1,
-                    actorUserId = task.actorUserId,
+                    actorUserId = task.actorUserId ?: collaboration?.continuationActor(AgentEndpoint(conversation.id, conversation.currentThread, batch.agentDefinitionId)),
                 ),
             )
         }
@@ -1072,7 +1168,7 @@ class ConversationEngineService(
             runtime.capabilities.supportsAutoCompaction ->
                 log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
         }
-        val baseToolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess)
+        val baseToolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess, conversation)
         val agentSkillRuntime = agentSkillRuntimeCatalogService.prepare(
             agent = agent,
             projectId = project.id,
@@ -1568,6 +1664,7 @@ class ConversationEngineService(
         val emittedMessages = mutableListOf<Conversation.Message>()
         val invocation = queued.requireAgentInvocation()
         val userMessage = invocation.userMessage
+        if (collaboration?.validateMessage(userMessage) == false) return emptyList()
         requireActorConnected(queued, conversation)
         require(Conversation.Participant.Agent(invocation.agentDefinitionId) in conversation.participants) {
             "Agent ${invocation.agentDefinitionId.value} is not connected to conversation ${conversation.id.value}"
