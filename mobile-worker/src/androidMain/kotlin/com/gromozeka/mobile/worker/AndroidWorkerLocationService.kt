@@ -8,18 +8,14 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.net.ConnectivityManager
-import android.net.Network
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import com.gromozeka.domain.model.LocationCause
-import com.gromozeka.domain.model.WorkerAppState
 import com.gromozeka.mobile.worker.AndroidWorkerLocationSource.Companion.sample
 import com.gromozeka.worker.runtime.WorkerEventOutboxFullException
 import com.gromozeka.worker.runtime.WorkerLocationSample
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -28,10 +24,6 @@ import kotlinx.coroutines.sync.withLock
 class AndroidWorkerLocationService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var tracking: Job? = null
-    private val syncSignal = Channel<Unit>(Channel.CONFLATED)
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) { syncSignal.trySend(Unit) }
-    }
     private lateinit var runtime: MobileWorkerRuntime
     private lateinit var source: AndroidWorkerLocationSource
     private var collection: MobileWorkerLocationCollection? = null
@@ -40,7 +32,6 @@ class AndroidWorkerLocationService : Service() {
         super.onCreate()
         runtime = AndroidMobileWorkerRuntimeFactory.create(applicationContext)
         source = AndroidWorkerLocationSource(applicationContext)
-        getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -88,19 +79,7 @@ class AndroidWorkerLocationService : Service() {
                             }
                         }
                     }
-                    val delivery = launch(Dispatchers.IO) {
-                        syncSignal.trySend(Unit)
-                        while (isActive) {
-                            withTimeoutOrNull(30_000) { syncSignal.receive() }
-                            try {
-                                do {
-                                    val status = runtime.synchronize(WorkerAppState.BACKGROUND)
-                                    mutableDelivery.value = "Last delivery: ${status.lastSynchronizedAt}"
-                                } while (status.pendingEventCount > 0 && isActive)
-                            } catch (error: CancellationException) { throw error }
-                            catch (error: Exception) { mutableDelivery.value = "Waiting for connection; recorded points stay on this device" }
-                        }
-                    }
+                    AndroidWorkerEventDelivery.acquire(applicationContext, this@AndroidWorkerLocationService)
                     try {
                         var lastMeasurementNanos = SystemClock.elapsedRealtimeNanos()
                         while (isActive && runtime.locationCollection() == collection) {
@@ -118,7 +97,7 @@ class AndroidWorkerLocationService : Service() {
                                         } catch (error: WorkerEventOutboxFullException) {
                                             updateState("Storage full: new points cannot be recorded until delivery resumes")
                                         }
-                                        syncSignal.trySend(Unit)
+                                        AndroidWorkerEventDelivery.wake()
                                     }
                                 }
                             } catch (error: CancellationException) { throw error }
@@ -129,7 +108,7 @@ class AndroidWorkerLocationService : Service() {
                         }
                     } finally {
                         accessMonitor.cancelAndJoin()
-                        delivery.cancelAndJoin()
+                        AndroidWorkerEventDelivery.release(this@AndroidWorkerLocationService)
                         if (active === this@AndroidWorkerLocationService) active = null
                     }
                     stopSelf()
@@ -149,7 +128,7 @@ class AndroidWorkerLocationService : Service() {
             val sample = acquisition.await()
             requireLocationAccess()
             runtime.recordSharedLocation(expected, sample)
-            syncSignal.trySend(Unit)
+            AndroidWorkerEventDelivery.wake()
             return sample
         } finally { withContext(NonCancellable) { acquisition.cancelAndJoin() } }
     }
@@ -182,7 +161,7 @@ class AndroidWorkerLocationService : Service() {
     override fun onDestroy() {
         if (active === this) active = null
         scope.cancel()
-        runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback) }
+        AndroidWorkerEventDelivery.release(this)
         runtime.close()
         stopForeground(STOP_FOREGROUND_REMOVE)
         if (mutableState.value.startsWith("Sharing") || mutableState.value == "Waiting for a location fix") mutableState.value = "Location sharing stopped"
@@ -197,8 +176,7 @@ class AndroidWorkerLocationService : Service() {
         @Volatile private var active: AndroidWorkerLocationService? = null
         private val mutableState = MutableStateFlow("Location sharing is not running")
         val state = mutableState.asStateFlow()
-        private val mutableDelivery = MutableStateFlow("")
-        val delivery = mutableDelivery.asStateFlow()
+        val delivery = AndroidWorkerEventDelivery.state
 
         fun start(context: Context) { context.startForegroundService(Intent(context, AndroidWorkerLocationService::class.java)) }
         fun stop(context: Context) { context.stopService(Intent(context, AndroidWorkerLocationService::class.java)) }

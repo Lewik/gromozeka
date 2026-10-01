@@ -2,6 +2,7 @@ package com.gromozeka.worker.runtime
 
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.projectionKey
+import com.gromozeka.domain.model.preservesRepeatedObservations
 import com.gromozeka.remote.protocol.MAX_WORKER_EVENT_BATCH_SIZE
 import com.gromozeka.remote.protocol.WorkerEventBatchResponse
 import com.gromozeka.remote.protocol.WorkerEventInput
@@ -56,37 +57,12 @@ class WorkerEventOutbox(
     private val limits: WorkerEventOutboxLimits = WorkerEventOutboxLimits(),
 ) {
     suspend fun append(events: List<WorkerEventInput>, suppressUnchanged: Boolean = true): Int {
-        require(events.map { it.id }.distinct().size == events.size) { "Event IDs must be unique" }
-        events.forEach { require(encodedSize(it) <= limits.maxEventBytes) { "Worker event exceeds the size limit" } }
         var appended = 0
         store.update { initial ->
             requireStream(initial)
-            val pending = initial.pending.toMutableList()
-            val latest = initial.latest.toMutableMap()
-            val existing = pending.associateBy { it.id }.toMutableMap()
-            for (event in events) {
-                val duplicate = existing[event.id]
-                if (duplicate != null) {
-                    require(duplicate == event) { "Worker event ID was reused with different content" }
-                    continue
-                }
-                val key = event.payload.projectionKey()
-                val previous = latest[key]
-                if (suppressUnchanged && event.payload !is DeviceStateEvent.Location &&
-                    previous?.payload == event.payload && event.observedAt >= previous.observedAt
-                ) continue
-                pending += event
-                existing[event.id] = event
-                if (key != null && (previous == null || event.observedAt >= previous.observedAt)) latest[key] = event
+            appendWorkerEventBatch(initial, events, limits, suppressUnchanged).also {
+                appended = it.pending.size - initial.pending.size
             }
-            val retainedLatest = latest.entries.sortedByDescending { it.value.observedAt }.take(limits.maxLatestValues)
-                .associate { it.key to it.value }
-            val updated = initial.copy(pending = pending, latest = retainedLatest)
-            if (pending.size > limits.maxEvents || json.encodeToString(updated).encodeToByteArray().size > limits.maxStoredBytes) {
-                throw WorkerEventOutboxFullException()
-            }
-            appended = pending.size - initial.pending.size
-            updated
         }
         return appended
     }
@@ -125,9 +101,43 @@ class WorkerEventOutbox(
         if (state.streamId != streamId) throw WorkerEventOutboxReplacedException()
     }
 
-    private fun encodedSize(event: WorkerEventInput) = json.encodeToString(event).encodeToByteArray().size
-
-    private companion object {
-        val json = Json { encodeDefaults = true }
-    }
 }
+
+/** Pure bounded queue transformation, also used to commit collection controls with runtime state. */
+fun appendWorkerEventBatch(
+    initial: WorkerEventOutboxState,
+    events: List<WorkerEventInput>,
+    limits: WorkerEventOutboxLimits,
+    suppressUnchanged: Boolean = true,
+): WorkerEventOutboxState {
+    require(events.map { it.id }.distinct().size == events.size) { "Event IDs must be unique" }
+    events.forEach { require(encodedSize(it) <= limits.maxEventBytes) { "Worker event exceeds the size limit" } }
+    val pending = initial.pending.toMutableList()
+    val latest = initial.latest.toMutableMap()
+    val existing = pending.associateBy { it.id }.toMutableMap()
+    for (event in events) {
+        val duplicate = existing[event.id]
+        if (duplicate != null) {
+            require(duplicate == event) { "Worker event ID was reused with different content" }
+            continue
+        }
+        val key = event.payload.projectionKey()
+        val previous = latest[key]
+        if (suppressUnchanged && !event.payload.preservesRepeatedObservations() &&
+            previous?.payload == event.payload && event.observedAt >= previous.observedAt
+        ) continue
+        pending += event
+        existing[event.id] = event
+        if (key != null && (previous == null || event.observedAt >= previous.observedAt)) latest[key] = event
+    }
+    val retainedLatest = latest.entries.sortedByDescending { it.value.observedAt }.take(limits.maxLatestValues)
+        .associate { it.key to it.value }
+    val updated = initial.copy(pending = pending, latest = retainedLatest)
+    if (pending.size > limits.maxEvents || json.encodeToString(updated).encodeToByteArray().size > limits.maxStoredBytes) {
+        throw WorkerEventOutboxFullException()
+    }
+    return updated
+}
+
+private fun encodedSize(event: WorkerEventInput) = json.encodeToString(event).encodeToByteArray().size
+private val json = Json { encodeDefaults = true }

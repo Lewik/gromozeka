@@ -1,5 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -21,6 +22,10 @@
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
 
     <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
@@ -108,6 +113,15 @@
             android:name="com.gromozeka.mobile.worker.AndroidWorkerLocationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <service
+            android:name="com.gromozeka.mobile.worker.AndroidWorkerTelemetryService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled device and application usage collection to a private Gromozeka server, with explicit usage access, a visible notification and a disable action. No screen or message content is collected." />
+        </service>
 
         <service
             android:name="com.gromozeka.mobile.worker.MobileWorkerSyncJobService"

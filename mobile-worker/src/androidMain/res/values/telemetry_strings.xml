@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="telemetry_title">Gromozeka · device telemetry</string>
+    <string name="telemetry_notification">Device collection is enabled; recorded data is sent to your server</string>
+    <string name="telemetry_disable">Disable telemetry</string>
+    <string name="telemetry_enable">Enable telemetry</string>
+    <string name="telemetry_save_failed">Could not save telemetry settings</string>
+    <string name="telemetry_notifications_required">Allow Worker notifications to keep collection visible, then enable telemetry</string>
+    <string name="telemetry_collecting">Collecting locally; app history requires Usage Access</string>
+    <string name="telemetry_storage_full">Storage full: collection cannot advance until delivery resumes</string>
+    <string name="telemetry_collection_failed">Collection paused or failed; check permissions and reopen the Worker</string>
+    <string name="telemetry_disclosure">Optional collection of screen/lock state, battery, connection type and power state. With the separate option below: app activity history and app names/versions. Data goes to the server configured for this Worker, using the same encrypted local queue as location. No screenshots, messages, URLs or media content. No AI analysis or automatic alerts. Location has its own independent switch.</string>
+    <string name="telemetry_app_usage">Also collect application usage history</string>
+    <string name="telemetry_usage_access">Android Usage Access settings</string>
+    <string name="telemetry_usage_required">Grant Usage Access in Android settings first, or uncheck app usage collection</string>
+    <string name="telemetry_interval">Collection interval, seconds (10–900)</string>
+    <string name="telemetry_invalid_interval">Enter a whole number from 10 to 900 seconds</string>
+    <string name="telemetry_last_collection">Last local collection: %1$s</string>
+    <string name="telemetry_usage_through">App history queried through: %1$s</string>
+    <string name="telemetry_limitations">Starts from enabling, not earlier history. After an interruption, at most 24 hours of Android history are queried; known gaps are reported. Android/OEM power restrictions can delay collection and delivery. Force-stop requires reopening the app. Disabling stops new collection but already recorded events may still be delivered and remain on the server. Disable before changing options.</string>
+</resources>

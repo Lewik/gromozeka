@@ -25,6 +25,10 @@ class MobileWorkerBootReceiver : BroadcastReceiver() {
                             androidMobileWorkerLog.warn { "Android deferred Worker Gateway startup; open the app to reconnect" }
                         }
                     }
+                    if (runtime.status().telemetryConfiguration.enabled) {
+                        runCatching { AndroidWorkerTelemetryService.start(applicationContext) }
+                            .onFailure { androidMobileWorkerLog.warn { "Android deferred telemetry startup; open the Worker to resume collection" } }
+                    }
                     val sensors = AndroidMobileWorkerSensors(applicationContext)
                     if (runtime.locationCollection() != null) {
                         val location = AndroidWorkerLocationSource(applicationContext)

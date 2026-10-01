@@ -203,6 +203,97 @@ sealed interface DeviceStateEvent {
         }
     }
 
+    /** A current measurement, not evidence of human attention. */
+    @Serializable
+    @SerialName("screen_state")
+    data class ScreenState(
+        val interactive: Boolean,
+        val keyguardShowing: Boolean,
+        val deviceLocked: Boolean,
+    ) : DeviceStateEvent
+
+    /** OS lifecycle history. Deliberately not projected into a single "current app". */
+    @Serializable
+    @SerialName("app_activity")
+    data class AppActivity(
+        val packageName: String,
+        val transition: AppActivityTransition,
+        val activityClass: String? = null,
+    ) : DeviceStateEvent {
+        init {
+            require(packageName.isNotBlank() && packageName.length <= 255)
+            require(activityClass == null || activityClass.length <= 1_024)
+        }
+    }
+
+    @Serializable
+    @SerialName("device_usage_transition")
+    data class UsageTransition(val transition: DeviceUsageTransition) : DeviceStateEvent
+
+    /** Metadata observed now, not an assertion about when the app was installed. */
+    @Serializable
+    @SerialName("application_info")
+    data class ApplicationInfo(
+        val packageName: String,
+        val label: String? = null,
+        val versionName: String? = null,
+        val versionCode: Long? = null,
+        val category: Int? = null,
+        val metadataAvailable: Boolean = false,
+    ) : DeviceStateEvent {
+        init {
+            require(packageName.isNotBlank() && packageName.length <= 255)
+            require(label == null || label.length <= 255)
+            require(versionName == null || versionName.length <= 255)
+            require(versionCode == null || versionCode >= 0)
+        }
+    }
+
+    @Serializable
+    @SerialName("device_environment")
+    data class Environment(
+        val networkTransports: Set<DeviceNetworkTransport>,
+        val internetValidated: Boolean,
+        val metered: Boolean?,
+        val powerSaveMode: Boolean,
+        val deviceIdleMode: Boolean,
+        val timeZoneId: String,
+        val bootCount: Int?,
+        val elapsedRealtimeMillis: Long,
+    ) : DeviceStateEvent {
+        init {
+            require(timeZoneId.isNotBlank() && timeZoneId.length <= 128)
+            require(bootCount == null || bootCount >= 0)
+            require(elapsedRealtimeMillis >= 0)
+        }
+    }
+
+    /** Successful query coverage is not a guarantee that Android retained every event. */
+    @Serializable
+    @SerialName("collection_status")
+    data class CollectionStatus(
+        val source: DeviceCollectionSource,
+        val state: DeviceCollectionState,
+        val queriedFrom: Instant? = null,
+        val queriedThrough: Instant? = null,
+    ) : DeviceStateEvent {
+        init {
+            require((queriedFrom == null) == (queriedThrough == null))
+            require(queriedFrom == null || requireNotNull(queriedThrough) >= queriedFrom)
+        }
+    }
+
+    @Serializable
+    @SerialName("collection_gap")
+    data class CollectionGap(
+        val source: DeviceCollectionSource,
+        val from: Instant,
+        val to: Instant,
+        val reason: DeviceCollectionGapReason,
+    ) : DeviceStateEvent {
+        init { require(to >= from) }
+    }
+
     @Serializable
     @SerialName("geofence")
     data class Geofence(
@@ -294,6 +385,29 @@ sealed interface DeviceStateEvent {
         }
     }
 }
+
+@Serializable
+enum class AppActivityTransition { RESUMED, PAUSED, STOPPED }
+
+@Serializable
+enum class DeviceUsageTransition {
+    SCREEN_INTERACTIVE, SCREEN_NON_INTERACTIVE, KEYGUARD_SHOWN, KEYGUARD_HIDDEN,
+    DEVICE_STARTUP, DEVICE_SHUTDOWN,
+}
+
+@Serializable
+enum class DeviceNetworkTransport { WIFI, CELLULAR, ETHERNET, VPN, BLUETOOTH, OTHER }
+
+@Serializable
+enum class DeviceCollectionSource { DEVICE, APP_USAGE, LOCATION }
+
+@Serializable
+enum class DeviceCollectionState {
+    STARTING, ACTIVE, DISABLED, PERMISSION_REQUIRED, USER_LOCKED, ERROR,
+}
+
+@Serializable
+enum class DeviceCollectionGapReason { HISTORY_LIMIT, ACCESS_UNAVAILABLE, CLOCK_CHANGED }
 
 @Serializable
 enum class WorkerPlatform {
@@ -403,6 +517,13 @@ fun DeviceStateEvent.projectionKey(): String? =
         is DeviceStateEvent.DeviceInfo -> "device_info"
         is DeviceStateEvent.Battery -> "battery"
         is DeviceStateEvent.Location -> "location"
+        is DeviceStateEvent.ScreenState -> "screen"
+        is DeviceStateEvent.Environment -> "device_environment"
+        is DeviceStateEvent.ApplicationInfo -> "application:${packageName.toStateKeyPart()}"
+        is DeviceStateEvent.CollectionStatus -> "collection:${source.name.lowercase()}"
+        is DeviceStateEvent.AppActivity,
+        is DeviceStateEvent.UsageTransition,
+        is DeviceStateEvent.CollectionGap -> null
         is DeviceStateEvent.Geofence -> "geofence:${regionId.toStateKeyPart()}"
         is DeviceStateEvent.BlePresence -> "ble:${deviceId.toStateKeyPart()}"
         is DeviceStateEvent.VehicleConnection -> "vehicle:${system.name.lowercase()}"
@@ -414,6 +535,11 @@ fun DeviceStateEvent.projectionKey(): String? =
         is DeviceStateEvent.NfcTag,
         is DeviceStateEvent.CustomTrigger -> null
     }
+
+/** History events and repeated measurements must not be conflated like declarative state. */
+fun DeviceStateEvent.preservesRepeatedObservations(): Boolean =
+    projectionKey() == null || this is DeviceStateEvent.Location ||
+        this is DeviceStateEvent.ScreenState || this is DeviceStateEvent.CollectionStatus
 
 private fun String.toStateKeyPart(): String =
     encodeToByteArray().joinToString("") { byte ->

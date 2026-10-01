@@ -30,7 +30,7 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
             levelPercent = ((level * 100.0) / scale).toInt().coerceIn(0, 100),
             charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
                 status == BatteryManager.BATTERY_STATUS_FULL,
-            lowPowerMode = null,
+            lowPowerMode = context.getSystemService(android.os.PowerManager::class.java)?.isPowerSaveMode,
         )
     }
 

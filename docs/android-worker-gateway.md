@@ -229,3 +229,83 @@ Native UI checks also verified battery exemption denial/approval, status refresh
 on return from settings, and the separate background-restricted state.
 `GatewaySmokeInstrumentation` also passed on the normal debug APK on that image,
 including native sound playback state, stop and volume restoration.
+
+## Opt-in Android device and application telemetry
+
+The Worker settings expose a separate, default-off telemetry switch and an
+additional opt-in for application usage. Usage history requires Android Usage
+Access; collection also requires visible Worker notifications. Remote commands
+and location sharing remain independent. The service collects locally without
+requiring network connectivity. It does not invoke an LLM, apply parental rules,
+read screen/message/URL content, or control applications.
+
+`AndroidWorkerTelemetryService` collects screen/keyguard state, battery,
+connection transports (not SSIDs), power state, timezone and boot/elapsed-time
+information. With usage consent, `UsageStatsManager.queryEvents` supplies
+activity resume/pause/stop and supported screen/keyguard/startup/shutdown events.
+App label/version/category metadata is best-effort under package visibility
+restrictions; missing metadata never suppresses activity history. First observed
+usage does not mean installation. No single-current-app or human-attention
+assertion is derived from lifecycle events.
+
+The default collection interval is 30 seconds (configurable 10–900), not an OS
+real-time guarantee. Screen broadcasts request an earlier snapshot. Android
+scheduling/OEM power restrictions can delay execution; force-stop requires
+reopening the Worker. Android 8 supports application activity history but lacks
+the newer screen/keyguard history event types; current screen snapshots still
+work. A device user not yet unlocked after reboot is distinct from a currently
+locked screen.
+
+Location acquisition retains its location foreground service and independent
+permissions. Both foreground collectors share `AndroidWorkerEventDelivery`, one
+process-local delivery loop, the encrypted durable `WorkerEventOutbox`, and the
+existing authenticated `POST /api/worker/events` endpoint. Their measurements can
+travel in one batch without sharing a measurement timestamp or requiring a GPS
+fix. Ordinary background delivery jobs remain the fallback after a collector
+stops. Update the Server before enabling new telemetry on a newer Worker; older
+Servers do not understand these new event variants.
+
+Collection starts at opt-in, not at the start of Android's retained history.
+The persisted usage checkpoint and collected events commit in the same encrypted
+atomic-file update. Queries use bounded five-minute windows, a two-second settle
+delay and ten-second overlap. Stable event identities plus persisted overlap IDs
+avoid duplicating already-read history. This is best-effort OS history: late
+records outside the overlap or records Android has already discarded cannot be
+recovered or claimed as complete. Query result limits fail explicitly without
+advancing the cursor. At most the previous 24 hours are backfilled after an
+interruption; older skipped intervals produce `collection_gap` events. Revoked
+access is reported independently of screen/device collection, and restoration
+does not import the period when access was unavailable. Clock rollback records a
+gap and starts a new usage identity epoch.
+
+`collection_status` records distinguish successful queries (including empty
+ones), missing permissions, credential-unlocked-user requirements, failures and
+disabled sources. Query coverage means the interval was queried, not proof that
+Android retained every event. Events keep `observedAt`; the Server adds
+`receivedAt` and derives ownership/device attribution from the authenticated
+Worker binding, never from an Android-provided user ID. Raw activity transitions
+and gaps are history-only, not a misleading current-app projection.
+
+The existing queue limits still apply (10,000 events / 8 MiB by default). A full
+queue preserves queued data and does not advance the usage cursor. At most three
+pending collection-control states have a separate durable slot so disabling a
+collector remains possible under backpressure. Disabling stops new collection;
+already recorded events can still be delivered and remain in server history.
+
+Focused verification:
+
+```bash
+ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew \
+  :mobile-worker:jvmTest :worker-runtime:jvmTest \
+  :server:test --tests '*WorkerEventRoutingTest' \
+  :mobile-worker-android:assembleDebug \
+  :mobile-worker-android:assembleDebugAndroidTest -q
+```
+
+For a **fresh disposable emulator only**, install the debug app and test APK,
+then run `GatewaySmokeInstrumentation` with `-e telemetrySmoke true`. The test
+refuses to replace existing Worker enrollment, uses an unreachable local test
+server, grants/revokes only the fixture app's Usage Access, and verifies actual
+Android usage events, app metadata, screen-off collection, an encrypted offline
+queue, activity-independent service lifetime and durable notification-based
+stop. It is not a real-phone/OEM battery or Android 14+ foreground-policy test.

@@ -21,6 +21,7 @@ kotlin {
         namespace = "com.gromozeka.mobile.worker"
         compileSdk = 37
         minSdk = 26
+        androidResources { enable = true }
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }

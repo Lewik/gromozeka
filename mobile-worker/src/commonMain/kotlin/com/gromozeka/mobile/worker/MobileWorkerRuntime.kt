@@ -11,6 +11,9 @@ import com.gromozeka.worker.runtime.WorkerEventOutboxFullException
 import com.gromozeka.worker.runtime.WorkerEventOutboxLimits
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.CancellationException
+import com.gromozeka.worker.runtime.appendWorkerEventBatch
+import com.gromozeka.domain.model.DeviceCollectionSource
+import com.gromozeka.domain.model.DeviceCollectionState
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.LocationCause
@@ -233,7 +236,10 @@ internal class MobileWorkerRuntime(
         val state = readState()
         check(state.enrolled || !configuration.enabled) { "Worker must be enrolled before sharing location" }
         if (state.locationConfiguration != configuration) {
-            writeState(state.copy(locationConfiguration = configuration, locationRevision = uuid7()))
+            writeState(state.copy(locationConfiguration = configuration, locationRevision = uuid7())
+                .queueCollectionControls(listOf(DeviceStateEvent.CollectionStatus(DeviceCollectionSource.LOCATION,
+                    if (configuration.enabled) DeviceCollectionState.STARTING else DeviceCollectionState.DISABLED)), Clock.System.now()))
+            onEventsQueued()
         }
     }
 
@@ -242,7 +248,47 @@ internal class MobileWorkerRuntime(
     }
 
     suspend fun recordSharedLocation(collection: MobileWorkerLocationCollection, sample: WorkerLocationSample) {
-        eventOutbox(collection.streamId, collection).append(listOf(WorkerEventInput(uuid7(), sample.observedAt, sample.location)))
+        eventOutbox(collection.streamId, collection).append(listOf(
+            WorkerEventInput(uuid7(), sample.observedAt, sample.location),
+            WorkerEventInput(uuid7(), Clock.System.now(), DeviceStateEvent.CollectionStatus(DeviceCollectionSource.LOCATION, DeviceCollectionState.ACTIVE)),
+        ))
+    }
+
+    suspend fun configureTelemetry(
+        configuration: WorkerTelemetryConfiguration,
+        enabledAt: Instant = Clock.System.now(),
+    ) = mobileWorkerStorageMutex.withLock {
+        val state = readState()
+        check(state.enrolled || !configuration.enabled) { "Worker must be enrolled before collecting telemetry" }
+        if (state.telemetryConfiguration != configuration) {
+            val preserveCursor = configuration.enabled && state.telemetryConfiguration.enabled &&
+                configuration.applicationUsageEnabled == state.telemetryConfiguration.applicationUsageEnabled
+            writeState(state.copy(
+                telemetryConfiguration = configuration,
+                telemetryRevision = uuid7(),
+                telemetryCheckpoint = if (preserveCursor) state.telemetryCheckpoint else
+                    WorkerTelemetryCheckpoint(enabledAt, enabledAt, uuid7()),
+            ).queueCollectionControls(listOf(
+                DeviceStateEvent.CollectionStatus(DeviceCollectionSource.DEVICE,
+                    if (configuration.enabled) DeviceCollectionState.STARTING else DeviceCollectionState.DISABLED),
+                DeviceStateEvent.CollectionStatus(DeviceCollectionSource.APP_USAGE,
+                    if (configuration.enabled && configuration.applicationUsageEnabled) DeviceCollectionState.STARTING else DeviceCollectionState.DISABLED),
+            ), enabledAt))
+            onEventsQueued()
+        }
+    }
+
+    suspend fun telemetryCollection(): MobileWorkerTelemetryCollection? = mobileWorkerStorageMutex.withLock {
+        readState().telemetryCollection()
+    }
+
+    /** Events and their read cursor commit in one encrypted atomic-file replacement. */
+    suspend fun recordTelemetry(
+        collection: MobileWorkerTelemetryCollection,
+        events: List<WorkerEventInput>,
+        checkpoint: WorkerTelemetryCheckpoint,
+    ) {
+        eventOutbox(collection.streamId, telemetryCommit = collection to checkpoint).append(events)
     }
 
     suspend fun gatewayEnrollment(): MobileWorkerGatewayEnrollment? = mobileWorkerStorageMutex.withLock {
@@ -268,6 +314,7 @@ internal class MobileWorkerRuntime(
         val streamId = requireNotNull(session.state.outbox).streamId
         val outbox = eventOutbox(streamId)
         try {
+            flushCollectionControls(streamId)
             recordCurrentDeviceInfo(outbox)
             val client = WorkerEventClient(httpClient, requireNotNull(session.state.serverUrl), session.credential)
             try {
@@ -277,6 +324,7 @@ internal class MobileWorkerRuntime(
                         contact = contactMetadata(uuid7(), appState, pendingCount),
                     ))
                 })
+                flushCollectionControls(streamId)
                 recordCurrentDeviceInfo(outbox)
                 if (sentCount == 0 && heartbeatWhenIdle) {
                     val pending = status().pendingEventCount
@@ -411,7 +459,11 @@ internal class MobileWorkerRuntime(
         eventOutbox(requireNotNull(state.outbox).streamId)
     }
 
-    private fun eventOutbox(streamId: String, locationCollection: MobileWorkerLocationCollection? = null) = WorkerEventOutbox(
+    private fun eventOutbox(
+        streamId: String,
+        locationCollection: MobileWorkerLocationCollection? = null,
+        telemetryCommit: Pair<MobileWorkerTelemetryCollection, WorkerTelemetryCheckpoint>? = null,
+    ) = WorkerEventOutbox(
         streamId = streamId,
         limits = outboxLimits,
         synchronization = mobileWorkerSynchronizationMutex,
@@ -426,16 +478,42 @@ internal class MobileWorkerRuntime(
                     if (locationCollection != null) {
                         check(state.locationCollection() == locationCollection) { "Location sharing changed or was disabled" }
                     }
+                    if (telemetryCommit != null) {
+                        check(state.telemetryCollection() == telemetryCommit.first) {
+                            "Telemetry configuration, enrollment or read cursor changed"
+                        }
+                    }
                     val outbox = state.outbox ?: throw WorkerEventOutboxReplacedException()
                     val updated = transform(outbox)
-                    if (updated != outbox) {
-                        writeState(state.copy(outbox = updated))
+                    if (updated != outbox || telemetryCommit != null) {
+                        writeState(state.copy(outbox = updated,
+                            telemetryCheckpoint = telemetryCommit?.second ?: state.telemetryCheckpoint))
                         if (outbox.pending.isEmpty() && updated.pending.isNotEmpty()) onEventsQueued()
                     }
                     updated
                 }
         },
     )
+
+    private suspend fun flushCollectionControls(streamId: String) = mobileWorkerStorageMutex.withLock {
+        val state = readState()
+        val outbox = state.outbox ?: throw WorkerEventOutboxReplacedException()
+        if (outbox.streamId != streamId) throw WorkerEventOutboxReplacedException()
+        if (state.pendingCollectionControls.isNotEmpty()) {
+            var updated = outbox
+            var appended = 0
+            for (event in state.pendingCollectionControls) {
+                try {
+                    updated = appendWorkerEventBatch(updated, listOf(event), outboxLimits)
+                    appended++
+                } catch (_: WorkerEventOutboxFullException) { break }
+            }
+            // Disabling remains possible even with a full queue. At most three desired
+            // states wait in their own bounded durable slot and drain as space becomes available.
+            if (appended > 0) writeState(state.copy(outbox = updated,
+                pendingCollectionControls = state.pendingCollectionControls.drop(appended)))
+        }
+    }
 
     private data class EventSession(val state: PersistedMobileWorkerState, val credential: String)
 
@@ -498,6 +576,9 @@ data class MobileWorkerStatus(
     val soundEnabled: Boolean = false,
     val locationConfiguration: WorkerLocationConfiguration = WorkerLocationConfiguration(),
     val lastLocation: WorkerLocationSample? = null,
+    val telemetryConfiguration: WorkerTelemetryConfiguration = WorkerTelemetryConfiguration(),
+    val lastTelemetryCollectedAt: Instant? = null,
+    val usageQueriedThrough: Instant? = null,
 )
 
 internal data class MobileWorkerLocationCollection(
@@ -537,7 +618,17 @@ private data class PersistedMobileWorkerState(
     val soundEnabled: Boolean = false,
     val locationConfiguration: WorkerLocationConfiguration = WorkerLocationConfiguration(),
     val locationRevision: String = "initial",
+    val telemetryConfiguration: WorkerTelemetryConfiguration = WorkerTelemetryConfiguration(),
+    val telemetryRevision: String = "initial",
+    val telemetryCheckpoint: WorkerTelemetryCheckpoint? = null,
+    val pendingCollectionControls: List<WorkerEventInput> = emptyList(),
 ) {
+    fun queueCollectionControls(controls: List<DeviceStateEvent.CollectionStatus>, observedAt: Instant): PersistedMobileWorkerState {
+        val sources = controls.map { it.source }.toSet()
+        val pending = pendingCollectionControls.filterNot { (it.payload as? DeviceStateEvent.CollectionStatus)?.source in sources }
+        return copy(pendingCollectionControls = pending + controls.map { WorkerEventInput(uuid7(), observedAt, it) })
+    }
+
     val enrolled: Boolean
         get() = !serverUrl.isNullOrBlank() && !workerId.isNullOrBlank() && outbox != null
 
@@ -545,16 +636,24 @@ private data class PersistedMobileWorkerState(
         if (enrolled && locationConfiguration.enabled) MobileWorkerLocationCollection(requireNotNull(outbox).streamId, locationRevision, locationConfiguration)
         else null
 
+    fun telemetryCollection(): MobileWorkerTelemetryCollection? =
+        if (enrolled && telemetryConfiguration.enabled && telemetryCheckpoint != null)
+            MobileWorkerTelemetryCollection(requireNotNull(outbox).streamId, telemetryRevision, telemetryConfiguration, telemetryCheckpoint)
+        else null
+
     fun toStatus(hasCredential: Boolean): MobileWorkerStatus =
         MobileWorkerStatus(
             enrolled = enrolled,
             serverUrl = serverUrl,
             workerId = workerId,
-            pendingEventCount = outbox?.pending?.size ?: 0,
+            pendingEventCount = (outbox?.pending?.size ?: 0) + pendingCollectionControls.size,
             lastSynchronizedAt = outbox?.lastAcknowledgedAt,
             credentialAvailable = hasCredential,
             gatewayEnabled = gatewayEnabled,
             soundEnabled = soundEnabled,
+            telemetryConfiguration = telemetryConfiguration,
+            lastTelemetryCollectedAt = telemetryCheckpoint?.lastCollectedAt,
+            usageQueriedThrough = telemetryCheckpoint?.takeIf { it.usageAvailable == true }?.usageThrough,
             locationConfiguration = locationConfiguration,
             lastLocation = outbox?.latest?.get("location")?.let {
                 WorkerLocationSample(it.observedAt, it.payload as DeviceStateEvent.Location)

@@ -164,6 +164,10 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
                 runCatching { AndroidWorkerLocationService.start(applicationContext) }
                     .onFailure { errorChanged?.invoke("Android could not start location sharing: ${it::class.simpleName}") }
             }
+            if (status.telemetryConfiguration.enabled) {
+                runCatching { AndroidWorkerTelemetryService.start(applicationContext) }
+                    .onFailure { errorChanged?.invoke(getString(R.string.telemetry_collection_failed)) }
+            }
             MobileWorkerSyncJobService.schedule(applicationContext)
             val sensors = AndroidMobileWorkerSensors(applicationContext)
             runCatching {
@@ -346,6 +350,7 @@ private fun MainActivity.MobileWorkerApp(
                 status?.takeIf { it.enrolled }?.let { enrolled ->
                     StatusCard(enrolled)
                     WorkerLocationSettings(runtime, enrolled, onStatus = { status = it }, onError = { error = it })
+                    WorkerTelemetrySettings(runtime, enrolled, onStatus = { status = it }, onError = { error = it })
                     Text("Remote commands: ${gatewayState.name.lowercase()}")
                     Text("When enabled, this device accepts supported commands from its server: device status, location while sharing is enabled, and loud sound with separate permission below. A persistent notification lets you disable the connection.",
                         color = workerColors.onSurfaceVariant)
@@ -487,6 +492,8 @@ private fun MainActivity.MobileWorkerApp(
                                     AndroidWorkerGatewayService.stop(applicationContext)
                                     runtime.configureLocation(enrolled.locationConfiguration.copy(enabled = false))
                                     AndroidWorkerLocationService.stop(applicationContext)
+                                    runtime.configureTelemetry(enrolled.telemetryConfiguration.copy(enabled = false))
+                                    AndroidWorkerTelemetryService.stop(applicationContext)
                                     sensors.disableBackgroundSignals()
                                     MobileWorkerSyncJobService.cancel(applicationContext)
                                     runtime.reset()

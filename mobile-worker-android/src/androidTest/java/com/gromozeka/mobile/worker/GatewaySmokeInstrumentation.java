@@ -20,12 +20,14 @@ import java.nio.file.Files;
 public final class GatewaySmokeInstrumentation extends Instrumentation {
     private boolean lifecycleSetup;
     private boolean locationSetup;
+    private boolean telemetrySmoke;
 
     @Override
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
         lifecycleSetup = arguments != null && "true".equals(arguments.getString("lifecycleSetup"));
         locationSetup = arguments != null && "true".equals(arguments.getString("locationSetup"));
+        telemetrySmoke = arguments != null && "true".equals(arguments.getString("telemetrySmoke"));
         start();
     }
 
@@ -36,6 +38,12 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
         try {
             AndroidMobileWorkerStorage storage = new AndroidMobileWorkerStorage(context);
             check(storage.readState() == null, "Use a fresh test installation; existing Worker state must not be overwritten");
+            if (telemetrySmoke) {
+                verifyTelemetry(context, storage);
+                result.putString("stream", "Telemetry smoke passed: Android usage events, screen state, metadata, offline encrypted queue, activity-independent collection, permission revocation, notification stop and durable disable.\n");
+                finish(Activity.RESULT_OK, result);
+                return;
+            }
             if (lifecycleSetup) {
                 check(context.getPackageName().endsWith(".lifecycle"), "Lifecycle setup requires the isolated test application");
                 storage.writeCredential("android-lifecycle-fixture-credential");
@@ -80,6 +88,67 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
             result.putString("error", error.toString());
             finish(Activity.RESULT_CANCELED, result);
         }
+    }
+
+    private void verifyTelemetry(Context context, AndroidMobileWorkerStorage storage) throws Exception {
+        String now = java.time.Instant.now().toString();
+        storage.writeCredential("telemetry-smoke-no-real-server");
+        storage.writeState("{\"serverUrl\":\"https://127.0.0.1:1\",\"workerId\":\"telemetry-smoke\","
+                + "\"telemetryConfiguration\":{\"enabled\":true,\"applicationUsageEnabled\":true,\"intervalSeconds\":10},"
+                + "\"telemetryRevision\":\"smoke\",\"telemetryCheckpoint\":{\"usageFloor\":\"" + now
+                + "\",\"usageThrough\":\"" + now + "\",\"usageEpoch\":\"smoke\"},"
+                + "\"outbox\":{\"streamId\":\"telemetry-smoke-stream\",\"pending\":[],\"latest\":{}}}");
+        if (Build.VERSION.SDK_INT >= 33) shell("pm grant " + context.getPackageName() + " android.permission.POST_NOTIFICATIONS");
+        shell("appops set " + context.getPackageName() + " GET_USAGE_STATS allow");
+        shell("input keyevent KEYCODE_WAKEUP");
+        shell("wm dismiss-keyguard");
+        Activity activity = startActivitySync(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        waitForIdleSync();
+        check(awaitTelemetryPayload(storage, "app_activity", null, null), "No Android lifecycle events were collected");
+        check(awaitTelemetryPayload(storage, "application_info", null, null), "App metadata is missing");
+        check(awaitTelemetryPayload(storage, "device_environment", null, null), "Device environment is missing");
+        check(telemetryNotification(context), "Collection has no visible notification");
+        runOnMainSync(activity::finish);
+        waitForIdleSync();
+        shell("input keyevent KEYCODE_SLEEP");
+        check(awaitTelemetryPayload(storage, "screen_state", "interactive", "false"), "Screen-off observation is missing");
+        check(telemetryNotification(context), "Closing the activity stopped collection");
+        shell("appops set " + context.getPackageName() + " GET_USAGE_STATS deny");
+        check(awaitTelemetryPayload(storage, "collection_status", "state", "PERMISSION_REQUIRED"), "Revoked usage access was not reported");
+        byte[] encrypted = Files.readAllBytes(new File(context.getNoBackupFilesDir(), "worker-state.enc").toPath());
+        check(!new String(encrypted, StandardCharsets.UTF_8).contains("app_activity"), "Usage history leaked as plaintext");
+        boolean stopped = false;
+        for (StatusBarNotification notification : context.getSystemService(NotificationManager.class).getActiveNotifications()) {
+            if (notification.getId() == 27_047 && notification.getNotification().actions != null) {
+                notification.getNotification().actions[0].actionIntent.send();
+                stopped = true;
+                break;
+            }
+        }
+        check(stopped, "Local disable action is missing");
+        for (int attempt = 0; attempt < 80 && telemetryNotification(context); attempt++) SystemClock.sleep(100);
+        check(!telemetryNotification(context), "Telemetry notification remained after disable");
+        check(!new JSONObject(storage.readState()).getJSONObject("telemetryConfiguration").getBoolean("enabled"), "Telemetry disable was not persisted");
+        shell("input keyevent KEYCODE_WAKEUP");
+    }
+
+    private static boolean telemetryNotification(Context context) {
+        for (StatusBarNotification notification : context.getSystemService(NotificationManager.class).getActiveNotifications()) {
+            if (notification.getId() == 27_047) return true;
+        }
+        return false;
+    }
+
+    private static boolean awaitTelemetryPayload(AndroidMobileWorkerStorage storage, String type, String key, String value) throws Exception {
+        for (int attempt = 0; attempt < 120; attempt++) {
+            org.json.JSONArray pending = new JSONObject(storage.readState()).getJSONObject("outbox").getJSONArray("pending");
+            for (int i = 0; i < pending.length(); i++) {
+                JSONObject payload = pending.getJSONObject(i).getJSONObject("payload");
+                if (type.equals(payload.optString("type")) && (key == null || value.equals(String.valueOf(payload.opt(key))))) return true;
+            }
+            SystemClock.sleep(250);
+        }
+        return false;
     }
 
     private void verifySound(Context context, AndroidMobileWorkerStorage storage) throws Exception {

@@ -12,7 +12,9 @@ internal object AndroidMobileWorkerRuntimeFactory {
             deviceName = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
             operatingSystemVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
             appVersion = context.applicationVersion(),
-            onEventsQueued = { MobileWorkerSyncJobService.requestSynchronization(context.applicationContext) },
+            onEventsQueued = {
+                if (!AndroidWorkerEventDelivery.wake()) MobileWorkerSyncJobService.requestSynchronization(context.applicationContext)
+            },
         )
 }
 

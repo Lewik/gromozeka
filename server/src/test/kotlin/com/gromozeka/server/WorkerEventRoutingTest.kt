@@ -78,6 +78,41 @@ class WorkerEventRoutingTest {
     }
 
     @Test
+    fun `mixed Android telemetry is authenticated retained and deduplicated with device attribution`() = testApplication {
+        val repository = Events()
+        val enrollment = Mockito.mock(WorkerEnrollmentRepository::class.java)
+        val worker = worker("android")
+        runBlocking { Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker) }
+        application {
+            routing {
+                gromozekaWorkerEvents(WorkerGatewayAuthenticationService(enrollment),
+                    ContextStateApplicationService(repository), WorkerContactApplicationService(Contacts()))
+            }
+        }
+        val body = """{"events":[
+            {"id":"app","observedAt":"2026-09-05T00:00:00Z","payload":{"type":"app_activity","packageName":"test.game","transition":"RESUMED"}},
+            {"id":"screen","observedAt":"2026-09-05T00:00:01Z","payload":{"type":"screen_state","interactive":false,"keyguardShowing":true,"deviceLocked":true}},
+            {"id":"metadata","observedAt":"2026-09-05T00:00:02Z","payload":{"type":"application_info","packageName":"test.game","label":"Game","metadataAvailable":true}},
+            {"id":"coverage","observedAt":"2026-09-05T00:00:02Z","payload":{"type":"collection_status","source":"APP_USAGE","state":"ACTIVE","queriedFrom":"2026-09-05T00:00:00Z","queriedThrough":"2026-09-05T00:00:02Z"}},
+            {"id":"geo","observedAt":"2026-09-05T00:00:00Z","payload":{"type":"location","latitude":32.0,"longitude":34.8,"accuracyMeters":10.0,"cause":"LIVE_TRACKING"}},
+            {"id":"lock","observedAt":"2026-09-05T00:00:01Z","payload":{"type":"device_usage_transition","transition":"KEYGUARD_SHOWN"}},
+            {"id":"gap","observedAt":"2026-09-05T00:00:02Z","payload":{"type":"collection_gap","source":"APP_USAGE","from":"2026-09-04T00:00:00Z","to":"2026-09-05T00:00:00Z","reason":"HISTORY_LIMIT"}},
+            {"id":"environment","observedAt":"2026-09-05T00:00:02Z","payload":{"type":"device_environment","networkTransports":["WIFI"],"internetValidated":true,"metered":false,"powerSaveMode":false,"deviceIdleMode":false,"timeZoneId":"UTC","bootCount":2,"elapsedRealtimeMillis":10000}}
+        ]}"""
+        repeat(2) {
+            val response = client.post("https://localhost/api/worker/events") {
+                header("Authorization", "Bearer $credential"); setBody(body)
+            }
+            assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
+        }
+        assertEquals(8, repository.events.size)
+        assertTrue(repository.events.all { it.userId == worker.subjectUserId &&
+            it.subject == ContextEvent.Subject.Device(worker.id) && it.source == ContextEvent.Source.Worker(worker.id) })
+        assertEquals(time, repository.events.first().observedAt)
+        assertTrue(repository.events.all { it.receivedAt > it.observedAt })
+    }
+
+    @Test
     fun `authentication binding and bounded payload are required`() = testApplication {
         val repository = Events()
         val enrollment = Mockito.mock(WorkerEnrollmentRepository::class.java)

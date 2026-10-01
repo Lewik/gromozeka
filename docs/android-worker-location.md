@@ -122,3 +122,13 @@ common tests, Server route/Gateway tests, the real PostgreSQL test and normal
 debug sound instrumentation. Native visual checks covered permission denial,
 approximate permission without automatic opt-in, active tracking status and
 the notification's persisted disable action.
+
+## Shared event delivery
+
+Location and optional application/device telemetry now share the foreground
+`AndroidWorkerEventDelivery` loop and the same encrypted event outbox. Their
+Android foreground acquisition services and permission switches remain separate:
+missing location permission or a missing GPS fix must not stop device telemetry.
+Each event retains its own measurement time. See
+[Android telemetry collection](android-worker-gateway.md#opt-in-android-device-and-application-telemetry)
+for collection, buffering, consent and verification details.
