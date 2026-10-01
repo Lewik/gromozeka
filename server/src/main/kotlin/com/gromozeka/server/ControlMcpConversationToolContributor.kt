@@ -43,7 +43,13 @@ internal class ControlMcpConversationToolContributor(
                 val user = userDirectoryService.findActiveById(context.requiredUserId())
                     ?: error("Conversation control tools require an active authenticated user")
                 tool.invokeStructured(
-                    context = ControlMcpCallContext(user, context.requiredAgentDefinitionId()),
+                    context = ControlMcpCallContext(
+                        user = user,
+                        callingAgentId = context.requiredAgentDefinitionId(),
+                        conversationId = context?.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID)
+                            ?.let(com.gromozeka.domain.model.Conversation::Id),
+                        cancellationSignal = context?.cancellationSignal ?: com.gromozeka.domain.tool.ToolCancellationSignal.None,
+                    ),
                     arguments = toolInput.toArguments(),
                 ).toString()
             }

@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.db.config
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
+import org.postgresql.ds.PGSimpleDataSource
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -31,6 +32,22 @@ class PostgresDatabaseConfiguration {
         config.connectionInitSql = "SET search_path TO ${quoteIdentifier(schema)}, public"
         config.poolName = "gromozeka-postgres"
         return HikariDataSource(config)
+    }
+
+    /** Same administrative credentials, but never pool sessions exposed to arbitrary SQL. */
+    @Bean("runtimeSqlDataSource")
+    fun runtimeSqlDataSource(
+        @Qualifier("postgresDataSource") source: HikariDataSource,
+        @Value("\${gromozeka.postgres.schema:\${GROMOZEKA_POSTGRES_SCHEMA:public}}") schema: String,
+    ): DataSource {
+        validateSchemaName(schema)
+        return PGSimpleDataSource().apply {
+            setURL(source.jdbcUrl)
+            user = source.username
+            password = source.password
+            currentSchema = "${quoteIdentifier(schema)},public"
+            applicationName = "gromozeka-runtime-sql"
+        }
     }
 
     @Bean

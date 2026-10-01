@@ -40,6 +40,8 @@ internal enum class ControlMcpAccessPolicy {
 internal data class ControlMcpCallContext(
     val user: User,
     val callingAgentId: com.gromozeka.domain.model.AgentDefinition.Id? = null,
+    val conversationId: com.gromozeka.domain.model.Conversation.Id? = null,
+    val cancellationSignal: com.gromozeka.domain.tool.ToolCancellationSignal = com.gromozeka.domain.tool.ToolCancellationSignal.None,
 ) {
     fun requireServerOwner() {
         if (user.role != User.Role.OWNER) {

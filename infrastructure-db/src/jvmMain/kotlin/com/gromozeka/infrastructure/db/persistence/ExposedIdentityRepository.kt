@@ -112,6 +112,7 @@ class ExposedIdentityRepository : IdentityRepository {
     ): User = dbQuery { insertUser(user, credential) }
 
     private fun insertUser(user: User, credential: LocalPasswordCredential?): User {
+        if (user.canLogin) lockRuntimeLogins()
         require(credential == null || credential.userId == user.id) { "Password credential must belong to the created user" }
         require((user.username != null) == (credential != null)) { "Local login identity requires a password credential" }
         Users.insert {
@@ -138,6 +139,7 @@ class ExposedIdentityRepository : IdentityRepository {
     }
 
     override suspend fun updateUser(user: User): User = dbQuery {
+        lockRuntimeLogins()
         val updated = Users.update(
             where = { Users.id eq user.id.value },
         ) {
@@ -150,6 +152,10 @@ class ExposedIdentityRepository : IdentityRepository {
         }
         check(updated == 1) { "User does not exist: ${user.id.value}" }
         user
+    }
+
+    private fun lockRuntimeLogins() {
+        TransactionManager.current().exec("SELECT pg_advisory_xact_lock($RUNTIME_LOGIN_GATE_KEY)") { rows -> rows.next() }
     }
 
     override suspend fun findPasswordCredential(userId: User.Id): LocalPasswordCredential? = dbQuery {
