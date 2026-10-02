@@ -29,6 +29,11 @@ on:
         required: true
         type: boolean
         default: false
+      skip_ios:
+        description: Skip iOS source checks for this manual run
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -138,6 +143,15 @@ jobs:
           :mobile-worker-android:assemble
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
+      - name: Upload Android APKs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-apks
+          path: |
+            presentation-android/build/outputs/apk/**/*.apk
+            mobile-worker-android/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 7
 
   verify-web:
     needs: metadata
@@ -183,6 +197,7 @@ jobs:
           retention-days: 7
 
   verify-ios:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.skip_ios }}
     needs: metadata
     runs-on: macos-latest
     timeout-minutes: 60
@@ -213,6 +228,17 @@ jobs:
           -q
 
   verify:
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.verify-runtime.result == 'success' &&
+        needs.verify-windows-worker.result == 'success' &&
+        needs.verify-client.result == 'success' &&
+        needs.verify-web.result == 'success' &&
+        needs.verify-e2e.result == 'success' &&
+        (needs.verify-ios.result == 'success' ||
+          (github.event_name == 'workflow_dispatch' && inputs.skip_ios && needs.verify-ios.result == 'skipped'))
+      }}
     needs:
       - verify-runtime
       - verify-windows-worker
@@ -222,7 +248,7 @@ jobs:
       - verify-ios
     runs-on: ubuntu-latest
     steps:
-      - run: echo "All release source checks passed"
+      - run: echo "All required release source checks passed"
 
   reserve-release-tag:
     needs:
