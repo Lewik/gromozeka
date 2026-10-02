@@ -35,13 +35,18 @@ class ConversationArtifactApplicationServiceTest {
             val result = Conversation.Message.ContentItem.ToolResult(
                 toolUseId = Conversation.Message.ContentItem.ToolCall.Id("binary-$index"),
                 toolName = "grz_execute_command",
-                result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                result = listOf(if (index == 2) Conversation.Message.ContentItem.ToolResult.Data.Text(bytes.decodeToString())
+                else Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
                     Base64.getEncoder().encodeToString(bytes),
                     Conversation.Message.MediaType.parse("application/octet-stream"),
                     "stdout.bin",
                 )),
             )
-            val stored = service.persistAndCommitToolResults(conversation, null, listOf(result)).single()
+            val assistantMessage = userMessage(conversation.id, result).copy(role = Conversation.Message.Role.ASSISTANT)
+            val persistedMessage = service.persistAndCommitMessageToolResults(conversation, null, assistantMessage)
+            assertEquals(assistantMessage.id, persistedMessage.id)
+            assertEquals(Conversation.Message.Role.ASSISTANT, persistedMessage.role)
+            val stored = persistedMessage.content.single() as Conversation.Message.ContentItem.ToolResult
             val artifact = stored.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single().artifact
             assertContentEquals(bytes, service.read(artifact.id))
             val text = stored.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>().joinToString("\n") { it.content }

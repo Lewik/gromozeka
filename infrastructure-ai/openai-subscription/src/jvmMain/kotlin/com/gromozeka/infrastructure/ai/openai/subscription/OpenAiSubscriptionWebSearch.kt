@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.safeToolOutputText
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
@@ -78,7 +79,7 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
             put("call_id", callId.toOpenAiSubscriptionKey())
             put("output", buildJsonArray { add(buildJsonObject {
                 put("type", "input_text")
-                put("text", output)
+                put("text", output.safeToolOutputText())
             }) })
         }
         return AiRuntimeResponse(

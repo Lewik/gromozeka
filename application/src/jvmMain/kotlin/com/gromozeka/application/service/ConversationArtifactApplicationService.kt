@@ -146,6 +146,19 @@ class ConversationArtifactApplicationService(
         return DraftDeletionResult.DELETED
     }
 
+    suspend fun persistAndCommitMessageToolResults(
+        conversation: Conversation,
+        createdByUserId: User.Id?,
+        message: Conversation.Message,
+    ): Conversation.Message {
+        val results = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+        if (results.isEmpty()) return message
+        val persisted = persistAndCommitToolResults(conversation, createdByUserId, results).iterator()
+        return message.copy(content = message.content.map {
+            if (it is Conversation.Message.ContentItem.ToolResult) persisted.next() else it
+        })
+    }
+
     suspend fun persistAndCommitToolResults(
         conversation: Conversation,
         createdByUserId: User.Id?,

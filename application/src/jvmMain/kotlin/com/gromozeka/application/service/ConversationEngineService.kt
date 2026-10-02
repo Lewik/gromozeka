@@ -460,6 +460,7 @@ class ConversationEngineService(
                 ),
             )
             .withRuntimeMessageIds(task.id, "assistant")
+            .map { artifactService.persistAndCommitMessageToolResults(conversation, task.actorUserId, it) }
         if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && collaboration != null && responseReview != null) {
             val draft = responseReview.prepare(task, payload, conversation, currentMessages, mappedAssistantMessages)
             if (draft != null) return ConversationRuntimeTaskOutcome.Continue(

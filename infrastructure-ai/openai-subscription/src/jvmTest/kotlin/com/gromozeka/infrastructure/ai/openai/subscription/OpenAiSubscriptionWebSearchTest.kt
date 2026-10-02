@@ -43,12 +43,17 @@ class OpenAiSubscriptionWebSearchTest {
     @Test
     fun persistsNativeCallBeforeSearchAndReplaysCompletedResultExactlyOnce() = runBlocking {
         val calls = mutableListOf<JsonObject>()
+        val output = "Source [Example](https://example.com)\nPDF text: \u0000\u0001, literal: \\u0000"
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/alpha/search") { exchange ->
             assertEquals("Bearer test-token", exchange.requestHeaders.getFirst("Authorization"))
             assertNull(exchange.requestHeaders.getFirst("x-openai-internal-codex-responses-lite"))
             calls += Json.parseToJsonElement(exchange.requestBody.reader().readText()).jsonObject
-            val body = """{"output":"Source [Example](https://example.com)","encrypted_output":"opaque-secret","results":[]}""".toByteArray()
+            val body = buildJsonObject {
+                put("output", output)
+                put("encrypted_output", "opaque-secret")
+                put("results", JsonArray(emptyList()))
+            }.toString().toByteArray()
             exchange.sendResponseHeaders(200, body.size.toLong())
             exchange.responseBody.use { it.write(body) }
         }
@@ -67,6 +72,8 @@ class OpenAiSubscriptionWebSearchTest {
             assertNull(search.pendingCall(history, "other", model))
             assertNull(search.pendingCall(history, connectionId, "other-model"))
             val result = assertNotNull(search.executePending(AiRuntimeRequest(emptyList(), history), session, "conversation", connectionId, model, true))
+            val toolResult = result.messages.single().content.single() as ContentItem.ToolResult
+            assertEquals(output, (toolResult.result.single() as ContentItem.ToolResult.Data.Text).content)
             history += persisted(result)
             assertEquals(1, calls.size)
             assertEquals("conversation", calls.single()["id"]?.jsonPrimitive?.content)
@@ -83,6 +90,10 @@ class OpenAiSubscriptionWebSearchTest {
             assertEquals("web-call", replay[2]["call_id"]?.jsonPrimitive?.content)
             assertFalse(replay.toString().contains("opaque-secret"))
             assertTrue(replay[2].toString().contains("https://example.com"))
+            assertEquals(
+                "Source [Example](https://example.com)\nPDF text: \\u0000\\u0001, literal: \\u0000",
+                replay[2].getValue("output").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content,
+            )
             val foreign = OpenAiSubscriptionRequestMapper().toRequest(
                 AiRuntimeRequest(emptyList(), history), profile, "conversation", true, "other",
             ).input
