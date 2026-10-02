@@ -264,6 +264,7 @@ jobs:
       - run: echo "All required release source checks passed"
 
   reserve-release-tag:
+    if: ${{ !cancelled() && needs.metadata.result == 'success' && needs.verify.result == 'success' }}
     needs:
       - metadata
       - verify
@@ -559,6 +560,13 @@ jobs:
           retention-days: 1
 
   images:
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.metadata.result == 'success' &&
+        needs.reserve-release-tag.result == 'success' &&
+        needs.verify-web.result == 'success'
+      }}
     needs:
       - metadata
       - reserve-release-tag
@@ -662,7 +670,18 @@ jobs:
           cache-to: type=gha,mode=max,scope=release-worker
 
   release:
-    if: needs.metadata.outputs.publish == 'true'
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.metadata.outputs.publish == 'true' &&
+        needs.metadata.result == 'success' &&
+        needs.verify.result == 'success' &&
+        needs.client-macos.result == 'success' &&
+        needs.client-windows.result == 'success' &&
+        needs.standalone.result == 'success' &&
+        needs.browser-bridge.result == 'success' &&
+        needs.images.result == 'success'
+      }}
     needs:
       - metadata
       - verify
@@ -764,7 +783,13 @@ jobs:
           generate_release_notes: true
 
   deploy:
-    if: needs.metadata.outputs.deploy == 'true'
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.metadata.outputs.deploy == 'true' &&
+        needs.metadata.result == 'success' &&
+        needs.release.result == 'success'
+      }}
     needs:
       - metadata
       - release
