@@ -21,7 +21,6 @@ kotlin {
         namespace = "com.gromozeka.mobile.worker"
         compileSdk = 37
         minSdk = 26
-        androidResources { enable = true }
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
@@ -38,6 +37,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                implementation(project(":shared"))
                 implementation(project(":domain"))
                 implementation(project(":remote-protocol"))
                 implementation(project(":worker-runtime"))

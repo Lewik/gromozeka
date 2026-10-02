@@ -14466,5 +14466,863 @@
       "input",
       "worker"
     ]
+  },
+  "androidWorker.settings": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Settings",
+    "args": []
+  },
+  "androidWorker.technicalDetails": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Technical details",
+    "args": []
+  },
+  "androidWorker.close": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Close",
+    "args": []
+  },
+  "androidWorker.off": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Off",
+    "args": []
+  },
+  "androidWorker.starting": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Starting…",
+    "args": []
+  },
+  "androidWorker.active": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Running",
+    "args": []
+  },
+  "androidWorker.waitingFix": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Waiting for location",
+    "args": []
+  },
+  "androidWorker.waitingDelivery": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Waiting for delivery; data stays on this device",
+    "args": []
+  },
+  "androidWorker.paused": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Paused; check permissions and device settings",
+    "args": []
+  },
+  "androidWorker.storageFull": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Storage full; waiting for delivery",
+    "args": []
+  },
+  "androidWorker.locationRequired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Allow location access in Android settings",
+    "args": []
+  },
+  "androidWorker.notificationsRequired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Allow notifications in Android settings",
+    "args": []
+  },
+  "androidWorker.failed": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Could not complete the action",
+    "args": []
+  },
+  "androidWorker.settingsUnavailable": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Open this app’s settings manually in Android",
+    "args": []
+  },
+  "androidWorker.allowed": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Allowed",
+    "args": []
+  },
+  "androidWorker.notAllowed": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Not allowed",
+    "args": []
+  },
+  "androidWorker.working": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Working…",
+    "args": []
+  },
+  "androidWorker.enable": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Enable",
+    "args": []
+  },
+  "androidWorker.disable": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Disable",
+    "args": []
+  },
+  "androidWorker.permissionSaved": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Permission saved. Tap Enable again.",
+    "args": []
+  },
+  "androidWorker.invalidInterval": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Enter an interval from 10 to 900 seconds",
+    "args": []
+  },
+  "androidWorker.locationProviderRequired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Turn on Location in Android settings",
+    "args": []
+  },
+  "androidWorker.invalidLocationSettings": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerUi.kt"
+    ],
+    "description": "Android Worker local status, action or permission guidance: Interval: 1–86400 seconds; movement: 0–10000 meters",
+    "args": []
+  },
+  "androidWorker.connection": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Server",
+    "args": []
+  },
+  "androidWorker.telemetry": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Device statistics",
+    "args": []
+  },
+  "androidWorker.location": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Location",
+    "args": []
+  },
+  "androidWorker.background": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Background operation",
+    "args": []
+  },
+  "androidWorker.remote": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Remote commands and sound",
+    "args": []
+  },
+  "androidWorker.remoteSettings": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Manage",
+    "args": []
+  },
+  "androidWorker.signals": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Additional signals",
+    "args": []
+  },
+  "androidWorker.disconnect": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Disconnect device",
+    "args": []
+  },
+  "androidWorker.cancel": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Cancel",
+    "args": []
+  },
+  "androidWorker.sync": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Send now",
+    "args": []
+  },
+  "androidWorker.serverUrl": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Server URL",
+    "args": []
+  },
+  "androidWorker.workerId": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Worker ID",
+    "args": []
+  },
+  "androidWorker.approveCode": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Approve this code",
+    "args": []
+  },
+  "androidWorker.username": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Username",
+    "args": []
+  },
+  "androidWorker.password": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Password",
+    "args": []
+  },
+  "androidWorker.connect": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Connect",
+    "args": []
+  },
+  "androidWorker.useCode": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Use connection code",
+    "args": []
+  },
+  "androidWorker.usePassword": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Use username and password",
+    "args": []
+  },
+  "androidWorker.advanced": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Advanced",
+    "args": []
+  },
+  "androidWorker.enrollmentToken": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: One-time enrollment token",
+    "args": []
+  },
+  "androidWorker.geofences": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Geofences",
+    "args": []
+  },
+  "androidWorker.name": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Name",
+    "args": []
+  },
+  "androidWorker.useCurrent": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Use current location",
+    "args": []
+  },
+  "androidWorker.latitude": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Latitude",
+    "args": []
+  },
+  "androidWorker.longitude": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Longitude",
+    "args": []
+  },
+  "androidWorker.radius": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Radius, m",
+    "args": []
+  },
+  "androidWorker.add": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Add",
+    "args": []
+  },
+  "androidWorker.bleDevices": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: BLE devices",
+    "args": []
+  },
+  "androidWorker.optionalName": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Name (optional)",
+    "args": []
+  },
+  "androidWorker.bleSelector": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: MAC address or service UUID",
+    "args": []
+  },
+  "androidWorker.wifi": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Wi-Fi",
+    "args": []
+  },
+  "androidWorker.wifiNetwork": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Network name",
+    "args": []
+  },
+  "androidWorker.save": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Save",
+    "args": []
+  },
+  "androidWorker.enableSleep": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Enable sleep events",
+    "args": []
+  },
+  "androidWorker.remove": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Remove",
+    "args": []
+  },
+  "androidWorker.registered": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Registered",
+    "args": []
+  },
+  "androidWorker.deviceDetails": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Device details",
+    "args": []
+  },
+  "androidWorker.usageAccess": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Usage access",
+    "args": []
+  },
+  "androidWorker.appUsage": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: App activity",
+    "args": []
+  },
+  "androidWorker.interval": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Interval, seconds",
+    "args": []
+  },
+  "androidWorker.locationAccess": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Location settings",
+    "args": []
+  },
+  "androidWorker.appPermissions": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: App permissions",
+    "args": []
+  },
+  "androidWorker.distance": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Minimum movement, m",
+    "args": []
+  },
+  "androidWorker.batterySettings": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Battery settings",
+    "args": []
+  },
+  "androidWorker.testSound": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Test sound (3 s)",
+    "args": []
+  },
+  "androidWorker.stopSound": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Stop sound",
+    "args": []
+  },
+  "androidWorker.soundSettings": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Sound settings",
+    "args": []
+  },
+  "androidWorker.sleepData": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt"
+    ],
+    "description": "Android Worker section, field or action label: Sleep data",
+    "args": []
+  },
+  "androidWorker.lastCollection": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Last sample: {time}",
+    "args": [
+      "time"
+    ]
+  },
+  "androidWorker.usageStatus": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Usage access: {status}",
+    "args": [
+      "status"
+    ]
+  },
+  "androidWorker.usageThrough": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. App events through: {time}",
+    "args": [
+      "time"
+    ]
+  },
+  "androidWorker.accuracy": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Accuracy: {meters} m",
+    "args": [
+      "meters"
+    ]
+  },
+  "androidWorker.backgroundLocation": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Background location: {status}",
+    "args": [
+      "status"
+    ]
+  },
+  "androidWorker.soundStatus": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Loud sound: {status}",
+    "args": [
+      "status"
+    ]
+  },
+  "androidWorker.stopMonitoring": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Stop monitoring {name}",
+    "args": [
+      "name"
+    ]
+  },
+  "androidWorker.pending": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Queued: {count}",
+    "args": [
+      "count"
+    ]
+  },
+  "androidWorker.lastDelivery": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Last delivery: {time}",
+    "args": [
+      "time"
+    ]
+  },
+  "androidWorker.backgroundRestricted": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Restricted by Android",
+    "args": []
+  },
+  "androidWorker.backgroundAllowed": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Battery optimization exemption granted",
+    "args": []
+  },
+  "androidWorker.backgroundOptimized": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Battery optimization may delay delivery",
+    "args": []
+  },
+  "androidWorker.soundPlaying": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Loud alert is playing",
+    "args": []
+  },
+  "androidWorker.sleepEnabled": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Sleep events enabled",
+    "args": []
+  },
+  "androidWorker.sleepRequired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Allow sleep access in Health Connect",
+    "args": []
+  },
+  "androidWorker.bleEnabled": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. BLE monitoring enabled",
+    "args": []
+  },
+  "androidWorker.bleRequired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. For BLE, enable Bluetooth and grant required permissions. On Android 11 and earlier, allow precise location all the time.",
+    "args": []
+  },
+  "androidWorker.retrying": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Connection interrupted; retrying…",
+    "args": []
+  },
+  "androidWorker.codeExpired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Connection code expired",
+    "args": []
+  },
+  "androidWorker.connectionDenied": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Connection denied",
+    "args": []
+  },
+  "androidWorker.healthUnavailable": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Health Connect is unavailable",
+    "args": []
+  },
+  "androidWorker.noLocation": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. No recent location available",
+    "args": []
+  },
+  "androidWorker.saved": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Saved",
+    "args": []
+  },
+  "androidWorker.usageRequired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. First allow Android usage access",
+    "args": []
+  },
+  "androidWorker.geofenceRequired": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Geofences require precise location access all the time",
+    "args": []
+  },
+  "androidWorker.approveHint": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. In an authorized Gromozeka client, open Settings → Security.",
+    "args": []
+  },
+  "androidWorker.changeWhenStopped": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt"
+    ],
+    "description": "Android Worker status or actionable permission guidance. Times use device locale and timezone. Stop collection to change these settings.",
+    "args": []
+  },
+  "androidWorker.telemetryDisclosure": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Collects device state and, optionally, app usage events. No screen content or messages. Data is encrypted locally and sent to your server when connected; disabling collection does not delete server history.",
+    "args": []
+  },
+  "androidWorker.telemetryConsent": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Enabling sends device statistics to your server. App activity is a separate option.",
+    "args": []
+  },
+  "androidWorker.locationDisclosure": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Records positions while the screen is off, independently of Bluetooth and remote commands. Offline points stay on this device. Both interval and movement thresholds apply; GPS and Android may delay fixes.",
+    "args": []
+  },
+  "androidWorker.locationConsent": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Enabling sends this device’s location to your server, including in the background.",
+    "args": []
+  },
+  "androidWorker.backgroundLocationHint": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Optional: allow location all the time to resume after reboot. On Android 11+, open App permissions → Location. Otherwise, reopen the Worker after reboot.",
+    "args": []
+  },
+  "androidWorker.disconnectConfirm": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Stop collection and commands, and erase this device’s local enrollment and unsent events? Server history is not deleted.",
+    "args": []
+  },
+  "androidWorker.remoteDisclosure": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Allow this server to request device status and location while sharing is enabled. Sound requires separate permission.",
+    "args": []
+  },
+  "androidWorker.soundDisclosure": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Allows alerts up to 60 seconds at maximum alarm volume, even in silent mode. Alarms must be allowed in Do Not Disturb; disconnect headphones. Stop here or in the notification.",
+    "args": []
+  },
+  "androidWorker.signalsDisclosure": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Only configured geofences, BLE devices and Wi-Fi networks are monitored.",
+    "args": []
+  },
+  "androidWorker.sleepDisclosure": {
+    "source": [
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerTelemetrySettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/WorkerLocationSettings.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/MainActivity.kt",
+      "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
+    ],
+    "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Reads completed sleep sessions only when enabled. Events are encrypted locally and sent over HTTPS to your server, which keeps history. Revoke access in Health Connect or disconnect the device to stop.",
+    "args": []
   }
 }

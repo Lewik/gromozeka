@@ -68,20 +68,21 @@ class AndroidWorkerTelemetryService : Service() {
                     }
                     stopSelf()
                 } catch (error: CancellationException) { throw error }
-                catch (_: Exception) { mutableState.value = getString(R.string.telemetry_save_failed) }
+                catch (_: Exception) { mutableState.value = WorkerPhase.FAILED }
             }
             return START_NOT_STICKY
         }
+        if (collectionJob?.isActive != true) mutableState.value = WorkerPhase.STARTING
         try {
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(NotificationChannel(CHANNEL_ID,
-                getString(R.string.telemetry_title), NotificationManager.IMPORTANCE_LOW))
+                workerStrings()("telemetry"), NotificationManager.IMPORTANCE_LOW))
             check(notificationsAllowed(this)) { "Telemetry notifications are disabled" }
             if (Build.VERSION.SDK_INT >= 34)
                 startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
             else startForeground(NOTIFICATION_ID, notification())
         } catch (_: Exception) {
-            mutableState.value = getString(R.string.telemetry_notifications_required)
+            mutableState.value = WorkerPhase.NOTIFICATIONS_REQUIRED
             stopSelf()
             return START_NOT_STICKY
         }
@@ -94,18 +95,18 @@ class AndroidWorkerTelemetryService : Service() {
                         while (isActive) {
                             val configuration = withContext(Dispatchers.IO) { runtime.telemetryCollection()?.configuration } ?: break
                             if (!notificationsAllowed(this@AndroidWorkerTelemetryService)) {
-                                mutableState.value = getString(R.string.telemetry_notifications_required)
+                                mutableState.value = WorkerPhase.NOTIFICATIONS_REQUIRED
                                 break
                             }
                             var catchUp = false
                             try {
                                 catchUp = withContext(Dispatchers.IO) { collector.collect() }
-                                mutableState.value = getString(R.string.telemetry_collecting)
+                                mutableState.value = WorkerPhase.ACTIVE
                             } catch (error: CancellationException) { throw error }
                             catch (_: WorkerEventOutboxFullException) {
-                                mutableState.value = getString(R.string.telemetry_storage_full)
+                                mutableState.value = WorkerPhase.STORAGE_FULL
                             } catch (_: Exception) {
-                                mutableState.value = getString(R.string.telemetry_collection_failed)
+                                mutableState.value = WorkerPhase.FAILED
                             }
                             AndroidWorkerEventDelivery.wake()
                             getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification())
@@ -128,9 +129,16 @@ class AndroidWorkerTelemetryService : Service() {
         val stop = PendingIntent.getService(this, 0, Intent(this, AndroidWorkerTelemetryService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return Notification.Builder(this, CHANNEL_ID).setSmallIcon(android.R.drawable.ic_menu_info_details)
-            .setContentTitle(getString(R.string.telemetry_title)).setContentText(getString(R.string.telemetry_notification))
+            .setContentTitle(workerStrings()("telemetry")).setContentText(workerStrings()(mutableState.value.key))
             .setContentIntent(open).setOnlyAlertOnce(true).setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE)
-            .addAction(Notification.Action.Builder(null, getString(R.string.telemetry_disable), stop).build()).build()
+            .addAction(Notification.Action.Builder(null, workerStrings()("disable"), stop).build()).build()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, workerStrings()("telemetry"), NotificationManager.IMPORTANCE_LOW))
+        manager.notify(NOTIFICATION_ID, notification())
     }
 
     override fun onDestroy() {
@@ -139,6 +147,7 @@ class AndroidWorkerTelemetryService : Service() {
         runCatching { unregisterReceiver(screenReceiver) }
         runtime.close()
         stopForeground(STOP_FOREGROUND_REMOVE)
+        if (mutableState.value in setOf(WorkerPhase.ACTIVE, WorkerPhase.STARTING)) mutableState.value = WorkerPhase.STOPPED
         super.onDestroy()
     }
 
@@ -147,8 +156,8 @@ class AndroidWorkerTelemetryService : Service() {
         private const val NOTIFICATION_ID = 27_047
         private const val ACTION_STOP = "com.gromozeka.mobile.worker.STOP_TELEMETRY"
         private val lifetime = Mutex()
-        private val mutableState = MutableStateFlow("")
-        val state = mutableState.asStateFlow()
+        private val mutableState = MutableStateFlow(WorkerPhase.STOPPED)
+        internal val state = mutableState.asStateFlow()
 
         fun start(context: Context) { context.startForegroundService(Intent(context, AndroidWorkerTelemetryService::class.java)) }
         fun stop(context: Context) { context.stopService(Intent(context, AndroidWorkerTelemetryService::class.java)) }

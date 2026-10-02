@@ -59,7 +59,7 @@ class AndroidWorkerGatewayService : Service() {
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
-                    mutableSoundError.value = error.message ?: "Sound test failed: ${error::class.simpleName}"
+                    mutableSoundError.value = error.workerMessage()
                 } finally {
                     if (connection?.isActive != true) stopSelf()
                 }
@@ -177,7 +177,7 @@ class AndroidWorkerGatewayService : Service() {
 
     private fun showForegroundNotification() {
         val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, "Worker remote commands", NotificationManager.IMPORTANCE_LOW))
+        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, workerStrings()("remote"), NotificationManager.IMPORTANCE_LOW))
         if (Build.VERSION.SDK_INT >= 34) {
             val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
                 if (mutableSoundPlaying.value) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
@@ -194,10 +194,10 @@ class AndroidWorkerGatewayService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val stop = PendingIntent.getService(this, 1, Intent(this, AndroidWorkerGatewayService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val text = if (mutableSoundPlaying.value) "Loud alert is playing. You can stop it here." else when (mutableState.value) {
-            MobileWorkerGatewayState.CONNECTED -> "Connected. Remote device commands are enabled."
-            MobileWorkerGatewayState.FAILED -> "Connection stopped. Open the Worker to retry."
-            else -> "Remote commands enabled. Waiting for the server."
+        val text = if (mutableSoundPlaying.value) workerStrings()("soundPlaying") else when (mutableState.value) {
+            MobileWorkerGatewayState.CONNECTED -> workerStrings()("active")
+            MobileWorkerGatewayState.FAILED -> workerStrings()("failed")
+            else -> workerStrings()("starting")
         }
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
@@ -212,11 +212,16 @@ class AndroidWorkerGatewayService : Service() {
                     val stopSound = PendingIntent.getService(this@AndroidWorkerGatewayService, 2,
                         Intent(this@AndroidWorkerGatewayService, AndroidWorkerGatewayService::class.java).setAction(ACTION_STOP_SOUND),
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-                    addAction(Notification.Action.Builder(null, "Stop sound", stopSound).build())
+                    addAction(Notification.Action.Builder(null, workerStrings()("stopSound"), stopSound).build())
                 }
             }
-            .addAction(Notification.Action.Builder(null, "Disable commands", stop).build())
+            .addAction(Notification.Action.Builder(null, workerStrings()("disable"), stop).build())
             .build()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        showForegroundNotification()
     }
 
     override fun onDestroy() {
@@ -238,7 +243,7 @@ class AndroidWorkerGatewayService : Service() {
         internal val state = mutableState.asStateFlow()
         private val mutableSoundPlaying = MutableStateFlow(false)
         internal val soundPlaying = mutableSoundPlaying.asStateFlow()
-        private val mutableSoundError = MutableStateFlow<String?>(null)
+        private val mutableSoundError = MutableStateFlow<WorkerMessage?>(null)
         internal val soundError = mutableSoundError.asStateFlow()
 
         internal fun stopSound(context: Context) {

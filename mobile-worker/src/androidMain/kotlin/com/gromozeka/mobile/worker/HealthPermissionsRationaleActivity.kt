@@ -22,6 +22,11 @@ class HealthPermissionsRationaleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val t = rememberWorkerStrings()
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalLayoutDirection provides
+                    if (t.rtl) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr,
+            ) {
             MaterialTheme(colorScheme = rationaleColors) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Column(
@@ -30,22 +35,13 @@ class HealthPermissionsRationaleActivity : ComponentActivity() {
                             .padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Text("Sleep data", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                        Text(
-                            "Gromozeka Worker reads completed sleep sessions only when you enable sleep events. " +
-                                "It converts them into asleep and awake state events.",
-                        )
-                        Text(
-                            "Events are encrypted on this device, sent to the configured Gromozeka Server over HTTPS, " +
-                                "and removed from the local outbox only after the Server acknowledges them.",
-                        )
-                        Text(
-                            "The Server keeps state history for its owner. You can revoke Health Connect access in " +
-                                "Android settings and remove this device's enrollment in Gromozeka Worker.",
-                        )
+                        Text(t("sleepData"), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                        Text(t("sleepDisclosure"))
+
                     }
                 }
             }
+        }
         }
     }
 }

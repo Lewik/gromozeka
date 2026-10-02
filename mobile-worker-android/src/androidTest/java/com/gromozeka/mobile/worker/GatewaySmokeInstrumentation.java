@@ -21,6 +21,7 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
     private boolean lifecycleSetup;
     private boolean locationSetup;
     private boolean telemetrySmoke;
+    private boolean uiSmoke;
 
     @Override
     public void onCreate(Bundle arguments) {
@@ -28,6 +29,7 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
         lifecycleSetup = arguments != null && "true".equals(arguments.getString("lifecycleSetup"));
         locationSetup = arguments != null && "true".equals(arguments.getString("locationSetup"));
         telemetrySmoke = arguments != null && "true".equals(arguments.getString("telemetrySmoke"));
+        uiSmoke = arguments != null && "true".equals(arguments.getString("uiSmoke"));
         start();
     }
 
@@ -38,6 +40,12 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
         try {
             AndroidMobileWorkerStorage storage = new AndroidMobileWorkerStorage(context);
             check(storage.readState() == null, "Use a fresh test installation; existing Worker state must not be overwritten");
+            if (uiSmoke) {
+                new WorkerUiSmoke(this, context, storage).run();
+                result.putString("stream", "Worker UI smoke passed: legacy Bluetooth, shared system-locale catalogs, OEM settings fallback, visible permission error, real enable/disable buttons.\n");
+                finish(Activity.RESULT_OK, result);
+                return;
+            }
             if (telemetrySmoke) {
                 verifyTelemetry(context, storage);
                 result.putString("stream", "Telemetry smoke passed: Android usage events, screen state, metadata, offline encrypted queue, activity-independent collection, permission revocation, notification stop and durable disable.\n");
@@ -276,7 +284,7 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
         for (StatusBarNotification notification : context.getSystemService(NotificationManager.class).getActiveNotifications()) {
             if (notification.getId() != 27_045 || notification.getNotification().actions == null) continue;
             for (android.app.Notification.Action action : notification.getNotification().actions) {
-                if ("Stop sound".contentEquals(action.title)) {
+                if (WorkerUiKt.workerStrings(context).invoke("stopSound").contentEquals(action.title)) {
                     action.actionIntent.send();
                     return;
                 }
@@ -289,7 +297,7 @@ public final class GatewaySmokeInstrumentation extends Instrumentation {
         for (StatusBarNotification notification : context.getSystemService(NotificationManager.class).getActiveNotifications()) {
             if (notification.getId() != 27_045 || notification.getNotification().actions == null) continue;
             for (android.app.Notification.Action action : notification.getNotification().actions) {
-                if ("Stop sound".contentEquals(action.title)) return true;
+                if (WorkerUiKt.workerStrings(context).invoke("stopSound").contentEquals(action.title)) return true;
             }
         }
         return false;

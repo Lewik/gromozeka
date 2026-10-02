@@ -20,7 +20,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal object AndroidWorkerEventDelivery {
     private val owners = mutableSetOf<Any>()
     private var session: Session? = null
-    private val mutableState = MutableStateFlow("")
+    private val mutableState = MutableStateFlow(WorkerPhase.STOPPED)
     val state = mutableState.asStateFlow()
 
     @Synchronized
@@ -44,11 +44,11 @@ internal object AndroidWorkerEventDelivery {
                     try {
                         do {
                             val status = runtime.synchronize(WorkerAppState.BACKGROUND)
-                            mutableState.value = "Last delivery: ${status.lastSynchronizedAt} · pending: ${status.pendingEventCount}"
+                            mutableState.value = WorkerPhase.ACTIVE
                         } while (status.pendingEventCount > 0 && isActive)
                     } catch (error: CancellationException) { throw error }
                     catch (_: Exception) {
-                        mutableState.value = "Waiting for delivery; recorded events stay on this device"
+                        mutableState.value = WorkerPhase.WAITING_DELIVERY
                     }
                 }
             } finally {

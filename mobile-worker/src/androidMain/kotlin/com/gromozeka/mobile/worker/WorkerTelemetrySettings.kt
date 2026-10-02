@@ -1,30 +1,20 @@
 package com.gromozeka.mobile.worker
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.stringResource
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.gromozeka.domain.model.DeviceCollectionState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -33,63 +23,81 @@ internal fun MainActivity.WorkerTelemetrySettings(
     runtime: MobileWorkerRuntime,
     status: MobileWorkerStatus,
     onStatus: (MobileWorkerStatus) -> Unit,
-    onError: (String?) -> Unit,
+    onError: (WorkerMessage?) -> Unit,
 ) {
+    val t = rememberWorkerStrings()
     val scope = rememberCoroutineScope()
     val configuration = status.telemetryConfiguration
     var usage by remember(configuration.applicationUsageEnabled) { mutableStateOf(configuration.applicationUsageEnabled) }
     var interval by remember(configuration.intervalSeconds) { mutableStateOf(configuration.intervalSeconds.toString()) }
     val state by AndroidWorkerTelemetryService.state.collectAsState()
-    val delivery by AndroidWorkerEventDelivery.state.collectAsState()
+    var usageAllowed by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var resumed by remember { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
+    DisposableEffect(Unit) {
+        val observer = LifecycleEventObserver { _, _ -> resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(resumed) {
+        if (resumed) while (true) {
+            usageAllowed = AndroidWorkerTelemetrySource(applicationContext).usageAccess() == DeviceCollectionState.ACTIVE
+            delay(2_000)
+        }
+    }
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        if (!it) onError(getString(R.string.telemetry_notifications_required))
+        onError(WorkerMessage(if (it) "permissionSaved" else "notificationsRequired"))
     }
-    Text(stringResource(R.string.telemetry_title), style = MaterialTheme.typography.titleMedium)
-    Text(stringResource(R.string.telemetry_disclosure))
-    Row {
-        Checkbox(checked = usage, onCheckedChange = { usage = it }, enabled = !configuration.enabled)
-        Text(stringResource(R.string.telemetry_app_usage))
-    }
-    TextButton(onClick = {
-        runCatching { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:$packageName"))) }
-            .onFailure { onError(getString(R.string.telemetry_usage_required)) }
-    }) { Text(stringResource(R.string.telemetry_usage_access)) }
-    OutlinedTextField(value = interval, onValueChange = { interval = it }, enabled = !configuration.enabled,
-        label = { Text(stringResource(R.string.telemetry_interval)) })
-    if (configuration.enabled) {
-        if (state.isNotBlank()) Text(state)
-        if (delivery.isNotBlank()) Text(delivery)
-        Text(stringResource(R.string.telemetry_last_collection, status.lastTelemetryCollectedAt?.toString() ?: "—"))
-        if (configuration.applicationUsageEnabled) {
-            Text(stringResource(R.string.telemetry_usage_through, status.usageQueriedThrough?.toString() ?: "—"))
+    WorkerCard(t("telemetry")) {
+        Text(t(if (!configuration.enabled) "off" else state.key))
+        if (status.lastTelemetryCollectedAt != null) Text(t("lastCollection", "time" to workerTime(status.lastTelemetryCollectedAt)), style = MaterialTheme.typography.bodySmall)
+        Text(t("usageStatus", "status" to t(if (usageAllowed) "allowed" else "notAllowed")))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = usage, onCheckedChange = { usage = it }, enabled = !configuration.enabled)
+            Text(t("appUsage"))
         }
-    }
-    OutlinedButton(onClick = {
-        scope.launch {
-            runCatching {
-                if (configuration.enabled) {
-                    withContext(Dispatchers.IO) { runtime.configureTelemetry(configuration.copy(enabled = false)) }
-                    AndroidWorkerTelemetryService.stop(applicationContext)
-                } else {
-                    require(!usage || AndroidWorkerTelemetrySource(applicationContext).usageAccess() == DeviceCollectionState.ACTIVE) {
-                        getString(R.string.telemetry_usage_required)
-                    }
-                    if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                        notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        return@runCatching
-                    }
-                    require(AndroidWorkerTelemetryService.notificationsAllowed(applicationContext)) {
-                        getString(R.string.telemetry_notifications_required)
-                    }
-                    val seconds = requireNotNull(interval.toIntOrNull()) { getString(R.string.telemetry_invalid_interval) }
-                    require(seconds in 10..900) { getString(R.string.telemetry_invalid_interval) }
-                    withContext(Dispatchers.IO) { runtime.configureTelemetry(WorkerTelemetryConfiguration(true, usage, seconds)) }
-                    AndroidWorkerTelemetryService.start(applicationContext)
+        if (!usageAllowed) TextButton(onClick = {
+            runCatching { openWorkerSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS, packageSpecific = true) }
+                .onFailure { onError(it.workerMessage()) }
+        }) { Text(t("usageAccess")) }
+        WorkerDetails(leadingAction = {
+            OutlinedButton(enabled = !busy, onClick = {
+                scope.launch {
+                    busy = true
+                    try {
+                        if (configuration.enabled) {
+                            withContext(Dispatchers.IO) { runtime.configureTelemetry(configuration.copy(enabled = false)) }
+                            AndroidWorkerTelemetryService.stop(applicationContext)
+                        } else {
+                            workerRequire(!usage || AndroidWorkerTelemetrySource(applicationContext).usageAccess() == DeviceCollectionState.ACTIVE, "usageRequired")
+                            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                return@launch
+                            }
+                            workerRequire(AndroidWorkerTelemetryService.notificationsAllowed(applicationContext), "notificationsRequired")
+                            val seconds = interval.toIntOrNull()
+                            workerRequire(seconds != null && seconds in 10..900, "invalidInterval")
+                            withContext(Dispatchers.IO) { runtime.configureTelemetry(WorkerTelemetryConfiguration(true, usage, seconds!!)) }
+                            AndroidWorkerTelemetryService.start(applicationContext)
+                        }
+                        onStatus(withContext(Dispatchers.IO) { runtime.status() })
+                        onError(null)
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (e: Exception) { onError(e.workerMessage()) }
+                    finally { busy = false }
                 }
-                onStatus(withContext(Dispatchers.IO) { runtime.status() })
-                onError(null)
-            }.onFailure { onError(it.message ?: getString(R.string.telemetry_save_failed)) }
+            }) { Text(t(if (busy) "working" else if (configuration.enabled) "disable" else "enable")) }
+        }) {
+            Text(t("telemetryDisclosure"))
+            OutlinedTextField(value = interval, onValueChange = { interval = it }, enabled = !configuration.enabled,
+                label = { Text(t("interval")) }, singleLine = true)
+            Text(t("changeWhenStopped"))
+            Text(t("usageThrough", "time" to workerTime(status.usageQueriedThrough)))
+            TextButton(onClick = {
+                runCatching { openWorkerSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS, packageSpecific = true) }
+                    .onFailure { onError(it.workerMessage()) }
+            }) { Text(t("usageAccess")) }
         }
-    }) { Text(stringResource(if (configuration.enabled) R.string.telemetry_disable else R.string.telemetry_enable)) }
-    Text(stringResource(R.string.telemetry_limitations))
+        if (!configuration.enabled) Text(t("telemetryConsent"), style = MaterialTheme.typography.bodySmall)
+    }
 }

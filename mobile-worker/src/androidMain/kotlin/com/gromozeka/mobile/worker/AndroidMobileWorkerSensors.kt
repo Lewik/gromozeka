@@ -2,7 +2,6 @@ package com.gromozeka.mobile.worker
 
 import android.Manifest
 import android.app.PendingIntent
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
@@ -37,15 +36,31 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
     fun airplaneMode(): Boolean =
         Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) != 0
 
+    // Optional Bluetooth access must never block location or delivery.
     fun bluetoothEnabled(): Boolean? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return null
+        if (!hasBluetoothPermission()) return null
+        return try {
+            context.getSystemService(BluetoothManager::class.java)?.adapter?.isEnabled
+        } catch (_: SecurityException) {
+            null // Permissions can be revoked between the check and the binder call.
         }
-        val manager = context.getSystemService(BluetoothManager::class.java) ?: return null
-        return manager.adapter?.state == BluetoothAdapter.STATE_ON
     }
+
+    private fun granted(permission: String): Boolean =
+        context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+    @Suppress("DEPRECATION")
+    private fun hasBluetoothPermission(): Boolean = granted(
+        if (Build.VERSION.SDK_INT >= 31) Manifest.permission.BLUETOOTH_CONNECT
+        else Manifest.permission.BLUETOOTH,
+    )
+
+    @Suppress("DEPRECATION")
+    private fun canScanBluetooth(): Boolean = hasBluetoothPermission() &&
+        granted(Manifest.permission.ACCESS_FINE_LOCATION) &&
+        if (Build.VERSION.SDK_INT >= 31) granted(Manifest.permission.BLUETOOTH_SCAN)
+        else granted(Manifest.permission.BLUETOOTH_ADMIN) &&
+            (Build.VERSION.SDK_INT < 29 || granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
 
     fun wifiNetworkId(): String? {
         if (!canReadWifiState()) {
@@ -105,33 +120,46 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
     }
 
     fun enableBlePresenceUpdates(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return false
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S &&
-            context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return false
-        }
-        val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter ?: return false
-        val scanner = adapter.bluetoothLeScanner ?: return false
-        val pendingIntent = blePendingIntent()
-        scanner.stopScan(pendingIntent)
         val devices = AndroidMobileWorkerConfigurationStore(context).read().bleDevices
-        if (devices.isEmpty()) return true
-        val filters = devices.map { device ->
-            ScanFilter.Builder().apply {
-                device.address?.let(::setDeviceAddress)
-                device.serviceUuid?.let { setServiceUuid(ParcelUuid.fromString(it)) }
-            }.build()
+        // Unconfigured BLE succeeds even without permissions or a Bluetooth adapter.
+        if (devices.isEmpty()) {
+            stopBleScan()
+            return true
         }
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-            .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH or ScanSettings.CALLBACK_TYPE_MATCH_LOST)
-            .build()
-        return scanner.startScan(filters, settings, pendingIntent) == 0
+        if (!canScanBluetooth()) return false
+        return try {
+            val scanner = context.getSystemService(BluetoothManager::class.java)
+                ?.adapter?.bluetoothLeScanner ?: return false
+            val pendingIntent = blePendingIntent()
+            scanner.stopScan(pendingIntent)
+            val filters = devices.map { device ->
+                ScanFilter.Builder().apply {
+                    device.address?.let(::setDeviceAddress)
+                    device.serviceUuid?.let { setServiceUuid(ParcelUuid.fromString(it)) }
+                }.build()
+            }
+            val settings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH or ScanSettings.CALLBACK_TYPE_MATCH_LOST)
+                .build()
+            scanner.startScan(filters, settings, pendingIntent) == 0
+        } catch (_: SecurityException) {
+            false
+        } catch (_: IllegalStateException) {
+            false // Adapter was switched off during setup.
+        }
+    }
+
+    private fun stopBleScan() {
+        if (!canScanBluetooth()) return
+        try {
+            context.getSystemService(BluetoothManager::class.java)?.adapter?.bluetoothLeScanner
+                ?.stopScan(blePendingIntent())
+        } catch (_: SecurityException) {
+            // Revoked access also stops delivery of scan results.
+        } catch (_: IllegalStateException) {
+            // Bluetooth is off.
+        }
     }
 
     fun disableBackgroundSignals() {
@@ -141,15 +169,7 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
         }
         writeRegisteredGeofenceIds(emptySet())
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        val scanner = context.getSystemService(BluetoothManager::class.java)
-            ?.adapter
-            ?.bluetoothLeScanner
-        runCatching { scanner?.stopScan(blePendingIntent()) }
+        stopBleScan()
     }
 
     suspend fun captureConfiguredState(runtime: MobileWorkerRuntime) {
@@ -198,7 +218,7 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
         context,
         BLE_REQUEST_CODE,
         Intent(context, MobileWorkerBleReceiver::class.java),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        PendingIntent.FLAG_UPDATE_CURRENT or mutablePendingIntentFlag(),
     )
 
     data class BatterySnapshot(

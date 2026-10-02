@@ -43,14 +43,15 @@ class AndroidWorkerLocationService : Service() {
                     runtime.configureLocation(runtime.status().locationConfiguration.copy(enabled = false))
                     stopSelf()
                 } catch (error: Exception) {
-                    updateState("Could not save disabled sharing: ${error::class.simpleName}")
+                    updateState(WorkerPhase.FAILED)
                 }
             }
             return START_NOT_STICKY
         }
+        if (tracking?.isActive != true) mutableState.value = WorkerPhase.STARTING
         try {
             val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, "Worker location sharing", NotificationManager.IMPORTANCE_LOW))
+            manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, workerStrings()("location"), NotificationManager.IMPORTANCE_LOW))
             require(manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID).importance != NotificationManager.IMPORTANCE_NONE) {
                 "Allow location-sharing notifications before starting location sharing"
             }
@@ -58,7 +59,7 @@ class AndroidWorkerLocationService : Service() {
             if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
             else startForeground(NOTIFICATION_ID, notification())
         } catch (error: Exception) {
-            mutableState.value = "Location could not start: ${error.message ?: error::class.simpleName}"
+            mutableState.value = if (!source.hasPermission()) WorkerPhase.PERMISSION_REQUIRED else if (!notificationsAllowed(this)) WorkerPhase.NOTIFICATIONS_REQUIRED else WorkerPhase.FAILED
             stopSelf()
             return START_NOT_STICKY
         }
@@ -73,7 +74,7 @@ class AndroidWorkerLocationService : Service() {
                             delay(2_000)
                             try { requireLocationAccess() }
                             catch (error: Exception) {
-                                updateState("Location paused: ${error.message}")
+                                updateState(if (!source.hasPermission()) WorkerPhase.PERMISSION_REQUIRED else WorkerPhase.NOTIFICATIONS_REQUIRED)
                                 stopSelf()
                                 return@launch
                             }
@@ -85,7 +86,7 @@ class AndroidWorkerLocationService : Service() {
                         while (isActive && runtime.locationCollection() == collection) {
                             try {
                                 require(source.hasPermission()) { "Location permission was revoked" }
-                                updateState("Waiting for a location fix")
+                                updateState(WorkerPhase.WAITING_FIX)
                                 source.updates(requireNotNull(collection).configuration).collect { location ->
                                     if (location.elapsedRealtimeNanos > lastMeasurementNanos) {
                                         requireLocationAccess()
@@ -93,16 +94,16 @@ class AndroidWorkerLocationService : Service() {
                                         try {
                                             withContext(Dispatchers.IO) { runtime.recordSharedLocation(requireNotNull(collection), sample) }
                                             lastMeasurementNanos = location.elapsedRealtimeNanos
-                                            updateState("Sharing · ${sample.observedAt} · accuracy ${sample.location.accuracyMeters ?: "unknown"} m")
+                                            updateState(WorkerPhase.ACTIVE)
                                         } catch (error: WorkerEventOutboxFullException) {
-                                            updateState("Storage full: new points cannot be recorded until delivery resumes")
+                                            updateState(WorkerPhase.STORAGE_FULL)
                                         }
                                         AndroidWorkerEventDelivery.wake()
                                     }
                                 }
                             } catch (error: CancellationException) { throw error }
                             catch (error: Exception) {
-                                updateState("Location paused: ${error.message ?: error::class.simpleName}")
+                                updateState(if (!source.hasPermission()) WorkerPhase.PERMISSION_REQUIRED else WorkerPhase.PAUSED)
                                 delay(5_000)
                             }
                         }
@@ -144,7 +145,7 @@ class AndroidWorkerLocationService : Service() {
         }
     }
 
-    private fun updateState(value: String) {
+    private fun updateState(value: WorkerPhase) {
         mutableState.value = value
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification())
     }
@@ -153,9 +154,16 @@ class AndroidWorkerLocationService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val stop = PendingIntent.getService(this, 0, Intent(this, AndroidWorkerLocationService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return Notification.Builder(this, CHANNEL_ID).setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentTitle("Gromozeka · location sharing").setContentText(mutableState.value)
+            .setContentTitle(workerStrings()("location")).setContentText(workerStrings()(mutableState.value.key))
             .setContentIntent(open).setOnlyAlertOnce(true).setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE)
-            .addAction(Notification.Action.Builder(null, "Disable location sharing", stop).build()).build()
+            .addAction(Notification.Action.Builder(null, workerStrings()("disable"), stop).build()).build()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, workerStrings()("location"), NotificationManager.IMPORTANCE_LOW))
+        manager.notify(NOTIFICATION_ID, notification())
     }
 
     override fun onDestroy() {
@@ -164,7 +172,7 @@ class AndroidWorkerLocationService : Service() {
         AndroidWorkerEventDelivery.release(this)
         runtime.close()
         stopForeground(STOP_FOREGROUND_REMOVE)
-        if (mutableState.value.startsWith("Sharing") || mutableState.value == "Waiting for a location fix") mutableState.value = "Location sharing stopped"
+        if (mutableState.value in setOf(WorkerPhase.ACTIVE, WorkerPhase.WAITING_FIX, WorkerPhase.STARTING)) mutableState.value = WorkerPhase.STOPPED
         super.onDestroy()
     }
 
@@ -174,9 +182,14 @@ class AndroidWorkerLocationService : Service() {
         private const val ACTION_STOP = "com.gromozeka.mobile.worker.STOP_LOCATION"
         private val lifetime = Mutex()
         @Volatile private var active: AndroidWorkerLocationService? = null
-        private val mutableState = MutableStateFlow("Location sharing is not running")
-        val state = mutableState.asStateFlow()
-        val delivery = AndroidWorkerEventDelivery.state
+        private val mutableState = MutableStateFlow(WorkerPhase.STOPPED)
+        internal val state = mutableState.asStateFlow()
+        internal val delivery = AndroidWorkerEventDelivery.state
+
+        fun notificationsAllowed(context: Context): Boolean {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            return manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
+        }
 
         fun start(context: Context) { context.startForegroundService(Intent(context, AndroidWorkerLocationService::class.java)) }
         fun stop(context: Context) { context.stopService(Intent(context, AndroidWorkerLocationService::class.java)) }

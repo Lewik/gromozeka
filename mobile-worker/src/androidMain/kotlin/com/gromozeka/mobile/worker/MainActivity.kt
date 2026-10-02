@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -67,7 +72,8 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
     private lateinit var runtime: MobileWorkerRuntime
     private var foregroundHeartbeat: Job? = null
     private var statusChanged: ((MobileWorkerStatus) -> Unit)? = null
-    private var errorChanged: ((String?) -> Unit)? = null
+    private var errorChanged: ((WorkerMessage?) -> Unit)? = null
+    private var permissionRevision by mutableStateOf(0)
     private var backgroundAccess by mutableStateOf(AndroidWorkerBackgroundAccess(false, false))
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,6 +83,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
             MobileWorkerApp(
                 runtime = runtime,
                 backgroundAccess = backgroundAccess,
+                permissionRevision = permissionRevision,
                 onStatusListener = { statusChanged = it },
                 onErrorListener = { errorChanged = it },
             )
@@ -86,10 +93,11 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
 
     override fun onResume() {
         super.onResume()
+        permissionRevision++
         backgroundAccess = AndroidWorkerBackgroundAccess.read(applicationContext)
         activityScope.launch {
             runCatching { AndroidWorkerSoundOutput.recoverVolume(applicationContext) }
-                .onFailure { errorChanged?.invoke("Previous alarm volume could not be restored: ${it::class.simpleName}") }
+                .onFailure { errorChanged?.invoke(it.workerMessage()) }
         }
         NfcAdapter.getDefaultAdapter(this)?.enableReaderMode(
             this,
@@ -108,7 +116,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
                 runCatching {
                     runtime.synchronize(WorkerAppState.FOREGROUND, heartbeatWhenIdle = true)
                 }.onSuccess { statusChanged?.invoke(it) }
-                    .onFailure { errorChanged?.invoke(it.message ?: it.toString()) }
+                    .onFailure { androidMobileWorkerLog.warn { "Foreground heartbeat failed: ${it.javaClass.simpleName}" } }
             }
         }
     }
@@ -139,7 +147,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
                 runtime.recordNfcTag(tagId)
                 runtime.synchronize(WorkerAppState.FOREGROUND)
             }.onSuccess { statusChanged?.invoke(it) }
-                .onFailure { errorChanged?.invoke(it.message ?: it.toString()) }
+                .onFailure { errorChanged?.invoke(it.workerMessage()) }
         }
     }
 
@@ -158,32 +166,37 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
             if (!status.enrolled) return@launch
             if (status.gatewayEnabled) {
                 runCatching { AndroidWorkerGatewayService.start(applicationContext) }
-                    .onFailure { errorChanged?.invoke("Android could not start remote commands: ${it::class.simpleName}") }
+                    .onFailure { errorChanged?.invoke(it.workerMessage()) }
             }
             if (status.locationConfiguration.enabled) {
                 runCatching { AndroidWorkerLocationService.start(applicationContext) }
-                    .onFailure { errorChanged?.invoke("Android could not start location sharing: ${it::class.simpleName}") }
+                    .onFailure { errorChanged?.invoke(it.workerMessage()) }
             }
             if (status.telemetryConfiguration.enabled) {
                 runCatching { AndroidWorkerTelemetryService.start(applicationContext) }
-                    .onFailure { errorChanged?.invoke(getString(R.string.telemetry_collection_failed)) }
+                    .onFailure { errorChanged?.invoke(it.workerMessage()) }
             }
             MobileWorkerSyncJobService.schedule(applicationContext)
             val sensors = AndroidMobileWorkerSensors(applicationContext)
+            val observations: List<suspend () -> Unit> = listOf(
+                { sensors.battery()?.let { runtime.recordBattery(it.levelPercent, it.charging, it.lowPowerMode) } },
+                { runtime.recordAirplaneMode(sensors.airplaneMode()) },
+                { sensors.bluetoothEnabled()?.let { runtime.recordBluetoothPower(it) } },
+                { AndroidAutoSignals.capture(applicationContext, runtime) },
+                { sensors.captureConfiguredState(runtime) },
+                { AndroidSleepSignals(applicationContext).captureLatestSession(runtime) },
+                { sensors.synchronizeGeofences() },
+                { sensors.enableBlePresenceUpdates() },
+            )
+            observations.forEach { collect ->
+                try { collect() }
+                catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (e: Exception) { androidMobileWorkerLog.warn { "Optional foreground signal failed: ${e.javaClass.simpleName}" } }
+            }
             runCatching {
-                sensors.battery()?.let {
-                    runtime.recordBattery(it.levelPercent, it.charging, it.lowPowerMode)
-                }
-                runtime.recordAirplaneMode(sensors.airplaneMode())
-                sensors.bluetoothEnabled()?.let { runtime.recordBluetoothPower(it) }
-                AndroidAutoSignals.capture(applicationContext, runtime)
-                sensors.captureConfiguredState(runtime)
-                AndroidSleepSignals(applicationContext).captureLatestSession(runtime)
-                sensors.synchronizeGeofences()
-                sensors.enableBlePresenceUpdates()
                 runtime.synchronize(WorkerAppState.FOREGROUND, heartbeatWhenIdle = true)
             }.onSuccess { statusChanged?.invoke(it) }
-                .onFailure { errorChanged?.invoke(it.message ?: it.toString()) }
+                .onFailure { androidMobileWorkerLog.warn { "Foreground delivery failed: ${it.javaClass.simpleName}" } }
         }
     }
 
@@ -210,9 +223,12 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
 private fun MainActivity.MobileWorkerApp(
     runtime: MobileWorkerRuntime,
     backgroundAccess: AndroidWorkerBackgroundAccess,
+    permissionRevision: Int,
     onStatusListener: (((MobileWorkerStatus) -> Unit)?) -> Unit,
-    onErrorListener: (((String?) -> Unit)?) -> Unit,
+    onErrorListener: (((WorkerMessage?) -> Unit)?) -> Unit,
 ) {
+    val t = rememberWorkerStrings()
+    val notificationsAllowed = remember(permissionRevision) { getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled() }
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<MobileWorkerStatus?>(null) }
     var serverUrl by remember { mutableStateOf("") }
@@ -224,8 +240,9 @@ private fun MainActivity.MobileWorkerApp(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var locationMessage by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<WorkerMessage?>(null) }
+    var locationMessage by remember { mutableStateOf<WorkerMessage?>(null) }
+    var removeConfirmation by remember { mutableStateOf(false) }
     val gatewayState by AndroidWorkerGatewayService.state.collectAsState()
     val soundPlaying by AndroidWorkerGatewayService.soundPlaying.collectAsState()
     val soundError by AndroidWorkerGatewayService.soundError.collectAsState()
@@ -239,12 +256,12 @@ private fun MainActivity.MobileWorkerApp(
                 AndroidWorkerGatewayService.start(applicationContext)
                 runtime.status()
             }.onSuccess { status = it }
-                .onFailure { error = "Remote commands could not be started: ${it::class.simpleName}" }
+                .onFailure { error = it.workerMessage() }
         }
     }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) enableGateway()
-        else error = "Allow notifications so the active Worker connection stays visible."
+        else error = WorkerMessage("notificationsRequired")
     }
     val sensors = remember { AndroidMobileWorkerSensors(applicationContext) }
     val configurationStore = remember { AndroidMobileWorkerConfigurationStore(applicationContext) }
@@ -259,20 +276,20 @@ private fun MainActivity.MobileWorkerApp(
                     sleep.captureLatestSession(runtime)
                     runtime.synchronize(WorkerAppState.FOREGROUND)
                 }.onSuccess { status = it }
-                    .onFailure { error = it.message ?: it.toString() }
+                    .onFailure { error = it.workerMessage() }
             }
-            "Sleep events are enabled"
+            WorkerMessage("sleepEnabled")
         } else {
-            "Sleep access was not granted"
+            WorkerMessage("sleepRequired")
         }
     }
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         locationMessage = if (permissions.values.all { it } && sensors.enableBlePresenceUpdates()) {
-            "BLE presence events are enabled"
+            WorkerMessage("bleEnabled")
         } else {
-            "Bluetooth access is required for BLE presence events"
+            WorkerMessage("bleRequired")
         }
     }
     DisposableEffect(Unit) {
@@ -304,362 +321,369 @@ private fun MainActivity.MobileWorkerApp(
                     }
                     MobileWorkerConnectionStatus.DENIED,
                     MobileWorkerConnectionStatus.EXPIRED -> {
-                        error = result.message ?: "Device connection ${result.status.name.lowercase()}"
+                        error = WorkerMessage(if (result.status == MobileWorkerConnectionStatus.EXPIRED) "codeExpired" else "connectionDenied")
                         connectionChallenge = null
                         return@LaunchedEffect
                     }
                 }
             }.onFailure {
-                error = "Connection interrupted. Retrying..."
+                error = WorkerMessage("retrying")
             }
         }
         if (connectionChallenge == challenge) {
-            error = "Connection code expired"
+            error = WorkerMessage("codeExpired")
             connectionChallenge = null
         }
     }
 
-    MaterialTheme(colorScheme = workerColors) {
-        Surface(modifier = Modifier.fillMaxSize(), color = workerColors.background) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 22.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(
-                    text = "GROMOZEKA / MOBILE WORKER",
-                    color = workerColors.primary,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-                Text(
-                    text = "Device signals, stored first.",
-                    color = workerColors.onBackground,
-                    fontWeight = FontWeight.Black,
-                    style = MaterialTheme.typography.headlineLarge,
-                )
-                Text(
-                    text = "This app runs independently from the chat client and only removes events after the server acknowledges them.",
-                    color = workerColors.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+    CompositionLocalProvider(LocalLayoutDirection provides if (t.rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+        MaterialTheme(colorScheme = workerColors) {
+            WorkerMessageDialog(error ?: locationMessage) { error = null; locationMessage = null }
+            Surface(modifier = Modifier.fillMaxSize(), color = workerColors.background) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .safeDrawingPadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("Gromozeka Worker", style = MaterialTheme.typography.headlineSmall, color = workerColors.primary)
 
-                status?.takeIf { it.enrolled }?.let { enrolled ->
-                    StatusCard(enrolled)
-                    WorkerLocationSettings(runtime, enrolled, onStatus = { status = it }, onError = { error = it })
-                    WorkerTelemetrySettings(runtime, enrolled, onStatus = { status = it }, onError = { error = it })
-                    Text("Remote commands: ${gatewayState.name.lowercase()}")
-                    Text("When enabled, this device accepts supported commands from its server: device status, location while sharing is enabled, and loud sound with separate permission below. A persistent notification lets you disable the connection.",
-                        color = workerColors.onSurfaceVariant)
-                    OutlinedButton(onClick = {
-                        if (enrolled.gatewayEnabled) {
-                            scope.launch {
-                                runCatching {
-                                    runtime.setGatewayEnabled(false)
-                                    AndroidWorkerGatewayService.stop(applicationContext)
-                                    runtime.status()
-                                }.onSuccess { status = it }.onFailure { error = it.message }
+                    status?.takeIf { it.enrolled }?.let { enrolled ->
+                        StatusCard(enrolled) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Button(
+                                    enabled = !busy,
+                                    onClick = {
+                                        scope.launch {
+                                            busy = true
+                                            error = null
+                                            runCatching {
+                                                runtime.synchronize(
+                                                    WorkerAppState.FOREGROUND,
+                                                    heartbeatWhenIdle = true,
+                                                )
+                                            }
+                                                .onSuccess { status = it }
+                                                .onFailure { error = it.workerMessage() }
+                                            busy = false
+                                        }
+                                    },
+                                ) {
+                                    Text(if (busy) t("working") else t("sync"))
+                                }
                             }
-                        } else if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else enableGateway()
-                    }) { Text(if (enrolled.gatewayEnabled) "Disable remote commands" else "Enable remote commands") }
-                    Text(when {
-                        backgroundAccess.backgroundRestricted -> "Background work: restricted by Android"
-                        backgroundAccess.batteryOptimizationExempt -> "Background work: battery optimization exemption enabled"
-                        else -> "Background work: battery optimized"
-                    }, fontWeight = FontWeight.Bold)
-                    Text(when {
-                        backgroundAccess.backgroundRestricted -> "Android can stop the connection and block restart after reboot. Allow background work in the app's battery settings if you want remote commands to stay available."
-                        backgroundAccess.batteryOptimizationExempt -> "Android allows network access during device sleep. Force-stop, lost connectivity and manufacturer restrictions can still interrupt delivery."
-                        else -> "Battery optimizations can delay background work. You can request an exemption to reduce these restrictions. This can use more battery and does not guarantee delivery; Android will ask you to confirm."
-                    }, color = workerColors.onSurfaceVariant)
-                    TextButton(onClick = {
-                        runCatching { startActivity(backgroundAccess.settingsIntent(packageName)) }
-                            .onFailure { error = "Open this app's battery settings in Android and allow background work." }
-                    }) {
-                        Text(if (backgroundAccess.backgroundRestricted || backgroundAccess.batteryOptimizationExempt)
-                            "Android app battery settings" else "Allow background connection")
-                    }
-                    Text("Loud sound: ${if (enrolled.soundEnabled) "allowed" else "disabled"}", fontWeight = FontWeight.Bold)
-                    Text("Allow this server to play an alert on the built-in speaker for up to 60 seconds, temporarily raising alarm volume to maximum, even with a silent ringer. You can stop it here or in the notification. Do Not Disturb must allow alarms; disconnect headphones and external audio first. No administrator access is needed.",
-                        color = workerColors.onSurfaceVariant)
-                    OutlinedButton(onClick = {
-                        scope.launch {
-                            runCatching {
-                                runtime.setSoundEnabled(!enrolled.soundEnabled)
-                                if (enrolled.soundEnabled) AndroidWorkerGatewayService.stopSound(applicationContext)
-                                runtime.status()
-                            }.onSuccess { status = it }.onFailure { error = it.message }
                         }
-                    }) { Text(if (enrolled.soundEnabled) "Disallow loud sound" else "Allow loud sound") }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(enabled = enrolled.gatewayEnabled && enrolled.soundEnabled && !soundPlaying,
-                            onClick = { AndroidWorkerGatewayService.testSound(applicationContext) }) { Text("Test sound (3s)") }
-                        if (soundPlaying) Button(onClick = { AndroidWorkerGatewayService.stopSound(applicationContext) }) { Text("Stop sound") }
-                    }
-                    soundError?.let { Text(it, color = workerColors.error) }
-                    TextButton(onClick = {
-                        runCatching { startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) }
-                            .onFailure { error = "Open Do Not Disturb in Android settings and allow alarms." }
-                    }) { Text("Android sound / Do Not Disturb settings") }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button(
-                            enabled = !busy,
+                        WorkerTelemetrySettings(runtime, enrolled, onStatus = { status = it }, onError = { error = it })
+                        WorkerLocationSettings(runtime, enrolled, onStatus = { status = it }, onError = { error = it })
+                        WorkerCard(t("background")) {
+                            if (!notificationsAllowed) {
+                                Text(t("notificationsRequired"), color = workerColors.error)
+                                TextButton(onClick = {
+                                    runCatching { openWorkerSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS) { putExtra(Settings.EXTRA_APP_PACKAGE, packageName) } }
+                                        .onFailure { error = it.workerMessage() }
+                                }) { Text(t("appPermissions")) }
+                            }
+                            Text(when {
+                                backgroundAccess.backgroundRestricted -> t("backgroundRestricted")
+                                backgroundAccess.batteryOptimizationExempt -> t("backgroundAllowed")
+                                else -> t("backgroundOptimized")
+                            }, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = {
+                                runCatching { openWorkerSettings(backgroundAccess.settingsIntent(packageName).action!!, packageSpecific = true) }
+                                    .onFailure { error = WorkerMessage("settingsUnavailable") }
+                            }) {
+                                Text(if (backgroundAccess.backgroundRestricted || backgroundAccess.batteryOptimizationExempt)
+                                    t("batterySettings") else t("batterySettings"))
+                            }
+                        }
+                        WorkerCard(t("remote")) {
+                            Text(t(when (gatewayState) { MobileWorkerGatewayState.CONNECTED -> "active"; MobileWorkerGatewayState.FAILED -> "failed"; MobileWorkerGatewayState.STOPPED -> "off"; else -> "starting" }))
+                            if (soundPlaying) Button(onClick = { AndroidWorkerGatewayService.stopSound(applicationContext) }) { Text(t("stopSound")) }
+                            WorkerDetails(t("remoteSettings")) {
+                                Text(t("remoteDisclosure"),
+                                    color = workerColors.onSurfaceVariant)
+                                OutlinedButton(onClick = {
+                                    if (enrolled.gatewayEnabled) {
+                                        scope.launch {
+                                            runCatching {
+                                                runtime.setGatewayEnabled(false)
+                                                AndroidWorkerGatewayService.stop(applicationContext)
+                                                runtime.status()
+                                            }.onSuccess { status = it }.onFailure { error = it.workerMessage() }
+                                        }
+                                    } else if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else enableGateway()
+                                }) { Text(if (enrolled.gatewayEnabled) t("disable") else t("enable")) }
+                                Text(t("soundStatus", "status" to t(if (enrolled.soundEnabled) "allowed" else "off")), fontWeight = FontWeight.Bold)
+                                Text(t("soundDisclosure"),
+                                    color = workerColors.onSurfaceVariant)
+                                OutlinedButton(onClick = {
+                                    scope.launch {
+                                        runCatching {
+                                            runtime.setSoundEnabled(!enrolled.soundEnabled)
+                                            if (enrolled.soundEnabled) AndroidWorkerGatewayService.stopSound(applicationContext)
+                                            runtime.status()
+                                        }.onSuccess { status = it }.onFailure { error = it.workerMessage() }
+                                    }
+                                }) { Text(if (enrolled.soundEnabled) t("disable") else t("enable")) }
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    OutlinedButton(enabled = enrolled.gatewayEnabled && enrolled.soundEnabled && !soundPlaying,
+                                        onClick = { AndroidWorkerGatewayService.testSound(applicationContext) }) { Text(t("testSound")) }
+                                    if (soundPlaying) Button(onClick = { AndroidWorkerGatewayService.stopSound(applicationContext) }) { Text(t("stopSound")) }
+                                }
+                                soundError?.let { Text(t(it.key), color = workerColors.error) }
+                                TextButton(onClick = {
+                                    runCatching { openWorkerSettings(Settings.ACTION_SOUND_SETTINGS) }
+                                        .onFailure { error = WorkerMessage("settingsUnavailable") }
+                                }) { Text(t("soundSettings")) }
+                            }
+                        }
+                        WorkerCard(t("signals")) {
+                            WorkerDetails {
+                                SignalSettings(
+                                    configuration = configuration,
+                                    sensors = sensors,
+                                    onAddGeofence = { id, latitude, longitude, radius ->
+                                        configurationStore.addGeofence(id, latitude, longitude, radius)
+                                            .also { configuration = it }
+                                        workerRequire(sensors.synchronizeGeofences(), "geofenceRequired")
+                                    },
+                                    onRemoveGeofence = { id ->
+                                        configuration = configurationStore.removeGeofence(id)
+                                        workerRequire(sensors.synchronizeGeofences(), "geofenceRequired")
+                                    },
+                                    onAddBleDevice = { name, selector ->
+                                        configurationStore.addBleDevice(name, selector).also { configuration = it }
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                            bluetoothPermissionLauncher.launch(
+                                                arrayOf(
+                                                    Manifest.permission.BLUETOOTH_SCAN,
+                                                    Manifest.permission.BLUETOOTH_CONNECT,
+                                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                                )
+                                            )
+                                        } else if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                                            bluetoothPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                                        } else {
+                                            locationMessage = WorkerMessage(if (sensors.enableBlePresenceUpdates()) "bleEnabled" else "bleRequired")
+                                        }
+                                    },
+                                    onRemoveBleDevice = { id ->
+                                        configuration = configurationStore.removeBleDevice(id)
+                                        sensors.enableBlePresenceUpdates()
+                                    },
+                                    onWifiChanged = { networkId ->
+                                        configurationStore.setWifiNetworkId(networkId).also { configuration = it }
+                                        scope.launch {
+                                            runCatching {
+                                                sensors.captureConfiguredState(runtime)
+                                                runtime.synchronize(WorkerAppState.FOREGROUND)
+                                            }.onSuccess { status = it }
+                                                .onFailure { error = it.workerMessage() }
+                                        }
+                                    },
+                                    onEnableSleep = {
+                                        val sleep = AndroidSleepSignals(applicationContext)
+                                        val permissions = sleep.requestedPermissions()
+                                        if (permissions.isEmpty()) {
+                                            locationMessage = WorkerMessage("healthUnavailable")
+                                        } else {
+                                            sleepPermissionLauncher.launch(permissions)
+                                        }
+                                    },
+                                    onMessage = { locationMessage = it },
+                                    onError = { error = it },
+                                )
+                            }
+                        }
+                        TextButton(onClick = { removeConfirmation = true }) { Text(t("disconnect")) }
+                        if (removeConfirmation) AlertDialog(
+                            onDismissRequest = { removeConfirmation = false },
+                            title = { Text(t("disconnect")) },
+                            text = { Text(t("disconnectConfirm")) },
+                            dismissButton = { TextButton(onClick = { removeConfirmation = false }) { Text(t("cancel")) } },
+                            confirmButton = {
+                        OutlinedButton(
                             onClick = {
                                 scope.launch {
-                                    busy = true
-                                    error = null
                                     runCatching {
-                                        runtime.synchronize(
-                                            WorkerAppState.FOREGROUND,
-                                            heartbeatWhenIdle = true,
-                                        )
-                                    }
-                                        .onSuccess { status = it }
-                                        .onFailure { error = it.message ?: it.toString() }
-                                    busy = false
+                                        removeConfirmation = false
+                                        runtime.setGatewayEnabled(false)
+                                        AndroidWorkerGatewayService.stop(applicationContext)
+                                        runtime.configureLocation(enrolled.locationConfiguration.copy(enabled = false))
+                                        AndroidWorkerLocationService.stop(applicationContext)
+                                        runtime.configureTelemetry(enrolled.telemetryConfiguration.copy(enabled = false))
+                                        AndroidWorkerTelemetryService.stop(applicationContext)
+                                        sensors.disableBackgroundSignals()
+                                        MobileWorkerSyncJobService.cancel(applicationContext)
+                                        runtime.reset()
+                                        configuration = configurationStore.clear()
+                                        locationMessage = null
+                                        runtime.status()
+                                    }.onSuccess { status = it }
+                                        .onFailure {
+                                            status = runCatching { runtime.status() }.getOrNull() ?: status
+                                            error = it.workerMessage()
+                                        }
                                 }
                             },
                         ) {
-                            Text(if (busy) "Syncing" else "Sync now")
+                            Text(t("disconnect"))
                         }
-                    }
-                    locationMessage?.let { Text(it, color = workerColors.onSurfaceVariant) }
-                    SignalSettings(
-                        configuration = configuration,
-                        sensors = sensors,
-                        onAddGeofence = { id, latitude, longitude, radius ->
-                            configurationStore.addGeofence(id, latitude, longitude, radius)
-                                .also { configuration = it }
-                            check(sensors.synchronizeGeofences()) {
-                                "Allow precise location all the time to activate geofences"
-                            }
-                        },
-                        onRemoveGeofence = { id ->
-                            configuration = configurationStore.removeGeofence(id)
-                            check(sensors.synchronizeGeofences()) {
-                                "Geofence registration could not be updated"
-                            }
-                        },
-                        onAddBleDevice = { name, selector ->
-                            configurationStore.addBleDevice(name, selector).also { configuration = it }
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                bluetoothPermissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.BLUETOOTH_SCAN,
-                                        Manifest.permission.BLUETOOTH_CONNECT,
-                                    )
-                                )
-                            } else if (sensors.enableBlePresenceUpdates()) {
-                                locationMessage = "BLE presence events are enabled"
-                            }
-                        },
-                        onRemoveBleDevice = { id ->
-                            configuration = configurationStore.removeBleDevice(id)
-                            sensors.enableBlePresenceUpdates()
-                        },
-                        onWifiChanged = { networkId ->
-                            configurationStore.setWifiNetworkId(networkId).also { configuration = it }
-                            scope.launch {
-                                runCatching {
-                                    sensors.captureConfiguredState(runtime)
-                                    runtime.synchronize(WorkerAppState.FOREGROUND)
-                                }.onSuccess { status = it }
-                                    .onFailure { error = it.message ?: it.toString() }
-                            }
-                        },
-                        onEnableSleep = {
-                            val sleep = AndroidSleepSignals(applicationContext)
-                            val permissions = sleep.requestedPermissions()
-                            if (permissions.isEmpty()) {
-                                locationMessage = "Health Connect is unavailable"
-                            } else {
-                                sleepPermissionLauncher.launch(permissions)
-                            }
-                        },
-                        onMessage = { locationMessage = it },
-                        onError = { error = it },
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                runCatching {
-                                    runtime.setGatewayEnabled(false)
-                                    AndroidWorkerGatewayService.stop(applicationContext)
-                                    runtime.configureLocation(enrolled.locationConfiguration.copy(enabled = false))
-                                    AndroidWorkerLocationService.stop(applicationContext)
-                                    runtime.configureTelemetry(enrolled.telemetryConfiguration.copy(enabled = false))
-                                    AndroidWorkerTelemetryService.stop(applicationContext)
-                                    sensors.disableBackgroundSignals()
-                                    MobileWorkerSyncJobService.cancel(applicationContext)
-                                    runtime.reset()
-                                    configuration = configurationStore.clear()
-                                    locationMessage = null
-                                    runtime.status()
-                                }.onSuccess { status = it }
-                                    .onFailure {
-                                        status = runCatching { runtime.status() }.getOrNull() ?: status
-                                        error = it.message ?: it.toString()
-                                    }
-                            }
-                        },
-                    ) {
-                        Text("Remove from this device")
-                    }
-                } ?: run {
-                    OutlinedTextField(
-                        value = serverUrl,
-                        onValueChange = { serverUrl = it },
-                        label = { Text("Server URL") },
-                        placeholder = { Text("https://gromozeka.example") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = workerId,
-                        onValueChange = { workerId = it },
-                        label = { Text("Worker ID") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    connectionChallenge?.let { challenge ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = workerColors.surfaceVariant,
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(18.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Text("APPROVE THIS CODE", color = workerColors.primary)
-                                Text(
-                                    challenge.userCode,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Black,
-                                )
-                                Text(
-                                    "Open Settings > Security in an authorized Gromozeka Client.",
-                                    color = workerColors.onSurfaceVariant,
-                                )
-                            }
-                        }
+                            },
+                        )
                     } ?: run {
-                        if (usePassword) {
-                            OutlinedTextField(
-                                value = username,
-                                onValueChange = { username = it },
-                                label = { Text("Username") },
-                                singleLine = true,
+                        OutlinedTextField(
+                            value = serverUrl,
+                            onValueChange = { serverUrl = it },
+                            label = { Text(t("serverUrl")) },
+                            placeholder = { Text("https://gromozeka.example") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = workerId,
+                            onValueChange = { workerId = it },
+                            label = { Text(t("workerId")) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        connectionChallenge?.let { challenge ->
+                            Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                            )
+                                shape = RoundedCornerShape(18.dp),
+                                color = workerColors.surfaceVariant,
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    Text(t("approveCode"), color = workerColors.primary)
+                                    Text(
+                                        challenge.userCode,
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Black,
+                                    )
+                                    Text(
+                                        t("approveHint"),
+                                        color = workerColors.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        } ?: run {
+                            if (usePassword) {
+                                OutlinedTextField(
+                                    value = username,
+                                    onValueChange = { username = it },
+                                    label = { Text(t("username")) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                OutlinedTextField(
+                                    value = password,
+                                    onValueChange = { password = it },
+                                    label = { Text(t("password")) },
+                                    visualTransformation = PasswordVisualTransformation(),
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Button(
+                                    enabled = !busy && serverUrl.isNotBlank() && workerId.isNotBlank() &&
+                                        username.isNotBlank() && password.isNotBlank(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = workerColors.primary),
+                                    onClick = {
+                                        scope.launch {
+                                            busy = true
+                                            error = null
+                                            runCatching {
+                                                val challenge = runtime.startDeviceConnection(serverUrl, workerId)
+                                                val result = runtime.connectWithPassword(
+                                                    serverUrl,
+                                                    challenge.deviceToken,
+                                                    username,
+                                                    password,
+                                                )
+                                                status = requireNotNull(result.workerStatus)
+                                                password = ""
+                                                MobileWorkerSyncJobService.schedule(applicationContext)
+                                                status = runtime.synchronize(WorkerAppState.FOREGROUND)
+                                            }.onFailure { failure ->
+                                                error = failure.workerMessage()
+                                            }
+                                            busy = false
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(if (busy) t("working") else t("connect"))
+                                }
+                            } else {
+                                Button(
+                                    enabled = !busy && serverUrl.isNotBlank() && workerId.isNotBlank(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = workerColors.primary),
+                                    onClick = {
+                                        scope.launch {
+                                            busy = true
+                                            error = null
+                                            runCatching { runtime.startDeviceConnection(serverUrl, workerId) }
+                                                .onSuccess { connectionChallenge = it }
+                                                .onFailure { error = it.workerMessage() }
+                                            busy = false
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(if (busy) t("working") else t("connect"))
+                                }
+                            }
+                            TextButton(onClick = { usePassword = !usePassword }) {
+                                Text(if (usePassword) t("useCode") else t("usePassword"))
+                            }
+                        }
+
+                        TextButton(onClick = { showAdvancedEnrollment = !showAdvancedEnrollment }) {
+                            Text(if (showAdvancedEnrollment) t("advanced") else t("advanced"))
+                        }
+                        if (showAdvancedEnrollment) {
                             OutlinedTextField(
-                                value = password,
-                                onValueChange = { password = it },
-                                label = { Text("Password") },
+                                value = enrollmentToken,
+                                onValueChange = { enrollmentToken = it },
+                                label = { Text(t("enrollmentToken")) },
                                 visualTransformation = PasswordVisualTransformation(),
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
                             )
-                            Button(
-                                enabled = !busy && serverUrl.isNotBlank() && workerId.isNotBlank() &&
-                                    username.isNotBlank() && password.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(containerColor = workerColors.primary),
+                            OutlinedButton(
+                                enabled = !busy && serverUrl.isNotBlank() &&
+                                    enrollmentToken.isNotBlank() && workerId.isNotBlank(),
                                 onClick = {
                                     scope.launch {
                                         busy = true
                                         error = null
                                         runCatching {
-                                            val challenge = runtime.startDeviceConnection(serverUrl, workerId)
-                                            val result = runtime.connectWithPassword(
-                                                serverUrl,
-                                                challenge.deviceToken,
-                                                username,
-                                                password,
-                                            )
-                                            status = requireNotNull(result.workerStatus)
-                                            password = ""
+                                            status = runtime.enroll(serverUrl, enrollmentToken, workerId)
+                                            enrollmentToken = ""
                                             MobileWorkerSyncJobService.schedule(applicationContext)
                                             status = runtime.synchronize(WorkerAppState.FOREGROUND)
                                         }.onFailure { failure ->
-                                            error = failure.message ?: failure.toString()
+                                            error = failure.workerMessage()
                                         }
                                         busy = false
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text(if (busy) "Connecting" else "Connect with password")
+                                Text(t("connect"))
                             }
-                        } else {
-                            Button(
-                                enabled = !busy && serverUrl.isNotBlank() && workerId.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(containerColor = workerColors.primary),
-                                onClick = {
-                                    scope.launch {
-                                        busy = true
-                                        error = null
-                                        runCatching { runtime.startDeviceConnection(serverUrl, workerId) }
-                                            .onSuccess { connectionChallenge = it }
-                                            .onFailure { error = it.message ?: it.toString() }
-                                        busy = false
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(if (busy) "Creating code" else "Connect device")
-                            }
-                        }
-                        TextButton(onClick = { usePassword = !usePassword }) {
-                            Text(if (usePassword) "Use connection code" else "Use username and password")
                         }
                     }
 
-                    TextButton(onClick = { showAdvancedEnrollment = !showAdvancedEnrollment }) {
-                        Text(if (showAdvancedEnrollment) "Hide advanced enrollment" else "Advanced")
-                    }
-                    if (showAdvancedEnrollment) {
-                        OutlinedTextField(
-                            value = enrollmentToken,
-                            onValueChange = { enrollmentToken = it },
-                            label = { Text("One-time enrollment token") },
-                            visualTransformation = PasswordVisualTransformation(),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedButton(
-                            enabled = !busy && serverUrl.isNotBlank() &&
-                                enrollmentToken.isNotBlank() && workerId.isNotBlank(),
-                            onClick = {
-                                scope.launch {
-                                    busy = true
-                                    error = null
-                                    runCatching {
-                                        status = runtime.enroll(serverUrl, enrollmentToken, workerId)
-                                        enrollmentToken = ""
-                                        MobileWorkerSyncJobService.schedule(applicationContext)
-                                        status = runtime.synchronize(WorkerAppState.FOREGROUND)
-                                    }.onFailure { failure ->
-                                        error = failure.message ?: failure.toString()
-                                    }
-                                    busy = false
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Use one-time token")
-                        }
-                    }
-                }
-
-                error?.let {
-                    Text(it, color = workerColors.error, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -676,9 +700,10 @@ private fun SignalSettings(
     onRemoveBleDevice: (String) -> Unit,
     onWifiChanged: (String?) -> Unit,
     onEnableSleep: () -> Unit,
-    onMessage: (String) -> Unit,
-    onError: (String) -> Unit,
+    onMessage: (WorkerMessage) -> Unit,
+    onError: (WorkerMessage) -> Unit,
 ) {
+    val t = rememberWorkerStrings()
     var geofenceId by remember { mutableStateOf("") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
@@ -690,18 +715,18 @@ private fun SignalSettings(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("DEVICE SIGNALS", color = workerColors.primary, fontFamily = FontFamily.Monospace)
+        Text(t("signals"), color = workerColors.primary, fontFamily = FontFamily.Monospace)
         Text(
-            "Only configured geofences, BLE devices and Wi-Fi networks are monitored.",
+            t("signalsDisclosure"),
             color = workerColors.onSurfaceVariant,
         )
 
-        Text("Geofences", fontWeight = FontWeight.Bold)
+        Text(t("geofences"), fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = geofenceId,
                 onValueChange = { geofenceId = it },
-                label = { Text("Name") },
+                label = { Text(t("name")) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -709,28 +734,28 @@ private fun SignalSettings(
                 onClick = {
                     val current = sensors.lastKnownLocation()
                     if (current == null) {
-                        onMessage("No recent location is available yet")
+                        onMessage(WorkerMessage("noLocation"))
                     } else {
                         latitude = current.latitude.toString()
                         longitude = current.longitude.toString()
                     }
                 },
             ) {
-                Text("Use current")
+                Text(t("useCurrent"))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = latitude,
                 onValueChange = { latitude = it },
-                label = { Text("Latitude") },
+                label = { Text(t("latitude")) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
                 value = longitude,
                 onValueChange = { longitude = it },
-                label = { Text("Longitude") },
+                label = { Text(t("longitude")) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -739,7 +764,7 @@ private fun SignalSettings(
             OutlinedTextField(
                 value = radius,
                 onValueChange = { radius = it },
-                label = { Text("Radius, m") },
+                label = { Text(t("radius")) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -748,39 +773,39 @@ private fun SignalSettings(
                     runCatching {
                         onAddGeofence(
                             geofenceId,
-                            latitude.toDouble(),
-                            longitude.toDouble(),
-                            radius.toDouble(),
+                            latitude.replace(',', '.').toDouble(),
+                            longitude.replace(',', '.').toDouble(),
+                            radius.replace(',', '.').toDouble(),
                         )
                     }.onSuccess {
                         geofenceId = ""
-                        onMessage("Geofence saved")
-                    }.onFailure { onError(it.message ?: it.toString()) }
+                        onMessage(WorkerMessage("saved"))
+                    }.onFailure { onError(it.workerMessage()) }
                 },
             ) {
-                Text("Add")
+                Text(t("add"))
             }
         }
         configuration.geofences.forEach { geofence ->
             ConfiguredSignalRow(
                 title = geofence.id,
-                detail = "${geofence.latitude}, ${geofence.longitude} / ${geofence.radiusMeters.toInt()} m",
-                onRemove = { onRemoveGeofence(geofence.id) },
+                detail = "${geofence.latitude}, ${geofence.longitude} / ${t("radius")}: ${geofence.radiusMeters.toInt()}",
+                onRemove = { runCatching { onRemoveGeofence(geofence.id) }.onFailure { onError(it.workerMessage()) } },
             )
         }
 
-        Text("BLE devices", fontWeight = FontWeight.Bold)
+        Text(t("bleDevices"), fontWeight = FontWeight.Bold)
         OutlinedTextField(
             value = bleName,
             onValueChange = { bleName = it },
-            label = { Text("Display name (optional)") },
+            label = { Text(t("optionalName")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = bleSelector,
             onValueChange = { bleSelector = it },
-            label = { Text("MAC address or service UUID") },
+            label = { Text(t("bleSelector")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -792,43 +817,43 @@ private fun SignalSettings(
                         bleName = ""
                         bleSelector = ""
                     }
-                    .onFailure { onError(it.message ?: it.toString()) }
+                    .onFailure { onError(it.workerMessage()) }
             },
         ) {
-            Text("Add BLE device")
+            Text(t("add"))
         }
         configuration.bleDevices.forEach { device ->
             ConfiguredSignalRow(
                 title = device.displayName ?: device.id,
                 detail = device.address ?: device.serviceUuid.orEmpty(),
-                onRemove = { onRemoveBleDevice(device.id) },
+                onRemove = { runCatching { onRemoveBleDevice(device.id) }.onFailure { onError(it.workerMessage()) } },
             )
         }
 
-        Text("Wi-Fi", fontWeight = FontWeight.Bold)
+        Text(t("wifi"), fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = wifiNetworkId,
                 onValueChange = { wifiNetworkId = it },
-                label = { Text("Selected network name") },
+                label = { Text(t("wifiNetwork")) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
-            Button(onClick = { onWifiChanged(wifiNetworkId) }) {
-                Text("Save")
+            Button(onClick = { runCatching { onWifiChanged(wifiNetworkId) }.onFailure { onError(it.workerMessage()) } }) {
+                Text(t("save"))
             }
         }
         configuration.wifiNetworkId?.let { selected ->
             TextButton(onClick = {
                 wifiNetworkId = ""
-                onWifiChanged(null)
+                runCatching { onWifiChanged(null) }.onFailure { onError(it.workerMessage()) }
             }) {
-                Text("Stop monitoring $selected")
+                Text(t("stopMonitoring", "name" to selected))
             }
         }
 
-        OutlinedButton(onClick = onEnableSleep) {
-            Text("Enable sleep events")
+        OutlinedButton(onClick = { runCatching(onEnableSleep).onFailure { onError(it.workerMessage()) } }) {
+            Text(t("enableSleep"))
         }
     }
 }
@@ -839,6 +864,7 @@ private fun ConfiguredSignalRow(
     detail: String,
     onRemove: () -> Unit,
 ) {
+    val t = rememberWorkerStrings()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -849,32 +875,26 @@ private fun ConfiguredSignalRow(
             Text(detail, color = workerColors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
         TextButton(onClick = onRemove) {
-            Text("Remove")
+            Text(t("remove"))
         }
     }
 }
 
 @Composable
-private fun StatusCard(status: MobileWorkerStatus) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(workerColors.surface, RoundedCornerShape(18.dp))
-            .padding(18.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("ENROLLED", color = workerColors.primary, fontFamily = FontFamily.Monospace)
-            Text(status.workerId.orEmpty(), fontWeight = FontWeight.Bold)
-            Text(status.serverUrl.orEmpty(), color = workerColors.onSurfaceVariant)
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "Pending events: ${status.pendingEventCount}",
-                color = if (status.pendingEventCount == 0) workerColors.secondary else workerColors.tertiary,
-            )
-            Text(
-                status.lastSynchronizedAt?.let { "Last sync: $it" } ?: "Not synchronized yet",
-                color = workerColors.onSurfaceVariant,
-            )
+private fun StatusCard(status: MobileWorkerStatus, actions: @Composable () -> Unit) {
+    val t = rememberWorkerStrings()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val delivery by AndroidWorkerEventDelivery.state.collectAsState()
+    WorkerCard(t("connection")) {
+        Text(t("registered"), color = workerColors.secondary, style = MaterialTheme.typography.bodySmall)
+        Text(t("pending", "count" to status.pendingEventCount), color = if (status.pendingEventCount == 0) workerColors.onSurface else workerColors.tertiary)
+        Text(t("lastDelivery", "time" to context.workerTime(status.lastSynchronizedAt)), style = MaterialTheme.typography.bodySmall)
+        if (delivery == WorkerPhase.WAITING_DELIVERY) Text(t(delivery.key), style = MaterialTheme.typography.bodySmall)
+        WorkerDetails(t("deviceDetails"), leadingAction = actions) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Text(status.workerId.orEmpty())
+                Text(status.serverUrl.orEmpty(), style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
