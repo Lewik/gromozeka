@@ -160,8 +160,7 @@ internal fun rememberMessageListEntries(
 ): List<MessageListEntry> {
     val entries = mutableListOf<MessageListEntry>()
 
-    for (message in messages) {
-        if (message.providerMetadata["collaborationReceipt"]?.toString() == "true") continue
+    for (message in messages.filterNot { it.providerMetadata["collaborationReceipt"]?.toString() == "true" }) {
         key(message.id.value) {
             val segments = mutableListOf<MessageSegment>()
             val collapsedItems = collapsedContentItems[message.id].orEmpty()
