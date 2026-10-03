@@ -711,11 +711,20 @@ jobs:
         with:
           name: browser-bridge
           path: downloaded-artifacts
+      - name: Download Android APKs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-apks
+          path: android-apks
       - name: Prepare release assets
         shell: bash
         run: |
           mkdir -p release-assets
           find downloaded-artifacts -type f -exec cp {} release-assets/ \;
+          cp android-apks/mobile-worker-android/build/outputs/apk/debug/mobile-worker-android-debug.apk \
+            release-assets/gromozeka-worker-android-debug.apk
+          cp android-apks/presentation-android/build/outputs/apk/debug/presentation-android-debug.apk \
+            release-assets/gromozeka-client-android-debug.apk
           mkdir -p server-stack/certs
           cp deploy/distribution/compose.yaml server-stack/compose.yaml
           cp deploy/distribution/Caddyfile server-stack/Caddyfile
@@ -736,6 +745,7 @@ jobs:
             sha256sum \
               gromozeka-client-macos-arm64.dmg \
               gromozeka-client-windows-x64.zip \
+              gromozeka-client-android-debug.apk \
               gromozeka-server-stack.zip \
               gromozeka-server-macos-arm64.tar.gz \
               gromozeka-server-windows-x64.zip \
@@ -743,6 +753,7 @@ jobs:
               gromozeka-worker-macos-arm64.tar.gz \
               gromozeka-worker-windows-x64.zip \
               gromozeka-worker-linux-x64.tar.gz \
+              gromozeka-worker-android-debug.apk \
               gromozeka-browser-bridge.zip \
               > SHA256SUMS
           )
@@ -754,6 +765,8 @@ jobs:
 
           - macOS ARM64 Client: `gromozeka-client-macos-arm64.dmg`
           - Windows x64 portable Client: `gromozeka-client-windows-x64.zip`
+          - Android Client (debug-signed APK): `gromozeka-client-android-debug.apk`
+          - Android Worker (debug-signed APK): `gromozeka-worker-android-debug.apk`
           - Docker Compose Server stack: `gromozeka-server-stack.zip`
           - macOS ARM64 standalone Server: `gromozeka-server-macos-arm64.tar.gz`
           - Windows x64 standalone Server: `gromozeka-server-windows-x64.zip`
@@ -770,6 +783,9 @@ jobs:
           executable code on first launch. The desktop and Worker packages are currently
           unsigned. macOS Gatekeeper and
           Windows SmartScreen may require explicit confirmation on first launch.
+          Android APKs use a debug signing key and are intended for manual installation.
+          The signing key may change between CI runs, so upgrading an existing Android
+          installation can require reinstallation and device enrollment again.
           Verify downloaded files against `SHA256SUMS`.
           EOF
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
