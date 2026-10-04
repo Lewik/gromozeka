@@ -207,6 +207,7 @@ class AiToolRuntimeCatalogServiceTest {
             "grz_get_command_task",
             "grz_list_commands_and_monitors",
             "grz_monitor_command",
+            "grz_send_command_input",
             "grz_read_file",
             "grz_write_file",
             SEARCH_TOOLS_TOOL_NAME,

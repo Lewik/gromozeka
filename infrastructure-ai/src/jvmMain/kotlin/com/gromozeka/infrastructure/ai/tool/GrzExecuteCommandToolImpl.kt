@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskOutput
 import com.gromozeka.domain.service.CommandTaskService
+import com.gromozeka.domain.service.MAX_COMMAND_INPUT_BYTES
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.serialization.json.JsonObject
@@ -14,6 +15,8 @@ import com.gromozeka.domain.tool.filesystem.GetCommandTaskRequest
 import com.gromozeka.domain.tool.filesystem.GrzCancelCommandTaskTool
 import com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool
 import com.gromozeka.domain.tool.filesystem.GrzGetCommandTaskTool
+import com.gromozeka.domain.tool.filesystem.GrzSendCommandInputTool
+import com.gromozeka.domain.tool.filesystem.SendCommandInputRequest
 import kotlinx.coroutines.runBlocking
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
@@ -60,6 +63,30 @@ class GrzCancelCommandTaskToolImpl(
                 "success" to cancelled,
                 "task_id" to taskId.value,
                 "status" to if (cancelled) CommandTask.Status.CANCELLED.name else "UNCHANGED",
+            )
+        }
+}
+
+@Service
+@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
+class GrzSendCommandInputToolImpl(
+    private val commandTaskService: CommandTaskService,
+) : GrzSendCommandInputTool {
+    override fun execute(request: SendCommandInputRequest, context: ToolExecutionContext?): Map<String, Any> =
+        runBlocking {
+            require(request.task_id.isNotBlank()) { "task_id must not be blank" }
+            require(request.text.length <= MAX_COMMAND_INPUT_BYTES) { "Command input exceeds $MAX_COMMAND_INPUT_BYTES bytes" }
+            val result = commandTaskService.sendInput(
+                conversationId = context.requiredConversationId(),
+                taskId = CommandTask.Id(request.task_id),
+                bytes = request.text.encodeToByteArray(throwOnInvalidSequence = true),
+                closeInput = request.close_input,
+            )
+            mapOf(
+                "success" to true,
+                "task_id" to result.taskId.value,
+                "written_bytes" to result.writtenBytes,
+                "input_closed" to result.inputClosed,
             )
         }
 }

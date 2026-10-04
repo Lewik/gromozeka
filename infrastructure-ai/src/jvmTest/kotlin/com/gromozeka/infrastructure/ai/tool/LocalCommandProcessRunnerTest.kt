@@ -81,6 +81,31 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `runner receives multiple input writes before EOF`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(CommandProcessSpec(
+                executionId = "interactive-input-task",
+                command = platformCommand(
+                    posix = "cat",
+                    windows = "powershell.exe -NoProfile -NonInteractive -Command \"[Console]::OpenStandardInput().CopyTo([Console]::OpenStandardOutput())\"",
+                ),
+                workingDirectory = home.absolutePath,
+            ))
+            val first = "first\n".encodeToByteArray()
+            val second = "שלום\n\u0000last".encodeToByteArray()
+            process.writeInput(first)
+            waitUntil(5_000) { File(process.outputFile).length() == first.size.toLong() }
+            assertTrue(process.isAlive())
+            process.writeInput(second)
+            waitUntil(5_000) { File(process.outputFile).length() == (first.size + second.size).toLong() }
+            process.closeInput()
+            assertTrue(process.waitFor(5_000))
+            assertEquals(0, process.exitCode())
+            kotlin.test.assertContentEquals(first + second, File(process.outputFile).readBytes())
+        }
+    }
+
+    @Test
     fun `runner injects command environment without changing command text`() {
         withTemporaryGromozekaHome { home ->
             val process = runner.start(

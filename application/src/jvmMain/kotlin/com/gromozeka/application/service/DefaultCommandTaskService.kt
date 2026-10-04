@@ -15,6 +15,8 @@ import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskOutput
 import com.gromozeka.domain.service.CommandTaskService
+import com.gromozeka.domain.service.CommandTaskInputResult
+import com.gromozeka.domain.service.MAX_COMMAND_INPUT_BYTES
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -40,6 +42,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -295,6 +298,51 @@ class DefaultCommandTaskService(
                 )
                 false
             }
+        }
+    }
+
+    override suspend fun sendInput(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+        bytes: ByteArray,
+        closeInput: Boolean,
+    ): CommandTaskInputResult {
+        require(bytes.isNotEmpty() || closeInput) { "Provide input bytes or request close_input" }
+        require(bytes.size <= MAX_COMMAND_INPUT_BYTES) { "Command input exceeds $MAX_COMMAND_INPUT_BYTES bytes" }
+        val input = bytes.copyOf()
+        check(!closed.get()) { "Command task service is closed" }
+        val stored = runtimeState.findCommandTask(conversationId, taskId)
+            ?: error("Command task not found in this conversation: ${taskId.value}")
+        check(stored.conversationId == conversationId && stored.workerId == workerId) {
+            "Command task does not belong to this conversation and Worker"
+        }
+        check(!stored.isTerminal && stored.cancellationRequestedAt == null) {
+            "Command task is finished or cancellation was requested"
+        }
+        val active = activeCommands[taskId]
+            ?: error("Command stdin is unavailable; input cannot be restored after a Worker restart")
+        // The lifecycle mutex must never be held during pipe I/O: a child that
+        // does not read stdin must still be cancellable to unblock a pending write.
+        return active.inputMutex.withLock {
+            active.mutex.withLock {
+                check(!closed.get()) { "Command task service is closed" }
+                check(active.task.conversationId == conversationId) { "Command conversation does not match" }
+                check(!active.task.isTerminal && active.task.cancellationRequestedAt == null && active.process.isAlive()) {
+                    "Command task is not running or cancellation was requested"
+                }
+                check(active.process.acceptsInput) {
+                    "Command stdin is unavailable after reconnecting to its process"
+                }
+            }
+            check(!active.inputClosed) { "Command stdin is already closed" }
+            runInterruptible(Dispatchers.IO) {
+                if (input.isNotEmpty()) active.process.writeInput(input)
+                if (closeInput) {
+                    active.inputClosed = true
+                    active.process.closeInput()
+                }
+            }
+            CommandTaskInputResult(taskId, input.size, active.inputClosed)
         }
     }
 
@@ -1014,6 +1062,8 @@ class DefaultCommandTaskService(
         val mutex: Mutex,
     ) {
         val completed = CompletableDeferred<Unit>()
+        val inputMutex = Mutex()
+        var inputClosed = false
         val synchronization = CommandSynchronizationState()
         val controlReads = CommandSynchronizationState()
         var lastControlPlaneWarningAtNanos: Long? = null

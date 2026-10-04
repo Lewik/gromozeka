@@ -22,6 +22,8 @@ import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -35,6 +37,8 @@ import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertContentEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -155,6 +159,131 @@ class DefaultCommandTaskServiceTest {
             val complete = assertNotNull(service.get(conversationId, result.task.id, 0, 0))
             assertEquals("€", complete.output)
             assertEquals(3, complete.nextOutputByte)
+        }
+    }
+
+    @Test
+    fun `input preserves exact bytes and EOF does not cancel the process`() = runBlocking {
+        withService { service, runner, _, directory ->
+            val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0), context(directory)).task
+            val input = "שלום\n{\"event\":\"refresh\"}\n\u0000".encodeToByteArray()
+            val sent = service.sendInput(conversationId, task.id, input)
+            assertEquals(input.size, sent.writtenBytes)
+            assertFalse(sent.inputClosed)
+            assertContentEquals(input, runner.lastProcess.inputs.single())
+            assertEquals(task.id, sent.taskId)
+            val eof = service.sendInput(conversationId, task.id, byteArrayOf(), closeInput = true)
+            assertEquals(0, eof.writtenBytes)
+            assertTrue(eof.inputClosed)
+            assertEquals(1, runner.lastProcess.inputCloseCount)
+            assertTrue(runner.lastProcess.isAlive())
+            assertFalse(runner.lastProcess.terminateTreeCalled)
+            assertFailsWith<IllegalStateException> { service.sendInput(conversationId, task.id, byteArrayOf(1)) }
+        }
+    }
+
+    @Test
+    fun `input and EOF in one request are ordered`() = runBlocking {
+        withService { service, runner, _, directory ->
+            val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0), context(directory)).task
+            runner.lastProcess.onCloseInput = { assertEquals("last line\n", runner.lastProcess.inputs.single().decodeToString()) }
+            val result = service.sendInput(conversationId, task.id, "last line\n".encodeToByteArray(), true)
+            assertTrue(result.inputClosed)
+            assertEquals(10, result.writtenBytes)
+        }
+    }
+
+    @Test
+    fun `input rejects empty oversized foreign finished and cancelling tasks before writing`() = runBlocking {
+        withService { service, runner, coordinator, directory ->
+            val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0), context(directory)).task
+            assertFailsWith<IllegalArgumentException> { service.sendInput(conversationId, task.id, byteArrayOf()) }
+            assertFailsWith<IllegalArgumentException> {
+                service.sendInput(conversationId, task.id, ByteArray(com.gromozeka.domain.service.MAX_COMMAND_INPUT_BYTES + 1))
+            }
+            assertFailsWith<IllegalStateException> { service.sendInput(Conversation.Id("foreign"), task.id, byteArrayOf(1)) }
+            assertFailsWith<IllegalStateException> { service.sendInput(conversationId, CommandTask.Id("missing"), byteArrayOf(1)) }
+            val foreign = task.copy(id = CommandTask.Id("foreign-worker-task"), workerId = ConversationRuntimeWorkerId("foreign-worker"))
+            coordinator.upsertCommandTask(foreign)
+            assertFailsWith<IllegalStateException> { service.sendInput(conversationId, foreign.id, byteArrayOf(1)) }
+            coordinator.requestCommandTaskCancellation(conversationId, task.id, Clock.System.now())
+            assertFailsWith<IllegalStateException> { service.sendInput(conversationId, task.id, byteArrayOf(1)) }
+            service.cancel(conversationId, task.id)
+            assertFailsWith<IllegalStateException> { service.sendInput(conversationId, task.id, byteArrayOf(1)) }
+            assertTrue(runner.lastProcess.inputs.isEmpty())
+            assertEquals(0, runner.lastProcess.inputCloseCount)
+        }
+    }
+
+    @Test
+    fun `input rejects recovered process without stdin instead of restarting it`() = runBlocking {
+        withService { service, runner, coordinator, directory ->
+            val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0, survive_worker_restart = true), context(directory)).task
+            service.close()
+            runner.lastProcess.inputAvailable = false
+            val recovered = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+            try {
+                recovered.recoverPersistedTasks()
+                assertFailsWith<IllegalStateException> { recovered.sendInput(conversationId, task.id, byteArrayOf(1)) }
+                assertTrue(runner.lastProcess.inputs.isEmpty())
+                assertTrue(runner.lastProcess.isAlive())
+            } finally {
+                recovered.cancel(conversationId, task.id)
+                recovered.close()
+            }
+        }
+    }
+
+    @Test
+    fun `concurrent input requests never interleave`() = runBlocking {
+        withService { service, runner, _, directory ->
+            val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0), context(directory)).task
+            val writers = java.util.concurrent.atomic.AtomicInteger()
+            runner.lastProcess.onInput = {
+                assertEquals(1, writers.incrementAndGet())
+                try { Thread.sleep(5) } finally { writers.decrementAndGet() }
+            }
+            (1..20).map { index ->
+                async(Dispatchers.Default) { service.sendInput(conversationId, task.id, "$index\n".encodeToByteArray()) }
+            }.awaitAll()
+            assertEquals((1..20).map { "$it\n" }.toSet(), runner.lastProcess.inputs.map(ByteArray::decodeToString).toSet())
+            assertEquals(20, runner.lastProcess.inputs.size)
+        }
+    }
+
+    @Test
+    fun `blocked stdin write does not prevent command cancellation`() = runBlocking {
+        withService { service, runner, _, directory ->
+            val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0), context(directory)).task
+            val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+            val release = java.util.concurrent.CountDownLatch(1)
+            runner.lastProcess.onInput = {
+                entered.complete(Unit)
+                check(release.await(5, java.util.concurrent.TimeUnit.SECONDS)) { "Input write did not unblock" }
+                check(runner.lastProcess.isAlive()) { "Process stopped during write" }
+            }
+            val writing = async(Dispatchers.IO) {
+                runCatching { service.sendInput(conversationId, task.id, byteArrayOf(1)) }
+            }
+            try {
+                withTimeout(2_000) { entered.await() }
+                withTimeout(2_000) { assertTrue(service.cancel(conversationId, task.id)) }
+            } finally {
+                release.countDown()
+            }
+            assertTrue(withTimeout(2_000) { writing.await() }.isFailure)
+        }
+    }
+
+    @Test
+    fun `failed input is not retried and does not report a successful EOF`() = runBlocking {
+        withService { service, runner, _, directory ->
+            val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0), context(directory)).task
+            var attempts = 0
+            runner.lastProcess.onInput = { attempts++; throw java.io.IOException("closed pipe") }
+            assertFailsWith<java.io.IOException> { service.sendInput(conversationId, task.id, byteArrayOf(1), true) }
+            assertEquals(1, attempts)
+            assertEquals(0, runner.lastProcess.inputCloseCount)
         }
     }
 
@@ -798,7 +927,12 @@ class DefaultCommandTaskServiceTest {
         override val outputFile: String
             get() = outputArtifact.absolutePath
         override val errorFile: String? = null
-        override val acceptsInput: Boolean = true
+        var inputAvailable = true
+        override val acceptsInput: Boolean get() = inputAvailable
+        val inputs = java.util.Collections.synchronizedList(mutableListOf<ByteArray>())
+        var inputCloseCount = 0
+        var onInput: (ByteArray) -> Unit = {}
+        var onCloseInput: () -> Unit = {}
         @Volatile
         private var alive = true
         @Volatile
@@ -822,9 +956,14 @@ class DefaultCommandTaskServiceTest {
 
         override fun writeInput(bytes: ByteArray) {
             check(alive) { "Process is not running" }
+            onInput(bytes)
+            inputs.add(bytes.copyOf())
         }
 
-        override fun closeInput() = Unit
+        override fun closeInput() {
+            onCloseInput()
+            inputCloseCount++
+        }
 
         override fun terminateTree() {
             terminateTreeCalled = true

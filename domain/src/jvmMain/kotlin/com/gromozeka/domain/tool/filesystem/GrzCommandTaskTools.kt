@@ -67,3 +67,35 @@ interface GrzCancelCommandTaskTool : Tool<CancelCommandTaskRequest, Map<String, 
 
     override fun execute(request: CancelCommandTaskRequest, context: ToolExecutionContext?): Map<String, Any>
 }
+
+const val GRZ_SEND_COMMAND_INPUT_TOOL_NAME = "grz_send_command_input"
+
+data class SendCommandInputRequest(
+    val task_id: String,
+    @property:ToolParameter(
+        description = "UTF-8 text to write exactly as supplied, at most 65536 encoded bytes. No newline is added; include a newline explicitly for line-based programs.",
+    )
+    val text: String = "",
+    @property:ToolParameter(
+        description = "Close stdin (send EOF) after writing text. Stdin cannot be reopened. May be true with empty text.",
+    )
+    val close_input: Boolean = false,
+)
+
+interface GrzSendCommandInputTool : Tool<SendCommandInputRequest, Map<String, Any>> {
+    override val name: String get() = GRZ_SEND_COMMAND_INPUT_TOOL_NAME
+    override val metadata get() = CommandTaskOwnerToolMetadata.copy(logInput = false)
+    override val requestType: Class<SendCommandInputRequest> get() = SendCommandInputRequest::class.java
+    override val description: String get() = """
+        Send UTF-8 text to a running command's stdin, optionally closing it with EOF.
+        The task ID selects its owning Worker and workspace mount; do not supply execution_target.
+        Input is not shell code and is not executed by Gromozeka; the running program interprets it.
+        Writes are serialized per task and flushed. Include newlines explicitly when required.
+        Success means the bytes were written to the pipe, not that the program processed them.
+        A write may block if the program does not read input; cancelling the source command can unblock it.
+        Input is unavailable after a Worker restart loses the original pipe, even if the process survives.
+        Never retry automatically: a failure, cancellation, or uncertain result may follow partial delivery.
+        This is a potentially mutating operation, not a read-only inspection. Use grz_get_command_task for output.
+    """.trimIndent()
+    override fun execute(request: SendCommandInputRequest, context: ToolExecutionContext?): Map<String, Any>
+}

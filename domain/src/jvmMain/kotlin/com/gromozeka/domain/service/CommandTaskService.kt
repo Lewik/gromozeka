@@ -24,7 +24,29 @@ interface CommandTaskService {
     ): Boolean
 
     suspend fun cancelAll(conversationId: Conversation.Id): Int
+
+    /**
+     * Writes one bounded byte sequence to a live process and optionally sends EOF.
+     * Calls on the same process are serialized. No framing or newline is added.
+     * Success acknowledges pipe I/O, not application-level processing. An interrupted
+     * or failed write can have partial effects and must not be retried automatically.
+     * Recovered processes without their original stdin handle reject input.
+     */
+    suspend fun sendInput(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+        bytes: ByteArray,
+        closeInput: Boolean = false,
+    ): CommandTaskInputResult
 }
+
+const val MAX_COMMAND_INPUT_BYTES = 64 * 1024
+
+data class CommandTaskInputResult(
+    val taskId: CommandTask.Id,
+    val writtenBytes: Int,
+    val inputClosed: Boolean,
+)
 
 data class CommandProcessSpec(
     val executionId: String,

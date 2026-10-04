@@ -358,6 +358,16 @@ These runtime tails use a base64 binary representation inside JSONB, including
 NUL and invalid UTF-8. Migrations preserve existing stored text without resetting
 the database; bytes already lost by older text decoding cannot be reconstructed.
 
+`grz_send_command_input` writes bounded UTF-8 text to the stdin of a running
+command, routed by its task ID to the owning Worker/mount. It adds no newline;
+line-oriented programs require an explicit `\n`. `close_input=true` sends EOF
+without cancelling the process. Success confirms pipe I/O, not processing by
+the child. Failed or cancelled writes can have partial effects and are never
+retried automatically. Input cannot reconnect after a Worker restart loses the
+original pipe; a surviving command remains readable/cancellable but rejects stdin.
+Writes are serialized independently of lifecycle control, so blocked stdin does
+not prevent command cancellation. The tool never echoes input in its result.
+
 Command state synchronization retries temporary connection/database failures with
 backoff. A permanent rejected write is exposed as `synchronization_error` in the
 Worker-local result and logged; it stops write retries, preserves output files,
