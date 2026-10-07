@@ -7,6 +7,10 @@ import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.RunningCommandProcess
+import com.sun.jna.Native
+import com.sun.jna.platform.win32.Kernel32
+import com.sun.jna.platform.win32.WinBase
+import com.sun.jna.platform.win32.WinNT
 import kotlin.time.Instant
 import java.io.File
 import java.nio.file.Files
@@ -552,48 +556,108 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `runner garbage collects only unreferenced output artifacts`() {
-        withTemporaryGromozekaHome { home ->
-            val retained = runner.start(
-                CommandProcessSpec(
-                    executionId = "retained-output-task",
-                    command = platformCommand(
-                        posix = "printf retained",
-                        windows = "<NUL set /P =retained",
-                    ),
-                    workingDirectory = home.absolutePath,
+        repeat(if (isWindows) 30 else 1) {
+            withTemporaryGromozekaHome { home ->
+                val retained = runner.start(
+                    CommandProcessSpec(
+                        executionId = "retained-output-task",
+                        command = platformCommand(
+                            posix = "printf retained",
+                            windows = "<NUL set /P =retained",
+                        ),
+                        workingDirectory = home.absolutePath,
+                    )
                 )
-            )
-            val orphaned = runner.start(
-                CommandProcessSpec(
-                    executionId = "orphaned-output-task",
-                    command = platformCommand(
-                        posix = "printf orphaned",
-                        windows = "<NUL set /P =orphaned",
-                    ),
-                    workingDirectory = home.absolutePath,
+                val orphaned = runner.start(
+                    CommandProcessSpec(
+                        executionId = "orphaned-output-task",
+                        command = platformCommand(
+                            posix = "printf orphaned",
+                            windows = "<NUL set /P =orphaned",
+                        ),
+                        workingDirectory = home.absolutePath,
+                    )
                 )
-            )
-            assertTrue(retained.waitFor(5_000))
-            assertTrue(orphaned.waitFor(5_000))
+                assertTrue(retained.waitFor(5_000))
+                assertTrue(orphaned.waitFor(5_000))
 
-            runner.garbageCollectOutputArtifacts(
-                CommandOutputGarbageCollectionSpec(
-                    referencedOutputFiles = setOf(retained.outputFile),
-                    protectedOutputFiles = emptySet(),
-                    expireBefore = Instant.fromEpochMilliseconds(0),
-                    maxTotalBytes = Long.MAX_VALUE,
+                runner.garbageCollectOutputArtifacts(
+                    CommandOutputGarbageCollectionSpec(
+                        referencedOutputFiles = setOf(retained.outputFile),
+                        protectedOutputFiles = emptySet(),
+                        expireBefore = Instant.fromEpochMilliseconds(0),
+                        maxTotalBytes = Long.MAX_VALUE,
+                    )
                 )
-            )
 
-            assertTrue(File(retained.outputFile).isFile)
-            assertFalse(File(orphaned.outputFile).exists())
-            assertFalse(File("${orphaned.outputFile}.tree").exists())
-            assertFalse(File("${orphaned.outputFile}.start").exists())
-            assertFalse(File("${orphaned.outputFile}.exit").exists())
-            assertFalse(File("${orphaned.outputFile}.command.cmd").exists())
-            assertFalse(File("${orphaned.outputFile}.wrapper.cmd").exists())
-            assertFalse(File("${orphaned.outputFile}.watchdog.cmd").exists())
+                assertTrue(File(retained.outputFile).isFile)
+                assertFalse(File(orphaned.outputFile).exists())
+                assertFalse(File("${orphaned.outputFile}.tree").exists())
+                assertFalse(File("${orphaned.outputFile}.start").exists())
+                assertFalse(File("${orphaned.outputFile}.exit").exists())
+                assertFalse(File("${orphaned.outputFile}.command.cmd").exists())
+                assertFalse(File("${orphaned.outputFile}.wrapper.cmd").exists())
+                assertFalse(File("${orphaned.outputFile}.watchdog.cmd").exists())
+            }
         }
+    }
+
+    @Test
+    fun `windows artifact deletion retries a temporary sharing lock`() {
+        assumeTrue("Windows sharing modes are required", isWindows)
+        withTemporaryGromozekaHome { home ->
+            val file = File(home, "temporarily-locked.log").apply { writeText("output") }
+            val lock = lockWindowsFile(file)
+            val release = java.util.concurrent.CompletableFuture.runAsync {
+                Thread.sleep(200)
+                check(Kernel32.INSTANCE.CloseHandle(lock)) { "Cannot release test file lock" }
+            }
+            try {
+                deleteWindowsCommandArtifact(file)
+                assertFalse(file.exists())
+                deleteWindowsCommandArtifact(file) // Already removed is also success.
+            } finally {
+                release.join()
+            }
+        }
+    }
+
+    @Test
+    fun `windows artifact deletion does not hide a persistent sharing lock`() {
+        assumeTrue("Windows sharing modes are required", isWindows)
+        withTemporaryGromozekaHome { home ->
+            val file = File(home, "persistently-locked.log").apply { writeText("output") }
+            val lock = lockWindowsFile(file)
+            try {
+                val failure = assertFailsWith<IllegalStateException> { deleteWindowsCommandArtifact(file) }
+                assertContains(requireNotNull(failure.message), "Windows error 32")
+                assertTrue(file.exists())
+            } finally {
+                check(Kernel32.INSTANCE.CloseHandle(lock)) { "Cannot release test file lock" }
+            }
+        }
+    }
+
+    @Test
+    fun `windows artifact deletion preserves non-sharing errors`() {
+        assumeTrue("Windows file attributes are required", isWindows)
+        withTemporaryGromozekaHome { home ->
+            val file = File(home, "read-only.log").apply { writeText("output") }
+            Files.setAttribute(file.toPath(), "dos:readonly", true)
+            try {
+                val failure = assertFailsWith<IllegalStateException> { deleteWindowsCommandArtifact(file) }
+                assertContains(requireNotNull(failure.message), "Windows error 5")
+                assertTrue(file.exists())
+            } finally {
+                Files.setAttribute(file.toPath(), "dos:readonly", false)
+            }
+        }
+    }
+
+    private fun lockWindowsFile(file: File): WinNT.HANDLE = Kernel32.INSTANCE.CreateFile(
+        file.absolutePath, WinNT.GENERIC_READ, 0, null, WinNT.OPEN_EXISTING, WinNT.FILE_ATTRIBUTE_NORMAL, null,
+    ).also { handle ->
+        check(handle != WinBase.INVALID_HANDLE_VALUE) { "Cannot lock test file: Windows error ${Native.getLastError()}" }
     }
 
     @Test

@@ -135,8 +135,12 @@ class LocalCommandProcessRunner : CommandProcessRunner {
     override fun deleteOutputArtifacts(outputFile: String) {
         val outputArtifact = managedOutputFile(outputFile)
         outputArtifacts(outputArtifact).forEach { artifact ->
-            check(!artifact.exists() || artifact.delete()) {
-                "Cannot delete command output artifact: ${artifact.absolutePath}"
+            if (host is WindowsLocalCommandHost) {
+                deleteWindowsCommandArtifact(artifact)
+            } else {
+                check(!artifact.exists() || artifact.delete()) {
+                    "Cannot delete command output artifact: ${artifact.absolutePath}"
+                }
             }
         }
     }
