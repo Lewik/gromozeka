@@ -154,12 +154,12 @@ private fun GromozekaWebApp() {
                 initialized = status.initialized,
                 submitting = authenticating,
                 error = authenticationError,
-                onSubmit = { input, deviceToken ->
+                onSubmit = { input ->
                     scope.launch {
                         authenticating = true
                         authenticationError = null
                         try {
-                            authenticationConnection.authenticate(status.initialized, input, deviceToken)
+                            authenticationConnection.authenticate(status.initialized, input)
                             val authenticatedStatus = authenticationConnection.status()
                             authenticationStatus = authenticatedStatus
                             remoteApp = createRemoteAppComponents(
