@@ -8,6 +8,8 @@ import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.RemoteAuthenticationInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
@@ -131,8 +133,10 @@ internal class E2eClient(
     val seedHistory: (com.gromozeka.domain.model.Conversation, List<com.gromozeka.domain.model.Conversation.Message>) -> Unit,
 ) : AutoCloseable {
     override fun close() {
+        // Finish observers before closing their transport, otherwise a late request escapes
+        // this test and fails the next one with UncaughtExceptionsBeforeTest.
+        runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         app.close()
-        scope.cancel()
         connection.close()
         onClose()
     }
