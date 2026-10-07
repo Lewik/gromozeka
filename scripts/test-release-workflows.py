@@ -142,6 +142,9 @@ class WorkflowContracts(unittest.TestCase):
 
     def test_no_worker_image_dependency(self):
         self.assertFalse((ROOT / "deploy/docker/worker.Dockerfile").exists())
+        context = (ROOT / ".dockerignore").read_text()
+        self.assertNotIn("worker", context)
+        self.assertNotIn("browser-mcp", context)
         compose = load_yaml(ROOT / "deploy/distribution/compose.yaml")
         self.assertNotIn("worker", compose["services"])
         self.assertNotIn("gromozeka-worker-home", compose["volumes"])
