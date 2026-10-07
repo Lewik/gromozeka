@@ -83,14 +83,26 @@ class LocalCommandProcessRunnerTest {
     @Test
     fun `runner receives multiple input writes before EOF`() {
         withTemporaryGromozekaHome { home ->
+            val readyFile = File(home, "input-echo-ready")
+            val java = File(System.getProperty("java.home"), if (isWindows) "bin/java.exe" else "bin/java")
             val process = runner.start(CommandProcessSpec(
                 executionId = "interactive-input-task",
-                command = platformCommand(
-                    posix = "cat",
-                    windows = "powershell.exe -NoProfile -NonInteractive -Command \"[Console]::OpenStandardInput().CopyTo([Console]::OpenStandardOutput())\"",
-                ),
+                // Use the same byte-preserving fixture on every OS, independently of
+                // PowerShell startup/stream handling. Keep long classpaths out of cmd.exe.
+                command = "\"${java.absolutePath}\" ${CommandInputEchoTestProcess::class.java.name}",
                 workingDirectory = home.absolutePath,
+                environment = mapOf(
+                    "CLASSPATH" to System.getProperty("java.class.path"),
+                    "GROMOZEKA_TEST_READY_FILE" to readyFile.absolutePath,
+                ),
             ))
+            // Process startup is not the stdin latency being tested below.
+            waitUntil(if (isWindows) 30_000 else 10_000) {
+                check(process.isAlive()) {
+                    "Input fixture exited before becoming ready: ${File(process.outputFile).readText()}"
+                }
+                readyFile.isFile
+            }
             val first = "first\n".encodeToByteArray()
             val second = "שלום\n\u0000last".encodeToByteArray()
             process.writeInput(first)
@@ -761,6 +773,20 @@ class LocalCommandProcessRunnerTest {
         if (!processHandle.isAlive) return
         runCatching {
             currentLocalCommandHost().processTree(processTreeId).terminate(processHandle)
+        }
+    }
+}
+
+internal object CommandInputEchoTestProcess {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        File(requireNotNull(System.getenv("GROMOZEKA_TEST_READY_FILE"))).writeText("ready")
+        val buffer = ByteArray(1024)
+        while (true) {
+            val count = System.`in`.read(buffer)
+            if (count < 0) return
+            System.out.write(buffer, 0, count)
+            System.out.flush()
         }
     }
 }
