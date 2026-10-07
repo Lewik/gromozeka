@@ -728,21 +728,28 @@ of copying files manually.
 
 Published releases follow Semantic Versioning as `MAJOR.MINOR.PATCH`.
 
-- `PATCH` contains backward-compatible fixes.
-- `MINOR` adds backward-compatible functionality.
-- `MAJOR` permits incompatible changes to the public compatibility surface.
+- `PATCH` contains fixes, optimizations, and technical changes without new features.
+- `MINOR` adds functionality and resets patch to zero.
+- `MAJOR` covers incompatible changes under normal SemVer rules and requires
+  Lev's separate explicit approval. A general request to release does not grant it.
+
+Choose the bump from **all changes since the last published release**. The
+workflow's `patch` default is a technical default, not a versioning decision.
 
 That public surface includes documented Server APIs, Client and Worker
 protocols, configuration formats, and other contracts consumed outside the
-implementing component. A newer Server must accept older Clients and Workers
-from the same major version. A newer Client or Worker may use functionality
-that an older Server does not provide, so compatibility in that direction is
-not guaranteed.
+implementing component. Normally a newer Server must accept older Clients and
+Workers from the same major version. Lev may explicitly approve a per-release
+exception, such as a Worker protocol break in a minor release. Explain the
+incompatibility and required component updates; previous exceptions are not
+blanket permission. A newer Client or Worker may use functionality that an
+older Server does not provide, so compatibility in that direction is not
+guaranteed.
 
 Internal refactoring and database schema changes do not require a major version
 when existing persisted data is migrated forward automatically without loss.
-Breaking an external contract requires a major version even when the code
-change itself is small.
+Breaking an external contract normally requires a major version even when the
+code change itself is small, subject only to the explicit exception above.
 
 All artifacts produced by one release carry the same product version. This
 policy applies beginning with `1.7.0`; earlier releases are not retroactively
@@ -753,7 +760,43 @@ metadata step. Manual published releases and generated versions must be greater
 than the latest remote `v*` SemVer tag before any expensive verification or
 packaging job starts. Prefer leaving the manual version field empty and
 selecting `patch`, `minor`, or `major`; the workflow generates the next SemVer
-version from the latest stable remote tag.
+version from the latest stable remote tag. Release tags use `vX.Y.Z`. A reserved
+tag remains occupied even if a build or publication fails: never delete or move
+it to reuse its number. Retrying failed jobs for the same release is allowed;
+a replacement release must account for every reserved remote version.
+
+## CI and Release Workflow
+
+Application CI is manual: `.github/workflows/release.yml` is the single entry
+point for verification, packaging and optional publication. Pushes, PRs and
+tags do not trigger it. For a build-only run:
+
+```bash
+gh workflow run release.yml --ref main \
+  -f publish_release=false -f deploy_aws=false -f skip_ios=true
+```
+
+Build-only mode creates Actions artifacts, not release tags, registry images
+or GitHub Releases. iOS checks are skipped by default; opt in explicitly with
+`skip_ios=false`. Windows service and Linux/Windows command-process checks run
+through the reusable Worker workflow; translation/font validation and Compose
+E2E run inside the main workflow. JNI library builds remain separately manual.
+
+Release JARs and Browser MCP are prepared once. Server/Worker archives are
+packaged in a three-platform matrix, reusing the shared JARs and production Web
+assets. Only the Server has a Docker image; its OCI build runs alongside the
+remaining checks. Publication waits for **all** checks and artifact builds,
+reserves the tag, and copies that same image without rebuilding. Publication
+must be dispatched from `main`. Deploy is a separate, explicit opt-in; the
+manual/reusable deployment workflow can also install an existing release.
+
+Validate workflow contracts locally with an isolated Python environment:
+
+```bash
+python3 -m venv build/ci-checks
+build/ci-checks/bin/pip install -r scripts/requirements-ci.txt
+build/ci-checks/bin/python scripts/test-release-workflows.py
+```
 
 ## Verification
 

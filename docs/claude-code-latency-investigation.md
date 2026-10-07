@@ -780,5 +780,7 @@ Evidence: `logs/claude-json-release-live-result.xml`,
 Release preflight: remote `main` matched local `240ba1910` before the change;
 the latest published remote release was `v3.0.0`. This is an internal provider
 fix, so the requested release uses the workflow's patch generator with
-`publish_release=true` and `deploy_aws=false`. Do not push a tag manually:
-the tag-push workflow path enables deployment.
+`publish_release=true` and `deploy_aws=false`. At the time of this investigation,
+the tag-push workflow path enabled deployment, so pushing a tag manually was
+unsafe. Current CI is manual-only; tags are still reserved by the approved
+publication workflow, not pushed manually.

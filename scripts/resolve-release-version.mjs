@@ -114,17 +114,14 @@ function writeOutput(values) {
 }
 
 function resolveReleaseVersion() {
-  const eventName = process.env.GITHUB_EVENT_NAME ?? "";
   const remoteVersions = readRemoteVersions();
   const stableRemoteVersions = remoteVersions.filter((version) => version.prerelease.length === 0);
 
-  const publish = eventName === "push" ? true : process.env.INPUT_PUBLISH_RELEASE === "true";
-  const deploy = eventName === "push" ? true : process.env.INPUT_DEPLOY_AWS === "true";
+  // Publication and deployment are explicit inputs, never inferred from a tag push.
+  const publish = process.env.INPUT_PUBLISH_RELEASE === "true";
+  const deploy = process.env.INPUT_DEPLOY_AWS === "true";
   const bump = process.env.INPUT_BUMP || "patch";
-  const requestedVersion =
-    eventName === "push"
-      ? (process.env.GITHUB_REF_NAME ?? "").replace(/^v/, "")
-      : (process.env.INPUT_VERSION ?? "").trim();
+  const requestedVersion = (process.env.INPUT_VERSION ?? "").trim();
 
   if (deploy && !publish) {
     throw new Error("deploy_aws=true requires publish_release=true");
@@ -138,7 +135,7 @@ function resolveReleaseVersion() {
   }
 
   const exactRemoteVersionExists = remoteVersions.some((remoteVersion) => remoteVersion.raw === version);
-  if (publish && eventName !== "push" && exactRemoteVersionExists) {
+  if (publish && exactRemoteVersionExists) {
     throw new Error(`Release version ${version} already exists as a remote release tag`);
   }
 

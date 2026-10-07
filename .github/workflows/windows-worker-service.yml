@@ -1,28 +1,7 @@
-name: Windows Worker service
+name: Worker cross-platform checks
 
 on:
   workflow_call:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'worker/**'
-      - 'domain/src/commonMain/kotlin/com/gromozeka/domain/service/DesktopScreenshotCapture.kt'
-      - 'infrastructure-ai/src/jvmMain/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
-      - 'infrastructure-ai/src/jvmTest/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
-      - 'deploy/distribution/gromozeka-worker*'
-      - 'deploy/distribution/package-standalone.sh'
-      - 'scripts/test-windows-worker-service.ps1'
-      - '.github/workflows/windows-worker-service.yml'
-  pull_request:
-    paths:
-      - 'worker/**'
-      - 'domain/src/commonMain/kotlin/com/gromozeka/domain/service/DesktopScreenshotCapture.kt'
-      - 'infrastructure-ai/src/jvmMain/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
-      - 'infrastructure-ai/src/jvmTest/kotlin/com/gromozeka/infrastructure/ai/tool/worker/**'
-      - 'deploy/distribution/gromozeka-worker*'
-      - 'deploy/distribution/package-standalone.sh'
-      - 'scripts/test-windows-worker-service.ps1'
-      - '.github/workflows/windows-worker-service.yml'
 
 permissions:
   contents: read
@@ -46,8 +25,15 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
-      - name: Build Worker and verify Computer Use contracts
-        run: ./gradlew :worker:assemble :worker:test --tests '*JvmComputerUseControllerTest' :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' -q
+      - name: Verify Worker, Computer Use and command process contracts
+        run: >
+          ./gradlew
+          :worker:assemble :server:assemble
+          :worker:test --tests '*JvmComputerUseControllerTest'
+          :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*JsonSchemaGeneratorTest'
+          :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
+          :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest'
+          -q
       - name: Verify real Windows service and standard-user permissions
         if: runner.os == 'Windows'
         shell: powershell
@@ -57,6 +43,14 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: windows-worker-service-${{ matrix.os }}
-          path: worker/build/reports/tests/test
+          path: |
+            worker/build/reports/tests/test
+            worker/build/test-results/test
+            infrastructure-ai/build/reports/tests/jvmTest
+            infrastructure-ai/build/test-results/jvmTest
+            application/build/reports/tests/jvmTest
+            application/build/test-results/jvmTest
+            server/build/reports/tests/test
+            server/build/test-results/test
           if-no-files-found: warn
           retention-days: 7

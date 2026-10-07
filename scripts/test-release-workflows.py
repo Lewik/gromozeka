@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""Offline release safety and artifact-graph contracts (no GitHub/AWS mutations)."""
+
+import os
+from pathlib import Path
+import subprocess
+import unittest
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+WORKFLOWS = ROOT / ".github/workflows"
+
+
+def load_yaml(path):
+    # BaseLoader preserves `on` and boolean input defaults as literal strings.
+    return yaml.load(path.read_text(), Loader=yaml.BaseLoader)
+
+
+RELEASE = load_yaml(WORKFLOWS / "release.yml")
+JOBS = RELEASE["jobs"]
+
+
+def needs(job):
+    value = JOBS[job].get("needs", [])
+    return {value} if isinstance(value, str) else set(value)
+
+
+def scripts(job):
+    return "\n".join(step.get("run", "") for step in job.get("steps", []))
+
+
+def artifact_options(job, action):
+    return [step["with"] for step in JOBS[job].get("steps", [])
+            if step.get("uses", "").startswith(f"actions/{action}-artifact@")]
+
+
+class WorkflowContracts(unittest.TestCase):
+    def test_only_manual_or_reusable_entrypoints(self):
+        expected = {
+            "release.yml": {"workflow_dispatch"},
+            "deploy-release.yml": {"workflow_dispatch", "workflow_call"},
+            "windows-worker-service.yml": {"workflow_call"},
+            "build-jni-libraries.yml": {"workflow_dispatch"},
+        }
+        self.assertEqual(set(expected), {p.name for p in WORKFLOWS.glob("*.y*ml")})
+        for filename, events in expected.items():
+            with self.subTest(workflow=filename):
+                self.assertEqual(events, set(load_yaml(WORKFLOWS / filename)["on"]))
+
+    def test_safe_dispatch_defaults(self):
+        inputs = RELEASE["on"]["workflow_dispatch"]["inputs"]
+        for name, default in (("publish_release", "false"), ("deploy_aws", "false"), ("skip_ios", "true")):
+            self.assertEqual(default, inputs[name]["default"])
+            self.assertEqual("boolean", inputs[name]["type"])
+        self.assertIn("!inputs.skip_ios", JOBS["verify-ios"]["if"])
+        self.assertIn('"$GITHUB_REF" != "refs/heads/main"', scripts(JOBS["metadata"]))
+
+    def test_graph_has_no_cycles_or_unknown_dependencies(self):
+        def visit(job, path):
+            self.assertIn(job, JOBS)
+            self.assertNotIn(job, path, f"Dependency cycle: {path} -> {job}")
+            for dependency in needs(job):
+                visit(dependency, path + [job])
+        for job in JOBS:
+            visit(job, [])
+            reusable = JOBS[job].get("uses", "")
+            if reusable.startswith("./"):
+                self.assertTrue((ROOT / reusable).is_file())
+
+    def test_build_parallelism_and_complete_publication_gate(self):
+        self.assertEqual({"metadata", "runtime-inputs", "verify-web"}, needs("server-image"))
+        self.assertEqual({"metadata", "runtime-inputs", "verify-web", "worker-launcher-macos"}, needs("standalone"))
+        self.assertEqual({"metadata"}, needs("runtime-inputs"))
+        required = {"verify-runtime", "verify-windows-worker", "verify-client", "verify-web",
+                    "verify-e2e", "verify-ios", "runtime-inputs", "standalone", "server-image",
+                    "client-macos", "client-windows", "browser-bridge"}
+        self.assertEqual(required, needs("verify"))
+        for job in required:
+            self.assertIn(f"needs.{job}.result == 'success'", JOBS["verify"]["if"])
+        self.assertIn("inputs.skip_ios && needs.verify-ios.result == 'skipped'", JOBS["verify"]["if"])
+
+    def test_shared_inputs_are_restored_not_rebuilt(self):
+        uploads = {item["name"]: item for item in artifact_options("runtime-inputs", "upload")}
+        self.assertEqual({"server/build/libs/gromozeka-server.jar", "worker/build/libs/gromozeka-worker.jar"},
+                         set(uploads["runtime-jars"]["path"].splitlines()))
+        self.assertEqual("build/release/browser-mcp-runtime.tar.gz", uploads["browser-mcp-runtime"]["path"])
+        self.assertIn(":server:bootJar :worker:bootJar", scripts(JOBS["runtime-inputs"]))
+        for job in ("standalone", "server-image"):
+            downloads = {item["name"]: item for item in artifact_options(job, "download")}
+            self.assertEqual(".", downloads["runtime-jars"]["path"])
+            self.assertIn("server-web-assets", downloads)
+            self.assertNotIn("gradlew", scripts(JOBS[job]))
+        self.assertIn("tar -xzf build/release/browser-mcp-runtime.tar.gz", scripts(JOBS["standalone"]))
+
+    def test_all_platform_packages_fan_in_without_collisions(self):
+        matrix = JOBS["standalone"]["strategy"]["matrix"]["include"]
+        self.assertEqual({("macos", "arm64"), ("linux", "x64"), ("windows", "x64")},
+                         {(item["platform"], item["architecture"]) for item in matrix})
+        for component in ("server", "worker"):
+            self.assertIn(f"package-standalone.sh {component}", scripts(JOBS["standalone"]))
+        self.assertEqual("standalone-packages-${{ matrix.platform }}-${{ matrix.architecture }}",
+                         artifact_options("standalone", "upload")[0]["name"])
+        download = next(item for item in artifact_options("release", "download")
+                        if item.get("pattern") == "standalone-packages-*")
+        self.assertEqual("true", download["merge-multiple"])
+
+    def test_image_build_needs_no_publication_credentials(self):
+        steps = JOBS["server-image"]["steps"]
+        build = next(step["with"] for step in steps if step.get("uses", "").startswith("docker/build-push-action@"))
+        self.assertEqual("false", build["push"])
+        self.assertIn("type=oci,", build["outputs"])
+        self.assertIn("skopeo copy --all --preserve-digests", scripts(JOBS["server-image"]))
+        self.assertNotIn("secrets.", str(JOBS["server-image"]))
+        self.assertFalse(any("login" in step.get("uses", "") or "configure-aws" in step.get("uses", "") for step in steps))
+        self.assertNotIn("build-push-action", str(JOBS["images"]))
+        self.assertIn("skopeo copy --all --preserve-digests", scripts(JOBS["images"]))
+        self.assertIn("oci-archive:$PWD/build/release/server-image.tar", scripts(JOBS["images"]))
+
+    def test_all_publication_operations_are_explicitly_gated(self):
+        for job in ("reserve-release-tag", "images", "release"):
+            self.assertIn("needs.metadata.outputs.publish == 'true'", JOBS[job]["if"])
+            self.assertIn("needs.verify.result == 'success'", JOBS[job]["if"])
+            self.assertIn("verify", needs(job))
+        self.assertIn("reserve-release-tag", needs("images"))
+        self.assertIn("images", needs("release"))
+        self.assertIn("needs.metadata.outputs.deploy == 'true'", JOBS["deploy"]["if"])
+        self.assertIn("needs.release.result == 'success'", JOBS["deploy"]["if"])
+
+    def test_removed_workflows_unique_checks_are_preserved(self):
+        e2e = scripts(JOBS["verify-e2e"])
+        for check in ("localization.py validate", "localization.py context",
+                      "generate-native-localization.py --check", "generate-font-resources.py --check", "e2e-tests/run.sh"):
+            self.assertIn(check, e2e)
+        worker = load_yaml(WORKFLOWS / "windows-worker-service.yml")
+        text = str(worker)
+        for check in ("ubuntu-latest", "windows-latest", "JvmComputerUseControllerTest", "GrzCaptureScreenshotToolImplTest",
+                      "GrzComputerUseToolsImplTest", "LocalCommandProcessRunnerTest", "JsonSchemaGeneratorTest",
+                      "DefaultCommandTaskServiceTest", "DefaultCommandMonitorServiceTest", "WorkerCommandRuntimeGatewayHandlerTest",
+                      "GrzCommandMonitorToolsTest", "test-windows-worker-service.ps1"):
+            self.assertIn(check, text)
+
+    def test_no_worker_image_dependency(self):
+        self.assertFalse((ROOT / "deploy/docker/worker.Dockerfile").exists())
+        compose = load_yaml(ROOT / "deploy/distribution/compose.yaml")
+        self.assertNotIn("worker", compose["services"])
+        self.assertNotIn("gromozeka-worker-home", compose["volumes"])
+        for filename in ("release.yml", "deploy-release.yml"):
+            text = (WORKFLOWS / filename).read_text()
+            self.assertNotIn("WORKER_REPOSITORY", text)
+            self.assertNotIn("worker.Dockerfile", text)
+            self.assertNotIn("ghcr.io/lewik/gromozeka-worker", text)
+
+
+class VersionResolver(unittest.TestCase):
+    def resolve(self, *, tags="v4.7.2\nv4.8.0\n", succeeds=True, **inputs):
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith(("INPUT_", "GITHUB_"))}
+        env.update(inputs)
+        result = subprocess.run(["node", str(ROOT / "scripts/resolve-release-version.mjs")],
+                                input=tags, text=True, capture_output=True, env=env, check=False)
+        if not succeeds:
+            self.assertNotEqual(0, result.returncode)
+            return result.stderr
+        self.assertEqual(0, result.returncode, result.stderr)
+        return dict(line.split("=", 1) for line in result.stdout.splitlines())
+
+    def test_build_only_and_push_never_implicitly_publish(self):
+        for event in ("workflow_dispatch", "push"):
+            result = self.resolve(GITHUB_EVENT_NAME=event, GITHUB_REF_NAME="v4.8.0")
+            self.assertEqual("false", result["publish"])
+            self.assertEqual("false", result["deploy"])
+            self.assertEqual("4.8.1", result["version"])
+
+    def test_generated_bumps_use_remote_tags(self):
+        for bump, version in (("patch", "4.8.1"), ("minor", "4.9.0"), ("major", "5.0.0")):
+            self.assertEqual(version, self.resolve(INPUT_BUMP=bump)["version"])
+
+    def test_publication_is_not_deployment(self):
+        result = self.resolve(INPUT_PUBLISH_RELEASE="true", INPUT_BUMP="minor")
+        self.assertEqual("true", result["publish"])
+        self.assertEqual("false", result["deploy"])
+        self.assertEqual("v4.9.0", result["tag"])
+        self.assertIn("requires publish_release=true", self.resolve(succeeds=False, INPUT_DEPLOY_AWS="true"))
+
+    def test_reserved_tags_cannot_be_reused_or_downgraded(self):
+        for version in ("4.7.2", "4.8.0", "4.7.9", "0.0.0-dev", "04.9.0"):
+            with self.subTest(version=version):
+                self.resolve(succeeds=False, INPUT_PUBLISH_RELEASE="true", INPUT_VERSION=version)
+        self.resolve(tags="v4.8.0\nv4.9.0-rc.1\n", succeeds=False,
+                     INPUT_PUBLISH_RELEASE="true", INPUT_VERSION="4.8.1")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

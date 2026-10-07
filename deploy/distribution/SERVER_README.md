@@ -28,5 +28,8 @@ Three TLS modes are available:
   operating systems must trust the issuing CA; Workers can additionally use
   `--ca-certificate` when their Java runtime does not.
 
-The optional containerized Worker does not include Claude Code. Claude Code is
-installed, licensed, and authenticated separately on a standalone Worker host.
+Install and enroll a standalone Worker on each computer that should execute
+tools. Worker archives for macOS, Windows and Linux are published with the same
+release; this stack does not contain a Worker service or distribute a Worker
+Docker image. Claude Code is installed, licensed, and authenticated separately
+on the standalone Worker host.

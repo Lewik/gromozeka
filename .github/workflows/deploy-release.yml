@@ -66,21 +66,15 @@ jobs:
           role-to-assume: ${{ vars.AWS_GROMOZEKA_DEPLOY_ROLE_ARN }}
           allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
 
-      - name: Verify immutable release images
+      - name: Verify immutable Server release image
         shell: bash
         env:
           VERSION: ${{ inputs.version }}
           SERVER_REPOSITORY: ${{ vars.AWS_GROMOZEKA_SERVER_REPOSITORY_NAME }}
-          WORKER_REPOSITORY: ${{ vars.AWS_GROMOZEKA_WORKER_REPOSITORY_NAME }}
         run: |
           test -n "$SERVER_REPOSITORY"
-          test -n "$WORKER_REPOSITORY"
           aws ecr describe-images \
             --repository-name "$SERVER_REPOSITORY" \
-            --image-ids "imageTag=$VERSION" \
-            >/dev/null
-          aws ecr describe-images \
-            --repository-name "$WORKER_REPOSITORY" \
             --image-ids "imageTag=$VERSION" \
             >/dev/null
 

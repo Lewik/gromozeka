@@ -10,7 +10,13 @@ server="gromozeka-smoke-server-$run_id"
 worker="gromozeka-smoke-worker-$run_id"
 platform="${GROMOZEKA_CLOUD_PLATFORM:-linux/amd64}"
 server_image="${GROMOZEKA_SERVER_IMAGE:-gromozeka/server:local}"
-worker_image="${GROMOZEKA_WORKER_IMAGE:-gromozeka/worker:local}"
+# Exercise the standalone Worker JAR in a disposable JRE, not a product image.
+worker_jar="$root_dir/worker/build/libs/gromozeka-worker.jar"
+worker_runtime_image="${GROMOZEKA_WORKER_TEST_RUNTIME_IMAGE:-eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2}"
+test -f "$worker_jar" || {
+  echo "Build the standalone Worker JAR first with deploy/aws/bin/build-images." >&2
+  exit 1
+}
 log_dir="$root_dir/logs/cloud-image-smoke"
 
 mkdir -p "$log_dir"
@@ -112,14 +118,18 @@ docker run -d \
   --platform "$platform" \
   --name "$worker" \
   --network "container:$server" \
+  --user 10001:10001 \
   --tmpfs /var/lib/gromozeka:uid=10001,gid=10001 \
+  --mount "type=bind,source=$worker_jar,target=/app/gromozeka-worker.jar,readonly" \
+  -e HOME=/var/lib/gromozeka \
+  -e GROMOZEKA_HOME=/var/lib/gromozeka \
   -e GROMOZEKA_MODE=prod \
   -e GROMOZEKA_SERVER_URL=http://127.0.0.1:8765 \
   -e GROMOZEKA_WORKER_GATEWAY_CREDENTIAL="$worker_gateway_credential" \
   -e GROMOZEKA_RUNTIME_WORKER_ID=cloud-primary \
   -e GROMOZEKA_RUNTIME_WORKER_VERSION=smoke \
   -e GROMOZEKA_RUNTIME_WORKER_CAPABILITIES=AI_REQUEST_RESPONSE,TOOL_EXECUTION,LOCAL_AGENT_TOOL \
-  "$worker_image" >/dev/null
+  "$worker_runtime_image" java -jar /app/gromozeka-worker.jar >/dev/null
 
 worker_registrations=0
 server_health="starting"

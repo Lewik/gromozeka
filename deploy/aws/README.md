@@ -4,15 +4,16 @@ The first production shape is deliberately small:
 
 - one `t3a.medium` On-Demand EC2 instance for Server and PostgreSQL;
 - a separate encrypted EBS data volume;
-- immutable Server and Worker images in ECR;
+- an immutable Server image in ECR; Workers use standalone host packages;
 - private S3 runtime bundles and nightly PostgreSQL/home backups;
 - no inbound security-group rules, SSH keys or long-lived GitHub AWS keys;
 - SSM for operations and Tailscale Serve for application access.
 
-GitHub Actions authenticates through OIDC. The release build role can only push
-the two ECR repositories. The deployment role can inspect those release images,
-publish a runtime bundle, and run the deployment SSM document against the
-single managed instance.
+GitHub Actions authenticates through OIDC. Releases publish only the Server
+image. Deployment verifies that image, publishes a runtime bundle, and runs
+the deployment SSM document against the single managed instance. The legacy
+Worker ECR repository and its IAM permissions remain in Terraform to preserve
+historical images; current build and deployment workflows do not use them.
 
 ## Local prerequisites
 
@@ -44,26 +45,47 @@ deploy/aws/bin/configure-github
 `terraform-plan` creates a saved plan. Review its resources and cost before
 running `terraform-apply`.
 
-## Release and deploy
+## Build, release and deploy
+
+All application workflows are manual. A push, pull request or tag does not
+start a build, release or deployment. Validate without publishing anything:
 
 ```bash
-gh workflow run release.yml \
-  --ref main \
-  --field version=1.7.0 \
-  --field publish_release=true \
-  --field deploy_aws=true
+gh workflow run release.yml --ref main \
+  --field publish_release=false --field deploy_aws=false --field skip_ios=true
 ```
 
-The release workflow tests and assembles every published artifact, pushes the
-same versioned Server and Worker images to GHCR and ECR, publishes the GitHub
-Release, then installs that exact release through SSM. Pushing a `v*` tag runs
-the same release-and-deploy path.
+The workflow tests and assembles the Client, standalone Server/Worker packages,
+Browser Bridge, and Server OCI image. Platform packages and the image build in
+parallel after their shared inputs are ready. iOS checks are optional; request
+`skip_ios=false` explicitly when needed. There is no Worker Docker image.
 
-Redeploy an already published release without rebuilding it:
+After approval, publish from `main` without deployment (choose the bump from
+all changes since the last published release; this example adds features):
 
 ```bash
-deploy/aws/bin/deploy 1.7.0
+gh workflow run release.yml --ref main \
+  --field bump=minor --field publish_release=true --field deploy_aws=false
 ```
+
+Leave `version` empty to calculate it from current remote tags. Only after all
+checks and artifact builds succeed does the workflow reserve `vX.Y.Z`, copy
+the already-built Server image to GHCR/ECR, and publish the GitHub Release.
+Do not create tags manually or reuse a reserved version. A major bump requires
+Lev's separate explicit approval; see the development guide's version policy.
+
+Deploy only when explicitly requested: set `deploy_aws=true` together with
+`publish_release=true`, or use the manual `deploy-release.yml` workflow for an
+existing release. The local equivalent for an already published release is:
+
+```bash
+deploy/aws/bin/deploy 4.8.0
+```
+
+Local image smoke checks use `deploy/aws/bin/build-images` followed by
+`deploy/aws/bin/smoke-images`. The latter runs the standalone Worker JAR inside
+a disposable vendor JRE container to check the gateway handshake; it does not
+build or publish a Worker image.
 
 ## Operate
 

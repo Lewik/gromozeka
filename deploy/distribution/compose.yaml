@@ -74,28 +74,8 @@ services:
         condition: service_healthy
     logging: *json-logging
 
-  worker:
-    profiles: ["worker"]
-    image: ghcr.io/lewik/gromozeka-worker:${GROMOZEKA_VERSION:-latest}
-    restart: unless-stopped
-    init: true
-    environment:
-      GROMOZEKA_MODE: prod
-      GROMOZEKA_LOG_DIR: /var/lib/gromozeka/logs
-      GROMOZEKA_SERVER_URL: ${GROMOZEKA_WORKER_GATEWAY_SERVER_URL:?GROMOZEKA_WORKER_GATEWAY_SERVER_URL is required}
-      GROMOZEKA_WORKER_GATEWAY_CREDENTIAL: ${GROMOZEKA_WORKER_GATEWAY_CREDENTIAL:?GROMOZEKA_WORKER_GATEWAY_CREDENTIAL is required}
-      GROMOZEKA_SERVER_CA_CERTIFICATE_PATH: ${GROMOZEKA_SERVER_CA_CERTIFICATE_PATH:-}
-      GROMOZEKA_RUNTIME_WORKER_ID: ${GROMOZEKA_RUNTIME_WORKER_ID:?GROMOZEKA_RUNTIME_WORKER_ID is required}
-      GROMOZEKA_RUNTIME_WORKER_VERSION: ${GROMOZEKA_VERSION:-latest}
-      GROMOZEKA_RUNTIME_WORKER_CAPABILITIES: AI_REQUEST_RESPONSE,TOOL_EXECUTION,LOCAL_AGENT_TOOL
-    volumes:
-      - gromozeka-worker-home:/var/lib/gromozeka
-      - ./certs:/certs:ro
-    logging: *json-logging
-
 volumes:
   postgres18-data:
   gromozeka-home:
-  gromozeka-worker-home:
   caddy-data:
   caddy-config:
