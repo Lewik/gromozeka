@@ -270,7 +270,7 @@ fun main(args: Array<String>) {
                             initialized = status.initialized,
                             submitting = connecting,
                             error = authenticationError,
-                            onSubmit = { input, deviceToken ->
+                            onSubmit = { input ->
                                 val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
                                 scope.launch {
                                     connecting = true
@@ -279,7 +279,6 @@ fun main(args: Array<String>) {
                                         connection.authenticate(
                                             initialized = status.initialized,
                                             input = input,
-                                            deviceToken = deviceToken,
                                         )
                                         startAuthenticatedRemoteApp(connection)
                                     } catch (error: CancellationException) {

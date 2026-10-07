@@ -15,6 +15,8 @@ import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskOutput
 import com.gromozeka.domain.service.CommandTaskService
+import com.gromozeka.domain.service.CommandTaskInputResult
+import com.gromozeka.domain.service.MAX_COMMAND_INPUT_BYTES
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -40,6 +42,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -105,6 +108,7 @@ class DefaultCommandTaskService(
         val conversationId = context.requiredConversationId()
         val workingDirectory = resolveWorkingDirectory(context.requiredWorkspaceRootPath(), request.working_directory)
         val taskId = CommandTask.Id(uuid7())
+        require(context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID) == null || !request.survive_worker_restart) { "Visual handlers cannot survive a Worker restart" }
         val processLifetime = if (request.survive_worker_restart) {
             CommandTask.ProcessLifetime.RESUMABLE
         } else {
@@ -128,6 +132,7 @@ class DefaultCommandTaskService(
                 workerId = workerId,
                 workspaceMountId = context.requiredWorkspaceMountId(),
                 agentDefinitionId = context.agentDefinitionIdOrNull(),
+                visualId = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID),
                 command = request.command,
                 workingDirectory = workingDirectory,
                 processLifetime = processLifetime,
@@ -173,7 +178,7 @@ class DefaultCommandTaskService(
             throw error
         }
         var resultTask = currentTask(conversationId, taskId) ?: activeCommand.task
-        if (resultTask.status == CommandTask.Status.WORKING && resultTask.agentDefinitionId != null) {
+        if (resultTask.status == CommandTask.Status.WORKING && resultTask.agentDefinitionId != null && resultTask.visualId == null) {
             resultTask = requestCompletionNotification(activeCommand)
         }
         return output(resultTask, 0)
@@ -200,7 +205,7 @@ class DefaultCommandTaskService(
         require(waitMillis in 0..MAX_COMMAND_TASK_WAIT_MILLIS) {
             "wait_ms must be between 0 and $MAX_COMMAND_TASK_WAIT_MILLIS"
         }
-        val initial = runtimeState.findCommandTask(conversationId, taskId) ?: return null
+        val initial = currentTask(conversationId, taskId) ?: return null
         check(initial.workerId == workerId) {
             "Command task ${taskId.value} belongs to worker ${initial.workerId.value}, not ${workerId.value}"
         }
@@ -225,11 +230,13 @@ class DefaultCommandTaskService(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
     ): Boolean = taskMutex(taskId).withLock {
-        val stored = runtimeState.findCommandTask(conversationId, taskId) ?: return@withLock false
-        if (stored.workerId != workerId) return@withLock false
-        if (stored.isTerminal) return@withLock false
-
         val activeCommand = activeCommands[taskId]
+        // This block already owns the active command's mutex; do not reacquire it via currentTask.
+        val stored = if (activeCommand != null) {
+            activeCommand.task.takeIf { it.conversationId == conversationId }
+        } else runtimeState.findCommandTask(conversationId, taskId)
+        if (stored == null || stored.workerId != workerId || stored.isTerminal) return@withLock false
+
         if (activeCommand != null) {
             if (activeCommand.task.isTerminal) return@withLock false
             if (!activeCommand.process.isAlive()) {
@@ -295,6 +302,51 @@ class DefaultCommandTaskService(
                 )
                 false
             }
+        }
+    }
+
+    override suspend fun sendInput(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+        bytes: ByteArray,
+        closeInput: Boolean,
+    ): CommandTaskInputResult {
+        require(bytes.isNotEmpty() || closeInput) { "Provide input bytes or request close_input" }
+        require(bytes.size <= MAX_COMMAND_INPUT_BYTES) { "Command input exceeds $MAX_COMMAND_INPUT_BYTES bytes" }
+        val input = bytes.copyOf()
+        check(!closed.get()) { "Command task service is closed" }
+        val stored = runtimeState.findCommandTask(conversationId, taskId)
+            ?: error("Command task not found in this conversation: ${taskId.value}")
+        check(stored.conversationId == conversationId && stored.workerId == workerId) {
+            "Command task does not belong to this conversation and Worker"
+        }
+        check(!stored.isTerminal && stored.cancellationRequestedAt == null) {
+            "Command task is finished or cancellation was requested"
+        }
+        val active = activeCommands[taskId]
+            ?: error("Command stdin is unavailable; input cannot be restored after a Worker restart")
+        // The lifecycle mutex must never be held during pipe I/O: a child that
+        // does not read stdin must still be cancellable to unblock a pending write.
+        return active.inputMutex.withLock {
+            active.mutex.withLock {
+                check(!closed.get()) { "Command task service is closed" }
+                check(active.task.conversationId == conversationId) { "Command conversation does not match" }
+                check(!active.task.isTerminal && active.task.cancellationRequestedAt == null && active.process.isAlive()) {
+                    "Command task is not running or cancellation was requested"
+                }
+                check(active.process.acceptsInput) {
+                    "Command stdin is unavailable after reconnecting to its process"
+                }
+            }
+            check(!active.inputClosed) { "Command stdin is already closed" }
+            runInterruptible(Dispatchers.IO) {
+                if (input.isNotEmpty()) active.process.writeInput(input)
+                if (closeInput) {
+                    active.inputClosed = true
+                    active.process.closeInput()
+                }
+            }
+            CommandTaskInputResult(taskId, input.size, active.inputClosed)
         }
     }
 
@@ -886,7 +938,7 @@ class DefaultCommandTaskService(
     ): CommandTask? {
         val activeCommand = activeCommands[taskId]
         if (activeCommand != null) {
-            return activeCommand.mutex.withLock { activeCommand.task }
+            return activeCommand.mutex.withLock { activeCommand.task.takeIf { it.conversationId == conversationId } }
         }
         return runtimeState.findCommandTask(conversationId, taskId)
     }
@@ -1014,6 +1066,8 @@ class DefaultCommandTaskService(
         val mutex: Mutex,
     ) {
         val completed = CompletableDeferred<Unit>()
+        val inputMutex = Mutex()
+        var inputClosed = false
         val synchronization = CommandSynchronizationState()
         val controlReads = CommandSynchronizationState()
         var lastControlPlaneWarningAtNanos: Long? = null

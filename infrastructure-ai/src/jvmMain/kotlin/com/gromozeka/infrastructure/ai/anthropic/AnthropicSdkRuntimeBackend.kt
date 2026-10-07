@@ -469,8 +469,8 @@ internal class AnthropicSdkMessageMapper(
         val instructionsPrefix = message.instructions
             .joinToString("\n") { it.toXmlLine() }
         val text = message.content
-            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            .joinToString("\n") { it.text }
+            .mapNotNull { it.userInputTextOrNull() }
+            .joinToString("\n")
 
         return listOf(instructionsPrefix, text)
             .filter { it.isNotBlank() }

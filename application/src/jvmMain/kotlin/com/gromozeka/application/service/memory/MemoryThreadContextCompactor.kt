@@ -274,6 +274,7 @@ private fun Conversation.Message.memoryCompactionCharCount(): Int =
     content.sumOf { item ->
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> item.text.length
+            is Conversation.Message.ContentItem.VisualInteraction -> item.modelText().length
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText.length
             is Conversation.Message.ContentItem.System -> item.content.length
             is Conversation.Message.ContentItem.Thinking -> 0
@@ -298,6 +299,7 @@ private fun Conversation.Message.renderForMemoryCompaction(maxChars: Int): Strin
     val body = content.mapNotNull { item ->
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> item.text
+            is Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             is Conversation.Message.ContentItem.System -> "[system:${item.level.name}] ${item.content}"
             is Conversation.Message.ContentItem.Thinking -> null

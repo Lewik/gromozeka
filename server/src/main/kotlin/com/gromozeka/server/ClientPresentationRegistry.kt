@@ -193,6 +193,24 @@ class ClientPresentationRegistry(
         }
     }
 
+    /** Ephemeral UI command, broadcast to the initiating user's connected clients only. */
+    suspend fun presentVisualHighlight(userId: User.Id, command: com.gromozeka.domain.visual.VisualHighlightCommand): Int =
+        deliveryMutex.withLock {
+            val targets = mutex.withLock { sessionsByKey.values.filter { it.userId == userId }.toList() }
+            var sent = 0
+            for (target in targets) {
+                try {
+                    target.send(com.gromozeka.remote.protocol.HighlightVisualDirective(command), target.encoding)
+                    sent++
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    log.warn(error) { "Visual highlight delivery failed: visual=${command.visualId} session=${target.identity.clientSessionId.value}" }
+                }
+            }
+            sent
+        }
+
     suspend fun present(userId: User.Id, message: Conversation.Message): Boolean =
         deliveryMutex.withLock {
             presentAssistantMessageToActiveClient(userId, message)

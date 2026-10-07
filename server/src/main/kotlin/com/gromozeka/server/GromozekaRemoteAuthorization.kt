@@ -251,6 +251,7 @@ class GromozekaRemoteAuthorization(
             is LoadCurrentMessagesRequest,
             is GetTokenStatsRequest,
             is GetMemoryActionItemsRequest,
+            is ListVisualsRequest,
             -> requireConversation(
                 user,
                 request.conversationId(),
@@ -278,6 +279,10 @@ class GromozekaRemoteAuthorization(
             is ControlConversationRuntimeRequest,
             is CancelCommandTaskRequest,
             is CancelCommandMonitorRequest,
+            is CreateVisualRequest,
+            is UpdateVisualRequest,
+            is CloseVisualRequest,
+            is VisualActionRequest,
             -> requireConversation(
                 user,
                 request.conversationId(),
@@ -328,6 +333,8 @@ class GromozekaRemoteAuthorization(
         when (query) {
             ConversationTabLayoutStateQuery -> Unit
             is ConversationRuntimeStateQuery ->
+                requireConversation(user, query.conversationId, ProjectPermission.READ)
+            is VisualsStateQuery ->
                 requireConversation(user, query.conversationId, ProjectPermission.READ)
             is ActiveGenerationStateQuery ->
                 requireConversation(user, query.conversationId, ProjectPermission.READ)
@@ -469,6 +476,11 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is ControlConversationRuntimeRequest -> conversationId
     is CancelCommandTaskRequest -> conversationId
     is CancelCommandMonitorRequest -> conversationId
+    is ListVisualsRequest -> conversationId
+    is CreateVisualRequest -> conversationId
+    is UpdateVisualRequest -> conversationId
+    is CloseVisualRequest -> conversationId
+    is VisualActionRequest -> conversationId
     else -> error("Request does not address a conversation: ${this::class.simpleName}")
 }
 

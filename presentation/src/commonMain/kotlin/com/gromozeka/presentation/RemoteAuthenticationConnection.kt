@@ -27,22 +27,14 @@ class RemoteAuthenticationConnection(
     suspend fun authenticate(
         initialized: Boolean,
         input: RemoteAuthenticationInput,
-        deviceToken: String? = null,
-    ): DeviceConnectionConsumeResponse? {
+    ) {
+        // Password login is independent of the optional, expiring QR/device challenge.
         if (initialized) {
-            if (deviceToken != null) {
-                return authenticateDeviceConnectionWithPassword(
-                    deviceToken = deviceToken,
-                    username = input.username,
-                    password = input.password,
-                )
-            } else {
-                authenticationClient.login(
-                    username = input.username,
-                    password = input.password,
-                    clientLabel = clientLabel,
-                )
-            }
+            authenticationClient.login(
+                username = input.username,
+                password = input.password,
+                clientLabel = clientLabel,
+            )
         } else {
             authenticationClient.bootstrap(
                 bootstrapToken = input.bootstrapToken,
@@ -52,7 +44,6 @@ class RemoteAuthenticationConnection(
                 clientLabel = clientLabel,
             )
         }
-        return null
     }
 
     suspend fun startDeviceConnection(
@@ -67,13 +58,6 @@ class RemoteAuthenticationConnection(
 
     suspend fun consumeDeviceConnection(deviceToken: String): DeviceConnectionConsumeResponse =
         deviceConnectionClient.consume(deviceToken)
-
-    suspend fun authenticateDeviceConnectionWithPassword(
-        deviceToken: String,
-        username: String,
-        password: String,
-    ): DeviceConnectionConsumeResponse =
-        deviceConnectionClient.connectWithPassword(deviceToken, username, password)
 
     fun deviceConnectionVerificationUrl(challenge: DeviceConnectionChallenge): String =
         deviceConnectionClient.verificationUrl(challenge)

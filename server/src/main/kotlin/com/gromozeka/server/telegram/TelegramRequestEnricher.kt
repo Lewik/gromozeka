@@ -7,8 +7,10 @@ import com.gromozeka.domain.repository.TelegramChannelRepository
 import com.gromozeka.domain.service.*
 import kotlinx.serialization.json.*
 import org.springframework.stereotype.Service
+import org.springframework.core.annotation.Order
 
 @Service
+@Order(0) // Filter/authorize the channel history before late live-context enrichers.
 class TelegramRequestEnricher(
     private val repository: TelegramChannelRepository,
     private val conversations: ConversationDomainService,

@@ -39,7 +39,7 @@ class AgentResponseReviewService(
             messages = messages, incoming = incoming, outgoing = outgoing, waitableIds = waitable,
             contextText = input.takeLast(16).joinToString("\n\n") { m ->
                 "${m.author?.displayName ?: m.role.name} [${m.id.value}]: " + m.content.mapNotNull {
-                    when (it) { is ContentItem.UserMessage -> it.text; is ContentItem.AssistantMessage -> it.structured.fullText; else -> null }
+                    when (it) { is ContentItem.UserMessage -> it.text; is ContentItem.VisualInteraction -> it.modelText(); is ContentItem.AssistantMessage -> it.structured.fullText; else -> null }
                 }.joinToString("\n").take(4000)
             }.takeLast(32_000),
             inputMessageIds = input.map { it.id.value }, createdAt = Clock.System.now(),

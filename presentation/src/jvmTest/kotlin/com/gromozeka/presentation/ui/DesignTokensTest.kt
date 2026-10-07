@@ -167,6 +167,30 @@ class DesignTokensTest {
     }
 
     @Test
+    fun multilineFieldKeepsTheRequestedRowsAndExplicitTextColorUsesDisabledStyling() = runComposeUiTest {
+        var enabled by mutableStateOf(true)
+        var disabledColor = Color.Unspecified
+        setContent {
+            GromozekaTheme {
+                val colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors()
+                SideEffect { disabledColor = colors.disabledTextColor }
+                CompactTextField(TextFieldValue("Palette text"), {}, Modifier.width(300.dp).testTag("field"),
+                    enabled = enabled, minLines = 3, maxLines = 3,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.Magenta))
+            }
+        }
+        onNodeWithTag("field").assertHeightIsAtLeast(80.dp)
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        onNodeWithTag("field").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(Color.Magenta, layouts.last().layoutInput.style.color)
+        runOnIdle { enabled = false }
+        onNodeWithTag("field").assertIsNotEnabled().assertHeightIsAtLeast(80.dp)
+        layouts.clear()
+        onNodeWithTag("field").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(disabledColor, layouts.last().layoutInput.style.color)
+    }
+
+    @Test
     fun compactFieldGrowsForLargeFontsInsteadOfClippingToTokenHeight() = runComposeUiTest {
         setContent {
             GromozekaTheme {

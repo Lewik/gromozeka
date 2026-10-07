@@ -685,6 +685,7 @@ internal class ClaudeCodeCliRuntime(
     ): String =
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> xmlBlock("text", item.text)
+            is Conversation.Message.ContentItem.VisualInteraction -> xmlBlock("visual_interaction", item.modelText())
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
             is Conversation.Message.ContentItem.Thinking -> xmlBlock("thinking", item.thinking)
             is Conversation.Message.ContentItem.System -> xmlBlock("system", item.content)
@@ -803,6 +804,7 @@ internal class ClaudeCodeCliRuntime(
     private fun contentSignature(item: Conversation.Message.ContentItem): String =
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> "user:${item.text}"
+            is Conversation.Message.ContentItem.VisualInteraction -> "visual_interaction:${item.eventJson()}"
             is Conversation.Message.ContentItem.AssistantMessage -> {
                 val structured = item.structured
                 "assistant:${structured.fullText}:${structured.ttsText}:${structured.voiceTone}:" +

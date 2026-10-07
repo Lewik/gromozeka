@@ -566,6 +566,7 @@ private fun MemoryReadRequest.targetMessageText(): String {
     return target.content.mapNotNull { item ->
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> item.text
+            is Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             is Conversation.Message.ContentItem.ToolCall -> "Tool call: ${item.call.name}"
             is Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"

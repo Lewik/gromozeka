@@ -100,6 +100,7 @@ class SuggestedRepliesGenerationService(
     private fun Conversation.Message.visibleText(): String = content.mapNotNull { item ->
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> item.text
+            is Conversation.Message.ContentItem.VisualInteraction -> "[Visual button action] ${item.caption()}"
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             else -> null
         }

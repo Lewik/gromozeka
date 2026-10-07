@@ -77,6 +77,7 @@ class ExposedMessageRepository(
 internal fun Conversation.Message.searchText(): String = content.mapNotNull { item ->
     when (item) {
         is Conversation.Message.ContentItem.UserMessage -> item.text
+        is Conversation.Message.ContentItem.VisualInteraction -> "[Visual button action] ${item.caption()}"
         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
         is Conversation.Message.ContentItem.ToolResult -> item.result
             .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()

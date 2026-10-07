@@ -143,7 +143,7 @@ private fun GromozekaIosApp() {
                     initialized = requireNotNull(authenticationStatus).initialized,
                     submitting = connecting,
                     error = authenticationError,
-                    onSubmit = { input, deviceToken ->
+                    onSubmit = { input ->
                         val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
                         scope.launch {
                             connecting = true
@@ -152,7 +152,6 @@ private fun GromozekaIosApp() {
                                 connection.authenticate(
                                     requireNotNull(authenticationStatus).initialized,
                                     input,
-                                    deviceToken,
                                 )
                                 val authenticatedStatus = connection.status()
                                 authenticationStatus = authenticatedStatus

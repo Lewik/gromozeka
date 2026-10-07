@@ -24,6 +24,7 @@ import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_TASK_TOOL_NAME
 import com.gromozeka.domain.tool.filesystem.GRZ_LIST_COMMANDS_AND_MONITORS_TOOL_NAME
 import com.gromozeka.domain.tool.filesystem.GRZ_MONITOR_COMMAND_TOOL_NAME
 import com.gromozeka.domain.tool.filesystem.GRZ_READ_FILE_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_SEND_COMMAND_INPUT_TOOL_NAME
 import com.gromozeka.domain.tool.filesystem.GRZ_WRITE_FILE_TOOL_NAME
 import com.gromozeka.domain.tool.requiredProjectId
 import com.gromozeka.domain.tool.requiredWorkerId
@@ -65,6 +66,7 @@ private val corePreloadedToolNames = setOf(
     GRZ_EDIT_FILE_TOOL_NAME,
     GRZ_WRITE_FILE_TOOL_NAME,
     GRZ_GET_COMMAND_TASK_TOOL_NAME,
+    GRZ_SEND_COMMAND_INPUT_TOOL_NAME,
     GRZ_CANCEL_COMMAND_TASK_TOOL_NAME,
     GRZ_MONITOR_COMMAND_TOOL_NAME,
     GRZ_GET_COMMAND_MONITOR_TOOL_NAME,

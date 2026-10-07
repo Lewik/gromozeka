@@ -226,6 +226,31 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
+    fun `history retry waits between task completion and durable result publication`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val dispatcher = ConversationRuntimeDispatcher(coordinator, InMemoryConversationRuntimeEventBus(),
+            testConversationRuntimeStateSyncService(coordinator), acceptingArtifactReferenceValidator)
+        val history = ConversationHistoryRuntimeApplicationService(dispatcher, coordinator)
+        val taskId = ConversationRuntimeTask.Id("history-publication-window")
+        val ids = listOf(Conversation.Message.Id("message-1"))
+        assertTrue(dispatcher.submitHistoryMutation(conversationId, taskId, ConversationHistoryMutation.Delete(ids), actorUser().id))
+        val descriptor = serverExecutorDescriptor("history-test", setOf(ConversationRuntimeCapability.CONVERSATION_TURN))
+        assertNotNull(coordinator.claimDeliveredTask(conversationId, taskId, descriptor.identity, descriptor.capabilities, emptySet()))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, taskId, descriptor.identity, Clock.System.now()))
+        assertTrue(coordinator.completeActiveTask(conversationId, taskId, descriptor.identity,
+            ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE)))
+        assertFalse(coordinator.schedulingSnapshot(conversationId).containsTask(taskId))
+        assertNull(coordinator.findHistoryChanged(conversationId, taskId))
+        val retry = async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            history.deleteMessages(actorUser(), taskId, conversationId, ids)
+        }
+        assertFalse(retry.isCompleted)
+        coordinator.recordEvent(ConversationRuntimeEvent.HistoryChanged(conversationId, taskId, ConversationHistoryMutationKind.DELETE))
+        withTimeout(TEST_EVENT_TIMEOUT_MS) { retry.await() }
+        assertTrue(coordinator.listPending(conversationId).isEmpty())
+    }
+
+    @Test
     fun `dispatcher starts idle conversation for after tool result message`() = runBlocking {
         val harness = dispatcherHarness()
         try {
@@ -391,6 +416,55 @@ class ConversationRuntimeDispatcherTest {
         } finally {
             harness.close()
         }
+    }
+
+    @Test
+    fun `response interrupt cancels ordinary commands but leaves visual handlers running`() = runBlocking<Unit> {
+        val harness = dispatcherHarness()
+        try {
+            val now = Clock.System.now()
+            val ordinary = CommandTask(
+                id = CommandTask.Id("ordinary-command"), conversationId = conversationId,
+                workerId = ConversationRuntimeWorkerId("worker-1"), workspaceMountId = WorkspaceMount.Id("mount-1"),
+                command = "tail -f log", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
+                processId = 100, processStartedAt = now, outputFile = "/tmp/ordinary.log", outputBytes = 0,
+                createdAt = now, updatedAt = now,
+            )
+            val visual = ordinary.copy(id = CommandTask.Id("visual-handler"), visualId = "visual-1", command = "visual handler")
+            harness.coordinator.upsertCommandTask(ordinary)
+            harness.coordinator.upsertCommandTask(visual)
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, userMessage("response-to-interrupt"), agentDefinitionId))
+            harness.runner.awaitStarted()
+
+            assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT))
+            assertNotNull(harness.coordinator.findCommandTask(conversationId, ordinary.id)?.cancellationRequestedAt)
+            assertNull(harness.coordinator.findCommandTask(conversationId, visual.id)?.cancellationRequestedAt)
+            assertEquals(CommandTask.Status.WORKING, harness.coordinator.findCommandTask(conversationId, visual.id)?.status)
+            waitUntil { harness.coordinator.find(conversationId)?.activeTaskId == null }
+
+            // The dedicated command cancellation remains an explicit way to stop a handler.
+            assertTrue(harness.dispatcher.cancelCommandTask(conversationId, visual.id))
+            assertNotNull(harness.coordinator.findCommandTask(conversationId, visual.id)?.cancellationRequestedAt)
+        } finally { harness.close() }
+    }
+
+    @Test
+    fun `interrupt without an active answer does not cancel a visual-only conversation`() = runBlocking<Unit> {
+        val harness = dispatcherHarness()
+        try {
+            val now = Clock.System.now()
+            val visual = CommandTask(
+                id = CommandTask.Id("idle-visual-handler"), conversationId = conversationId,
+                workerId = ConversationRuntimeWorkerId("worker-1"), workspaceMountId = WorkspaceMount.Id("mount-1"),
+                visualId = "visual-1", command = "visual handler", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
+                processId = 101, processStartedAt = now, outputFile = "/tmp/visual.log", outputBytes = 0,
+                createdAt = now, updatedAt = now,
+            )
+            harness.coordinator.upsertCommandTask(visual)
+            assertFalse(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT))
+            assertNull(harness.coordinator.findCommandTask(conversationId, visual.id)?.cancellationRequestedAt)
+            assertEquals(CommandTask.Status.WORKING, harness.coordinator.findCommandTask(conversationId, visual.id)?.status)
+        } finally { harness.close() }
     }
 
     @Test

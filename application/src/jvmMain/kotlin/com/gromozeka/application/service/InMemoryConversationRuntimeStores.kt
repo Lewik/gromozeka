@@ -465,7 +465,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         mutex.withLock {
             commandTasksByConversation[conversationId]
                 .orEmpty()
-                .filter { it.status == CommandTask.Status.WORKING }
+                .filter { it.status == CommandTask.Status.WORKING && it.visualId == null }
                 .count { task ->
                     requestCommandTaskCancellationLocked(conversationId, task.id, requestedAt)
                 }

@@ -33,6 +33,8 @@ class ToolSecretResolutionService(
     }
 
     private fun collectNames(call: Conversation.Message.ContentItem.ToolCall): Set<String> = buildSet {
+        // Visual markup/state are public UI data. Only its private handler launcher resolves command references.
+        if (call.call.name == "grz_visual") return@buildSet
         addAll(collectExactNames(call.call.input))
         if (call.call.name == GRZ_EXECUTE_COMMAND_TOOL_NAME) {
             call.call.input.jsonObject["command"]
@@ -73,6 +75,7 @@ class SecretArgumentSubstitutor(
         values: Map<String, String>,
         isWindows: Boolean = System.getProperty("os.name").lowercase().contains("windows"),
     ): PreparedToolArguments {
+        if (toolName == "grz_visual") return PreparedToolArguments(arguments)
         if (toolName != GRZ_EXECUTE_COMMAND_TOOL_NAME) {
             return PreparedToolArguments(substitute(arguments, values))
         }

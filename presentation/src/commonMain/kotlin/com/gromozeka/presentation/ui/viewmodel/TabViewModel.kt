@@ -163,16 +163,36 @@ class TabViewModel(
 
     fun rememberHistoryAnchor(messageId: Conversation.Message.Id?) { historyAnchor.value = messageId }
 
-    fun loadOlderHistory() {
-        val cursor = _olderHistory.value ?: return
-        if (_historyLoading.value) return
-        scope.launch { loadHistoryPage(ConversationHistoryPageRequest(before = cursor)) }
+    fun loadOlderHistory() { loadAdjacentHistory(null, older = true) }
+    fun loadNewerHistory() { loadAdjacentHistory(null, older = false) }
+
+    fun loadOlderHistory(expectedFirstMessageId: Conversation.Message.Id) {
+        loadAdjacentHistory(expectedFirstMessageId, older = true)
     }
 
-    fun loadNewerHistory() {
-        val cursor = _newerHistory.value ?: return
-        if (_historyLoading.value) return
-        scope.launch { loadHistoryPage(ConversationHistoryPageRequest(after = cursor)) }
+    fun loadNewerHistory(expectedLastMessageId: Conversation.Message.Id) {
+        loadAdjacentHistory(expectedLastMessageId, older = false)
+    }
+
+    /** Called under historyMutex; optimistic/live rows outside the page do not move its boundary. */
+    private fun loadedHistoryBoundary(messages: List<Conversation.Message>, older: Boolean): Conversation.Message.Id? =
+        (if (older) messages.firstOrNull { it.id in historyPositions }
+        else messages.lastOrNull { it.id in historyPositions })?.id
+
+    private fun loadAdjacentHistory(expectedBoundary: Conversation.Message.Id?, older: Boolean) {
+        scope.launch {
+            val request = historyMutex.withLock {
+                if (_historyLoading.value) return@withLock null
+                val boundary = loadedHistoryBoundary(_allMessages.value, older) ?: return@withLock null
+                // The UI can still display the previous window after its request has completed.
+                // Never turn a callback from that window into a request using a newer cursor.
+                if (expectedBoundary != null && boundary != expectedBoundary) return@withLock null
+                val cursor = (if (older) _olderHistory.value else _newerHistory.value) ?: return@withLock null
+                if (older) ConversationHistoryPageRequest(before = cursor) else ConversationHistoryPageRequest(after = cursor)
+            } ?: return@launch
+            // loadHistoryPage also rechecks the cursor after acquiring the request mutex.
+            loadHistoryPage(request)
+        }
     }
 
     fun loadLatestHistory() {
@@ -560,11 +580,11 @@ class TabViewModel(
         }
     }
 
-    val filteredMessages: StateFlow<List<Conversation.Message>> = combine(
+    val historyContent: StateFlow<ConversationHistoryContent> = combine(
         allMessages,
         settingsFlow
     ) { messages, settings ->
-        messages.filter { message ->
+        val visibleMessages = messages.filter { message ->
             val containsOnlyToolResults = message.content.isNotEmpty() &&
                     message.content.all { it is Conversation.Message.ContentItem.ToolResult }
 
@@ -580,10 +600,13 @@ class TabViewModel(
                         }
             }
         }
+        historyMutex.withLock {
+            ConversationHistoryContent(visibleMessages, loadedHistoryBoundary(messages, older = true), loadedHistoryBoundary(messages, older = false))
+        }
     }.stateIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = ConversationHistoryContent()
     )
 
     val toolResultsMap: StateFlow<Map<String, Conversation.Message.ContentItem.ToolResult>> =
@@ -824,6 +847,7 @@ class TabViewModel(
 
     fun editPendingMessage(messageId: String) {
         val message = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
+        if (!message.editable) return
         _pendingMessages.update { messages ->
             messages.filterNot { it.id == messageId }
         }
@@ -1533,6 +1557,13 @@ private fun UIState.Tab.withSelectedMessageInstruction(
     return copy(activeMessageInstructionIds = activeMessageInstructionIds - groupInstructionIds + selectedId)
 }
 
+/** Visible messages and their unfiltered loaded-window boundaries are one presentation snapshot. */
+data class ConversationHistoryContent(
+    val messages: List<Conversation.Message> = emptyList(),
+    val firstLoadedMessageId: Conversation.Message.Id? = null,
+    val lastLoadedMessageId: Conversation.Message.Id? = null,
+)
+
 data class PendingUserMessage(
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id?,
@@ -1543,9 +1574,15 @@ data class PendingUserMessage(
     val id: String get() = userMessage.id.value
 
     val text: String
-        get() = userMessage.content
-            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            .joinToString("\n") { it.text }
+        get() = userMessage.content.mapNotNull { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.UserMessage -> item.text
+                is Conversation.Message.ContentItem.VisualInteraction -> "[Visual] ${item.caption()}"
+                else -> null
+            }
+        }.joinToString("\n")
+
+    val editable: Boolean get() = userMessage.content.none { it is Conversation.Message.ContentItem.VisualInteraction }
 
     val artifacts: List<com.gromozeka.domain.model.Artifact.Reference>
         get() = userMessage.content

@@ -15,6 +15,8 @@ data class CommandTask(
     val workerId: ConversationRuntimeWorkerId,
     val workspaceMountId: WorkspaceMount.Id,
     val agentDefinitionId: AgentDefinition.Id? = null,
+    /** Owned interactive handler; never recovered or automatically delivered as a command transcript. */
+    val visualId: String? = null,
     val command: String,
     val workingDirectory: String,
     val processLifetime: ProcessLifetime = ProcessLifetime.WORKER_BOUND,

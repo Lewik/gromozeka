@@ -221,7 +221,7 @@ private fun GromozekaAndroidApp(
                     initialized = requireNotNull(authenticationStatus).initialized,
                     submitting = connecting,
                     error = authenticationError,
-                    onSubmit = { input, deviceToken ->
+                    onSubmit = { input ->
                         val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
                         scope.launch {
                             connecting = true
@@ -230,7 +230,6 @@ private fun GromozekaAndroidApp(
                                 connection.authenticate(
                                     requireNotNull(authenticationStatus).initialized,
                                     input,
-                                    deviceToken,
                                 )
                                 val authenticatedStatus = connection.status()
                                 authenticationStatus = authenticatedStatus

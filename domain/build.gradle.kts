@@ -31,6 +31,7 @@ kotlin {
                 api(project(":state-sync"))
                 api(libs.kotlinx.datetime)
                 api(libs.kotlinx.serialization.json)
+                implementation(libs.kxml)
                 api(libs.kotlinx.coroutines.core)  // For StateFlow, SharedFlow
             }
         }

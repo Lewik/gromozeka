@@ -109,6 +109,7 @@ class GromozekaRemoteServer(
     private val workerCatalogService: WorkerCatalogService,
     private val workerAccessService: WorkerAccessService,
     private val conversationRuntimeService: ConversationRuntimeService,
+    private val visualService: com.gromozeka.application.service.VisualApplicationService,
     private val conversationRuntimeDispatcher: ConversationRuntimeDispatcher,
     private val conversationRuntimeStateSyncService: ConversationRuntimeStateSyncService,
     private val activeGenerationStateSyncService: ActiveGenerationStateSyncService,
@@ -298,7 +299,8 @@ class GromozekaRemoteServer(
     }
 
     private fun ClientRequest.isConcurrentRequest(): Boolean =
-        this is GetSpeechCaptureAvailabilityRequest ||
+        this is CreateVisualRequest || this is UpdateVisualRequest || this is VisualActionRequest || this is CloseVisualRequest ||
+            this is GetSpeechCaptureAvailabilityRequest ||
             this is StartSpeechCaptureRequest ||
             this is StopSpeechCaptureRequest ||
             this is CancelSpeechCaptureRequest ||
@@ -847,6 +849,15 @@ class GromozekaRemoteServer(
                     conversationRuntimeService.cancelCommandMonitor(request.conversationId, request.monitorId)
                 )
 
+                is ListVisualsRequest -> VisualsResponse(visualService.list(user, request.conversationId))
+                is CreateVisualRequest -> VisualResponse(visualService.create(user, request.conversationId, request.visual))
+                is UpdateVisualRequest -> VisualResponse(visualService.update(user, request.conversationId, request.visualId, request.update))
+                is CloseVisualRequest -> {
+                    visualService.close(user, request.conversationId, request.visualId)
+                    OperationResultResponse(true)
+                }
+                is VisualActionRequest -> VisualActionResponse(visualService.act(user, request.conversationId, request.action))
+
                 is GetMemoryActionItemsRequest -> loadMemoryActionItems(request)
 
                 is TranscribeAudioRequest -> transcribeAudio(user, request.recording)
@@ -1045,6 +1056,11 @@ class GromozekaRemoteServer(
                     authenticatedSession = authenticatedSession,
                     subscription = conversationRuntimeStateSyncService.subscribe(query.conversationId),
                 )
+                is VisualsStateQuery -> observeStateSyncSubscription(
+                    sender = sender, command = command, encoding = encoding,
+                    authenticatedSession = authenticatedSession,
+                    subscription = visualService.subscribe(query.conversationId),
+                )
                 is ActiveGenerationStateQuery -> observeStateSyncSubscription(
                     sender = sender,
                     command = command,
@@ -1160,6 +1176,9 @@ class GromozekaRemoteServer(
                     cursor = it.cursor.toRemote(),
                     state = ConversationRuntimeStatePayload(it.value),
                 )
+            }
+            is VisualsStateQuery -> visualService.snapshot(query.conversationId).let {
+                StateSyncSnapshotResponse(query = query, cursor = it.cursor.toRemote(), state = VisualsStatePayload(it.value))
             }
             is ActiveGenerationStateQuery -> activeGenerationStateSyncService.snapshot(query.conversationId).let {
                 StateSyncSnapshotResponse(

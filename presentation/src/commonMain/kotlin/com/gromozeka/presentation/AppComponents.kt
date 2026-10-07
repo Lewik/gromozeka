@@ -93,6 +93,7 @@ data class AppComponents(
     val workspaceManagementService: WorkspaceManagementService,
     val workerCatalogService: WorkerCatalogService,
     val conversationService: ConversationDomainService,
+    val visualService: com.gromozeka.domain.visual.VisualService,
     val quickTextActionService: QuickTextActionService,
     val quickTextActionRunner: QuickTextActionRunner,
     val conversationSearchViewModel: ConversationSearchViewModel,

@@ -60,7 +60,7 @@ fun RemoteAuthenticationScreen(
     initialized: Boolean,
     submitting: Boolean,
     error: Throwable?,
-    onSubmit: (RemoteAuthenticationInput, deviceToken: String?) -> Unit,
+    onSubmit: (RemoteAuthenticationInput) -> Unit,
     onStartDeviceConnection: suspend () -> DeviceConnectionChallenge,
     onConsumeDeviceConnection: suspend (String) -> DeviceConnectionConsumeResponse,
     deviceConnectionVerificationUrl: (DeviceConnectionChallenge) -> String,
@@ -77,8 +77,8 @@ fun RemoteAuthenticationScreen(
     var restartKey by remember(initialized) { mutableIntStateOf(0) }
     val currentOnDeviceConnected by rememberUpdatedState(onDeviceConnected)
 
-    LaunchedEffect(initialized, restartKey) {
-        if (!initialized) return@LaunchedEffect
+    LaunchedEffect(initialized, restartKey, usePassword) {
+        if (!initialized || usePassword) return@LaunchedEffect
         connectionStarting = true
         connectionMessage = null
         challenge = null
@@ -195,14 +195,13 @@ fun RemoteAuthenticationScreen(
                         initialized = initialized,
                         submitting = submitting,
                         error = error,
-                        deviceToken = challenge?.deviceToken,
                         onSubmit = onSubmit,
                     )
                     if (initialized) {
                         Spacer(Modifier.height(8.dp))
                         TextButton(
                             onClick = { usePassword = false },
-                            enabled = !submitting && challenge != null,
+                            enabled = !submitting,
                         ) {
                             Text(translation.text("auth.device.useConnectionCode"))
                         }
@@ -294,8 +293,7 @@ private fun PasswordAuthenticationContent(
     initialized: Boolean,
     submitting: Boolean,
     error: Throwable?,
-    deviceToken: String?,
-    onSubmit: (RemoteAuthenticationInput, deviceToken: String?) -> Unit,
+    onSubmit: (RemoteAuthenticationInput) -> Unit,
 ) {
     val translation = LocalTranslation.current
     var username by remember(initialized) { mutableStateOf("") }
@@ -325,7 +323,6 @@ private fun PasswordAuthenticationContent(
                     displayName = displayName,
                     bootstrapToken = bootstrapToken,
                 ),
-                deviceToken,
             )
         }
     }

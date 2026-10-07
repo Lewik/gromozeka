@@ -85,6 +85,7 @@ object Icons {
         val Send = Res.drawable.msr_send
         val Settings = Res.drawable.msr_settings
         val SmartToy = Res.drawable.msr_smart_toy
+        val SouthWest = Res.drawable.msr_south_west
         val Star = Res.drawable.msr_star
         val Stop = Res.drawable.msr_stop
         val Subject = Res.drawable.msr_subject

@@ -590,6 +590,7 @@ private class GitHubCopilotRequestMapper {
     private fun contentToTranscript(item: Conversation.Message.ContentItem): String =
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> xmlBlock("text", item.text)
+            is Conversation.Message.ContentItem.VisualInteraction -> xmlBlock("visual_interaction", item.modelText())
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
             is Conversation.Message.ContentItem.Thinking -> xmlBlock("thinking", item.thinking)
             is Conversation.Message.ContentItem.System -> xmlBlock("system", item.content)
