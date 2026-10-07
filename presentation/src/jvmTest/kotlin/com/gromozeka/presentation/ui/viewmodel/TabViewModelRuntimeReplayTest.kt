@@ -280,6 +280,129 @@ class TabViewModelRuntimeReplayTest {
         }
     }
 
+    @Test
+    fun `stale displayed boundaries cannot load an extra page in either direction`() = runTest {
+        for (older in listOf(true, false)) {
+            val thread = Conversation.Thread.Id("thread-1")
+            fun message(position: Int) = Conversation.Message(
+                Conversation.Message.Id("message-$position"), Conversation.Id("conversation-1"),
+                role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.UserMessage("Message $position")),
+                createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+            )
+            fun page(range: IntRange) = ConversationHistoryPage(
+                thread, range.map { ConversationHistoryMessage(it, message(it)) },
+                older = range.first.takeIf { it > 0 }?.let { ConversationHistoryCursor(thread, it) },
+                newer = ConversationHistoryCursor(thread, range.last),
+            )
+            val requests = mutableListOf<ConversationHistoryPageRequest>()
+            var response = page(100..149)
+            val model = viewModel(backgroundScope, MutableSharedFlow()) { request -> requests += request; response }
+            backgroundScope.launch { model.historyContent.collect {} }
+            runCurrent()
+            val displayed = model.historyContent.value
+            fun load(content: ConversationHistoryContent) {
+                if (older) model.loadOlderHistory(requireNotNull(content.firstLoadedMessageId))
+                else model.loadNewerHistory(requireNotNull(content.lastLoadedMessageId))
+            }
+            response = page(if (older) 50..99 else 150..199)
+            // Multiple callbacks may already be queued before Compose sees loading=true.
+            load(displayed)
+            load(displayed)
+            runCurrent()
+            assertEquals(100, model.allMessages.value.size)
+            assertFalse(model.historyLoading.value)
+            assertEquals(2, requests.size)
+
+            response = page(if (older) 0..49 else 200..249)
+            // The request/cursor is complete, but the renderer still has its previous snapshot.
+            repeat(3) { load(displayed) }
+            runCurrent()
+            assertEquals(2, requests.size, "An old viewport must not advance the new cursor")
+            assertEquals(100, model.allMessages.value.size)
+
+            // Once the updated window is displayed, its next boundary remains loadable.
+            load(model.historyContent.value)
+            runCurrent()
+            assertEquals(3, requests.size)
+            assertEquals(150, model.allMessages.value.size)
+            assertEquals(if (older) 50 else 199, (requests.last().before ?: requests.last().after)!!.position)
+        }
+    }
+
+    @Test
+    fun `visible history carries raw boundaries including filtered tool results`() = runTest {
+        val thread = Conversation.Thread.Id("thread-1")
+        fun message(position: Int, hidden: Boolean) = Conversation.Message(
+            Conversation.Message.Id("message-$position"), Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = if (hidden) listOf(Conversation.Message.ContentItem.ToolResult(
+                Conversation.Message.ContentItem.ToolCall.Id("call-$position"), "tool",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("Result")), isError = false,
+            )) else listOf(Conversation.Message.ContentItem.UserMessage("Visible")),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        var response = ConversationHistoryPage(thread,
+            (100..102).map { ConversationHistoryMessage(it, message(it, it != 101)) },
+            older = ConversationHistoryCursor(thread, 100), newer = ConversationHistoryCursor(thread, 102))
+        val requests = mutableListOf<ConversationHistoryPageRequest>()
+        val model = viewModel(backgroundScope, MutableSharedFlow()) { request -> requests += request; response }
+        backgroundScope.launch { model.historyContent.collect {} }
+        runCurrent()
+        val displayed = model.historyContent.value
+        assertEquals(listOf(message(101, false).id), displayed.messages.map { it.id })
+        assertEquals(message(100, true).id, displayed.firstLoadedMessageId)
+        assertEquals(message(102, true).id, displayed.lastLoadedMessageId)
+
+        response = ConversationHistoryPage(thread,
+            (98..99).map { ConversationHistoryMessage(it, message(it, true)) },
+            older = ConversationHistoryCursor(thread, 98))
+        model.loadOlderHistory(requireNotNull(displayed.firstLoadedMessageId))
+        runCurrent()
+        assertEquals(2, requests.size)
+        assertEquals(100, requests.last().before!!.position)
+        assertEquals(displayed.messages, model.historyContent.value.messages)
+        assertEquals(message(98, true).id, model.historyContent.value.firstLoadedMessageId)
+        model.loadOlderHistory(requireNotNull(displayed.firstLoadedMessageId))
+        runCurrent()
+        assertEquals(2, requests.size, "Identical visible content must not keep an obsolete raw boundary")
+    }
+
+    @Test
+    fun `optimistic tail cannot hide a changed newer page boundary`() = runTest {
+        val thread = Conversation.Thread.Id("thread-1")
+        fun message(position: Int) = Conversation.Message(
+            Conversation.Message.Id("message-$position"), Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Message $position")),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        fun page(range: IntRange) = ConversationHistoryPage(thread,
+            range.map { ConversationHistoryMessage(it, message(it)) },
+            newer = ConversationHistoryCursor(thread, range.last))
+        val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 4)
+        val requests = mutableListOf<ConversationHistoryPageRequest>()
+        var response = page(100..149)
+        val model = viewModel(backgroundScope, events) { request -> requests += request; response }
+        backgroundScope.launch { model.historyContent.collect {} }
+        runCurrent()
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            Conversation.Id("conversation-1"), taskId = null, message = message(999), cursorSequence = 1))
+        runCurrent()
+        val displayed = model.historyContent.value
+        assertEquals(message(999).id, displayed.messages.last().id)
+        assertEquals(message(149).id, displayed.lastLoadedMessageId)
+        response = page(150..199)
+        model.loadNewerHistory(requireNotNull(displayed.lastLoadedMessageId))
+        runCurrent()
+        assertEquals(message(999).id, model.historyContent.value.messages.last().id)
+        assertEquals(message(199).id, model.historyContent.value.lastLoadedMessageId)
+        model.loadNewerHistory(requireNotNull(displayed.lastLoadedMessageId))
+        runCurrent()
+        assertEquals(2, requests.size)
+        assertEquals(101, model.allMessages.value.size)
+    }
+
     private fun viewModel(
         scope: CoroutineScope,
         runtimeEvents: MutableSharedFlow<ConversationRuntimeEvent>,

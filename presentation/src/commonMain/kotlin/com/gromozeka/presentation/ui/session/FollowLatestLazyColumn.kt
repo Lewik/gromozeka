@@ -53,6 +53,8 @@ internal fun <T> FollowLatestLazyColumn(
     hasOlderItems: Boolean = false,
     hasNewerItems: Boolean = false,
     isLoadingHistory: Boolean = false,
+    // Raw page boundaries can change even when all newly loaded rows are filtered out.
+    paginationKey: Any? = null,
     onLoadOlder: () -> Unit = {},
     onLoadNewer: () -> Unit = {},
     onLoadLatest: () -> Unit = {},
@@ -174,7 +176,7 @@ internal fun <T> FollowLatestLazyColumn(
             }
     }
 
-    LaunchedEffect(listState, items, hasOlderItems, hasNewerItems, isLoadingHistory) {
+    LaunchedEffect(listState, items, hasOlderItems, hasNewerItems, isLoadingHistory, paginationKey) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.key } }.distinctUntilChanged().collect { keys ->
             val first = items.indexOfFirst { itemKey(it) in keys }
             val last = items.indexOfLast { itemKey(it) in keys }

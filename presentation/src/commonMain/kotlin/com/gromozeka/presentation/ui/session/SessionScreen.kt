@@ -109,7 +109,9 @@ fun SessionScreen(
     val spacing = GromozekaTheme.spacing
     val controls = GromozekaTheme.controls
     // All data comes from ViewModel
-    val filteredHistory by viewModel.filteredMessages.collectAsState()
+    // Capture one immutable emission: paging callbacks must not re-read a newer State.value.
+    val historyContent = viewModel.historyContent.collectAsState().value
+    val filteredHistory = historyContent.messages
     val allMessages by viewModel.allMessages.collectAsState()
     val olderHistory by viewModel.olderHistory.collectAsState()
     val newerHistory by viewModel.newerHistory.collectAsState()
@@ -591,7 +593,7 @@ fun SessionScreen(
                         }
                     }
                     if (olderHistory != null) {
-                        TextButton(onClick = viewModel::loadOlderHistory, enabled = !historyLoading) {
+                        TextButton(onClick = { viewModel.loadOlderHistory() }, enabled = !historyLoading) {
                             Text(localization.text("chat.history.loadOlder"))
                         }
                     }
@@ -601,8 +603,9 @@ fun SessionScreen(
                             hasOlderItems = olderHistory != null,
                             hasNewerItems = newerHistory != null,
                             isLoadingHistory = historyLoading,
-                            onLoadOlder = viewModel::loadOlderHistory,
-                            onLoadNewer = viewModel::loadNewerHistory,
+                            paginationKey = historyContent.firstLoadedMessageId to historyContent.lastLoadedMessageId,
+                            onLoadOlder = { historyContent.firstLoadedMessageId?.let { viewModel.loadOlderHistory(it) } },
+                            onLoadNewer = { historyContent.lastLoadedMessageId?.let { viewModel.loadNewerHistory(it) } },
                             onLoadLatest = viewModel::loadLatestHistory,
                             onVisibleItemChanged = { viewModel.rememberHistoryAnchor(it?.message?.id) },
                             itemKey = MessageListEntry::key,

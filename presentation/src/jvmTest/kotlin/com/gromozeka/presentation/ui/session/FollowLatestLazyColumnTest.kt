@@ -140,6 +140,40 @@ class FollowLatestLazyColumnTest {
         kotlin.test.assertEquals(before, onNodeWithTag(anchorTag).fetchSemanticsNode().boundsInRoot.top)
     }
 
+    @Test
+    fun rawPageBoundaryChangesRefreshPagingEvenWhenVisibleRowsDoNotChange() = runDesktopComposeUiTest(width = 390, height = 500) {
+        val values = (0..30).toList()
+        val pageBoundary = androidx.compose.runtime.mutableIntStateOf(0)
+        val requestedBoundaries = mutableListOf<Int>()
+        setContent {
+            val boundary = pageBoundary.intValue
+            MaterialTheme {
+                FollowLatestLazyColumn(
+                    items = values, itemKey = { it }, contentRevision = values,
+                    unreadLabel = { "$it new messages" }, modifier = Modifier.fillMaxSize(),
+                    hasOlderItems = true, paginationKey = boundary,
+                    onLoadOlder = { if (requestedBoundaries.lastOrNull() != boundary) requestedBoundaries += boundary },
+                ) { value, _ ->
+                    Text("Message $value", modifier = Modifier.fillMaxWidth().height(72.dp).testTag(itemTag(value)))
+                }
+            }
+        }
+        waitForTag(itemTag(30))
+        repeat(5) {
+            if (requestedBoundaries.isEmpty()) {
+                onNodeWithTag(UiTestTag.MessageList.value).performTouchInput { swipeDown() }
+                waitForIdle()
+            }
+        }
+        runOnIdle {
+            kotlin.test.assertEquals(listOf(0), requestedBoundaries)
+            // A page of hidden messages advanced the raw boundary, not the visible rows.
+            pageBoundary.intValue = 1
+        }
+        waitForIdle()
+        runOnIdle { kotlin.test.assertEquals(listOf(0, 1), requestedBoundaries) }
+    }
+
     private fun activityMessages(): List<Conversation.Message> =
         (0..8).map { index ->
             activityTestMessage("text-$index", Conversation.Message.ContentItem.AssistantMessage(
