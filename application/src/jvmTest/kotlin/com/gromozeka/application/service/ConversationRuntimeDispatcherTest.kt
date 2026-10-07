@@ -226,6 +226,31 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
+    fun `history retry waits between task completion and durable result publication`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val dispatcher = ConversationRuntimeDispatcher(coordinator, InMemoryConversationRuntimeEventBus(),
+            testConversationRuntimeStateSyncService(coordinator), acceptingArtifactReferenceValidator)
+        val history = ConversationHistoryRuntimeApplicationService(dispatcher, coordinator)
+        val taskId = ConversationRuntimeTask.Id("history-publication-window")
+        val ids = listOf(Conversation.Message.Id("message-1"))
+        assertTrue(dispatcher.submitHistoryMutation(conversationId, taskId, ConversationHistoryMutation.Delete(ids), actorUser().id))
+        val descriptor = serverExecutorDescriptor("history-test", setOf(ConversationRuntimeCapability.CONVERSATION_TURN))
+        assertNotNull(coordinator.claimDeliveredTask(conversationId, taskId, descriptor.identity, descriptor.capabilities, emptySet()))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, taskId, descriptor.identity, Clock.System.now()))
+        assertTrue(coordinator.completeActiveTask(conversationId, taskId, descriptor.identity,
+            ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE)))
+        assertFalse(coordinator.schedulingSnapshot(conversationId).containsTask(taskId))
+        assertNull(coordinator.findHistoryChanged(conversationId, taskId))
+        val retry = async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            history.deleteMessages(actorUser(), taskId, conversationId, ids)
+        }
+        assertFalse(retry.isCompleted)
+        coordinator.recordEvent(ConversationRuntimeEvent.HistoryChanged(conversationId, taskId, ConversationHistoryMutationKind.DELETE))
+        withTimeout(TEST_EVENT_TIMEOUT_MS) { retry.await() }
+        assertTrue(coordinator.listPending(conversationId).isEmpty())
+    }
+
+    @Test
     fun `dispatcher starts idle conversation for after tool result message`() = runBlocking {
         val harness = dispatcherHarness()
         try {

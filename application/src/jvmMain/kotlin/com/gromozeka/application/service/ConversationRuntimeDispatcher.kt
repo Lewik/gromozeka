@@ -263,7 +263,10 @@ class ConversationRuntimeDispatcher(
                     target = ConversationRuntimeTaskTarget.Server,
                 ),
                 createdAt = Clock.System.now(),
-            )
+            ),
+            // A completed task can briefly precede its durable HistoryChanged event.
+            // A retry must keep waiting for that result, not be rejected in this window.
+            acceptPreviouslySubmitted = true,
         )
     }
 
@@ -362,8 +365,11 @@ class ConversationRuntimeDispatcher(
         }
     }
 
-    private suspend fun submitRuntimeTask(task: ConversationRuntimeTask): Boolean {
-        val accepted = runtimeCoordinator.submit(task)
+    private suspend fun submitRuntimeTask(
+        task: ConversationRuntimeTask,
+        acceptPreviouslySubmitted: Boolean = false,
+    ): Boolean {
+        val accepted = runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
         if (accepted) {
             publishRuntimeSnapshot(task.conversationId)
         }
