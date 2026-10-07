@@ -603,6 +603,31 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `windows startup acknowledges a published marker without reading its locked contents`() {
+        assumeTrue("Windows sharing modes are required", isWindows)
+        withTemporaryGromozekaHome { home ->
+            val marker = File(home, "ready.start").apply { writeText("1") }
+            val lock = lockWindowsFile(marker)
+            val input = java.io.ByteArrayOutputStream()
+            val process = object : Process() {
+                override fun getOutputStream() = input
+                override fun getInputStream() = java.io.ByteArrayInputStream(byteArrayOf())
+                override fun getErrorStream() = java.io.ByteArrayInputStream(byteArrayOf())
+                override fun waitFor() = 0
+                override fun exitValue() = 0
+                override fun isAlive() = true
+                override fun destroy() = Unit
+            }
+            try {
+                WindowsLocalCommandHost().releaseProcessStart(process, marker)
+                assertEquals("start\r\n", input.toString(Charsets.US_ASCII))
+            } finally {
+                check(Kernel32.INSTANCE.CloseHandle(lock)) { "Cannot release marker lock" }
+            }
+        }
+    }
+
+    @Test
     fun `windows artifact deletion retries a temporary sharing lock`() {
         assumeTrue("Windows sharing modes are required", isWindows)
         withTemporaryGromozekaHome { home ->

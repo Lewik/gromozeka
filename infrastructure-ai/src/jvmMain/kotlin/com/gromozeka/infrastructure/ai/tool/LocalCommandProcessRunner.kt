@@ -637,9 +637,15 @@ internal class WindowsLocalCommandHost(
     override fun releaseProcessStart(process: Process, processStartFile: File) {
         process.outputStream.write("start\r\n".toByteArray(StandardCharsets.US_ASCII))
         process.outputStream.flush()
-        // Wait for cmd to finish consuming the handshake before application stdin
-        // can be written; otherwise set /p could read ahead into the first payload.
-        awaitPositiveLong(processStartFile, STARTUP_HANDSHAKE_MILLIS)
+        // The atomically published marker is a readiness signal, not a value to
+        // read. Windows may still hold a sharing lock briefly after the rename.
+        // Wait before exposing stdin so set /p cannot read ahead into user input.
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(STARTUP_HANDSHAKE_MILLIS)
+        while (!processStartFile.isFile) {
+            check(process.isAlive) { "Windows command stopped before its startup handshake" }
+            check(System.nanoTime() < deadline) { "Windows command did not acknowledge its startup handshake" }
+            Thread.sleep(STARTUP_POLL_MILLIS)
+        }
     }
 
     override fun bindToWorker(processTreeId: Long, outputFile: File): LocalWorkerLifetimeBinding {
