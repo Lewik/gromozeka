@@ -232,6 +232,7 @@ class WorkerGatewayOperationHandler(
     private val workerAudioCaptureHandler: WorkerAudioCaptureHandler,
     private val workerWorkspaceTextFileHandler: WorkerWorkspaceTextFileHandler,
     private val parallelToolExecutor: ParallelToolExecutor,
+    private val visualRuntime: VisualWorkerRuntime,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -275,6 +276,11 @@ class WorkerGatewayOperationHandler(
                         workerWorkspaceTextFileHandler,
                     )
 
+                WorkerGatewayOperation.VISUAL_COMMAND -> {
+                    val operation = json.decodeFromString<com.gromozeka.remote.protocol.VisualWorkerCommand>(request.payload.decodeToString())
+                    json.encodeToString(visualRuntime.execute(operation)).encodeToByteArray()
+                }
+
                 WorkerGatewayOperation.TOOL_EXECUTION -> {
                     val toolRequest = json.decodeFromString<WorkerToolExecutionRequest>(
                         request.payload.decodeToString()
@@ -300,6 +306,7 @@ class WorkerGatewayOperationHandler(
 
                 WorkerGatewayOperation.ARTIFACT_CONTENT,
                 WorkerGatewayOperation.COMMAND_RUNTIME_STATE,
+                WorkerGatewayOperation.VISUAL_OUTPUT,
                 WorkerGatewayOperation.WORKSPACE_STATE,
                 WorkerGatewayOperation.AGENT_SKILL_PACKAGE,
                 WorkerGatewayOperation.AGENT_SKILL_IMPORT ->

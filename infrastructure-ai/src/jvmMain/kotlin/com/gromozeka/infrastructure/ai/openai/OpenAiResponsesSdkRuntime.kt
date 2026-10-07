@@ -362,8 +362,8 @@ internal class OpenAiResponsesMessageMapper(
 
     private fun userText(message: Conversation.Message): String {
         val instructions = message.instructions.joinToString("\n") { it.toXmlLine() }
-        val text = message.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            .joinToString("\n") { it.text }
+        val text = message.content.mapNotNull { it.userInputTextOrNull() }
+            .joinToString("\n")
         return listOf(instructions, text).filter(String::isNotBlank).joinToString("\n").trim()
     }
 

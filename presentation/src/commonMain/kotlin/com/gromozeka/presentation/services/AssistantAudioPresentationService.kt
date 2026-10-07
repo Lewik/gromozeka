@@ -44,7 +44,7 @@ class AssistantAudioPresentationService(
             .onEach { directive ->
                 when (directive) {
                     is PresentAssistantMessageDirective -> schedulePresentation(directive)
-                    is PlayClientFeedbackDirective -> Unit
+                    is PlayClientFeedbackDirective, is com.gromozeka.remote.protocol.HighlightVisualDirective -> Unit
                     StopTtsDirective -> stopPlayback()
                 }
             }

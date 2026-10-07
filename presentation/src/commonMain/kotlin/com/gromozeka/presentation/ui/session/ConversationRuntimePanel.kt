@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.visual.Visual
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
@@ -117,8 +118,22 @@ fun ConversationRuntimePanel(
     tabSelection: RuntimeAgentTabSelection = remember { RuntimeAgentTabSelection() },
     replyRoutingContent: @Composable () -> Unit = {},
     inspectionRequest: RuntimeInspectionRequest? = null,
+    visuals: List<Visual> = emptyList(),
+    selectedVisualId: String? = null,
+    dirtyVisualIds: Set<String> = emptySet(),
+    highlightedVisualIds: Set<String> = emptySet(),
+    onClearVisualHighlights: (String) -> Unit = {},
+    onSelectVisual: (String?) -> Unit = {},
+    onCloseVisual: (Visual) -> Unit = {},
+    visualContent: @Composable (Visual) -> Unit = {},
+    visualLoadError: String? = null,
 ) {
     val translation = LocalTranslation.current.runtime
+    val localization = LocalTranslation.current
+    val selectedVisual = visuals.firstOrNull { it.id == selectedVisualId }
+    LaunchedEffect(inspectionRequest?.sequence) {
+        if (inspectionRequest?.conversationId == conversationId) onSelectVisual(null)
+    }
     val aiCatalogSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
     val visibleRuntime = runtimeSnapshot?.takeIf { it.conversationId == conversationId }
     val participantAgentIds = remember(participants) {
@@ -165,78 +180,113 @@ fun ConversationRuntimePanel(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
         ) {
-            Column(modifier = Modifier.padding(GromozekaTheme.spacing.contentPadding)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = translation.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    CompactIconButton(
-                        onClick = onClose,
-                        icon = Icons.Default.Close,
-                        contentDescription = translation.closePanelDescription,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    )
-                }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    replyRoutingContent()
-                    RuntimeAgentSection(
-                        conversationId = conversationId,
-                        participantAgentIds = participantAgentIds,
-                        participantsLoaded = participants != null,
-                        agentDefinitions = agentDefinitions,
-                        agentLoadFailed = agentLoadFailed,
-                        selectedAgentId = selectedAgentId,
-                        onSelectAgent = { tabSelection.select(conversationId, it) },
-                        aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
-                        tokenStats = tokenStats,
-                        runtimeSnapshot = visibleRuntime,
-                    )
-                    // Thread usage and provider-account quotas are not owned by the selected tab.
-                    key(conversationId) {
-                        RuntimeUsageCard(
-                            isVisible = isVisible,
-                            agents = connectedAgents,
-                            aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
-                            tokenStats = tokenStats,
-                            quotaService = aiSubscriptionQuotaService,
+            Column(modifier = Modifier.fillMaxSize()) {
+                Column(Modifier.padding(horizontal = GromozekaTheme.spacing.contentPadding)
+                    .padding(top = GromozekaTheme.spacing.contentPadding)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = selectedVisual?.title ?: translation.title,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
                         )
-                        TokenStatisticsTable(
-                            tokenStats = tokenStats,
-                            modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeTokenStatistics.value),
+                        CompactIconButton(
+                            onClick = { if (selectedVisual != null) onCloseVisual(selectedVisual) else onClose() },
+                            icon = Icons.Default.Close,
+                            contentDescription = if (selectedVisual != null) localization.text("visuals.close") else translation.closePanelDescription,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
+                        )
+                    }
+
+                    if (visuals.isNotEmpty()) {
+                        SecondaryScrollableTabRow(
+                            selectedTabIndex = if (selectedVisual == null) 0 else visuals.indexOf(selectedVisual) + 1,
+                            edgePadding = 0.dp,
+                            modifier = Modifier.fillMaxWidth().testTag("visual-tabs"),
+                        ) {
+                            Tab(selected = selectedVisual == null, onClick = { onSelectVisual(null) },
+                                text = { Text(translation.title, maxLines = 1) }, modifier = Modifier.testTag("visual-tab-runtime"))
+                            visuals.forEach { visual ->
+                                VisualTab(visual.id, visual.title,
+                                    selected = visual.id == selectedVisualId,
+                                    dirty = visual.id in dirtyVisualIds,
+                                    highlighted = visual.id in highlightedVisualIds,
+                                    onSelect = { onSelectVisual(visual.id) },
+                                    onClose = { onCloseVisual(visual) },
+                                    onClearHighlight = { onClearVisualHighlights(visual.id) },
+                                )
+                            }
+                        }
+                    }
+                    visualLoadError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                }
+                if (selectedVisual != null) {
+                    Box(Modifier.weight(1f).fillMaxWidth()) { visualContent(selectedVisual) }
+                } else {
+                    Column(Modifier.weight(1f).fillMaxWidth()
+                        .padding(horizontal = GromozekaTheme.spacing.contentPadding)
+                        .padding(bottom = GromozekaTheme.spacing.contentPadding)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            replyRoutingContent()
+                            RuntimeAgentSection(
+                                conversationId = conversationId,
+                                participantAgentIds = participantAgentIds,
+                                participantsLoaded = participants != null,
+                                agentDefinitions = agentDefinitions,
+                                agentLoadFailed = agentLoadFailed,
+                                selectedAgentId = selectedAgentId,
+                                onSelectAgent = { tabSelection.select(conversationId, it) },
+                                aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
+                                tokenStats = tokenStats,
+                                runtimeSnapshot = visibleRuntime,
+                            )
+                            // Thread usage and provider-account quotas are not owned by the selected tab.
+                            key(conversationId) {
+                                RuntimeUsageCard(
+                                    isVisible = isVisible,
+                                    agents = connectedAgents,
+                                    aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
+                                    tokenStats = tokenStats,
+                                    quotaService = aiSubscriptionQuotaService,
+                                )
+                                TokenStatisticsTable(
+                                    tokenStats = tokenStats,
+                                    modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeTokenStatistics.value),
+                                )
+                            }
+                        }
+
+                        // Memory activity UI is hidden while the memory subsystem is being redesigned.
+                        RuntimeTasksSection(
+                            runtimeSnapshot = visibleRuntime,
+                            onCancelCommandTask = onCancelCommandTask,
+                            onCancelCommandMonitor = onCancelCommandMonitor,
+                            inspectionRequest = inspectionRequest?.takeIf { isVisible && it.conversationId == conversationId },
+                        )
+
+                        PendingMessagesSection(
+                            isWaitingForResponse = isWaitingForResponse,
+                            pendingMessages = pendingMessages,
+                            onSendInCurrentTurn = onSendInCurrentTurn,
+                            onEdit = onEditPendingMessage,
+                            onCancel = onCancelPendingMessage,
                         )
                     }
                 }
-
-                // Memory activity UI is hidden while the memory subsystem is being redesigned.
-                RuntimeTasksSection(
-                    runtimeSnapshot = visibleRuntime,
-                    onCancelCommandTask = onCancelCommandTask,
-                    onCancelCommandMonitor = onCancelCommandMonitor,
-                    inspectionRequest = inspectionRequest?.takeIf { isVisible && it.conversationId == conversationId },
-                )
-
-                PendingMessagesSection(
-                    isWaitingForResponse = isWaitingForResponse,
-                    pendingMessages = pendingMessages,
-                    onSendInCurrentTurn = onSendInCurrentTurn,
-                    onEdit = onEditPendingMessage,
-                    onCancel = onCancelPendingMessage,
-                )
 
 
             }
@@ -1059,7 +1109,7 @@ private fun PendingMessageGroup(
                         Text(translation.runtime.currentTurnLabel)
                     }
                 }
-                TextButton(onClick = { onEdit(message.id) }) {
+                if (message.editable) TextButton(onClick = { onEdit(message.id) }) {
                     Text(translation.runtime.editButton)
                 }
                 TextButton(onClick = { onCancel(message.id) }) {
@@ -1187,3 +1237,35 @@ private fun Long.formatBytes(): String = when {
 
 private fun Int.formatWithCommas(): String =
     toString().reversed().chunked(3).joinToString(",").reversed()
+
+/** Highlight the entire native Tab hit area, not just the title's Text bounds. */
+@Composable
+internal fun VisualTab(
+    id: String, title: String, selected: Boolean, dirty: Boolean, highlighted: Boolean,
+    onSelect: () -> Unit, onClose: () -> Unit, onClearHighlight: () -> Unit,
+) {
+    VisualHighlightContainer(highlighted, "tab-$id", onClearHighlight,
+        modifier = Modifier.testTag("visual-tab-container-$id"),
+        shape = androidx.compose.ui.graphics.RectangleShape,
+        boundedGlow = true,
+    ) {
+        Tab(selected = selected, onClick = onSelect, modifier = Modifier.testTag("visual-tab-$id"),
+            text = { VisualTabTitle(id, title, dirty, onClose) })
+    }
+}
+
+/** Host chrome: the title and close button keep identical bounds with or without the dirty dot. */
+@Composable
+internal fun VisualTabTitle(id: String, title: String, dirty: Boolean, onClose: () -> Unit) {
+    val translation = LocalTranslation.current
+    VisualDirtyBadge(dirty, "visual-dirty-$id", Modifier.testTag("visual-title-$id")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 140.dp).testTag("visual-tab-label-$id"),
+                color = MaterialTheme.colorScheme.onSurface)
+            IconButton(onClick = onClose, modifier = Modifier.size(28.dp).testTag("visual-close-$id")) {
+                Icon(Icons.Default.Close, contentDescription = translation.text("visuals.close"), modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}

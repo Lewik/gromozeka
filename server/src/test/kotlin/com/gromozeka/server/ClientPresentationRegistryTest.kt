@@ -28,6 +28,25 @@ import kotlin.test.assertTrue
 
 class ClientPresentationRegistryTest {
     @Test
+    fun highlightsGoToConnectedClientsOfOnlyTheActingUserWithoutOfflineReplay() = runBlocking<Unit> {
+        val registry = ClientPresentationRegistry()
+        val first = mutableListOf<ServerPayload>(); val second = mutableListOf<ServerPayload>(); val other = mutableListOf<ServerPayload>()
+        registry.registerClient("first", "first", "first", first)
+        registry.registerClient("second", "second", "second", second)
+        registry.registerClient("other", "other", "other", other, USER_2)
+        val command = com.gromozeka.domain.visual.VisualHighlightCommand("highlight-1", Conversation.Id("conversation-1"), "visual", 1, listOf("field"))
+        assertEquals(2, registry.presentVisualHighlight(USER_1, command))
+        assertEquals(command, assertIs<com.gromozeka.remote.protocol.HighlightVisualDirective>(first.single()).command)
+        assertEquals(first, second)
+        assertTrue(other.isEmpty())
+        registry.disconnect("first"); registry.disconnect("second")
+        assertEquals(0, registry.presentVisualHighlight(USER_1, command.copy(commandId = "offline")))
+        val reconnected = mutableListOf<ServerPayload>()
+        registry.registerClient("reconnected", "first", "first", reconnected)
+        assertTrue(reconnected.isEmpty())
+    }
+
+    @Test
     fun routesSpeechOnlyToMostRecentlyActiveClient() = runBlocking {
         val registry = ClientPresentationRegistry()
         val firstClientEvents = mutableListOf<ServerPayload>()

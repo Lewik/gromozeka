@@ -121,6 +121,7 @@ class ConversationRuntimeDispatcher(
     ): Boolean {
         require(expectedTurnId == null || action == ConversationRuntimeControlAction.INTERRUPT)
         val cancelledCommands = if (action == ConversationRuntimeControlAction.INTERRUPT && expectedTurnId == null) {
+            // Visual handlers are excluded: interrupting an answer is not closing its panels.
             runtimeCoordinator.requestCommandTaskCancellations(conversationId, Clock.System.now())
         } else {
             0

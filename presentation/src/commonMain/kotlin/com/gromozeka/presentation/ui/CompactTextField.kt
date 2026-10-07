@@ -17,6 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.TextFieldValue
@@ -33,12 +37,24 @@ fun CompactTextField(
     placeholder: @Composable (() -> Unit)? = null,
     errorMessage: String? = null,
     singleLine: Boolean = false,
+    minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     shape: Shape = MaterialTheme.shapes.small,
+    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
     val controls = GromozekaTheme.controls
+    val minHeight = if (!singleLine && minLines > 1) {
+        // BasicTextField's minLines is not reflected in every intrinsic measurement.
+        // Auto-sized Grid rows need the same minimum before their final tight measure.
+        // Measure font metrics rather than assuming pixels/sp or a fixed line height.
+        val measurer = rememberTextMeasurer()
+        val oneLine = measurer.measure("H", style = textStyle, softWrap = false).size.height
+        val twoLines = measurer.measure("H\nH", style = textStyle, softWrap = false).size.height
+        val textHeight = with(LocalDensity.current) { (oneLine + (twoLines - oneLine) * (minLines - 1)).toDp() }
+        maxOf(controls.minHeight, textHeight + controls.verticalPadding * 2)
+    } else controls.minHeight
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
     val defaults = OutlinedTextFieldDefaults.colors()
@@ -55,13 +71,14 @@ fun CompactTextField(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = modifier.defaultMinSize(minHeight = controls.minHeight)
+            modifier = modifier.defaultMinSize(minHeight = minHeight)
                 .semantics { errorMessage?.let { error(it) } },
             enabled = enabled,
             readOnly = readOnly,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor),
+            textStyle = textStyle.copy(color = if (!enabled || isError) textColor else textStyle.color.takeOrElse { textColor }),
             cursorBrush = SolidColor(if (isError) colors.errorCursorColor else colors.cursorColor),
             singleLine = singleLine,
+            minLines = minLines,
             maxLines = maxLines,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,

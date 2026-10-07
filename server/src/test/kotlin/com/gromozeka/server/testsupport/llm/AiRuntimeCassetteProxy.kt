@@ -933,6 +933,7 @@ private fun AiResponseFormat.toCassetteJson(runtimeBindings: AiRuntimeCassetteRu
 private fun Conversation.Message.ContentItem.extractCassetteRuntimeText(): String {
     return when (this) {
         is Conversation.Message.ContentItem.UserMessage -> text
+        is Conversation.Message.ContentItem.VisualInteraction -> modelText()
         is Conversation.Message.ContentItem.ToolCall -> buildString {
             appendLine(id.value)
             appendLine(call.name)
@@ -1031,6 +1032,14 @@ private fun Conversation.Message.ContentItem.toStableCassetteContentItem(
 ): Conversation.Message.ContentItem {
     return when (this) {
         is Conversation.Message.ContentItem.UserMessage -> copy(text = normalizeRuntimeText(text, runtimeBindings))
+        is Conversation.Message.ContentItem.VisualInteraction -> copy(
+            visualId = normalizeRuntimeText(visualId, runtimeBindings),
+            visualTitle = normalizeRuntimeText(visualTitle, runtimeBindings),
+            eventId = normalizeRuntimeText(eventId, runtimeBindings),
+            buttonId = normalizeRuntimeText(buttonId, runtimeBindings),
+            buttonLabel = normalizeRuntimeText(buttonLabel, runtimeBindings),
+            snapshot = normalizeJsonElement(snapshot, runtimeBindings) as JsonObject,
+        )
         is Conversation.Message.ContentItem.ToolCall -> copy(
             id = Conversation.Message.ContentItem.ToolCall.Id(stableToolCallId(messageIndex, contentIndex)),
             call = call.copy(input = normalizeJsonElement(call.input, runtimeBindings)),
@@ -1139,6 +1148,14 @@ private fun Conversation.Message.ContentItem.rehydrateDynamicContentItem(
 ): Conversation.Message.ContentItem {
     return when (this) {
         is Conversation.Message.ContentItem.UserMessage -> this
+        is Conversation.Message.ContentItem.VisualInteraction -> copy(
+            visualId = context.runtimeBindings.rehydrateText(visualId),
+            visualTitle = context.runtimeBindings.rehydrateText(visualTitle),
+            eventId = context.runtimeBindings.rehydrateText(eventId),
+            buttonId = context.runtimeBindings.rehydrateText(buttonId),
+            buttonLabel = context.runtimeBindings.rehydrateText(buttonLabel),
+            snapshot = rehydrateJsonElement(snapshot, context) as JsonObject,
+        )
         is Conversation.Message.ContentItem.ToolCall -> copy(
             id = Conversation.Message.ContentItem.ToolCall.Id(rehydrateToolCallId(id.value, context, messageIndex, contentIndex)),
             call = call.copy(input = rehydrateJsonElement(call.input, context)),

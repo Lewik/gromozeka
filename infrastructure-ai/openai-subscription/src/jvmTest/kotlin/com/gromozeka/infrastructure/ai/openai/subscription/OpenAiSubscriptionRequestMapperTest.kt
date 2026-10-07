@@ -35,6 +35,21 @@ import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
     @Test
+    fun visualActionIsUserInputWithTheFullSnapshotAndExplicitProvenance() {
+        val snapshot = Json.parseToJsonElement("""{"form":{"query":"saved"},"data":{"count":7}}""").jsonObject
+        val event = Conversation.Message.ContentItem.VisualInteraction("v", "Pipeline Runs", 3, "event-1", "refresh", "Refresh", snapshot)
+        val message = Conversation.Message(Conversation.Message.Id("click"), conversationId,
+            role = Conversation.Message.Role.USER, content = listOf(event), createdAt = createdAt)
+        val input = mapper.toRequest(AiRuntimeRequest(emptyList(), listOf(message)), modelName = "gpt-5", conversationKey = "test").input
+        val user = input.single { it["role"] == JsonPrimitive("user") }
+        val text = user["content"]!!.jsonArray.single().jsonObject["text"]!!.jsonPrimitive.content
+        assertEquals(event.modelText(), text)
+        assertTrue(text.contains("not a typed chat message"))
+        assertTrue(text.contains("\"query\":\"saved\""))
+        assertTrue(text.contains("\"count\":7"))
+    }
+
+    @Test
     fun selectiveReadableSummaryDoesNotTruncateEarlierUnselectedHistory() {
         fun text(id: String, text: String) = Conversation.Message(
             id = Conversation.Message.Id(id), conversationId = conversationId, role = Conversation.Message.Role.USER,

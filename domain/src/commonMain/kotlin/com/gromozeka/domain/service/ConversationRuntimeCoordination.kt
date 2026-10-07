@@ -1034,6 +1034,10 @@ interface ConversationRuntimeCoordinator {
         requestedAt: Instant,
     ): Boolean
 
+    /**
+     * Response interruption cancels ordinary conversation commands only. Visual-owned
+     * handlers live with their panels; explicitly cancel one by task ID or close its Visual.
+     */
     suspend fun requestCommandTaskCancellations(
         conversationId: Conversation.Id,
         requestedAt: Instant,

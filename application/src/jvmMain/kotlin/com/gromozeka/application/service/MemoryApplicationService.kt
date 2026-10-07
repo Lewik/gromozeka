@@ -221,6 +221,7 @@ class MemoryApplicationService(
         content.mapNotNull { item ->
             when (item) {
                 is Conversation.Message.ContentItem.UserMessage -> item.text
+                is Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
                 is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
                 is Conversation.Message.ContentItem.System -> item.content
                 is Conversation.Message.ContentItem.ContextCompactionResult -> item.memoryText()

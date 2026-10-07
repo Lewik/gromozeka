@@ -186,6 +186,7 @@ class WorkerGatewayClientTest {
                 override suspend fun read(request: WorkerWorkspaceTextFileReadRequest): WorkspaceTextFile =
                     error("Unused workspace text file request")
             },
+            visualRuntime = org.mockito.Mockito.mock(VisualWorkerRuntime::class.java),
             parallelToolExecutor = ParallelToolExecutor(
                 aiToolProvider = object : AiToolProvider {
                     override fun getTools(): List<AiToolCallback> = listOf(tool)

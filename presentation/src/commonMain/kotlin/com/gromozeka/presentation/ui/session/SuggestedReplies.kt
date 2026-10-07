@@ -35,7 +35,8 @@ internal fun latestSuggestedReplies(messages: List<Conversation.Message>): Sugge
                         values = content.structured.suggestedReplies,
                     )
 
-                is Conversation.Message.ContentItem.UserMessage -> return null
+                is Conversation.Message.ContentItem.UserMessage,
+                is Conversation.Message.ContentItem.VisualInteraction -> return null
                 else -> Unit
             }
         }

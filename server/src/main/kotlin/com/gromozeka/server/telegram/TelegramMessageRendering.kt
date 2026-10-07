@@ -35,6 +35,7 @@ internal class TelegramMessageRendering(private val locale: String) {
     fun messageTexts(message: Conversation.Message): List<String> = message.content.mapNotNull { item ->
         val text = when (item) {
             is Conversation.Message.ContentItem.UserMessage -> item.text
+            is Conversation.Message.ContentItem.VisualInteraction -> "[Visual button action] ${item.caption()}"
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             else -> ""
         }

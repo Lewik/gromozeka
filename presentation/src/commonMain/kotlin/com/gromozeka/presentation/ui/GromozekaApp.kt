@@ -57,6 +57,8 @@ import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.ConversationParticipantsPanel
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
+import com.gromozeka.presentation.ui.session.VisualContent
+import com.gromozeka.presentation.ui.session.VisualPanelState
 import com.gromozeka.presentation.ui.session.RuntimeInspectionRequest
 import com.gromozeka.presentation.ui.session.RuntimeAgentTabSelection
 import com.gromozeka.presentation.ui.session.SessionScreen
@@ -113,6 +115,14 @@ fun GromozekaAppContent(
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
     val runtimeAgentTabSelection = remember(appComponents) { RuntimeAgentTabSelection() }
+    val visualPanelState = remember(appComponents) { VisualPanelState() }
+    LaunchedEffect(appComponents.clientPresentationService) {
+        appComponents.clientPresentationService.directives.collect { directive ->
+            if (directive is com.gromozeka.remote.protocol.HighlightVisualDirective) {
+                visualPanelState.applyHighlight(directive.command)
+            }
+        }
+    }
     var runtimeInspectionRequest by remember { mutableStateOf<RuntimeInspectionRequest?>(null) }
     var showParticipantsPanel by remember { mutableStateOf(false) }
     var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
@@ -129,6 +139,15 @@ fun GromozekaAppContent(
     val unreadConversationIds by appComponents.appViewModel.unreadConversationIds.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
+    LaunchedEffect(currentTab?.conversationId, appComponents.visualService) {
+        val conversationId = currentTab?.conversationId ?: return@LaunchedEffect
+        try {
+            appComponents.visualService.observe(conversationId).collect { snapshots ->
+                if (visualPanelState.accept(conversationId, snapshots)) showRuntimePanel = true
+            }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (error: Exception) { visualPanelState.loadError = error.message ?: localization.text("visuals.loadFailed") }
+    }
     val pttState by appComponents.pttService.state.collectAsState()
     val pttTarget by appComponents.pttService.target.collectAsState()
     val liveVoiceTarget by appComponents.liveVoiceInputService.target.collectAsState()
@@ -685,6 +704,15 @@ fun GromozekaAppContent(
                                                         conversationId = tabViewModel.conversationId,
                                                         participants = conversations[tabViewModel.conversationId]?.participants,
                                                         tabSelection = runtimeAgentTabSelection,
+                                                        visuals = visualPanelState.visuals(tabViewModel.conversationId),
+                                                        selectedVisualId = visualPanelState.selected(tabViewModel.conversationId),
+                                                        dirtyVisualIds = visualPanelState.dirtyVisualIds(tabViewModel.conversationId),
+                                                        highlightedVisualIds = visualPanelState.highlightedVisualIds(tabViewModel.conversationId),
+                                                        onClearVisualHighlights = visualPanelState::clearHighlights,
+                                                        onSelectVisual = { visualPanelState.select(tabViewModel.conversationId, it) },
+                                                        onCloseVisual = { visualPanelState.close(it, appComponents.visualService, coroutineScope, localization.text("visuals.closeFailed")) },
+                                                        visualContent = { VisualContent(it, visualPanelState.draft(it), appComponents.visualService, highlightedIds = visualPanelState.highlightedIds(it), onClearHighlights = { visualPanelState.clearHighlights(it.id) }) },
+                                                        visualLoadError = visualPanelState.loadError,
                                                         replyRoutingContent = { RuntimeReplyRouting(tabViewModel) },
                                                         agentService = appComponents.agentService,
                                                         aiConfigurationProvider = appComponents.aiConfigurationService,
@@ -814,6 +842,15 @@ fun GromozekaAppContent(
                                             conversationId = tabViewModel.conversationId,
                                             participants = conversations[tabViewModel.conversationId]?.participants,
                                             tabSelection = runtimeAgentTabSelection,
+                                            visuals = visualPanelState.visuals(tabViewModel.conversationId),
+                                            selectedVisualId = visualPanelState.selected(tabViewModel.conversationId),
+                                            dirtyVisualIds = visualPanelState.dirtyVisualIds(tabViewModel.conversationId),
+                                            highlightedVisualIds = visualPanelState.highlightedVisualIds(tabViewModel.conversationId),
+                                            onClearVisualHighlights = visualPanelState::clearHighlights,
+                                            onSelectVisual = { visualPanelState.select(tabViewModel.conversationId, it) },
+                                            onCloseVisual = { visualPanelState.close(it, appComponents.visualService, coroutineScope, localization.text("visuals.closeFailed")) },
+                                            visualContent = { VisualContent(it, visualPanelState.draft(it), appComponents.visualService, highlightedIds = visualPanelState.highlightedIds(it), onClearHighlights = { visualPanelState.clearHighlights(it.id) }) },
+                                            visualLoadError = visualPanelState.loadError,
                                             replyRoutingContent = { RuntimeReplyRouting(tabViewModel) },
                                             agentService = appComponents.agentService,
                                             aiConfigurationProvider = appComponents.aiConfigurationService,

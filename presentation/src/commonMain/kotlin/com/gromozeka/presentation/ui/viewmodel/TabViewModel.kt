@@ -824,6 +824,7 @@ class TabViewModel(
 
     fun editPendingMessage(messageId: String) {
         val message = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
+        if (!message.editable) return
         _pendingMessages.update { messages ->
             messages.filterNot { it.id == messageId }
         }
@@ -1543,9 +1544,15 @@ data class PendingUserMessage(
     val id: String get() = userMessage.id.value
 
     val text: String
-        get() = userMessage.content
-            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            .joinToString("\n") { it.text }
+        get() = userMessage.content.mapNotNull { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.UserMessage -> item.text
+                is Conversation.Message.ContentItem.VisualInteraction -> "[Visual] ${item.caption()}"
+                else -> null
+            }
+        }.joinToString("\n")
+
+    val editable: Boolean get() = userMessage.content.none { it is Conversation.Message.ContentItem.VisualInteraction }
 
     val artifacts: List<com.gromozeka.domain.model.Artifact.Reference>
         get() = userMessage.content

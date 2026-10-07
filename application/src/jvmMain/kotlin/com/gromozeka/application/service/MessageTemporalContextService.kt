@@ -15,7 +15,7 @@ class MessageTemporalContextService {
 
         var previousUserMessage: Conversation.Message? = null
         return messages.map { message ->
-            if (!message.isHumanAuthoredTextMessage()) return@map message
+            if (!message.isHumanInputMessage()) return@map message
 
             val elapsedSeconds = previousUserMessage
                 ?.createdAt
@@ -41,9 +41,9 @@ class MessageTemporalContextService {
         }
     }
 
-    private fun Conversation.Message.isHumanAuthoredTextMessage(): Boolean =
+    private fun Conversation.Message.isHumanInputMessage(): Boolean =
         role == Conversation.Message.Role.USER &&
-            content.any { it is Conversation.Message.ContentItem.UserMessage } &&
+            content.any { it is Conversation.Message.ContentItem.UserMessage || it is Conversation.Message.ContentItem.VisualInteraction } &&
             providerMetadata["synthetic"] != JsonPrimitive(true) &&
             instructions.none { it is Conversation.Message.Instruction.Source.Agent }
 }

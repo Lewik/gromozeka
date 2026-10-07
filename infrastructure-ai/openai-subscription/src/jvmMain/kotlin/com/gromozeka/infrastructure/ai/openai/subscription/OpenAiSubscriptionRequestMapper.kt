@@ -390,8 +390,8 @@ class OpenAiSubscriptionRequestMapper {
     private fun buildUserMessageText(message: Conversation.Message): String? {
         val instructionsPrefix = message.instructions.joinToString("\n") { it.toXmlLine() }.trim()
         val text = message.content
-            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            .joinToString("\n") { it.text }
+            .mapNotNull { it.userInputTextOrNull() }
+            .joinToString("\n")
             .trim()
 
         return listOf(

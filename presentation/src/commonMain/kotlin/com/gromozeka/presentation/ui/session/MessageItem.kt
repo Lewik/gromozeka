@@ -363,7 +363,7 @@ internal fun MessageItem(
 ) {
     val message = entry.message
     val selectionBorderColor = MaterialTheme.colorScheme.primary
-    val userBackground = message.role == Conversation.Message.Role.USER &&
+    val usesUserTextBubble = message.role == Conversation.Message.Role.USER &&
         message.content.any { it is Conversation.Message.ContentItem.UserMessage }
 
     Column(
@@ -382,7 +382,7 @@ internal fun MessageItem(
                     }
                 )
                 .background(
-                    color = if (userBackground) {
+                    color = if (usesUserTextBubble) {
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                     } else {
                         Color.Transparent
@@ -434,7 +434,8 @@ internal fun MessageItem(
         ) {
             Column(
                 modifier = Modifier.padding(
-                    start = if (message.role == Conversation.Message.Role.USER) 12.dp else 4.dp,
+                    // Insets belong to the text bubble, not to the author role.
+                    start = if (usesUserTextBubble) 12.dp else 4.dp,
                     end = 4.dp,
                 )
             ) {
@@ -549,6 +550,7 @@ private fun MessageSegmentContent(
             content = segment.content,
             providerMetadata = entry.message.providerMetadata,
             loadArtifactContent = loadArtifactContent,
+            onManualContentResize = onManualContentResize,
         )
 
         is MessageSegment.Activity -> ChatActivityItem(
@@ -688,9 +690,11 @@ private fun GenericContentItem(
     content: Conversation.Message.ContentItem,
     providerMetadata: JsonObject,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
+    onManualContentResize: () -> Unit,
 ) {
     val localization = LocalTranslation.current
     when (content) {
+        is Conversation.Message.ContentItem.VisualInteraction -> VisualInteractionItem(content, onManualContentResize)
         is Conversation.Message.ContentItem.ToolCall -> error("Tool calls require an activity segment")
 
         is Conversation.Message.ContentItem.ImageItem -> Row(

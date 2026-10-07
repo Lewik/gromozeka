@@ -494,6 +494,46 @@ class PostgresConversationRuntimeCoordinatorTest {
     }
 
     @Test
+    fun `response command cancellation excludes visual handlers and preserves explicit cancellation`() = runBlocking<Unit> {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
+        val schema = "visual_cancellation_${UUID.randomUUID().toString().replace("-", "") }"
+        val admin = dataSource()
+        admin.connection.use { it.createStatement().use { s -> s.execute("CREATE SCHEMA $schema") } }
+        try {
+            val source = dataSource(schema).also(::createRuntimeSchema)
+            val json = Json { encodeDefaults = true }
+            val coordinator = PostgresConversationRuntimeCoordinator(source, json)
+            val reloaded = PostgresConversationRuntimeCoordinator(source, json)
+            val conversationId = Conversation.Id("visual-cancellation")
+            val now = Instant.fromEpochMilliseconds(1_000)
+            val ordinary = CommandTask(
+                id = CommandTask.Id("ordinary"), conversationId = conversationId,
+                workerId = ConversationRuntimeWorkerId("worker-1"), workspaceMountId = WorkspaceMount.Id("mount-1"),
+                command = "tail -f log", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
+                processId = 100, processStartedAt = now, outputFile = "/tmp/ordinary.log", outputBytes = 0,
+                createdAt = now, updatedAt = now,
+            )
+            val visual = ordinary.copy(id = CommandTask.Id("visual-handler"), visualId = "visual-1")
+            val terminal = ordinary.copy(id = CommandTask.Id("finished"), status = CommandTask.Status.COMPLETED, exitCode = 0, completedAt = now)
+            val foreign = ordinary.copy(id = CommandTask.Id("another-conversation"), conversationId = Conversation.Id("other"))
+            listOf(ordinary, visual, terminal, foreign).forEach { coordinator.upsertCommandTask(it) }
+            val interruptedAt = Instant.fromEpochMilliseconds(2_000)
+            assertEquals(1, coordinator.requestCommandTaskCancellations(conversationId, interruptedAt))
+            assertEquals(interruptedAt, reloaded.findCommandTask(conversationId, ordinary.id)?.cancellationRequestedAt)
+            assertNull(reloaded.findCommandTask(conversationId, visual.id)?.cancellationRequestedAt)
+            assertNull(reloaded.findCommandTask(conversationId, terminal.id)?.cancellationRequestedAt)
+            assertNull(reloaded.findCommandTask(foreign.conversationId, foreign.id)?.cancellationRequestedAt)
+            assertEquals(CommandTask.Status.WORKING, reloaded.findCommandTask(conversationId, visual.id)?.status)
+
+            val explicitlyStoppedAt = Instant.fromEpochMilliseconds(3_000)
+            assertTrue(coordinator.requestCommandTaskCancellation(conversationId, visual.id, explicitlyStoppedAt))
+            assertEquals(explicitlyStoppedAt, reloaded.findCommandTask(conversationId, visual.id)?.cancellationRequestedAt)
+        } finally {
+            admin.connection.use { it.createStatement().use { s -> s.execute("DROP SCHEMA $schema CASCADE") } }
+        }
+    }
+
+    @Test
     fun `command monitors and events survive postgres round trip`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
             return@runBlocking

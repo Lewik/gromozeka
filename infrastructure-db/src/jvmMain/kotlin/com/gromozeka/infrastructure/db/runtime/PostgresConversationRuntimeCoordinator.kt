@@ -490,7 +490,7 @@ class PostgresConversationRuntimeCoordinator(
             components = setOf(RuntimeComponent.COMMANDS),
         ) { record ->
             record.commandTasks
-                .filter { it.status == CommandTask.Status.WORKING }
+                .filter { it.status == CommandTask.Status.WORKING && it.visualId == null }
                 .count { task ->
                     record.requestCommandTaskCancellation(conversationId, task.id, requestedAt)
                 }

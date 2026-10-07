@@ -1,3 +1,6 @@
 # Ignore everything in client/.gromozeka folder except dist file
 client/.gromozeka/*
 !client/.gromozeka/settings.dist.json
+
+# Isolated browser verification runtime (local credentials and state)
+visuals-test/

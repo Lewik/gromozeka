@@ -102,7 +102,7 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
 
     internal fun pendingCall(messages: List<Conversation.Message>, connectionId: String, modelName: String): JsonObject? {
         val currentTurn = messages.drop(messages.indexOfLast { message ->
-            message.role == Conversation.Message.Role.USER && message.content.any { it is ContentItem.UserMessage }
+            message.role == Conversation.Message.Role.USER && message.content.any { it is ContentItem.UserMessage || it is ContentItem.VisualInteraction }
         }.coerceAtLeast(0))
         val completed = currentTurn.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>()
             .mapTo(mutableSetOf()) { it.toolUseId.value }
@@ -119,13 +119,13 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
 
     internal fun recentInput(messages: List<Conversation.Message>): List<JsonObject> {
         val userIndices = messages.indices.filter { index ->
-            messages[index].role == Conversation.Message.Role.USER && messages[index].content.any { it is ContentItem.UserMessage }
+            messages[index].role == Conversation.Message.Role.USER && messages[index].content.any { it is ContentItem.UserMessage || it is ContentItem.VisualInteraction }
         }.takeLast(2)
         if (userIndices.isEmpty()) return emptyList()
         var assistantCharactersLeft = 4000
         return messages.subList(userIndices.first(), userIndices.last() + 1).mapNotNull { message ->
             val text = when (message.role) {
-                Conversation.Message.Role.USER -> message.content.filterIsInstance<ContentItem.UserMessage>().joinToString("\n") { it.text }
+                Conversation.Message.Role.USER -> message.content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
                 Conversation.Message.Role.ASSISTANT -> message.content.filterIsInstance<ContentItem.AssistantMessage>()
                     .joinToString("\n") { it.structured.fullText }.take(assistantCharactersLeft).also { assistantCharactersLeft -= it.length }
                 else -> ""

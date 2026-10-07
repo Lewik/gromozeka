@@ -368,6 +368,137 @@ original pipe; a surviving command remains readable/cancellable but rejects stdi
 Writes are serialized independently of lifecycle control, so blocked stdin does
 not prevent command cancellation. The tool never echoes input in its result.
 
+### Native Visuals
+
+`grz_visual` is a Server-native conversation tool with `reference`, `create`,
+`list`, `get`, `update`, `highlight`, and `close` actions. `reference` is the authoritative
+small markup vocabulary. Visuals are tabs beside Runtime in its existing side
+panel, shared by conversation participants and rendered by common Compose code,
+not HTML/WebView. KXML is pinned as a multiplatform dependency. Visual actions and
+selects use the application's tonal `CompactButton`, text/number/textarea inputs
+use `CompactTextField`, and spacing/control density come from `GromozekaTheme`.
+They inherit theme shapes, typography and 40/48 dp compact/touch minimum heights;
+markup does not introduce a separate design system. Explicit palette colors and
+textarea row counts remain supported.
+
+Document spacing is renderer-owned. Every standalone text block or native control
+has the same exterior half-spacing h (currently 4 dp). The outer document wrapper
+adds h vertically and h + 4 dp horizontally. Adjacent content blocks have 2h between
+them; document edges have 2h vertically and 2h + 4 dp horizontally. Layout containers have zero
+padding and zero gap, including nested divs and grid cells. Inline text fragments
+share one rendered text block. Borders/backgrounds only paint and never change
+spacing; adjacent framed cells may touch. Native control interiors and host chrome
+keep their own component metrics. Markup has no padding/gap/margin controls. The
+host does not add a second full content inset around the document.
+
+The Server owns the accepted `{form, data}` snapshot. Input edits are local until
+a button submits `{visual-id, event-id, button-id, state}`. Only submitted `form`
+is accepted; incoming `data` is context for the handler, never a write-back.
+Action receipts reserve an event before external effects and prevent duplicate
+stdin/LLM delivery. Uncertain actions are not automatically replayed. LLM-handled
+clicks are persisted as USER messages with typed `visual_interaction` content,
+not JSON disguised as typed chat text. The event captures the Visual title,
+button label/IDs, document revision and full submitted snapshot. Chat shows a
+compact action card with expandable read-only event data. Opening details does
+not re-submit a form; action messages cannot be edited as utterances. Provider
+adapters render the event explicitly as a user-side UI action with its full
+snapshot, escaping envelope delimiters. Script stdin keeps its ordinary JSON
+contract. Application snapshots are not ingested as user-authored memory claims.
+A form revision and the originating button event ID preserve whole-form write
+intent through coalesced snapshots. Data-only updates never erase local drafts;
+an explicit form replacement resets every field, even when saved values are
+unchanged, and removes omitted members. Acknowledgements of a client's own click
+do not undo typing performed after that click. Neutral,
+noninteractive Material `BadgedBox`/`Badge` overlays mark each dirty Visual tab
+and each changed input, textarea, select, checkbox or slider. The top-end dots
+have no tooltip and stay inside their anchors without changing layout bounds.
+Each field is compared independently with its accepted server value; the tab
+shows the aggregate form state. Clicking does not clear indicators prematurely,
+and reverting values clears them without submitting. Number editor drafts are
+compared as numbers without conflating numeric and string select options.
+
+`highlight` is a one-shot presentation command, not a state update. It targets up
+to 16 currently rendered explicit element IDs, including containers and inline
+text; a new set replaces the previous one and `[]` clears it. The Server validates
+IDs against the current document and delivers a revision-bound directive to the
+acting user's connected clients, without persistence or offline replay. Clients
+keep the set locally across tab switches. Targets and the entire rectangular tab
+(including its padding and close-button area) get a soft white glow and an 18 dp
+arrow badge pointing into the target. Native controls and their glow share the
+same Shape from the theme; both the shadow and its interior cutout use that shape.
+The tab and plain containers keep their rectangular outline. A soft inset halo
+also keeps the tab's top/bottom edges visible within the native tab row's clipping,
+without adding layout padding or moving its selection indicator. No additional border,
+background fill, text recoloring or animation is applied; ordinary component
+borders and the selected-tab indicator stay unchanged. Clicking any target or tab
+arrow clears the whole set on that client only, without activating a button or
+link underneath, selecting/closing the tab, or submitting/resetting local drafts.
+Duplicate directives are ignored, document replacement invalidates stale sets,
+and client reload clears them. Neither snapshots, handler input, `get`, reminders,
+nor dismissal acknowledgements carry highlight state. Dirty-form dots remain
+separate noninteractive indicators.
+
+Before each conversation LLM request, `VisualRequestEnricher` adds saved
+`form + data` observations for all current Visuals. Updates coalesce between
+requests and do not trigger model work. Full snapshots are sent when state changes;
+short unchanged markers refer to full snapshots reconstructed earlier in the same
+request. Canonical JSON hashing ignores object-key order and transport revisions.
+The request-only replay cache is bounded and isolated by conversation, thread,
+agent, actor and model. It anchors observations to retained USER/tool-result
+messages without changing persisted history or introducing synthetic message IDs.
+Compacted, truncated or edited anchors invalidate dependent short markers. Cache
+loss, branch changes and Server restarts safely produce fresh full snapshots.
+Assistant-only continuations get a full live block instead of modifying signed
+assistant content. Channel history filtering precedes this late enrichment.
+JSON values are untrusted data and XML delimiters are escaped; neither reminders
+nor client drafts implicitly submit forms. `get` remains useful for autonomous
+fresh reads, markup and diagnostics.
+
+`create` requires both complete state sections, `form` and `data`. `update.state`
+contains one or both complete sections: omitted roots remain unchanged, supplied
+roots replace their entire previous objects. Members omitted inside a supplied
+section disappear at every depth. An empty section clears it if schema and
+bindings permit; an empty update with no sections is rejected. The same rules
+apply to handler output. The resulting full state is validated atomically before
+publication. Send `document` only for structural/control/schema changes, not for
+ordinary content updates. Model-facing create/update results contain compact
+acknowledgements (ID, revisions, status, handler task and diagnostics), never HTML
+or state. Only `get` returns the full document and saved state; `list` is compact.
+Schema or rendering errors leave the last valid state intact. Runtime diagnostics
+are shown in host-owned panel chrome outside the document and are available via
+`get`; user markup cannot hide this footer.
+
+An optional handler is an owned ordinary managed command on one explicit mount.
+Its `CommandTask.visualId` records the role. A separate Worker reader consumes
+its retained merged output with a byte cursor and bounded NDJSON framing; it is
+not a command monitor. Gateway retries of output are idempotent by generation
+and byte cursor. The command receives button JSON on stdin and emits complete
+root-section updates,
+flushing one JSON object per line. Commands never receive every keystroke.
+Closing a visual, replacing its handler, or explicitly cancelling its command
+cancels the old process. A conversation response interrupt cancels ordinary
+commands but excludes Visual-owned handlers, even when no model turn is active.
+Both the in-memory and PostgreSQL coordinators enforce this boundary; explicit
+single-task cancellation and Worker shutdown still stop handlers.
+Worker session changes stop the visual without restarting the handler. Temporary
+gateway disconnects or Server restarts do not kill a handler in the same Worker
+process; only a changed session or a terminal command proves it has stopped.
+The panel may retain a stopped snapshot so the failure remains visible.
+
+Handler command secret references use private environment substitution at launch;
+markup and state references remain literal and are never expanded into UI data.
+The protocol uses separate authenticated Worker operations for handler control
+and output, with exact session/mount/conversation ownership checks. These
+operations require matching Worker Gateway protocol versions.
+
+For interactive preview, run the test Server and Worker under a separate process
+supervisor, not as long-running managed commands of the authoring conversation:
+interrupting that conversation legitimately cancels its ordinary command tasks.
+On macOS, manually bootstrapped user `launchd` services can live outside the chat
+without login-time autostart or automatic crash restart. Stop them explicitly
+with `launchctl bootout gui/<uid>/<label>` when the preview is no longer needed.
+Keep local preview credentials, service definitions and logs outside version control.
+
 Command state synchronization retries temporary connection/database failures with
 backoff. A permanent rejected write is exposed as `synchronization_error` in the
 Worker-local result and logged; it stops write retries, preserves output files,

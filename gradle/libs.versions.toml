@@ -46,6 +46,7 @@ qrose = "1.1.2"
 json-schema-validator = "0.5.5"
 
 [libraries]
+kxml = { module = "com.github.Lewik.kxml:kxml", version = "f4d6666a02" }
 commonmark = { module = "org.commonmark:commonmark", version.ref = "commonmark" }
 # Ktor
 ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }

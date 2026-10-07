@@ -941,6 +941,7 @@ private fun MemoryReadRequest.targetQueryText(): String {
     return target.content.mapNotNull { item ->
         when (item) {
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.UserMessage -> item.text
+            is com.gromozeka.domain.model.Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall -> "Tool call: ${item.call.name}"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
