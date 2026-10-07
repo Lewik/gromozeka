@@ -22,6 +22,8 @@ const val TOOL_CONTEXT_VISUAL_ID = "visualId"
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY = "memoryResultDelivery"
 const val TOOL_CONTEXT_MEMORY_NAMESPACE = "memoryNamespace"
 const val TOOL_CONTEXT_SECRET_ENVIRONMENT = "secretEnvironment"
+/** Public shell source before secret substitution; execution still uses the prepared command. */
+const val TOOL_CONTEXT_ORIGINAL_COMMAND = "originalCommand"
 
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC = "conversation_runtime"
 

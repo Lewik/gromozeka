@@ -133,7 +133,7 @@ class DefaultCommandTaskService(
                 workspaceMountId = context.requiredWorkspaceMountId(),
                 agentDefinitionId = context.agentDefinitionIdOrNull(),
                 visualId = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID),
-                command = request.command,
+                command = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: request.command,
                 workingDirectory = workingDirectory,
                 processLifetime = processLifetime,
                 status = CommandTask.Status.WORKING,

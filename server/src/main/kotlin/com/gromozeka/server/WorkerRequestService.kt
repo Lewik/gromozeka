@@ -28,10 +28,15 @@ class WorkerRequestPendingException(val requestId: String) : IllegalStateExcepti
     "Worker request $requestId is still pending. Waiting ended, but the request was not cancelled. Query grz_worker_request_get or cancel it explicitly.",
 )
 
+fun interface WorkerRequestCompletionObserver {
+    suspend fun completed(record: StoredWorkerRequest, response: WorkerGatewayMessage.Response)
+}
+
 @Service
 class WorkerRequestService(
     private val repository: WorkerRequestRepository,
     private val authorization: WorkerRequestAuthorization,
+    private val completionObservers: List<WorkerRequestCompletionObserver> = emptyList(),
 ) {
     private val log = KLoggers.logger(this)
     suspend fun execute(
@@ -166,6 +171,10 @@ class WorkerRequestService(
         val record = repository.find(response.requestId) ?: return false
         require(record.workerId == workerId) { "Worker returned another Worker's result" }
         require(record.dispatchedAt != null) { "Worker returned an undispatched request result" }
+        // Record provenance before publishing completion, including late results after
+        // the original caller stopped waiting. Duplicates use the saved response only.
+        val accepted = record.response?.let { WorkerGatewayCodec.decode(it) as WorkerGatewayMessage.Response } ?: response
+        completionObservers.forEach { it.completed(record, accepted) }
         if (record.response == null) {
             repository.complete(workerId, response.requestId, WorkerGatewayCodec.encode(response), Clock.System.now())
         }

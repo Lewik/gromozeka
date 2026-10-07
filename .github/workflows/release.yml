@@ -113,6 +113,7 @@ jobs:
           ./gradlew :infrastructure-db:jvmTest
           --tests '*PostgresConversationSearchRepositoryTest'
           --tests '*PostgresConversationRuntimeCoordinatorTest'
+          --tests '*PostgresBackgroundActivityOriginRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
@@ -121,6 +122,12 @@ jobs:
           ./gradlew
           :server:test
           :worker:test
+          :application:jvmTest
+          --tests '*SecretArgumentSubstitutorTest'
+          --tests '*NamedSecretApplicationServiceTest'
+          --tests '*BackgroundActivityCompletionApplicationServiceTest'
+          --tests '*BackgroundActivityLifecycleApplicationServiceTest'
+          --tests '*VisualSecretArgumentsTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 

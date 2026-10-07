@@ -53,6 +53,7 @@ class GatewayVisualCommandRuntime(
             put(TOOL_CONTEXT_WORKSPACE_ROOT_PATH, workspace.mount.rootPath)
             put(TOOL_CONTEXT_WORKER_ID, handler.worker.workerId.value)
             put(TOOL_CONTEXT_VISUAL_ID, visual.id)
+            put(TOOL_CONTEXT_ORIGINAL_COMMAND, handler.spec.command)
             visual.agentDefinitionId?.let { put(TOOL_CONTEXT_AGENT_DEFINITION_ID, it.value) }
         }
         val names = NamedSecret.namesInText(handler.spec.command)

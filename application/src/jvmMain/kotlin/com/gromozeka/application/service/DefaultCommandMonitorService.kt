@@ -122,7 +122,7 @@ class DefaultCommandMonitorService(
                 workerId = workerId,
                 workspaceMountId = sourceTask.workspaceMountId,
                 agentDefinitionId = context.agentDefinitionIdOrNull(),
-                filterCommand = spec.filterCommand,
+                filterCommand = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: spec.filterCommand,
                 mode = spec.mode,
                 startFrom = spec.startFrom,
                 status = CommandMonitor.Status.WORKING,

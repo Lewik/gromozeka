@@ -765,6 +765,27 @@ tag remains occupied even if a build or publication fails: never delete or move
 it to reuse its number. Retrying failed jobs for the same release is allowed;
 a replacement release must account for every reserved remote version.
 
+## Named Secrets And Background Continuations
+
+A background command or monitor keeps the identity of the user who created it,
+not whoever last spoke in the conversation. The Server records this provenance
+from its durable Worker request before accepting the result, including replies
+received after the original caller stopped waiting. Bindings are immutable and
+survive Server restarts. Workers cannot supply or change the initiating user.
+
+Completion batches are grouped by both agent and user. Before another model call,
+the Server checks current user/AI status, conversation membership and project
+write permission. An older activity without trusted provenance still delivers
+its output, but cannot start an anonymous or guessed-user continuation.
+
+Public command metadata preserves the original `secret://name` references.
+Substituted shell text and its generated environment are execution-only; copying
+a displayed command must generate fresh variables, never reuse a past process's
+environment names. Visual handler launches follow the same rule. The public
+command preservation runs on the Worker, so update Workers to obtain that fix.
+The ownership registry is Server-private and does not change the Worker protocol.
+Explicit secret revelation remains a separate, confirmed, one-request operation.
+
 ## CI and Release Workflow
 
 Application CI is manual: `.github/workflows/release.yml` is the single entry

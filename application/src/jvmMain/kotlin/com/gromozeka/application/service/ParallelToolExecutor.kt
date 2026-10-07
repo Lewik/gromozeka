@@ -12,6 +12,7 @@ import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
+import com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND
 import com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT
 import klog.KLoggers
 import kotlinx.coroutines.*
@@ -268,10 +269,13 @@ class ParallelToolExecutor(
             // Execute on IO dispatcher (blocking call)
             val result = withContext(Dispatchers.IO) {
                 val prepared = secretArgumentSubstitutor.prepare(toolName, arguments, resolvedSecrets)
+                val publicContext = prepared.originalCommand
+                    ?.let { cancellableToolContext.withValue(TOOL_CONTEXT_ORIGINAL_COMMAND, it) }
+                    ?: cancellableToolContext
                 val invocationContext = prepared.secretEnvironment
                     .takeIf(Map<String, String>::isNotEmpty)
-                    ?.let { cancellableToolContext.withValue(TOOL_CONTEXT_SECRET_ENVIRONMENT, it) }
-                    ?: cancellableToolContext
+                    ?.let { publicContext.withValue(TOOL_CONTEXT_SECRET_ENVIRONMENT, it) }
+                    ?: publicContext
                 callback.callResult(
                     prepared.arguments,
                     invocationContext,

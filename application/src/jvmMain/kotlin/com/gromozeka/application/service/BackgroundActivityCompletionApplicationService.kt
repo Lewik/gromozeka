@@ -4,6 +4,12 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.ProjectPermission
+import com.gromozeka.domain.repository.BackgroundActivityOrigin
+import com.gromozeka.domain.repository.BackgroundActivityOriginRepository
+import com.gromozeka.domain.service.ProjectAccessService
+import com.gromozeka.domain.service.UserDirectoryService
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
@@ -21,6 +27,8 @@ import java.security.MessageDigest
 @Service
 class BackgroundActivityCompletionApplicationService(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
+    private val origins: BackgroundActivityOriginRepository,
+    private val continuationPolicy: BackgroundActivityContinuationPolicy,
 ) {
     suspend fun prepareBatch(
         conversationId: Conversation.Id,
@@ -71,10 +79,20 @@ class BackgroundActivityCompletionApplicationService(
                     .thenBy { it.stableKey }
             )
             .toList()
+        val provenance = origins.find(conversationId, sortedCandidates.mapTo(mutableSetOf()) { it.originKey })
+        fun actor(candidate: DeliveryCandidate): User.Id? = provenance[candidate.originKey]
+            ?.takeIf { origin ->
+                origin.conversationId == conversationId && origin.agentDefinitionId == candidate.agentDefinitionId &&
+                    when (candidate) {
+                        is DeliveryCandidate.Command -> origin.workerId == candidate.task.workerId && origin.workspaceMountId == candidate.task.workspaceMountId
+                        is DeliveryCandidate.Monitor -> origin.workerId == candidate.delivery.monitor.workerId && origin.workspaceMountId == candidate.delivery.monitor.workspaceMountId
+                    }
+            }?.actorUserId
         val selectedAgentId = sortedCandidates.firstOrNull()?.agentDefinitionId
+        val selectedActor = sortedCandidates.firstOrNull()?.let(::actor)
         val selectedCandidates = selectedAgentId?.let { agentId ->
             sortedCandidates.asSequence()
-                .filter { it.agentDefinitionId == agentId }
+                .filter { it.agentDefinitionId == agentId && actor(it) == selectedActor }
                 .selectBatch()
         }.orEmpty()
         val commandTasks = selectedCandidates
@@ -84,6 +102,7 @@ class BackgroundActivityCompletionApplicationService(
             .filterIsInstance<DeliveryCandidate.Monitor>()
             .map(DeliveryCandidate.Monitor::delivery)
         return Batch(
+            actorUserId = selectedActor,
             commandTasks = commandTasks,
             monitorDeliveries = monitorDeliveries,
             messages = selectedCandidates.flatMap { candidate ->
@@ -94,6 +113,9 @@ class BackgroundActivityCompletionApplicationService(
             },
         )
     }
+
+    suspend fun canContinue(batch: Batch, conversation: Conversation): Boolean =
+        batch.actorUserId?.let { continuationPolicy.allowed(it, conversation) } ?: false
 
     suspend fun hasPendingConversationWork(conversationId: Conversation.Id): Boolean =
         runtimeCoordinator.schedulingSnapshot(conversationId).pendingTasks
@@ -133,6 +155,7 @@ class BackgroundActivityCompletionApplicationService(
         val commandTasks: List<CommandTask>,
         val monitorDeliveries: List<MonitorDelivery>,
         val messages: List<Conversation.Message>,
+        val actorUserId: User.Id? = null,
     ) {
         val isEmpty: Boolean
             get() = commandTasks.isEmpty() && monitorDeliveries.isEmpty()
@@ -396,6 +419,11 @@ class BackgroundActivityCompletionApplicationService(
         val occurredAt: Instant
         val payloadBytes: Int
         val stableKey: String
+        val originKey: BackgroundActivityOrigin.Key
+            get() = when (this) {
+                is Command -> BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.COMMAND, task.id.value)
+                is Monitor -> BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.MONITOR, delivery.monitor.id.value)
+            }
 
         data class Command(
             val task: CommandTask,
@@ -422,4 +450,20 @@ class BackgroundActivityCompletionApplicationService(
         const val MAX_DELIVERIES_PER_BATCH = 16
         const val MAX_NOTIFICATION_BYTES_PER_BATCH = 64 * 1024
     }
+}
+
+/** Current access, not permissions captured when the process was started. */
+fun interface BackgroundActivityContinuationPolicy {
+    suspend fun allowed(actor: User.Id, conversation: Conversation): Boolean
+}
+
+@Service
+class DefaultBackgroundActivityContinuationPolicy(
+    private val users: UserDirectoryService,
+    private val projects: ProjectAccessService,
+) : BackgroundActivityContinuationPolicy {
+    override suspend fun allowed(actor: User.Id, conversation: Conversation): Boolean =
+        Conversation.Participant.User(actor) in conversation.participants &&
+            users.findActiveById(actor)?.canUseAi == true &&
+            projects.can(actor, conversation.projectId, ProjectPermission.WRITE)
 }

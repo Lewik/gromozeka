@@ -1018,7 +1018,7 @@ class ConversationEngineService(
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             if (conversationService.loadCurrentMessages(conversationId).none { it.id == syntheticMessage.id }) {
                 val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>()
-                val persisted = artifactService.persistAndCommitToolResults(conversation, task.actorUserId, toolResults)
+                val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
                 val iterator = persisted.iterator()
                 val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
                     if (it is ContentItem.ToolResult) iterator.next() else it
@@ -1029,7 +1029,7 @@ class ConversationEngineService(
 
         val pendingConversationWork =
             backgroundActivityCompletionApplicationService.hasPendingConversationWork(conversationId)
-        val outcome = if (pendingConversationWork) {
+        val outcome = if (pendingConversationWork || !backgroundActivityCompletionApplicationService.canContinue(batch, conversation)) {
             ConversationRuntimeTaskOutcome.CompleteTurn
         } else {
             ConversationRuntimeTaskOutcome.Continue(
@@ -1039,7 +1039,7 @@ class ConversationEngineService(
                     rootUserMessageId = batch.resultMessageId,
                     agentDefinitionId = batch.agentDefinitionId,
                     iteration = 1,
-                    actorUserId = task.actorUserId ?: collaboration?.continuationActor(AgentEndpoint(conversation.id, conversation.currentThread, batch.agentDefinitionId)),
+                    actorUserId = batch.actorUserId,
                 ),
             )
         }

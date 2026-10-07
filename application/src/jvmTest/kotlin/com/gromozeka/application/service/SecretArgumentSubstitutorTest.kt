@@ -58,6 +58,25 @@ class SecretArgumentSubstitutorTest {
             command,
         )
         assertEquals(mapOf("GROMOZEKA_SECRET_SAFE" to "actual-token"), prepared.secretEnvironment)
+        assertEquals("echo GROMOZEKA_SECRET_IN_COMMAND secret://github-pat secret://github-pat", prepared.originalCommand)
+    }
+
+    @Test
+    fun `public command can be reused without reusing process-local secret variables`() {
+        var sequence = 0
+        val substitutor = SecretArgumentSubstitutor(
+            environmentNameGenerator = { "GROMOZEKA_SECRET_TEST_${++sequence}" },
+            inheritedEnvironmentNames = { emptySet() },
+        )
+        val first = substitutor.prepare(GRZ_EXECUTE_COMMAND_TOOL_NAME, """{"command":"curl secret://github-pat"}""",
+            mapOf("github-pat" to "private-test-token"), isWindows = false)
+        val second = substitutor.prepare(GRZ_EXECUTE_COMMAND_TOOL_NAME,
+            kotlinx.serialization.json.buildJsonObject { put("command", kotlinx.serialization.json.JsonPrimitive(first.originalCommand)) }.toString(),
+            mapOf("github-pat" to "private-test-token"), isWindows = false)
+        assertEquals("curl secret://github-pat", second.originalCommand)
+        assertFalse(first.arguments == second.arguments)
+        assertFalse(second.arguments.contains("private-test-token"))
+        assertEquals(listOf("private-test-token"), second.secretEnvironment.values.toList())
     }
 
     @Test

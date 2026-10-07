@@ -59,6 +59,7 @@ class ToolSecretResolutionService(
 data class PreparedToolArguments(
     val arguments: String,
     val secretEnvironment: Map<String, String> = emptyMap(),
+    val originalCommand: String? = null,
 )
 
 class SecretArgumentSubstitutor(
@@ -77,14 +78,17 @@ class SecretArgumentSubstitutor(
     ): PreparedToolArguments {
         if (toolName == "grz_visual") return PreparedToolArguments(arguments)
         if (toolName != GRZ_EXECUTE_COMMAND_TOOL_NAME) {
-            return PreparedToolArguments(substitute(arguments, values))
+            val original = if (toolName == "grz_monitor_command") {
+                json.parseToJsonElement(arguments).jsonObject["filter_command"]?.jsonPrimitive?.contentOrNull
+            } else null
+            return PreparedToolArguments(substitute(arguments, values), originalCommand = original)
         }
         val input = json.parseToJsonElement(arguments).jsonObject
         val command = input["command"]?.jsonPrimitive?.contentOrNull
             ?: return PreparedToolArguments(substitute(arguments, values))
         val referencedNames = NamedSecret.namesInText(command)
         if (referencedNames.isEmpty()) {
-            return PreparedToolArguments(substitute(arguments, values))
+            return PreparedToolArguments(substitute(arguments, values), originalCommand = command)
         }
         val generatedNames = mutableSetOf<String>()
         val inheritedNames = inheritedEnvironmentNames()
@@ -105,6 +109,7 @@ class SecretArgumentSubstitutor(
         return PreparedToolArguments(
             arguments = substitute(rewrittenInput.toString(), values),
             secretEnvironment = environment,
+            originalCommand = command,
         )
     }
 

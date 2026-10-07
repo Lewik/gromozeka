@@ -32,7 +32,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
     @Test
     fun `batch coalesces commands monitor events and terminal monitors`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val service = BackgroundActivityCompletionApplicationService(coordinator)
+        val service = completionService(coordinator)
         val command = terminalCommand(
             id = "command-1",
             agentId = agentDefinitionId,
@@ -130,7 +130,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
     @Test
     fun `monitor delivery is bounded and leaves overflow pending`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val service = BackgroundActivityCompletionApplicationService(coordinator)
+        val service = completionService(coordinator)
         val monitor = commandMonitor(
             id = "monitor-1",
             status = CommandMonitor.Status.WORKING,
@@ -173,7 +173,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
     @Test
     fun `batch limits the number of independent deliveries`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val service = BackgroundActivityCompletionApplicationService(coordinator)
+        val service = completionService(coordinator)
         repeat(20) { index ->
             coordinator.upsertCommandTask(
                 terminalCommand(
@@ -195,7 +195,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
     @Test
     fun `only non-background pending work suppresses a dedicated model wakeup`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val service = BackgroundActivityCompletionApplicationService(
+        val service = completionService(
             object : ConversationRuntimeCoordinator by coordinator {
                 override suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot =
                     error("Pending-work checks must not load the full runtime snapshot")
@@ -224,6 +224,16 @@ class BackgroundActivityCompletionApplicationServiceTest {
 
         assertTrue(service.hasPendingConversationWork(conversationId))
     }
+
+    private fun completionService(coordinator: ConversationRuntimeCoordinator) = BackgroundActivityCompletionApplicationService(
+        coordinator,
+        object : com.gromozeka.domain.repository.BackgroundActivityOriginRepository {
+            override suspend fun bind(origin: com.gromozeka.domain.repository.BackgroundActivityOrigin) = error("Not used")
+            override suspend fun find(conversationId: Conversation.Id, keys: Set<com.gromozeka.domain.repository.BackgroundActivityOrigin.Key>) =
+                emptyMap<com.gromozeka.domain.repository.BackgroundActivityOrigin.Key, com.gromozeka.domain.repository.BackgroundActivityOrigin>()
+        },
+        BackgroundActivityContinuationPolicy { _, _ -> true },
+    )
 
     private fun terminalCommand(
         id: String,
