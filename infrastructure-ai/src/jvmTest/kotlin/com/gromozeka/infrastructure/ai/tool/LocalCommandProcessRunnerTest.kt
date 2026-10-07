@@ -211,7 +211,6 @@ class LocalCommandProcessRunnerTest {
     }
 
     private fun verifyAbruptWorkerExit(lifetime: CommandTask.ProcessLifetime) {
-        assumeFalse("POSIX process groups are required", isWindows)
         withTemporaryGromozekaHome { home ->
             val identityFile = File(home, "abrupt-worker-exit-processes")
             val helperOutput = File(home, "abrupt-worker-exit-helper.log")
@@ -230,7 +229,10 @@ class LocalCommandProcessRunnerTest {
             var processTreeId: Long? = null
             var childPid: Long? = null
             try {
-                waitUntil(10_000) { identityFile.isFile && identityFile.readText().isNotBlank() }
+                waitUntil(if (isWindows) 45_000 else 10_000) {
+                    check(helper.isAlive) { "Worker fixture exited before publishing identity: ${helperOutput.readText()}" }
+                    identityFile.isFile && identityFile.readText().isNotBlank()
+                }
                 val identity = identityFile.readLines()
                 val commandProcessTreeId = identity[0].toLong()
                 val commandChildPid = identity[1].toLong()
@@ -241,6 +243,12 @@ class LocalCommandProcessRunnerTest {
                 assertTrue(helper.waitFor(5_000, java.util.concurrent.TimeUnit.MILLISECONDS))
 
                 if (lifetime == CommandTask.ProcessLifetime.RESUMABLE) {
+                    if (isWindows) {
+                        val root = ProcessHandle.of(commandProcessTreeId).orElseThrow()
+                        checkNotNull(WindowsCommandJob.open(WindowsCommandJob.name(root))) {
+                            "Resumable command lost its named job after the Worker JVM exited"
+                        }.use { /* Recovery must retain kernel containment, not fall back to taskkill. */ }
+                    }
                     val recovered = assertIs<CommandProcessRecovery.Running>(
                         runner.recover(
                             CommandProcessRecoverySpec(
@@ -327,36 +335,39 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `runner reconnects to a live command with matching process identity`() {
-        withTemporaryGromozekaHome { home ->
-            val process = runner.start(
-                CommandProcessSpec(
-                    executionId = "live-recovery-task",
-                    command = platformCommand(
-                        posix = "sleep 30",
-                        windows = "ping.exe -n 31 127.0.0.1 >NUL",
-                    ),
-                    workingDirectory = home.absolutePath,
-                    lifetime = CommandTask.ProcessLifetime.RESUMABLE,
-                )
-            )
-
-            val recovery = assertIs<CommandProcessRecovery.Running>(
-                runner.recover(
-                    CommandProcessRecoverySpec(
-                        processId = process.processId,
-                        processStartedAt = process.processStartedAt,
-                        processTreeId = process.processTreeId,
-                        outputFile = process.outputFile,
+        // Cancellation must also catch descendants born during command startup.
+        repeat(if (isWindows) 30 else 1) {
+            withTemporaryGromozekaHome { home ->
+                val process = runner.start(
+                    CommandProcessSpec(
+                        executionId = "live-recovery-task",
+                        command = platformCommand(
+                            posix = "sleep 30",
+                            windows = "ping.exe -n 31 127.0.0.1 >NUL",
+                        ),
+                        workingDirectory = home.absolutePath,
+                        lifetime = CommandTask.ProcessLifetime.RESUMABLE,
                     )
                 )
-            )
 
-            assertFalse(recovery.process.acceptsInput)
-            assertFailsWith<IllegalStateException> {
-                recovery.process.writeInput("unavailable".toByteArray())
+                val recovery = assertIs<CommandProcessRecovery.Running>(
+                    runner.recover(
+                        CommandProcessRecoverySpec(
+                            processId = process.processId,
+                            processStartedAt = process.processStartedAt,
+                            processTreeId = process.processTreeId,
+                            outputFile = process.outputFile,
+                        )
+                    )
+                )
+
+                assertFalse(recovery.process.acceptsInput)
+                assertFailsWith<IllegalStateException> {
+                    recovery.process.writeInput("unavailable".toByteArray())
+                }
+                recovery.process.terminateTree()
+                assertFalse(process.isAlive())
             }
-            recovery.process.terminateTree()
-            assertFalse(process.isAlive())
         }
     }
 
@@ -722,7 +733,7 @@ class LocalCommandProcessRunnerTest {
         } catch (error: Throwable) {
             testFailure = error
             home.walkTopDown().filter(File::isFile).forEach { artifact ->
-                println("${artifact.relativeTo(home)}: ${artifact.readText().takeLast(2_000)}")
+                println("${artifact.relativeTo(home)}: ${runCatching { artifact.readText().takeLast(2_000) }.getOrElse { it.toString() }}")
             }
             throw error
         } finally {
@@ -731,6 +742,12 @@ class LocalCommandProcessRunnerTest {
                     if (process.isAlive()) process.terminateTree() else process.waitFor(0)
                 }
                 waitUntil(5_000) { home.deleteRecursively() }
+            }
+            cleanup.exceptionOrNull()?.let { failure ->
+                runCatching {
+                    println("Command fixture cleanup failed: ${home.absolutePath}; roots=${startedProcesses.map { it.processId }}")
+                    home.walkTopDown().forEach { println("Remaining: ${it.relativeTo(home)}") }
+                }.onFailure(failure::addSuppressed)
             }
             startedProcesses.clear()
             if (previousHome == null) {
@@ -759,14 +776,6 @@ class LocalCommandProcessRunnerTest {
         return childPidFile.readText().trim().toLong()
     }
 
-    private fun windowsProcessTreeCommand(childPidFile: File): String {
-        val escapedPath = childPidFile.absolutePath.replace("'", "''")
-        return "powershell.exe -NoProfile -NonInteractive -Command " +
-            "\"${'$'}child = Start-Process powershell.exe " +
-            "-ArgumentList '-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 30' -PassThru; " +
-            "Set-Content -NoNewline -LiteralPath '$escapedPath' -Value ${'$'}child.Id; " +
-            "Wait-Process -Id ${'$'}child.Id\""
-    }
 
     private fun terminateRemainingProcessTree(processTreeId: Long) {
         val processHandle = ProcessHandle.of(processTreeId).orElse(null) ?: return
@@ -775,6 +784,16 @@ class LocalCommandProcessRunnerTest {
             currentLocalCommandHost().processTree(processTreeId).terminate(processHandle)
         }
     }
+}
+
+private fun windowsProcessTreeCommand(childPidFile: File): String {
+    val escapedPath = childPidFile.absolutePath.replace("'", "''")
+    return "powershell.exe -NoProfile -NonInteractive -Command " +
+        "\"${'$'}child = Start-Process powershell.exe " +
+        "-ArgumentList '-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 30' -PassThru; " +
+        "Set-Content -NoNewline -LiteralPath '$escapedPath.tmp' -Value ${'$'}child.Id; " +
+        "Move-Item -LiteralPath '$escapedPath.tmp' -Destination '$escapedPath'; " +
+        "Wait-Process -Id ${'$'}child.Id\""
 }
 
 internal object CommandInputEchoTestProcess {
@@ -800,12 +819,15 @@ internal object CommandWorkerLifetimeTestProcess {
         val process = LocalCommandProcessRunner().start(
             CommandProcessSpec(
                 executionId = "abrupt-worker-exit-task",
-                command = "sleep 30 & child=${'$'}!; printf '%s' ${'$'}child > '${childPidFile.absolutePath}'; wait",
+                command = if (System.getProperty("os.name").lowercase().contains("windows")) {
+                    windowsProcessTreeCommand(childPidFile)
+                } else "sleep 30 & child=${'$'}!; printf '%s' ${'$'}child > '${childPidFile.absolutePath}'; wait",
                 workingDirectory = args[0],
                 lifetime = CommandTask.ProcessLifetime.valueOf(args[2]),
             )
         )
-        val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5)
+        val startupSeconds = if (System.getProperty("os.name").lowercase().contains("windows")) 30L else 5L
+        val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(startupSeconds)
         while (!childPidFile.isFile || childPidFile.readText().isBlank()) {
             check(System.nanoTime() < deadline) { "Command child did not start" }
             Thread.sleep(10)

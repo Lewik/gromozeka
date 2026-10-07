@@ -59,7 +59,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             } else {
                 null
             }
-            host.releaseProcessStart(processStartFile)
+            host.releaseProcessStart(process, processStartFile)
             return LocalRunningCommandProcess(
                 process = process,
                 processHandle = processHandle,
@@ -395,7 +395,7 @@ internal interface LocalCommandHost {
 
     fun processTreeHandle(process: Process, processTreeId: Long): ProcessHandle
 
-    fun releaseProcessStart(processStartFile: File)
+    fun releaseProcessStart(process: Process, processStartFile: File)
 
     fun bindToWorker(processTreeId: Long, outputFile: File): LocalWorkerLifetimeBinding
 
@@ -480,7 +480,7 @@ internal class PosixLocalCommandHost private constructor(
             IllegalStateException("Command process-tree root $processTreeId stopped during startup")
         }
 
-    override fun releaseProcessStart(processStartFile: File) {
+    override fun releaseProcessStart(process: Process, processStartFile: File) {
         processStartFile.writeText("start\n", StandardCharsets.UTF_8)
     }
 
@@ -558,14 +558,32 @@ internal class WindowsLocalCommandHost(
         processTreeFile: File,
         processStartFile: File,
         exitCodeFile: File,
-    ): Process = prepareProcessBuilder(
-        command = spec.command,
-        workingDirectory = workingDirectory,
-        outputFile = outputFile,
-        errorFile = errorFile,
-        exitCodeFile = exitCodeFile,
-        injectedEnvironment = spec.environment,
-    ).start()
+    ): Process {
+        val process = prepareProcessBuilder(
+            command = spec.command,
+            workingDirectory = workingDirectory,
+            outputFile = outputFile,
+            errorFile = errorFile,
+            exitCodeFile = exitCodeFile,
+            injectedEnvironment = spec.environment,
+            startFile = processStartFile,
+        ).start()
+        try {
+            // cmd.exe is blocked on stdin until releaseProcessStart, so the job
+            // owns the root before the user's command can create any children.
+            val job = WindowsCommandJob.assign(process, spec.lifetime == CommandTask.ProcessLifetime.WORKER_BOUND)
+            // Keep the initial handle alive even before the Worker lifetime binding
+            // is installed. A Worker crash closes it in the OS, not in a JVM hook.
+            process.onExit().whenComplete { _, _ -> job.close() }
+            return process
+        } catch (error: Throwable) {
+            runCatching {
+                process.destroyForcibly()
+                process.waitFor(TASKKILL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            }.onFailure(error::addSuppressed)
+            throw error
+        }
+    }
 
     internal fun prepareProcessBuilder(
         command: String,
@@ -574,6 +592,7 @@ internal class WindowsLocalCommandHost(
         errorFile: File? = null,
         exitCodeFile: File,
         injectedEnvironment: Map<String, String> = emptyMap(),
+        startFile: File = processStartFile(outputFile),
     ): ProcessBuilder {
         val commandFile = windowsCommandFile(outputFile)
         val wrapperFile = windowsWrapperFile(outputFile)
@@ -592,9 +611,10 @@ internal class WindowsLocalCommandHost(
             .apply {
                 redirectErrorStream(errorFile == null)
                 errorFile?.let(::redirectError)
+                environment().putAll(injectedEnvironment)
                 environment()[WINDOWS_COMMAND_FILE_ENV] = commandFile.absolutePath
                 environment()[WINDOWS_EXIT_FILE_ENV] = exitCodeFile.absolutePath
-                environment().putAll(injectedEnvironment)
+                environment()[WINDOWS_START_FILE_ENV] = startFile.absolutePath
             }
     }
 
@@ -610,9 +630,26 @@ internal class WindowsLocalCommandHost(
             }
         }
 
-    override fun releaseProcessStart(processStartFile: File) = Unit
+    override fun releaseProcessStart(process: Process, processStartFile: File) {
+        process.outputStream.write("start\r\n".toByteArray(StandardCharsets.US_ASCII))
+        process.outputStream.flush()
+        // Wait for cmd to finish consuming the handshake before application stdin
+        // can be written; otherwise set /p could read ahead into the first payload.
+        awaitPositiveLong(processStartFile, STARTUP_HANDSHAKE_MILLIS)
+    }
 
     override fun bindToWorker(processTreeId: Long, outputFile: File): LocalWorkerLifetimeBinding {
+        val process = ProcessHandle.of(processTreeId).orElseThrow()
+        WindowsCommandJob.open(WindowsCommandJob.name(process))?.let { job ->
+            try {
+                job.killOnClose(true)
+                return WindowsJobLifetimeBinding(job)
+            } catch (error: Throwable) {
+                runCatching { job.close() }.onFailure(error::addSuppressed)
+                throw error
+            }
+        }
+        // Compatibility for commands started by an older Worker without a job.
         val watchdogFile = windowsWatchdogFile(outputFile)
         watchdogFile.writeText(WINDOWS_WATCHDOG, StandardCharsets.UTF_8)
         val watchdog = ProcessBuilder(
@@ -700,6 +737,8 @@ private class WindowsProcessTree(
     override val id: Long,
     private val taskkillExecutable: String,
 ) : LocalProcessTree {
+    private val jobName = ProcessHandle.of(id).orElse(null)?.let { WindowsCommandJob.name(it) }
+
     override fun isAlive(processHandle: ProcessHandle): Boolean =
         processHandle.isAlive
 
@@ -707,6 +746,12 @@ private class WindowsProcessTree(
         require(processHandle.pid() == id) {
             "Windows command process tree $id does not match root process ${processHandle.pid()}"
         }
+        val job = jobName?.let { WindowsCommandJob.open(it) }
+        if (job != null) {
+            job.use { it.terminateAndWait() }
+            return
+        }
+        // An older resumable command may predate kernel job containment.
         val descendants = processHandle.descendants().toList()
         if (processHandle.isAlive) {
             runCatching { taskkill() }
@@ -927,6 +972,7 @@ private const val WATCHDOG_EXIT_TIMEOUT_SECONDS = 5L
 private const val WATCHDOG_READY = "ready"
 private const val WINDOWS_COMMAND_FILE_ENV = "GROMOZEKA_COMMAND_FILE"
 private const val WINDOWS_EXIT_FILE_ENV = "GROMOZEKA_EXIT_FILE"
+private const val WINDOWS_START_FILE_ENV = "GROMOZEKA_START_FILE"
 private const val WINDOWS_PROCESS_TREE_ID_ENV = "GROMOZEKA_PROCESS_TREE_ID"
 private const val WINDOWS_TASKKILL_ENV = "GROMOZEKA_TASKKILL"
 private val POSIX_KILL_EXECUTABLE_CANDIDATES = listOf("/bin/kill", "/usr/bin/kill")
@@ -996,6 +1042,12 @@ private val POSIX_WATCHDOG = """
 private val WINDOWS_COMMAND_WRAPPER = """
     @echo off
     setlocal DisableDelayedExpansion
+    set "GROMOZEKA_START_ACTION="
+    set /p "GROMOZEKA_START_ACTION="
+    if not "%GROMOZEKA_START_ACTION%"=="start" exit /B 125
+    set "GROMOZEKA_START_ACTION="
+    > "%GROMOZEKA_START_FILE%.tmp" echo 1
+    move /Y "%GROMOZEKA_START_FILE%.tmp" "%GROMOZEKA_START_FILE%" >NUL || exit /B 125
     chcp 65001 >NUL
     "%ComSpec%" /D /Q /V:OFF /C call "%GROMOZEKA_COMMAND_FILE%"
     set "GROMOZEKA_COMMAND_EXIT_CODE=%ERRORLEVEL%"
