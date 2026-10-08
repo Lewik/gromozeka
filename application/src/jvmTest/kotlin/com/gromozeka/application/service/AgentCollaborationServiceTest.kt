@@ -4,8 +4,11 @@ import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.repository.*
 import com.gromozeka.domain.service.*
+import com.gromozeka.domain.tool.AgentPreloadedTools
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Instant
@@ -21,10 +24,9 @@ class AgentCollaborationServiceTest {
     private val identities = mock<IdentityRepository>()
     private val access = mock<ProjectAccessService>()
     private val agents = mock<AgentDomainService>()
-    private val config = mock<AiConfigurationProvider>()
     private val coordinator = mock<ConversationRuntimeCoordinator>()
     private val sync = mock<ConversationRuntimeStateSyncService>()
-    private val service = AgentCollaborationService(repo, conversations, identities, access, agents, config, coordinator, sync)
+    private val service = AgentCollaborationService(repo, conversations, identities, access, agents, coordinator, sync)
     private fun agent(id: AgentDefinition.Id) = AgentDefinition(id, name = id.value, prompts = emptyList(), runtimeSelection = selection, type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
     private fun conversation(endpoint: AgentEndpoint) = Conversation(endpoint.conversationId, Project.Id("p"), setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)), currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
     private suspend fun setup() {
@@ -33,13 +35,55 @@ class AgentCollaborationServiceTest {
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target))
         Mockito.`when`(agents.findById(source.agentId)).thenReturn(agent(source.agentId))
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(agent(target.agentId))
-        val connection = AiConnection.OpenAiSubscription(AiConnection.Id("connection"), "Local test", true)
-        val model = AiModelConfiguration(selection.modelConfigurationId, connection.id, "test", "Test")
-        Mockito.`when`(config.resolveAiRuntime(selection)).thenReturn(ResolvedAiRuntime(connection, model,
-            AiModelSpec("test", AiProvider.OPENAI, capabilities = setOf(AiModelCapability.TEXT_GENERATION),
-                limits = AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 128_000)))))
         Mockito.`when`(coordinator.schedulingSnapshot(target.conversationId)).thenReturn(ConversationRuntimeSchedulingSnapshot(target.conversationId))
     }
+    private fun targetOnAnotherRuntime() = agent(target.agentId).copy(
+        runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("other-runtime")),
+        tools = AgentPreloadedTools(listOf("grz_visual")),
+    )
+
+    @Test fun `runtime selections and preloads do not restrict discovery or informational delivery`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
+        Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(conversation(source), conversation(target)))
+        val scheduler = InMemoryConversationRuntimeCoordinator()
+        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, scheduler, sync)
+        val endpoint = transport.sessions(source, actor.id).single().jsonObject
+        assertEquals(target.conversationId.value, endpoint.getValue("conversation_id").jsonPrimitive.content)
+        assertEquals(target.agentId.value, endpoint.getValue("agent_id").jsonPrimitive.content)
+
+        val id = transport.send(source, actor.id, "b", null, "Information", "other-runtime-message", false)
+        transport.deliverPending()
+        transport.deliverPending()
+        val queued = scheduler.listPending(target.conversationId).single()
+        assertIs<ConversationRuntimeTask.Payload.PostMessage>(queued.payload)
+        assertEquals(AgentDelivery.State.QUEUED, repo.findDelivery("$id:input")?.state)
+        assertTrue(repo.items.isEmpty())
+    }
+
+    @Test fun `different tool policies remain rejected across runtime selections`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime().copy(toolAccess = ToolAccessPolicy.AllowOnly()))
+        Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(conversation(source), conversation(target)))
+        assertTrue(service.sessions(source, actor.id).isEmpty())
+        val error = assertFailsWith<IllegalArgumentException> {
+            service.send(source, actor.id, "b", null, "Do not bypass tool policy", "policy-boundary", true)
+        }
+        assertEquals("This experiment requires matching agent tool policies", error.message)
+        assertTrue(repo.deliveries.isEmpty())
+    }
+
+    @Test fun `different projects remain rejected across runtime selections`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target).copy(projectId = Project.Id("other-project")))
+        val error = assertFailsWith<IllegalArgumentException> {
+            service.send(source, actor.id, "b", null, "Do not cross projects", "project-boundary", true)
+        }
+        assertEquals("Cross-project communication is disabled", error.message)
+        assertTrue(repo.deliveries.isEmpty())
+    }
+
     @Test fun `delegation records requester and does not wait for model execution`() = runBlocking {
         setup()
         val id = service.send(source, actor.id, "b", null, "Investigate", "call-1", true)
@@ -75,7 +119,7 @@ class AgentCollaborationServiceTest {
         assertEquals(2, repo.pendingDeliveries().size)
         assertEquals(AgentRequest.State.COMPLETED, repo.findRequest(id)?.state)
     }
-    @Test fun `removed user changed branch and broader tool policy cannot receive delegated work`() = runBlocking {
+    @Test fun `removed user changed branch and different tool policy cannot receive delegated work`() = runBlocking {
         setup()
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target).copy(participants = setOf(Conversation.Participant.User(User.Id("other")), Conversation.Participant.Agent(target.agentId))))
         assertFailsWith<IllegalArgumentException> { service.send(source, actor.id, "b", null, "Private", "call-1", true) }
@@ -103,7 +147,7 @@ class AgentCollaborationServiceTest {
                     state = ConversationExecutionState(conversationId, ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
                 else scheduler.schedulingSnapshot(conversationId)
         }
-        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, config, controlled, sync)
+        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, controlled, sync)
         // Equal timestamps force the cursor to use id as well as createdAt. The first page remains pending.
         val deliveries = (0 until 130).map { index ->
             val toPaused = index < 64
@@ -132,16 +176,18 @@ class AgentCollaborationServiceTest {
         assertEquals(AgentRequest.State.CANCELLED, repo.findRequest(id)?.state)
         assertEquals(AgentDelivery.State.BLOCKED, repo.deliveries.values.single().state)
     }
-    @Test fun `request and result use the real conversation scheduler once without blocking each other`() = runBlocking {
+    @Test fun `request and result cross runtime selections once through the real conversation scheduler`(): Unit = runBlocking {
         setup()
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
         val scheduler = InMemoryConversationRuntimeCoordinator()
-        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, config, scheduler, sync)
+        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, scheduler, sync)
         val id = transport.send(source, actor.id, "b", null, "Investigate", "round-trip", true)
         transport.deliverPending()
         transport.deliverPending()
         val queued = scheduler.schedulingSnapshot(target.conversationId).pendingTasks.single()
         assertEquals(target.agentId, queued.requireAgentInvocation().agentDefinitionId)
         assertEquals(source.agentId, (queued.requireAgentInvocation().userMessage.author as Conversation.Message.Author.Agent).agentDefinitionId)
+        assertTrue(transport.validateMessage(queued.requireAgentInvocation().userMessage))
         val owner = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("test"))
         val capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN, ConversationRuntimeCapability.MEMORY_PIPELINE)
         scheduler.claimDeliveredTask(target.conversationId, queued.id, owner, capabilities, emptySet())
@@ -153,6 +199,7 @@ class AgentCollaborationServiceTest {
         val result = scheduler.schedulingSnapshot(source.conversationId).pendingTasks.single()
         assertEquals(source.agentId, result.requireAgentInvocation().agentDefinitionId)
         assertEquals("Result", (result.requireAgentInvocation().userMessage.content.single() as Conversation.Message.ContentItem.UserMessage).text)
+        assertTrue(transport.validateMessage(result.requireAgentInvocation().userMessage))
         assertTrue(repo.pendingDeliveries().isEmpty())
     }
     @Test fun `stop and interrupt cancel durable waits even without an active foreground turn`() = runBlocking {

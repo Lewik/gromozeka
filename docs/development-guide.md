@@ -305,8 +305,9 @@ GROMOZEKA_POSTGRES_URL=jdbc:postgresql://localhost:<slot-postgres-port>/gromozek
 ## Experimental Cross-Thread Collaboration
 
 Enable only on an isolated Server with `GROMOZEKA_COLLABORATION_ENABLED=true`.
-The default is off. Open two conversations in one project, connect agents using
-one AI connection and identical tool policies, and name the conversations.
+The default is off. Open two conversations in one project with identical tool
+access policies and name them. Agents may use different AI connections, providers,
+models and preloaded tool lists; each session uses its own configured runtime.
 `grz_agent_sessions` discovers eligible endpoints; `grz_agent_request` submits
 work without waiting; `grz_agent_reply` completes a request. `grz_agent_message`
 is context-only and does not start a model turn. Results are queued automatically.
@@ -322,8 +323,8 @@ actual delivery in a durable outbox. A stale decision cannot commit over queued
 safe-point input. Failed or interrupted reviews retain their draft; they do not
 silently publish it or rerun the original model call.
 
-This first iteration deliberately rejects cross-project/provider-connection
-communication and history-branch changes. Telegram and other externally bound
+This first iteration deliberately rejects cross-project communication, mismatched
+tool access policies and history-branch changes. Telegram and other externally bound
 conversations keep their ordinary turn lifecycle: no collaboration prompt or response
 review, and collaboration tools are hidden from both the catalog and tool discovery.
 Direct collaboration calls from those channels remain rejected.

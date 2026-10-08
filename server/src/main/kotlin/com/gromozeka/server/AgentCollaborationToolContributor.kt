@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 @ConditionalOnProperty(name = ["gromozeka.collaboration.enabled"], havingValue = "true")
 class AgentCollaborationToolContributor(private val collaboration: AgentCollaborationService) : AiToolCallbackContributor {
     override val callbacks: List<AiToolCallback> = listOf(
-        tool("grz_agent_sessions", "List existing agent sessions you may contact. Only conversations in this project, with the same authenticated user, AI connection and tool policy are eligible. A session is a conversation plus agent, not an agent definition alone.", "{}", emptyList()) { _, context ->
+        tool("grz_agent_sessions", "List existing agent sessions you may contact. Only conversations in this project, with the same authenticated user and matching tool access policies are eligible. AI connections, models and preloaded tool lists may differ. A session is a conversation plus agent, not an agent definition alone.", "{}", emptyList()) { _, context ->
             val (source, actor) = collaboration.source(context)
             collaboration.sessions(source, actor).toString()
         },
