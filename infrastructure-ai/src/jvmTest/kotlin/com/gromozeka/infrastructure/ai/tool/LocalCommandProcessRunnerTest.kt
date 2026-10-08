@@ -13,6 +13,7 @@ import com.sun.jna.platform.win32.WinBase
 import com.sun.jna.platform.win32.WinNT
 import kotlin.time.Instant
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
@@ -206,12 +207,16 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `Worker-bound process tree stops after abrupt Worker JVM exit`() {
-        verifyAbruptWorkerExit(CommandTask.ProcessLifetime.WORKER_BOUND)
+        repeat(if (isWindows) 5 else 1) {
+            verifyAbruptWorkerExit(CommandTask.ProcessLifetime.WORKER_BOUND)
+        }
     }
 
     @Test
     fun `resumable process tree survives abrupt Worker JVM exit and can be recovered`() {
-        verifyAbruptWorkerExit(CommandTask.ProcessLifetime.RESUMABLE)
+        repeat(if (isWindows) 5 else 1) {
+            verifyAbruptWorkerExit(CommandTask.ProcessLifetime.RESUMABLE)
+        }
     }
 
     private fun verifyAbruptWorkerExit(lifetime: CommandTask.ProcessLifetime) {
@@ -233,11 +238,20 @@ class LocalCommandProcessRunnerTest {
             var processTreeId: Long? = null
             var childPid: Long? = null
             try {
-                waitUntil(if (isWindows) 45_000 else 10_000) {
-                    check(helper.isAlive) { "Worker fixture exited before publishing identity: ${helperOutput.readText()}" }
-                    identityFile.isFile && identityFile.readText().isNotBlank()
+                val identity = awaitCommandFixtureValue(
+                    "Worker process identity", if (isWindows) 45_000 else 10_000,
+                    ensureRunning = {
+                        check(helper.isAlive) {
+                            "Worker fixture exited before publishing identity: ${runCatching { helperOutput.readText() }.getOrElse { it.toString() }}"
+                        }
+                    },
+                ) {
+                    identityFile.readLines().takeIf { lines ->
+                        lines.size == 4 && lines[0].toLongOrNull()?.let { it > 0 } == true &&
+                            lines[1].toLongOrNull()?.let { it > 0 } == true &&
+                            lines[2].toLongOrNull() != null && lines[3].isNotBlank()
+                    }
                 }
-                val identity = identityFile.readLines()
                 val commandProcessTreeId = identity[0].toLong()
                 val commandChildPid = identity[1].toLong()
                 processTreeId = commandProcessTreeId
@@ -776,6 +790,56 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `fixture readiness returns one accepted snapshot after transient read failures`() {
+        var reads = 0
+        val value = awaitCommandFixtureValue("test value", 1_000) {
+            when (++reads) {
+                1 -> throw java.io.FileNotFoundException("sharing violation")
+                2 -> null
+                3 -> 42L
+                else -> error("Accepted fixture value must not be read again")
+            }
+        }
+        assertEquals(42L, value)
+        assertEquals(3, reads)
+    }
+
+    @Test
+    fun `fixture readiness preserves permanent IO failure and producer failure`() {
+        val blocked = IOException("permanent read failure")
+        val failure = assertFailsWith<AssertionError> {
+            awaitCommandFixtureValue<Long>("blocked fixture", 30) { throw blocked }
+        }
+        assertTrue(failure.cause === blocked)
+        assertContains(requireNotNull(failure.message), "blocked fixture")
+        val producerFailure = assertFailsWith<IllegalStateException> {
+            awaitCommandFixtureValue("dead fixture", 1_000,
+                ensureRunning = { error("producer exited") },
+            ) { error("Must not read after producer failure") }
+        }
+        assertEquals("producer exited", producerFailure.message)
+    }
+
+    @Test
+    fun `fixture readiness tolerates an actual Windows sharing lock`() {
+        assumeTrue("Windows sharing modes are required", isWindows)
+        withTemporaryGromozekaHome { home ->
+            val file = File(home, "fixture.pid").apply { writeText("42") }
+            val lock = lockWindowsFile(file)
+            val release = java.util.concurrent.CompletableFuture.runAsync {
+                Thread.sleep(200)
+                check(Kernel32.INSTANCE.CloseHandle(lock)) { "Cannot release fixture lock" }
+            }
+            try {
+                val pid = awaitCommandFixtureValue("locked PID", 2_000) { file.readText().toLongOrNull() }
+                assertEquals(42L, pid)
+            } finally {
+                release.join()
+            }
+        }
+    }
+
+    @Test
     fun `windows platform selects windows command host`() {
         assertIs<WindowsLocalCommandHost>(currentLocalCommandHost("Windows 11"))
     }
@@ -855,14 +919,16 @@ class LocalCommandProcessRunnerTest {
 
     private fun awaitChildProcess(process: RunningCommandProcess, childPidFile: File): Long {
         val startedAt = System.nanoTime()
-        waitUntil(if (isWindows) 30_000 else 5_000) {
-            check(process.isAlive()) {
-                "Process fixture exited before starting its child: ${File(process.outputFile).readText()}"
-            }
-            childPidFile.isFile && childPidFile.readText().trim().toLongOrNull() != null
-        }
+        val childPid = awaitCommandFixtureValue(
+            "Child process id", if (isWindows) 30_000 else 5_000,
+            ensureRunning = {
+                check(process.isAlive()) {
+                    "Process fixture exited before starting its child: ${runCatching { File(process.outputFile).readText() }.getOrElse { it.toString() }}"
+                }
+            },
+        ) { childPidFile.readText().trim().toLongOrNull()?.takeIf { it > 0 } }
         println("Process-tree fixture became ready after ${(System.nanoTime() - startedAt) / 1_000_000}ms")
-        return childPidFile.readText().trim().toLong()
+        return childPid
     }
 
 
@@ -872,6 +938,32 @@ class LocalCommandProcessRunnerTest {
         runCatching {
             currentLocalCommandHost().processTree(processTreeId).terminate(processHandle)
         }
+    }
+}
+
+/** File publication and handle release are separate events on Windows. */
+private fun <T : Any> awaitCommandFixtureValue(
+    description: String,
+    timeoutMillis: Long,
+    ensureRunning: () -> Unit = {},
+    read: () -> T?,
+): T {
+    require(timeoutMillis > 0)
+    val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
+    var lastReadFailure: IOException? = null
+    while (true) {
+        ensureRunning()
+        try {
+            read()?.let { return it } // Return this snapshot; never open the file again after readiness.
+        } catch (error: IOException) {
+            lastReadFailure = error
+        }
+        if (System.nanoTime() >= deadline) {
+            throw AssertionError("$description was not readable within ${timeoutMillis}ms").also {
+                lastReadFailure?.let(it::initCause)
+            }
+        }
+        Thread.sleep(10)
     }
 }
 
@@ -915,24 +1007,28 @@ internal object CommandWorkerLifetimeTestProcess {
                 lifetime = CommandTask.ProcessLifetime.valueOf(args[2]),
             )
         )
-        val startupSeconds = if (System.getProperty("os.name").lowercase().contains("windows")) 30L else 5L
-        val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(startupSeconds)
-        while (!childPidFile.isFile || childPidFile.readText().isBlank()) {
-            check(System.nanoTime() < deadline) { "Command child did not start" }
-            Thread.sleep(10)
-        }
-        val temporaryIdentity = File("${identityFile.absolutePath}.tmp")
-        temporaryIdentity.writeText(
-            listOf(
-                process.processTreeId.toString(),
-                childPidFile.readText().trim(),
-                process.processStartedAt.toEpochMilliseconds().toString(),
-                process.outputFile,
-            ).joinToString("\n")
-        )
-        check(temporaryIdentity.renameTo(identityFile))
-        while (process.isAlive()) {
-            Thread.sleep(1_000)
+        try {
+            val startupMillis = if (System.getProperty("os.name").lowercase().contains("windows")) 30_000L else 5_000L
+            val childPid = awaitCommandFixtureValue("Command child id", startupMillis,
+                ensureRunning = { check(process.isAlive()) { "Command stopped before starting its child" } },
+            ) { childPidFile.readText().trim().toLongOrNull()?.takeIf { it > 0 } }
+            val temporaryIdentity = File("${identityFile.absolutePath}.tmp")
+            temporaryIdentity.writeText(
+                listOf(
+                    process.processTreeId.toString(),
+                    childPid.toString(),
+                    process.processStartedAt.toEpochMilliseconds().toString(),
+                    process.outputFile,
+                ).joinToString("\n")
+            )
+            check(temporaryIdentity.renameTo(identityFile))
+            while (process.isAlive()) {
+                Thread.sleep(1_000)
+            }
+        } finally {
+            // Ordinary fixture failures must clean up RESUMABLE commands too.
+            // The forced JVM exit under test deliberately bypasses this block.
+            if (process.isAlive()) process.terminateTree() else process.waitFor(0)
         }
     }
 }
