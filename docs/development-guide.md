@@ -807,8 +807,11 @@ Release JARs and Browser MCP are prepared once. Server/Worker archives are
 packaged in a three-platform matrix, reusing the shared JARs and production Web
 assets. Only the Server has a Docker image; its OCI build runs alongside the
 remaining checks. Publication waits for **all** checks and artifact builds,
-reserves the tag, and copies that same image without rebuilding. Publication
-must be dispatched from `main`. Deploy is a separate, explicit opt-in; the
+reserves the tag, and copies that same image without rebuilding. Packaging and
+OCI jobs use `ubuntu-24.04` hosted runners with preinstalled Brotli/Skopeo; do not
+run a blanket APT update/install in these jobs. Tool checks and OCI copies have
+explicit step/command timeouts and visible progress. Publication must be
+dispatched from `main`. Deploy is a separate, explicit opt-in; the
 manual/reusable deployment workflow can also install an existing release.
 
 Validate workflow contracts locally with an isolated Python environment:

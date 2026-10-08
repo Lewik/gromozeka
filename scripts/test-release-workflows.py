@@ -110,12 +110,27 @@ class WorkflowContracts(unittest.TestCase):
         build = next(step["with"] for step in steps if step.get("uses", "").startswith("docker/build-push-action@"))
         self.assertEqual("false", build["push"])
         self.assertIn("type=oci,", build["outputs"])
-        self.assertIn("skopeo copy --all --preserve-digests", scripts(JOBS["server-image"]))
+        self.assertIn("copy --all --preserve-digests", scripts(JOBS["server-image"]))
         self.assertNotIn("secrets.", str(JOBS["server-image"]))
         self.assertFalse(any("login" in step.get("uses", "") or "configure-aws" in step.get("uses", "") for step in steps))
         self.assertNotIn("build-push-action", str(JOBS["images"]))
-        self.assertIn("skopeo copy --all --preserve-digests", scripts(JOBS["images"]))
+        self.assertIn("copy --all --preserve-digests", scripts(JOBS["images"]))
         self.assertIn("oci-archive:$PWD/build/release/server-image.tar", scripts(JOBS["images"]))
+
+    def test_oci_tools_are_preinstalled_and_each_copy_is_bounded(self):
+        for job in ("standalone", "server-image", "images"):
+            self.assertEqual("ubuntu-24.04", JOBS[job]["runs-on"])
+            self.assertNotIn("apt-get", scripts(JOBS[job]))
+        self.assertIn("command -v brotli", scripts(JOBS["standalone"]))
+        for job in ("server-image", "images"):
+            self.assertIn("skopeo --version", scripts(JOBS[job]))
+            for step in JOBS[job]["steps"]:
+                if "skopeo" in step.get("run", ""):
+                    self.assertIn("timeout-minutes", step)
+                    self.assertLessEqual(int(step["timeout-minutes"]), 18)
+                for line in step.get("run", "").splitlines():
+                    if line.strip().startswith("skopeo") and "copy" in line:
+                        self.assertRegex(line, r"skopeo --command-timeout [1-5]m copy --all --preserve-digests")
 
     def test_all_publication_operations_are_explicitly_gated(self):
         for job in ("reserve-release-tag", "images", "release"):
