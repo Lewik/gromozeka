@@ -245,6 +245,7 @@ suspend fun createRemoteAppComponents(
             workerCatalogService = remoteServices.workerCatalogService,
             conversationService = remoteServices.conversationService,
             visualService = remoteServices.visualService,
+            slotService = remoteServices.slotService,
             quickTextActionService = remoteServices.quickTextActionService,
             quickTextActionRunner = quickTextActionRunner,
             conversationSearchViewModel = ConversationSearchViewModel(remoteServices.conversationSearchService, scope),

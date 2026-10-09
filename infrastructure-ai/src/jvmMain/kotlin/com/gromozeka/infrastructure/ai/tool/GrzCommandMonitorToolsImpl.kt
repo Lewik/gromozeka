@@ -136,6 +136,9 @@ private fun CommandMonitor.toResult(): Map<String, Any> = buildMap {
     put("success", status == CommandMonitor.Status.WORKING || status == CommandMonitor.Status.COMPLETED)
     put("monitor_id", id.value)
     put("command_task_id", commandTaskId.value)
+    slotOrigin?.let { origin ->
+        put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
+    }
     put("status", status.name)
     synchronizationError?.let { put("synchronization_error", it) }
     put("mode", mode.name)
@@ -177,6 +180,9 @@ private fun CommandMonitorOutput.toResult(
 
 private fun CommandTask.toSummary(monitorIds: List<String>): Map<String, Any> = buildMap {
     put("task_id", id.value)
+    slotOrigin?.let { origin ->
+        put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
+    }
     put("status", status.name)
     synchronizationError?.let { put("synchronization_error", it) }
     put("command", command)
@@ -196,6 +202,9 @@ private fun CommandTask.toSummary(monitorIds: List<String>): Map<String, Any> = 
 private fun CommandMonitor.toSummary(): Map<String, Any> = buildMap {
     put("monitor_id", id.value)
     put("command_task_id", commandTaskId.value)
+    slotOrigin?.let { origin ->
+        put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
+    }
     put("status", status.name)
     synchronizationError?.let { put("synchronization_error", it) }
     put("mode", mode.name)

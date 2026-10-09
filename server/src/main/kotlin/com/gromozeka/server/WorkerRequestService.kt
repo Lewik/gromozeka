@@ -47,8 +47,9 @@ class WorkerRequestService(
         actorUserId: User.Id? = null,
         projectId: Project.Id? = null,
         diagnosticId: String? = null,
+        slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
     ): ByteArray {
-        val id = submit(workerId, operation, payload, policy, actorUserId, projectId)
+        val id = submit(workerId, operation, payload, policy, actorUserId, projectId, slotOrigin)
         log.debug { "WORKER_REQUEST_TRACE request=$id call=${diagnosticId ?: "none"} phase=awaiting" }
         return try {
             val response = await(id, policy.waitTimeoutMillis)
@@ -69,6 +70,7 @@ class WorkerRequestService(
         policy: WorkerRequestPolicy,
         actorUserId: User.Id? = null,
         projectId: Project.Id? = null,
+        slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
     ): String {
         require(payload.size <= 64 * 1024 * 1024) { "Worker request exceeds 64 MiB" }
         val createdAt = Clock.System.now()
@@ -78,6 +80,7 @@ class WorkerRequestService(
             id = request.id,
             workerId = workerId,
             request = WorkerGatewayCodec.encode(request),
+            slotOrigin = slotOrigin,
             createdAt = createdAt,
             startDeadline = delivery.startDeadline,
             actorUserId = actorUserId,

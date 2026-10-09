@@ -4,6 +4,9 @@
 import os
 from pathlib import Path
 import subprocess
+import shutil
+import sys
+import tempfile
 import unittest
 
 import yaml
@@ -50,11 +53,84 @@ class WorkflowContracts(unittest.TestCase):
 
     def test_safe_dispatch_defaults(self):
         inputs = RELEASE["on"]["workflow_dispatch"]["inputs"]
-        for name, default in (("publish_release", "false"), ("deploy_aws", "false"), ("skip_ios", "true")):
+        for name, default in (("publish_release", "false"), ("deploy_aws", "false"), ("skip_android", "false"), ("skip_ios", "true")):
             self.assertEqual(default, inputs[name]["default"])
             self.assertEqual("boolean", inputs[name]["type"])
         self.assertIn("!inputs.skip_ios", JOBS["verify-ios"]["if"])
         self.assertIn('"$GITHUB_REF" != "refs/heads/main"', scripts(JOBS["metadata"]))
+
+    def test_android_skip_keeps_jvm_checks_and_gates_artifacts(self):
+        steps = {step.get("name"): step for step in JOBS["verify-client"]["steps"]}
+        self.assertNotIn("if", steps["Verify JVM client"])
+        self.assertIn(":presentation:jvmTest", steps["Verify JVM client"]["run"])
+        self.assertNotIn("android", steps["Verify JVM client"]["run"])
+        for name in ("Verify Android clients", "Upload Android APKs"):
+            self.assertIn("!inputs.skip_android", steps[name]["if"])
+        release = {step.get("name"): step for step in JOBS["release"]["steps"]}
+        self.assertIn("!inputs.skip_android", release["Download Android APKs"]["if"])
+        prepare = release["Prepare release assets"]
+        self.assertEqual("${{ inputs.skip_android }}", prepare["env"]["SKIP_ANDROID"])
+        self.assertIn('if [[ "$SKIP_ANDROID" != "true" ]]', prepare["run"])
+        self.assertIn('sha256sum "${assets[@]}"', prepare["run"])
+
+    def test_release_notes_match_android_selection(self):
+        step = next(step for step in JOBS["release"]["steps"] if step.get("name") == "Write release notes")
+        for skip in ("true", "false"):
+            with self.subTest(skip_android=skip), tempfile.TemporaryDirectory() as directory:
+                subprocess.run(["bash", "-eu", "-c", step["run"]], cwd=directory,
+                               env={**os.environ, "SKIP_ANDROID": skip}, check=True)
+                notes = (Path(directory) / "release-notes.md").read_text()
+                self.assertEqual(skip == "false", "gromozeka-client-android-debug.apk" in notes)
+                self.assertEqual(skip == "false", "debug signing key" in notes)
+                self.assertIn("gromozeka-client-macos-arm64.dmg", notes)
+                self.assertIn("gromozeka-server-linux-x64.tar.gz", notes)
+
+    def test_prepared_assets_obey_android_selection(self):
+        step = next(step for step in JOBS["release"]["steps"] if step.get("name") == "Prepare release assets")
+        script = step["run"].replace("${{ needs.metadata.outputs.version }}", "4.9.0")
+        self.assertNotIn("${{", script)
+        base = {"gromozeka-client-macos-arm64.dmg", "gromozeka-client-windows-x64.zip",
+                "gromozeka-browser-bridge.zip"}
+        for component in ("server", "worker"):
+            base.update(f"gromozeka-{component}-{suffix}" for suffix in
+                        ("macos-arm64.tar.gz", "windows-x64.zip", "linux-x64.tar.gz"))
+        for skip in ("true", "false"):
+            with self.subTest(skip_android=skip), tempfile.TemporaryDirectory() as directory:
+                work = Path(directory)
+                (work / "downloaded-artifacts").mkdir()
+                for name in base:
+                    (work / "downloaded-artifacts" / name).write_text("synthetic artifact")
+                distribution = work / "deploy/distribution"
+                distribution.mkdir(parents=True)
+                for name in ("compose.yaml", "Caddyfile", "Caddyfile.internal", "Caddyfile.provided",
+                             "SERVER_README.md", "gromozeka.env.example"):
+                    shutil.copyfile(ROOT / "deploy/distribution" / name, distribution / name)
+                shutil.copyfile(ROOT / "LICENSE", work / "LICENSE")
+                if skip == "false":
+                    for module in ("presentation-android", "mobile-worker-android"):
+                        apk = work / "android-apks" / module / "build/outputs/apk/debug" / f"{module}-debug.apk"
+                        apk.parent.mkdir(parents=True)
+                        apk.write_text("synthetic APK")
+                # macOS has shasum rather than sha256sum; use a portable fixture implementation.
+                binary = work / "bin"
+                binary.mkdir()
+                checksum = binary / "sha256sum"
+                checksum.write_text(f"#!{sys.executable}\nimport hashlib,sys\nfrom pathlib import Path\n"
+                                    "for name in sys.argv[1:]: print(hashlib.sha256(Path(name).read_bytes()).hexdigest()+'  '+name)\n")
+                checksum.chmod(0o700)
+                subprocess.run(["bash", "-c", script], cwd=work, check=True,
+                               env={**os.environ, "SKIP_ANDROID": skip, "PATH": str(binary) + os.pathsep + os.environ["PATH"]})
+                expected = base | {"gromozeka-server-stack.zip"}
+                if skip == "false":
+                    expected |= {"gromozeka-client-android-debug.apk", "gromozeka-worker-android-debug.apk"}
+                checksums = (work / "release-assets/SHA256SUMS").read_text()
+                self.assertEqual(expected, {line.split()[1] for line in checksums.splitlines()})
+                self.assertEqual(expected | {"SHA256SUMS"}, {p.name for p in (work / "release-assets").iterdir()})
+
+    def test_slots_are_in_the_release_verification_set(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*PostgresSlotRepositoryTest", "*PostgresWorkerRequestRepositoryTest", "*Slot*"):
+            self.assertIn(check, verification)
 
     def test_graph_has_no_cycles_or_unknown_dependencies(self):
         def visit(job, path):

@@ -267,6 +267,11 @@ private fun String.isLoopbackBinding(): Boolean =
         "com.gromozeka.infrastructure.ai"
     ],
     excludeFilters = [
+        // Preserve Spring Boot's test-slice exclusion hook when defining a custom component scan.
+        ComponentScan.Filter(
+            type = FilterType.CUSTOM,
+            classes = [org.springframework.boot.context.TypeExcludeFilter::class],
+        ),
         ComponentScan.Filter(
             type = FilterType.REGEX,
             pattern = ["com\\.gromozeka\\.infrastructure\\.ai\\.mcp\\.tools\\..*"]

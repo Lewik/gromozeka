@@ -41,6 +41,8 @@ data class StoredWorkerRequest(
     val cancelRequestedAt: Instant? = null,
     val response: ByteArray? = null,
     val completedAt: Instant? = null,
+    /** Server-private origin captured before dispatch, including offline delivery. */
+    val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
 )
 
 data class PendingWorkerRequest(val id: String, val cancelRequested: Boolean)

@@ -23,6 +23,7 @@ class GatewayVisualCommandRuntime(
     private val coordinator: ConversationRuntimeCoordinator,
     private val conversations: ConversationDomainService,
     private val secrets: com.gromozeka.application.service.NamedSecretApplicationService,
+    private val slots: com.gromozeka.application.service.SlotApplicationService,
 ) : VisualCommandRuntime {
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
 
@@ -44,7 +45,12 @@ class GatewayVisualCommandRuntime(
         val workspace = workspaces.resolveExecution(handler.spec.workspaceMountId)
         val conversation = requireNotNull(conversations.findById(visual.conversationId))
         require(workspace.project.id == conversation.projectId && workspace.mount.workerId == handler.worker.workerId.value) { "Handler workspace binding changed" }
+        val origin = slots.origin(actor.id, visual.conversationId, handler.spec.workspaceMountId)
+        if (origin != null) require(workers.find(handler.worker.workerId)?.tools?.any {
+            it.definition.name == "grz_execute_command" && it.metadata.supportsSlotContext
+        } == true) { "Update this Worker before starting a slot-associated handler" }
         val context = buildMap {
+            origin?.let { put(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN, json.encodeToString(it)) }
             put(TOOL_CONTEXT_CONVERSATION_ID, visual.conversationId.value)
             put(TOOL_CONTEXT_PROJECT_ID, conversation.projectId.value)
             put(TOOL_CONTEXT_USER_ID, actor.id.value)
@@ -119,6 +125,9 @@ class GatewayVisualCommandRuntime(
             payload = json.encodeToString(request).encodeToByteArray(),
             policy = WorkerRequestPolicy(deliveryTtlMillis = 10_000, executionTimeoutMillis = 60_000, waitTimeoutMillis = 75_000),
             actorUserId = actor?.id, projectId = projectId,
+            slotOrigin = request.toolContext[com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN]?.let {
+                json.decodeFromString<com.gromozeka.domain.slot.SlotCommandOrigin>(it)
+            },
         )
         return json.decodeFromString(bytes.decodeToString())
     }

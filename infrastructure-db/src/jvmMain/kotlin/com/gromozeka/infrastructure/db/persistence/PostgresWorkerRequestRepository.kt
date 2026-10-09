@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.slot.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.WorkerRequestRepository
@@ -21,7 +24,7 @@ import kotlin.time.Clock
 internal class PostgresWorkerRequestRepository(
     private val dataSource: DataSource,
     private val cipher: SecretCipher,
-) : WorkerRequestRepository {
+) : WorkerRequestRepository, SlotDispatchQuery {
     override suspend fun create(request: StoredWorkerRequest) = withContext(Dispatchers.IO) {
         val encrypted = cipher.encrypt(Base64.getEncoder().encodeToString(request.request), "worker-request:${request.workerId.value}:${request.id}")
         dataSource.connection.use { connection ->
@@ -41,7 +44,7 @@ internal class PostgresWorkerRequestRepository(
                 }
                 connection.prepareStatement("""
                     INSERT INTO worker_requests(id, worker_id, actor_user_id, project_id, request_ciphertext, request_nonce,
-                        request_version, created_at, start_deadline) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        request_version, created_at, start_deadline, slot_number, slot_origin_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
                 """.trimIndent()).use {
                     it.setString(1, request.id)
                     it.setString(2, request.workerId.value)
@@ -52,6 +55,8 @@ internal class PostgresWorkerRequestRepository(
                     it.setInt(7, encrypted.version)
                     it.setTimestamp(8, request.createdAt.sql())
                     it.setTimestamp(9, request.startDeadline.sql())
+                    it.setObject(10, request.slotOrigin?.slotNumber)
+                    it.setString(11, request.slotOrigin?.let { origin -> Json.encodeToString(origin) })
                     check(it.executeUpdate() == 1)
                 }
                 connection.commit()
@@ -139,6 +144,23 @@ internal class PostgresWorkerRequestRepository(
         }
     }
 
+    override suspend fun pendingForSlot(number: Long): List<SlotPendingDispatch> = withContext(Dispatchers.IO) {
+        dataSource.connection.use { c ->
+            c.prepareStatement("""
+                SELECT id,slot_origin_json::text,created_at,dispatched_at FROM worker_requests
+                WHERE slot_number=? AND completed_at IS NULL
+                  AND (dispatched_at IS NOT NULL OR (start_deadline>? AND cancel_requested_at IS NULL))
+                ORDER BY created_at,id
+            """.trimIndent()).use { s ->
+                s.setLong(1, number); s.setTimestamp(2, Clock.System.now().sql())
+                s.executeQuery().use { r -> buildList {
+                    while (r.next()) add(SlotPendingDispatch(r.getString(1), Json.decodeFromString(r.getString(2)),
+                        r.getTimestamp(3).kotlin(), r.getTimestamp(4)?.kotlin()))
+                } }
+            }
+        }
+    }
+
     private fun ResultSet.record(): StoredWorkerRequest {
         val id = getString("id")
         val workerId = getString("worker_id")
@@ -150,6 +172,7 @@ internal class PostgresWorkerRequestRepository(
             id = id,
             workerId = ConversationRuntimeWorkerId(workerId),
             request = decrypt("request"),
+            slotOrigin = getString("slot_origin_json")?.let { Json.decodeFromString<SlotCommandOrigin>(it) },
             actorUserId = getString("actor_user_id")?.let(User::Id),
             projectId = getString("project_id")?.let(Project::Id),
             createdAt = getTimestamp("created_at").kotlin(),

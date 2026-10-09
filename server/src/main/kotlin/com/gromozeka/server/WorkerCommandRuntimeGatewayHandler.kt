@@ -160,6 +160,7 @@ class WorkerCommandRuntimeGatewayHandler(
         require(sourceTask?.workerId == workerId && sourceTask.workspaceMountId == requested.workspaceMountId) {
             "Command monitor source task does not belong to this Worker and mount"
         }
+        require(sourceTask.slotOrigin == requested.slotOrigin) { "Monitor must retain its source command slot origin" }
         require(events.all { it.conversationId == requested.conversationId && it.monitorId == requested.id }) {
             "Command monitor events must belong to the synchronized monitor"
         }
@@ -216,6 +217,7 @@ class WorkerCommandRuntimeGatewayHandler(
             processStartedAt = processStartedAt,
             processTreeId = processTreeId,
             outputFile = outputFile,
+            slotOrigin = slotOrigin,
             timeoutAt = timeoutAt,
             createdAt = createdAt,
         )
@@ -236,6 +238,7 @@ class WorkerCommandRuntimeGatewayHandler(
             processTreeId = processTreeId,
             outputFile = outputFile,
             errorFile = errorFile,
+            slotOrigin = slotOrigin,
             createdAt = createdAt,
         )
 
@@ -252,6 +255,7 @@ class WorkerCommandRuntimeGatewayHandler(
         val processStartedAt: kotlin.time.Instant?,
         val processTreeId: Long?,
         val outputFile: String,
+        val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin?,
         val timeoutAt: kotlin.time.Instant?,
         val createdAt: kotlin.time.Instant,
     )
@@ -271,6 +275,7 @@ class WorkerCommandRuntimeGatewayHandler(
         val processTreeId: Long?,
         val outputFile: String,
         val errorFile: String,
+        val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin?,
         val createdAt: kotlin.time.Instant,
     )
 }

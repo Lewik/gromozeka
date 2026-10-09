@@ -72,7 +72,7 @@ class BackgroundActivityOriginRecorder(
             when (kind) {
                 BackgroundActivityOrigin.Kind.COMMAND -> {
                     val task = coordinator.findCommandTask(conversationId, CommandTask.Id(id)) ?: continue
-                    require(task.workerId == record.workerId && task.workspaceMountId == mount && task.agentDefinitionId == agent) {
+                    require(task.workerId == record.workerId && task.workspaceMountId == mount && task.agentDefinitionId == agent && task.slotOrigin == record.slotOrigin) {
                         "Command result does not belong to its creating request"
                     }
                 }

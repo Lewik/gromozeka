@@ -302,6 +302,69 @@ GROMOZEKA_POSTGRES_URL=jdbc:postgresql://localhost:<slot-postgres-port>/gromozek
   --tests '*CompactionCoverageMigrationTest' -q
 ```
 
+## Development Slots
+
+The Server maintains a personal per-user catalog of warmed development checkouts.
+A Slot references an existing Workspace/Mount; preparation, full cloning, copying
+and Git operations remain explicit agent work through ordinary tools. Registering
+or retiring a Slot never creates or deletes a directory. Slot numbers are stable,
+Runtime-wide and never reused; UUIDs remain internal identities.
+
+A SlotLease belongs to a Conversation, not its Agent or internal history Thread.
+One Conversation can hold several slots. History compaction/version changes keep
+leases; forks do not inherit them. The existing Restart button creates a new
+Conversation and is intentionally unchanged: the new conversation has no lease,
+and the original occupation remains visible for explicit return or reclaim.
+Closing a tab does not implicitly free its slots.
+
+The initial modes are READ and WRITE: readers may coexist with one writer, without
+snapshot guarantees. All acquisitions create durable SlotRequests and return
+acceptance immediately, even for a free slot. The database-backed processor grants
+access and writes a notification in the same short transaction. Notifications use
+the existing durable Conversation runtime and safe delivery points, without shell
+wait commands or model polling. Pending requests survive history changes; deletion
+or loss of eligibility rejects pending requests. Already granted leases require
+explicit return rather than timeout-based reclamation. The slot queue is separate
+from resource-heavy command admission.
+
+Command origin is selected automatically from its exact WorkspaceMount and the
+calling Conversation's lease before Worker dispatch. The immutable slot/lease
+marker is also stored with delayed Worker requests, shown in command results and
+completion notifications, and retained after release. Updated Workers inject
+`GRZ_SLOT`, `GRZ_SLOT_ID` and `GRZ_SLOT_LEASE_ID` per child process. A Worker that does
+not advertise slot-context support cannot silently launch a slot-associated
+command without that environment. Software chooses how to use the number for
+ports/names; it is neither a port allocator nor a per-process unique identifier.
+Existing checkout-specific `.env` development-port settings are not rewritten.
+
+`grz_slot_release` identifies an exact lease. Best-effort read-only Git/activity
+observations either allow ordinary return or retain the lease and issue a
+15-minute confirmation token stored with it. Echoing that token releases as-is;
+there is no force flag, byte-level snapshot requirement, automatic Git repair,
+process termination or mandatory drain. Expiring a confirmation does not expire
+the lease. Consumed receipts are safe to repeat and cannot release a successor.
+Unreachable Workers and unavailable inspections are unknown, not clean.
+
+The conversation toolbar opens the Slots inventory and distinguishes occupied
+numbers from pending requests. The inventory shows locations, occupants and
+request times. Exceptional reclaim can be requested by a tool, but only the
+separate authenticated native-client confirmation operation completes it. The
+confirmation is for one lease; the former Conversation is notified and its files
+and processes are untouched. The model-facing tool has no approval boolean.
+
+The opt-in `SlotLiveFlowTest` exercises actual OpenAI Subscription inference and
+a separately managed real Worker, not cassette replay. It requires explicit
+`GROMOZEKA_SLOT_LIVE_TEST=true`, a fresh `slot_live_*` PostgreSQL schema, an unused
+fixture-state directory, the built Wasm web root, the assigned development port,
+and an explicitly selected Codex auth file. The original auth file is never
+modified. Public `ready.json` stages and a private `worker.yaml` coordinate the
+fixture; use the generated configuration/home only for its temporary Worker.
+The UI check uses the fixture's synthetic account and requires the native reclaim
+confirmation. `GROMOZEKA_SLOT_LIVE_SKIP_HELD_PAUSE=true` skips only the intermediate
+visual pause, not the final confirmation or backend assertions. The fixture drops
+its own database schema and credentials; stop its separately managed Worker too.
+Never point this test at an existing account/schema or publish raw fixture logs.
+
 ## Experimental Cross-Thread Collaboration
 
 Enable only on an isolated Server with `GROMOZEKA_COLLABORATION_ENABLED=true`.
@@ -800,7 +863,9 @@ gh workflow run release.yml --ref main \
 
 Build-only mode creates Actions artifacts, not release tags, registry images
 or GitHub Releases. iOS checks are skipped by default; opt in explicitly with
-`skip_ios=false`. Windows service and Linux/Windows command-process checks run
+`skip_ios=false`. `skip_android=true` omits Android checks and APK publication;
+JVM client verification still runs. Android remains enabled by default.
+Windows service and Linux/Windows command-process checks run
 through the reusable Worker workflow; translation/font validation and Compose
 E2E run inside the main workflow. JNI library builds remain separately manual.
 

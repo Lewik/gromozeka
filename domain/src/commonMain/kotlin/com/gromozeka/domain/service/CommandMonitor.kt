@@ -43,6 +43,10 @@ data class CommandMonitor(
     val terminalOutputStartByte: Long? = null,
     val terminalOutputContent: BinaryContent? = null,
     val terminalErrorContent: BinaryContent? = null,
+    /** Inherited from the source command, not from the currently selected conversation slot. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
 ) {
     init {
         require(filterCommand.isNotBlank()) { "Command monitor filter command must not be blank" }

@@ -167,6 +167,7 @@ class VisualBoundaryTest {
             Mockito.mock(WorkerRequestService::class.java), Mockito.mock(WorkspaceDomainService::class.java), workers,
             Mockito.mock(WorkerAccessService::class.java), commands, Mockito.mock(ConversationRuntimeCoordinator::class.java),
             Mockito.mock(ConversationDomainService::class.java), Mockito.mock(com.gromozeka.application.service.NamedSecretApplicationService::class.java),
+            Mockito.mock(com.gromozeka.application.service.SlotApplicationService::class.java),
         )
         val identity = ConversationRuntimeWorkerIdentity(ConversationRuntimeWorkerId("worker"), ConversationRuntimeWorkerSessionId("session"))
         val taskId = CommandTask.Id("handler-task")

@@ -40,6 +40,7 @@ class PostgresWorkerRequestRepositoryTest {
                     statement.execute("INSERT INTO workers VALUES ('worker', 'ACTIVE'), ('other', 'ACTIVE')")
                     requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V50__durable_worker_requests.sql"))
                         .readText().split(';').map(String::trim).filter(String::isNotEmpty).forEach(statement::execute)
+                    statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V68__development_slots.sql")).readText())
                 }
             }
             val settings = Proxy.newProxyInstance(SettingsProvider::class.java.classLoader, arrayOf(SettingsProvider::class.java)) { _, method, _ ->
@@ -49,11 +50,13 @@ class PostgresWorkerRequestRepositoryTest {
             val repository = PostgresWorkerRequestRepository(dataSource, SecretCipher(settings))
             val now = Clock.System.now()
             val workerId = ConversationRuntimeWorkerId("worker")
-            val request = StoredWorkerRequest("request", workerId, "private-request-secret".encodeToByteArray(), now, now + 30.seconds)
+            val request = StoredWorkerRequest("request", workerId, "private-request-secret".encodeToByteArray(), now, now + 30.seconds, slotOrigin = com.gromozeka.domain.slot.SlotCommandOrigin("slot", 7, "lease"))
             repository.create(request)
             assertEquals(listOf("request"), repository.pending(workerId, 10).map { it.id })
             val restarted = PostgresWorkerRequestRepository(dataSource, SecretCipher(settings))
             assertContentEquals(request.request, restarted.find(request.id)?.request)
+            assertEquals(request.slotOrigin, restarted.find(request.id)?.slotOrigin)
+            assertEquals(request.slotOrigin, restarted.pendingForSlot(7).single().origin)
             assertTrue(restarted.markDispatched(request.id, now))
             val response = "private-response-secret".encodeToByteArray()
             assertFalse(restarted.complete(workerId, request.id, response, now, onlyIfUndispatched = true))
@@ -63,6 +66,7 @@ class PostgresWorkerRequestRepositoryTest {
             assertTrue(restarted.complete(workerId, request.id, response, now))
             assertFalse(restarted.complete(workerId, request.id, byteArrayOf(9), now))
             assertTrue(restarted.pending(workerId, 10).isEmpty())
+            assertTrue(restarted.pendingForSlot(7).isEmpty())
             assertContentEquals(response, repository.find(request.id)?.response)
             dataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->

@@ -135,7 +135,7 @@ class TelegramIsolationModelConfig {
         fun useIsolationModel(): BeanFactoryPostProcessor = BeanFactoryPostProcessor { factory ->
             factory.getBeanDefinition("aiRuntimeProvider").isPrimary = false
             // Other E2E fixtures suppress tools; this test must exercise the real contributor/catalog path.
-            factory.getBeanDefinition("aiToolProvider").isPrimary = false
+            if (factory.containsBeanDefinition("aiToolProvider")) factory.getBeanDefinition("aiToolProvider").isPrimary = false
             factory.getBeanDefinition("defaultAiToolProvider").isPrimary = true
         }
     }

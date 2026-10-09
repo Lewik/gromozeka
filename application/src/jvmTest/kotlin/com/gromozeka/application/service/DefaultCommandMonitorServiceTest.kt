@@ -55,6 +55,20 @@ class DefaultCommandMonitorServiceTest {
     )
 
     @Test
+    fun `monitor retains slot provenance from its source command`() = runBlocking {
+        withService { service, _, coordinator, directory ->
+            val origin = com.gromozeka.domain.slot.SlotCommandOrigin("slot", 7, "source-lease")
+            val source = sourceTask(directory, "error: original\n", CommandTask.Status.COMPLETED).copy(slotOrigin = origin)
+            coordinator.upsertCommandTask(source)
+            val monitor = service.start(CommandMonitorSpec(source.id, "contains:error", CommandMonitor.Mode.CONTINUOUS,
+                CommandMonitor.StartFrom.BEGINNING), context(directory))
+            assertEquals(origin, monitor.slotOrigin)
+            waitUntil { coordinator.findCommandMonitor(conversationId, monitor.id)?.isTerminal == true }
+            assertEquals(origin, coordinator.findCommandMonitor(conversationId, monitor.id)?.slotOrigin)
+        }
+    }
+
+    @Test
     fun `beginning monitor emits matching lines from existing terminal output`() = runBlocking {
         withService { service, _, coordinator, directory ->
             val source = sourceTask(

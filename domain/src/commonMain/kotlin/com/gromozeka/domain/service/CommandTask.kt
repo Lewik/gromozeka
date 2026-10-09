@@ -38,6 +38,10 @@ data class CommandTask(
     val completionNotificationDeliveredAt: Instant? = null,
     val terminalOutputStartByte: Long? = null,
     val terminalOutputContent: BinaryContent? = null,
+    /** Launch provenance only, never authority to release or reuse an occupation. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
 ) {
     init {
         require(completionNotificationDeliveredAt == null || completionNotificationRequestedAt != null) {

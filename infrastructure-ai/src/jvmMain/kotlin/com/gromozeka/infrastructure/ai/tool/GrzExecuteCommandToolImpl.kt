@@ -94,6 +94,9 @@ class GrzSendCommandInputToolImpl(
 private fun CommandTaskOutput.metadata(): Map<String, Any> = buildMap {
     put("success", task.status == CommandTask.Status.WORKING || task.status == CommandTask.Status.COMPLETED)
     put("task_id", task.id.value)
+    task.slotOrigin?.let { origin ->
+        put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
+    }
     task.visualId?.let { put("visual_id", it) }
     put("status", task.status.name)
     task.synchronizationError?.let { put("synchronization_error", it) }

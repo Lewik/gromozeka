@@ -110,6 +110,7 @@ class GromozekaRemoteServer(
     private val workerAccessService: WorkerAccessService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val visualService: com.gromozeka.application.service.VisualApplicationService,
+    private val slotService: com.gromozeka.application.service.SlotApplicationService,
     private val conversationRuntimeDispatcher: ConversationRuntimeDispatcher,
     private val conversationRuntimeStateSyncService: ConversationRuntimeStateSyncService,
     private val activeGenerationStateSyncService: ActiveGenerationStateSyncService,
@@ -849,6 +850,11 @@ class GromozekaRemoteServer(
                     conversationRuntimeService.cancelCommandMonitor(request.conversationId, request.monitorId)
                 )
 
+                ListSlotsRequest -> SlotsResponse(slotService.list(user))
+                is PrepareSlotReclaimRequest -> SlotLeaseResponse(slotService.prepareReclaim(user, request.leaseId))
+                is ConfirmSlotReclaimRequest -> SlotLeaseResponse(slotService.confirmReclaim(user, request.leaseId, request.confirmationId))
+                is CancelSlotRequest -> SlotRequestResponse(slotService.cancel(user, null, request.requestId))
+
                 is ListVisualsRequest -> VisualsResponse(visualService.list(user, request.conversationId))
                 is CreateVisualRequest -> VisualResponse(visualService.create(user, request.conversationId, request.visual))
                 is UpdateVisualRequest -> VisualResponse(visualService.update(user, request.conversationId, request.visualId, request.update))
@@ -1056,6 +1062,11 @@ class GromozekaRemoteServer(
                     authenticatedSession = authenticatedSession,
                     subscription = conversationRuntimeStateSyncService.subscribe(query.conversationId),
                 )
+                SlotsStateQuery -> observeStateSyncSubscription(
+                    sender = sender, command = command, encoding = encoding,
+                    authenticatedSession = authenticatedSession,
+                    subscription = slotService.subscribe(user.id),
+                )
                 is VisualsStateQuery -> observeStateSyncSubscription(
                     sender = sender, command = command, encoding = encoding,
                     authenticatedSession = authenticatedSession,
@@ -1176,6 +1187,9 @@ class GromozekaRemoteServer(
                     cursor = it.cursor.toRemote(),
                     state = ConversationRuntimeStatePayload(it.value),
                 )
+            }
+            SlotsStateQuery -> slotService.snapshot(user.id).let {
+                StateSyncSnapshotResponse(query = query, cursor = it.cursor.toRemote(), state = SlotsStatePayload(it.value))
             }
             is VisualsStateQuery -> visualService.snapshot(query.conversationId).let {
                 StateSyncSnapshotResponse(query = query, cursor = it.cursor.toRemote(), state = VisualsStatePayload(it.value))

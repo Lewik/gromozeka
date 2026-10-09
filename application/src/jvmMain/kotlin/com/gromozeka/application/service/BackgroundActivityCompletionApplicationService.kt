@@ -209,6 +209,9 @@ class BackgroundActivityCompletionApplicationService(
         val result = buildJsonObject {
             put("success", task.status == CommandTask.Status.COMPLETED)
             put("task_id", task.id.value)
+            task.slotOrigin?.let { origin ->
+                put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
+            }
             put("status", task.status.name)
             put("command", task.command)
             put("survive_worker_restart", task.processLifetime == CommandTask.ProcessLifetime.RESUMABLE)
@@ -298,6 +301,9 @@ class BackgroundActivityCompletionApplicationService(
             put("success", monitor.status != CommandMonitor.Status.FAILED)
             put("monitor_id", monitor.id.value)
             put("command_task_id", monitor.commandTaskId.value)
+            monitor.slotOrigin?.let { origin ->
+                put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
+            }
             put("status", monitor.status.name)
             put("mode", monitor.mode.name)
             put("start_from", monitor.startFrom.name)

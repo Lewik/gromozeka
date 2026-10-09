@@ -55,6 +55,9 @@ class ServerTestHarness(
             SpringApplicationBuilder(GromozekaServerApplication::class.java)
                 .sources(E2eSupportConfig::class.java, *additionalSources.toTypedArray())
                 .web(WebApplicationType.NONE)
+                .initializers(org.springframework.context.ApplicationContextInitializer<ConfigurableApplicationContext> { app ->
+                    app.beanFactory.registerSingleton("e2eTestConfigurationFilter", E2eTestConfigurationFilter())
+                })
                 .profiles("e2e")
                 .run()
                 .also(::configureAiCatalog)

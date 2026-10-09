@@ -21,6 +21,8 @@ class GatewayWorkerToolExecutionClient(
     private val requests: WorkerRequestService,
     @Value("\${gromozeka.runtime.tool-execution.timeout-millis:1800000}")
     timeoutMillis: Long,
+    private val slots: com.gromozeka.application.service.SlotApplicationService,
+    private val workers: com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry,
 ) : WorkerToolExecutionClient {
     private val timeout = Duration.ofMillis(timeoutMillis)
     private val json = Json {
@@ -39,10 +41,20 @@ class GatewayWorkerToolExecutionClient(
         toolContext: ToolExecutionContext,
         resolvedSecretsByToolCallId: Map<String, Map<String, String>>,
     ): WorkerToolExecutionResult {
+        val actor = toolContext.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID)?.let(com.gromozeka.domain.model.User::Id)
+        val conversation = toolContext.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID)?.let(Conversation::Id)
+        val isLaunch = toolCalls.any { it.call.name == com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME }
+        val origin = if (isLaunch && actor != null && conversation != null && executionTarget.workspaceMountId != null)
+            slots.origin(actor, conversation, requireNotNull(executionTarget.workspaceMountId)) else null
+        if (origin != null) require(workers.find(target.workerId)?.tools?.any {
+            it.definition.name == com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME && it.metadata.supportsSlotContext
+        } == true) { "Update this Worker before launching slot-associated commands; it does not support GRZ_SLOT/provenance yet" }
+        val trustedContext = toolContext.asMap().minus(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN).toMutableMap()
+        origin?.let { trustedContext[com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN] = json.encodeToString(it) }
         val request = WorkerToolExecutionRequest(
             executionTarget = executionTarget,
             toolCalls = toolCalls,
-            toolContext = toolContext.asMap().mapValues { (key, value) ->
+            toolContext = trustedContext.mapValues { (key, value) ->
                 require(value is String) {
                     "Worker tool context '$key' must be a string"
                 }
@@ -53,6 +65,7 @@ class GatewayWorkerToolExecutionClient(
         val response = requests.execute(
             workerId = target.workerId,
             operation = WorkerGatewayOperation.TOOL_EXECUTION,
+            slotOrigin = origin,
             payload = json.encodeToString(request).encodeToByteArray(),
             policy = executionTarget.requestPolicy ?: com.gromozeka.domain.service.WorkerRequestPolicy(executionTimeoutMillis = timeout.toMillis()),
             actorUserId = toolContext.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID)?.let(com.gromozeka.domain.model.User::Id),

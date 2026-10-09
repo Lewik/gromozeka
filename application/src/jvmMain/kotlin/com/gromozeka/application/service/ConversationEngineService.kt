@@ -1306,6 +1306,9 @@ class ConversationEngineService(
             return emptyList()
         }
         emittedMessages.add(userMessage)
+        if (userMessage.providerMetadata.stringValue("syntheticKind") == "slot_event") {
+            return emittedMessages
+        }
 
         val writeResult = if (automaticMemoryRememberEnabled) {
             routeMessageThroughMemoryRouter(

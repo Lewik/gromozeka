@@ -440,6 +440,15 @@ fun GromozekaAppContent(
                                                     val tabViewModel = currentTab!!
                                                     SessionScreen(
                                                         viewModel = tabViewModel,
+                                                        slotService = appComponents.slotService,
+                                                        onOpenSlotConversation = { id ->
+                                                            coroutineScope.launch {
+                                                                val target = appComponents.conversationService.findById(id) ?: return@launch
+                                                                val index = appComponents.appViewModel.createTab(projectId = target.projectId,
+                                                                    conversationId = target.id, initiator = ConversationInitiator.User)
+                                                                appComponents.appViewModel.selectTab(index)
+                                                            }
+                                                        },
                                                         contentPadding = contentPadding,
                                                         onNewSession = createNewSessionInCurrentProject,
                                                         onForkSession = {

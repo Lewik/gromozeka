@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.slot.commandSlotOrigin
+import com.gromozeka.domain.slot.commandEnvironment
+
 import com.gromozeka.domain.model.BinaryContent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
@@ -108,6 +111,7 @@ class DefaultCommandTaskService(
         val conversationId = context.requiredConversationId()
         val workingDirectory = resolveWorkingDirectory(context.requiredWorkspaceRootPath(), request.working_directory)
         val taskId = CommandTask.Id(uuid7())
+        val slotOrigin = context.commandSlotOrigin()
         require(context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID) == null || !request.survive_worker_restart) { "Visual handlers cannot survive a Worker restart" }
         val processLifetime = if (request.survive_worker_restart) {
             CommandTask.ProcessLifetime.RESUMABLE
@@ -121,7 +125,7 @@ class DefaultCommandTaskService(
                     executionId = taskId.value,
                     command = request.command,
                     workingDirectory = workingDirectory,
-                    environment = context.secretEnvironment(),
+                    environment = context.secretEnvironment() + slotOrigin.commandEnvironment(),
                     lifetime = processLifetime,
                 )
             )
@@ -131,6 +135,7 @@ class DefaultCommandTaskService(
                 conversationId = conversationId,
                 workerId = workerId,
                 workspaceMountId = context.requiredWorkspaceMountId(),
+                slotOrigin = slotOrigin,
                 agentDefinitionId = context.agentDefinitionIdOrNull(),
                 visualId = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID),
                 command = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: request.command,

@@ -56,6 +56,24 @@ class DefaultCommandTaskServiceTest {
     )
 
     @Test
+    fun `slot environment is per process and completed tasks retain launch provenance`() = runBlocking {
+        withService { service, runner, coordinator, directory ->
+            runner.onStart = { it.complete(0) }
+            val origin = com.gromozeka.domain.slot.SlotCommandOrigin("slot-a", 7, "lease-a")
+            val text = kotlinx.serialization.json.Json.encodeToString(com.gromozeka.domain.slot.SlotCommandOrigin.serializer(), origin)
+            val marked = service.start(ExecuteCommandRequest("marked", yield_time_ms = 2_000),
+                context(directory).withValue(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN, text))
+            assertEquals(origin, marked.task.slotOrigin)
+            assertEquals("7", runner.lastSpec.environment["GRZ_SLOT"])
+            assertEquals("lease-a", runner.lastSpec.environment["GRZ_SLOT_LEASE_ID"])
+            val ordinary = service.start(ExecuteCommandRequest("ordinary", yield_time_ms = 2_000), context(directory))
+            assertNull(ordinary.task.slotOrigin)
+            assertFalse(runner.lastSpec.environment.containsKey("GRZ_SLOT"))
+            assertEquals(origin, coordinator.findCommandTask(conversationId, marked.task.id)?.slotOrigin)
+        }
+    }
+
+    @Test
     fun `only execution receives substituted command and secret environment`() = runBlocking {
         withService { service, runner, coordinator, directory ->
             val original = "curl secret://github-pat"

@@ -216,6 +216,8 @@ class GromozekaRemoteAuthorization(
                 projectAccessService.requirePermission(user.id, projectId, ProjectPermission.READ)
             }
 
+            // Personal slot ownership is checked again by the application service using this actor.
+            ListSlotsRequest, is PrepareSlotReclaimRequest, is ConfirmSlotReclaimRequest, is CancelSlotRequest -> Unit
             is PullStateSyncRequest -> authorizeStateQuery(user, request.query)
 
             is CreateConversationRequest,
@@ -331,7 +333,7 @@ class GromozekaRemoteAuthorization(
         query: RemoteStateSyncQuery,
     ) {
         when (query) {
-            ConversationTabLayoutStateQuery -> Unit
+            ConversationTabLayoutStateQuery, SlotsStateQuery -> Unit
             is ConversationRuntimeStateQuery ->
                 requireConversation(user, query.conversationId, ProjectPermission.READ)
             is VisualsStateQuery ->

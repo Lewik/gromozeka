@@ -470,6 +470,7 @@ internal class PosixLocalCommandHost private constructor(
         .directory(workingDirectory)
         .redirectOutput(outputFile)
         .apply {
+            com.gromozeka.domain.slot.SLOT_ENVIRONMENT_KEYS.forEach { environment().remove(it) }
             environment().putAll(spec.environment)
             redirectErrorStream(errorFile == null)
             errorFile?.let(::redirectError)
@@ -615,6 +616,7 @@ internal class WindowsLocalCommandHost(
             .apply {
                 redirectErrorStream(errorFile == null)
                 errorFile?.let(::redirectError)
+                com.gromozeka.domain.slot.SLOT_ENVIRONMENT_KEYS.forEach { environment().remove(it) }
                 environment().putAll(injectedEnvironment)
                 environment()[WINDOWS_COMMAND_FILE_ENV] = commandFile.absolutePath
                 environment()[WINDOWS_EXIT_FILE_ENV] = exitCodeFile.absolutePath

@@ -26,6 +26,11 @@ on:
         required: true
         type: boolean
         default: false
+      skip_android:
+        description: Skip Android checks and APK publication
+        required: true
+        type: boolean
+        default: false
       skip_ios:
         description: Skip optional iOS checks; set false to verify iOS explicitly
         required: true
@@ -114,6 +119,8 @@ jobs:
           --tests '*PostgresConversationSearchRepositoryTest'
           --tests '*PostgresConversationRuntimeCoordinatorTest'
           --tests '*PostgresBackgroundActivityOriginRepositoryTest'
+          --tests '*PostgresSlotRepositoryTest'
+          --tests '*PostgresWorkerRequestRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
@@ -128,6 +135,7 @@ jobs:
           --tests '*BackgroundActivityCompletionApplicationServiceTest'
           --tests '*BackgroundActivityLifecycleApplicationServiceTest'
           --tests '*VisualSecretArgumentsTest'
+          --tests '*Slot*'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 
@@ -146,10 +154,15 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Verify JVM and Android clients
+      - name: Verify JVM client
+        run: >
+          ./gradlew :presentation:jvmTest
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - name: Verify Android clients
+        if: ${{ !inputs.skip_android }}
         run: >
           ./gradlew
-          :presentation:jvmTest
           :presentation-android:assembleDebug
           :presentation-android:assembleRelease
           :presentation-android:test
@@ -158,6 +171,7 @@ jobs:
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
       - name: Upload Android APKs
+        if: ${{ !inputs.skip_android }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-apks
@@ -818,19 +832,25 @@ jobs:
           name: browser-bridge
           path: downloaded-artifacts
       - name: Download Android APKs
+        if: ${{ !inputs.skip_android }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: android-apks
           path: android-apks
       - name: Prepare release assets
         shell: bash
+        env:
+          SKIP_ANDROID: ${{ inputs.skip_android }}
         run: |
+          set -euo pipefail
           mkdir -p release-assets
           find downloaded-artifacts -type f -exec cp {} release-assets/ \;
-          cp android-apks/mobile-worker-android/build/outputs/apk/debug/mobile-worker-android-debug.apk \
-            release-assets/gromozeka-worker-android-debug.apk
-          cp android-apks/presentation-android/build/outputs/apk/debug/presentation-android-debug.apk \
-            release-assets/gromozeka-client-android-debug.apk
+          if [[ "$SKIP_ANDROID" != "true" ]]; then
+            cp android-apks/mobile-worker-android/build/outputs/apk/debug/mobile-worker-android-debug.apk \
+              release-assets/gromozeka-worker-android-debug.apk
+            cp android-apks/presentation-android/build/outputs/apk/debug/presentation-android-debug.apk \
+              release-assets/gromozeka-client-android-debug.apk
+          fi
           mkdir -p server-stack/certs
           cp deploy/distribution/compose.yaml server-stack/compose.yaml
           cp deploy/distribution/Caddyfile server-stack/Caddyfile
@@ -848,31 +868,33 @@ jobs:
           )
           (
             cd release-assets
-            sha256sum \
-              gromozeka-client-macos-arm64.dmg \
-              gromozeka-client-windows-x64.zip \
-              gromozeka-client-android-debug.apk \
-              gromozeka-server-stack.zip \
-              gromozeka-server-macos-arm64.tar.gz \
-              gromozeka-server-windows-x64.zip \
-              gromozeka-server-linux-x64.tar.gz \
-              gromozeka-worker-macos-arm64.tar.gz \
-              gromozeka-worker-windows-x64.zip \
-              gromozeka-worker-linux-x64.tar.gz \
-              gromozeka-worker-android-debug.apk \
-              gromozeka-browser-bridge.zip \
-              > SHA256SUMS
+            assets=(
+              gromozeka-client-macos-arm64.dmg
+              gromozeka-client-windows-x64.zip
+              gromozeka-server-stack.zip
+              gromozeka-server-macos-arm64.tar.gz
+              gromozeka-server-windows-x64.zip
+              gromozeka-server-linux-x64.tar.gz
+              gromozeka-worker-macos-arm64.tar.gz
+              gromozeka-worker-windows-x64.zip
+              gromozeka-worker-linux-x64.tar.gz
+              gromozeka-browser-bridge.zip
+            )
+            if [[ "$SKIP_ANDROID" != "true" ]]; then
+              assets+=(gromozeka-client-android-debug.apk gromozeka-worker-android-debug.apk)
+            fi
+            sha256sum "${assets[@]}" > SHA256SUMS
           )
       - name: Write release notes
         shell: bash
+        env:
+          SKIP_ANDROID: ${{ inputs.skip_android }}
         run: |
           cat > release-notes.md <<'EOF'
           ## Downloads
 
           - macOS ARM64 Client: `gromozeka-client-macos-arm64.dmg`
           - Windows x64 portable Client: `gromozeka-client-windows-x64.zip`
-          - Android Client (debug-signed APK): `gromozeka-client-android-debug.apk`
-          - Android Worker (debug-signed APK): `gromozeka-worker-android-debug.apk`
           - Docker Compose Server stack: `gromozeka-server-stack.zip`
           - macOS ARM64 standalone Server: `gromozeka-server-macos-arm64.tar.gz`
           - Windows x64 standalone Server: `gromozeka-server-windows-x64.zip`
@@ -889,11 +911,21 @@ jobs:
           executable code on first launch. The desktop and Worker packages are currently
           unsigned. macOS Gatekeeper and
           Windows SmartScreen may require explicit confirmation on first launch.
+          Verify downloaded files against `SHA256SUMS`.
+          EOF
+          if [[ "$SKIP_ANDROID" != "true" ]]; then
+            cat >> release-notes.md <<'EOF'
+
+          ## Android
+
+          - Android Client (debug-signed APK): `gromozeka-client-android-debug.apk`
+          - Android Worker (debug-signed APK): `gromozeka-worker-android-debug.apk`
+
           Android APKs use a debug signing key and are intended for manual installation.
           The signing key may change between CI runs, so upgrading an existing Android
           installation can require reinstallation and device enrollment again.
-          Verify downloaded files against `SHA256SUMS`.
           EOF
+          fi
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: ${{ needs.metadata.outputs.tag }}

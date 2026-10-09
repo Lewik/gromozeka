@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.slot.commandEnvironment
+
 import com.gromozeka.domain.model.BinaryContent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
@@ -103,6 +105,7 @@ class DefaultCommandMonitorService(
                     executionId = "monitor-${monitorId.value}",
                     command = spec.filterCommand,
                     workingDirectory = sourceTask.workingDirectory,
+                    environment = sourceTask.slotOrigin.commandEnvironment(),
                     captureStandardErrorSeparately = true,
                     lifetime = CommandTask.ProcessLifetime.RESUMABLE,
                 )
@@ -119,6 +122,7 @@ class DefaultCommandMonitorService(
                 id = monitorId,
                 conversationId = conversationId,
                 commandTaskId = sourceTask.id,
+                slotOrigin = sourceTask.slotOrigin,
                 workerId = workerId,
                 workspaceMountId = sourceTask.workspaceMountId,
                 agentDefinitionId = context.agentDefinitionIdOrNull(),

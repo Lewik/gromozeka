@@ -104,6 +104,8 @@ fun SessionScreen(
     isCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
     contentPadding: Dp = 16.dp,
+    slotService: com.gromozeka.domain.slot.SlotService? = null,
+    onOpenSlotConversation: (com.gromozeka.domain.model.Conversation.Id) -> Unit = {},
 ) {
     val localization = LocalTranslation.current
     val spacing = GromozekaTheme.spacing
@@ -223,6 +225,11 @@ fun SessionScreen(
                                     colors = toolbarColors,
                                 ) {
                                     Text(LocalTranslation.current.restartButton)
+                                }
+
+                                slotService?.let { service ->
+                                    Spacer(modifier = Modifier.width(spacing.controlGap))
+                                    SlotHeaderButton(service, viewModel.conversationId, onOpenSlotConversation)
                                 }
 
                                 if (compactToolbar) {
