@@ -880,6 +880,13 @@ explicit step/command timeouts and visible progress. Publication must be
 dispatched from `main`. Deploy is a separate, explicit opt-in; the
 manual/reusable deployment workflow can also install an existing release.
 
+Linux CI jobs that pull Docker Hub images configure the Google-managed
+`mirror.gcr.io` cache in Docker and, for the Server image, BuildKit. Image
+references and pinned digests stay unchanged; cache misses fall back to Docker
+Hub. Runtime-check PostgreSQL starts after this configuration because Actions
+service containers would pull before any job steps. This setup only changes
+ephemeral GitHub runners, not production or developer Docker settings.
+
 Validate workflow contracts locally with an isolated Python environment:
 
 ```bash

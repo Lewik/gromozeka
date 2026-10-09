@@ -89,22 +89,29 @@ jobs:
     needs: metadata
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    services:
-      postgres:
-        image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
-        env:
-          POSTGRES_DB: gromozeka
-          POSTGRES_USER: gromozeka
-          POSTGRES_PASSWORD: gromozeka
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U gromozeka -d gromozeka"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure Docker Hub cache
+        run: bash scripts/configure-ci-docker-cache.sh
+      - name: Start PostgreSQL for runtime checks
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --name runtime-postgres \
+            --publish 127.0.0.1:5432:5432 \
+            --env POSTGRES_DB=gromozeka \
+            --env POSTGRES_USER=gromozeka \
+            --env POSTGRES_PASSWORD=gromozeka \
+            pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+          for attempt in $(seq 1 30); do
+            if docker exec runtime-postgres pg_isready -U gromozeka -d gromozeka; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs runtime-postgres
+          exit 1
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
@@ -228,6 +235,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure Docker Hub cache
+        run: bash scripts/configure-ci-docker-cache.sh
       - name: Check interface translations and fonts
         run: |
           python3 scripts/localization.py validate
@@ -674,6 +683,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure Docker Hub cache
+        run: bash scripts/configure-ci-docker-cache.sh
       - name: Check preinstalled OCI tools
         timeout-minutes: 1
         shell: bash
@@ -690,6 +701,10 @@ jobs:
           name: server-web-assets
           path: presentation/build/dist/wasmJs/productionExecutable
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
       - name: Build Server image as an OCI artifact
         timeout-minutes: 15
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
