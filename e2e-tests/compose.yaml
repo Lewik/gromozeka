@@ -2,7 +2,7 @@ name: gromozeka-e2e
 
 services:
   postgres:
-    image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+    image: ${GROMOZEKA_E2E_POSTGRES_IMAGE:-pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62}
     shm_size: 1g
     environment:
       POSTGRES_DB: postgres
@@ -20,6 +20,8 @@ services:
     build:
       context: ..
       dockerfile: e2e-tests/Dockerfile
+      args:
+        JAVA_BUILD_IMAGE: ${GROMOZEKA_E2E_JAVA_IMAGE:-eclipse-temurin:21-jdk-jammy}
     depends_on:
       postgres:
         condition: service_healthy

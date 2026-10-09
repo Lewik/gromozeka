@@ -91,8 +91,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Configure Docker Hub cache
-        run: bash scripts/configure-ci-docker-cache.sh
       - name: Start PostgreSQL for runtime checks
         timeout-minutes: 5
         shell: bash
@@ -103,7 +101,7 @@ jobs:
             --env POSTGRES_DB=gromozeka \
             --env POSTGRES_USER=gromozeka \
             --env POSTGRES_PASSWORD=gromozeka \
-            pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+            mirror.gcr.io/pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
           for attempt in $(seq 1 30); do
             if docker exec runtime-postgres pg_isready -U gromozeka -d gromozeka; then
               exit 0
@@ -235,8 +233,6 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Configure Docker Hub cache
-        run: bash scripts/configure-ci-docker-cache.sh
       - name: Check interface translations and fonts
         run: |
           python3 scripts/localization.py validate
@@ -244,6 +240,9 @@ jobs:
           python3 scripts/generate-native-localization.py --check
           python3 scripts/generate-font-resources.py --check
       - name: Verify Compose E2E
+        env:
+          GROMOZEKA_E2E_POSTGRES_IMAGE: mirror.gcr.io/pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+          GROMOZEKA_E2E_JAVA_IMAGE: mirror.gcr.io/library/eclipse-temurin:21-jdk-jammy
         run: bash e2e-tests/run.sh
       - name: Upload E2E diagnostics
         if: always()
@@ -683,8 +682,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Configure Docker Hub cache
-        run: bash scripts/configure-ci-docker-cache.sh
       - name: Check preinstalled OCI tools
         timeout-minutes: 1
         shell: bash
@@ -702,15 +699,15 @@ jobs:
           path: presentation/build/dist/wasmJs/productionExecutable
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
-          buildkitd-config-inline: |
-            [registry."docker.io"]
-              mirrors = ["mirror.gcr.io"]
+          driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
       - name: Build Server image as an OCI artifact
         timeout-minutes: 15
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: deploy/docker/server.Dockerfile
+          build-args: |
+            JAVA_RUNTIME_IMAGE=mirror.gcr.io/library/eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2
           platforms: linux/amd64
           push: false
           tags: ghcr.io/lewik/gromozeka-server:${{ needs.metadata.outputs.version }}

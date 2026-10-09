@@ -1,4 +1,5 @@
-FROM eclipse-temurin:21-jdk-jammy
+ARG JAVA_BUILD_IMAGE=eclipse-temurin:21-jdk-jammy
+FROM ${JAVA_BUILD_IMAGE}
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \

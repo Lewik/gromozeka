@@ -880,12 +880,12 @@ explicit step/command timeouts and visible progress. Publication must be
 dispatched from `main`. Deploy is a separate, explicit opt-in; the
 manual/reusable deployment workflow can also install an existing release.
 
-Linux CI jobs that pull Docker Hub images configure the Google-managed
-`mirror.gcr.io` cache in Docker and, for the Server image, BuildKit. Image
-references and pinned digests stay unchanged; cache misses fall back to Docker
-Hub. Runtime-check PostgreSQL starts after this configuration because Actions
-service containers would pull before any job steps. This setup only changes
-ephemeral GitHub runners, not production or developer Docker settings.
+Linux CI jobs pull PostgreSQL, Java base images, and BuildKit explicitly from
+Google's `mirror.gcr.io` Docker Hub cache. PostgreSQL and the Server Java runtime
+retain their pinned digests. Runtime-check PostgreSQL starts in a bounded job
+step. E2E image environment overrides and the Server Dockerfile build argument
+keep the existing Docker Hub defaults for local builds and deployments; no
+Docker daemon settings are changed.
 
 Validate workflow contracts locally with an isolated Python environment:
 
