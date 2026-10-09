@@ -8,6 +8,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolDescriptor
+import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant
 import org.postgresql.ds.PGSimpleDataSource
@@ -68,6 +71,27 @@ class PostgresConversationRuntimeWorkerRegistryTest {
                 workerEnvironmentProfile(Instant.fromEpochMilliseconds(40_000)),
                 registry.find(second.workerId)?.environmentProfile,
             )
+            val command = AiToolDescriptor(
+                AiToolDefinition("grz_execute_command", "Execute a command", "{}"),
+                PreloadedWorkspaceToolMetadata,
+            )
+            assertTrue(registry.updateTools(second, listOf(command), Instant.fromEpochMilliseconds(43_000)))
+            val beforeMigration = registry.find(second.workerId)
+            registryDataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    "UPDATE conversation_runtime_workers SET registration_json = jsonb_set(registration_json, " +
+                        "'{tools,0,metadata,supportsSlotContext}', 'true') WHERE worker_id = ?"
+                ).use { statement ->
+                    statement.setString(1, second.workerId.value)
+                    assertEquals(1, statement.executeUpdate())
+                }
+            }
+            applyMigration(registryDataSource, "V36__ai_tool_contracts.sql")
+            applyMigration(registryDataSource, "V69__remove_slot_support_metadata.sql")
+            assertEquals(beforeMigration, registry.find(second.workerId))
+            assertTrue(registry.heartbeat(second, Instant.fromEpochMilliseconds(44_000)))
+            applyMigration(registryDataSource, "V69__remove_slot_support_metadata.sql")
+            assertEquals(listOf(command), registry.find(second.workerId)?.tools)
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->
@@ -85,9 +109,12 @@ class PostgresConversationRuntimeWorkerRegistryTest {
             currentSchema = schema
         }
 
-    private fun createWorkerRegistrySchema(dataSource: DataSource) {
+    private fun createWorkerRegistrySchema(dataSource: DataSource) =
+        applyMigration(dataSource, "V6__conversation_runtime_workers.sql")
+
+    private fun applyMigration(dataSource: DataSource, name: String) {
         val migration = checkNotNull(
-            javaClass.classLoader.getResource("db/migration/postgres/V6__conversation_runtime_workers.sql")
+            javaClass.classLoader.getResource("db/migration/postgres/$name")
         ).readText()
         dataSource.connection.use { connection ->
             connection.createStatement().use { statement ->
@@ -115,7 +142,10 @@ class PostgresConversationRuntimeWorkerRegistryTest {
     ): ConversationRuntimeWorkerRegistration =
         ConversationRuntimeWorkerRegistration(
             identity = identity,
-            capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
+            capabilities = setOf(
+                ConversationRuntimeCapability.TOOL_EXECUTION,
+                ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
+            ),
             tools = emptyList(),
             environmentProfile = workerEnvironmentProfile(at),
             version = "test",

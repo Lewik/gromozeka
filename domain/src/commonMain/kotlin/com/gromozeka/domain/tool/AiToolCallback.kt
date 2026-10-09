@@ -77,10 +77,6 @@ data class AiToolMetadata(
     val loadingPolicy: AiToolLoadingPolicy = AiToolLoadingPolicy.ON_DEMAND,
     val visibleToMemoryPipeline: Boolean = true,
     val logInput: Boolean = true,
-    /** Worker supports immutable slot provenance and per-command GRZ_SLOT injection. */
-    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val supportsSlotContext: Boolean = false,
 )
 
 @Serializable

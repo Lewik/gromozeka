@@ -122,7 +122,7 @@ class SlotLiveFlowTest {
                     stage("WAITING_FOR_WORKER")
                     val workers = context.getBean(ConversationRuntimeWorkerRegistry::class.java)
                     await("real Worker registration", 240_000) {
-                        workers.find(workerId)?.tools?.any { it.definition.name == "grz_execute_command" && it.metadata.supportsSlotContext } == true
+                        workers.find(workerId)?.tools?.any { it.definition.name == "grz_execute_command" } == true
                     }
                     stage("WORKER_CONNECTED")
                     val roots = createClones(state.resolve("repositories"))

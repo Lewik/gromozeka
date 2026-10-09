@@ -165,7 +165,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, List<AiToolResult>
         get() = GRZ_EXECUTE_COMMAND_TOOL_NAME
 
     override val metadata
-        get() = PreloadedWorkspaceToolMetadata.copy(supportsSlotContext = true)
+        get() = PreloadedWorkspaceToolMetadata
     
     override val description: String
         get() = """

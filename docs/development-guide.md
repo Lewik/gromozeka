@@ -330,10 +330,10 @@ from resource-heavy command admission.
 Command origin is selected automatically from its exact WorkspaceMount and the
 calling Conversation's lease before Worker dispatch. The immutable slot/lease
 marker is also stored with delayed Worker requests, shown in command results and
-completion notifications, and retained after release. Updated Workers inject
-`GRZ_SLOT`, `GRZ_SLOT_ID` and `GRZ_SLOT_LEASE_ID` per child process. A Worker that does
-not advertise slot-context support cannot silently launch a slot-associated
-command without that environment. Software chooses how to use the number for
+completion notifications, and retained after release. Workers inject
+`GRZ_SLOT`, `GRZ_SLOT_ID` and `GRZ_SLOT_LEASE_ID` per child process. Server and
+Workers are updated together; slot support is not negotiated through tool
+contracts. Software chooses how to use the number for
 ports/names; it is neither a port allocator nor a per-process unique identifier.
 Existing checkout-specific `.env` development-port settings are not rewritten.
 

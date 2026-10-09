@@ -118,6 +118,8 @@ jobs:
           ./gradlew :infrastructure-db:jvmTest
           --tests '*PostgresConversationSearchRepositoryTest'
           --tests '*PostgresConversationRuntimeCoordinatorTest'
+          --tests '*PostgresConversationRuntimeWorkerRegistryTest'
+          --tests '*PostgresAiToolContractRepositoryTest'
           --tests '*PostgresBackgroundActivityOriginRepositoryTest'
           --tests '*PostgresSlotRepositoryTest'
           --tests '*PostgresWorkerRequestRepositoryTest'

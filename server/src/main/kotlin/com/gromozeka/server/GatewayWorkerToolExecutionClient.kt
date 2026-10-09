@@ -22,7 +22,6 @@ class GatewayWorkerToolExecutionClient(
     @Value("\${gromozeka.runtime.tool-execution.timeout-millis:1800000}")
     timeoutMillis: Long,
     private val slots: com.gromozeka.application.service.SlotApplicationService,
-    private val workers: com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry,
 ) : WorkerToolExecutionClient {
     private val timeout = Duration.ofMillis(timeoutMillis)
     private val json = Json {
@@ -46,9 +45,6 @@ class GatewayWorkerToolExecutionClient(
         val isLaunch = toolCalls.any { it.call.name == com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME }
         val origin = if (isLaunch && actor != null && conversation != null && executionTarget.workspaceMountId != null)
             slots.origin(actor, conversation, requireNotNull(executionTarget.workspaceMountId)) else null
-        if (origin != null) require(workers.find(target.workerId)?.tools?.any {
-            it.definition.name == com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME && it.metadata.supportsSlotContext
-        } == true) { "Update this Worker before launching slot-associated commands; it does not support GRZ_SLOT/provenance yet" }
         val trustedContext = toolContext.asMap().minus(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN).toMutableMap()
         origin?.let { trustedContext[com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN] = json.encodeToString(it) }
         val request = WorkerToolExecutionRequest(

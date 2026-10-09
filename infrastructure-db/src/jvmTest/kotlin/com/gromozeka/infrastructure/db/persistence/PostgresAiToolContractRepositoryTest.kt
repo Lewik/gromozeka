@@ -4,6 +4,11 @@ import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.AiToolResult
+import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
+import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -64,6 +69,35 @@ class PostgresAiToolContractRepositoryTest {
             }
             assertEquals(setOf(3, 4), concurrent.map { it.variant }.toSet())
             assertEquals(2, concurrent.map { it.modelName }.toSet().size)
+
+            val command = object : GrzExecuteCommandTool {
+                override fun execute(request: ExecuteCommandRequest, context: ToolExecutionContext?): List<AiToolResult> =
+                    error("Contract registration must not execute commands")
+            }
+            val commandDescriptor = AiToolDescriptor(
+                AiToolDefinition(command.name, command.description, "{}"),
+                command.metadata,
+            )
+            val storedCommand = repository.resolveAll(
+                listOf(commandDescriptor.copy(metadata = PreloadedWorkspaceToolMetadata))
+            ).single()
+            assertEquals(storedCommand, repository.resolveAll(listOf(commandDescriptor)).single())
+
+            repositoryDataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    "UPDATE ai_tool_contracts SET payload_json = jsonb_set(payload_json::jsonb, " +
+                        "'{descriptor,metadata,supportsSlotContext}', 'true')::text WHERE fingerprint = ?"
+                ).use { statement ->
+                    statement.setString(1, storedCommand.fingerprint)
+                    assertEquals(1, statement.executeUpdate())
+                }
+            }
+            applyMigration(repositoryDataSource, "V6__conversation_runtime_workers.sql")
+            applyMigration(repositoryDataSource, "V69__remove_slot_support_metadata.sql")
+            assertEquals(
+                storedCommand,
+                ExposedAiToolContractRepository(Json).resolveAll(listOf(commandDescriptor)).single(),
+            )
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->
@@ -92,9 +126,9 @@ class PostgresAiToolContractRepositoryTest {
             currentSchema = schema
         }
 
-    private fun applyMigration(dataSource: DataSource) {
+    private fun applyMigration(dataSource: DataSource, name: String = "V36__ai_tool_contracts.sql") {
         val migration = checkNotNull(
-            javaClass.classLoader.getResource("db/migration/postgres/V36__ai_tool_contracts.sql")
+            javaClass.classLoader.getResource("db/migration/postgres/$name")
         ).readText()
         dataSource.connection.use { connection ->
             connection.createStatement().use { statement ->

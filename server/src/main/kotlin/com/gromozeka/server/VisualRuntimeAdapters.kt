@@ -46,9 +46,6 @@ class GatewayVisualCommandRuntime(
         val conversation = requireNotNull(conversations.findById(visual.conversationId))
         require(workspace.project.id == conversation.projectId && workspace.mount.workerId == handler.worker.workerId.value) { "Handler workspace binding changed" }
         val origin = slots.origin(actor.id, visual.conversationId, handler.spec.workspaceMountId)
-        if (origin != null) require(workers.find(handler.worker.workerId)?.tools?.any {
-            it.definition.name == "grz_execute_command" && it.metadata.supportsSlotContext
-        } == true) { "Update this Worker before starting a slot-associated handler" }
         val context = buildMap {
             origin?.let { put(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN, json.encodeToString(it)) }
             put(TOOL_CONTEXT_CONVERSATION_ID, visual.conversationId.value)
