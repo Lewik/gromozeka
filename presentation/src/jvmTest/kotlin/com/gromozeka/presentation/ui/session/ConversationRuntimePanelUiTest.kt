@@ -11,14 +11,17 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.AgentPreloadedTools
 import com.gromozeka.domain.tool.ToolAccessPolicy
+import com.gromozeka.domain.visual.*
 import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.time.Instant
 
 class ConversationRuntimePanelUiTest {
@@ -202,6 +205,110 @@ class ConversationRuntimePanelUiTest {
         assertEquals(null, runtimeLastAgentCall(fixture.conversationId, fixture.beta.id, stats))
     }
 
+    @Test
+    fun visualHeaderDismissIsLocalAndPreservesStateInBothLayouts() {
+        for (fullScreen in listOf(true, false)) runComposeUiTest {
+            val fixture = Fixture()
+            val visual = visualFixture(fixture.conversationId)
+            val firstClient = VisualPanelState()
+            val secondClient = VisualPanelState()
+            firstClient.accept(visual.conversationId, listOf(visual))
+            secondClient.accept(visual.conversationId, listOf(visual))
+            val draft = firstClient.draft(visual)
+            draft.edit(visual, "form.query", JsonPrimitive("local draft"))
+            val visible = mutableStateOf(true)
+            var visualCloseRequests = 0
+            setContent {
+                fixture.Panel(
+                    null, isVisible = visible.value, fullScreen = fullScreen,
+                    visuals = firstClient.visuals(visual.conversationId),
+                    selectedVisualId = firstClient.selected(visual.conversationId),
+                    onClose = { visible.value = false },
+                    onCloseVisual = { visualCloseRequests++ },
+                    visualContent = { Text(firstClient.draft(it).form.getValue("query").jsonPrimitive.content) },
+                )
+            }
+            onNodeWithText("local draft").assertExists()
+            onNodeWithContentDescription(translation.runtime.closePanelDescription).performClick()
+            onNodeWithTag("visual-tabs").assertDoesNotExist()
+            runOnIdle {
+                assertFalse(visible.value)
+                // Closing the shared Visual (and its handler) must never be requested.
+                assertEquals(0, visualCloseRequests)
+                assertEquals(listOf(visual), firstClient.visuals(visual.conversationId))
+                assertEquals(listOf(visual), secondClient.visuals(visual.conversationId))
+                assertEquals(visual.id, firstClient.selected(visual.conversationId))
+                assertEquals(visual.id, secondClient.selected(visual.conversationId))
+                assertSame(draft, firstClient.draft(visual))
+                assertEquals("saved", secondClient.draft(visual).form.getValue("query").jsonPrimitive.content)
+                // A handler can publish another snapshot while this client hides the panel.
+                val next = visual.copy(revision = 2, state = buildJsonObject {
+                    put("form", visual.state.getValue("form"))
+                    put("data", buildJsonObject { put("count", 1) })
+                })
+                assertFalse(firstClient.accept(visual.conversationId, listOf(next)))
+                assertFalse(secondClient.accept(visual.conversationId, listOf(next)))
+                assertSame(visual.handler, firstClient.visuals(visual.conversationId).single().handler)
+                assertSame(visual.handler, secondClient.visuals(visual.conversationId).single().handler)
+                assertFalse(visible.value)
+                visible.value = true
+            }
+            onNodeWithText("local draft").assertExists()
+            onNodeWithTag("visual-tabs").assertExists()
+            runOnIdle {
+                assertEquals(0, visualCloseRequests)
+                assertSame(draft, firstClient.draft(firstClient.visuals(visual.conversationId).single()))
+                assertEquals(1, firstClient.visuals(visual.conversationId).single().state.getValue("data").jsonObject.getValue("count").jsonPrimitive.int)
+            }
+        }
+    }
+
+    @Test
+    fun visualTabCloseRemainsAnExplicitSeparateActionInBothLayouts() {
+        for (fullScreen in listOf(true, false)) runComposeUiTest {
+            val fixture = Fixture()
+            val visual = visualFixture(fixture.conversationId)
+            var panelDismissals = 0
+            val closedVisuals = mutableListOf<String>()
+            setContent {
+                fixture.Panel(
+                    null, fullScreen = fullScreen, visuals = listOf(visual), selectedVisualId = visual.id,
+                    onClose = { panelDismissals++ }, onCloseVisual = { closedVisuals += it.id },
+                )
+            }
+            onNodeWithTag("visual-close-${visual.id}").performClick()
+            runOnIdle {
+                assertEquals(listOf(visual.id), closedVisuals)
+                assertEquals(0, panelDismissals)
+            }
+        }
+    }
+
+    @Test
+    fun runtimeHeaderStillDismissesThePanelWithoutAVisual() = runComposeUiTest {
+        val fixture = Fixture()
+        val visible = mutableStateOf(true)
+        setContent { fixture.Panel(null, isVisible = visible.value, fullScreen = true, onClose = { visible.value = false }) }
+        onNodeWithContentDescription(translation.runtime.closePanelDescription).performClick()
+        onNodeWithTag(UiTestTag.RuntimeAgentTabs.value).assertDoesNotExist()
+        runOnIdle { assertFalse(visible.value) }
+    }
+
+    private fun visualFixture(conversationId: Conversation.Id) = Visual(
+        id = "visual-preview", conversationId = conversationId, createdBy = User.Id("viewer"),
+        document = "<html><body><p>Preview</p></body></html>", title = "Preview",
+        state = buildJsonObject {
+            put("form", buildJsonObject { put("query", "saved") })
+            put("data", buildJsonObject { put("count", 0) })
+        },
+        handler = VisualHandler(
+            spec = VisualHandlerSpec(WorkspaceMount.Id("mount"), "test handler"),
+            worker = ConversationRuntimeWorkerIdentity(ConversationRuntimeWorkerId("worker"), ConversationRuntimeWorkerSessionId("session")),
+            generation = "generation", taskId = CommandTask.Id("handler-task"),
+        ),
+        createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0),
+    )
+
     private class Fixture(separateBetaModel: Boolean = false) {
         val conversationId = Conversation.Id("conversation-a")
         private val now = Instant.parse("2026-09-13T00:00:00Z")
@@ -276,6 +383,11 @@ class ConversationRuntimePanelUiTest {
             fullScreen: Boolean = false,
             tokenStats: TokenUsageStatistics.ThreadTotals? = null,
             replyRoutingContent: @Composable () -> Unit = {},
+            visuals: List<Visual> = emptyList(),
+            selectedVisualId: String? = null,
+            onClose: () -> Unit = {},
+            onCloseVisual: (Visual) -> Unit = {},
+            visualContent: @Composable (Visual) -> Unit = {},
         ) {
             MaterialTheme {
                 ConversationRuntimePanel(
@@ -292,8 +404,11 @@ class ConversationRuntimePanelUiTest {
                     pendingMessages = emptyList(),
                     runtimeSnapshot = runtime,
                     onCancelCommandTask = {}, onCancelCommandMonitor = {},
-                    onSendInCurrentTurn = {}, onEditPendingMessage = {}, onCancelPendingMessage = {}, onClose = {},
+                    onSendInCurrentTurn = {}, onEditPendingMessage = {}, onCancelPendingMessage = {}, onClose = onClose,
                     fullScreen = fullScreen,
+                    slideFromRight = fullScreen,
+                    visuals = visuals, selectedVisualId = selectedVisualId,
+                    onCloseVisual = onCloseVisual, visualContent = visualContent,
                 )
             }
         }

@@ -129,7 +129,6 @@ fun ConversationRuntimePanel(
     visualLoadError: String? = null,
 ) {
     val translation = LocalTranslation.current.runtime
-    val localization = LocalTranslation.current
     val selectedVisual = visuals.firstOrNull { it.id == selectedVisualId }
     LaunchedEffect(inspectionRequest?.sequence) {
         if (inspectionRequest?.conversationId == conversationId) onSelectVisual(null)
@@ -197,9 +196,10 @@ fun ConversationRuntimePanel(
                             fontWeight = FontWeight.Bold,
                         )
                         CompactIconButton(
-                            onClick = { if (selectedVisual != null) onCloseVisual(selectedVisual) else onClose() },
+                            // Dismiss this client's panel; only the tab action closes a shared Visual.
+                            onClick = onClose,
                             icon = Icons.Default.Close,
-                            contentDescription = if (selectedVisual != null) localization.text("visuals.close") else translation.closePanelDescription,
+                            contentDescription = translation.closePanelDescription,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.Transparent,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
