@@ -172,6 +172,35 @@ not injected into the current agent; broadcast input steers the active responder
 while retaining queued responses from other selected agents. Response review's
 stale-input guard and Stop/Interrupt controls remain authoritative.
 
+## Compose UI Compatibility
+
+Compose Multiplatform is pinned to `1.13.0-alpha02` to include the
+[upstream backing-input focus fix](https://github.com/JetBrains/compose-multiplatform-core/pull/3446)
+for iOS Safari 27. Repeated `focus()` requests outside the initiating user gesture
+can suppress the software keyboard; do not layer an application monkey patch over
+the fixed Compose input strategy.
+
+The [release migration notes](https://github.com/JetBrains/compose-multiplatform/releases/tag/v1.13.0-alpha02)
+require Kotlin 2.4.20 or later for Wasm/JS and Android compile SDK 37.1.
+The Compose-consuming Android library/application modules use that SDK; their
+minimum and target SDK levels are unchanged. Desktop distributions explicitly
+keep JRE fonts (`stripJreFonts = false`) to preserve the previous fallback behavior.
+
+Verify JVM UI tests, Wasm browser tests/production distribution, and desktop
+packaging when changing this stack. Headless browser tests cannot prove that an
+iPhone's software keyboard opens. Device verification must include tapping the
+composer, typing, dismissing/reopening the keyboard, and moving between a modal
+text field and the composer, including a home-screen launch on iOS 27 or newer.
+
+For automated Web smoke checks, derive pointer coordinates from current semantics
+bounds: the Canvas, not the accessibility DOM node, receives clicks and taps.
+Editable values may be absent from that DOM even when drawn correctly. Verify
+rendered output or an intercepted synthetic form request instead of relying on
+`HTMLElement.value`. Use mocked authentication status and synthetic credentials;
+never send smoke-test logins to a real Server. For route-based mocks, disable
+Service Workers in the test browser context (`serviceWorkers: 'block'`), otherwise
+requests can bypass interception. This does not validate the installed PWA lifecycle.
+
 ## Interface Localization
 
 `localization/en.json` is the canonical interface catalog. Keep semantic context

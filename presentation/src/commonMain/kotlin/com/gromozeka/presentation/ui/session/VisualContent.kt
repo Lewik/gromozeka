@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalGridApi::class)
-
 package com.gromozeka.presentation.ui.session
 
 import androidx.compose.foundation.background

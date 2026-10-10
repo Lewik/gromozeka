@@ -86,7 +86,7 @@ kotlin {
     }
     android {
         namespace = "com.gromozeka.presentation"
-        compileSdk = 37
+        compileSdk { version = release(37) { minorApiLevel = 1 } }
         minSdk = 24
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -287,6 +287,8 @@ compose.desktop {
             appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/resources"))
             licenseFile.set(rootProject.layout.projectDirectory.file("LICENSE"))
             includeAllModules = true
+            // Preserve existing desktop font fallback when upgrading to Compose 1.13.
+            stripJreFonts = false
             
             macOS {
                 packageBuildVersion = nativePackageVersion
