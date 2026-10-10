@@ -24,23 +24,17 @@ internal class ClaudeCodeWebSearchTool(
         runBlocking {
             client.execute(
                 tool = ClaudeCodeNativeTool.WEB_SEARCH,
-                input = JsonObject(
-                    buildMap {
-                        put("query", JsonPrimitive(request.query))
-                        if (request.allowed_domains.isNotEmpty()) {
-                            put(
-                                "allowed_domains",
-                                JsonArray(request.allowed_domains.map(::JsonPrimitive)),
-                            )
-                        }
-                        if (request.blocked_domains.isNotEmpty()) {
-                            put(
-                                "blocked_domains",
-                                JsonArray(request.blocked_domains.map(::JsonPrimitive)),
-                            )
-                        }
-                    }
-                ),
+                input = request.toNativeWebSearchInput(),
             ).toString()
         }
 }
+
+/** Always send the mode explicitly: an omitted mode is not the CLI's standard default. */
+internal fun ClaudeCodeWebSearchRequest.toNativeWebSearchInput(): JsonObject = JsonObject(
+    buildMap {
+        put("query", JsonPrimitive(query))
+        put("mode", JsonPrimitive(mode.name))
+        if (allowed_domains.isNotEmpty()) put("allowed_domains", JsonArray(allowed_domains.map(::JsonPrimitive)))
+        if (blocked_domains.isNotEmpty()) put("blocked_domains", JsonArray(blocked_domains.map(::JsonPrimitive)))
+    }
+)

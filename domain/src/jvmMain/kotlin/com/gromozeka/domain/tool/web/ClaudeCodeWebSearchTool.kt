@@ -8,6 +8,9 @@ import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
 
+/** Wire values match the native Claude Code WebSearch schema. */
+enum class ClaudeCodeWebSearchMode { standard, extended }
+
 data class ClaudeCodeWebSearchRequest(
     @ToolParameter(description = "Web search query.")
     val query: String,
@@ -15,6 +18,8 @@ data class ClaudeCodeWebSearchRequest(
     val allowed_domains: List<String> = emptyList(),
     @ToolParameter(description = "Optional domain blocklist. Cannot be combined with allowed_domains.")
     val blocked_domains: List<String> = emptyList(),
+    @property:ToolParameter(description = "Search mode: standard (default) for quick, economical lookups; extended for thorough, fresh or difficult research at higher cost and latency.")
+    val mode: ClaudeCodeWebSearchMode = ClaudeCodeWebSearchMode.standard,
 ) {
     init {
         require(query.isNotBlank()) { "Claude Code web search query must not be blank" }
@@ -32,7 +37,7 @@ interface ClaudeCodeWebSearchTool : Tool<ClaudeCodeWebSearchRequest, String> {
         get() = "claude_code_web_search"
 
     override val description: String
-        get() = "Search the web through Claude Code's native WebSearch capability. Returns the native structured search result and exact source URLs. Use this provider-specific tool when Claude Code web search is explicitly available."
+        get() = "Search the web through Claude Code's native WebSearch capability. Returns the native structured search result and exact source URLs. Use this provider-specific tool when Claude Code web search is explicitly available. mode defaults to standard for quick lookups; choose extended for thorough, fresh or difficult research at higher cost and latency. The CLI must preserve the requested mode and domain filters."
 
     override val metadata: AiToolMetadata
         get() = AiToolMetadata(

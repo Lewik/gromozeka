@@ -1100,12 +1100,22 @@ internal class ClaudeCodeNativeToolStreamParser(
                 ?: error("Claude Code ${invocation.tool.cliName} call missed object input")
             require(actualInput == invocation.input) {
                 "Claude Code changed ${invocation.tool.cliName} input: " +
-                    "expected=${invocation.input}, actual=$actualInput"
+                    inputMismatchDiagnostic(actualInput)
             }
             toolUseId = toolUse["id"]?.jsonPrimitive?.contentOrNull
                 ?.takeIf(String::isNotBlank)
                 ?: error("Claude Code ${invocation.tool.cliName} call missed id")
         }
+    }
+
+    private fun inputMismatchDiagnostic(actual: JsonObject): String {
+        val changedFields = (invocation.input.keys + actual.keys)
+            .filter { invocation.input[it] != actual[it] }.sorted()
+        // Search queries and domain filters can be private. Report shape and fingerprints, not values.
+        return "changed_fields=${JsonArray(changedFields.map(::JsonPrimitive))}, " +
+            "expected_sha256=${shortFingerprint(invocation.input.toString())}, " +
+            "actual_sha256=${shortFingerprint(actual.toString())}. " +
+            "The CLI must preserve the requested native tool input; no result was accepted."
     }
 
     private fun acceptUser(root: JsonObject): ClaudeCodeNativeToolResponse? {
