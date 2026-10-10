@@ -4,11 +4,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -42,7 +42,6 @@ import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.markdownAnnotator
 import com.mikepenz.markdown.model.markdownAnnotatorConfig
 import com.mikepenz.markdown.model.markdownPadding
-import com.mikepenz.markdown.model.rememberMarkdownState
 import org.intellij.markdown.IElementType
 import org.intellij.markdown.MarkdownElementTypes
 import org.intellij.markdown.MarkdownTokenTypes
@@ -84,19 +83,22 @@ internal fun ASTNode.visibleMarkdownBlocks(content: String): List<ASTNode> = chi
 
 @Composable
 fun GromozekaMarkdown(content: String, modifier: Modifier = Modifier) {
-    val markdownState = rememberMarkdownState(content)
-    val state by markdownState.state.collectAsState()
-    GromozekaMarkdownContent(state, modifier = modifier)
+    val state = rememberGromozekaMarkdownState(content)
+    GromozekaMarkdownContent(state, content, modifier = modifier)
 }
 
 @Composable
 fun GromozekaMarkdownNode(state: State.Success, node: ASTNode, modifier: Modifier = Modifier) {
-    GromozekaMarkdownContent(state, node, modifier)
+    GromozekaMarkdownContent(state, state.content, node, modifier)
 }
 
 @Composable
-private fun GromozekaMarkdownContent(state: State, node: ASTNode? = null, modifier: Modifier) {
+private fun GromozekaMarkdownContent(state: State, sourceContent: String, node: ASTNode? = null, modifier: Modifier) {
     val bodyStyle = MaterialTheme.typography.bodyMedium
+    if (state is State.Error) {
+        SelectionContainer(modifier) { Text(sourceContent, style = bodyStyle) }
+        return
+    }
     Markdown(
         state = state,
         modifier = modifier,

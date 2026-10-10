@@ -223,6 +223,16 @@ diagnostic logs inside their application sandbox. Browser clients log only to
 the browser console. Diagnostic logs must not include conversation text,
 credentials, raw authorization headers, or exact device locations.
 
+Markdown preparation has a presentation-only recovery boundary. Recoverable parser
+and syntax-highlighter failures, including invalid AST or highlight offsets, fall
+back to the original plain text. No stored messages or provider payloads are
+rewritten. Highlighter spans are validated as a complete set before reaching
+Compose; invalid ranges are rejected, not clamped. Each highlight job owns a fresh
+builder and is keyed by source, language and theme, so cancelled/stale jobs cannot
+replace newer text. Diagnostics retain stack locations and failure stage/length,
+but omit exception messages that may contain source excerpts. Cancellation and
+fatal errors still propagate; there is no blanket catch around composable calls.
+
 ## Runtime Language
 
 - A **Project** is a logical working context.

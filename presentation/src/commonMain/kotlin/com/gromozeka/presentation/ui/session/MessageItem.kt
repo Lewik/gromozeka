@@ -28,7 +28,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -60,7 +59,7 @@ import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
 import com.mikepenz.markdown.model.State
-import com.mikepenz.markdown.model.rememberMarkdownState
+import com.gromozeka.presentation.ui.rememberGromozekaMarkdownState
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -291,12 +290,7 @@ private fun rememberMarkdownSegments(
     isCollapsed: Boolean,
 ): List<MessageSegment> {
     val parsedState = key(messageId.value, contentIndex) {
-        val markdownState = rememberMarkdownState(
-            content = text,
-            retainState = true,
-        )
-        val state by markdownState.state.collectAsState()
-        state
+        rememberGromozekaMarkdownState(content = text, retainState = true)
     }
 
     if (isCollapsed) {

@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -50,14 +51,23 @@ class CopyableMarkdownBlockTest {
         verifyCopyableBlock(width = 390, height = 844)
     }
 
+    @Test
+    fun failedHighlightingStillCopiesExactFenceBody() {
+        verifyCopyableBlock(width = 390, height = 844, failHighlighting = true)
+    }
+
     @Suppress("DEPRECATION")
-    private fun verifyCopyableBlock(width: Int, height: Int) = runDesktopComposeUiTest(
+    private fun verifyCopyableBlock(width: Int, height: Int, failHighlighting: Boolean = false) = runDesktopComposeUiTest(
         width = width,
         height = height,
     ) {
         val clipboardManager = TestClipboardManager()
         setContent {
-            CompositionLocalProvider(LocalClipboardManager provides clipboardManager) {
+            val highlighter = if (failHighlighting) CodeHighlightBoundary { _, _, _ ->
+                throw IllegalStateException("synthetic highlighter failure")
+            } else LocalCodeHighlightBoundary.current
+            CompositionLocalProvider(LocalClipboardManager provides clipboardManager,
+                LocalInspectionMode provides true, LocalCodeHighlightBoundary provides highlighter) {
                 MaterialTheme {
                     GromozekaMarkdown(
                         content = """

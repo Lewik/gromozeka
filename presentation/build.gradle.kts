@@ -117,7 +117,7 @@ kotlin {
                 implementation(compose.components.resources)
 
                 implementation(libs.multiplatform.markdown.renderer.m3)
-                implementation(libs.multiplatform.markdown.renderer.code)
+                implementation(libs.syntax.highlights)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)

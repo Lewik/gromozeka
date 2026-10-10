@@ -30,8 +30,7 @@ import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import com.mikepenz.markdown.compose.components.MarkdownComponents
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.MarkdownCodeFence
-import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCode
-import com.mikepenz.markdown.compose.elements.highlightedCodeBlock
+import com.mikepenz.markdown.compose.elements.MarkdownCodeBlock
 import kotlinx.coroutines.delay
 
 internal data class CopyableMarkdownBlockSpec(
@@ -79,7 +78,11 @@ internal fun parseCopyableMarkdownBlockInfo(info: String?): CopyableMarkdownBloc
 
 internal val GromozekaMarkdownComponents: MarkdownComponents = markdownComponents(
     codeFence = { model -> GromozekaCodeFence(model) },
-    codeBlock = highlightedCodeBlock,
+    codeBlock = { model ->
+        MarkdownCodeBlock(model.content, model.node, model.typography.code) { code, language, style ->
+            GromozekaHighlightedCode(code, language, style)
+        }
+    },
     paragraph = { GromozekaMarkdownParagraph(it) },
     blockQuote = { GromozekaMarkdownBlockQuote(it) },
     orderedList = { GromozekaMarkdownList(it) },
@@ -97,7 +100,7 @@ private fun GromozekaCodeFence(model: MarkdownComponentModel) {
     ) { code, info, style ->
         val spec = parseCopyableMarkdownBlockInfo(info)
         if (spec == null) {
-            MarkdownHighlightedCode(
+            GromozekaHighlightedCode(
                 code = code,
                 language = info,
                 style = style,
@@ -174,7 +177,7 @@ private fun CopyableMarkdownBlock(
                     )
                 }
             }
-            MarkdownHighlightedCode(
+            GromozekaHighlightedCode(
                 code = code,
                 language = spec.language,
                 style = style,
