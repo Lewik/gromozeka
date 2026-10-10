@@ -1,6 +1,7 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.UserMessageDeliveryMode
 import com.gromozeka.domain.model.WorkspaceMount
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
@@ -73,6 +74,7 @@ data class ConversationRuntimeSchedulingState(
         task: ConversationRuntimeTask,
         now: Instant,
         acceptPreviouslySubmitted: Boolean = false,
+        userDeliveryMode: UserMessageDeliveryMode? = null,
     ): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
             "Conversation runtime task belongs to another conversation"
@@ -89,7 +91,12 @@ data class ConversationRuntimeSchedulingState(
         ) {
             return unchanged(false)
         }
-        if (task.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && activeTask == null) {
+        // Resolve human preference once, atomically with admission. Runtime-owned inputs keep
+        // their explicit placement, and later preference changes never revisit queued tasks.
+        val submissions = if (userDeliveryMode == null) listOf(task) else prepareUserInput(task, userDeliveryMode)
+        val submitted = submissions.first()
+        if (submitted.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && activeTask == null &&
+            !(userDeliveryMode != null && continuationTask != null)) {
             return unchanged(false)
         }
 
@@ -107,10 +114,54 @@ data class ConversationRuntimeSchedulingState(
         return changed(
             copy(
                 executionState = executionState ?: idleRunningState(now),
-                pendingTasks = pendingTasks + task,
+                pendingTasks = pendingTasks + submissions,
             ),
             true,
         )
+    }
+
+    private fun prepareUserInput(task: ConversationRuntimeTask, mode: UserMessageDeliveryMode): List<ConversationRuntimeTask> {
+        require(task.actorUserId != null && task.externalChannel == null && task.userMessageOrNull()?.role == Conversation.Message.Role.USER) {
+            "User delivery preferences apply only to authenticated local human input"
+        }
+        val activeAgent = when (val payload = (activeTask ?: continuationTask)?.payload) {
+            is ConversationRuntimeTask.Payload.PostMessage -> payload.autoRespondAgentIds.minByOrNull { it.value }
+            is ConversationRuntimeTask.Payload.AgentInvocation -> payload.agentDefinitionId
+            is ConversationRuntimeTask.Payload.AgentResponse -> payload.agentDefinitionId
+            is ConversationRuntimeTask.Payload.LlmCall -> payload.agentDefinitionId
+            is ConversationRuntimeTask.Payload.ToolExecution -> payload.agentDefinitionId
+            is ConversationRuntimeTask.Payload.ToolResultProcessing -> payload.agentDefinitionId
+            is ConversationRuntimeTask.Payload.MemoryRecall -> payload.agentDefinitionId
+            is ConversationRuntimeTask.Payload.MemoryRunCompletion -> payload.agentDefinitionId
+            is ConversationRuntimeTask.Payload.ResponseReview -> payload.agentDefinitionId
+            else -> null
+        }
+        val targetsActiveAgent = activeAgent != null && when (val payload = task.payload) {
+            is ConversationRuntimeTask.Payload.AgentInvocation -> payload.agentDefinitionId == activeAgent
+            is ConversationRuntimeTask.Payload.PostMessage -> activeAgent in payload.autoRespondAgentIds
+            else -> false
+        }
+        if (mode != UserMessageDeliveryMode.STEER || !targetsActiveAgent) {
+            return listOf(task.copy(placement = QueuedMessagePlacement.END_OF_TURN))
+        }
+        val post = task.payload as? ConversationRuntimeTask.Payload.PostMessage
+        val steering = task.copy(
+            placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            payload = post?.copy(autoRespondAgentIds = setOf(requireNotNull(activeAgent))) ?: task.payload,
+        )
+        // Preserve other auto-responders without injecting an invocation for a different agent
+        // into the active turn. Admit these follow-ups in the same transaction and FIFO position.
+        val otherResponses = post?.autoRespondAgentIds.orEmpty().filter { it != activeAgent }.sortedBy { it.value }.map { agentId ->
+            ConversationRuntimeTask(
+                id = ConversationRuntimeTask.Id("${task.id.value}:agent:${agentId.value}"),
+                conversationId = task.conversationId, actorUserId = task.actorUserId,
+                payload = ConversationRuntimeTask.Payload.AgentResponse(requireNotNull(post).userMessage.id, agentId),
+                placement = QueuedMessagePlacement.END_OF_TURN,
+                idempotencyKey = "${task.idempotencyKey}:agent:${agentId.value}",
+                requirements = task.requirements, createdAt = task.createdAt,
+            )
+        }
+        return listOf(steering) + otherResponses
     }
 
     fun updatePendingMessageSubmission(task: ConversationRuntimeTask): ConversationRuntimeStateTransition<Boolean> {
@@ -676,7 +727,10 @@ data class ConversationRuntimeSchedulingState(
             ?: return unchanged(false)
         return changed(
             copy(
-                pendingTasks = pendingTasks.filterNot { it.userMessageIdOrNull() == messageId },
+                pendingTasks = pendingTasks.filterNot {
+                    it.userMessageIdOrNull() == messageId ||
+                        (it.payload as? ConversationRuntimeTask.Payload.AgentResponse)?.rootUserMessageId == messageId
+                },
                 pendingTurnTerminationInstructions = mergeTurnTerminationInstructions(
                     pendingTurnTerminationInstructions + removedTask.turnTerminationInstructions()
                 ),

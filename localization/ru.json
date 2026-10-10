@@ -1165,7 +1165,7 @@
     "runtime.copyText": "Копировать",
     "runtime.createAgentToolLabel": "Создание агента",
     "runtime.createLabel": "Запись",
-    "runtime.currentResponsePlacement": "После текущего ответа",
+    "runtime.currentResponsePlacement": "После текущего терна",
     "runtime.currentTurnLabel": "Текущий цикл ответа",
     "runtime.disconnectedStatus": "Отключено",
     "runtime.editButton": "Изменить",
@@ -1208,7 +1208,7 @@
     "runtime.monitorRunningStatus": "Наблюдение за командой активно",
     "runtime.monitorsDetailsLabel": "наблюдения за командами",
     "runtime.monitorsRunningStatus": "Наблюдения за командами активны",
-    "runtime.nearestToolResultPlacement": "После ближайшего результата инструмента",
+    "runtime.nearestToolResultPlacement": "Ближайший безопасный момент",
     "runtime.newActivityLabel": "Новое действие",
     "runtime.newMessagesLabel": "новые сообщения",
     "runtime.observeScreenToolLabel": "Наблюдение за экраном",
@@ -2066,6 +2066,12 @@
     "androidWorker.remoteDisclosure": "Разрешить серверу запрашивать состояние телефона и геопозицию, пока включена её передача. Звук разрешается отдельно.",
     "androidWorker.soundDisclosure": "Сигнал до 60 секунд на максимальной громкости будильника, даже в беззвучном режиме. В режиме «Не беспокоить» разрешите будильники и отключите наушники. Остановить можно здесь или в уведомлении.",
     "androidWorker.signalsDisclosure": "Отслеживаются только настроенные геозоны, BLE-устройства и сети Wi-Fi.",
-    "androidWorker.sleepDisclosure": "Завершённые сеансы сна читаются только после включения. События шифруются на телефоне и отправляются по HTTPS на ваш сервер, где хранится история. Для остановки отзовите доступ в Health Connect или отключите устройство."
+    "androidWorker.sleepDisclosure": "Завершённые сеансы сна читаются только после включения. События шифруются на телефоне и отправляются по HTTPS на ваш сервер, где хранится история. Для остановки отзовите доступ в Health Connect или отключите устройство.",
+    "client.delivery.title": "Сообщения во время работы",
+    "client.delivery.description": "Для новых сообщений во всех беседах и на всех ваших устройствах. Steer ждёт безопасного момента, не отменяя выполняющийся вызов. Уже поставленные в очередь сообщения сохраняют свой режим доставки.",
+    "client.delivery.steer": "Steer — ближайший безопасный момент",
+    "client.delivery.afterTurn": "После текущего терна",
+    "client.delivery.active": "Новое сообщение: {mode}",
+    "client.delivery.saveFailed": "Не удалось сохранить режим доставки сообщений."
   }
 }

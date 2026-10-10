@@ -44,6 +44,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.EnterKeyAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.presentation.ui.displayLabel
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.AgentMentionCandidate
 import com.gromozeka.presentation.ui.AgentMentionResolution
@@ -101,6 +102,7 @@ internal fun MessageInput(
     voiceAutoSend: Boolean = true,
     onVoiceAutoSendChange: (Boolean) -> Unit = {},
     statusContent: @Composable () -> Unit = {},
+    messageDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode = com.gromozeka.domain.model.UserMessageDeliveryMode.STEER,
     modifier: Modifier = Modifier,
 ) {
     val localization = LocalTranslation.current
@@ -171,6 +173,14 @@ internal fun MessageInput(
             )
             ComposerPanel {
                 statusContent()
+                if (isWaitingForResponse) {
+                    Text(
+                        localization.text("client.delivery.active", "mode" to messageDeliveryMode.displayLabel(localization)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("message-delivery-mode"),
+                    )
+                }
                 artifactError?.takeIf(String::isNotBlank)?.let { error ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
@@ -417,7 +427,7 @@ internal fun MessageInput(
                         CompactButton(
                             onClick = submitInput, modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.SendButton.value),
                             contentPadding = PaddingValues(spacing.controlGap),
-                            tooltip = if (isWaitingForResponse) localization.text("chat.input.queue") else localization.text("chat.input.send"),
+                            tooltip = if (isWaitingForResponse) messageDeliveryMode.displayLabel(localization) else localization.text("chat.input.send"),
                         ) { Icon(Icons.Default.Send, localization.text("chat.input.send"), Modifier.size(controls.iconSize)) }
                     }
                 }

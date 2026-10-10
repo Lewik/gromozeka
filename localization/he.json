@@ -1138,7 +1138,7 @@
     "runtime.copyText": "העתקה",
     "runtime.createAgentToolLabel": "יצירת סוכן",
     "runtime.createLabel": "כתיבה",
-    "runtime.currentResponsePlacement": "אחרי התשובה הנוכחית",
+    "runtime.currentResponsePlacement": "לאחר הסבב הנוכחי",
     "runtime.currentTurnLabel": "מחזור התשובה הנוכחי",
     "runtime.disconnectedStatus": "מנותק",
     "runtime.editButton": "עריכה",
@@ -1181,7 +1181,7 @@
     "runtime.monitorRunningStatus": "מעקב הפקודה פעיל",
     "runtime.monitorsDetailsLabel": "מעקבי פקודות",
     "runtime.monitorsRunningStatus": "מעקבי הפקודות פעילים",
-    "runtime.nearestToolResultPlacement": "אחרי תוצאת הכלי הקרובה",
+    "runtime.nearestToolResultPlacement": "בנקודה הבטוחה הבאה",
     "runtime.newActivityLabel": "פעילות חדשה",
     "runtime.newMessagesLabel": "הודעות חדשות",
     "runtime.observeScreenToolLabel": "מעקב אחר המסך",
@@ -2029,6 +2029,12 @@
     "androidWorker.remoteDisclosure": "מאפשר לשרת לבקש מצב מכשיר ומיקום כאשר השיתוף פעיל. צליל דורש הרשאה נפרדת.",
     "androidWorker.soundDisclosure": "מאפשר התראה עד 60 שניות בעוצמת שעון מעורר מרבית, גם במצב שקט. יש לאפשר שעונים מעוררים במצב נא לא להפריע ולנתק אוזניות. אפשר לעצור כאן או בהתראה.",
     "androidWorker.signalsDisclosure": "רק אזורים גאוגרפיים, מכשירי BLE ורשתות Wi-Fi שהוגדרו נמצאים במעקב.",
-    "androidWorker.sleepDisclosure": "קורא מפגשי שינה שהסתיימו רק כשהאפשרות פעילה. האירועים מוצפנים במכשיר ונשלחים ב-HTTPS לשרת שלך, ששומר היסטוריה. לעצירה יש לבטל גישה ב-Health Connect או לנתק את המכשיר."
+    "androidWorker.sleepDisclosure": "קורא מפגשי שינה שהסתיימו רק כשהאפשרות פעילה. האירועים מוצפנים במכשיר ונשלחים ב-HTTPS לשרת שלך, ששומר היסטוריה. לעצירה יש לבטל גישה ב-Health Connect או לנתק את המכשיר.",
+    "client.delivery.title": "הודעות שנשלחות בזמן עבודה",
+    "client.delivery.description": "חל על הודעות חדשות בכל השיחות ובכל המכשירים שלך. Steer ממתין לנקודה בטוחה בלי לבטל את הקריאה המתבצעת. הודעות שכבר נמצאות בתור שומרות על מועד המסירה שלהן.",
+    "client.delivery.steer": "Steer — בנקודה הבטוחה הבאה",
+    "client.delivery.afterTurn": "לאחר הסבב הנוכחי",
+    "client.delivery.active": "הודעה חדשה: {mode}",
+    "client.delivery.saveFailed": "לא ניתן לשמור את העדפת מסירת ההודעות."
   }
 }

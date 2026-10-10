@@ -79,6 +79,9 @@ class GromozekaRemoteServices(
         homeDirectory = clientHomeDirectory,
         persistToServer = canManageRuntimeSettings,
     )
+    private val remoteMessageDeliveryPreferenceService = RemoteMessageDeliveryPreferenceService(client, authenticatedUserId, scope)
+    val messageDeliveryPreferenceService: com.gromozeka.domain.service.CurrentUserMessageDeliveryPreferenceService =
+        remoteMessageDeliveryPreferenceService
     private val remoteAiConfigurationService = RemoteAiConfigurationService(client, scope)
     private val remoteRuntimeCatalogTemplateService = RemoteRuntimeCatalogTemplateService(client)
     private val remoteAgentService = RemoteAgentService(client)
@@ -138,6 +141,7 @@ class GromozekaRemoteServices(
         if (canManageRuntimeSettings) {
             remoteSettingsService.refreshFromServer()
         }
+        remoteMessageDeliveryPreferenceService.initialize()
         remoteAiConfigurationService.reload()
         remoteRuntimeCatalogTemplateService.reload()
         if (canManageRuntimeSettings) {

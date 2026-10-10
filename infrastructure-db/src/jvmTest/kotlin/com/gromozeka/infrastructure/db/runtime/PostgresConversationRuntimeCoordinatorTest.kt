@@ -56,6 +56,44 @@ import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
     @Test
+    fun `personal placement survives coordinator recreation and continuation gap`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
+        val schema = "delivery_queue_${UUID.randomUUID().toString().replace("-", "")}"
+        val admin = dataSource()
+        admin.connection.use { it.createStatement().use { s -> s.execute("CREATE SCHEMA $schema") } }
+        try {
+            val source = dataSource(schema).also(::createRuntimeSchema)
+            val coordinator = PostgresConversationRuntimeCoordinator(source, Json { encodeDefaults = true })
+            val conversation = Conversation.Id("delivery")
+            val now = Instant.fromEpochSeconds(1)
+            val agent = AgentDefinition.Id("agent")
+            val actor = com.gromozeka.domain.model.User.Id("user")
+            val executor = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+            val requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server)
+            fun input(id: String) = ConversationRuntimeTask(ConversationRuntimeTask.Id(id), conversation, actorUserId = actor,
+                payload = ConversationRuntimeTask.Payload.AgentInvocation(Conversation.Message(Conversation.Message.Id(id), conversation,
+                    role = Conversation.Message.Role.USER, content = emptyList(), createdAt = now), agent),
+                placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id, requirements = requirements, createdAt = now)
+            val root = input("root")
+            assertTrue(coordinator.submit(root))
+            kotlin.test.assertNotNull(coordinator.claimDeliveredTask(conversation, root.id, executor, requirements.capabilities, emptySet()))
+            assertTrue(coordinator.markActiveTaskStarted(conversation, root.id, executor, now))
+            assertTrue(coordinator.submitUserInput(input("later"), com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN))
+            val next = root.copy(id = ConversationRuntimeTask.Id("model"), parentTaskId = root.id, idempotencyKey = "model",
+                payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("root"), agent, 1))
+            assertTrue(coordinator.completeActiveTask(conversation, root.id, executor, ConversationRuntimeTaskOutcome.Continue(next)))
+            val restarted = PostgresConversationRuntimeCoordinator(source, Json { encodeDefaults = true })
+            assertTrue(restarted.submitUserInput(input("steer"), com.gromozeka.domain.model.UserMessageDeliveryMode.STEER))
+            val queued = restarted.listPending(conversation)
+            assertEquals(listOf("model", "later", "steer"), queued.map { it.id.value })
+            assertEquals(QueuedMessagePlacement.END_OF_TURN, queued[1].placement)
+            assertEquals(QueuedMessagePlacement.AFTER_TOOL_RESULT, queued[2].placement)
+        } finally {
+            admin.connection.use { it.createStatement().use { s -> s.execute("DROP SCHEMA $schema CASCADE") } }
+        }
+    }
+
+    @Test
     fun `event cursor and bounded replay do not decode unrelated runtime payloads`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
         val schema = "history_cursor_${UUID.randomUUID().toString().replace("-", "")}"

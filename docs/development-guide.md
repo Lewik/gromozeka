@@ -153,6 +153,25 @@ resolve the currently selected tab again or redirect a result when its target
 has closed. Provider VAD forwards the speech-start `item_id` through the Server
 so transcripts arriving out of order retain their original destinations.
 
+## Personal Message Delivery
+
+The authenticated User owns one delivery preference across conversations and clients:
+`STEER` (default when unset) or `AFTER_CURRENT_TURN`. It is stored separately in
+`user_message_delivery_preferences`, not in the legacy Server-wide `UserProfile`.
+Get/set requests have no client-supplied user ID; StateSync invalidations use the
+same authenticated user's scope. The setting applies only to newly submitted
+human chat input, not peer requests/results, command completions, or other
+runtime-owned ingress. Already accepted messages retain their placement.
+
+Admission resolves placement under the conversation coordinator's lock. Steer
+for the active agent uses the next safe boundary, including a model-only response
+or a continuation gap, without cancelling a model/tool call or splitting a tool
+call/result pair. Full-turn input remains queued across every continuation.
+Idle input starts normally in either mode. Explicit input to another agent is
+not injected into the current agent; broadcast input steers the active responder
+while retaining queued responses from other selected agents. Response review's
+stale-input guard and Stop/Interrupt controls remain authoritative.
+
 ## Interface Localization
 
 `localization/en.json` is the canonical interface catalog. Keep semantic context

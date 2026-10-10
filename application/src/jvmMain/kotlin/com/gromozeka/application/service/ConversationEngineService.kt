@@ -315,6 +315,17 @@ class ConversationEngineService(
             return ConversationRuntimeTaskOutcome.CompleteTurn
         }
 
+        val beforeModel = emitQueuedRuntimeMessagesAtSafePoint(
+            conversationId, task.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
+            context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled,
+        )
+        if (beforeModel.consumedTasks) {
+            beforeModel.messages.forEach { emitMessage(it) }
+            return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
+                payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId))
+        }
+
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
@@ -525,6 +536,20 @@ class ConversationEngineService(
             collaboration?.failRequest(payload.rootUserMessageId, "Recipient model refused the request")
             return ConversationRuntimeTaskOutcome.CompleteTurn
         }
+        // A model-only answer has no tool-result step. Do not strand human steering until a new turn.
+        // If the model returned tool calls, keep their call/result pairs intact and use the existing tool boundary.
+        if (allToolCalls.isEmpty()) {
+            val afterModel = emitQueuedRuntimeMessagesAtSafePoint(
+                conversationId, task.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT,
+                conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
+                context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled,
+            )
+            if (afterModel.consumedTasks) {
+                afterModel.messages.forEach { emitMessage(it) }
+                return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
+                    payload.agentDefinitionId, payload.iteration + 1, afterModel.actorUserId))
+            }
+        }
         if (outcome == AiStepOutcome.CONTINUE) {
             return ConversationRuntimeTaskOutcome.Continue(
                 llmCallTask(
@@ -631,11 +656,12 @@ class ConversationEngineService(
             service.acceptedMessages(draft, AgentResponseDecision(null, AgentResponseDecision.Next.CONTINUE, emptyList(), emptyList())).forEach {
                 if (addRuntimeMessageIfMissing(conversation.id, it)) emitMessage(it)
             }
-            emitQueuedRuntimeMessagesAtSafePoint(conversation.id, task.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            val steering = emitQueuedRuntimeMessagesAtSafePoint(conversation.id, task.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT,
                 conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
                 context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled)
+            steering.messages.forEach { emitMessage(it) }
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
-                payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
+                payload.agentDefinitionId, draft.iteration + 1, if (steering.consumedTasks) steering.actorUserId else task.actorUserId))
         }
         ensureRuntimeTaskOwner(conversation.id, task.id, executor)
         if (runtimeCoordinator.listPending(conversation.id).any { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }) return continueAfterNewInput()
@@ -738,10 +764,6 @@ class ConversationEngineService(
                 context.memoryPipelineTools,
             )
         }
-        if (payload.returnDirect) {
-            return ConversationRuntimeTaskOutcome.CompleteTurn
-        }
-
         val queuedMessageEmission = emitQueuedRuntimeMessagesAtSafePoint(
             conversationId = conversationId,
             runtimeTaskId = task.id,
@@ -757,6 +779,7 @@ class ConversationEngineService(
         queuedMessageEmission.messages.forEach { queuedMessage ->
             emitMessage(queuedMessage)
         }
+        if (payload.returnDirect && !queuedMessageEmission.consumedTasks) return ConversationRuntimeTaskOutcome.CompleteTurn
 
         return ConversationRuntimeTaskOutcome.Continue(
             llmCallTask(
@@ -1666,8 +1689,21 @@ class ConversationEngineService(
         automaticMemoryRecallEnabled: Boolean,
     ): List<Conversation.Message> {
         val emittedMessages = mutableListOf<Conversation.Message>()
-        val invocation = queued.requireAgentInvocation()
-        val userMessage = invocation.userMessage
+        val invocation = when (val payload = queued.payload) {
+            is ConversationRuntimeTask.Payload.AgentInvocation -> payload
+            is ConversationRuntimeTask.Payload.PostMessage -> ConversationRuntimeTask.Payload.AgentInvocation(
+                payload.userMessage, payload.autoRespondAgentIds.single(),
+            )
+            else -> error("Safe-point input is not a message submission")
+        }
+        val originalMessage = invocation.userMessage
+        val userMessage = if (queued.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT &&
+            originalMessage.author is Conversation.Message.Author.User &&
+            originalMessage.instructions.none { it is Conversation.Message.Instruction.Source.Agent }) {
+            originalMessage.copy(instructions = originalMessage.instructions.filterNot {
+                it is Conversation.Message.Instruction.UserInstruction && it.id == "mid_turn_steer"
+            } + com.gromozeka.domain.model.liveSteeringInstruction)
+        } else originalMessage
         if (collaboration?.validateMessage(userMessage) == false) return emptyList()
         requireActorConnected(queued, conversation)
         require(Conversation.Participant.Agent(invocation.agentDefinitionId) in conversation.participants) {

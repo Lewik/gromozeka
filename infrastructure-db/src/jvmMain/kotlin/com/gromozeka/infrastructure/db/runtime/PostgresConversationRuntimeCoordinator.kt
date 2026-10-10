@@ -89,8 +89,15 @@ class PostgresConversationRuntimeCoordinator(
     }
 
     override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
+        submitInternal(task, acceptPreviouslySubmitted, null)
+
+    override suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean =
+        submitInternal(task, false, mode)
+
+    private suspend fun submitInternal(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean,
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?): Boolean =
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
-            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted)
+            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode)
             if (!transition.changed) return@mutateRecord transition.result
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
@@ -99,7 +106,7 @@ class PostgresConversationRuntimeCoordinator(
                 taskId = task.id,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
-                message = "Runtime task submitted: placement=${task.placement}",
+                message = "Runtime task submitted: placement=${transition.state.pendingTasks.firstOrNull { it.id == task.id }?.placement ?: task.placement}",
             )
             record.bumpRevision()
             true

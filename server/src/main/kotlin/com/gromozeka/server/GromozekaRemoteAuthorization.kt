@@ -56,6 +56,8 @@ class GromozekaRemoteAuthorization(
             -> requireServerOwner(user)
 
             ListPersonalAccessTokensRequest,
+            GetMessageDeliveryModeRequest,
+            is SetMessageDeliveryModeRequest,
             GetTranslationsRequest,
             is GetTranslationPackageRequest,
             is SaveTranslationPackageRequest,
@@ -366,6 +368,7 @@ class GromozekaRemoteAuthorization(
 
             RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
             RemoteDeclarativeStateResource.TRANSLATIONS,
+            RemoteDeclarativeStateResource.MESSAGE_DELIVERY_PREFERENCE,
             ->
                 if (query.scopeId != user.id.value) throw ProjectAccessDeniedException()
 

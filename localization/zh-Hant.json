@@ -1084,7 +1084,7 @@
     "runtime.copyText": "複製",
     "runtime.createAgentToolLabel": "建立代理程式",
     "runtime.createLabel": "寫入",
-    "runtime.currentResponsePlacement": "目前回覆完成後",
+    "runtime.currentResponsePlacement": "目前回合結束後",
     "runtime.currentTurnLabel": "目前輪次",
     "runtime.disconnectedStatus": "已中斷連線",
     "runtime.editButton": "編輯",
@@ -1127,7 +1127,7 @@
     "runtime.monitorRunningStatus": "監控執行中",
     "runtime.monitorsDetailsLabel": "監控",
     "runtime.monitorsRunningStatus": "監控執行中",
-    "runtime.nearestToolResultPlacement": "下次工具結果回傳後",
+    "runtime.nearestToolResultPlacement": "下一個安全時機",
     "runtime.newActivityLabel": "新活動",
     "runtime.newMessagesLabel": "新訊息",
     "runtime.observeScreenToolLabel": "觀察螢幕",
@@ -1955,6 +1955,12 @@
     "androidWorker.remoteDisclosure": "允許伺服器在位置分享開啟時請求裝置狀態和位置。聲音需另外授權。",
     "androidWorker.soundDisclosure": "允許以最大鬧鐘音量播放最長 60 秒的提示，即使處於靜音模式。請在勿擾模式中允許鬧鐘並中斷耳機連線。可在此處或通知中停止。",
     "androidWorker.signalsDisclosure": "僅監測已設定的地理圍欄、BLE 裝置和 Wi-Fi 網路。",
-    "androidWorker.sleepDisclosure": "僅在啟用後讀取已完成的睡眠記錄。事件在本機加密，透過 HTTPS 傳送至您的伺服器並保留歷史。撤銷 Health Connect 權限或中斷裝置連線即可停止。"
+    "androidWorker.sleepDisclosure": "僅在啟用後讀取已完成的睡眠記錄。事件在本機加密，透過 HTTPS 傳送至您的伺服器並保留歷史。撤銷 Health Connect 權限或中斷裝置連線即可停止。",
+    "client.delivery.title": "工作期間傳送的訊息",
+    "client.delivery.description": "適用於所有對話和裝置上的新訊息。Steer 會等待安全時機，不會取消正在執行的呼叫。已排入佇列的訊息會保留原本的傳遞時機。",
+    "client.delivery.steer": "Steer — 下一個安全時機",
+    "client.delivery.afterTurn": "目前回合結束後",
+    "client.delivery.active": "新訊息：{mode}",
+    "client.delivery.saveFailed": "無法儲存訊息傳遞偏好設定。"
   }
 }

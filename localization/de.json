@@ -1111,7 +1111,7 @@
     "runtime.copyText": "Kopieren",
     "runtime.createAgentToolLabel": "Agenten erstellen",
     "runtime.createLabel": "Schreibzugriff",
-    "runtime.currentResponsePlacement": "Nach der aktuellen Antwort",
+    "runtime.currentResponsePlacement": "Nach dem aktuellen Turn",
     "runtime.currentTurnLabel": "Aktueller Antwortdurchlauf",
     "runtime.disconnectedStatus": "Getrennt",
     "runtime.editButton": "Bearbeiten",
@@ -1154,7 +1154,7 @@
     "runtime.monitorRunningStatus": "Überwachung läuft",
     "runtime.monitorsDetailsLabel": "Überwachungen",
     "runtime.monitorsRunningStatus": "Überwachungen laufen",
-    "runtime.nearestToolResultPlacement": "Nach dem nächsten Werkzeugergebnis",
+    "runtime.nearestToolResultPlacement": "Nächster sicherer Zeitpunkt",
     "runtime.newActivityLabel": "Neue Aktivität",
     "runtime.newMessagesLabel": "neue Nachrichten",
     "runtime.observeScreenToolLabel": "Bildschirm beobachten",
@@ -1992,6 +1992,12 @@
     "androidWorker.remoteDisclosure": "Erlaubt dem Server, Gerätestatus und Standort bei aktiver Freigabe abzufragen. Ton erfordert eine separate Erlaubnis.",
     "androidWorker.soundDisclosure": "Erlaubt bis zu 60 Sekunden Alarm bei maximaler Weckerlautstärke, auch im Lautlosmodus. Wecker in Nicht stören erlauben und Kopfhörer trennen. Hier oder in der Benachrichtigung stoppen.",
     "androidWorker.signalsDisclosure": "Nur konfigurierte Geofences, BLE-Geräte und WLAN-Netzwerke werden überwacht.",
-    "androidWorker.sleepDisclosure": "Liest abgeschlossene Schlafsitzungen nur nach Aktivierung. Ereignisse werden lokal verschlüsselt und per HTTPS an deinen Server gesendet, der den Verlauf speichert. Zum Stoppen Zugriff in Health Connect widerrufen oder Gerät trennen."
+    "androidWorker.sleepDisclosure": "Liest abgeschlossene Schlafsitzungen nur nach Aktivierung. Ereignisse werden lokal verschlüsselt und per HTTPS an deinen Server gesendet, der den Verlauf speichert. Zum Stoppen Zugriff in Health Connect widerrufen oder Gerät trennen.",
+    "client.delivery.title": "Während der Arbeit gesendete Nachrichten",
+    "client.delivery.description": "Gilt für neue Nachrichten in allen Unterhaltungen und auf allen deinen Geräten. Steer wartet auf einen sicheren Zeitpunkt, ohne den laufenden Aufruf abzubrechen. Bereits eingereihte Nachrichten behalten ihren Zustellzeitpunkt.",
+    "client.delivery.steer": "Steer — nächster sicherer Zeitpunkt",
+    "client.delivery.afterTurn": "Nach dem aktuellen Turn",
+    "client.delivery.active": "Neue Nachricht: {mode}",
+    "client.delivery.saveFailed": "Die Einstellung zur Nachrichtenzustellung konnte nicht gespeichert werden."
   }
 }

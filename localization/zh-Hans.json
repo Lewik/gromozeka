@@ -1084,7 +1084,7 @@
     "runtime.copyText": "复制",
     "runtime.createAgentToolLabel": "创建智能体",
     "runtime.createLabel": "写入",
-    "runtime.currentResponsePlacement": "在当前回答完成后",
+    "runtime.currentResponsePlacement": "当前轮次结束后",
     "runtime.currentTurnLabel": "当前轮次",
     "runtime.disconnectedStatus": "已断开",
     "runtime.editButton": "编辑",
@@ -1127,7 +1127,7 @@
     "runtime.monitorRunningStatus": "监控正在运行",
     "runtime.monitorsDetailsLabel": "监控",
     "runtime.monitorsRunningStatus": "监控正在运行",
-    "runtime.nearestToolResultPlacement": "在下次工具结果返回后",
+    "runtime.nearestToolResultPlacement": "下一个安全时机",
     "runtime.newActivityLabel": "新活动",
     "runtime.newMessagesLabel": "新消息",
     "runtime.observeScreenToolLabel": "观察屏幕",
@@ -1955,6 +1955,12 @@
     "androidWorker.remoteDisclosure": "允许服务器在位置共享开启时请求设备状态和位置。声音需单独授权。",
     "androidWorker.soundDisclosure": "允许以最大闹钟音量播放最长 60 秒的提示，即使处于静音模式。请在勿扰模式中允许闹钟并断开耳机。可在此处或通知中停止。",
     "androidWorker.signalsDisclosure": "仅监测已配置的地理围栏、BLE 设备和 Wi-Fi 网络。",
-    "androidWorker.sleepDisclosure": "仅在启用后读取已完成的睡眠记录。事件在本地加密，通过 HTTPS 发送至您的服务器并保留历史。撤销 Health Connect 权限或断开设备即可停止。"
+    "androidWorker.sleepDisclosure": "仅在启用后读取已完成的睡眠记录。事件在本地加密，通过 HTTPS 发送至您的服务器并保留历史。撤销 Health Connect 权限或断开设备即可停止。",
+    "client.delivery.title": "工作期间发送的消息",
+    "client.delivery.description": "适用于所有会话和设备上的新消息。Steer 会等待安全时机，不会取消正在执行的调用。已排队消息的投递时机保持不变。",
+    "client.delivery.steer": "Steer — 下一个安全时机",
+    "client.delivery.afterTurn": "当前轮次结束后",
+    "client.delivery.active": "新消息：{mode}",
+    "client.delivery.saveFailed": "无法保存消息投递偏好。"
   }
 }

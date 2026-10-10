@@ -70,10 +70,17 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     }
 
     override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
+        submitInternal(task, acceptPreviouslySubmitted, null)
+
+    override suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean =
+        submitInternal(task, false, mode)
+
+    private suspend fun submitInternal(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean,
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?): Boolean =
         mutex.withLock {
             val current = schedulingByConversation[task.conversationId]
                 ?: ConversationRuntimeSchedulingState(task.conversationId)
-            val transition = current.submit(task, Clock.System.now(), acceptPreviouslySubmitted)
+            val transition = current.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode)
             if (!transition.changed) return@withLock transition.result
             if (!transition.result) return@withLock false
             schedulingByConversation[task.conversationId] = transition.state
@@ -82,7 +89,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 taskId = task.id,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
-                message = "Runtime task submitted: placement=${task.placement}",
+                message = "Runtime task submitted: placement=${transition.state.pendingTasks.firstOrNull { it.id == task.id }?.placement ?: task.placement}",
             )
             scheduleNextRunnableTaskIfReady(task.conversationId)
             bumpRevision(task.conversationId)

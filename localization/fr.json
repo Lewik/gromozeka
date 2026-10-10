@@ -1138,7 +1138,7 @@
     "runtime.copyText": "Copier",
     "runtime.createAgentToolLabel": "Créer un agent",
     "runtime.createLabel": "Écriture",
-    "runtime.currentResponsePlacement": "Après la réponse actuelle",
+    "runtime.currentResponsePlacement": "Après le tour actuel",
     "runtime.currentTurnLabel": "Cycle de réponse actuel",
     "runtime.disconnectedStatus": "Déconnecté",
     "runtime.editButton": "Modifier",
@@ -1181,7 +1181,7 @@
     "runtime.monitorRunningStatus": "La surveillance est en cours",
     "runtime.monitorsDetailsLabel": "surveillances",
     "runtime.monitorsRunningStatus": "Les surveillances sont en cours",
-    "runtime.nearestToolResultPlacement": "Après le prochain résultat d’outil",
+    "runtime.nearestToolResultPlacement": "Prochain point sûr",
     "runtime.newActivityLabel": "Nouvelle activité",
     "runtime.newMessagesLabel": "nouveaux messages",
     "runtime.observeScreenToolLabel": "Observer l’écran",
@@ -2029,6 +2029,12 @@
     "androidWorker.remoteDisclosure": "Autorise le serveur à demander l’état et la position de l’appareil lorsque le partage est actif. Le son nécessite une autorisation séparée.",
     "androidWorker.soundDisclosure": "Autorise des alertes de 60 secondes maximum au volume d’alarme maximal, même en mode silencieux. Autorisez les alarmes dans Ne pas déranger et débranchez les écouteurs. Arrêtez ici ou dans la notification.",
     "androidWorker.signalsDisclosure": "Seuls les zones géographiques, appareils BLE et réseaux Wi-Fi configurés sont surveillés.",
-    "androidWorker.sleepDisclosure": "Lit les sessions de sommeil terminées uniquement après activation. Les événements sont chiffrés localement et envoyés par HTTPS à votre serveur, qui conserve l’historique. Révoquez l’accès dans Health Connect ou déconnectez l’appareil pour arrêter."
+    "androidWorker.sleepDisclosure": "Lit les sessions de sommeil terminées uniquement après activation. Les événements sont chiffrés localement et envoyés par HTTPS à votre serveur, qui conserve l’historique. Révoquez l’accès dans Health Connect ou déconnectez l’appareil pour arrêter.",
+    "client.delivery.title": "Messages envoyés pendant le travail",
+    "client.delivery.description": "S’applique aux nouveaux messages dans toutes vos conversations et sur tous vos appareils. Steer attend un point sûr sans annuler l’appel en cours. Les messages déjà en attente conservent leur moment de remise.",
+    "client.delivery.steer": "Steer — prochain point sûr",
+    "client.delivery.afterTurn": "Après le tour actuel",
+    "client.delivery.active": "Nouveau message : {mode}",
+    "client.delivery.saveFailed": "Impossible d’enregistrer la préférence de remise des messages."
   }
 }

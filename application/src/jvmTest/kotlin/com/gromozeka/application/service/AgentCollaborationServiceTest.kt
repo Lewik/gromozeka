@@ -205,7 +205,7 @@ class AgentCollaborationServiceTest {
     @Test fun `stop and interrupt cancel durable waits even without an active foreground turn`() = runBlocking {
         setup()
         val dispatcher = mock<ConversationRuntimeDispatcher>()
-        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), service)
+        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), mock(), service)
         for (action in listOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
             val id = service.send(source, actor.id, "b", null, "Wait for a user choice", "idle-$action", true)
             repo.items[id] = requireNotNull(repo.items[id]).copy(state = AgentRequest.State.WAITING_USER)

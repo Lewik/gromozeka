@@ -177,6 +177,7 @@ class ConversationRuntimeDispatcher(
         userMessage: Conversation.Message,
         actorUserId: User.Id? = null,
         autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
     ): Boolean {
         artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
         return submitRuntimeTask(
@@ -187,7 +188,8 @@ class ConversationRuntimeDispatcher(
                 placement = QueuedMessagePlacement.END_OF_TURN,
                 actorUserId = actorUserId,
                 autoRespondAgentIds = autoRespondAgentIds,
-            )
+            ),
+            userDeliveryMode = userDeliveryMode,
         )
     }
 
@@ -196,6 +198,7 @@ class ConversationRuntimeDispatcher(
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         actorUserId: User.Id? = null,
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
     ): Boolean {
         artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
         val task = messageSubmissionTask(
@@ -205,7 +208,7 @@ class ConversationRuntimeDispatcher(
             placement = QueuedMessagePlacement.END_OF_TURN,
             actorUserId = actorUserId,
         )
-        return submitRuntimeTask(task)
+        return submitRuntimeTask(task, userDeliveryMode = userDeliveryMode)
     }
 
     internal suspend fun importChannelMessage(channel: com.gromozeka.domain.model.ExternalConversationChannel,
@@ -369,8 +372,10 @@ class ConversationRuntimeDispatcher(
     private suspend fun submitRuntimeTask(
         task: ConversationRuntimeTask,
         acceptPreviouslySubmitted: Boolean = false,
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
     ): Boolean {
-        val accepted = runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
+        val accepted = if (userDeliveryMode == null) runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
+            else runtimeCoordinator.submitUserInput(task, userDeliveryMode)
         if (accepted) {
             publishRuntimeSnapshot(task.conversationId)
         }

@@ -1138,7 +1138,7 @@
     "runtime.copyText": "Copiar",
     "runtime.createAgentToolLabel": "Crear agente",
     "runtime.createLabel": "Escritura",
-    "runtime.currentResponsePlacement": "Después de la respuesta actual",
+    "runtime.currentResponsePlacement": "Después del turno actual",
     "runtime.currentTurnLabel": "Turno actual",
     "runtime.disconnectedStatus": "Desconectado",
     "runtime.editButton": "Editar",
@@ -1181,7 +1181,7 @@
     "runtime.monitorRunningStatus": "El monitor está en ejecución",
     "runtime.monitorsDetailsLabel": "monitores",
     "runtime.monitorsRunningStatus": "Los monitores están en ejecución",
-    "runtime.nearestToolResultPlacement": "Después del próximo resultado de herramienta",
+    "runtime.nearestToolResultPlacement": "Próximo punto seguro",
     "runtime.newActivityLabel": "Actividad nueva",
     "runtime.newMessagesLabel": "mensajes nuevos",
     "runtime.observeScreenToolLabel": "Observar pantalla",
@@ -2029,6 +2029,12 @@
     "androidWorker.remoteDisclosure": "Permite al servidor consultar el estado y la ubicación mientras se comparte. El sonido requiere un permiso separado.",
     "androidWorker.soundDisclosure": "Permite alertas de hasta 60 segundos con volumen de alarma máximo, incluso en modo silencio. Permite alarmas en No molestar y desconecta los auriculares. Detén aquí o desde la notificación.",
     "androidWorker.signalsDisclosure": "Solo se supervisan las geocercas, dispositivos BLE y redes Wi-Fi configurados.",
-    "androidWorker.sleepDisclosure": "Lee sesiones de sueño completadas solo al activarlo. Los eventos se cifran localmente y se envían por HTTPS a tu servidor, que conserva el historial. Revoca el acceso en Health Connect o desconecta el dispositivo para detenerlo."
+    "androidWorker.sleepDisclosure": "Lee sesiones de sueño completadas solo al activarlo. Los eventos se cifran localmente y se envían por HTTPS a tu servidor, que conserva el historial. Revoca el acceso en Health Connect o desconecta el dispositivo para detenerlo.",
+    "client.delivery.title": "Mensajes enviados durante el trabajo",
+    "client.delivery.description": "Se aplica a los mensajes nuevos de todas tus conversaciones y dispositivos. Steer espera a un punto seguro sin cancelar la llamada en curso. Los mensajes ya en cola conservan su momento de entrega.",
+    "client.delivery.steer": "Steer — próximo punto seguro",
+    "client.delivery.afterTurn": "Después del turno actual",
+    "client.delivery.active": "Mensaje nuevo: {mode}",
+    "client.delivery.saveFailed": "No se pudo guardar la preferencia de entrega de mensajes."
   }
 }

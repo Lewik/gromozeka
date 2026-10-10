@@ -33,6 +33,7 @@ enum class DeclarativeStateResource {
     SETTINGS,
     QUICK_TEXT_ACTIONS,
     TRANSLATIONS,
+    MESSAGE_DELIVERY_PREFERENCE,
 }
 
 data class DeclarativeStateKey(
@@ -56,6 +57,9 @@ data class DeclarativeStateKey(
 
         fun conversationUnreadState(userId: User.Id) =
             DeclarativeStateKey(DeclarativeStateResource.CONVERSATION_UNREAD_STATE, userId.value)
+
+        fun messageDeliveryPreference(userId: User.Id) =
+            DeclarativeStateKey(DeclarativeStateResource.MESSAGE_DELIVERY_PREFERENCE, userId.value)
 
         fun translations(userId: User.Id) =
             DeclarativeStateKey(DeclarativeStateResource.TRANSLATIONS, userId.value)

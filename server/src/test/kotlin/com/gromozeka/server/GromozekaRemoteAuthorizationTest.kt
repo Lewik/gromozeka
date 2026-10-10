@@ -42,6 +42,24 @@ import kotlin.test.assertFailsWith
 
 class GromozekaRemoteAuthorizationTest {
     @Test
+    fun `delivery preference is personal for both members and owners`() = runBlocking {
+        for (role in listOf(User.Role.MEMBER, User.Role.OWNER)) {
+            val user = testUser(role)
+            authorization.authorize(user, com.gromozeka.remote.protocol.GetMessageDeliveryModeRequest)
+            authorization.authorize(user, com.gromozeka.remote.protocol.SetMessageDeliveryModeRequest(
+                com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN))
+            val own = PullStateSyncRequest(DeclarativeStateRevisionQuery(
+                RemoteDeclarativeStateResource.MESSAGE_DELIVERY_PREFERENCE, user.id.value),
+                RemoteStateSyncCursor("server", streamEpoch = 1, generation = 2))
+            authorization.authorize(user, own)
+            assertFailsWith<ProjectAccessDeniedException> {
+                authorization.authorize(user, own.copy(query = DeclarativeStateRevisionQuery(
+                    RemoteDeclarativeStateResource.MESSAGE_DELIVERY_PREFERENCE, "another-user")))
+            }
+        }
+    }
+
+    @Test
     fun `tool contract catalog requires project read access or global owner access`() = runBlocking {
         val user = testUser()
         val projectId = Project.Id("catalog-project")

@@ -1084,7 +1084,7 @@
     "runtime.copyText": "コピー",
     "runtime.createAgentToolLabel": "エージェントを作成",
     "runtime.createLabel": "書き込み",
-    "runtime.currentResponsePlacement": "現在の応答が終わった後",
+    "runtime.currentResponsePlacement": "現在のターンの終了後",
     "runtime.currentTurnLabel": "現在のターン",
     "runtime.disconnectedStatus": "未接続",
     "runtime.editButton": "編集",
@@ -1127,7 +1127,7 @@
     "runtime.monitorRunningStatus": "監視を実行中",
     "runtime.monitorsDetailsLabel": "監視数",
     "runtime.monitorsRunningStatus": "複数の監視を実行中",
-    "runtime.nearestToolResultPlacement": "次のツール結果の直後",
+    "runtime.nearestToolResultPlacement": "次の安全なタイミング",
     "runtime.newActivityLabel": "新しい処理状況",
     "runtime.newMessagesLabel": "件の新着メッセージ",
     "runtime.observeScreenToolLabel": "画面を確認",
@@ -1955,6 +1955,12 @@
     "androidWorker.remoteDisclosure": "共有が有効な間、サーバーから端末の状態と位置を取得できます。音には別の許可が必要です。",
     "androidWorker.soundDisclosure": "サイレントモードでも、アラーム最大音量で最大 60 秒の通知を許可します。通知をミュートする設定でアラームを許可し、ヘッドホンを外してください。ここか通知から停止できます。",
     "androidWorker.signalsDisclosure": "設定済みのジオフェンス、BLE デバイス、Wi-Fi ネットワークのみを監視します。",
-    "androidWorker.sleepDisclosure": "有効時のみ完了した睡眠セッションを読み取ります。イベントは端末で暗号化され、HTTPS で自分のサーバーに送信され、履歴が保存されます。停止するには Health Connect のアクセスを取り消すか端末を切断してください。"
+    "androidWorker.sleepDisclosure": "有効時のみ完了した睡眠セッションを読み取ります。イベントは端末で暗号化され、HTTPS で自分のサーバーに送信され、履歴が保存されます。停止するには Health Connect のアクセスを取り消すか端末を切断してください。",
+    "client.delivery.title": "作業中に送信するメッセージ",
+    "client.delivery.description": "すべての会話とデバイスで、新しいメッセージに適用されます。Steer は実行中の呼び出しをキャンセルせず、安全なタイミングを待ちます。すでにキューに入っているメッセージの配信タイミングは変わりません。",
+    "client.delivery.steer": "Steer — 次の安全なタイミング",
+    "client.delivery.afterTurn": "現在のターンの終了後",
+    "client.delivery.active": "新しいメッセージ: {mode}",
+    "client.delivery.saveFailed": "メッセージの配信設定を保存できませんでした。"
   }
 }

@@ -41,6 +41,7 @@ open class AppViewModel(
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
     private val currentTranslation: () -> Translation,
+    private val messageDeliveryMode: StateFlow<UserMessageDeliveryMode> = MutableStateFlow(UserMessageDeliveryMode.STEER),
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -363,6 +364,7 @@ open class AppViewModel(
         tokenStatsService = tokenStatsService,
         messageInputClientPlatform = messageInputClientPlatform,
         turnCompletionNotificationService = turnCompletionNotificationService,
+        messageDeliveryMode = messageDeliveryMode,
     )
 
     private suspend fun TabViewModel.sendInitialMessage(

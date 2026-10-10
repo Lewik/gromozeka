@@ -39,6 +39,7 @@ class ConversationRuntimeApplicationService(
     private val activeGenerationStateSyncService: ActiveGenerationStateSyncService,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val conversationService: ConversationDomainService,
+    private val userMessageDeliveryPreferenceService: com.gromozeka.domain.service.UserMessageDeliveryPreferenceService,
     private val collaboration: AgentCollaborationService? = null,
 ) : ConversationRuntimeService, ConversationRuntimeIngressService {
     private val log = KLoggers.logger(this)
@@ -119,6 +120,7 @@ class ConversationRuntimeApplicationService(
             userMessage = attributedMessage,
             actorUserId = actorUser.id,
             autoRespondAgentIds = if (actorUser.canUseAi) autoResponders(conversationId, attributedMessage) else emptySet(),
+            userDeliveryMode = userDeliveryMode(actorUser, attributedMessage),
         )
     }
 
@@ -154,8 +156,13 @@ class ConversationRuntimeApplicationService(
             userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
             agentDefinitionId = agentDefinitionId,
             actorUserId = actorUser.id,
+            userDeliveryMode = userDeliveryMode(actorUser, userMessage),
         )
     }
+
+    private suspend fun userDeliveryMode(actorUser: User, message: Conversation.Message): com.gromozeka.domain.model.UserMessageDeliveryMode? =
+        if (message.instructions.any { it is Conversation.Message.Instruction.Source.Agent }) null
+        else userMessageDeliveryPreferenceService.get(actorUser.id)
 
     private suspend fun requireConnectedAgent(
         conversationId: Conversation.Id,

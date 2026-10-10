@@ -79,6 +79,7 @@ class TabViewModel(
     private val tokenStatsService: ConversationTokenStatsService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
+    val messageDeliveryMode: StateFlow<com.gromozeka.domain.model.UserMessageDeliveryMode> = MutableStateFlow(com.gromozeka.domain.model.UserMessageDeliveryMode.STEER),
 ) {
     private val log = KLoggers.logger(this)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
@@ -973,7 +974,10 @@ class TabViewModel(
             agentDefinitionId = agentDefinitionId,
             autoRespondAgentIds = agentMentionCandidates.value.filter { it.connected && it.autoRespond }
                 .mapTo(linkedSetOf()) { it.agentDefinitionId },
-            placement = QueuedMessagePlacement.END_OF_TURN,
+            placement = when (messageDeliveryMode.value) {
+                com.gromozeka.domain.model.UserMessageDeliveryMode.STEER -> QueuedMessagePlacement.AFTER_TOOL_RESULT
+                com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN -> QueuedMessagePlacement.END_OF_TURN
+            },
         )
     }
 

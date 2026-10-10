@@ -1084,7 +1084,7 @@
     "runtime.copyText": "Salin",
     "runtime.createAgentToolLabel": "Buat agen",
     "runtime.createLabel": "Penulisan",
-    "runtime.currentResponsePlacement": "Setelah respons saat ini",
+    "runtime.currentResponsePlacement": "Setelah giliran saat ini selesai",
     "runtime.currentTurnLabel": "Giliran saat ini",
     "runtime.disconnectedStatus": "Terputus",
     "runtime.editButton": "Edit",
@@ -1127,7 +1127,7 @@
     "runtime.monitorRunningStatus": "Pemantauan sedang berjalan",
     "runtime.monitorsDetailsLabel": "pemantauan",
     "runtime.monitorsRunningStatus": "Pemantauan sedang berjalan",
-    "runtime.nearestToolResultPlacement": "Setelah hasil alat berikutnya diterima",
+    "runtime.nearestToolResultPlacement": "Titik aman berikutnya",
     "runtime.newActivityLabel": "Aktivitas baru",
     "runtime.newMessagesLabel": "pesan baru",
     "runtime.observeScreenToolLabel": "Amati layar",
@@ -1955,6 +1955,12 @@
     "androidWorker.remoteDisclosure": "Mengizinkan server meminta status dan lokasi perangkat saat berbagi aktif. Suara memerlukan izin terpisah.",
     "androidWorker.soundDisclosure": "Mengizinkan peringatan hingga 60 detik pada volume alarm maksimum, bahkan dalam mode senyap. Izinkan alarm di Jangan Ganggu dan lepas headphone. Hentikan di sini atau di notifikasi.",
     "androidWorker.signalsDisclosure": "Hanya geofence, perangkat BLE, dan jaringan Wi-Fi yang dikonfigurasi yang dipantau.",
-    "androidWorker.sleepDisclosure": "Membaca sesi tidur yang selesai hanya saat diaktifkan. Peristiwa dienkripsi secara lokal dan dikirim melalui HTTPS ke server Anda yang menyimpan riwayat. Cabut akses di Health Connect atau putuskan perangkat untuk berhenti."
+    "androidWorker.sleepDisclosure": "Membaca sesi tidur yang selesai hanya saat diaktifkan. Peristiwa dienkripsi secara lokal dan dikirim melalui HTTPS ke server Anda yang menyimpan riwayat. Cabut akses di Health Connect atau putuskan perangkat untuk berhenti.",
+    "client.delivery.title": "Pesan yang dikirim saat bekerja",
+    "client.delivery.description": "Berlaku untuk pesan baru di semua percakapan dan perangkat Anda. Steer menunggu titik aman tanpa membatalkan panggilan yang sedang berjalan. Pesan yang sudah dalam antrean tetap menggunakan waktu pengiriman semula.",
+    "client.delivery.steer": "Steer — titik aman berikutnya",
+    "client.delivery.afterTurn": "Setelah giliran saat ini selesai",
+    "client.delivery.active": "Pesan baru: {mode}",
+    "client.delivery.saveFailed": "Tidak dapat menyimpan preferensi pengiriman pesan."
   }
 }

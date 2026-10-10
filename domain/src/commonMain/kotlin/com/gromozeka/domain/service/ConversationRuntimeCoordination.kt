@@ -914,6 +914,9 @@ interface ConversationRuntimeCoordinator {
 
     suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean = false): Boolean
 
+    /** Captures a human preference atomically with admission; never changes already queued input. */
+    suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean
+
     suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
 
     /**

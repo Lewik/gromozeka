@@ -89,6 +89,7 @@ import kotlin.time.Duration.Companion.days
 @Service
 class GromozekaRemoteServer(
     private val userTranslationService: com.gromozeka.domain.service.UserTranslationService,
+    private val userMessageDeliveryPreferenceService: com.gromozeka.domain.service.UserMessageDeliveryPreferenceService,
     private val settingsService: SettingsService,
     private val aiConfigurationService: AiConfigurationService,
     private val aiSubscriptionQuotaApplicationService: AiSubscriptionQuotaApplicationService,
@@ -362,6 +363,8 @@ class GromozekaRemoteServer(
                         clientPresentationRegistry.requireIdentity(user.id, connectionId).clientInstanceId.value,
                     )
                 )
+                GetMessageDeliveryModeRequest -> MessageDeliveryModeResponse(userMessageDeliveryPreferenceService.get(user.id))
+                is SetMessageDeliveryModeRequest -> MessageDeliveryModeResponse(userMessageDeliveryPreferenceService.set(user.id, request.mode))
                 GetSettingsRequest -> SettingsResponse(settingsService.settings)
                 is SaveSettingsRequest -> {
                     settingsService.saveSettings(request.settings)

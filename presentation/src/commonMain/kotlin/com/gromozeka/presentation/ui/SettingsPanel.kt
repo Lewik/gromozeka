@@ -152,6 +152,7 @@ fun SettingsPanel(
     slideFromRight: Boolean = false,
     contentMode: SettingsPanelContentMode = SettingsPanelContentMode.Quick,
     showCloseButton: Boolean = true,
+    messageDeliveryPreferenceService: com.gromozeka.domain.service.CurrentUserMessageDeliveryPreferenceService? = null,
 ) {
     val translation = LocalTranslation.current
     val userProfile = settings.userProfile
@@ -894,6 +895,7 @@ fun SettingsPanel(
                         contentMode == SettingsPanelContentMode.Full &&
                         selectedSection == SettingsSection.Behavior
                     ) {
+                        messageDeliveryPreferenceService?.let { UserMessageDeliveryPreferenceSetting(it) }
                         SettingsGroup(title = translation.text("settingsUi.agentAndMemoryBehavior")) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -3272,5 +3274,41 @@ private fun EditableDropdownSettingItem(
                 }
             }
         }
+    }
+}
+
+
+@Composable
+internal fun UserMessageDeliveryPreferenceSetting(service: com.gromozeka.domain.service.CurrentUserMessageDeliveryPreferenceService) {
+    val translation = LocalTranslation.current
+    val mode by service.mode.collectAsState()
+    val scope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    Column {
+        DropdownSettingItem(
+            label = translation.text("client.delivery.title"),
+            description = translation.text("client.delivery.description"),
+            value = mode,
+            options = com.gromozeka.domain.model.UserMessageDeliveryMode.entries,
+            optionLabel = { it.displayLabel(translation) },
+            optionEnabled = { !saving },
+            modifier = Modifier.testTag("message-delivery-preference"),
+            onValueChange = { selected ->
+                if (!saving) {
+                    saving = true
+                    failed = false
+                    scope.launch {
+                        try { service.setMode(selected) }
+                        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                        catch (error: Exception) {
+                            failed = true
+                            log.warn(error) { "Could not save personal message delivery preference" }
+                        } finally { saving = false }
+                    }
+                }
+            },
+        )
+        if (failed) Text(translation.text("client.delivery.saveFailed"), color = MaterialTheme.colorScheme.error)
     }
 }

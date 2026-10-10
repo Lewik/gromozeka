@@ -121,6 +121,7 @@ suspend fun createRemoteAppComponents(
 
     val appViewModel = AppViewModel(
         currentTranslation = { translationService.currentTranslation.value },
+        messageDeliveryMode = remoteServices.messageDeliveryPreferenceService.mode,
         currentUserAuthor = Conversation.Message.Author.User(
             userId = authenticatedUser.id,
             displayName = authenticatedUser.displayName,
@@ -204,6 +205,7 @@ suspend fun createRemoteAppComponents(
             appViewModel = appViewModel,
             ttsQueueService = ttsQueue,
             settingsService = remoteServices.settingsService,
+            messageDeliveryPreferenceService = remoteServices.messageDeliveryPreferenceService,
             aiConfigurationService = remoteServices.aiConfigurationService,
             aiSubscriptionQuotaService = remoteServices.aiSubscriptionQuotaService,
             aiUsageReportService = remoteServices.aiUsageReportService,

@@ -5,13 +5,13 @@ import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.Conversation.TurnTerminationReason
 import com.gromozeka.presentation.services.translation.data.Translation
 
-internal val liveSteeringInstruction = Conversation.Message.Instruction.UserInstruction(
-    id = "mid_turn_steer",
-    title = "Live steering update",
-    description = "This user message was submitted while the assistant was already working. " +
-        "Treat it as additional steering for the active turn and incorporate it at the next safe boundary, " +
-        "usually after the current tool result. Do not restart or discard completed work unless the user explicitly asks."
-)
+internal val liveSteeringInstruction = com.gromozeka.domain.model.liveSteeringInstruction
+
+internal fun com.gromozeka.domain.model.UserMessageDeliveryMode.displayLabel(translation: Translation): String =
+    translation.text(when (this) {
+        com.gromozeka.domain.model.UserMessageDeliveryMode.STEER -> "client.delivery.steer"
+        com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN -> "client.delivery.afterTurn"
+    })
 
 private val defaultInstructionGroups = MessageInstructionGroup.defaults()
 private val defaultInstructionControls = defaultInstructionGroups.flatMap { it.controls }

@@ -1111,7 +1111,7 @@
     "runtime.copyText": "Copy",
     "runtime.createAgentToolLabel": "Create Agent",
     "runtime.createLabel": "Write",
-    "runtime.currentResponsePlacement": "After the current response",
+    "runtime.currentResponsePlacement": "After the current turn",
     "runtime.currentTurnLabel": "Current turn",
     "runtime.disconnectedStatus": "Disconnected",
     "runtime.editButton": "Edit",
@@ -1154,7 +1154,7 @@
     "runtime.monitorRunningStatus": "Monitor is running",
     "runtime.monitorsDetailsLabel": "monitors",
     "runtime.monitorsRunningStatus": "Monitors are running",
-    "runtime.nearestToolResultPlacement": "After the nearest tool result",
+    "runtime.nearestToolResultPlacement": "Next safe point",
     "runtime.newActivityLabel": "New activity",
     "runtime.newMessagesLabel": "new messages",
     "runtime.observeScreenToolLabel": "Observe Screen",
@@ -1992,6 +1992,12 @@
     "androidWorker.remoteDisclosure": "Allow this server to request device status and location while sharing is enabled. Sound requires separate permission.",
     "androidWorker.soundDisclosure": "Allows alerts up to 60 seconds at maximum alarm volume, even in silent mode. Alarms must be allowed in Do Not Disturb; disconnect headphones. Stop here or in the notification.",
     "androidWorker.signalsDisclosure": "Only configured geofences, BLE devices and Wi-Fi networks are monitored.",
-    "androidWorker.sleepDisclosure": "Reads completed sleep sessions only when enabled. Events are encrypted locally and sent over HTTPS to your server, which keeps history. Revoke access in Health Connect or disconnect the device to stop."
+    "androidWorker.sleepDisclosure": "Reads completed sleep sessions only when enabled. Events are encrypted locally and sent over HTTPS to your server, which keeps history. Revoke access in Health Connect or disconnect the device to stop.",
+    "client.delivery.title": "Messages sent while working",
+    "client.delivery.description": "Applies to new messages in all conversations and on all your devices. Steer waits for a safe point without cancelling the running call. Already queued messages keep their placement.",
+    "client.delivery.steer": "Steer — next safe point",
+    "client.delivery.afterTurn": "After the current turn",
+    "client.delivery.active": "New message: {mode}",
+    "client.delivery.saveFailed": "Could not save the message delivery preference."
   }
 }

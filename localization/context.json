@@ -8070,7 +8070,7 @@
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/data/Translation.kt:200"
     ],
-    "description": "Description of queue placement after the active agent response/turn has finished.",
+    "description": "Queue placement after the entire current agent turn, including all model and tool continuation steps, has finished.",
     "args": [],
     "usageStatus": "referencedTypedProperty"
   },
@@ -8426,10 +8426,10 @@
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/data/Translation.kt:199"
     ],
-    "description": "Description of queue placement immediately after a complete tool result, never between a tool call and its result.",
+    "description": "Queue placement at the next safe execution boundary, before or after a model-only step or after complete tool results.",
     "args": [],
     "usageStatus": "referencedTypedProperty",
-    "translationNotes": "The insertion boundary is after the complete result of the nearest tool operation. Do not suggest inserting text while a call is still awaiting its result."
+    "translationNotes": "Never imply cancelling an in-flight call or inserting input between a tool call and its result. A model-only response also has a safe boundary."
   },
   "runtime.newActivityLabel": {
     "source": [
@@ -15356,6 +15356,62 @@
       "mobile-worker/src/androidMain/kotlin/com/gromozeka/mobile/worker/HealthPermissionsRationaleActivity.kt"
     ],
     "description": "Android Worker opt-in/privacy explanation or destructive-action confirmation. Preserve data scope, destination and retention semantics. Reads completed sleep sessions only when enabled. Events are encrypted locally and sent over HTTPS to your server, which keeps history. Revoke access in Health Connect or disconnect the device to stop.",
+    "args": []
+  },
+  "client.delivery.title": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
+    ],
+    "description": "User-owned preference controlling delivery timing of newly submitted human messages during active agent work.",
+    "args": []
+  },
+  "client.delivery.description": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
+    ],
+    "description": "One preference for this authenticated user across conversations and devices; Steer never cancels an in-flight call and preference changes do not move queued messages.",
+    "args": []
+  },
+  "client.delivery.steer": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
+    ],
+    "description": "Delivery mode label: insert new human input at the next safe execution boundary. Preserve Steer as the mode name; do not translate it as Stop or cancellation.",
+    "args": []
+  },
+  "client.delivery.afterTurn": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
+    ],
+    "description": "Delivery mode label: wait for the complete active turn, including its model/tool continuation steps, not merely the current model response.",
+    "args": []
+  },
+  "client.delivery.active": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
+    ],
+    "description": "Composer status showing the mode for the next submitted message while an agent is working. It does not describe the placement of existing queued messages.",
+    "args": [
+      "mode"
+    ]
+  },
+  "client.delivery.saveFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
+    ],
+    "description": "Visible failure while saving this user’s personal message delivery preference.",
     "args": []
   }
 }

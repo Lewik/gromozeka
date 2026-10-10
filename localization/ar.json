@@ -1219,7 +1219,7 @@
     "runtime.copyText": "نسخ",
     "runtime.createAgentToolLabel": "إنشاء وكيل",
     "runtime.createLabel": "كتابة",
-    "runtime.currentResponsePlacement": "بعد الرد الحالي",
+    "runtime.currentResponsePlacement": "بعد انتهاء الدور الحالي",
     "runtime.currentTurnLabel": "دورة الرد الحالية",
     "runtime.disconnectedStatus": "منقطع",
     "runtime.editButton": "تعديل",
@@ -1262,7 +1262,7 @@
     "runtime.monitorRunningStatus": "مراقبة الأمر نشطة",
     "runtime.monitorsDetailsLabel": "مراقبات الأوامر",
     "runtime.monitorsRunningStatus": "مراقبات الأوامر نشطة",
-    "runtime.nearestToolResultPlacement": "بعد أقرب نتيجة أداة",
+    "runtime.nearestToolResultPlacement": "عند النقطة الآمنة التالية",
     "runtime.newActivityLabel": "نشاط جديد",
     "runtime.newMessagesLabel": "رسائل جديدة",
     "runtime.observeScreenToolLabel": "مراقبة الشاشة",
@@ -2140,6 +2140,12 @@
     "androidWorker.remoteDisclosure": "يسمح للخادم بطلب حالة الجهاز والموقع أثناء تفعيل المشاركة. يتطلب الصوت إذنًا منفصلًا.",
     "androidWorker.soundDisclosure": "يسمح بتنبيهات حتى 60 ثانية بأعلى مستوى لصوت المنبّه، حتى في الوضع الصامت. اسمح بالمنبّهات في عدم الإزعاج وافصل السماعات. أوقفه هنا أو من الإشعار.",
     "androidWorker.signalsDisclosure": "تُراقَب فقط المناطق الجغرافية وأجهزة BLE وشبكات Wi-Fi التي تم إعدادها.",
-    "androidWorker.sleepDisclosure": "يقرأ جلسات النوم المكتملة عند التفعيل فقط. تُشفّر الأحداث محليًا وتُرسل عبر HTTPS إلى خادمك الذي يحتفظ بالسجل. ألغِ الوصول في Health Connect أو افصل الجهاز للإيقاف."
+    "androidWorker.sleepDisclosure": "يقرأ جلسات النوم المكتملة عند التفعيل فقط. تُشفّر الأحداث محليًا وتُرسل عبر HTTPS إلى خادمك الذي يحتفظ بالسجل. ألغِ الوصول في Health Connect أو افصل الجهاز للإيقاف.",
+    "client.delivery.title": "الرسائل المرسلة أثناء العمل",
+    "client.delivery.description": "ينطبق على الرسائل الجديدة في جميع محادثاتك وعلى جميع أجهزتك. ينتظر Steer نقطة آمنة دون إلغاء الاستدعاء الجاري. تحتفظ الرسائل الموجودة في الطابور بموعد تسليمها.",
+    "client.delivery.steer": "Steer — عند النقطة الآمنة التالية",
+    "client.delivery.afterTurn": "بعد انتهاء الدور الحالي",
+    "client.delivery.active": "رسالة جديدة: {mode}",
+    "client.delivery.saveFailed": "تعذّر حفظ تفضيل تسليم الرسائل."
   }
 }

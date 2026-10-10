@@ -126,6 +126,7 @@ fun SessionScreen(
     val externalChannel by viewModel.externalChannel.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
+    val messageDeliveryMode by viewModel.messageDeliveryMode.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
     val agentMentionCandidates by viewModel.agentMentionCandidates.collectAsState()
     val messageSubmissionError by viewModel.messageSubmissionError.collectAsState()
@@ -698,6 +699,7 @@ fun SessionScreen(
                         // The ViewModel claims the composer draft atomically before asynchronous submission.
                         MessageInput(
                             statusContent = activityContent,
+                            messageDeliveryMode = messageDeliveryMode,
                             userInput = userInput,
                             onUserInputChange = { viewModel.updateUserInput(it) },
                             isWaitingForResponse = isWaitingForResponse,

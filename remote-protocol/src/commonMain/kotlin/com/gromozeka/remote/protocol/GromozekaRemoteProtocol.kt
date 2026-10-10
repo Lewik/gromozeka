@@ -901,6 +901,7 @@ data object ConversationTabLayoutStateQuery : RemoteStateSyncQuery
 @Serializable
 enum class RemoteDeclarativeStateResource {
     TRANSLATIONS,
+    MESSAGE_DELIVERY_PREFERENCE,
     PROJECTS,
     PROJECT_CONVERSATIONS,
     CONVERSATION_UNREAD_STATE,

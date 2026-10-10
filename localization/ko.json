@@ -1084,7 +1084,7 @@
     "runtime.copyText": "복사",
     "runtime.createAgentToolLabel": "에이전트 만들기",
     "runtime.createLabel": "쓰기",
-    "runtime.currentResponsePlacement": "현재 응답이 끝난 뒤",
+    "runtime.currentResponsePlacement": "현재 턴이 끝난 뒤",
     "runtime.currentTurnLabel": "현재 턴",
     "runtime.disconnectedStatus": "연결 끊김",
     "runtime.editButton": "편집",
@@ -1127,7 +1127,7 @@
     "runtime.monitorRunningStatus": "감시 실행 중",
     "runtime.monitorsDetailsLabel": "감시 수",
     "runtime.monitorsRunningStatus": "여러 감시 실행 중",
-    "runtime.nearestToolResultPlacement": "다음 도구 결과 직후",
+    "runtime.nearestToolResultPlacement": "다음 안전한 시점",
     "runtime.newActivityLabel": "새 활동",
     "runtime.newMessagesLabel": "개의 새 메시지",
     "runtime.observeScreenToolLabel": "화면 확인",
@@ -1955,6 +1955,12 @@
     "androidWorker.remoteDisclosure": "공유가 켜져 있는 동안 서버가 기기 상태와 위치를 요청하도록 허용합니다. 소리는 별도 허용이 필요합니다.",
     "androidWorker.soundDisclosure": "무음 모드에서도 최대 알람 음량으로 최대 60초의 알림을 허용합니다. 방해 금지에서 알람을 허용하고 헤드폰을 분리하세요. 여기나 알림에서 중지할 수 있습니다.",
     "androidWorker.signalsDisclosure": "설정한 지오펜스, BLE 기기 및 Wi-Fi 네트워크만 모니터링합니다.",
-    "androidWorker.sleepDisclosure": "켜진 경우에만 완료된 수면 세션을 읽습니다. 이벤트는 기기에서 암호화되고 HTTPS로 사용자 서버에 전송되어 기록이 보관됩니다. 중지하려면 Health Connect 접근을 취소하거나 기기 연결을 해제하세요."
+    "androidWorker.sleepDisclosure": "켜진 경우에만 완료된 수면 세션을 읽습니다. 이벤트는 기기에서 암호화되고 HTTPS로 사용자 서버에 전송되어 기록이 보관됩니다. 중지하려면 Health Connect 접근을 취소하거나 기기 연결을 해제하세요.",
+    "client.delivery.title": "작업 중 보내는 메시지",
+    "client.delivery.description": "모든 대화와 기기의 새 메시지에 적용됩니다. Steer는 실행 중인 호출을 취소하지 않고 안전한 시점을 기다립니다. 이미 대기열에 있는 메시지의 전달 시점은 바뀌지 않습니다.",
+    "client.delivery.steer": "Steer — 다음 안전한 시점",
+    "client.delivery.afterTurn": "현재 턴이 끝난 뒤",
+    "client.delivery.active": "새 메시지: {mode}",
+    "client.delivery.saveFailed": "메시지 전달 설정을 저장하지 못했습니다."
   }
 }
