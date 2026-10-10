@@ -185,6 +185,8 @@ internal class ClaudeCodeCliRuntime(
         request: AiRuntimeRequest,
         sessionStateKey: ClaudeCodeSessionState.Key?,
         diagnosticId: String,
+        cleanRetry: Boolean = false,
+        rejectedUsage: JsonObject? = null,
     ): AiRuntimeResponse {
         val preparationStartedAt = System.nanoTime()
         val toolProtocol = request.toolProtocol()
@@ -216,7 +218,7 @@ internal class ClaudeCodeCliRuntime(
             modelName = modelName,
             workspaceDirectory = workspaceDirectory,
             systemPrompt = systemPrompt,
-            userPrompt = userInput.prompt,
+            userPrompt = userInput.prompt + if (cleanRetry) "\n\n$CLAUDE_CODE_CLEAN_RETRY_REMINDER" else "",
             userContentBlocks = userInput.contentBlocks,
             effort = request.options.reasoning?.effort,
             reasoningMode = request.options.reasoning?.mode,
@@ -230,11 +232,22 @@ internal class ClaudeCodeCliRuntime(
         } catch (error: ClaudeCodeSessionUnavailableException) {
             if (sessionStateKey == null || sessionPlan.resumeSessionId == null) throw error
             sessionStateRepository.delete(sessionStateKey)
-            return callLocked(request, sessionStateKey, "$diagnosticId-recovered")
+            return callLocked(request, sessionStateKey, "$diagnosticId-recovered", cleanRetry, rejectedUsage)
         } catch (error: ClaudeCodeResponseFormatException) {
+            // withSession has already evicted/closed the failed process. Never resume its transcript,
+            // even if a subsequent formatting correction could produce acceptable JSON.
             if (sessionStateKey != null) sessionStateRepository.delete(sessionStateKey)
-            throw error
-        }
+            val consumedUsage = sumCliUsage(listOfNotNull(rejectedUsage, error.usage))
+            if (cleanRetry) throw ClaudeCodeResponseFormatException(
+                reason = error.reason, diagnosticId = error.diagnosticId,
+                responseFingerprint = error.responseFingerprint, usage = consumedUsage, cleanRetryFailed = true,
+            )
+            log.warn {
+                "CLAUDE_CODE_TRACE call=$diagnosticId phase=clean_response_retry reason=${error.reason} " +
+                    "responseSha256=${error.responseFingerprint}"
+            }
+            return callLocked(request, sessionStateKey, "$diagnosticId-response-retry", true, consumedUsage)
+        }.let { response -> response.copy(usage = sumCliUsage(listOfNotNull(rejectedUsage, response.usage))) }
         log.debug {
             "CLAUDE_CODE_TRACE call=$diagnosticId phase=cli_response executionMs=${elapsedMillis(executionStartedAt)} " +
                 "session=${cliResponse.sessionId ?: "none"} finishReason=${cliResponse.finishReason} " +
@@ -251,7 +264,10 @@ internal class ClaudeCodeCliRuntime(
             toolProtocol = toolProtocol,
             resumed = sessionPlan.resumeSessionId != null,
             compactions = listOfNotNull(replayState.checkpointBeforeAssistantResponse()),
-        )
+        ).let { response ->
+            if (cleanRetry) response.copy(providerMetadata = response.providerMetadata + ("claudeCodeCleanRetry" to true))
+            else response
+        }
 
         if (sessionStateKey != null && cliResponse.sessionId != null) {
             val saveStartedAt = System.nanoTime()
@@ -271,7 +287,6 @@ internal class ClaudeCodeCliRuntime(
         compactionThreshold: Int?,
         previousContextUsage: AiContextUsage?,
     ): ClaudeCodeCliResponse = executor.withSession(command) { session ->
-        var attemptCommand = command
         val responses = mutableListOf<ClaudeCodeCliResponse>()
         if (command.resumeSessionId != null && compactionThreshold != null &&
             (previousContextUsage?.inputTokens ?: 0) >= compactionThreshold
@@ -286,37 +301,45 @@ internal class ClaudeCodeCliRuntime(
             }
             responses += compacted
         }
-        for (attempt in 0..CLAUDE_CODE_MAX_FORMAT_CORRECTIONS) {
-            currentCoroutineContext().ensureActive()
-            val startedAt = System.nanoTime()
-            val response = session.execute(attemptCommand)
-            responses += response
-            val errors = contract?.validationErrors(response.result).orEmpty()
-            log.debug {
-                "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=response_validation " +
-                    "attempt=${attempt + 1} elapsedMs=${elapsedMillis(startedAt)} valid=${errors.isEmpty()} errors=${errors.size}"
+        currentCoroutineContext().ensureActive()
+        val startedAt = System.nanoTime()
+        val response = session.execute(command)
+        responses += response
+        val usage = sumCliUsage(responses.mapNotNull { it.usage })
+        val completeText = try {
+            val text = response.completeAssistantText()
+            if (contract?.validationErrors(text)?.isNotEmpty() == true) {
+                throw ClaudeCodeResponseFormatException(reason = "invalid_complete_response_schema")
             }
-            if (errors.isEmpty()) {
-                val usage = responses.mapNotNull { it.usage }
-                return@withSession response.copy(
-                    usage = if (usage.isEmpty()) null else JsonObject(
-                        listOf("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
-                            .associateWith { key -> JsonPrimitive(usage.sumOf { it[key]?.jsonPrimitive?.longOrNull ?: 0L }) }
-                    ),
-                    compactionBoundaries = responses.flatMap { it.compactionBoundaries },
-                    replayEvents = responses.flatMap { it.replayEvents },
-                )
+            text
+        } catch (error: ClaudeCodeResponseFormatException) {
+            val fingerprint = sha256(response.replayEvents.toString() + response.result).take(16)
+            log.warn {
+                "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=response_validation valid=false " +
+                    "reason=${error.reason} frames=${response.replayEvents.size} responseSha256=$fingerprint"
             }
-            if (attempt == CLAUDE_CODE_MAX_FORMAT_CORRECTIONS) throw ClaudeCodeResponseFormatException()
-            attemptCommand = command.copy(
-                diagnosticId = "${command.diagnosticId}-format-${attempt + 1}",
-                userPrompt = requireNotNull(contract).correction(errors),
-                userContentBlocks = emptyList(),
-                resumeSessionId = response.sessionId,
+            throw ClaudeCodeResponseFormatException(
+                reason = error.reason, diagnosticId = command.diagnosticId,
+                responseFingerprint = fingerprint, usage = usage,
             )
         }
-        error("Unreachable Claude Code response validation state")
+        log.debug {
+            "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=response_validation " +
+                "elapsedMs=${elapsedMillis(startedAt)} valid=true frames=${response.replayEvents.size}"
+        }
+        response.copy(
+            result = completeText,
+            usage = usage,
+            compactionBoundaries = responses.flatMap { it.compactionBoundaries },
+            replayEvents = responses.flatMap { it.replayEvents },
+        )
     }
+
+    private fun sumCliUsage(values: List<JsonObject>): JsonObject? =
+        if (values.isEmpty()) null else JsonObject(
+            listOf("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+                .associateWith { key -> JsonPrimitive(values.sumOf { it[key]?.jsonPrimitive?.longOrNull ?: 0L }) }
+        )
 
     private fun validateToolChoice(
         tools: List<AiToolCallback>,

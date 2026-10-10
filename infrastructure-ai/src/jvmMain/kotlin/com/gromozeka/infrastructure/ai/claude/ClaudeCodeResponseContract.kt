@@ -11,6 +11,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -28,7 +30,8 @@ internal class ClaudeCodeResponseContract(
 
     fun instructions(): String =
         """
-        Return exactly one JSON object as your final text, without Markdown fences or commentary outside it.
+        Your entire assistant text output must be exactly one JSON object, without Markdown fences or commentary outside it.
+        Do not emit earlier text blocks containing simulated action calls, results, or completion reports.
         Your output will be parsed as JSON directly without preprocessing.
         Follow this JSON Schema:
         <json_schema>
@@ -81,14 +84,6 @@ internal class ClaudeCodeResponseContract(
         return errors
     }
 
-    fun correction(errors: List<String>): String = buildString {
-        appendLine("The previous response failed JSON validation. No Gromozeka actions from it were executed.")
-        appendLine("Correct that response using the validation errors below. Return the complete corrected object.")
-        appendLine("Validation errors: ${JsonArray(errors.map(::JsonPrimitive))}")
-        appendLine()
-        append(reminder())
-    }
-
     private fun validate(validator: JsonSchema, value: JsonElement, prefix: String, errors: MutableList<String>): Boolean =
         validator.validate(value) { error ->
             if (errors.size < 20) {
@@ -105,8 +100,74 @@ internal class ClaudeCodeResponseContract(
     }
 }
 
-internal const val CLAUDE_CODE_MAX_FORMAT_CORRECTIONS = 3
+/** All completed assistant blocks, not the CLI's last-text projection, are the response. */
+internal fun ClaudeCodeCliResponse.completeAssistantText(): String {
+    val textBlocks = mutableListOf<String>()
+    val seen = mutableMapOf<String, JsonObject>()
+    fun reject(reason: String): Nothing = throw ClaudeCodeResponseFormatException(reason = reason)
+    for (event in replayEvents) {
+        val type = (event["type"] as? JsonPrimitive)?.contentOrNull
+        if (type !in setOf("assistant", "user")) continue
+        if (event["parent_tool_use_id"]?.let { it !is JsonNull } == true) reject("unexpected_subagent_output")
+        val message = event["message"] as? JsonObject ?: reject("missing_message_payload")
+        val content = message["content"]
+        if (type == "user") {
+            if (content is JsonArray && content.any {
+                (it as? JsonObject)?.get("type") == JsonPrimitive("tool_result")
+            }) reject("unexpected_native_tool_result")
+            continue
+        }
+        // SDK content-block events share message.id, but have distinct frame UUIDs.
+        // Only an exact duplicate frame may be ignored; never deduplicate by message.id or text.
+        val id = (event["uuid"] as? JsonPrimitive)?.contentOrNull
+            ?.takeIf(String::isNotBlank) ?: reject("missing_assistant_frame_id")
+        val previous = seen.putIfAbsent(id, event)
+        if (previous != null) {
+            if (previous != event) reject("conflicting_assistant_frame")
+            continue
+        }
+        when (content) {
+            is JsonPrimitive -> if (content.isString) textBlocks += content.content else reject("invalid_assistant_content")
+            is JsonArray -> content.forEach { element ->
+                val block = element as? JsonObject ?: reject("invalid_assistant_block")
+                when ((block["type"] as? JsonPrimitive)?.contentOrNull) {
+                    "text" -> {
+                        val text = block["text"] as? JsonPrimitive
+                        if (text == null || !text.isString) reject("invalid_text_block")
+                        textBlocks += text.content
+                    }
+                    "thinking", "redacted_thinking" -> Unit // Never rewrite or scan signed reasoning.
+                    else -> reject("unexpected_assistant_block") // Native tools are disabled in the external-action runtime.
+                }
+            }
+            else -> reject("missing_assistant_content")
+        }
+    }
+    if (textBlocks.isEmpty()) reject("missing_assistant_text")
+    val complete = textBlocks.joinToString("")
+    // A terminal result may project the last completed block, not the entire response.
+    if (result.trim() != complete.trim() && result.trim() != textBlocks.last().trim()) {
+        reject("terminal_text_mismatch")
+    }
+    return complete
+}
 
-internal class ClaudeCodeResponseFormatException : IllegalStateException(
-    "Claude Code returned invalid JSON or violated the response schema after $CLAUDE_CODE_MAX_FORMAT_CORRECTIONS correction attempts. No actions from the response were executed."
+internal const val CLAUDE_CODE_CLEAN_RETRY_REMINDER = """<system-reminder>
+A previous candidate response was rejected. No external Gromozeka actions from that candidate were dispatched.
+This is the single automatic retry in a fresh native session. Use only the supplied conversation history;
+do not assume any additional action was executed or invent its results. Follow the response contract for your entire text output.
+</system-reminder>"""
+
+internal class ClaudeCodeResponseFormatException(
+    val reason: String = "invalid_full_response",
+    val diagnosticId: String? = null,
+    val responseFingerprint: String? = null,
+    val usage: JsonObject? = null,
+    val cleanRetryFailed: Boolean = false,
+) : IllegalStateException(
+    "Claude Code response rejected ($reason)" +
+        (if (cleanRetryFailed) " after the single automatic clean-session retry" else "") +
+        ". No external Gromozeka actions from this response were dispatched. The rejected native session will not be reused." +
+        (diagnosticId?.let { " Diagnostic: $it." } ?: "") +
+        (responseFingerprint?.let { " Response SHA-256: $it." } ?: "")
 )

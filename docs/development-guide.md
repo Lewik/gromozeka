@@ -103,19 +103,34 @@ content is not a replacement for opaque provider state.
 Claude Code uses a locally validated JSON envelope, not native external tool use.
 Its `tool_calls` branch contains ordered `content` entries: `tool_call` with
 `action_name`/`arguments`, or `message` with the usual assistant payload. The
-`final_answer` branch ends the turn. All action arguments are validated before
-dispatch, with up to three format corrections. Tool results arrive in the next
-transcript step; remarks cannot stand in for results. Copilot likewise keeps
-external execution in Gromozeka while collecting completed SDK assistant events.
+`final_answer` branch ends the turn. The complete assistant text and all action
+arguments are validated before dispatch, not just the CLI's terminal text
+projection. Completed content blocks may share a message ID; they must not be
+deduplicated by that ID. Quoted tool syntax inside a valid answer is ordinary
+text, never executable input. Signed thinking is retained separately, unchanged.
+Tool results arrive in the next transcript step; remarks cannot stand in for
+results. Copilot likewise keeps external execution in Gromozeka while collecting
+completed SDK assistant events.
+
+A rejected Claude response invalidates only its native session and process lease.
+There is exactly one automatic retry, in a fresh native session rebuilt from the
+canonical Gromozeka checkpoint and tail. Rejected text, thinking, corrections and
+compaction data are not copied into that retry or accepted replay. A second
+invalid response is a visible failure; no candidate actions are dispatched.
+Diagnostic IDs, failure categories and response fingerprints identify the rejection
+without logging its private text. Successful retry usage includes both attempts,
+while context usage describes only the accepted session. This is protocol
+validation, not a semantic truth detector for arbitrary prose inside valid JSON.
 
 Claude Code compaction notifications and replay data have separate roles. A
 `compact_boundary` is retained as message metadata; the persisted compaction
 payload contains the synthetic summary and retained native messages, including
 attachments. The Worker mirrors its CLI transcript in the session state so a
 new process can continue tracking the retained tail. A fresh or forked session
-replays the latest checkpoint and subsequent Gromozeka messages. Only an explicit
-missing-native-session error retries through that path; arbitrary provider
-failures never restart a call automatically.
+replays the latest checkpoint and subsequent Gromozeka messages. An explicit
+missing-native-session error also retries through that path. Apart from that
+case and the bounded response-validation retry above, arbitrary provider failures
+and cancellation never restart a call automatically.
 
 Configured Claude Code compaction thresholds use the last measured context usage.
 At or above the threshold, Gromozeka invokes the built-in `/compact` between model
