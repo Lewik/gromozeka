@@ -173,14 +173,6 @@ internal fun MessageInput(
             )
             ComposerPanel {
                 statusContent()
-                if (isWaitingForResponse) {
-                    Text(
-                        localization.text("client.delivery.active", "mode" to messageDeliveryMode.displayLabel(localization)),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.testTag("message-delivery-mode"),
-                    )
-                }
                 artifactError?.takeIf(String::isNotBlank)?.let { error ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
@@ -427,7 +419,7 @@ internal fun MessageInput(
                         CompactButton(
                             onClick = submitInput, modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.SendButton.value),
                             contentPadding = PaddingValues(spacing.controlGap),
-                            tooltip = if (isWaitingForResponse) messageDeliveryMode.displayLabel(localization) else localization.text("chat.input.send"),
+                            tooltip = messageDeliveryMode.displayLabel(localization),
                         ) { Icon(Icons.Default.Send, localization.text("chat.input.send"), Modifier.size(controls.iconSize)) }
                     }
                 }

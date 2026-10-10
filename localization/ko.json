@@ -1960,7 +1960,6 @@
     "client.delivery.description": "모든 대화와 기기의 새 메시지에 적용됩니다. Steer는 실행 중인 호출을 취소하지 않고 안전한 시점을 기다립니다. 이미 대기열에 있는 메시지의 전달 시점은 바뀌지 않습니다.",
     "client.delivery.steer": "Steer — 다음 안전한 시점",
     "client.delivery.afterTurn": "현재 턴이 끝난 뒤",
-    "client.delivery.active": "새 메시지: {mode}",
     "client.delivery.saveFailed": "메시지 전달 설정을 저장하지 못했습니다."
   }
 }

@@ -1997,7 +1997,6 @@
     "client.delivery.description": "Applies to new messages in all conversations and on all your devices. Steer waits for a safe point without cancelling the running call. Already queued messages keep their placement.",
     "client.delivery.steer": "Steer — next safe point",
     "client.delivery.afterTurn": "After the current turn",
-    "client.delivery.active": "New message: {mode}",
     "client.delivery.saveFailed": "Could not save the message delivery preference."
   }
 }

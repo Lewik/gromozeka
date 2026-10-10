@@ -1960,7 +1960,6 @@
     "client.delivery.description": "すべての会話とデバイスで、新しいメッセージに適用されます。Steer は実行中の呼び出しをキャンセルせず、安全なタイミングを待ちます。すでにキューに入っているメッセージの配信タイミングは変わりません。",
     "client.delivery.steer": "Steer — 次の安全なタイミング",
     "client.delivery.afterTurn": "現在のターンの終了後",
-    "client.delivery.active": "新しいメッセージ: {mode}",
     "client.delivery.saveFailed": "メッセージの配信設定を保存できませんでした。"
   }
 }

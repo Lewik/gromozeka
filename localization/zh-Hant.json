@@ -1960,7 +1960,6 @@
     "client.delivery.description": "適用於所有對話和裝置上的新訊息。Steer 會等待安全時機，不會取消正在執行的呼叫。已排入佇列的訊息會保留原本的傳遞時機。",
     "client.delivery.steer": "Steer — 下一個安全時機",
     "client.delivery.afterTurn": "目前回合結束後",
-    "client.delivery.active": "新訊息：{mode}",
     "client.delivery.saveFailed": "無法儲存訊息傳遞偏好設定。"
   }
 }

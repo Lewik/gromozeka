@@ -2034,7 +2034,6 @@
     "client.delivery.description": "Se aplica a los mensajes nuevos de todas tus conversaciones y dispositivos. Steer espera a un punto seguro sin cancelar la llamada en curso. Los mensajes ya en cola conservan su momento de entrega.",
     "client.delivery.steer": "Steer — próximo punto seguro",
     "client.delivery.afterTurn": "Después del turno actual",
-    "client.delivery.active": "Mensaje nuevo: {mode}",
     "client.delivery.saveFailed": "No se pudo guardar la preferencia de entrega de mensajes."
   }
 }

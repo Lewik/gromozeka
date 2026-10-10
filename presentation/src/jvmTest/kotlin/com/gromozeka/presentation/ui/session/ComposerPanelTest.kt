@@ -15,6 +15,7 @@ import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.UserMessageDeliveryMode
 import com.gromozeka.presentation.services.*
 import com.gromozeka.presentation.ui.AgentMentionCandidate
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -409,6 +410,39 @@ class ComposerPanelTest {
         }
     }
 
+    @Test
+    fun idleSendButtonShowsDeliveryModeOnlyInTooltip() = verifyDeliveryTooltip(waiting = false)
+
+    @Test
+    fun busySendButtonShowsDeliveryModeOnlyInTooltip() = verifyDeliveryTooltip(waiting = true)
+
+    private fun verifyDeliveryTooltip(waiting: Boolean) = runComposeUiTest {
+        var mode by mutableStateOf(UserMessageDeliveryMode.STEER)
+        mainClock.autoAdvance = false
+        setContent {
+            GromozekaTheme {
+                Box(Modifier.width(880.dp)) {
+                    Input("Draft", {}, waiting = waiting, deliveryMode = mode)
+                }
+            }
+        }
+        for ((selected, label) in listOf(
+            UserMessageDeliveryMode.STEER to "Steer — next safe point",
+            UserMessageDeliveryMode.AFTER_CURRENT_TURN to "After the current turn",
+        )) {
+            runOnIdle { mode = selected }
+            mainClock.advanceTimeByFrame()
+            onNodeWithTag("message-delivery-mode").assertDoesNotExist()
+            onNodeWithText(label).assertDoesNotExist()
+            onNodeWithTag(UiTestTag.SendButton.value).performMouseInput { enter(center) }
+            mainClock.advanceTimeBy(1_000)
+            onNodeWithText(label).assertExists()
+            onNodeWithTag(UiTestTag.SendButton.value).performMouseInput { exit() }
+            mainClock.advanceTimeBy(500)
+            onNodeWithText(label).assertDoesNotExist()
+        }
+    }
+
     private fun options(values: List<String>) = SuggestedReplyOptions(Conversation.Message.Id("source"), values)
 
     @Composable
@@ -432,6 +466,7 @@ class ComposerPanelTest {
         liveService: LiveVoiceInputService = NoOpLiveVoiceInputService(),
         liveUnavailableReason: String? = null,
         platform: ClientPlatform = ClientPlatform.DESKTOP,
+        deliveryMode: UserMessageDeliveryMode = UserMessageDeliveryMode.STEER,
         onSend: suspend () -> Unit = {},
         onPick: () -> Unit = {},
         onCapture: () -> Unit = {},
@@ -456,6 +491,7 @@ class ComposerPanelTest {
             onCaptureScreenshot = onCapture, onRemoveArtifact = {},
             onInsertCurrentLocation = onInsertLocation,
             statusContent = statusContent,
+            messageDeliveryMode = deliveryMode,
         )
     }
 }

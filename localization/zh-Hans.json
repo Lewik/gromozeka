@@ -1960,7 +1960,6 @@
     "client.delivery.description": "适用于所有会话和设备上的新消息。Steer 会等待安全时机，不会取消正在执行的调用。已排队消息的投递时机保持不变。",
     "client.delivery.steer": "Steer — 下一个安全时机",
     "client.delivery.afterTurn": "当前轮次结束后",
-    "client.delivery.active": "新消息：{mode}",
     "client.delivery.saveFailed": "无法保存消息投递偏好。"
   }
 }

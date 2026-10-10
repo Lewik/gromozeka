@@ -2145,7 +2145,6 @@
     "client.delivery.description": "ينطبق على الرسائل الجديدة في جميع محادثاتك وعلى جميع أجهزتك. ينتظر Steer نقطة آمنة دون إلغاء الاستدعاء الجاري. تحتفظ الرسائل الموجودة في الطابور بموعد تسليمها.",
     "client.delivery.steer": "Steer — عند النقطة الآمنة التالية",
     "client.delivery.afterTurn": "بعد انتهاء الدور الحالي",
-    "client.delivery.active": "رسالة جديدة: {mode}",
     "client.delivery.saveFailed": "تعذّر حفظ تفضيل تسليم الرسائل."
   }
 }

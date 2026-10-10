@@ -15394,17 +15394,6 @@
     "description": "Delivery mode label: wait for the complete active turn, including its model/tool continuation steps, not merely the current model response.",
     "args": []
   },
-  "client.delivery.active": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
-    ],
-    "description": "Composer status showing the mode for the next submitted message while an agent is working. It does not describe the placement of existing queued messages.",
-    "args": [
-      "mode"
-    ]
-  },
   "client.delivery.saveFailed": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",

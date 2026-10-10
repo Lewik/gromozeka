@@ -1960,7 +1960,6 @@
     "client.delivery.description": "Berlaku untuk pesan baru di semua percakapan dan perangkat Anda. Steer menunggu titik aman tanpa membatalkan panggilan yang sedang berjalan. Pesan yang sudah dalam antrean tetap menggunakan waktu pengiriman semula.",
     "client.delivery.steer": "Steer — titik aman berikutnya",
     "client.delivery.afterTurn": "Setelah giliran saat ini selesai",
-    "client.delivery.active": "Pesan baru: {mode}",
     "client.delivery.saveFailed": "Tidak dapat menyimpan preferensi pengiriman pesan."
   }
 }
