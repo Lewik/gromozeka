@@ -63,6 +63,7 @@ class WorkflowContracts(unittest.TestCase):
         steps = {step.get("name"): step for step in JOBS["verify-client"]["steps"]}
         self.assertNotIn("if", steps["Verify JVM client"])
         self.assertIn(":presentation:jvmTest", steps["Verify JVM client"]["run"])
+        self.assertIn(":remote-client:jvmTest", steps["Verify JVM client"]["run"])
         self.assertNotIn("android", steps["Verify JVM client"]["run"])
         for name in ("Verify Android clients", "Upload Android APKs"):
             self.assertIn("!inputs.skip_android", steps[name]["if"])

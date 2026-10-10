@@ -65,6 +65,13 @@ kotlin {
             }
         }
 
+        val jvmTest by getting {
+            dependencies {
+                implementation(libs.ktor.server.test.host)
+                implementation(libs.ktor.server.websockets)
+            }
+        }
+
         val wasmJsMain by getting {
             dependencies {
                 implementation(libs.ktor.client.js)

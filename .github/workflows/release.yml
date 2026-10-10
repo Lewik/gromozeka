@@ -163,7 +163,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Verify JVM client
         run: >
-          ./gradlew :presentation:jvmTest
+          ./gradlew :remote-client:jvmTest :presentation:jvmTest
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
       - name: Verify Android clients
@@ -193,6 +193,7 @@ jobs:
         with:
           name: verify-client-diagnostics
           path: |
+            remote-client/build/test-results/jvmTest/*.xml
             presentation/build/reports/tests/jvmTest
             presentation/build/test-results/jvmTest/*.xml
             presentation-android/build/reports

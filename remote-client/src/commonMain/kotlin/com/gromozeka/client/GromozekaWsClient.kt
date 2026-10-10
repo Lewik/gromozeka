@@ -739,7 +739,7 @@ internal class GromozekaWsClient(
             failure = error
             log.warn(error, "Read loop failed")
         } finally {
-            if (!closed) {
+            if (!closed && scope.isActive) {
                 handleConnectionLoss(
                     activeSession,
                     failure ?: IllegalStateException("Gromozeka WebSocket read loop stopped"),
