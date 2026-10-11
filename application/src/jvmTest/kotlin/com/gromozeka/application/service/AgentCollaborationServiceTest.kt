@@ -77,7 +77,8 @@ class AgentCollaborationServiceTest {
             assertEquals(title, unnamed.displayName)
         }
         assertTrue(Mockito.mockingDetails(conversations).invocations.all { it.method.name.substringBefore('-') in setOf("findById", "findByProject") })
-        Mockito.verifyNoInteractions(coordinator, sync)
+        assertTrue(Mockito.mockingDetails(coordinator).invocations.all { it.method.name.substringBefore('-') == "schedulingSnapshot" })
+        Mockito.verifyNoInteractions(sync)
     }
 
     @Test fun `named sessions and renames use the latest authorized conversation without changing identity`(): Unit = runBlocking {
@@ -105,6 +106,85 @@ class AgentCollaborationServiceTest {
         val row = service.sessions(source, actor.id).single().jsonObject
         assertEquals(target.agentId.value, row.getValue("agent_name").jsonPrimitive.content)
         Mockito.verify(agents, Mockito.times(1)).findById(target.agentId)
+    }
+
+    @Test fun `selected session inspection bypasses list scans and remains a read-only paused observation`(): Unit = runBlocking {
+        setup()
+        val paused = ConversationRuntimeSchedulingSnapshot(target.conversationId,
+            state = ConversationExecutionState(target.conversationId, ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
+        Mockito.`when`(coordinator.schedulingSnapshot(target.conversationId)).thenReturn(paused)
+        repo.items["wait"] = AgentRequest("wait", source, target, actor.id, "PRIVATE_REQUEST_BODY", now,
+            state = AgentRequest.State.WAITING_RESULT, waitFor = listOf("known-command"))
+        val itemsBefore = repo.items.toMap()
+        val history = mock<ConversationDomainService>()
+        val reader = AgentCollaborationService(repo, conversations, identities, access, agents, coordinator, sync, history)
+        val row = reader.sessions(source, actor.id, "b", "bb", details = true).single().jsonObject
+        val runtime = row.getValue("runtime").jsonObject
+        assertEquals("tb", row.getValue("thread_id").jsonPrimitive.content)
+        assertEquals("PAUSED", runtime.getValue("foreground_state").jsonPrimitive.content)
+        assertEquals(JsonPrimitive(1), runtime.getValue("agent_requests").jsonObject["incoming_waiting_result"])
+        assertFalse(row.toString().contains("PRIVATE_REQUEST_BODY"))
+        assertEquals(itemsBefore, repo.items)
+        assertTrue(repo.deliveries.isEmpty())
+        assertTrue(reader.wakeups.tryReceive().isFailure)
+        Mockito.verify(conversations, Mockito.never()).findByProject(Project.Id("p"))
+        Mockito.verify(coordinator).schedulingSnapshot(target.conversationId)
+        Mockito.verifyNoMoreInteractions(coordinator)
+        Mockito.verifyNoInteractions(history, sync)
+    }
+
+    @Test fun `ineligible selected sessions expose no runtime facts and do not bypass visibility`(): Unit = runBlocking {
+        setup()
+        for (hidden in listOf(
+            conversation(target).copy(projectId = Project.Id("other-project")),
+            conversation(target).copy(participants = setOf(Conversation.Participant.User(User.Id("other")), Conversation.Participant.Agent(target.agentId))),
+            conversation(target).copy(externalChannel = ExternalConversationChannel("telegram", "connection", "chat")),
+        )) {
+            Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(hidden)
+            assertTrue(service.sessions(source, actor.id, "b", "bb", details = true).isEmpty())
+        }
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target))
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(agent(target.agentId).copy(toolAccess = ToolAccessPolicy.AllowOnly()))
+        assertTrue(service.sessions(source, actor.id, "b", "bb", details = true).isEmpty())
+        assertTrue(service.sessions(source, actor.id, "a", "aa", details = true).isEmpty())
+        Mockito.verifyNoInteractions(coordinator, sync)
+        assertTrue(repo.items.isEmpty())
+        assertTrue(repo.deliveries.isEmpty())
+    }
+
+    @Test fun `invalid detail selectors fail explicitly and unavailable runtime is not reported idle`(): Unit = runBlocking {
+        setup()
+        assertFailsWith<IllegalArgumentException> { service.sessions(source, actor.id, details = true) }
+        assertFailsWith<IllegalArgumentException> { service.sessions(source, actor.id, agentId = "bb") }
+        assertFailsWith<IllegalArgumentException> { service.sessions(source, actor.id, conversationId = " ") }
+        Mockito.`when`(coordinator.schedulingSnapshot(target.conversationId)).thenThrow(IllegalStateException("PRIVATE_RUNTIME_ERROR_SENTINEL"))
+        val failure = assertFailsWith<IllegalStateException> { service.sessions(source, actor.id, "b", "bb", details = true) }
+        assertEquals("Stored Runtime facts are unavailable for this session", failure.message)
+        assertNull(failure.cause)
+        Mockito.verifyNoInteractions(sync)
+        assertTrue(service.wakeups.tryReceive().isFailure)
+    }
+
+    @Test fun `default discovery bounds rows and shares one scheduling read per conversation but not between calls`(): Unit = runBlocking {
+        setup()
+        val participants = (0 until 205).map { AgentDefinition.Id("participant-$it") }
+        val multi = conversation(target).copy(participants =
+            (participants.map { Conversation.Participant.Agent(it) } + Conversation.Participant.User(actor.id)).toSet())
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(multi)
+        Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(multi))
+        participants.forEach { Mockito.`when`(agents.findById(it)).thenReturn(agent(it)) }
+        val paused = ConversationRuntimeSchedulingSnapshot(target.conversationId,
+            state = ConversationExecutionState(target.conversationId, ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
+        Mockito.`when`(coordinator.schedulingSnapshot(target.conversationId)).thenReturn(paused, ConversationRuntimeSchedulingSnapshot(target.conversationId))
+        val first = service.sessions(source, actor.id)
+        assertEquals(200, first.size)
+        assertTrue(first.all { it.jsonObject.getValue("runtime").jsonObject.getValue("foreground_state").jsonPrimitive.content == "PAUSED" })
+        val second = service.sessions(source, actor.id)
+        assertEquals(200, second.size)
+        assertTrue(second.all { it.jsonObject.getValue("runtime").jsonObject.getValue("foreground_state").jsonPrimitive.content == "IDLE" })
+        Mockito.verify(coordinator, Mockito.times(2)).schedulingSnapshot(target.conversationId)
+        Mockito.verifyNoMoreInteractions(coordinator)
+        Mockito.verifyNoInteractions(sync)
     }
 
     @Test fun `different tool policies remain rejected across runtime selections`(): Unit = runBlocking {

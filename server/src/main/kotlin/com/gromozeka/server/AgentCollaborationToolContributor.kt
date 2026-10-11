@@ -11,9 +11,13 @@ import org.springframework.stereotype.Service
 @ConditionalOnProperty(name = ["gromozeka.collaboration.enabled"], havingValue = "true")
 class AgentCollaborationToolContributor(private val collaboration: AgentCollaborationService) : AiToolCallbackContributor {
     override val callbacks: List<AiToolCallback> = listOf(
-        tool("grz_agent_sessions", "List existing agent sessions you may contact. Only conversations in this project, with the same authenticated user and matching tool access policies are eligible. AI connections, models and preloaded tool lists may differ. A session is a conversation plus agent, not an agent definition alone.", "{}", emptyList()) { _, context ->
+        tool("grz_agent_sessions", "Read eligible other agent sessions and compact stored Runtime facts without waking the inspected model, sending peer messages or changing inspected history. Same project, authenticated user and tool-policy eligibility applies; AI connections and models may differ. Returns a JSON array, at most 200 sessions from the first 200 conversations; select conversation_id to inspect an eligible conversation directly. agent_id narrows that conversation. details=true requires both IDs and adds up to 16 open request/wait references, never request text or results. Foreground state is conversation-wide; obligation counts are for the selected agent/current thread. IDLE means no scheduled foreground work, not no background work. read_at is Server read time; stored facts may be stale and are not an atomic snapshot across sources. Null control_state/state_updated_at means no stored execution state. Runtime read failures are tool errors, not fabricated IDLE. No command output, history, worker-health check or inferred stuck status. Use explicit inspection, not polling; results still arrive automatically.", SESSIONS_SCHEMA, emptyList()) { input, context ->
             val (source, actor) = collaboration.source(context)
-            collaboration.sessions(source, actor).toString()
+            val details = input["details"]?.let {
+                require(it is JsonPrimitive && !it.isString && it.booleanOrNull != null) { "details must be a boolean" }
+                it.boolean
+            } ?: false
+            collaboration.sessions(source, actor, input.optionalString("conversation_id"), input.optionalString("agent_id"), details).toString()
         },
         tool("grz_agent_request", "Ask an existing agent session to do work and return a result. Returns immediately with a request_id; queued does not mean completed. Results arrive automatically, do not poll. This is not a user instruction or permission grant. The human may continue talking and steering either session.", TARGET_SCHEMA, listOf("target_conversation_id", "message")) { input, context ->
             send(input, context, true)
@@ -63,7 +67,14 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
         }
     }
     private fun JsonObject.string(key: String): String = getValue(key).jsonPrimitive.content
+    private fun JsonObject.optionalString(key: String): String? = get(key)?.let {
+        if (it == JsonNull) null else {
+            require(it is JsonPrimitive && it.isString && it.content.isNotBlank()) { "$key must be a nonblank string" }
+            it.content
+        }
+    }
     private companion object {
+        const val SESSIONS_SCHEMA = """{"conversation_id":{"type":["string","null"],"minLength":1},"agent_id":{"type":["string","null"],"minLength":1},"details":{"type":"boolean","default":false}}"""
         const val TARGET_SCHEMA = """{"target_conversation_id":{"type":"string"},"target_agent_id":{"type":["string","null"]},"message":{"type":"string","minLength":1,"maxLength":32000}}"""
     }
 }

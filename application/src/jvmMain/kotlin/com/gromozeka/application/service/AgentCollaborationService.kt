@@ -6,6 +6,7 @@ import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -62,26 +63,66 @@ class AgentCollaborationService(
         return EligibleSession(to, targetAgent)
     }
 
-    suspend fun sessions(source: AgentEndpoint, actor: User.Id): JsonArray {
+    private data class SessionObservation(
+        val scheduling: ConversationRuntimeSchedulingSnapshot,
+        val requests: List<AgentRequest>,
+        val readAt: kotlin.time.Instant,
+    )
+
+    private suspend fun sessionObservation(id: Conversation.Id): SessionObservation = try {
+        SessionObservation(coordinator.schedulingSnapshot(id),
+            repository.requests(id).take(AgentSessionRuntimeProjection.REQUEST_SCAN_LIMIT), Clock.System.now())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        // Deserialization/backend errors can contain stored task text. Do not expose it through inspection errors.
+        throw IllegalStateException("Stored Runtime facts are unavailable for this session")
+    }
+
+    suspend fun sessions(
+        source: AgentEndpoint,
+        actor: User.Id,
+        conversationId: String? = null,
+        agentId: String? = null,
+        details: Boolean = false,
+    ): JsonArray {
+        require(conversationId == null || conversationId.isNotBlank()) { "conversation_id must not be blank" }
+        require(agentId == null || agentId.isNotBlank()) { "agent_id must not be blank" }
+        require(agentId == null || conversationId != null) { "agent_id requires conversation_id" }
+        require(!details || (conversationId != null && agentId != null)) { "details requires conversation_id and agent_id" }
         val conversation = authorize(source, actor)
+        val candidates = if (conversationId == null) conversations.findByProject(conversation.projectId).take(200)
+            else listOfNotNull(conversations.findById(Conversation.Id(conversationId)))
+        val observations = mutableMapOf<Conversation.Id, SessionObservation>()
+        var emitted = 0
         return buildJsonArray {
-            for (candidate in conversations.findByProject(conversation.projectId).take(200)) {
-                if (candidate.id == source.conversationId || candidate.externalChannel != null || Conversation.Participant.User(actor) !in candidate.participants) continue
+            for (candidate in candidates) {
+                if (candidate.id == source.conversationId || candidate.projectId != conversation.projectId ||
+                    candidate.externalChannel != null || Conversation.Participant.User(actor) !in candidate.participants) continue
                 for (participant in candidate.participants.filterIsInstance<Conversation.Participant.Agent>()) {
+                    if (agentId != null && participant.agentDefinitionId.value != agentId) continue
                     val endpoint = AgentEndpoint(candidate.id, candidate.currentThread, participant.agentDefinitionId)
                     val eligible = try { sameBoundary(source, endpoint, actor) } catch (_: IllegalArgumentException) { null }
                         ?: continue
+                    // No runtime/obligation reads until the existing identity and policy checks have passed.
+                    // Reuse the same bounded observation for multiple eligible agents in one conversation.
+                    val observed = observations[candidate.id] ?: sessionObservation(candidate.id)
+                        .also { observations[candidate.id] = it }
                     val storedTitle = eligible.conversation.displayName
                     add(buildJsonObject {
                         put("conversation_id", eligible.conversation.id.value)
+                        put("thread_id", eligible.conversation.currentThread.value)
                         // Match the UI's blank-title presentation, without inventing a persisted name.
                         put("title", storedTitle.takeIf(String::isNotBlank) ?: "New conversation")
                         put("stored_title", storedTitle)
                         put("title_is_fallback", storedTitle.isBlank())
                         put("agent_id", eligible.agent.id.value)
-                        // Use the definition already checked by sameBoundary, not a second nullable lookup.
                         put("agent_name", eligible.agent.name)
+                        put("runtime", AgentSessionRuntimeProjection.project(endpoint, actor,
+                            observed.scheduling, observed.requests, observed.readAt, details))
                     })
+                    emitted++
+                    if (emitted == 200) return@buildJsonArray
                 }
             }
         }

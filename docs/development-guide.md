@@ -564,6 +564,62 @@ ordinary tool execution still uses the existing approval/policy mechanisms.
 The experiment does not enable external protocols, create agents, or move
 workspace files between sessions. Do not enable it in production yet.
 
+### Read-only A2A session inspection
+
+`grz_agent_sessions` keeps its JSON-array result and accepts optional
+`conversation_id`, `agent_id`, and `details` (default false). Without a selector it
+returns at most 200 eligible session rows from the existing first-200-conversation
+scan. An explicit conversation selector bypasses that scan, not authorization;
+`agent_id` requires `conversation_id`, and `details=true` requires both IDs.
+Missing conversation IDs, unmatched agents, ineligible and current-conversation
+selections return an empty array.
+The project/user/tool-policy checks and exclusion of external channels are unchanged.
+
+Each row adds `thread_id` and a compact `runtime` object. Foreground facts describe
+**the conversation**, not the selected model's thoughts: `foreground_state` is
+`ACTIVE`, `QUEUED`, `IDLE`, or the recorded non-running control (`PAUSED`,
+`PAUSE_REQUESTED`, `STOPPING`, `INTERRUPTING`). `active_task_kind` is a diagnostic
+payload class name; task bodies/arguments and other agents' identities are omitted.
+Queue count, continuation presence, active insertion count and last event sequence
+come from the same scheduling read. `IDLE` only means no observed scheduled foreground
+work: background commands/monitors, slots and failures are not queried by this view.
+
+`agent_requests` describes open obligations for the authenticated user and selected
+agent/current thread: incoming/outgoing counts and incoming `WAITING_USER` /
+`WAITING_RESULT` counts. These are independent of foreground activity; an open outgoing
+request does not imply that its sender is blocked. The existing repository read is
+bounded to 128 conversation requests; `possibly_truncated` makes that boundary explicit
+and counts describe observed rows, not a guaranteed total. Details add at most 16
+request IDs/directions/states/update times and 16 explicit `wait_for` IDs per request,
+with truncation flags. Request bodies, results and peer identities are never included.
+
+`read_at` is the time the Server finished these reads, not a sensor measurement or
+worker heartbeat. `state_updated_at` is the stored execution-state update time;
+null `control_state` / `state_updated_at` explicitly means no stored execution state.
+`source=stored_runtime` and `consistency=best_effort` are deliberate: scheduling and
+obligations are separate reads, may change concurrently and can be stale after a
+failure. No liveness/stuck/intent inference is made from elapsed time. A runtime read
+failure fails the tool with a content-free error rather than manufacturing an idle
+state; cancellation propagates. Inspection performs
+no model call, peer delivery, history load/write, pause/resume or invalidation.
+
+Focused checks (run only in an approved verification window):
+
+```bash
+./gradlew :application:jvmTest --tests '*AgentCollaborationServiceTest' --tests '*AgentSessionRuntimeProjectionTest' :server:test --tests '*AgentSessionInspectionToolTest' -q
+```
+
+A later isolated Claude Code/Haiku protocol smoke should use synthetic A/B sessions
+with matching tool policies, not installed/live user sessions. Seed idle, active,
+paused and explicit user/result-wait fixtures; discover the existing tool and call
+`{}`, then `{"conversation_id":"B","agent_id":"agent-B","details":true}`.
+Verify array shape, nonempty display fallback, bounded refs, policy exclusions and
+no transcript/command text. Compare B's model-call count, scheduler state/event
+sequence, history and outbox before/after inspection: the read must not wake or
+resume B or add messages. Keep source read times separate from deliberately old
+stored timestamps, and verify updated facts on a second explicit read rather than
+polling. This plan does not itself authorize starting a Server, database or CLI.
+
 ## Tool Output Storage
 
 Tool results retain their original bytes as managed Artifacts. Text responses are
