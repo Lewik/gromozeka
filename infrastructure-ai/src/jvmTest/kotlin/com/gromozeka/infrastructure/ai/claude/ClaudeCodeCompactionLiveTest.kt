@@ -17,6 +17,54 @@ class ClaudeCodeCompactionLiveTest {
     @Test
     fun nativeAutoCompactionPreservesTheReplayTail() = verifyRecovery(nativeCompaction = true)
 
+    @Test
+    fun messageSquashHelperCompletesWithoutPersistingANativeSession() = runBlocking {
+        org.junit.Assume.assumeTrue(System.getenv("GROMOZEKA_CLAUDE_COMPACTION_LIVE") == "true")
+        val process = ProcessClaudeCodeCliExecutor(System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude")
+        val sessions = Sessions()
+        val runtime = ClaudeCodeCliRuntime(
+            executor = process,
+            connectionId = "squash-live-${UUID.randomUUID()}",
+            modelConfigurationId = "haiku",
+            modelName = "haiku",
+            workspaceDirectory = null,
+            sessionStateRepository = sessions,
+            sessionLocks = ConcurrentHashMap(),
+        )
+        val conversationId = Conversation.Id(UUID.randomUUID().toString())
+        try {
+            withTimeout(120_000) {
+                repeat(2) {
+                    val response = runtime.call(AiRuntimeRequest(
+                        systemPrompts = emptyList(),
+                        messages = listOf(Conversation.Message(
+                            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+                            conversationId = conversationId,
+                            role = Conversation.Message.Role.USER,
+                            content = listOf(Conversation.Message.ContentItem.UserMessage(
+                                "Summarize this synthetic selection in one short sentence.\n" +
+                                    "<selection>The fixture stores an orange marker. Keep the marker unchanged.</selection>",
+                            )),
+                            createdAt = Clock.System.now(),
+                        )),
+                        options = AiRuntimeOptions(
+                            usagePurpose = "MESSAGE_SQUASH",
+                            toolChoice = AiToolChoice.None,
+                            reasoning = AiReasoningConfig(mode = AiReasoningMode.DISABLED),
+                            toolContext = mapOf("conversationId" to conversationId.value, "threadId" to "helper", "projectId" to "synthetic"),
+                        ),
+                    ))
+                    assertEquals(AiStepOutcome.COMPLETE, response.outcome)
+                    assertTrue(response.text().isNotBlank())
+                    assertTrue(response.messages.flatMap { it.content }.none { it is Conversation.Message.ContentItem.ToolCall })
+                    assertTrue(sessions.states.isEmpty())
+                }
+            }
+        } finally {
+            process.close()
+        }
+    }
+
     private fun verifyRecovery(nativeCompaction: Boolean) = runBlocking {
         org.junit.Assume.assumeTrue(System.getenv("GROMOZEKA_CLAUDE_COMPACTION_LIVE") == "true")
         val executable = System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude"

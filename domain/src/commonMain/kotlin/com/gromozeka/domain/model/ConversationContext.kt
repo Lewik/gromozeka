@@ -25,7 +25,9 @@ class ConversationContext(
      */
     fun messagesForProvider(provider: String?, selection: Set<Message.Id>? = null): List<Message> {
         val candidates = if (selection == null) history else history.filter { it.id in selection }
-        return prepare(candidates, provider, emptySet())
+        // Opaque recovery can restore sources covered by another selected summary.
+        // Apply coverage once more to the recovered view, not to unselected history.
+        return project(prepare(candidates, provider, emptySet()))
     }
 
     /** Full checkpoints protect their prefix and all transitive source versions, including themselves. */

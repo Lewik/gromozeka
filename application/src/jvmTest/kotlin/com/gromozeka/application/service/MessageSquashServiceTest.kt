@@ -203,6 +203,81 @@ class MessageSquashServiceTest {
     }
 
     @Test
+    fun `repeated select all after opaque and selective compaction respects coverage including after fork`() = runBlocking {
+        for (strategy in listOf(SquashType.SUMMARIZE, SquashType.DISTILL)) {
+            for (forked in listOf(false, true)) {
+                for (coverToolPair in listOf(false, true)) {
+                    val case = "$strategy fork=$forked toolPair=$coverToolPair"
+                    val fixture = Fixture()
+                    val service = fixture.service()
+                    fixture.append(fixture.checkpoint(opaque = true))
+                    val original = fixture.threadMessages.messages(fixture.initialThread.id)
+                    val selected = if (coverToolPair) fixture.first else fixture.third
+                    val partial = service.compactRuntimeHistory(fixture.conversation.id, listOf(selected.id), strategy)
+                    val partialHistory = fixture.threadMessages.messages(partial.currentThread)
+                    assertEquals(
+                        if (coverToolPair) listOf(fixture.first.id, fixture.toolResult.id) else listOf(fixture.third.id),
+                        partialHistory.last().compactions().single().sourceMessageIds,
+                        case,
+                    )
+
+                    val target = if (forked) fixture.historyService().fork(partial.id) else partial
+                    val targetHistory = fixture.threadMessages.messages(target.currentThread)
+                    val targetIds = targetHistory.map { it.id }
+                    val protectedIds = ConversationContext(targetHistory).protectedMessageIds()
+                    assertTrue(targetHistory.flatMap { it.compactions() }.flatMap { it.sourceMessageIds }.all { it in targetIds }, message = case)
+                    val updated = service.compactRuntimeHistory(target.id, targetIds, strategy)
+
+                    val request = fixture.runtimeProvider.requests.last()
+                    val message = request.messages.single()
+                    val text = (message.content.single() as Conversation.Message.ContentItem.UserMessage).text
+                    assertEquals(Conversation.Message.Role.USER, message.role, message = case)
+                    assertTrue(message.providerMetadata.isEmpty(), message = case)
+                    assertEquals(AiToolChoice.None, request.options.toolChoice, message = case)
+                    assertEquals("MESSAGE_SQUASH", request.options.usagePurpose, message = case)
+                    assertEquals(1, Regex("AI compacted text").findAll(text).count(), message = case)
+                    assertFalse(text.contains("encrypted_content"), message = case)
+                    if (coverToolPair) {
+                        assertContains(text, "Keep this decision", message = case)
+                        assertFalse(text.contains("I will inspect it"), message = case)
+                        assertFalse(text.contains("raw output"), message = case)
+                        assertFalse(text.contains("[tool_call:"), message = case)
+                        assertFalse(text.contains("[tool_result:"), message = case)
+                    } else {
+                        assertFalse(text.contains("Keep this decision"), message = case)
+                        assertContains(text, "I will inspect it", message = case)
+                        assertContains(text, "raw output", message = case)
+                        assertContains(text, "[tool_call:read_file]", message = case)
+                        assertContains(text, "[tool_result:read_file error=false]", message = case)
+                    }
+
+                    val history = fixture.threadMessages.messages(updated.currentThread)
+                    assertEquals(targetHistory, history.dropLast(1), message = case)
+                    assertEquals(targetIds, history.last().compactions().single().sourceMessageIds, message = case)
+                    assertEquals(protectedIds, ConversationContext(history).protectedMessageIds(), message = case)
+                    assertEquals(listOf(history.last()), ConversationContext(history).messages(), message = case)
+                    assertEquals(targetHistory, fixture.threadMessages.messages(target.currentThread), message = case)
+                    assertEquals(original, fixture.threadMessages.messages(fixture.initialThread.id), message = case)
+                    assertEquals(partialHistory, fixture.threadMessages.messages(partial.currentThread), message = case)
+                    if (forked) {
+                        assertEquals(partial.currentThread, fixture.conversations.values.getValue(partial.id).currentThread, message = case)
+                    }
+
+                    val repeated = service.compactRuntimeHistory(target.id, history.map { it.id }, strategy)
+                    val repeatedText = (fixture.runtimeProvider.requests.last().messages.single().content.single()
+                        as Conversation.Message.ContentItem.UserMessage).text
+                    assertEquals(1, Regex("AI compacted text").findAll(repeatedText).count(), message = case)
+                    assertFalse(repeatedText.contains("raw output"), message = case)
+                    assertFalse(repeatedText.contains("Keep this decision"), message = case)
+                    assertEquals(1, ConversationContext(fixture.threadMessages.messages(repeated.currentThread)).messages().size, message = case)
+                    assertEquals(history, fixture.threadMessages.messages(updated.currentThread), message = case)
+                    assertEquals(3, fixture.runtimeProvider.requests.size, message = case)
+                }
+            }
+        }
+    }
+
+    @Test
     fun `editing selective source invalidates nested summaries and restores the other sources`() = runBlocking {
         val fixture = Fixture()
         val first = fixture.service().compactRuntimeHistory(

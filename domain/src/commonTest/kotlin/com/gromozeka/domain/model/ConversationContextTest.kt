@@ -133,6 +133,60 @@ class ConversationContextTest {
     }
 
     @Test
+    fun selectiveSummaryStillCoversOriginalsRecoveredFromOpaqueCheckpoint() {
+        val a = text("a"); val b = text("b")
+        val checkpoint = opaque("checkpoint", "CLAUDE_CODE", listOf(a, b))
+        val partial = summary("partial", listOf(a)); val tail = text("tail")
+        val history = listOf(a, b, checkpoint, partial, tail)
+        val context = ConversationContext(history)
+        val selection = history.mapTo(mutableSetOf(), Message::id)
+
+        for (provider in listOf(null, "ANTHROPIC_API", "OPENAI_SUBSCRIPTION")) {
+            assertEquals(listOf(b, partial, tail), context.messagesForProvider(provider, selection))
+        }
+        assertEquals(listOf(checkpoint, partial, tail), context.messagesForProvider("CLAUDE_CODE", selection))
+        assertEquals(setOf(a.id, b.id, checkpoint.id), context.protectedMessageIds())
+    }
+
+    @Test
+    fun nestedOpaqueRecoveryRespectsTransitiveSelectiveCoverage() {
+        val a = text("a"); val b = text("b")
+        val first = opaque("first", "CLAUDE_CODE", listOf(a, b))
+        val partial = summary("partial", listOf(a))
+        val second = opaque("second", "CLAUDE_CODE", listOf(first, partial))
+        val replacement = summary("replacement", listOf(partial)); val tail = text("tail")
+        val history = listOf(a, b, first, partial, second, replacement, tail)
+        val context = ConversationContext(history)
+
+        assertEquals(listOf(b, replacement, tail), context.messagesForProvider(null, history.mapTo(mutableSetOf(), Message::id)))
+        assertEquals(listOf(second, replacement, tail), context.messagesForProvider("CLAUDE_CODE"))
+        assertEquals(setOf(a.id, b.id, first.id, partial.id, second.id), context.protectedMessageIds())
+    }
+
+    @Test
+    fun recoveredReadableCheckpointCanBeCoveredByALaterSelectiveSummary() {
+        val a = text("a"); val b = text("b")
+        val readable = summary("readable", listOf(a, b), full = true)
+        val checkpoint = opaque("checkpoint", "CLAUDE_CODE", listOf(readable))
+        val replacement = summary("replacement", listOf(readable)); val tail = text("tail")
+        val context = ConversationContext(listOf(a, b, readable, checkpoint, replacement, tail))
+
+        assertEquals(listOf(replacement, tail), context.messagesForProvider(null))
+        assertEquals(listOf(checkpoint, replacement, tail), context.messagesForProvider("CLAUDE_CODE"))
+    }
+
+    @Test
+    fun opaqueRecoveryDoesNotApplyCoverageFromUnselectedLaterSummaries() {
+        val a = text("a"); val b = text("b")
+        val checkpoint = opaque("checkpoint", "CLAUDE_CODE", listOf(a, b))
+        val partial = summary("partial", listOf(a)); val tail = text("tail")
+        val context = ConversationContext(listOf(a, b, checkpoint, partial, tail))
+
+        assertEquals(listOf(a, b), context.messagesForProvider(null, setOf(checkpoint.id)))
+        assertEquals(listOf(a, b, tail), context.messagesForProvider(null, setOf(a.id, b.id, checkpoint.id, tail.id)))
+    }
+
+    @Test
     fun opaqueCheckpointWithoutSourcesFailsExplicitly() {
         assertFailsWith<IllegalArgumentException> {
             ConversationContext(listOf(opaque("checkpoint", "OPENAI_SUBSCRIPTION"))).messagesForProvider("CLAUDE_CODE")
