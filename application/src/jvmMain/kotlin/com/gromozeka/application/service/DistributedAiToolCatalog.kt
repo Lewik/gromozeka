@@ -76,6 +76,23 @@ class DistributedAiToolCatalog(
         .filter { it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER }
         .map { AiToolDescriptor(it.definition, it.metadata).asModelContractDescriptor() })
 
+    /** Resolve one current Server contract without rebuilding the Worker/workspace catalog. */
+    suspend fun serverTool(name: QualifiedToolName, toolAccess: ToolAccessPolicy): AiToolCallback? {
+        val callback = aiToolProvider.getTools().singleOrNull {
+            it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER &&
+                it.definition.source == name.source && it.definition.name == name.name
+        } ?: return null
+        val contract = aiToolContractRepository.resolveAll(
+            listOf(AiToolDescriptor(callback.definition, callback.metadata).asModelContractDescriptor())
+        ).single()
+        if (!toolAccess.allows(contract)) return null
+        return modelCallback(DistributedAiTool(
+            descriptor = contract.descriptor, workers = emptyList(), logicalName = contract.logicalName,
+            modelName = contract.modelName, executionName = contract.logicalName,
+            contractFingerprint = contract.fingerprint,
+        ))
+    }
+
     suspend fun snapshot(
         project: Project,
         toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),

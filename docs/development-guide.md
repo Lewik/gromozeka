@@ -418,6 +418,12 @@ or loss of eligibility rejects pending requests. Already granted leases require
 explicit return rather than timeout-based reclamation. The slot queue is separate
 from resource-heavy command admission.
 
+Before each Conversation model request, an active lease also makes the current
+Server `grz_slot_release` contract available when the Agent's tool access policy
+allows it. This is independent of discovery messages retained in history, so
+compaction cannot strand an occupation merely by dropping discovery. Other slot
+tools remain on-demand; explicit name/revision restrictions are not bypassed.
+
 Command origin is selected automatically from its exact WorkspaceMount and the
 calling Conversation's lease before Worker dispatch. The immutable slot/lease
 marker is also stored with delayed Worker requests, shown in command results and

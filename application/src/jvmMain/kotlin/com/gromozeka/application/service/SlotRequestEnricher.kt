@@ -10,7 +10,11 @@ import org.springframework.stereotype.Service
 
 @Service
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "false", matchIfMissing = true)
-class SlotRequestEnricher(private val slots: SlotApplicationService, private val users: UserDirectoryService) : ConversationRequestEnricher {
+class SlotRequestEnricher(
+    private val slots: SlotApplicationService,
+    private val users: UserDirectoryService,
+    private val toolCatalog: DistributedAiToolCatalog,
+) : ConversationRequestEnricher {
     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest {
         val actorId = request.options.toolContext[TOOL_CONTEXT_USER_ID] as? String ?: return request
@@ -32,7 +36,17 @@ class SlotRequestEnricher(private val slots: SlotApplicationService, private val
                 })
             } })
         }.toString().replace("<", "\u003c").replace(">", "\u003e")
-        return request.copy(systemPrompts = request.systemPrompts + """
+        // Discovery is history-scoped; a lease is not. Keep the exact current release contract
+        // available even after compaction or an Agent change, without widening its access policy.
+        val hasLease = views.any { view -> view.snapshot.leases.any {
+            it.active && it.conversationId == conversationId && it.actorUserId == actor.id
+        } }
+        val release = if (hasLease) toolCatalog.serverTool(
+            QualifiedToolName("gromozeka", "grz_slot_release"), request.options.toolAccess,
+        ) else null
+        val tools = if (release != null && request.tools.none { it.definition.name == release.definition.name })
+            request.tools + release else request.tools
+        return request.copy(tools = tools, systemPrompts = request.systemPrompts + """
             Development slots: Server-owned current state, independent of conversation history.
             Acquire through grz_slot_acquire; grants arrive automatically, do not poll. Several different slots may be held.
             Use each slot's exact WorkspaceMount for commands; Runtime assigns immutable origin and GRZ_SLOT.
