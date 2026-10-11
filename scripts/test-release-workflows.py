@@ -90,7 +90,8 @@ class WorkflowContracts(unittest.TestCase):
                          '-sdk "${{ matrix.sdk }}"', "-configuration Release", "ARCHS=arm64",
                          "CODE_SIGNING_ALLOWED=NO", "CODE_SIGNING_REQUIRED=NO", "CODE_SIGN_IDENTITY=",
                          "DEVELOPMENT_TEAM=", "MARKETING_VERSION=${{ needs.metadata.outputs.version }}",
-                         "${{ matrix.app_bundle }}", 'test -f "$app/$executable"'):
+                         "${{ matrix.app_bundle }}", 'test -f "$app/$executable"',
+                         '/usr/bin/lipo "$app/$executable" -verify_arch arm64'):
             self.assertIn(required, script)
         for forbidden in ("-allowProvisioningUpdates", "-allowProvisioningDeviceRegistration", "devicectl", "simctl install"):
             self.assertNotIn(forbidden, script)

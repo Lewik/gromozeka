@@ -315,7 +315,7 @@ jobs:
           app="$build_root/products/Release-${{ matrix.sdk }}/${{ matrix.app_bundle }}"
           executable=$(/usr/bin/plutil -extract CFBundleExecutable raw -o - "$app/Info.plist")
           test -f "$app/$executable"
-          /usr/bin/lipo -verify_arch arm64 "$app/$executable"
+          /usr/bin/lipo "$app/$executable" -verify_arch arm64
 
   # Publication is gated on every check AND every artifact being ready. Build jobs
   # below deliberately do not depend on this gate or on tag reservation.
