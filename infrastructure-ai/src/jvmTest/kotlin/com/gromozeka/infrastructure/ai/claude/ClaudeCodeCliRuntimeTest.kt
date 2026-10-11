@@ -733,6 +733,111 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun preservesConsecutiveUserBatchesBeforeInferenceAndAfterToolResult() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            actionResponse("synthetic.txt"),
+            response(structuredOutput = jsonObject(
+                "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("BATCH_OK"),
+            )),
+        )
+        val runtime = runtime(executor)
+        val initial = request(
+            messages = listOf(userMessage("QUEUED_ROOT_A"), userMessage("QUEUED_ROOT_B")),
+            tools = listOf(readFileTool()),
+        )
+        val first = runtime.call(initial)
+        val action = first.toolCalls.single()
+        val assistant = assistantMessage("").copy(content = first.messages.single().content)
+        val result = userMessage("").copy(content = listOf(Conversation.Message.ContentItem.ToolResult(
+            toolUseId = action.id,
+            toolName = action.call.name,
+            result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("SYNTHETIC_BATCH_RESULT")),
+        )))
+        val final = runtime.call(initial.copy(messages = initial.messages + listOf(
+            assistant, result, userMessage("QUEUED_STEER_A"), userMessage("QUEUED_STEER_B"),
+        )))
+
+        val rootPrompt = executor.commands.first().userPrompt
+        assertTrue(rootPrompt.indexOf("QUEUED_ROOT_A") >= 0)
+        assertTrue(rootPrompt.indexOf("QUEUED_ROOT_B") > rootPrompt.indexOf("QUEUED_ROOT_A"))
+        val continuation = executor.commands.last()
+        assertEquals("session-1", continuation.resumeSessionId)
+        assertTrue(continuation.userPrompt.indexOf("SYNTHETIC_BATCH_RESULT") >= 0)
+        assertTrue(continuation.userPrompt.indexOf("QUEUED_STEER_A") >
+            continuation.userPrompt.indexOf("SYNTHETIC_BATCH_RESULT"))
+        assertTrue(continuation.userPrompt.indexOf("QUEUED_STEER_B") >
+            continuation.userPrompt.indexOf("QUEUED_STEER_A"))
+        assertFalse(continuation.userPrompt.contains("QUEUED_ROOT_A"))
+        assertFalse(continuation.userPrompt.contains("QUEUED_ROOT_B"))
+        assertEquals(AiStepOutcome.COMPLETE, final.outcome)
+        assertEquals("BATCH_OK", final.messages.single().text())
+    }
+
+    @Test
+    fun realClaudeCodePreservesQueuedUserBatchesWhenEnabled() = runBlocking {
+        if (!realClaudeCodeEnabled()) return@runBlocking
+
+        val executor = ProcessClaudeCodeCliExecutor(realClaudeExecutable())
+        try {
+            withTimeout(120_000L) {
+                val runtime = runtime(executor)
+                val probeId = java.util.UUID.randomUUID().toString()
+                val paths = listOf("first-$probeId.txt", "second-$probeId.txt")
+                val initial = request(
+                    messages = listOf(
+                        userMessage("This is a synthetic protocol check. Request the external read_file action " +
+                            "for ${paths[0]}. Do not answer without the action results."),
+                        userMessage("Additional queued input: also request read_file for ${paths[1]}. " +
+                            "Both reads are independent; request them together in one action batch."),
+                    ),
+                    tools = listOf(readFileTool()),
+                    options = AiRuntimeOptions(
+                        assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                        toolContext = testToolContext("real-claude-queued-batch-$probeId"),
+                    ),
+                )
+                val first = runtime.call(initial)
+                assertEquals(AiStepOutcome.TOOL_CALLS, first.outcome)
+                assertEquals(2, first.toolCalls.size)
+                assertTrue(first.toolCalls.all { it.call.name == "read_file" })
+                assertEquals(paths.toSet(), first.toolCalls.map {
+                    it.call.input.jsonObject.getValue("path").jsonPrimitive.content
+                }.toSet())
+
+                // These are synthetic protocol results: no file action is executed.
+                val markers = paths.mapIndexed { index, path ->
+                    path to "QUEUED_BATCH_${index}_${java.util.UUID.randomUUID()}"
+                }.toMap()
+                val assistant = assistantMessage("").copy(content = first.messages.single().content)
+                val result = userMessage("").copy(content = first.toolCalls.map { action ->
+                    val path = action.call.input.jsonObject.getValue("path").jsonPrimitive.content
+                    Conversation.Message.ContentItem.ToolResult(
+                        toolUseId = action.id,
+                        toolName = action.call.name,
+                        result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text(
+                            "Synthetic file marker: ${markers.getValue(path)}",
+                        )),
+                    )
+                })
+                val final = runtime.call(initial.copy(messages = initial.messages + listOf(
+                    assistant,
+                    result,
+                    userMessage("Queued Steer: include the marker from the first requested file in your final answer."),
+                    userMessage("Additional queued Steer: also include the marker from the second requested file. " +
+                        "No more actions are needed. Return both markers, not the file paths."),
+                )))
+                assertEquals(AiStepOutcome.COMPLETE, final.outcome)
+                assertTrue(final.toolCalls.isEmpty())
+                assertEquals(true, final.providerMetadata["resumed"])
+                val text = final.messages.joinToString("\n") { it.text() }
+                assertTrue(markers.values.all { it in text }, "Expected both synthetic result markers")
+            }
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
     fun realClaudeCodeReturnsParallelWrapperToolCallsWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
