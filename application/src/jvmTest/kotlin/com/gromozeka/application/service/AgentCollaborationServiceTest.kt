@@ -78,7 +78,7 @@ class AgentCollaborationServiceTest {
         assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "a") }
         for (hidden in listOf(
             conversation(target).copy(projectId = Project.Id("other-project")),
-            conversation(target).copy(participants = setOf(Conversation.Participant.Agent(target.agentId))),
+            conversation(target).copy(participants = setOf(Conversation.Participant.User(User.Id("other-user")), Conversation.Participant.Agent(target.agentId))),
             conversation(target).copy(externalChannel = ExternalConversationChannel("telegram", "synthetic", "chat")),
         )) {
             Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(hidden)
@@ -95,7 +95,7 @@ class AgentCollaborationServiceTest {
         setup()
         for (invalidSource in listOf(
             conversation(source).copy(externalChannel = ExternalConversationChannel("telegram", "synthetic", "chat")),
-            conversation(source).copy(participants = setOf(Conversation.Participant.Agent(source.agentId))),
+            conversation(source).copy(participants = setOf(Conversation.Participant.User(User.Id("other-user")), Conversation.Participant.Agent(source.agentId))),
             conversation(source).copy(participants = setOf(Conversation.Participant.User(actor.id))),
             conversation(source).copy(currentThread = Conversation.Thread.Id("new-source-thread")),
         )) {
