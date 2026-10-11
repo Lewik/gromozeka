@@ -265,12 +265,24 @@ jobs:
         include:
           - target: client-device
             tasks: ":presentation:linkReleaseFrameworkIosArm64"
+            app_target: iosApp
+            sdk: iphoneos
+            app_bundle: Gromozeka.app
           - target: client-simulator
             tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :presentation:iosSimulatorArm64Test :shared:iosSimulatorArm64Test"
+            app_target: iosApp
+            sdk: iphonesimulator
+            app_bundle: Gromozeka.app
           - target: worker-device
             tasks: ":mobile-worker:linkReleaseFrameworkIosArm64"
+            app_target: iosWorkerApp
+            sdk: iphoneos
+            app_bundle: GromozekaWorker.app
           - target: worker-simulator
             tasks: ":mobile-worker:linkReleaseFrameworkIosSimulatorArm64 :mobile-worker:iosSimulatorArm64Test"
+            app_target: iosWorkerApp
+            sdk: iphonesimulator
+            app_bundle: GromozekaWorker.app
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
@@ -284,6 +296,26 @@ jobs:
           ${{ matrix.tasks }}
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
+      - name: Build unsigned iOS app ${{ matrix.target }}
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.workers.max=1 -Dorg.gradle.parallel=false
+            -Dorg.gradle.jvmargs='-Xmx3g -Xms256m -XX:MaxMetaspaceSize=768m'
+            -Dorg.gradle.project.kotlin.compiler.execution.strategy=in-process
+        run: |
+          set -euo pipefail
+          build_root="$PWD/build/ios-app-${{ matrix.target }}"
+          xcodebuild -project iosApp/iosApp.xcodeproj \
+            -target "${{ matrix.app_target }}" -configuration Release \
+            -sdk "${{ matrix.sdk }}" -jobs 2 ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            SYMROOT="$build_root/products" OBJROOT="$build_root/intermediates" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM= \
+            MARKETING_VERSION=${{ needs.metadata.outputs.version }} build
+          app="$build_root/products/Release-${{ matrix.sdk }}/${{ matrix.app_bundle }}"
+          executable=$(/usr/bin/plutil -extract CFBundleExecutable raw -o - "$app/Info.plist")
+          test -f "$app/$executable"
+          /usr/bin/lipo -verify_arch arm64 "$app/$executable"
 
   # Publication is gated on every check AND every artifact being ready. Build jobs
   # below deliberately do not depend on this gate or on tag reservation.

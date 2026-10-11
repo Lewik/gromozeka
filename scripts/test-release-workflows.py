@@ -73,6 +73,28 @@ class WorkflowContracts(unittest.TestCase):
         }
         self.assertTrue(required.issubset(tasks), f"Missing iOS checks: {required - tasks}")
 
+    def test_ios_checks_compile_unsigned_swift_shells_for_both_sdks(self):
+        job = JOBS["verify-ios"]
+        matrix = job["strategy"]["matrix"]["include"]
+        expected = {
+            "client-device": ("iosApp", "iphoneos", "Gromozeka.app"),
+            "client-simulator": ("iosApp", "iphonesimulator", "Gromozeka.app"),
+            "worker-device": ("iosWorkerApp", "iphoneos", "GromozekaWorker.app"),
+            "worker-simulator": ("iosWorkerApp", "iphonesimulator", "GromozekaWorker.app"),
+        }
+        self.assertEqual(expected, {item["target"]: (item.get("app_target"), item.get("sdk"), item.get("app_bundle")) for item in matrix})
+        steps = [step for step in job["steps"] if "xcodebuild" in step.get("run", "")]
+        self.assertEqual(1, len(steps))
+        script = steps[0]["run"]
+        for required in ("-project iosApp/iosApp.xcodeproj", '-target "${{ matrix.app_target }}"',
+                         '-sdk "${{ matrix.sdk }}"', "-configuration Release", "ARCHS=arm64",
+                         "CODE_SIGNING_ALLOWED=NO", "CODE_SIGNING_REQUIRED=NO", "CODE_SIGN_IDENTITY=",
+                         "DEVELOPMENT_TEAM=", "MARKETING_VERSION=${{ needs.metadata.outputs.version }}",
+                         "${{ matrix.app_bundle }}", 'test -f "$app/$executable"'):
+            self.assertIn(required, script)
+        for forbidden in ("-allowProvisioningUpdates", "-allowProvisioningDeviceRegistration", "devicectl", "simctl install"):
+            self.assertNotIn(forbidden, script)
+
     def test_android_skip_keeps_jvm_checks_and_gates_artifacts(self):
         steps = {step.get("name"): step for step in JOBS["verify-client"]["steps"]}
         self.assertNotIn("if", steps["Verify JVM client"])
