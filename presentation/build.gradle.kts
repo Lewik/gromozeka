@@ -294,6 +294,7 @@ compose.desktop {
                 packageBuildVersion = nativePackageVersion
                 dmgPackageVersion = nativePackageVersion
                 bundleID = "com.gromozeka.app"
+                entitlementsFile.set(project.layout.projectDirectory.file("packaging/macos/entitlements.plist"))
                 
                 // macOS-specific JVM args (Dock, appearance) are set via OS detection above
                 

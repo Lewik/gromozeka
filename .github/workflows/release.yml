@@ -427,6 +427,7 @@ jobs:
           test -z "$bundled_worker"
           test "$(uname -m)" = "arm64"
           file "$app_binary" | grep -q 'arm64'
+          python3 scripts/verify-macos-client.py "${app_binary%/Contents/MacOS/Gromozeka}"
           hdiutil verify "$source_dmg"
           mkdir -p release-asset
           cp "$source_dmg" release-asset/gromozeka-client-macos-arm64.dmg
