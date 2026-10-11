@@ -603,22 +603,42 @@ failure fails the tool with a content-free error rather than manufacturing an id
 state; cancellation propagates. Inspection performs
 no model call, peer delivery, history load/write, pause/resume or invalidation.
 
-Focused checks (run only in an approved verification window):
+Other peer-read services can use
+`AgentCollaborationService.resolveEligibleTarget(source, actor, targetConversationId, targetAgentId = null)`.
+The result contains the checked `endpoint`, `conversation` and `agent`; it shares
+`send`'s agent selection and the existing `authorize`/`sameBoundary` policy, with no
+history/runtime reads or scheduling. Obtain the authenticated source/actor through
+`source(context)`. The result is checked at resolution time, not a durable permission
+or an atomic snapshot: later work must handle changes to that identity/branch.
+
+Focused checks (run only in an approved verification window; each task reruns):
 
 ```bash
-./gradlew :application:jvmTest --tests '*AgentCollaborationServiceTest' --tests '*AgentSessionRuntimeProjectionTest' :server:test --tests '*AgentSessionInspectionToolTest' -q
+./gradlew :application:jvmTest --rerun --tests '*AgentCollaborationServiceTest' --tests '*AgentSessionRuntimeProjectionTest'
+./gradlew :server:test --rerun --tests '*AgentSessionInspectionToolTest'
 ```
 
-A later isolated Claude Code/Haiku protocol smoke should use synthetic A/B sessions
-with matching tool policies, not installed/live user sessions. Seed idle, active,
-paused and explicit user/result-wait fixtures; discover the existing tool and call
-`{}`, then `{"conversation_id":"B","agent_id":"agent-B","details":true}`.
-Verify array shape, nonempty display fallback, bounded refs, policy exclusions and
-no transcript/command text. Compare B's model-call count, scheduler state/event
-sequence, history and outbox before/after inspection: the read must not wake or
-resume B or add messages. Keep source read times separate from deliberately old
-stored timestamps, and verify updated facts on a second explicit read rather than
-polling. This plan does not itself authorize starting a Server, database or CLI.
+`AgentSessionsClaudeCodeSmokeTest` is an opt-in, self-contained protocol check using
+existing Claude Code authorization and Haiku. It constructs only the production CLI
+executor/backend beans, not a Server, Worker or database. Temporary CLI working files
+and owned processes are cleaned on exit; stateless calls do not persist native sessions.
+All conversation, agent, actor, project and tool-registry identities are synthetic.
+
+```bash
+GROMOZEKA_AGENT_SESSIONS_CLAUDE_SMOKE=true ./gradlew :server:test --rerun --tests '*AgentSessionsClaudeCodeSmokeTest'
+```
+
+Apply the verification window's normal JVM/resource limits to these commands.
+The model sees the current catalog schema (including a synthetic versioned name),
+calls the list, uses its actual result to request selected details, then consumes
+that actual tool result. Calls execute the real callback/service/projection for a
+paused B with queued work and an explicit result wait. Assertions compare B's complete
+in-memory Runtime snapshot/event sequence, requests and outbox, reject history access
+and wake signals, and count model invocations (A only, none for B). A fail-fast repository
+rejects all writes/delivery/checker operations. Prose is not evidence of side effects.
+This checks the model protocol and application read path, **not** Worker RPC, PostgreSQL,
+ConversationEngine dispatch or crash recovery. Idle/active/control variants, bounds,
+authorization exclusions and stale timestamps are covered by the deterministic tests.
 
 ## Tool Output Storage
 
