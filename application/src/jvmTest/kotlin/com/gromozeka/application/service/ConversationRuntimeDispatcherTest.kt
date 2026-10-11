@@ -21,6 +21,7 @@ import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationHistoryMutation
 import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
@@ -219,10 +220,63 @@ class ConversationRuntimeDispatcherTest {
             assertFalse(retriedResult.isCompleted)
 
             harness.runner.releaseCurrentTask()
-            retriedResult.await()
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { retriedResult.await() }
         } finally {
             harness.close()
         }
+    }
+
+    @Test
+    fun `history retry does not miss completion published after its initial lookup`() = runBlocking {
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val taskId = ConversationRuntimeTask.Id("history-lookup-cursor-race")
+        var publishAfterLookup = false
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun findHistoryChanged(
+                conversationId: Conversation.Id,
+                requestedTaskId: ConversationRuntimeTask.Id,
+            ): ConversationRuntimeEvent.HistoryChanged? {
+                val result = delegate.findHistoryChanged(conversationId, requestedTaskId)
+                if (publishAfterLookup && requestedTaskId == taskId) {
+                    publishAfterLookup = false
+                    // The lookup returned no result, but completion is published before
+                    // its caller can capture a new cursor. The waiter must not skip it.
+                    delegate.recordEvent(ConversationRuntimeEvent.HistoryChanged(
+                        conversationId, taskId, ConversationHistoryMutationKind.DELETE,
+                    ))
+                }
+                return result
+            }
+        }
+        val dispatcher = ConversationRuntimeDispatcher(
+            coordinator, InMemoryConversationRuntimeEventBus(),
+            testConversationRuntimeStateSyncService(delegate), acceptingArtifactReferenceValidator,
+        )
+        val ids = listOf(Conversation.Message.Id("message-1"))
+        assertTrue(dispatcher.submitHistoryMutation(
+            conversationId, taskId, ConversationHistoryMutation.Delete(ids), actorUser().id,
+        ))
+        val descriptor = serverExecutorDescriptor(
+            "history-race-test", setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+        )
+        assertNotNull(delegate.claimDeliveredTask(
+            conversationId, taskId, descriptor.identity, descriptor.capabilities, emptySet(),
+        ))
+        assertTrue(delegate.markActiveTaskStarted(conversationId, taskId, descriptor.identity, Clock.System.now()))
+        assertTrue(delegate.completeActiveTask(
+            conversationId, taskId, descriptor.identity,
+            ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE),
+        ))
+        assertNull(delegate.findHistoryChanged(conversationId, taskId))
+        publishAfterLookup = true
+
+        val history = ConversationHistoryRuntimeApplicationService(dispatcher, coordinator)
+        withTimeout(TEST_EVENT_TIMEOUT_MS) {
+            history.deleteMessages(actorUser(), taskId, conversationId, ids)
+        }
+        assertFalse(publishAfterLookup)
+        assertNotNull(delegate.findHistoryChanged(conversationId, taskId))
+        assertTrue(delegate.listPending(conversationId).isEmpty())
     }
 
     @Test

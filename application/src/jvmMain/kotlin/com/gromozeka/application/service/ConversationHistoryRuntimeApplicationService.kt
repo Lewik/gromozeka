@@ -61,12 +61,15 @@ class ConversationHistoryRuntimeApplicationService(
         conversationId: Conversation.Id,
         mutation: ConversationHistoryMutation,
     ) {
+        // Capture the replay fence before checking completion. A previously accepted
+        // mutation may publish its only result during that lookup; a newer cursor
+        // would then skip the result even though resubmission is acknowledged.
+        var cursor = runtimeCoordinator.lastEventSequence(conversationId)
         if (findCompletedMutation(conversationId, taskId) != null) return
         runtimeCoordinator.findTaskIncident(conversationId, taskId)?.let { incident ->
             error(incident.message)
         }
 
-        var cursor = runtimeCoordinator.lastEventSequence(conversationId)
         val accepted = runtimeDispatcher.submitHistoryMutation(
             conversationId = conversationId,
             taskId = taskId,
