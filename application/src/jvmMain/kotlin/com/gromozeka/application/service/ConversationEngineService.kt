@@ -247,6 +247,14 @@ class ConversationEngineService(
             automaticMemoryRememberEnabled = context.automaticMemoryRememberEnabled,
             automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
         ).forEach { emitMessage(it) }
+        // Use the same reserved-batch emission as Steer, but only the turn-start snapshot
+        // captured with this root's claim. Later END_OF_TURN input must stay queued.
+        val queued = emitQueuedRuntimeMessagesAtSafePoint(
+            conversationId, task.id, executor, QueuedMessagePlacement.END_OF_TURN,
+            conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
+            context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled,
+        )
+        queued.messages.forEach { emitMessage(it) }
 
         val fixResult = toolCallSequenceFixerService.fixNonSequentialPairs(conversationId)
         if (fixResult.fixed) {
@@ -1688,11 +1696,10 @@ class ConversationEngineService(
         automaticMemoryRememberEnabled: Boolean,
         automaticMemoryRecallEnabled: Boolean,
     ): List<Conversation.Message> {
-        val emittedMessages = mutableListOf<Conversation.Message>()
         val invocation = when (val payload = queued.payload) {
             is ConversationRuntimeTask.Payload.AgentInvocation -> payload
             is ConversationRuntimeTask.Payload.PostMessage -> ConversationRuntimeTask.Payload.AgentInvocation(
-                payload.userMessage, payload.autoRespondAgentIds.single(),
+                payload.userMessage, requireNotNull(payload.autoRespondAgentIds.minByOrNull { it.value }),
             )
             else -> error("Safe-point input is not a message submission")
         }
@@ -1717,73 +1724,11 @@ class ConversationEngineService(
             "Agent ${agent.id.value} does not belong to conversation project ${conversation.projectId.value}"
         }
 
-        val userMessageAdded = addRuntimeMessageIfMissing(conversationId, userMessage)
-        if (!userMessageAdded) {
-            log.info {
-                "Queued runtime message already exists, skipping duplicate side effects: " +
-                    "conversation=${conversationId.value} message=${userMessage.id.value}"
-            }
-            return emptyList()
-        }
-        emittedMessages.add(userMessage)
-        log.info {
-            "Accepted queued runtime message at ${queued.placement}: conversation=${conversationId.value} message=${userMessage.id.value}"
-        }
-
-        val writeResult = if (automaticMemoryRememberEnabled) {
-            routeMessageThroughMemoryRouter(
-                conversationId,
-                conversation.currentThread,
-                userMessage,
-                agent,
-                runtimeContext,
-                memorySystemPrompts,
-                memoryPipelineTools,
-            )
-        } else {
-            null
-        }
-
-        if (automaticMemoryRememberEnabled) {
-            val rememberMessages = buildSyntheticMemoryToolPair(
-                conversationId = conversationId,
-                targetMessage = userMessage,
-                toolName = MEMORY_REMEMBER_TOOL_NAME,
-                arguments = buildJsonObject {
-                    put("target", "previous_user_message")
-                    put("target_message_id", userMessage.id.value)
-                    put("mode", "automatic_hot_path")
-                },
-                resultText = MemoryToolResultRenderer.rememberResultJsonString(writeResult)
-            )
-            rememberMessages.forEach { syntheticMessage ->
-                if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
-                    emittedMessages.add(syntheticMessage)
-                }
-            }
-        }
-
-        if (automaticMemoryRecallEnabled) {
-            val recallMessages = buildSyntheticMemoryToolPair(
-                conversationId = conversationId,
-                targetMessage = userMessage,
-                toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
-                arguments = buildJsonObject {
-                    put("target", "previous_user_message")
-                    put("target_message_id", userMessage.id.value)
-                    put("mode", "automatic_runtime_context_enrichment_async_pending")
-                },
-                resultText = MemoryToolResultRenderer.pendingEnrichContextResultJsonString(),
-                syntheticPhase = SYNTHETIC_MEMORY_PHASE_PENDING,
-            )
-            recallMessages.forEach { syntheticMessage ->
-                if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
-                    emittedMessages.add(syntheticMessage)
-                }
-            }
-        }
-
-        return emittedMessages
+        return appendUserMessageWithAutomaticMemory(
+            conversationId, conversation, runtimeContext, userMessage, agent,
+            memorySystemPrompts, memoryPipelineTools,
+            automaticMemoryRememberEnabled, automaticMemoryRecallEnabled,
+        )
     }
 
     private suspend fun addRuntimeMessageIfMissing(

@@ -56,6 +56,81 @@ import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
     @Test
+    fun `both message batch boundaries survive recreation with a frozen reservation and one acknowledgement`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            for (placement in QueuedMessagePlacement.entries) {
+                val conversation = Conversation.Id("batch-${placement.name}")
+                val now = Instant.fromEpochSeconds(1)
+                val actor = com.gromozeka.domain.model.User.Id("user")
+                val executor = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+                val requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server)
+                fun input(id: String) = ConversationRuntimeTask(ConversationRuntimeTask.Id(id), conversation, actorUserId = actor,
+                    payload = ConversationRuntimeTask.Payload.AgentInvocation(Conversation.Message(Conversation.Message.Id(id), conversation,
+                        role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(actor, "User"), content = emptyList(), createdAt = now), AGENT_DEFINITION_ID),
+                    placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id, requirements = requirements, createdAt = now)
+                val mode = if (placement == QueuedMessagePlacement.END_OF_TURN) com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN
+                    else com.gromozeka.domain.model.UserMessageDeliveryMode.STEER
+                val root = input("root")
+                assertTrue(coordinator.submitUserInput(root, mode))
+                if (placement == QueuedMessagePlacement.END_OF_TURN) {
+                    for (id in listOf("b", "c")) assertTrue(coordinator.submitUserInput(input(id), mode))
+                }
+                kotlin.test.assertNotNull(coordinator.claimDeliveredTask(conversation, root.id, executor, requirements.capabilities, emptySet()))
+                assertTrue(coordinator.markActiveTaskStarted(conversation, root.id, executor, now))
+                if (placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+                    for (id in listOf("b", "c")) assertTrue(coordinator.submitUserInput(input(id), mode))
+                }
+                val batch = coordinator.claimActiveInsertions(conversation, root.id, executor, placement)
+                assertEquals(listOf("b", "c"), batch.map { it.id.value })
+                val restarted = PostgresConversationRuntimeCoordinator(source, json)
+                assertEquals(batch, restarted.schedulingSnapshot(conversation).activeInsertions)
+                assertTrue(restarted.submitUserInput(input("late"), mode))
+                assertEquals(batch, restarted.claimActiveInsertions(conversation, root.id, executor, placement))
+                assertEquals(listOf("late"), restarted.listPending(conversation).map { it.id.value })
+                val next = root.copy(id = ConversationRuntimeTask.Id("model"), parentTaskId = root.id, idempotencyKey = "model",
+                    payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("root"), AGENT_DEFINITION_ID, 1))
+                assertTrue(restarted.completeActiveTask(conversation, root.id, executor, ConversationRuntimeTaskOutcome.Continue(next)))
+                assertFalse(restarted.completeActiveTask(conversation, root.id, executor, ConversationRuntimeTaskOutcome.Continue(next)))
+                assertTrue(restarted.schedulingSnapshot(conversation).activeInsertions.isEmpty())
+                for (id in listOf("root", "b", "c")) assertFalse(restarted.submitUserInput(input(id), mode))
+                assertEquals(listOf("model", "late"), restarted.listPending(conversation).map { it.id.value })
+            }
+        }
+    }
+
+    @Test
+    fun `concurrent enqueue and turn start atomically partition the batch without loss or duplicates`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val conversation = Conversation.Id("racing-batch")
+            val now = Instant.fromEpochSeconds(1)
+            val actor = com.gromozeka.domain.model.User.Id("user")
+            val executor = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+            val requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server)
+            fun input(id: String) = ConversationRuntimeTask(ConversationRuntimeTask.Id(id), conversation, actorUserId = actor,
+                payload = ConversationRuntimeTask.Payload.AgentInvocation(Conversation.Message(Conversation.Message.Id(id), conversation,
+                    role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(actor, "User"), content = emptyList(), createdAt = now), AGENT_DEFINITION_ID),
+                placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id, requirements = requirements, createdAt = now)
+            val mode = com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN
+            val root = input("root")
+            assertTrue(coordinator.submitUserInput(root, mode))
+            val peer = PostgresConversationRuntimeCoordinator(source, json)
+            val claim = async { kotlin.test.assertNotNull(coordinator.claimDeliveredTask(conversation, root.id, executor, requirements.capabilities, emptySet())) }
+            val ids = (1..24).map { "message-$it" }
+            ids.map { id -> async { assertTrue(peer.submitUserInput(input(id), mode)) } }.awaitAll()
+            claim.await()
+            val state = peer.schedulingSnapshot(conversation)
+            val reservedIds = state.activeInsertions.map { it.id.value }
+            val pendingIds = peer.listPending(conversation).map { it.id.value }
+            assertEquals(ids.toSet(), (reservedIds + pendingIds).toSet())
+            assertEquals(ids.size, reservedIds.size + pendingIds.size)
+            assertTrue(reservedIds.toSet().intersect(pendingIds.toSet()).isEmpty())
+            assertTrue(peer.submitUserInput(input("after-snapshot"), mode))
+            assertEquals(reservedIds, peer.claimActiveInsertions(conversation, root.id, executor, QueuedMessagePlacement.END_OF_TURN).map { it.id.value })
+            assertEquals(pendingIds + "after-snapshot", peer.listPending(conversation).map { it.id.value })
+        }
+    }
+
+    @Test
     fun `personal placement survives coordinator recreation and continuation gap`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
         val schema = "delivery_queue_${UUID.randomUUID().toString().replace("-", "")}"

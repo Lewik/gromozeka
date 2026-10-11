@@ -14,11 +14,11 @@ class UserMessageDeliverySchedulingTest {
     private val executor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server"))
     private val capabilities = ConversationRuntimeCapability.entries.toSet()
     private val requirements = ConversationRuntimeTaskRequirements(capabilities, ConversationRuntimeTaskTarget.Server)
-    private fun input(id: String, target: AgentDefinition.Id = agent) = ConversationRuntimeTask(
-        id = ConversationRuntimeTask.Id(id), conversationId = conversation, actorUserId = user,
+    private fun input(id: String, target: AgentDefinition.Id = agent, actor: User.Id = user) = ConversationRuntimeTask(
+        id = ConversationRuntimeTask.Id(id), conversationId = conversation, actorUserId = actor,
         payload = ConversationRuntimeTask.Payload.AgentInvocation(Conversation.Message(
             id = Conversation.Message.Id(id), conversationId = conversation, role = Conversation.Message.Role.USER,
-            author = Conversation.Message.Author.User(user, "User"), content = emptyList(), createdAt = now), target),
+            author = Conversation.Message.Author.User(actor, "User"), content = emptyList(), createdAt = now), target),
         placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id, requirements = requirements, createdAt = now,
     )
     private fun llm(parent: ConversationRuntimeTask, id: String) = parent.copy(
@@ -37,6 +37,130 @@ class UserMessageDeliverySchedulingTest {
     private fun ConversationRuntimeSchedulingState.start(task: ConversationRuntimeTask) =
         claim(task.id, executor, capabilities, emptySet(), now).also { assertNotNull(it.result) }.state
             .markActiveTaskStarted(task.id, executor, now).state
+
+    @Test fun `idle bursts in either mode reserve the entire batch with the root claim`() {
+        for (mode in UserMessageDeliveryMode.entries) {
+            var state = ConversationRuntimeSchedulingState(conversation)
+            for (id in listOf("a", "b", "c")) state = state.submitHuman(id, mode)
+            val claimed = state.start(input("a"))
+            assertEquals(listOf("b", "c"), claimed.activeInsertions.map { it.id.value })
+            assertTrue(claimed.pendingTasks.isEmpty())
+            assertFalse(claimed.cancelByMessageId(Conversation.Message.Id("b")).result)
+            assertFalse(claimed.updatePendingMessageSubmission(input("b")).result)
+            val next = llm(requireNotNull(claimed.activeTask), "next")
+            val done = claimed.finish(ConversationRuntimeTaskOutcome.Continue(next))
+            assertEquals(setOf("a", "b", "c"), done.completedIdempotencyKeys)
+            assertEquals(next.id, done.readyWorkItem()?.taskId)
+        }
+    }
+
+    @Test fun `turn start reservation survives serialization and never absorbs late arrivals even when empty`() {
+        for (hasFollower in listOf(false, true)) {
+            var state = ConversationRuntimeSchedulingState(conversation).submitHuman("a", UserMessageDeliveryMode.STEER)
+            if (hasFollower) state = state.submitHuman("b", UserMessageDeliveryMode.STEER)
+            state = state.start(input("a"))
+            state = Json.decodeFromString(Json.encodeToString(state))
+            state = state.submitHuman("late", UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+            repeat(2) {
+                val batch = state.claimActiveInsertions(input("a").id, executor, QueuedMessagePlacement.END_OF_TURN)
+                assertFalse(batch.changed)
+                assertEquals(if (hasFollower) listOf("b") else emptyList(), batch.result.map { it.id.value })
+                assertEquals(listOf("late"), batch.state.pendingTasks.map { it.id.value })
+            }
+            val otherExecutor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("stale"))
+            assertTrue(state.claimActiveInsertions(input("a").id, otherExecutor, QueuedMessagePlacement.END_OF_TURN).result.isEmpty())
+            val next = llm(requireNotNull(state.activeTask), "model")
+            val running = state.finish(ConversationRuntimeTaskOutcome.Continue(next)).start(next)
+            assertTrue(running.claimActiveInsertions(next.id, executor, QueuedMessagePlacement.END_OF_TURN).result.isEmpty())
+            assertEquals(listOf("late"), running.pendingTasks.map { it.id.value })
+        }
+    }
+
+    @Test fun `batching stops at actor recipient runtime and execution boundaries without jumping FIFO`() {
+        val source = input("barrier")
+        val message = requireNotNull(source.userMessageOrNull())
+        val barriers = listOf(
+            input("barrier", actor = User.Id("bob")),
+            input("barrier", target = other),
+            source.copy(actorUserId = null),
+            source.copy(payload = ConversationRuntimeTask.Payload.PostMessage(message)),
+            source.copy(payload = ConversationRuntimeTask.Payload.AgentInvocation(
+                message.copy(instructions = listOf(Conversation.Message.Instruction.Source.Agent("peer"))), agent)),
+            source.copy(payload = ConversationRuntimeTask.Payload.AgentInvocation(message.copy(
+                providerMetadata = kotlinx.serialization.json.buildJsonObject { put("syntheticKind", kotlinx.serialization.json.JsonPrimitive("command_task_completion")) }), agent)),
+            source.copy(payload = ConversationRuntimeTask.Payload.HistoryMutation(ConversationHistoryMutation.Delete(emptyList()))),
+            source.copy(requirements = requirements.copy(target = ConversationRuntimeTaskTarget.Worker(ConversationRuntimeWorkerId("worker")))),
+        )
+        for (barrier in barriers) {
+            var state = ConversationRuntimeSchedulingState(conversation)
+                .submitHuman("a", UserMessageDeliveryMode.STEER).submitHuman("b", UserMessageDeliveryMode.STEER)
+            state = state.submit(barrier, now).state.submitHuman("after-barrier", UserMessageDeliveryMode.STEER)
+            val claimed = state.start(input("a"))
+            assertEquals(listOf("b"), claimed.activeInsertions.map { it.id.value }, barrier.toString())
+            assertEquals(listOf("barrier", "after-barrier"), claimed.pendingTasks.map { it.id.value })
+        }
+    }
+
+    @Test fun `broadcast batches require the same full recipient set`() {
+        fun post(id: String, recipients: Set<AgentDefinition.Id>): ConversationRuntimeTask {
+            val source = input(id)
+            return source.copy(payload = ConversationRuntimeTask.Payload.PostMessage(requireNotNull(source.userMessageOrNull()), recipients))
+        }
+        val root = post("a", setOf(agent, other))
+        var state = ConversationRuntimeSchedulingState(conversation)
+        for (task in listOf(root, post("b", setOf(other, agent)), post("different", setOf(agent)), post("c", setOf(agent, other)))) {
+            state = state.submit(task, now, userDeliveryMode = UserMessageDeliveryMode.STEER).state
+        }
+        state = state.start(root)
+        assertEquals(listOf("b"), state.activeInsertions.map { it.id.value })
+        assertEquals(listOf("different", "c"), state.pendingTasks.map { it.id.value })
+    }
+
+    @Test fun `pause edits and cancellations settle before the snapshot is reserved`() {
+        var state = ConversationRuntimeSchedulingState(conversation)
+        for (id in listOf("a", "b", "c")) state = state.submitHuman(id, UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+        state = state.requestPause(now).state
+        assertNull(state.readyWorkItem())
+        val source = input("b")
+        val edited = source.copy(payload = source.requireAgentInvocation().copy(userMessage = requireNotNull(source.userMessageOrNull()).copy(
+            content = listOf(Conversation.Message.ContentItem.UserMessage("edited")))))
+        val updated = state.updatePendingMessageSubmission(edited)
+        assertTrue(updated.result)
+        state = updated.state.cancelByMessageId(Conversation.Message.Id("c")).state
+        state = state.requestResume(now).state.start(input("a"))
+        assertEquals(edited, state.activeInsertions.single())
+        assertTrue(state.pendingTasks.isEmpty())
+    }
+
+    @Test fun `abort and execution incidents preserve the reserved batch in order`() {
+        for (started in listOf(false, true)) {
+            var state = ConversationRuntimeSchedulingState(conversation)
+            for (id in listOf("a", "b", "c")) state = state.submitHuman(id, UserMessageDeliveryMode.STEER)
+            state = state.claim(input("a").id, executor, capabilities, emptySet(), now).state
+            if (started) state = state.markActiveTaskStarted(input("a").id, executor, now).state
+            val recovered = state.recordActiveTaskIncident(input("a").id, executor,
+                if (started) ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN else ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
+                "synthetic failure", null, now).state
+            assertEquals(listOf("b", "c"), recovered.pendingTasks.takeLast(2).map { it.id.value })
+            assertFalse("b" in recovered.completedIdempotencyKeys)
+            assertFalse("c" in recovered.completedIdempotencyKeys)
+            val aborted = state.abort(now).state
+            assertEquals(listOf("b", "c"), aborted.pendingTasks.map { it.id.value })
+            assertTrue(aborted.activeInsertions.isEmpty())
+            assertEquals(ConversationExecutionState.ControlState.PAUSED, aborted.executionState?.controlState)
+        }
+    }
+
+    @Test fun `steer batch reservation is stable while more messages arrive`() {
+        val before = active().submitHuman("a", UserMessageDeliveryMode.STEER).submitHuman("b", UserMessageDeliveryMode.STEER)
+        val task = requireNotNull(before.activeTask)
+        val first = before.claimActiveInsertions(task.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val later = first.state.submitHuman("c", UserMessageDeliveryMode.STEER)
+        val replay = later.claimActiveInsertions(task.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        assertFalse(replay.changed)
+        assertEquals(listOf("a", "b"), replay.result.map { it.id.value })
+        assertEquals(listOf("c"), replay.state.pendingTasks.map { it.id.value })
+    }
 
     @Test fun `idle including collaboration wait starts either mode as normal input`() {
         for (mode in UserMessageDeliveryMode.entries) {

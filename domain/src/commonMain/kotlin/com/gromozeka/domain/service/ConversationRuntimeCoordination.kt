@@ -1099,6 +1099,11 @@ interface ConversationRuntimeCoordinator {
         messageId: Conversation.Message.Id,
     ): Boolean
 
+    /**
+     * Replay the active task's reserved message batch. END_OF_TURN followers are frozen
+     * atomically with the root claim; AFTER_TOOL_RESULT is reserved at this safe point.
+     * Completion acknowledges the batch, while abort/incidents preserve it for recovery.
+     */
     suspend fun claimActiveInsertions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,

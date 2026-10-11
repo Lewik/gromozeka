@@ -172,6 +172,24 @@ not injected into the current agent; broadcast input steers the active responder
 while retaining queued responses from other selected agents. Response review's
 stale-input guard and Stop/Interrupt controls remain authoritative.
 
+Queued human input is delivered as distinct ordered messages in a reserved batch,
+not one model response per message. Both delivery boundaries share the coordinator's
+batch selection/reservation lifecycle and the engine's message-appending path.
+At turn start, the root claim atomically reserves the contiguous compatible
+END_OF_TURN followers; even an empty snapshot is final for that root. Messages
+admitted after the claim wait for the next turn. At a Steer safe point, the runtime
+reserves the currently eligible AFTER_TOOL_RESULT input before the next model call.
+Retries see the same reservation, completion acknowledges it, and abort/incidents
+preserve uncompleted inputs; history insertion remains idempotent by message ID.
+
+A turn-start batch requires the same authenticated local human, recipient set and
+execution requirements. Another actor/recipient, a history operation, an external
+channel or a runtime-owned notification is a boundary, not something to skip over
+or execute with the first caller's credentials. Matching broadcast submissions
+cause one response per selected agent for the whole batch. Attachments, instructions,
+authors and message IDs stay on their original messages. Existing mixed-actor Steer
+provenance remains fail-closed; it never borrows the original caller's credentials.
+
 ## Compose UI Compatibility
 
 Compose Multiplatform is pinned to `1.13.0-alpha02` to include the

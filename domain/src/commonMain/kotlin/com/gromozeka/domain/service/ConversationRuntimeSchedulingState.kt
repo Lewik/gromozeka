@@ -1,5 +1,6 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserMessageDeliveryMode
 import com.gromozeka.domain.model.WorkspaceMount
@@ -240,6 +241,10 @@ data class ConversationRuntimeSchedulingState(
         val consumesTurnTerminationInstructions =
             claimedTask.payload is ConversationRuntimeTask.Payload.AgentInvocation ||
                 (claimedTask.payload as? ConversationRuntimeTask.Payload.PostMessage)?.autoRespondAgentIds?.isNotEmpty() == true
+        // Freeze the turn-start batch in the SAME transition as its root claim. Input admitted
+        // after this point belongs to the next turn, even while this root is still preparing.
+        val batch = pendingMessageBatch(QueuedMessagePlacement.END_OF_TURN, claimedTask)
+        val claimedIds = batch.mapTo(mutableSetOf()) { it.id }.apply { add(claimedTask.id) }
 
         return changed(
             copy(
@@ -251,16 +256,13 @@ data class ConversationRuntimeSchedulingState(
                     updatedAt = now,
                 ),
                 activeTask = claimedTask,
+                activeInsertions = batch,
                 // A queued message or safe-point insertion is not a new agent turn.
                 lastTurn = if (claimedTask.isAgentWork() && lastTurn?.turnId != claimedTask.turnId) {
                     ConversationRuntimeTurnSummary(claimedTask.turnId, now)
                 } else lastTurn,
                 continuationTask = continuationTask?.takeUnless { it.id == claimedTask.id },
-                pendingTasks = if (continuationTask?.id == claimedTask.id) {
-                    pendingTasks
-                } else {
-                    pendingTasks.toMutableList().apply { removeAt(pendingIndex) }
-                },
+                pendingTasks = pendingTasks.filterNot { it.id in claimedIds },
                 pendingTurnTerminationInstructions = if (consumesTurnTerminationInstructions) {
                     emptyList()
                 } else {
@@ -751,7 +753,10 @@ data class ConversationRuntimeSchedulingState(
             }
             return unchanged(activeInsertions)
         }
-        val ready = pendingTasks.filter { it.placement == placement }
+        // END_OF_TURN was already frozen by claim(), including an empty batch. Never
+        // pull later arrivals into a turn that has started. Steer is claimed at a safe point.
+        if (placement == QueuedMessagePlacement.END_OF_TURN) return unchanged(emptyList())
+        val ready = pendingMessageBatch(placement, requireNotNull(activeTask))
         if (ready.isEmpty()) return unchanged(emptyList())
         val readyIds = ready.mapTo(mutableSetOf()) { it.id }
         return changed(
@@ -761,6 +766,39 @@ data class ConversationRuntimeSchedulingState(
             ),
             ready,
         )
+    }
+
+    /** Shared selection policy; callers reserve the result under the coordinator lock. */
+    private fun pendingMessageBatch(
+        placement: QueuedMessagePlacement,
+        anchor: ConversationRuntimeTask,
+    ): List<ConversationRuntimeTask> {
+        val candidates = pendingTasks.filter { it.placement == placement && it.id != anchor.id }
+        if (placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) return candidates
+        val recipients = anchor.humanBatchRecipients() ?: return emptyList()
+        // Do not jump across another actor, recipient set, history operation, or runtime
+        // notification. Those tasks retain their own response and execution authority.
+        return candidates.takeWhile {
+            it.actorUserId == anchor.actorUserId && it.requirements == anchor.requirements &&
+                it.humanBatchRecipients() == recipients
+        }
+    }
+
+    private fun ConversationRuntimeTask.humanBatchRecipients(): Set<AgentDefinition.Id>? {
+        val message = userMessageOrNull() ?: return null
+        if (actorUserId == null || externalChannel != null ||
+            message.role != Conversation.Message.Role.USER ||
+            (message.author as? Conversation.Message.Author.User)?.userId != actorUserId ||
+            message.instructions.any { it is Conversation.Message.Instruction.Source.Agent } ||
+            "syntheticKind" in message.providerMetadata
+        ) return null
+        return when (val input = payload) {
+            is ConversationRuntimeTask.Payload.AgentInvocation -> setOf(input.agentDefinitionId)
+            is ConversationRuntimeTask.Payload.PostMessage -> input.autoRespondAgentIds.takeIf {
+                it.isNotEmpty() && input.replaceExternalOriginalId == null
+            }
+            else -> null
+        }
     }
 
     fun readyWorkItem(): ConversationRuntimeWorkItem? {

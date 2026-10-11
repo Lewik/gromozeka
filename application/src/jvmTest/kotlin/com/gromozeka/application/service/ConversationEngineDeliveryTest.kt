@@ -19,8 +19,9 @@ class ConversationEngineDeliveryTest {
     private val bob = User.Id("bob")
     private val project = Project(Project.Id("project"), "Test", createdAt = now, lastUsedAt = now)
     private val agentId = AgentDefinition.Id("agent")
+    private val otherAgentId = AgentDefinition.Id("other-agent")
     private val conversation = Conversation(Conversation.Id("conversation"), project.id,
-        setOf(Conversation.Participant.User(user), Conversation.Participant.User(bob), Conversation.Participant.Agent(agentId)),
+        setOf(Conversation.Participant.User(user), Conversation.Participant.User(bob), Conversation.Participant.Agent(agentId), Conversation.Participant.Agent(otherAgentId)),
         currentThread = Conversation.Thread.Id("thread"), createdAt = now, updatedAt = now)
     private val executor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server"))
     private val requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server)
@@ -34,6 +35,106 @@ class ConversationEngineDeliveryTest {
     }
     private fun answer(outcome: AiStepOutcome = AiStepOutcome.COMPLETE) = AiRuntimeResponse(
         listOf(AiAssistantMessage(listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Answer"))))), outcome = outcome)
+
+    @Test fun `queued idle bursts produce one request containing every distinct message in either mode`() = runBlocking {
+        for (mode in UserMessageDeliveryMode.entries) {
+            val f = Fixture(); f.messages.clear()
+            for ((index, id) in listOf("a", "b", "c").withIndex()) {
+                assertTrue(f.coordinator.submitUserInput(input(id, broadcast = index % 2 == 0), mode))
+            }
+            f.drain()
+            val request = f.requests.single()
+            assertEquals(listOf("a", "b", "c"), request.messages.map { it.id.value })
+            assertEquals("user", request.options.toolContext[TOOL_CONTEXT_USER_ID])
+            assertTrue(request.messages.none { it.instructions.contains(liveSteeringInstruction) })
+            assertEquals(listOf("a", "b", "c"), f.emitted.filter { it.author is Conversation.Message.Author.User }.map { it.id.value })
+            assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+        }
+    }
+
+    @Test fun `after turn backlog starts one new response for the entire batch`() = runBlocking {
+        val f = Fixture(); val running = f.begin()
+        for (id in listOf("a", "b", "c")) f.coordinator.submitUserInput(input(id), UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+        val outcome = f.engine.runRuntimeTask(running, executor) {}
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
+        assertEquals(listOf("root"), f.requests.single().messages.map { it.id.value })
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
+        f.drain()
+        assertEquals(2, f.requests.size)
+        assertEquals(listOf("root", "a", "b", "c"), f.requests.last().messages.filter { it.author is Conversation.Message.Author.User }.map { it.id.value })
+    }
+
+    @Test fun `a single safe point delivers all steer messages before one model response`() = runBlocking {
+        val f = Fixture(); val running = f.begin()
+        for (id in listOf("a", "b", "c")) f.coordinator.submitUserInput(input(id, broadcast = true), UserMessageDeliveryMode.STEER)
+        val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) {})
+        assertTrue(f.requests.isEmpty())
+        assertEquals(listOf("a", "b", "c"), f.messages.takeLast(3).map { it.id.value })
+        assertTrue(f.messages.takeLast(3).all { it.instructions.contains(liveSteeringInstruction) })
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
+        f.drain()
+        assertEquals(listOf("root", "a", "b", "c"), f.requests.single().messages.map { it.id.value })
+    }
+
+    @Test fun `late after-turn input does not leak into preparation of the already claimed batch`() = runBlocking {
+        for (hasFollower in listOf(false, true)) {
+            val f = Fixture(); f.messages.clear()
+            f.coordinator.submitUserInput(input("a"), UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+            if (hasFollower) f.coordinator.submitUserInput(input("b"), UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+            f.onAppend = { message ->
+                if (message.id.value == "a") {
+                    assertTrue(f.coordinator.submitUserInput(input("late"), UserMessageDeliveryMode.AFTER_CURRENT_TURN))
+                }
+            }
+            f.drain()
+            assertEquals(2, f.requests.size)
+            assertEquals(if (hasFollower) listOf("a", "b") else listOf("a"), f.requests.first().messages.map { it.id.value })
+            assertTrue(f.requests.last().messages.any { it.id.value == "late" })
+        }
+    }
+
+    @Test fun `broadcast batch invokes each selected agent once rather than once per message`() = runBlocking {
+        val f = Fixture(); f.messages.clear()
+        for (id in listOf("a", "b", "c")) {
+            val task = input(id)
+            val post = task.copy(payload = ConversationRuntimeTask.Payload.PostMessage(requireNotNull(task.userMessageOrNull()), setOf(otherAgentId, agentId)))
+            f.coordinator.submitUserInput(post, UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+        }
+        f.drain()
+        assertEquals(2, f.requests.size)
+        for (request in f.requests) {
+            assertEquals(listOf("a", "b", "c"), request.messages.filter { it.author is Conversation.Message.Author.User }.map { it.id.value })
+        }
+        assertEquals(listOf("a", "b", "c"), f.messages.filter { it.author is Conversation.Message.Author.User }.map { it.id.value })
+    }
+
+    @Test fun `different actor is a batch boundary and retains its own model tool authority`() = runBlocking {
+        val f = Fixture(); f.messages.clear()
+        for (task in listOf(input("a"), input("b", bob), input("c", bob), input("d"))) {
+            f.coordinator.submitUserInput(task, UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+        }
+        f.drain()
+        assertEquals(listOf("user", "bob", "user"), f.requests.map { it.options.toolContext[TOOL_CONTEXT_USER_ID] })
+        assertEquals(listOf(listOf("a"), listOf("a", "b", "c"), listOf("a", "b", "c", "d")),
+            f.requests.map { request -> request.messages.filter { it.author is Conversation.Message.Author.User }.map { it.id.value } })
+    }
+
+    @Test fun `partially appended reserved batch is recovered without duplicating messages`() = runBlocking {
+        val f = Fixture(); f.messages.clear()
+        val root = input("a")
+        for (task in listOf(root, input("b"), input("c"))) f.coordinator.submitUserInput(task, UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+        f.claim(root)
+        f.onAppend = { if (it.id.value == "b") error("synthetic interruption") }
+        assertFailsWith<IllegalStateException> { f.engine.runRuntimeTask(root, executor) {} }
+        assertEquals(listOf("a", "b"), f.messages.map { it.id.value })
+        assertTrue(f.requests.isEmpty())
+        f.coordinator.abort(conversation.id)
+        assertTrue(f.coordinator.requestResume(conversation.id))
+        f.onAppend = {}
+        f.drain()
+        assertEquals(listOf("a", "b", "c"), f.requests.single().messages.map { it.id.value })
+        assertEquals(listOf("a", "b", "c"), f.messages.filter { it.author is Conversation.Message.Author.User }.map { it.id.value })
+    }
 
     @Test fun `queued broadcast is delivered before a new model call and preserves human provenance`() = runBlocking {
         val f = Fixture(); val task = f.begin()
@@ -140,6 +241,7 @@ class ConversationEngineDeliveryTest {
         val emitted = mutableListOf<Conversation.Message>()
         val requests = mutableListOf<AiRuntimeRequest>()
         var onCall: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { answer() }
+        var onAppend: suspend (Conversation.Message) -> Unit = {}
         private val runtime = object : AiRuntime {
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse { requests += request; return onCall(request) }
             override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("No streaming")
@@ -172,15 +274,17 @@ class ConversationEngineDeliveryTest {
         }
         val engine = ConversationEngineService(
             aiRuntimeProvider = responding { runtime }, aiToolProvider = responding { emptyList<Any>() },
-            agentDomainService = responding { agent }, agentPromptAssemblyService = responding { emptyList<String>() },
+            agentDomainService = responding { invocation ->
+                if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
+            }, agentPromptAssemblyService = responding { emptyList<String>() },
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations,
             conversationMessageAppender = object : ConversationRuntimeMessageAppender {
                 override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation {
-                    messages += message; return conversation
+                    messages += message; onAppend(message); return conversation
                 }
             }, historyMutationExecutor = mock(), memoryApplicationService = mock(), memoryToolApplicationService = mock(),
             backgroundActivityCompletionApplicationService = mock(), memoryMessageRoutingApplicationService = mock(),
-            toolCallSequenceFixerService = mock(), settingsProvider = responding { UserProfile() },
+            toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { UserProfile() },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
@@ -210,7 +314,17 @@ class ConversationEngineDeliveryTest {
             assertTrue(coordinator.completeActiveTask(conversation.id, parent.id, executor, ConversationRuntimeTaskOutcome.Continue(next)))
             claim(next)
         }
-        private suspend fun claim(task: ConversationRuntimeTask) {
+        suspend fun drain() {
+            repeat(20) {
+                val ready = coordinator.listReadyWorkItems(1).singleOrNull() ?: return
+                val task = coordinator.listPending(conversation.id).first { it.id == ready.taskId }
+                claim(task)
+                val outcome = engine.runRuntimeTask(task, executor) { emitted += it }
+                assertTrue(coordinator.completeActiveTask(conversation.id, task.id, executor, outcome))
+            }
+            error("Runtime did not drain within the bounded number of steps")
+        }
+        suspend fun claim(task: ConversationRuntimeTask) {
             assertNotNull(coordinator.claimDeliveredTask(conversation.id, task.id, executor, requirements.capabilities, emptySet()))
             assertTrue(coordinator.markActiveTaskStarted(conversation.id, task.id, executor, now))
         }
