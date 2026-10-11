@@ -1,5 +1,15 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE
+import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.tool.ToolAccessPolicy
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.*
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
 import com.gromozeka.domain.model.AiProvider
@@ -192,6 +202,63 @@ class AiRequestResponseGatewayCodecTest {
         )
     }
 
+    @Test fun `query operation is rejected by a legacy decoder even after Worker reconnect`() {
+        val handler = TestHandler()
+        val ordinary = AiRequestResponseGatewayCodec.encodeCallRequest(handler.runtime, null, handler.runtimeRequest)
+        val isolated = AiRequestResponseGatewayCodec.encodeCallRequest(handler.runtime, null, contextQuery(handler))
+        assertEquals("call", Json.parseToJsonElement(ordinary.decodeToString()).jsonObject.getValue("operationKind").jsonPrimitive.content)
+        assertEquals("isolated_context_query_v1", Json.parseToJsonElement(isolated.decodeToString()).jsonObject.getValue("operationKind").jsonPrimitive.content)
+        for (ignoreUnknown in listOf(false, true)) {
+            val legacy = Json { ignoreUnknownKeys = ignoreUnknown }
+            assertIs<LegacyAiCallOperation.Call>(legacy.decodeFromString(LegacyAiCallOperation.serializer(), ordinary.decodeToString()))
+            assertFailsWith<SerializationException> {
+                legacy.decodeFromString(LegacyAiCallOperation.serializer(), isolated.decodeToString())
+            }
+        }
+    }
+
+    @Test fun `supported query wire calls once and preserves isolated request options`() = runBlocking<Unit> {
+        val fixture = TestHandler()
+        val query = contextQuery(fixture)
+        var calls = 0
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                calls++
+                assertEquals(fixture.runtime, runtime)
+                assertEquals(null, workspaceRootPath)
+                assertEquals(query, request)
+                return fixture.runtimeResponse
+            }
+        }
+        val result = AiRequestResponseGatewayCodec.execute(AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, query), handler)
+        assertEquals(fixture.runtimeResponse, AiRequestResponseGatewayCodec.decodeCallResponse(result))
+        assertEquals(1, calls)
+    }
+
+    @Test fun `unsafe query options or downgrade to ordinary operation fail before handler`() = runBlocking<Unit> {
+        val fixture = TestHandler()
+        val query = contextQuery(fixture)
+        assertFailsWith<IllegalArgumentException> {
+            AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, query.copy(options = query.options.copy(toolChoice = AiToolChoice.Auto)))
+        }
+        var calls = 0
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                calls++
+                return fixture.runtimeResponse
+            }
+        }
+        val encoded = Json.parseToJsonElement(AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, query).decodeToString()).jsonObject
+        val downgraded = JsonObject(encoded + ("operationKind" to JsonPrimitive("call"))).toString().encodeToByteArray()
+        assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.execute(downgraded, handler) }
+        assertEquals(0, calls)
+    }
+
+    private fun contextQuery(fixture: TestHandler) = fixture.runtimeRequest.copy(tools = emptyList(), options = fixture.runtimeRequest.options.copy(
+        usagePurpose = AI_CONTEXT_QUERY_PURPOSE, toolChoice = AiToolChoice.None, toolAccess = ToolAccessPolicy.AllowOnly(),
+        autoCompactionThresholdTokens = null, toolContext = mapOf("conversationId" to "context-query:synthetic"),
+    ))
+
     private class TestHandler : AiRequestResponseExecutionHandler {
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("model-config"))
         val modelSpec = AiModelSpec(
@@ -340,4 +407,14 @@ class AiRequestResponseGatewayCodecTest {
             return quotaSnapshot
         }
     }
+}
+
+// The pre-query protocol has no fallback subtype. Model the existing call shape with opaque
+// JSON bodies so this regression tests discriminator compatibility, not an unrelated DTO field.
+@Serializable
+@JsonClassDiscriminator("operationKind")
+private sealed interface LegacyAiCallOperation {
+    @Serializable
+    @SerialName("call")
+    data class Call(val runtime: JsonObject, val workspaceRootPath: String?, val request: JsonObject) : LegacyAiCallOperation
 }

@@ -1,6 +1,7 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.ai.AiStepOutcome
+import com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SpeechAudioFormat
@@ -57,14 +58,15 @@ object AiRequestResponseGatewayCodec {
         runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
         request: AiRuntimeRequest,
-    ): ByteArray =
-        encodeOperation(
-            AiRequestResponseOperation.Call(
-                runtime = runtime,
-                workspaceRootPath = workspaceRootPath,
-                request = request.toWire(),
-            )
-        )
+    ): ByteArray {
+        if (request.options.usagePurpose == AI_CONTEXT_QUERY_PURPOSE) {
+            requireContextQueryContract(workspaceRootPath, request)
+            // A Worker can reconnect after capability resolution. An old decoder must reject
+            // this discriminator even if it would silently accept an unfamiliar usagePurpose.
+            return encodeOperation(AiRequestResponseOperation.ContextQuery(runtime, workspaceRootPath, request.toWire()))
+        }
+        return encodeOperation(AiRequestResponseOperation.Call(runtime, workspaceRootPath, request.toWire()))
+    }
 
     fun decodeCallResponse(payload: ByteArray): AiRuntimeResponse =
         decodePayload<AiRequestResponsePayload.Call>(payload).response.toRuntime()
@@ -124,13 +126,18 @@ object AiRequestResponseGatewayCodec {
         handler: AiRequestResponseExecutionHandler,
     ): ByteArray {
         val result = when (val operation = decodeOperation(payload)) {
-            is AiRequestResponseOperation.Call -> AiRequestResponsePayload.Call(
-                handler.call(
-                    runtime = operation.runtime,
-                    workspaceRootPath = operation.workspaceRootPath,
-                    request = operation.request.toRuntime(),
-                ).toWire()
-            )
+            is AiRequestResponseOperation.Call -> {
+                require(operation.request.options.usagePurpose != AI_CONTEXT_QUERY_PURPOSE) {
+                    "Isolated context query requires its versioned wire operation"
+                }
+                AiRequestResponsePayload.Call(handler.call(operation.runtime, operation.workspaceRootPath,
+                    operation.request.toRuntime()).toWire())
+            }
+            is AiRequestResponseOperation.ContextQuery -> {
+                val request = operation.request.toRuntime()
+                requireContextQueryContract(operation.workspaceRootPath, request)
+                AiRequestResponsePayload.Call(handler.call(operation.runtime, operation.workspaceRootPath, request).toWire())
+            }
 
             is AiRequestResponseOperation.Embed -> AiRequestResponsePayload.Embed(
                 handler.embed(
@@ -161,6 +168,15 @@ object AiRequestResponseGatewayCodec {
         return json.encodeToString(AiRequestResponsePayload.serializer(), result).encodeToByteArray()
     }
 
+    private fun requireContextQueryContract(workspaceRootPath: String?, request: AiRuntimeRequest) {
+        require(workspaceRootPath == null && request.options.usagePurpose == AI_CONTEXT_QUERY_PURPOSE &&
+            request.tools.isEmpty() && request.options.toolChoice == AiToolChoice.None &&
+            request.options.toolAccess == com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly() &&
+            request.options.autoCompactionThresholdTokens == null) {
+            "Unsupported isolated context query transport contract"
+        }
+    }
+
     private fun encodeOperation(operation: AiRequestResponseOperation): ByteArray =
         json.encodeToString(AiRequestResponseOperation.serializer(), operation).encodeToByteArray()
 
@@ -178,6 +194,14 @@ private sealed interface AiRequestResponseOperation {
     @Serializable
     @SerialName("call")
     data class Call(
+        val runtime: ResolvedAiRuntime,
+        val workspaceRootPath: String?,
+        val request: AiRuntimeRequestWire,
+    ) : AiRequestResponseOperation
+
+    @Serializable
+    @SerialName("isolated_context_query_v1")
+    data class ContextQuery(
         val runtime: ResolvedAiRuntime,
         val workspaceRootPath: String?,
         val request: AiRuntimeRequestWire,
