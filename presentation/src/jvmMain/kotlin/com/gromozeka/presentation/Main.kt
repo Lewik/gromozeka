@@ -184,54 +184,6 @@ fun main(args: Array<String>) {
 
         val localization = rememberClientTranslation(remoteApp?.components?.translationService, settingsStore)
         val startedApp = remoteApp
-        if (traySupported) {
-            Tray(
-                icon = painterResource("logos/logo-32x32.png"),
-                state = trayState,
-                tooltip = when (trayPttState) {
-                    PttState.IDLE -> "Gromozeka"
-                    PttState.PREPARING -> localization.runtime.preparingVoiceStatus
-                    PttState.RECORDING -> localization.runtime.recordingVoiceStatus
-                    PttState.TRANSCRIBING -> localization.runtime.transcribingVoiceStatus
-                },
-                onAction = ::showWindow,
-            ) {
-                Item(localization.text("native.open"), onClick = ::showWindow)
-                Separator()
-                Item(
-                    text = when {
-                        connecting -> localization.text("native.serverStatus", "status" to localization.runtime.connectingStatus)
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTED -> localization.text("native.serverStatus", "status" to localization.runtime.connectedStatus)
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTING -> localization.text("native.serverStatus", "status" to localization.runtime.connectingStatus)
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.RECONNECTING -> localization.text("native.serverStatus", "status" to localization.runtime.reconnectingStatus)
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.OFFLINE -> localization.text("native.serverStatus", "status" to localization.runtime.offlineStatus)
-                        trayRemoteConnectionStatus == RemoteConnectionState.Status.DISCONNECTED -> localization.text("native.serverStatus", "status" to localization.runtime.disconnectedStatus)
-                        remoteUrl == null -> localization.text("native.serverStatus", "status" to localization.text("native.notConfigured"))
-                        else -> localization.text("native.serverStatus", "status" to localization.runtime.disconnectedStatus)
-                    },
-                    enabled = false,
-                    onClick = {},
-                )
-                if (trayPttState != PttState.IDLE) {
-                    Item(
-                        text = when (trayPttState) {
-                            PttState.PREPARING -> localization.text("native.voiceStatus", "status" to localization.runtime.preparingVoiceStatus)
-                            PttState.RECORDING -> localization.text("native.voiceStatus", "status" to localization.runtime.recordingVoiceStatus)
-                            PttState.TRANSCRIBING -> localization.text("native.voiceStatus", "status" to localization.runtime.transcribingVoiceStatus)
-                            PttState.IDLE -> localization.text("native.voiceStatus", "status" to localization.text("native.idle"))
-                        },
-                        enabled = false,
-                        onClick = {},
-                    )
-                }
-                Separator()
-                Item(
-                    text = if (quitting) localization.text("native.quitting") else localization.text("native.quit"),
-                    enabled = !quitting,
-                    onClick = ::quit,
-                )
-            }
-        }
         if (startedApp != null) {
             ChatWindow(
                 appComponents = startedApp.components,
@@ -339,6 +291,54 @@ fun main(args: Array<String>) {
                         )
                     }
                 }
+            }
+        }
+        if (traySupported) {
+            Tray(
+                icon = painterResource("logos/logo-32x32.png"),
+                state = trayState,
+                tooltip = when (trayPttState) {
+                    PttState.IDLE -> "Gromozeka"
+                    PttState.PREPARING -> localization.runtime.preparingVoiceStatus
+                    PttState.RECORDING -> localization.runtime.recordingVoiceStatus
+                    PttState.TRANSCRIBING -> localization.runtime.transcribingVoiceStatus
+                },
+                onAction = ::showWindow,
+            ) {
+                Item(localization.text("native.open"), onClick = ::showWindow)
+                Separator()
+                Item(
+                    text = when {
+                        connecting -> localization.text("native.serverStatus", "status" to localization.runtime.connectingStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTED -> localization.text("native.serverStatus", "status" to localization.runtime.connectedStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.CONNECTING -> localization.text("native.serverStatus", "status" to localization.runtime.connectingStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.RECONNECTING -> localization.text("native.serverStatus", "status" to localization.runtime.reconnectingStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.OFFLINE -> localization.text("native.serverStatus", "status" to localization.runtime.offlineStatus)
+                        trayRemoteConnectionStatus == RemoteConnectionState.Status.DISCONNECTED -> localization.text("native.serverStatus", "status" to localization.runtime.disconnectedStatus)
+                        remoteUrl == null -> localization.text("native.serverStatus", "status" to localization.text("native.notConfigured"))
+                        else -> localization.text("native.serverStatus", "status" to localization.runtime.disconnectedStatus)
+                    },
+                    enabled = false,
+                    onClick = {},
+                )
+                if (trayPttState != PttState.IDLE) {
+                    Item(
+                        text = when (trayPttState) {
+                            PttState.PREPARING -> localization.text("native.voiceStatus", "status" to localization.runtime.preparingVoiceStatus)
+                            PttState.RECORDING -> localization.text("native.voiceStatus", "status" to localization.runtime.recordingVoiceStatus)
+                            PttState.TRANSCRIBING -> localization.text("native.voiceStatus", "status" to localization.runtime.transcribingVoiceStatus)
+                            PttState.IDLE -> localization.text("native.voiceStatus", "status" to localization.text("native.idle"))
+                        },
+                        enabled = false,
+                        onClick = {},
+                    )
+                }
+                Separator()
+                Item(
+                    text = if (quitting) localization.text("native.quitting") else localization.text("native.quit"),
+                    enabled = !quitting,
+                    onClick = ::quit,
+                )
             }
         }
     }
