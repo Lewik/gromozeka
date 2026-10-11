@@ -266,7 +266,7 @@ jobs:
           - target: client-device
             tasks: ":presentation:linkReleaseFrameworkIosArm64"
           - target: client-simulator
-            tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :presentation:iosSimulatorArm64Test"
+            tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :presentation:iosSimulatorArm64Test :shared:iosSimulatorArm64Test"
           - target: worker-device
             tasks: ":mobile-worker:linkReleaseFrameworkIosArm64"
           - target: worker-simulator

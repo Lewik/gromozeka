@@ -59,6 +59,20 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn("!inputs.skip_ios", JOBS["verify-ios"]["if"])
         self.assertIn('"$GITHUB_REF" != "refs/heads/main"', scripts(JOBS["metadata"]))
 
+    def test_ios_checks_cover_shared_native_regressions_and_both_apps(self):
+        matrix = JOBS["verify-ios"]["strategy"]["matrix"]["include"]
+        tasks = {task for target in matrix for task in target["tasks"].split()}
+        required = {
+            ":shared:iosSimulatorArm64Test",
+            ":presentation:iosSimulatorArm64Test",
+            ":mobile-worker:iosSimulatorArm64Test",
+            ":presentation:linkReleaseFrameworkIosArm64",
+            ":presentation:linkReleaseFrameworkIosSimulatorArm64",
+            ":mobile-worker:linkReleaseFrameworkIosArm64",
+            ":mobile-worker:linkReleaseFrameworkIosSimulatorArm64",
+        }
+        self.assertTrue(required.issubset(tasks), f"Missing iOS checks: {required - tasks}")
+
     def test_android_skip_keeps_jvm_checks_and_gates_artifacts(self):
         steps = {step.get("name"): step for step in JOBS["verify-client"]["steps"]}
         self.assertNotIn("if", steps["Verify JVM client"])
