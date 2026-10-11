@@ -50,13 +50,16 @@ class AgentCollaborationService(
         return conversation
     }
 
-    private suspend fun sameBoundary(source: AgentEndpoint, target: AgentEndpoint, actor: User.Id) {
+    private data class EligibleSession(val conversation: Conversation, val agent: AgentDefinition)
+
+    private suspend fun sameBoundary(source: AgentEndpoint, target: AgentEndpoint, actor: User.Id): EligibleSession {
         val from = authorize(source, actor)
         val to = authorize(target, actor)
         require(from.projectId == to.projectId) { "Cross-project communication is disabled" }
         val sourceAgent = agents.findById(source.agentId) ?: error("Source agent unavailable")
         val targetAgent = agents.findById(target.agentId) ?: error("Target agent unavailable")
         require(sourceAgent.toolAccess == targetAgent.toolAccess) { "This experiment requires matching agent tool policies" }
+        return EligibleSession(to, targetAgent)
     }
 
     suspend fun sessions(source: AgentEndpoint, actor: User.Id): JsonArray {
@@ -66,12 +69,18 @@ class AgentCollaborationService(
                 if (candidate.id == source.conversationId || candidate.externalChannel != null || Conversation.Participant.User(actor) !in candidate.participants) continue
                 for (participant in candidate.participants.filterIsInstance<Conversation.Participant.Agent>()) {
                     val endpoint = AgentEndpoint(candidate.id, candidate.currentThread, participant.agentDefinitionId)
-                    val same = try { sameBoundary(source, endpoint, actor); true } catch (_: IllegalArgumentException) { false }
-                    if (!same) continue
+                    val eligible = try { sameBoundary(source, endpoint, actor) } catch (_: IllegalArgumentException) { null }
+                        ?: continue
+                    val storedTitle = eligible.conversation.displayName
                     add(buildJsonObject {
-                        put("conversation_id", candidate.id.value); put("title", candidate.displayName)
-                        put("agent_id", participant.agentDefinitionId.value)
-                        put("agent_name", agents.findById(participant.agentDefinitionId)?.name.orEmpty())
+                        put("conversation_id", eligible.conversation.id.value)
+                        // Match the UI's blank-title presentation, without inventing a persisted name.
+                        put("title", storedTitle.takeIf(String::isNotBlank) ?: "New conversation")
+                        put("stored_title", storedTitle)
+                        put("title_is_fallback", storedTitle.isBlank())
+                        put("agent_id", eligible.agent.id.value)
+                        // Use the definition already checked by sameBoundary, not a second nullable lookup.
+                        put("agent_name", eligible.agent.name)
                     })
                 }
             }

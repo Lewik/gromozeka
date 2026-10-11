@@ -538,6 +538,10 @@ models and preloaded tool lists; each session uses its own configured runtime.
 `grz_agent_sessions` discovers eligible endpoints; `grz_agent_request` submits
 work without waiting; `grz_agent_reply` completes a request. `grz_agent_message`
 is context-only and does not start a model turn. Results are queued automatically.
+Discovery returns a display-only `title` (`New conversation` for blank stored titles),
+`stored_title`, and `title_is_fallback`. The fallback corresponds to the UI's
+`common.newConversation` label; tools use its stable English form. `agent_name`
+remains the separate agent-definition name. Reads never rename stored conversations.
 Runtime displays the requests, waits, and stored results. No UI tab is required
 for server-side delivery. User input and safe-point steering remain available.
 

@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.AgentPreloadedTools
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.mockito.Mockito
@@ -59,6 +60,51 @@ class AgentCollaborationServiceTest {
         assertIs<ConversationRuntimeTask.Payload.PostMessage>(queued.payload)
         assertEquals(AgentDelivery.State.QUEUED, repo.findDelivery("$id:input")?.state)
         assertTrue(repo.items.isEmpty())
+    }
+
+    @Test fun `unnamed sessions use a display fallback without renaming or conflating the agent name`(): Unit = runBlocking {
+        setup()
+        for (title in listOf("", " \t\n")) {
+            val unnamed = conversation(target).copy(displayName = title)
+            Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(unnamed))
+            Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(unnamed)
+            val row = service.sessions(source, actor.id).single().jsonObject
+            assertEquals("New conversation", row.getValue("title").jsonPrimitive.content)
+            assertEquals(title, row.getValue("stored_title").jsonPrimitive.content)
+            assertEquals(JsonPrimitive(true), row["title_is_fallback"])
+            assertEquals(target.conversationId.value, row.getValue("conversation_id").jsonPrimitive.content)
+            assertEquals(target.agentId.value, row.getValue("agent_name").jsonPrimitive.content)
+            assertEquals(title, unnamed.displayName)
+        }
+        assertTrue(Mockito.mockingDetails(conversations).invocations.all { it.method.name.substringBefore('-') in setOf("findById", "findByProject") })
+        Mockito.verifyNoInteractions(coordinator, sync)
+    }
+
+    @Test fun `named sessions and renames use the latest authorized conversation without changing identity`(): Unit = runBlocking {
+        setup()
+        val named = conversation(target).copy(displayName = "Original title")
+        Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(named))
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(named)
+        val original = service.sessions(source, actor.id).single().jsonObject
+        assertEquals("Original title", original.getValue("title").jsonPrimitive.content)
+        assertEquals(JsonPrimitive(false), original["title_is_fallback"])
+        // Discovery's initial list may predate a rename; sameBoundary reads the current identity.
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(named.copy(displayName = "Renamed title"))
+        val renamed = service.sessions(source, actor.id).single().jsonObject
+        assertEquals("Renamed title", renamed.getValue("title").jsonPrimitive.content)
+        assertEquals("Renamed title", renamed.getValue("stored_title").jsonPrimitive.content)
+        assertEquals(original.getValue("conversation_id"), renamed.getValue("conversation_id"))
+        assertEquals(original.getValue("agent_id"), renamed.getValue("agent_id"))
+        assertTrue(Mockito.mockingDetails(conversations).invocations.all { it.method.name.substringBefore('-') in setOf("findById", "findByProject") })
+    }
+
+    @Test fun `session projection reuses the authorized agent definition instead of emitting an empty second lookup`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(conversation(target)))
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(agent(target.agentId), null)
+        val row = service.sessions(source, actor.id).single().jsonObject
+        assertEquals(target.agentId.value, row.getValue("agent_name").jsonPrimitive.content)
+        Mockito.verify(agents, Mockito.times(1)).findById(target.agentId)
     }
 
     @Test fun `different tool policies remain rejected across runtime selections`(): Unit = runBlocking {
