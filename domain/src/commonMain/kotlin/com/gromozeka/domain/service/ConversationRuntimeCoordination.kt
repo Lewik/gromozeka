@@ -403,6 +403,8 @@ enum class ConversationRuntimeCapability {
     LOCAL_AGENT_TOOL,
     COMPUTER_USE,
     MEMORY_PIPELINE,
+    /** Binary support for isolated tool-free query purpose, not a separate AI permission. */
+    AI_ISOLATED_CONTEXT_QUERY,
 }
 
 @Serializable

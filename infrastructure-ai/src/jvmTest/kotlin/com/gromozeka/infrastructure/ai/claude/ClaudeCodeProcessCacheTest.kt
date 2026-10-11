@@ -94,6 +94,19 @@ class ClaudeCodeProcessCacheTest {
     }
 
     @Test
+    fun disablesCompactionOnlyForIsolatedProcess() {
+        val ordinary = mutableMapOf("DISABLE_AUTO_COMPACT" to "0", "OTHER" to "value")
+        val isolated = ordinary.toMutableMap()
+        ordinary.applyClaudeCodeCompactionMode(false)
+        isolated.applyClaudeCodeCompactionMode(true)
+        assertEquals("0", ordinary["DISABLE_AUTO_COMPACT"])
+        assertFalse("DISABLE_COMPACT" in ordinary)
+        assertEquals("1", isolated["DISABLE_AUTO_COMPACT"])
+        assertEquals("1", isolated["DISABLE_COMPACT"])
+        assertEquals("value", isolated["OTHER"])
+    }
+
+    @Test
     fun appliesExplicitReasoningModeToClaudeCodeEnvironment() {
         val adaptive = mutableMapOf(
             "CLAUDE_CODE_DISABLE_THINKING" to "1",

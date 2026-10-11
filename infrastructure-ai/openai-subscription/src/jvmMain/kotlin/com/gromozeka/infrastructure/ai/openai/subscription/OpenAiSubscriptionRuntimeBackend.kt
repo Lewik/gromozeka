@@ -87,10 +87,7 @@ private class Runtime(
         retryOnUnauthorized: Boolean,
     ): AiRuntimeResponse = withContext(Dispatchers.IO) {
         val session = authService.getValidSession()
-        val baseConversationKey = request.options.toolContext["conversationId"] as? String ?: fallbackConversationKey
-        val rawConversationKey = if (request.options.usagePurpose in setOf("MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW")) {
-            "$baseConversationKey:message-squash:$fallbackConversationKey"
-        } else baseConversationKey
+        val rawConversationKey = request.subscriptionTransportNamespace(fallbackConversationKey)
         val conversationKey = rawConversationKey.toOpenAiSubscriptionKey()
         val promptCacheKey = (request.options.toolContext["promptCacheKey"] as? String ?: rawConversationKey)
             .toOpenAiSubscriptionKey()
@@ -131,5 +128,15 @@ private class Runtime(
             authService.refreshTokens(session.refreshToken).getOrThrow()
             execute(request, retryOnUnauthorized = false)
         }
+    }
+}
+
+/** Transport state is separate from the request's promptCacheKey. */
+internal fun AiRuntimeRequest.subscriptionTransportNamespace(fallbackKey: String): String {
+    val base = options.toolContext["conversationId"] as? String ?: fallbackKey
+    return when (options.usagePurpose) {
+        com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE -> "$base:context-query:$fallbackKey"
+        "MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW" -> "$base:message-squash:$fallbackKey"
+        else -> base
     }
 }

@@ -1547,6 +1547,29 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun isolatedContextQueryNeverTouchesNativeSessionRepositoryOrEnablesTools() = runBlocking {
+        val sessions = object : ClaudeCodeSessionStateRepository {
+            override suspend fun find(key: ClaudeCodeSessionState.Key): ClaudeCodeSessionState? = error("Query must not read native session")
+            override suspend fun save(state: ClaudeCodeSessionState): ClaudeCodeSessionState = error("Query must not save native session")
+            override suspend fun delete(key: ClaudeCodeSessionState.Key) { error("Query must not delete native session") }
+        }
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("Unknown from context"))))
+        runtime(executor, sessions).call(request(listOf(userMessage("Historical context"), userMessage("Isolated question")),
+            emptyList(), AiRuntimeOptions(usagePurpose = com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE,
+                toolChoice = AiToolChoice.None, toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
+                toolContext = testToolContext())))
+        val command = executor.commands.single()
+        assertNull(command.cacheKey)
+        assertNull(command.resumeSessionId)
+        assertTrue(command.noSessionPersistence)
+        assertTrue(command.disableCompaction)
+        assertTrue(command.nativeTools.isEmpty())
+        assertTrue(command.userPrompt.contains("Historical context"))
+        assertTrue(command.userPrompt.contains("Isolated question"))
+    }
+
+    @Test
     fun selectiveCompactionOmitsCoveredSourcesButKeepsUnrelatedEarlierContext() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
             "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))

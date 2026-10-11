@@ -542,6 +542,7 @@ private data class ClaudeCodeLaunchConfiguration(
     val effort: String?,
     val reasoningMode: String?,
     val nativeTools: Set<String>,
+    val disableCompaction: Boolean,
 ) {
     companion object {
         fun from(command: ClaudeCodeCommand): ClaudeCodeLaunchConfiguration =
@@ -553,6 +554,7 @@ private data class ClaudeCodeLaunchConfiguration(
                 effort = command.effort?.name,
                 reasoningMode = command.reasoningMode?.name,
                 nativeTools = command.nativeTools.mapTo(sortedSetOf()) { it.cliName },
+                disableCompaction = command.disableCompaction,
             )
     }
 }
@@ -566,6 +568,7 @@ private fun ClaudeCodeLaunchConfiguration.diff(other: ClaudeCodeLaunchConfigurat
         if (effort != other.effort) add("effort")
         if (reasoningMode != other.reasoningMode) add("reasoning_mode")
         if (nativeTools != other.nativeTools) add("native_tools")
+        if (disableCompaction != other.disableCompaction) add("compaction")
     }.joinToString(",").ifEmpty { "none" }
 
 private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
@@ -589,6 +592,7 @@ private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
                         .apply {
                             command.workspaceDirectory?.let(::directory)
                             environment().applyClaudeCodeReasoningMode(command.reasoningMode)
+                            environment().applyClaudeCodeCompactionMode(command.disableCompaction)
                         }
                         .start()
                 } catch (exception: IOException) {
@@ -612,6 +616,16 @@ private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
                 throw exception
             }
         }
+}
+
+/** Per-process isolation only; leave ordinary calls and the user's environment untouched.
+ * https://code.claude.com/docs/en/env-vars#environment-variables
+ */
+internal fun MutableMap<String, String>.applyClaudeCodeCompactionMode(disabled: Boolean) {
+    if (disabled) {
+        put("DISABLE_AUTO_COMPACT", "1")
+        put("DISABLE_COMPACT", "1")
+    }
 }
 
 internal fun MutableMap<String, String>.applyClaudeCodeReasoningMode(mode: AiReasoningMode?) {

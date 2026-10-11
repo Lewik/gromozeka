@@ -86,6 +86,8 @@ class ConversationRuntimeWorkerConfigurationTest {
                     properties = context.getBean(ConversationRuntimeWorkerProperties::class.java),
                 )
                 assertTrue(catalog.snapshot().isEmpty())
+                assertTrue(ConversationRuntimeCapability.AI_ISOLATED_CONTEXT_QUERY in
+                    context.getBean(ConversationRuntimeWorkerDescriptor::class.java).capabilities)
             }
     }
 

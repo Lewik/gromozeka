@@ -129,6 +129,33 @@ class TargetedAiExecutionTest {
     }
 
     @Test
+    fun `context query requires isolation support on the exact Worker without fallback`() = runBlocking {
+        val direct = RecordingDirectRuntimeProvider()
+        val remote = RecordingRemoteClient()
+        val supported = RecordingWorkerTargetResolver(workerIdentity)
+        val query = request.copy(options = request.options.copy(usagePurpose = com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE))
+        runtimeProvider(AiExecutionTarget.Worker(workerIdentity.workerId.value), direct, remote, supported)
+            .getRuntime(selection, null).call(query)
+        assertEquals(listOf(workerIdentity.workerId to ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+            workerIdentity.workerId to ConversationRuntimeCapability.AI_ISOLATED_CONTEXT_QUERY), supported.requests)
+        val oldRemote = RecordingRemoteClient()
+        val old = object : ConversationRuntimeWorkerTargetResolver {
+            override suspend fun requireRegistered(workerId: ConversationRuntimeWorkerId, capability: ConversationRuntimeCapability): ConversationRuntimeWorkerIdentity {
+                if (capability == ConversationRuntimeCapability.AI_ISOLATED_CONTEXT_QUERY) error("Worker isolation unsupported")
+                return workerIdentity
+            }
+            override suspend fun requireOnline(workerId: ConversationRuntimeWorkerId, capability: ConversationRuntimeCapability) =
+                requireRegistered(workerId, capability)
+        }
+        assertFailsWith<IllegalStateException> {
+            runtimeProvider(AiExecutionTarget.Worker(workerIdentity.workerId.value), direct, oldRemote, old)
+                .getRuntime(selection, null).call(query)
+        }
+        assertNull(oldRemote.callTarget)
+        assertTrue(direct.runtimeRequests.isEmpty())
+    }
+
+    @Test
     fun `Worker-targeted runtime rejects Server workspace path and streaming`() = runBlocking {
         val provider = runtimeProvider(
             target = AiExecutionTarget.Worker(workerIdentity.workerId.value),

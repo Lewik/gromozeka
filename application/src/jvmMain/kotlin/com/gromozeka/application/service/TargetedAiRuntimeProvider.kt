@@ -111,11 +111,15 @@ class TargetedAiRuntimeProvider(
                     options = request.options.copy(toolContext = request.options.toolContext + mapOf("conversationId" to isolated, "threadId" to isolated)))
             } else request.copy(messages = request.originalCollaborationMessages())
             runtime.modelSpec.requireSupportsInputs(request.projectedMessages(runtime.connection.kind.nativeCompactionProvider()))
-            return remoteClient().call(
-                target = workerTargetResolver.requireRegistered(
-                    workerId,
-                    ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
-                ),
+            val client = remoteClient()
+            val target = workerTargetResolver.requireRegistered(workerId, ConversationRuntimeCapability.AI_REQUEST_RESPONSE)
+            if (request.options.usagePurpose == com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE) {
+                check(workerTargetResolver.requireRegistered(workerId, ConversationRuntimeCapability.AI_ISOLATED_CONTEXT_QUERY) == target) {
+                    "Worker changed during isolated context query authorization"
+                }
+            }
+            return client.call(
+                target = target,
                 runtime = runtime,
                 workspaceRootPath = null,
                 request = forwarded,

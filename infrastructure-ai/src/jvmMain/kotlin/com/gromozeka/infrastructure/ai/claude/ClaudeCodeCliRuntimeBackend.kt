@@ -224,6 +224,7 @@ internal class ClaudeCodeCliRuntime(
             reasoningMode = request.options.reasoning?.mode,
             resumeSessionId = sessionPlan.resumeSessionId,
             noSessionPersistence = sessionStateKey == null,
+            disableCompaction = request.options.usagePurpose == com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE,
         )
 
         val executionStartedAt = System.nanoTime()
@@ -383,7 +384,10 @@ internal class ClaudeCodeCliRuntime(
     }
 
     private fun sessionStateKey(request: AiRuntimeRequest): ClaudeCodeSessionState.Key? {
-        if (request.options.usagePurpose in setOf("MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW")) return null
+        if (request.options.usagePurpose in setOf(
+                "MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW",
+                com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE,
+            )) return null
         val conversationId = request.options.toolContext["conversationId"].contextString()
             ?.takeIf { it.isNotBlank() }
             ?: request.messages.lastOrNull()?.conversationId?.value
@@ -1099,6 +1103,7 @@ internal data class ClaudeCodeCommand(
     val resumeSessionId: String?,
     val noSessionPersistence: Boolean,
     val nativeTools: Set<ClaudeCodeNativeTool> = emptySet(),
+    val disableCompaction: Boolean = false,
 )
 
 internal data class ClaudeCodeThinkingBlock(

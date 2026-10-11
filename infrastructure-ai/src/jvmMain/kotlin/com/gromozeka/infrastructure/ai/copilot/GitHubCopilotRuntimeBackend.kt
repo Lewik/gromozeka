@@ -104,6 +104,10 @@ internal class GitHubCopilotRuntime(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
 ) : AiRuntime {
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+        if (request.options.usagePurpose == com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE) {
+            throw UnsupportedOperationException(
+                "GitHub Copilot does not support a strictly tool-free isolated context query")
+        }
         require(request.messages.isNotEmpty()) { "GitHub Copilot request must contain at least one message" }
         validateOptions(request)
         val toolPlan = buildToolPlan(request)
