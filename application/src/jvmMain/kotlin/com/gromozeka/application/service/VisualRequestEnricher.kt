@@ -43,6 +43,21 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
         turnId: ConversationRuntimeTurnId,
         model: AiModelSpec,
         request: AiRuntimeRequest,
+    ): AiRuntimeRequest = enrichView(conversationId, model, request, recordReplay = true)
+
+    override suspend fun enrichSnapshot(
+        conversationId: Conversation.Id,
+        rootUserMessageId: Conversation.Message.Id,
+        turnId: ConversationRuntimeTurnId,
+        model: AiModelSpec,
+        request: AiRuntimeRequest,
+    ): AiRuntimeRequest = enrichView(conversationId, model, request, recordReplay = false)
+
+    private suspend fun enrichView(
+        conversationId: Conversation.Id,
+        model: AiModelSpec,
+        request: AiRuntimeRequest,
+        recordReplay: Boolean,
     ): AiRuntimeRequest {
         check(request.options.toolContext[TOOL_CONTEXT_CONVERSATION_ID] == conversationId.value) {
             "Visual context must match the authorized conversation"
@@ -64,7 +79,7 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
         val positions = retained.mapIndexed { index, message -> message.id to index }.toMap()
         val latest = retained.lastOrNull()?.takeIf { it.role == Conversation.Message.Role.USER }
         return mutex.withLock {
-            val previous = contexts.remove(key).orEmpty()
+            val previous = if (recordReplay) contexts.remove(key).orEmpty() else contexts[key].orEmpty()
             val signatures = mutableMapOf<Conversation.Message.Id, String>()
             fun signature(message: Conversation.Message): String = signatures.getOrPut(message.id) {
                 // Sticky/runtime instructions move or expire between requests. They are freshly
@@ -89,7 +104,7 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
             if (latest == null) {
                 // Provider CONTINUE can end on assistant/native state with no new user/tool-result
                 // anchor. Supply a full live block rather than modifying signed assistant content.
-                remember(key, replay)
+                remember(key, replay, recordReplay)
                 return@withLock apply(request, replay).let {
                     it.copy(systemPrompts = it.systemPrompts + render(current, removed))
                 }
@@ -99,7 +114,7 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
                 last.records.map(Record::identity) == current.map(Record::identity)
             ) {
                 // Rebuilding the exact same request must not append another short marker.
-                remember(key, replay)
+                remember(key, replay, recordReplay)
                 return@withLock apply(request, replay)
             }
             val records = current.map { if (known[it.id] == it.fingerprint) it.copy(state = null) else it }
@@ -109,7 +124,7 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
                 entry = Entry(latest.id, signature(latest), current, removed, render(current, removed))
             }
             replay += entry
-            remember(key, replay)
+            remember(key, replay, recordReplay)
             log.debug {
                 "VISUAL_CONTEXT call=${request.options.toolContext["aiCallDiagnosticId"] ?: "none"} " +
                     "snapshots=${entry.records.count { it.state != null }} unchanged=${entry.records.count { it.state == null }} " +
@@ -119,7 +134,8 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
         }
     }
 
-    private fun remember(key: ContextKey, entries: MutableList<Entry>) {
+    private fun remember(key: ContextKey, entries: MutableList<Entry>, recordReplay: Boolean) {
+        if (!recordReplay) return
         if (entries.isNotEmpty()) contexts[key] = entries
         while (contexts.size > MAX_CONTEXTS) contexts.remove(contexts.keys.first())
     }

@@ -15,6 +15,9 @@ import com.gromozeka.domain.model.COLLABORATION_ORIGINAL_CONTENT
 
 const val AI_PROVIDER_MANAGED_TOOL_METADATA_KEY = "providerManagedTool"
 
+/** One application-level, tool-free call over a read-only context view; never a live turn. */
+const val AI_CONTEXT_QUERY_PURPOSE = "AGENT_CONTEXT_QUERY"
+
 /**
  * Canonical request for one model execution step inside Gromozeka.
  *

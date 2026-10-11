@@ -213,6 +213,33 @@ class AiToolCapabilityCatalogServiceTest {
         }
     }
 
+    @Test
+    fun `read-only catalog miss never starts generation or saves a placeholder`() = runBlocking {
+        val repository = InMemoryCatalogRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val generator = AiToolCapabilityCatalogGenerator { _, _ -> error("Snapshot must not generate") }
+        try {
+            assertFailsWith<ContextSnapshotUnavailableException> {
+                service(repository, generator, scope).cachedPromptFor(sampleTools())
+            }
+            assertEquals(0, repository.saveCalls)
+        } finally { scope.cancel() }
+    }
+
+    @Test
+    fun `read-only catalog exactly reuses existing prompt without writes`() = runBlocking {
+        val repository = InMemoryCatalogRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val source = source(sampleTools())
+        repository.saveIfAbsent(catalog(source, toolCapabilityCatalogFingerprint(source)))
+        try {
+            val service = service(repository, AiToolCapabilityCatalogGenerator { _, _ -> error("Already cached") }, scope)
+            val ordinary = service.promptFor(sampleTools())
+            assertEquals(ordinary, service.cachedPromptFor(sampleTools()))
+            assertEquals(1, repository.saveCalls) // Only fixture setup.
+        } finally { scope.cancel() }
+    }
+
     private fun generator(): LlmAiToolCapabilityCatalogGenerator =
         LlmAiToolCapabilityCatalogGenerator(
             aiRuntimeProvider = UnusedRuntimeProvider,
@@ -341,6 +368,7 @@ private class RecordingCatalogRuntime(
 
 private class InMemoryCatalogRepository : AiToolCapabilityCatalogRepository {
     private val catalogs = mutableMapOf<Pair<String, String>, AiToolCapabilityCatalog>()
+    var saveCalls = 0
 
     override suspend fun find(
         sourceId: String,
@@ -348,8 +376,10 @@ private class InMemoryCatalogRepository : AiToolCapabilityCatalogRepository {
     ): AiToolCapabilityCatalog? =
         catalogs[sourceId to fingerprint]
 
-    override suspend fun saveIfAbsent(catalog: AiToolCapabilityCatalog): AiToolCapabilityCatalog =
-        catalogs.getOrPut(catalog.sourceId to catalog.fingerprint) { catalog }
+    override suspend fun saveIfAbsent(catalog: AiToolCapabilityCatalog): AiToolCapabilityCatalog {
+        saveCalls++
+        return catalogs.getOrPut(catalog.sourceId to catalog.fingerprint) { catalog }
+    }
 }
 
 private object EmptyMcpServerRepository : McpServerRepository {

@@ -178,11 +178,35 @@ class VisualRequestEnricherTest {
         assertEquals(39, record(frames(result).last())["state"]!!.jsonObject["data"]!!.jsonObject["count"]!!.jsonPrimitive.int)
     }
 
+    @Test fun `read-only snapshot never seeds a live replay anchor`() = runBlocking<Unit> {
+        val f = Fixture()
+        val first = request(listOf(user("u1")))
+        assertEquals(1, frames(f.snapshot(first)).size)
+        val live = f.enrich(request(first.messages + assistant("a1") + user("u2")))
+        assertEquals(1, frames(live).size)
+        assertEquals("snapshot", record(frames(live).single())["state-status"]!!.jsonPrimitive.content)
+        assertEquals(1, first.messages.single().content.size)
+    }
+
+    @Test fun `read-only truncation does not remove live replay baseline`() = runBlocking<Unit> {
+        val f = Fixture()
+        val first = user("u1")
+        val original = f.enrich(request(listOf(first)))
+        val truncated = f.snapshot(request(listOf(user("other"))))
+        assertEquals(1, frames(truncated).size)
+        val live = f.enrich(request(listOf(first, assistant("a1"), user("u2"))))
+        assertEquals(2, frames(live).size)
+        assertEquals(record(frames(original).single())["snapshot-id"], record(frames(live).first())["snapshot-id"])
+        assertEquals("unchanged", record(frames(live).last())["state-status"]!!.jsonPrimitive.content)
+        assertReferencesHaveFullSnapshots(frames(live))
+    }
+
     private class Fixture {
         var visuals = listOf(VISUAL)
         val repository = Mockito.mock(VisualRepository::class.java)
         private val service = VisualRequestEnricher(repository)
         init { runBlocking { Mockito.`when`(repository.list(CONVERSATION)).thenAnswer { visuals } } }
+        suspend fun snapshot(request: AiRuntimeRequest) = service.enrichSnapshot(CONVERSATION, Conversation.Message.Id("u1"), TURN, MODEL, request)
         suspend fun enrich(request: AiRuntimeRequest, model: AiModelSpec = MODEL) = service.enrich(CONVERSATION, Conversation.Message.Id("u1"), TURN, model, request)
     }
 

@@ -299,6 +299,20 @@ class AiToolCapabilityCatalogService(
         return renderCatalogPrompt(renderedSources)
     }
 
+    /** A query must not turn a catalog cache miss into another model call or a registry write. */
+    suspend fun cachedPromptFor(definitions: List<AiToolDefinition>): String? {
+        val sources = resolveSources(definitions)
+        if (sources.isEmpty()) return null
+        val rendered = sources.map { source ->
+            val fingerprint = toolCapabilityCatalogFingerprint(source)
+            val catalog = repository.find(source.id, fingerprint)
+                ?: throw ContextSnapshotUnavailableException(
+                    "Capability catalog for '${source.id}' is not available for a read-only snapshot")
+            renderSourceCatalog(catalog)
+        }
+        return renderCatalogPrompt(rendered)
+    }
+
     suspend fun ensureSource(source: AiToolCapabilitySource): AiToolCapabilityCatalog {
         val normalized = source.copy(definitions = normalizeToolDefinitions(source.definitions))
         val fingerprint = toolCapabilityCatalogFingerprint(normalized)

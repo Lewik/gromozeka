@@ -109,6 +109,12 @@ class ConversationArtifactApplicationServiceTest {
         assertTrue(contentStore.listIds().isEmpty())
         val message = userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(artifact.reference()))
         externalService.validateReferences(conversation.id, message.content)
+        val beforeSnapshot = repository.findById(artifact.id)
+        assertFailsWith<ContextSnapshotUnavailableException> {
+            externalService.materializeSnapshot(conversation.id, listOf(message))
+        }
+        assertEquals(0, reads)
+        assertEquals(beforeSnapshot, repository.findById(artifact.id))
         assertIs<Conversation.Message.ContentItem.ImageItem>(externalService.materialize(conversation.id, listOf(message)).single().content.single())
         assertEquals(1, reads)
         assertTrue(contentStore.listIds().isEmpty())
@@ -167,6 +173,9 @@ class ConversationArtifactApplicationServiceTest {
         service.validateReferences(conversation.id, message.content)
         assertEquals(Artifact.State.COMMITTED, repository.findById(artifact.id)?.state)
         val materialized = service.materialize(conversation.id, listOf(message)).single()
+        val committedBefore = repository.findById(artifact.id)
+        assertEquals(materialized, service.materializeSnapshot(conversation.id, listOf(message)).single())
+        assertEquals(committedBefore, repository.findById(artifact.id))
         val image = assertIs<Conversation.Message.ContentItem.ImageItem>(materialized.content.single())
         val source = assertIs<Conversation.Message.ImageSource.Base64ImageSource>(image.source)
 

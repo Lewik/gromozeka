@@ -12,4 +12,14 @@ interface ConversationRequestEnricher {
         model: AiModelSpec,
         request: AiRuntimeRequest,
     ): AiRuntimeRequest
+
+    /** An isolated observation must not consume or change the live conversation's replay state. */
+    suspend fun enrichSnapshot(
+        conversationId: Conversation.Id,
+        rootUserMessageId: Conversation.Message.Id,
+        turnId: ConversationRuntimeTurnId,
+        model: AiModelSpec,
+        request: AiRuntimeRequest,
+    ): AiRuntimeRequest = throw UnsupportedOperationException(
+        "This context enricher does not support read-only snapshots")
 }

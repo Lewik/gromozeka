@@ -97,7 +97,27 @@ class DistributedAiToolCatalog(
         project: Project,
         toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
         conversation: Conversation? = null,
+    ): DistributedAiToolCatalogSnapshot = buildSnapshot(project, toolAccess, conversation, registerContracts = true)
+
+    /** Uses registered contracts only; never allocates names or registers a tool. */
+    suspend fun readSnapshot(
+        project: Project,
+        toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
+        conversation: Conversation? = null,
+    ): DistributedAiToolCatalogSnapshot = buildSnapshot(project, toolAccess, conversation, registerContracts = false)
+
+    private suspend fun buildSnapshot(
+        project: Project,
+        toolAccess: ToolAccessPolicy,
+        conversation: Conversation?,
+        registerContracts: Boolean,
     ): DistributedAiToolCatalogSnapshot {
+        fun allowed(descriptor: AiToolDescriptor, logicalName: String, fingerprint: String): Boolean {
+            val collaborationUnavailable = conversation?.externalChannel != null &&
+                descriptor.definition.source == "gromozeka" && logicalName in AGENT_COLLABORATION_TOOL_NAMES
+            return !collaborationUnavailable && toolAccess.allows(
+                QualifiedToolName(descriptor.definition.source, logicalName), fingerprint)
+        }
         val now = Clock.System.now()
         val staleBefore = now - ConversationRuntimeTiming.workerRegistrationStaleAfter
         val availableWorkerIds = workerAccessService.listAvailableToProject(project.id)
@@ -121,6 +141,8 @@ class DistributedAiToolCatalog(
                     .filter { it.metadata.executionScope != AiToolExecutionScope.SERVER }
                     .map { descriptor -> registration to descriptor.asModelContractDescriptor() }
             }
+            .filter { (_, descriptor) -> registerContracts || allowed(
+                descriptor, descriptor.definition.name, descriptor.contractFingerprint()) }
         val serverDescriptors = aiToolProvider.getTools()
             .asSequence()
             .filter(AiToolCallback::available)
@@ -128,10 +150,21 @@ class DistributedAiToolCatalog(
             .map { callback ->
                 AiToolDescriptor(callback.definition, callback.metadata).asModelContractDescriptor()
             }
+            .filter { descriptor -> registerContracts || allowed(
+                descriptor, descriptor.definition.name, descriptor.contractFingerprint()) }
             .toList()
-        val contractsByFingerprint = aiToolContractRepository.resolveAll(
-            workerAdvertisements.map { it.second } + serverDescriptors
-        ).associateBy { it.fingerprint }
+        val descriptors = workerAdvertisements.map { it.second } + serverDescriptors
+        val contractsByFingerprint = if (registerContracts) {
+            aiToolContractRepository.resolveAll(descriptors).associateBy { it.fingerprint }
+        } else {
+            val known = aiToolContractRepository.findAll().associateBy { it.fingerprint }
+            descriptors.forEach { descriptor ->
+                val contract = known[descriptor.contractFingerprint()]
+                    ?: throw ContextSnapshotUnavailableException("A required tool contract is not registered yet")
+                check(contract.descriptor == descriptor) { "Registered tool contract does not match its descriptor" }
+            }
+            known
+        }
         val workerEntries = workerAdvertisements
             .groupBy { (_, descriptor) -> descriptor.contractFingerprint() }
             .mapNotNull { (fingerprint, advertised) ->
@@ -177,10 +210,7 @@ class DistributedAiToolCatalog(
                 )
             }
         val entries = (workerEntries + serverEntries).filterValues { entry ->
-            val collaborationUnavailable = conversation?.externalChannel != null &&
-                entry.descriptor.definition.source == "gromozeka" && entry.logicalName in AGENT_COLLABORATION_TOOL_NAMES
-            !collaborationUnavailable && toolAccess.allows(
-                QualifiedToolName(entry.descriptor.definition.source, entry.logicalName), entry.contractFingerprint)
+            allowed(entry.descriptor, entry.logicalName, entry.contractFingerprint)
         }.toSortedMap()
         val callbacks = entries.values.map(::modelCallback)
         val environmentTopology = buildEnvironmentTopology(

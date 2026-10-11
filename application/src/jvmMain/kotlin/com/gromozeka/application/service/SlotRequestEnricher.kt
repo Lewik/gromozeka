@@ -15,6 +15,10 @@ class SlotRequestEnricher(
     private val users: UserDirectoryService,
     private val toolCatalog: DistributedAiToolCatalog,
 ) : ConversationRequestEnricher {
+    override suspend fun enrichSnapshot(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+        enrich(conversationId, rootUserMessageId, turnId, model, request)
+
     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest {
         val actorId = request.options.toolContext[TOOL_CONTEXT_USER_ID] as? String ?: return request

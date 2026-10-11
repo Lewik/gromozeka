@@ -1223,17 +1223,15 @@ class ConversationEngineService(
             aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null
         val automaticMemoryRecallEnabled = conversation.externalChannel == null && memorySettings.autoRecall &&
             aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ) != null
-        val runtimeSystemPrompts = buildList {
-            addAll(baseSystemPrompts)
-            add(currentAgentRuntimePrompt(agent))
-            toolCapabilityCatalogPrompt?.let(::add)
-            add(toolCatalog.environmentPrompt)
-            agentSkillRuntime.systemPrompt?.let(::add)
-            AssistantResponseFormatContract.instruction(
-                assistantResponseFormat,
-                includeSuggestedReplies = suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE,
-            )?.let(::add)
-        }
+        val runtimeSystemPrompts = assembleConversationSystemPrompts(
+            base = baseSystemPrompts,
+            agent = agent,
+            capabilityCatalog = toolCapabilityCatalogPrompt,
+            environment = toolCatalog.environmentPrompt,
+            skills = agentSkillRuntime.systemPrompt,
+            responseFormat = assistantResponseFormat,
+            includeSuggestedReplies = suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+        )
 
         return ConversationRuntimeStepContext(
             runtimeContext = runtimeContext,
@@ -1301,19 +1299,6 @@ class ConversationEngineService(
             }
             assistantMessages.withSuggestedReplies(emptyList())
         }
-    }
-
-    private fun currentAgentRuntimePrompt(agent: AgentDefinition): String {
-        val data = buildJsonObject {
-            put("agent_definition_id", agent.id.value)
-            put("model_configuration_id", agent.runtimeSelection.modelConfigurationId.value)
-        }.toString().replace("<", "\\u003c").replace(">", "\\u003e")
-        return """
-            <current_agent>
-            Current server-managed Agent identity (JSON data): $data
-            Use `agent_definition_id` when a tool asks for the current Agent id.
-            </current_agent>
-        """.trimIndent()
     }
 
     private suspend fun appendUserMessageWithAutomaticMemory(

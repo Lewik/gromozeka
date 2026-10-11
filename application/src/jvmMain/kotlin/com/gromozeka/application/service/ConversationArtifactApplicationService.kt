@@ -210,6 +210,18 @@ class ConversationArtifactApplicationService(
     suspend fun materialize(
         conversationId: Conversation.Id,
         messages: List<Conversation.Message>,
+    ): List<Conversation.Message> = materializeView(conversationId, messages, allowExternalReads = true)
+
+    /** Only already committed, managed bytes; never ask a Worker for new content. */
+    suspend fun materializeSnapshot(
+        conversationId: Conversation.Id,
+        messages: List<Conversation.Message>,
+    ): List<Conversation.Message> = materializeView(conversationId, messages, allowExternalReads = false)
+
+    private suspend fun materializeView(
+        conversationId: Conversation.Id,
+        messages: List<Conversation.Message>,
+        allowExternalReads: Boolean,
     ): List<Conversation.Message> {
         val allReferences = messages.flatMap { it.content }.contentArtifactReferences()
         if (allReferences.isEmpty()) return messages
@@ -239,6 +251,10 @@ class ConversationArtifactApplicationService(
                 materialized[id] = MaterializedArtifact(artifact, unavailableReason = "Saved output: artifact_id=${artifact.id.value}, bytes=${artifact.sizeBytes}. Use grz_save_tool_output(artifact_id, path, mode=original) to save exact bytes, even when the preview looks incorrect. Use mode=text with source_encoding for strict conversion to UTF-8.")
                 continue
             }
+            if (external && !allowExternalReads) {
+                throw ContextSnapshotUnavailableException(
+                    "Snapshot attachment requires a fresh external content read: ${artifact.id.value}")
+            }
             if (external) externalCountRemaining--
             materialized[id] = try {
                 val bytes = readContent(artifact, if (external) minOf(ArtifactLimits.MAX_FILE_BYTES, externalBytesRemaining) else ArtifactLimits.MAX_FILE_BYTES)
@@ -247,6 +263,8 @@ class ConversationArtifactApplicationService(
                 }
                 MaterializedArtifact(artifact, Base64.getEncoder().encodeToString(bytes))
             } catch (error: ArtifactContentUnavailableException) {
+                if (!allowExternalReads) throw ContextSnapshotUnavailableException(
+                    "Snapshot attachment content is unavailable: ${artifact.id.value}", error)
                 MaterializedArtifact(artifact, unavailableReason = error.reason)
             }
         }

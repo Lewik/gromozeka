@@ -114,6 +114,32 @@ class DistributedAiToolRoutingTest {
     )
 
     @Test
+    fun `read-only catalog requires known accessible contracts and never registers`() = runBlocking {
+        val stored = InMemoryAiToolContractRepository()
+        var registrations = 0
+        val contracts = object : com.gromozeka.domain.repository.AiToolContractRepository {
+            override suspend fun findAll() = stored.findAll()
+            override suspend fun resolveAll(descriptors: Collection<AiToolDescriptor>): List<com.gromozeka.domain.tool.AiToolContract> {
+                registrations++
+                return stored.resolveAll(descriptors)
+            }
+        }
+        val catalog = distributedCatalog(InMemoryConversationRuntimeWorkerRegistry(),
+            TestWorkspaceDomainService(listOf(project), emptyList(), emptyList()),
+            listOf(conversationRuntimeTool), contractRepository = contracts)
+        kotlin.test.assertFailsWith<ContextSnapshotUnavailableException> { catalog.readSnapshot(project) }
+        assertEquals(0, registrations)
+        assertTrue(catalog.readSnapshot(project, com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly()).entries.isEmpty())
+        assertEquals(0, registrations)
+        val ordinary = catalog.snapshot(project)
+        assertEquals(1, registrations)
+        val observed = catalog.readSnapshot(project)
+        assertEquals(ordinary.entries, observed.entries)
+        assertEquals(ordinary.environmentPrompt, observed.environmentPrompt)
+        assertEquals(1, registrations)
+    }
+
+    @Test
     fun `external channels hide collaboration tools and routes without changing ordinary conversations`() = runBlocking {
         val names = com.gromozeka.domain.model.AGENT_COLLABORATION_TOOL_NAMES
         val collaborationTools = names.map { name -> conversationRuntimeTool.copy(
@@ -794,6 +820,7 @@ class DistributedAiToolRoutingTest {
         workspaceService: WorkspaceDomainService,
         serverTools: List<AiToolDescriptor> = emptyList(),
         workerAccessService: WorkerAccessService = this.workerAccessService,
+        contractRepository: com.gromozeka.domain.repository.AiToolContractRepository = InMemoryAiToolContractRepository(),
     ): DistributedAiToolCatalog =
         DistributedAiToolCatalog(
             workerRegistry = workerRegistry,
@@ -813,7 +840,7 @@ class DistributedAiToolRoutingTest {
                     }
             },
             workerAccessService = workerAccessService,
-            aiToolContractRepository = InMemoryAiToolContractRepository(),
+            aiToolContractRepository = contractRepository,
         )
 
     private fun project(id: String): Project =
