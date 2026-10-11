@@ -20,9 +20,11 @@ class SlotRequestEnricher(
         val actorId = request.options.toolContext[TOOL_CONTEXT_USER_ID] as? String ?: return request
         val actor = users.findActiveById(User.Id(actorId)) ?: return request
         val conversation = slots.authorizeConversation(actor, conversationId, ProjectPermission.READ)
-        val views = slots.list(actor).filter { it.snapshot.slot.projectId == conversation.projectId }
+        val catalog = slots.catalog(actor, conversation.projectId)
+        val views = catalog.slots
         val data = buildJsonObject {
             put("conversation_id", conversationId.value)
+            put("automatic_requests", Json.encodeToJsonElement(catalog.automaticRequests.filter { it.conversationId == conversationId }))
             put("slots", buildJsonArray { views.forEach { view ->
                 val held = view.snapshot.leases.filter { it.conversationId == conversationId }
                 val pending = view.snapshot.requests.filter { it.conversationId == conversationId }
@@ -48,7 +50,9 @@ class SlotRequestEnricher(
             request.tools + release else request.tools
         return request.copy(tools = tools, systemPrompts = request.systemPrompts + """
             Development slots: Server-owned current state, independent of conversation history.
-            Acquire through grz_slot_acquire; grants arrive automatically, do not poll. Several different slots may be held.
+            Acquire through grz_slot_acquire; omit slot_number for Runtime selection, or supply a number for that exact slot only.
+            Every acquisition requests a new occupation: automatic selection excludes your held slots and exact pending targets.
+            Grants arrive automatically, do not poll. Several different slots may be held; automatic_requests have no mount until granted.
             Use each slot's exact WorkspaceMount for commands; Runtime assigns immutable origin and GRZ_SLOT.
             Leases survive history changes in the same Conversation. Fork and Restart-created new Conversations do not inherit them. Current state below overrides copied or delayed receipts.
             Return via grz_slot_release using its exact lease_id; warnings require an issued confirmation_id, not cleanup.

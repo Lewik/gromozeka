@@ -39,21 +39,40 @@ class SlotInventoryTest {
         runOnIdle { assertEquals(1, service.confirmations) }
     }
 
-    private inner class FakeService(views: List<SlotView>) : SlotService {
-        val state = MutableStateFlow(views)
+    @Test fun `unbound automatic waits appear in header and empty catalog and can be cancelled`() = runComposeUiTest {
+        val request = SlotRequest("automatic", "key", null, conversation, User.Id("user"), AgentDefinition.Id("agent"), SlotAccess.READ, now, projectId = Project.Id("project"))
+        val service = FakeService(emptyList(), listOf(request))
+        assertEquals(SlotHeaderOccupancy(emptyList(), emptyList(), 1), slotHeaderOccupancy(emptyList(), conversation, listOf(request)))
+        assertEquals(0, slotHeaderOccupancy(emptyList(), Conversation.Id("fork"), listOf(request)).automaticPending)
+        setContent { GromozekaTheme { SlotHeaderButton(service, conversation) {} } }
+        onNodeWithTag("conversation-slots").assertTextContains("(1)", substring = true).performClick()
+        onNodeWithTag("automatic-slot-request-automatic").assertExists()
+        onNodeWithTag("cancel-slot-request-automatic").performClick()
+        runOnIdle { assertEquals(listOf("automatic"), service.cancelled) }
+        onNodeWithTag("automatic-slot-request-automatic").assertDoesNotExist()
+    }
+
+    private inner class FakeService(views: List<SlotView>, automatic: List<SlotRequest> = emptyList()) : SlotService {
+        val state = MutableStateFlow(SlotCatalogSnapshot(views, automatic))
+        val cancelled = mutableListOf<String>()
         var preparations = 0
         var confirmations = 0
         override fun observe() = state
         override suspend fun list() = state.value
         override suspend fun prepareReclaim(leaseId: String): SlotLease {
             preparations++
-            return state.value.flatMap { it.snapshot.leases }.single { it.id == leaseId }
+            return state.value.slots.flatMap { it.snapshot.leases }.single { it.id == leaseId }
                 .copy(reclaimConfirmation = SlotReclaimConfirmation("confirmation", now, now + 15.minutes))
         }
         override suspend fun confirmReclaim(leaseId: String, confirmationId: String): SlotLease {
             assertEquals("confirmation", confirmationId); confirmations++
-            return state.value.flatMap { it.snapshot.leases }.single { it.id == leaseId }.copy(releasedAt = now)
+            return state.value.slots.flatMap { it.snapshot.leases }.single { it.id == leaseId }.copy(releasedAt = now)
         }
-        override suspend fun cancelRequest(requestId: String): SlotRequest = error("Not used")
+        override suspend fun cancelRequest(requestId: String): SlotRequest {
+            val request = state.value.automaticRequests.single { it.id == requestId }
+            cancelled += requestId
+            state.value = state.value.copy(automaticRequests = state.value.automaticRequests.filterNot { it.id == requestId })
+            return request.copy(state = SlotRequest.State.CANCELLED)
+        }
     }
 }

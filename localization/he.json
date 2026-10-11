@@ -2034,6 +2034,7 @@
     "client.delivery.description": "חל על הודעות חדשות בכל השיחות ובכל המכשירים שלך. Steer ממתין לנקודה בטוחה בלי לבטל את הקריאה המתבצעת. הודעות שכבר נמצאות בתור שומרות על מועד המסירה שלהן.",
     "client.delivery.steer": "Steer — בנקודה הבטוחה הבאה",
     "client.delivery.afterTurn": "לאחר הסבב הנוכחי",
-    "client.delivery.saveFailed": "לא ניתן לשמור את העדפת מסירת ההודעות."
+    "client.delivery.saveFailed": "לא ניתן לשמור את העדפת מסירת ההודעות.",
+    "slots.automatic": "בחירה אוטומטית"
   }
 }

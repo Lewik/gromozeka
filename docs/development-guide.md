@@ -414,9 +414,44 @@ acceptance immediately, even for a free slot. The database-backed processor gran
 access and writes a notification in the same short transaction. Notifications use
 the existing durable Conversation runtime and safe delivery points, without shell
 wait commands or model polling. Pending requests survive history changes; deletion
-or loss of eligibility rejects pending requests. Already granted leases require
-explicit return rather than timeout-based reclamation. The slot queue is separate
-from resource-heavy command admission.
+or loss of requester/Conversation/Agent eligibility rejects pending requests.
+Already granted leases require explicit return rather than timeout-based
+reclamation. The slot queue is separate from resource-heavy command admission.
+
+`grz_slot_acquire` requires `access`; `slot_number` is optional. When present it is
+an exact target, never a hint or fallback. When omitted, Runtime chooses the
+lowest-numbered eligible registered slot in the original project/personal catalog.
+Acquire always means a **new occupation**: automatic selection excludes every slot
+already held by this Conversation (no implicit reuse or READ-to-WRITE upgrade),
+and its other pending exact targets. Separate fresh requests may obtain several
+slots; a replay with the same request key returns the original request/lease.
+
+Automatic requests remain unbound until granting, even with an empty catalog.
+They do not reserve a guessed number or mount. Existing workspace, Worker and
+project access checks define eligibility; no extra online/capability filters are
+introduced. Lost candidate eligibility or retirement removes only that candidate;
+newly registered/permitted candidates are reconsidered on subsequent sweeps.
+An exact request whose target loses eligibility is rejected as before.
+
+One short transaction serializes mutations per personal catalog, including exact
+acquire, return, reclaim and registration. Within a validated sweep requests are
+ordered by `(requestedAt, id)`. An older request that cannot be granted fences its
+eligible candidate slots for the rest of that sweep; younger requests may still
+use unrelated candidates. This retains per-slot FIFO, including readers waiting
+behind a blocked writer, without global head-of-line blocking. For example, an
+older exact wait on occupied slot 1 does not prevent a younger automatic request
+from using free slot 2. No lease affinity/retention or load-balancing policy is
+implied. Eligibility is observed outside the lock; candidate selection, lease,
+request state and durable notification commit together inside it.
+
+`SlotRequest.slotNumber` is the immutable requested selector (`null` for automatic);
+`grantedSlotNumber` and `leaseId` describe the eventual occupation. Cancellation
+returns a granted request unchanged if granting won, never an implicit release.
+The notification includes the actual number, lease ID and exact WorkspaceMount.
+Catalog/state payloads keep `slots` and add `automaticRequests` plus their readable
+Conversation titles, so an unbound wait remains visible and cancellable after
+history replacement or Server restart. Migration V71 preserves old exact requests
+while adding nullable targets and the indexed personal queue.
 
 Before each Conversation model request, an active lease also makes the current
 Server `grz_slot_release` contract available when the Agent's tool access policy
@@ -443,8 +478,9 @@ the lease. Consumed receipts are safe to repeat and cannot release a successor.
 Unreachable Workers and unavailable inspections are unknown, not clean.
 
 The conversation toolbar opens the Slots inventory and distinguishes occupied
-numbers from pending requests. The inventory shows locations, occupants and
-request times. Exceptional reclaim can be requested by a tool, but only the
+numbers from pending requests, including unbound automatic waits. The inventory
+shows locations, occupants and request times; automatic waits show no invented
+slot number or location and use the same explicit cancellation operation. Exceptional reclaim can be requested by a tool, but only the
 separate authenticated native-client confirmation operation completes it. The
 confirmation is for one lease; the former Conversation is notified and its files
 and processes are untouched. The model-facing tool has no approval boolean.

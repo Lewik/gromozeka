@@ -18,7 +18,11 @@ data class ConfirmSlotReclaimRequest(val leaseId: String, val confirmationId: St
 data class CancelSlotRequest(val requestId: String) : ClientRequest
 
 @Serializable @SerialName("slots")
-data class SlotsResponse(val slots: List<SlotView>) : ServerResponse
+data class SlotsResponse(
+    val slots: List<SlotView>,
+    val automaticRequests: List<SlotRequest> = emptyList(),
+    val conversationTitles: Map<String, String> = emptyMap(),
+) : ServerResponse
 
 @Serializable @SerialName("slot_lease")
 data class SlotLeaseResponse(val lease: SlotLease) : ServerResponse
@@ -30,4 +34,8 @@ data class SlotRequestResponse(val request: SlotRequest) : ServerResponse
 data object SlotsStateQuery : RemoteStateSyncQuery
 
 @Serializable @SerialName("slots")
-data class SlotsStatePayload(val slots: List<SlotView>) : RemoteStateSyncPayload
+data class SlotsStatePayload(
+    val slots: List<SlotView>,
+    val automaticRequests: List<SlotRequest> = emptyList(),
+    val conversationTitles: Map<String, String> = emptyMap(),
+) : RemoteStateSyncPayload

@@ -19,16 +19,19 @@ import com.gromozeka.presentation.ui.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
-internal data class SlotHeaderOccupancy(val held: List<Long>, val pending: List<Long>)
-internal fun slotHeaderOccupancy(views: List<SlotView>, conversationId: Conversation.Id) = SlotHeaderOccupancy(
+internal data class SlotHeaderOccupancy(val held: List<Long>, val pending: List<Long>, val automaticPending: Int = 0)
+internal fun slotHeaderOccupancy(
+    views: List<SlotView>, conversationId: Conversation.Id, automaticRequests: List<SlotRequest> = emptyList(),
+) = SlotHeaderOccupancy(
     views.filter { it.snapshot.leases.any { lease -> lease.conversationId == conversationId && lease.active } }.map { it.snapshot.slot.number }.distinct().sorted(),
     views.filter { it.snapshot.requests.any { request -> request.conversationId == conversationId && request.state == SlotRequest.State.PENDING } }.map { it.snapshot.slot.number }.distinct().sorted(),
+    automaticRequests.count { it.conversationId == conversationId && it.state == SlotRequest.State.PENDING && it.slotNumber == null },
 )
 
 @Composable
 fun SlotHeaderButton(service: SlotService, conversationId: Conversation.Id, onOpenConversation: (Conversation.Id) -> Unit) {
     val translation = LocalTranslation.current
-    var views by remember(service) { mutableStateOf<List<SlotView>>(emptyList()) }
+    var catalog by remember(service) { mutableStateOf(SlotCatalogSnapshot()) }
     var error by remember(service) { mutableStateOf<String?>(null) }
     var loading by remember(service) { mutableStateOf(true) }
     var reload by remember { mutableStateOf(0) }
@@ -36,29 +39,32 @@ fun SlotHeaderButton(service: SlotService, conversationId: Conversation.Id, onOp
     LaunchedEffect(service, reload) {
         loading = true
         try {
-            service.observe().collect { views = it; loading = false; error = null }
+            service.observe().collect { catalog = it; loading = false; error = null }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { loading = false; error = failure.message ?: translation.text("slots.loadFailed") }
     }
-    val occupancy = slotHeaderOccupancy(views, conversationId)
+    val occupancy = slotHeaderOccupancy(catalog.slots, conversationId, catalog.automaticRequests)
     val label = buildString {
         append(translation.text("slots.title"))
         if (occupancy.held.isNotEmpty()) append(": " + occupancy.held.joinToString(", "))
         if (occupancy.pending.isNotEmpty()) append(" · " + translation.text("slots.pending") + ": " + occupancy.pending.joinToString(", "))
+        if (occupancy.automaticPending > 0) append(" · " + translation.text("slots.pending") + ": " + translation.text("slots.automatic") + " (${occupancy.automaticPending})")
         if (error != null) append(" !")
     }
     CompactButton(onClick = { open = true }, colors = CompactButtonDefaults.tonalColors(),
         modifier = Modifier.testTag("conversation-slots"), tooltip = label) {
         Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
-    if (open) SlotInventoryDialog(views, service, loading, error, onRetry = { reload++ },
-        onClose = { open = false }, onOpenConversation = { open = false; onOpenConversation(it) })
+    if (open) SlotInventoryDialog(catalog.slots, service, loading, error, onRetry = { reload++ },
+        onClose = { open = false }, onOpenConversation = { open = false; onOpenConversation(it) },
+        automaticRequests = catalog.automaticRequests, conversationTitles = catalog.conversationTitles)
 }
 
 @Composable
 fun SlotInventoryDialog(
     views: List<SlotView>, service: SlotService, loading: Boolean, loadError: String?,
     onRetry: () -> Unit, onClose: () -> Unit, onOpenConversation: (Conversation.Id) -> Unit,
+    automaticRequests: List<SlotRequest> = emptyList(), conversationTitles: Map<String, String> = emptyMap(),
 ) {
     val translation = LocalTranslation.current
     val scope = rememberCoroutineScope()
@@ -75,6 +81,10 @@ fun SlotInventoryDialog(
             finally { busy = false }
         }
     }
+    fun cancelRequest(request: SlotRequest) = perform {
+        val result = service.cancelRequest(request.id)
+        if (result.state == SlotRequest.State.GRANTED) actionError = translation.text("slots.grantedInstead")
+    }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(modifier = Modifier.fillMaxWidth(0.94f).widthIn(max = 820.dp).fillMaxHeight(0.86f).testTag("slot-inventory"),
             shape = MaterialTheme.shapes.large, tonalElevation = 6.dp) {
@@ -88,8 +98,16 @@ fun SlotInventoryDialog(
                     Text(message, color = MaterialTheme.colorScheme.error)
                     CompactButton(onClick = onRetry, colors = CompactButtonDefaults.tonalColors()) { Text(translation.text("slots.retry")) }
                 }
-                if (!loading && views.isEmpty() && loadError == null) Text(translation.text("slots.empty"))
+                if (!loading && views.isEmpty() && automaticRequests.isEmpty() && loadError == null) Text(translation.text("slots.empty"))
                 LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(automaticRequests, key = { "request-${it.id}" }) { request ->
+                        OutlinedCard(Modifier.fillMaxWidth().testTag("automatic-slot-request-${request.id}")) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(translation.text("slots.automatic"), style = MaterialTheme.typography.titleMedium)
+                                SlotPendingRequestRow(request, conversationTitles, busy, onOpenConversation) { cancelRequest(request) }
+                            }
+                        }
+                    }
                     items(views, key = { it.snapshot.slot.id }) { view ->
                         val slot = view.snapshot.slot
                         OutlinedCard(Modifier.fillMaxWidth().testTag("slot-${slot.number}")) {
@@ -115,15 +133,7 @@ fun SlotInventoryDialog(
                                 }
                                 view.snapshot.requests.forEach { request ->
                                     HorizontalDivider()
-                                    Text("${translation.text("slots.pending")} · ${translation.text(if (request.access == SlotAccess.WRITE) "slots.write" else "slots.read")}")
-                                    val title = view.conversationTitles[request.conversationId.value]?.takeIf { it.isNotBlank() } ?: request.conversationId.value
-                                    TextButton(onClick = { onOpenConversation(request.conversationId) },
-                                        enabled = request.conversationId.value in view.conversationTitles) { Text(title) }
-                                    Text("${translation.text("slots.requested")}: ${request.requestedAt}", style = MaterialTheme.typography.bodySmall)
-                                    CompactButton(onClick = { perform {
-                                        val result = service.cancelRequest(request.id)
-                                        if (result.state == SlotRequest.State.GRANTED) actionError = translation.text("slots.grantedInstead")
-                                    } }, enabled = !busy, colors = CompactButtonDefaults.tonalColors()) { Text(translation.text("slots.cancelWait")) }
+                                    SlotPendingRequestRow(request, view.conversationTitles, busy, onOpenConversation) { cancelRequest(request) }
                                 }
                             }
                         }
@@ -146,4 +156,18 @@ fun SlotInventoryDialog(
             } }, enabled = !busy, modifier = Modifier.testTag("confirm-slot-reclaim")) { Text(translation.text("slots.reclaim")) } },
             dismissButton = { TextButton(onClick = { confirmation = null }, enabled = !busy) { Text(translation.text("slots.cancel")) } })
     }
+}
+
+@Composable
+private fun SlotPendingRequestRow(
+    request: SlotRequest, conversationTitles: Map<String, String>, busy: Boolean,
+    onOpenConversation: (Conversation.Id) -> Unit, onCancel: () -> Unit,
+) {
+    val translation = LocalTranslation.current
+    Text("${translation.text("slots.pending")} · ${translation.text(if (request.access == SlotAccess.WRITE) "slots.write" else "slots.read")}")
+    val title = conversationTitles[request.conversationId.value]?.takeIf { it.isNotBlank() } ?: request.conversationId.value
+    TextButton(onClick = { onOpenConversation(request.conversationId) }, enabled = request.conversationId.value in conversationTitles) { Text(title) }
+    Text("${translation.text("slots.requested")}: ${request.requestedAt}", style = MaterialTheme.typography.bodySmall)
+    CompactButton(onClick = onCancel, enabled = !busy, colors = CompactButtonDefaults.tonalColors(),
+        modifier = Modifier.testTag("cancel-slot-request-${request.id}")) { Text(translation.text("slots.cancelWait")) }
 }

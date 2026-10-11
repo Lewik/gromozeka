@@ -853,7 +853,7 @@ class GromozekaRemoteServer(
                     conversationRuntimeService.cancelCommandMonitor(request.conversationId, request.monitorId)
                 )
 
-                ListSlotsRequest -> SlotsResponse(slotService.list(user))
+                ListSlotsRequest -> slotService.catalog(user).let { SlotsResponse(it.slots, it.automaticRequests, it.conversationTitles) }
                 is PrepareSlotReclaimRequest -> SlotLeaseResponse(slotService.prepareReclaim(user, request.leaseId))
                 is ConfirmSlotReclaimRequest -> SlotLeaseResponse(slotService.confirmReclaim(user, request.leaseId, request.confirmationId))
                 is CancelSlotRequest -> SlotRequestResponse(slotService.cancel(user, null, request.requestId))
@@ -1192,7 +1192,7 @@ class GromozekaRemoteServer(
                 )
             }
             SlotsStateQuery -> slotService.snapshot(user.id).let {
-                StateSyncSnapshotResponse(query = query, cursor = it.cursor.toRemote(), state = SlotsStatePayload(it.value))
+                StateSyncSnapshotResponse(query = query, cursor = it.cursor.toRemote(), state = SlotsStatePayload(it.value.slots, it.value.automaticRequests, it.value.conversationTitles))
             }
             is VisualsStateQuery -> visualService.snapshot(query.conversationId).let {
                 StateSyncSnapshotResponse(query = query, cursor = it.cursor.toRemote(), state = VisualsStatePayload(it.value))

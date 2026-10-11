@@ -89,6 +89,91 @@ class SlotApplicationServiceTest {
         assertTrue(f.repository.findLease(next.id)!!.active)
     }
 
+    @Test fun `automatic wait survives empty catalog and fresh service then pushes actual mount once`() = fixture { f ->
+        val pending = f.service.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.WRITE, "automatic")
+        assertNull(pending.slotNumber)
+        assertEquals(f.project.id, pending.projectId)
+        f.service.processPending()
+        val catalog = f.service.catalog(f.user, f.project.id)
+        assertTrue(catalog.slots.isEmpty())
+        assertEquals(listOf(pending), catalog.automaticRequests)
+        assertEquals(f.conversation.displayName, catalog.conversationTitles[f.conversation.id.value])
+        assertTrue(f.service.catalog(f.user, Project.Id("unrelated")).automaticRequests.isEmpty())
+        val slot = f.register()
+        val restarted = f.newService()
+        restarted.processPending()
+        val granted = f.repository.findRequest(pending.id)!!
+        assertNull(granted.slotNumber); assertEquals(slot.number, granted.grantedSlotNumber)
+        assertEquals(granted, restarted.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.WRITE, "automatic"))
+        assertTrue(restarted.catalog(f.user).automaticRequests.isEmpty())
+        restarted.deliverPending(); f.newService().deliverPending()
+        val task = f.coordinator.schedulingSnapshot(f.conversation.id).pendingTasks.single()
+        val payload = task.payload as ConversationRuntimeTask.Payload.AgentInvocation
+        val text = (payload.userMessage.content.single() as Conversation.Message.ContentItem.UserMessage).text
+        assertContains(text, "workspace_mount_id=${slot.mountId.value}")
+        assertContains(text, "lease_id=${granted.leaseId}")
+        assertEquals(granted.leaseId, restarted.origin(f.user.id, f.conversation.id, slot.mountId)?.leaseId)
+    }
+
+    @Test fun `automatic selection skips unavailable mounts and foreign or other project catalog entries`() = fixture { f ->
+        val unavailable = f.register(); val allowed = f.register("allowed")
+        Mockito.`when`(f.workspaces.findMount(unavailable.mountId)).thenReturn(null)
+        f.repository.create(allowed.copy(id = "foreign-slot", userId = User.Id("foreign"), workspaceId = Workspace.Id("foreign-ws")))
+        f.repository.create(allowed.copy(id = "other-project", projectId = Project.Id("other"), workspaceId = Workspace.Id("other-ws")))
+        val request = f.service.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.WRITE, "automatic")
+        f.service.processPending()
+        assertEquals(allowed.number, f.repository.findRequest(request.id)!!.grantedSlotNumber)
+        assertTrue(f.repository.snapshot(unavailable.number)!!.leases.isEmpty())
+    }
+
+    @Test fun `candidate permission revocation keeps automatic wait unbound until eligibility returns`() = fixture { f ->
+        val slot = f.register()
+        val request = f.service.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.READ, "automatic")
+        Mockito.`when`(f.workerAccess.requirePermission(f.user, f.worker.id, WorkerPermission.USE, f.project.id)).thenThrow(WorkerAccessDeniedException())
+        f.service.processPending()
+        assertEquals(request, f.repository.findRequest(request.id))
+        assertTrue(f.repository.pendingEvents().isEmpty())
+        Mockito.doReturn(f.worker).`when`(f.workerAccess).requirePermission(f.user, f.worker.id, WorkerPermission.USE, f.project.id)
+        f.service.processPending()
+        assertEquals(slot.number, f.repository.findRequest(request.id)!!.grantedSlotNumber)
+    }
+
+    @Test fun `automatic acquisition and cancellation keep actor conversation agent and AI guards`() = fixture { f ->
+        assertFails { f.service.acquire(f.user.copy(id = User.Id("foreign")), f.conversation.id, f.agent, null, SlotAccess.WRITE, "foreign") }
+        assertFails { f.service.acquire(f.user, f.conversation.id, AgentDefinition.Id("disconnected"), null, SlotAccess.WRITE, "agent") }
+        assertFails { f.service.acquire(f.user.copy(aiAllowed = false), f.conversation.id, f.agent, null, SlotAccess.WRITE, "no-ai") }
+        val request = f.service.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.WRITE, "automatic")
+        assertFails { f.service.cancel(f.user.copy(id = User.Id("foreign")), null, request.id) }
+        assertFails { f.service.cancel(f.user, Conversation.Id("fork"), request.id) }
+        assertEquals(SlotRequest.State.CANCELLED, f.service.cancel(f.user, f.conversation.id, request.id).state)
+        f.register(); f.service.processPending()
+        assertTrue(f.repository.pendingEvents().isEmpty())
+    }
+
+    @Test fun `removed agent or changed original project rejects automatic wait rather than migrating it`() = fixture { f ->
+        val request = f.service.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.WRITE, "automatic")
+        Mockito.`when`(f.conversations.findById(f.conversation.id)).thenReturn(f.conversation.copy(projectId = Project.Id("other")))
+        f.service.processPending()
+        assertEquals(SlotRequest.State.REJECTED, f.repository.findRequest(request.id)!!.state)
+        assertNull(f.repository.pendingEvents().single().slotNumber)
+        Mockito.`when`(f.conversations.findById(f.conversation.id)).thenReturn(f.conversation)
+        val second = f.service.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.WRITE, "second")
+        Mockito.`when`(f.conversations.findById(f.conversation.id)).thenReturn(f.conversation.copy(participants = setOf(Conversation.Participant.User(f.user.id))))
+        f.service.processPending()
+        assertEquals(SlotRequest.State.REJECTED, f.repository.findRequest(second.id)!!.state)
+    }
+
+    @Test fun `grant winning automatic cancellation reports exact new occupation and does not release it`() = fixture { f ->
+        val slot = f.register()
+        val request = f.service.acquire(f.user, f.conversation.id, f.agent, null, SlotAccess.WRITE, "automatic")
+        f.service.processPending()
+        val result = f.service.cancel(f.user, f.conversation.id, request.id)
+        assertEquals(SlotRequest.State.GRANTED, result.state)
+        assertEquals(slot.number, result.grantedSlotNumber)
+        assertTrue(f.repository.findLease(result.leaseId!!)!!.active)
+        assertEquals(result, f.service.cancel(f.user, null, request.id))
+    }
+
     private fun fixture(block: suspend (Fixture) -> Unit) = runBlocking {
         val f = Fixture()
         try { f.setup(); block(f) } finally { f.scope.cancel() }
@@ -116,7 +201,8 @@ class SlotApplicationServiceTest {
             }
             override suspend fun activityWarnings(slot: Slot) = listOf("Known old command may still be running")
         }
-        val service = SlotApplicationService(repository, conversations, projects, workspaces, workerAccess, users, observations, coordinator, scope)
+        fun newService() = SlotApplicationService(repository, conversations, projects, workspaces, workerAccess, users, observations, coordinator, scope)
+        val service = newService()
         suspend fun setup() {
             Mockito.`when`(users.findActiveById(user.id)).thenReturn(user)
             Mockito.`when`(conversations.findById(conversation.id)).thenReturn(conversation)

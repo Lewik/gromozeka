@@ -15402,5 +15402,12 @@
     ],
     "description": "Visible failure while saving this user’s personal message delivery preference.",
     "args": []
+  },
+  "slots.automatic": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SlotInventory.kt"
+    ],
+    "description": "Label for an automatic slot request still waiting for Runtime to select a slot; no slot number or location has been assigned yet. Also shown in the conversation header with a pending count.",
+    "args": []
   }
 }

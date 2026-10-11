@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service
 class SlotToolContributor(private val slots: SlotApplicationService, private val users: UserDirectoryService) : AiToolCallbackContributor {
     private val json = Json { encodeDefaults = true }
     override val callbacks: List<AiToolCallback> = listOf(
-        tool("grz_slot_list", "List your development slots in this project, their exact mounts, held leases and pending requests. Numbers identify slots; leases belong to Conversations. This is cooperative coordination, not filesystem isolation.", "{}", emptyList()) { _, actor, conversation, _ ->
-            json.encodeToString(slots.list(actor).filter { it.snapshot.slot.projectId == conversation.projectId })
+        tool("grz_slot_list", "Return your development slot catalog in this project: slots with exact mounts and occupations, plus unbound automaticRequests and their conversationTitles. Numbers identify slots; leases belong to Conversations. Pending automatic requests have no execution mount yet. This is cooperative coordination, not filesystem isolation.", "{}", emptyList()) { _, actor, conversation, _ ->
+            json.encodeToString(slots.catalog(actor, conversation.projectId))
         },
         tool("grz_slot_get", "Inspect a numbered development slot and its occupants/waiters in this project. Current saved state, not a fresh filesystem inspection. Lease IDs identify exact occupations, not agents or internal history threads.", NUMBER, listOf("slot_number")) { input, actor, conversation, _ ->
             json.encodeToString(slots.list(actor).singleOrNull { it.snapshot.slot.number == input.number() && it.snapshot.slot.projectId == conversation.projectId } ?: error("Slot unavailable"))
@@ -35,10 +35,10 @@ class SlotToolContributor(private val slots: SlotApplicationService, private val
             }
             json.encodeToString(result)
         },
-        tool("grz_slot_acquire", "Submit a durable request for a numbered slot. ALWAYS returns acceptance, never waits in this tool, even when free. Runtime later notifies you of the granted lease and resumes work; do not poll. WRITE allows readers but excludes other writers. READ is shared and does not promise a snapshot. A Conversation may hold several different slots. Use the returned mount for commands; the Runtime assigns their slot marker and GRZ_SLOT automatically.", """{"slot_number":{"type":"integer","minimum":1},"access":{"type":"string","enum":["READ","WRITE"]}}""", listOf("slot_number", "access")) { input, actor, conversation, context ->
+        tool("grz_slot_acquire", "Request a new slot occupation. Omit slot_number for Runtime selection of the lowest-numbered eligible slot not already held or explicitly requested by this Conversation. With slot_number, request exactly that slot; never substitute another. No implicit reuse or access upgrade of an existing lease. ALWAYS returns acceptance, even when free; granting is asynchronous. Automatic requests wait unbound when no candidate can be granted and reconsider eligible catalog entries on later sweeps. Older waits take precedence on overlapping candidates, without blocking unrelated slots. Runtime pushes the actual slot, lease and workspace_mount_id; do not poll or guess a mount. WRITE allows readers but excludes other writers. READ is shared, not a snapshot. Several different slots may be held. This does not create checkouts or broaden access.", """{"slot_number":{"type":"integer","minimum":1},"access":{"type":"string","enum":["READ","WRITE"]}}""", listOf("access")) { input, actor, conversation, context ->
             val agent = AgentDefinition.Id(requireNotNull(context.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)))
             val key = listOf(conversation.id.value, context.getString(TOOL_CONTEXT_THREAD_ID), context.getString("toolCallId") ?: error("Tool-call identity required")).joinToString(":")
-            val request = slots.acquire(actor, conversation.id, agent, input.number(), SlotAccess.valueOf(input.string("access")), key)
+            val request = slots.acquire(actor, conversation.id, agent, if ("slot_number" in input) input.number() else null, SlotAccess.valueOf(input.string("access")), key)
             buildJsonObject { put("status", "accepted"); put("request_id", request.id); put("request", json.encodeToJsonElement(request)) }.toString()
         },
         tool("grz_slot_cancel_wait", "Cancel this Conversation's pending slot request. If granting won the race, returns the granted request; never implicitly releases its lease or stops commands.", """{"request_id":{"type":"string"}}""", listOf("request_id")) { input, actor, conversation, _ ->

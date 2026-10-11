@@ -58,7 +58,8 @@ data class SlotReclaimConfirmation(
 data class SlotRequest(
     val id: String,
     val idempotencyKey: String,
-    val slotNumber: Long,
+    /** Requested exact slot, or null for automatic selection. Immutable even after a grant. */
+    val slotNumber: Long?,
     val conversationId: Conversation.Id,
     val actorUserId: User.Id,
     val agentId: AgentDefinition.Id,
@@ -67,6 +68,10 @@ data class SlotRequest(
     val state: State = State.PENDING,
     val leaseId: String? = null,
     val reason: String? = null,
+    /** Automatic requests bind to their original Project, not a mutable Conversation lookup. */
+    val projectId: Project.Id? = null,
+    /** Concrete grant result; separate from the immutable selection intent/idempotency arguments. */
+    val grantedSlotNumber: Long? = null,
 ) {
     @Serializable enum class State { PENDING, GRANTED, CANCELLED, REJECTED }
 }
@@ -90,7 +95,8 @@ data class SlotCommandOrigin(val slotId: String, val slotNumber: Long, val lease
 @Serializable
 data class SlotEvent(
     val id: String,
-    val slotNumber: Long,
+    /** Null only for an automatic request rejected before a slot was selected. */
+    val slotNumber: Long?,
     val requestId: String?,
     val leaseId: String?,
     val conversationId: Conversation.Id,
@@ -116,9 +122,17 @@ data class SlotView(
     val conversationTitles: Map<String, String> = emptyMap(),
 )
 
+/** Pending automatic requests have no slot row yet, including when the catalog is empty. */
+@Serializable
+data class SlotCatalogSnapshot(
+    val slots: List<SlotView> = emptyList(),
+    val automaticRequests: List<SlotRequest> = emptyList(),
+    val conversationTitles: Map<String, String> = emptyMap(),
+)
+
 interface SlotService {
-    fun observe(): kotlinx.coroutines.flow.Flow<List<SlotView>>
-    suspend fun list(): List<SlotView>
+    fun observe(): kotlinx.coroutines.flow.Flow<SlotCatalogSnapshot>
+    suspend fun list(): SlotCatalogSnapshot
     suspend fun cancelRequest(requestId: String): SlotRequest
     suspend fun prepareReclaim(leaseId: String): SlotLease
     suspend fun confirmReclaim(leaseId: String, confirmationId: String): SlotLease

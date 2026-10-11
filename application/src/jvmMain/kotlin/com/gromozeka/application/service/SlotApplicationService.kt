@@ -28,8 +28,8 @@ class SlotApplicationService(
 ) {
     private val lifecycle = SlotLifecycle()
     val wakeups = Channel<Unit>(Channel.CONFLATED)
-    private val source = StateSyncSource<User.Id, List<SlotView>>(scope = scope, sourceEpoch = uuid7(), loader = { id ->
-        users.findActiveById(id)?.let { list(it) } ?: emptyList()
+    private val source = StateSyncSource<User.Id, SlotCatalogSnapshot>(scope = scope, sourceEpoch = uuid7(), loader = { id ->
+        users.findActiveById(id)?.let { catalog(it) } ?: SlotCatalogSnapshot()
     })
     fun signal() { wakeups.trySend(Unit) }
     suspend fun subscribe(userId: User.Id) = source.subscribe(userId)
@@ -73,6 +73,21 @@ class SlotApplicationService(
         SlotView(snapshot, accessibleMount?.workerId, accessibleMount?.rootPath, titles)
     }
 
+    suspend fun catalog(actor: User, projectId: Project.Id? = null): SlotCatalogSnapshot {
+        require(actor.status == User.Status.ACTIVE)
+        val views = list(actor).filter { projectId == null || it.snapshot.slot.projectId == projectId }
+        val automatic = repository.pendingRequests(actor.id).filter {
+            it.slotNumber == null && (projectId == null || it.projectId == projectId)
+        }
+        val titles = automatic.map { it.conversationId }.distinct().mapNotNull { id ->
+            conversations.findById(id)?.takeIf {
+                Conversation.Participant.User(actor.id) in it.participants &&
+                    projects.can(actor.id, it.projectId, ProjectPermission.READ)
+            }?.let { id.value to it.displayName }
+        }.toMap()
+        return SlotCatalogSnapshot(views, automatic, titles)
+    }
+
     suspend fun register(actor: User, conversationId: Conversation.Id, mountId: WorkspaceMount.Id, baseBranch: String?): Slot {
         val conversation = authorizeConversation(actor, conversationId)
         val target = workspaces.resolveExecution(mountId)
@@ -98,22 +113,26 @@ class SlotApplicationService(
         return saved
     }
 
-    suspend fun acquire(actor: User, conversationId: Conversation.Id, agentId: AgentDefinition.Id, number: Long, access: SlotAccess, key: String): SlotRequest {
-        val slot = owned(actor, number)
-        usable(actor, conversationId, slot, agentId)
+    suspend fun acquire(actor: User, conversationId: Conversation.Id, agentId: AgentDefinition.Id, number: Long?, access: SlotAccess, key: String): SlotRequest {
+        val conversation = if (number != null) usable(actor, conversationId, owned(actor, number), agentId)
+            else authorizeConversation(actor, conversationId).also {
+                require(Conversation.Participant.Agent(agentId) in it.participants) { "Requesting agent is no longer connected" }
+            }
         require(actor.canUseAi && key.isNotBlank())
-        val request = SlotRequest(uuid7(), key, number, conversationId, actor.id, agentId, access, Clock.System.now())
-        val accepted = repository.locked(number) { lifecycle.enqueue(it, request) }
+        val request = SlotRequest(uuid7(), key, number, conversationId, actor.id, agentId, access, Clock.System.now(),
+            projectId = if (number == null) conversation.projectId else null)
+        val accepted = repository.lockedQueue(actor.id) { lifecycle.enqueue(it, request) }
         changed(actor.id)
         return accepted
     }
 
     suspend fun cancel(actor: User, conversationId: Conversation.Id?, requestId: String): SlotRequest {
+        require(actor.status == User.Status.ACTIVE)
         val request = requireNotNull(repository.findRequest(requestId)) { "Request unavailable" }
-        owned(actor, request.slotNumber)
         require(request.actorUserId == actor.id && (conversationId == null || request.conversationId == conversationId)) { "Request belongs to another conversation" }
+        request.slotNumber?.let { owned(actor, it) }
         if (conversationId != null) authorizeConversation(actor, conversationId)
-        val result = repository.locked(request.slotNumber) { lifecycle.cancel(it, request.id) }
+        val result = repository.lockedQueue(actor.id) { lifecycle.cancel(it, request.id) }
         changed(actor.id)
         return result
     }
@@ -155,33 +174,64 @@ class SlotApplicationService(
     }
 
     suspend fun processPending() {
-        var cursor = 0L
+        var cursor: User.Id? = null
         while (true) {
-            val numbers = repository.pendingSlots(cursor)
-            if (numbers.isEmpty()) break
-            for (number in numbers) {
-                val snapshot = repository.snapshot(number) ?: continue
-                val eligible = mutableMapOf<String, String?>()
-                for (request in snapshot.requests) {
-                    val actor = users.findActiveById(request.actorUserId)
-                    eligible[request.id] = if (actor == null || !actor.canUseAi) "Requester no longer has AI access" else try {
-                        usable(actor, request.conversationId, snapshot.slot, request.agentId)
-                        null
-                    } catch (cancelled: CancellationException) { throw cancelled }
-                    catch (_: IllegalArgumentException) { "Requester, agent or workspace is no longer eligible" }
-                    catch (_: ProjectAccessDeniedException) { "Conversation/project access is no longer available" }
-                    catch (_: WorkerAccessDeniedException) { "Worker access is no longer available" }
+            val owners = repository.pendingUsers(cursor)
+            if (owners.isEmpty()) break
+            for (owner in owners) {
+                val pending = repository.pendingRequests(owner)
+                val candidates = repository.list(owner)
+                val actor = users.findActiveById(owner)
+                val eligible = mutableMapOf<String, SlotRequestEligibility>()
+                for (request in pending) {
+                    if (actor == null || !actor.canUseAi) {
+                        eligible[request.id] = SlotRequestEligibility(rejection = "Requester no longer has AI access")
+                        continue
+                    }
+                    val requesterFailure = eligibilityFailure {
+                        val conversation = authorizeConversation(actor, request.conversationId)
+                        require(Conversation.Participant.Agent(request.agentId) in conversation.participants)
+                        if (request.slotNumber == null) require(request.projectId != null && conversation.projectId == request.projectId)
+                    }
+                    if (requesterFailure != null) {
+                        eligible[request.id] = SlotRequestEligibility(rejection = requesterFailure)
+                        continue
+                    }
+                    val number = request.slotNumber
+                    if (number != null) {
+                        val slot = repository.find(number)
+                        val failure = if (slot == null) "Requested slot is no longer registered" else eligibilityFailure {
+                            usable(actor, request.conversationId, slot, request.agentId)
+                        }
+                        eligible[request.id] = SlotRequestEligibility(setOf(number), failure)
+                    } else {
+                        // An automatic wait stays unbound when candidates disappear or lose eligibility.
+                        // It may use newly registered/permitted slots on a later sweep; it never creates one.
+                        val allowed = mutableSetOf<Long>()
+                        for (slot in candidates.filter { it.projectId == request.projectId }) {
+                            if (eligibilityFailure { usable(actor, request.conversationId, slot, request.agentId) } == null)
+                                allowed += slot.number
+                        }
+                        eligible[request.id] = SlotRequestEligibility(allowed)
+                    }
                 }
-                val updated = repository.locked(number) { tx ->
+                val updated = repository.lockedQueue(owner) { tx ->
                     val before = tx.pendingRequests()
                     lifecycle.grant(tx, eligible)
                     before != tx.pendingRequests()
                 }
-                if (updated) source.invalidate(snapshot.slot.userId)
+                if (updated) source.invalidate(owner)
             }
-            cursor = numbers.last()
+            cursor = owners.last()
         }
     }
+
+    private suspend fun eligibilityFailure(check: suspend () -> Unit): String? = try {
+        check(); null
+    } catch (cancelled: CancellationException) { throw cancelled }
+    catch (_: IllegalArgumentException) { "Requester, agent or workspace is no longer eligible" }
+    catch (_: ProjectAccessDeniedException) { "Conversation/project access is no longer available" }
+    catch (_: WorkerAccessDeniedException) { "Worker access is no longer available" }
 
     suspend fun deliverPending() {
         var cursor = 0L
@@ -201,14 +251,15 @@ class SlotApplicationService(
                 val control = runtime.state?.controlState
                 if (control != null && control != ConversationExecutionState.ControlState.RUNNING) continue
                 val lease = event.leaseId?.let { repository.findLease(it) }
+                val slot = event.slotNumber?.let { repository.find(it) }
+                val mountNote = slot?.let { "; workspace_mount_id=${it.mountId.value}" }.orEmpty()
                 val text = when (event.kind) {
-                    SlotEvent.Kind.GRANTED -> if (lease?.active == true) "Slot ${event.slotNumber} granted; lease_id=${lease.id}; access=${lease.access}." else
+                    SlotEvent.Kind.GRANTED -> if (lease?.active == true) "Slot ${event.slotNumber} granted; lease_id=${lease.id}; access=${lease.access}$mountNote." else
                         "Slot request ${event.requestId} was granted previously, but that lease is no longer active. No access is granted by this historical notification."
                     SlotEvent.Kind.RECLAIMED -> "The user reclaimed slot ${event.slotNumber}, lease_id=${event.leaseId}. This occupation has ended; files and processes were not changed."
                     SlotEvent.Kind.REQUEST_REJECTED -> "Slot request ${event.requestId} was rejected: ${event.detail}."
                 }
                 val leftovers = if (event.kind == SlotEvent.Kind.GRANTED && lease?.active == true) {
-                    val slot = repository.find(event.slotNumber)
                     if (slot == null) emptyList() else try { observations.activityWarnings(slot) }
                     catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { listOf("Known activity could not be inspected; grant is not a cleanliness guarantee") }

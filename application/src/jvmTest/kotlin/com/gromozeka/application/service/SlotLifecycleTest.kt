@@ -20,18 +20,18 @@ class SlotLifecycleTest {
         SlotRequest(id, "key-$id", number, Conversation.Id(conversation), user, agent, access, clock.now())
     private fun grant(tx: Session, request: SlotRequest): SlotLease {
         lifecycle.enqueue(tx, request)
-        return lifecycle.grant(tx, mapOf(request.id to null)).single()
+        return lifecycle.grant(tx, mapOf(request.id to SlotRequestEligibility(setOf(tx.slot.number)))).single()
     }
 
     @Test fun `free slot still needs request processing and grant writes event`() {
         val tx = session(); val r = request("a")
         assertEquals(SlotRequest.State.PENDING, lifecycle.enqueue(tx, r).state)
         assertTrue(tx.activeLeases().isEmpty()); assertTrue(tx.events.isEmpty())
-        val lease = lifecycle.grant(tx, mapOf(r.id to null)).single()
+        val lease = lifecycle.grant(tx, mapOf(r.id to SlotRequestEligibility(setOf(tx.slot.number)))).single()
         assertEquals(clock.now(), lease.acquiredAt); assertNull(lease.releasedAt)
         assertEquals(lease.id, tx.request(r.id)?.leaseId)
         assertEquals(SlotEvent.Kind.GRANTED, tx.events.single().kind)
-        assertTrue(lifecycle.grant(tx, mapOf(r.id to null)).isEmpty())
+        assertTrue(lifecycle.grant(tx, mapOf(r.id to SlotRequestEligibility(setOf(tx.slot.number)))).isEmpty())
         assertEquals(1, tx.events.size)
     }
 
@@ -40,11 +40,11 @@ class SlotLifecycleTest {
         grant(tx, request("a"))
         grant(tx, request("b", access = SlotAccess.READ))
         lifecycle.enqueue(tx, request("c"))
-        assertTrue(lifecycle.grant(tx, mapOf("c" to null)).isEmpty())
+        assertTrue(lifecycle.grant(tx, mapOf("c" to SlotRequestEligibility(setOf(tx.slot.number)))).isEmpty())
         assertEquals(2, tx.activeLeases().size)
         val writer = tx.activeLeases().single { it.access == SlotAccess.WRITE }
         lifecycle.release(tx, writer.id, null, SlotObservation(clock.now(), emptyList()))
-        assertEquals("c", lifecycle.grant(tx, mapOf("c" to null)).single().conversationId.value)
+        assertEquals("c", lifecycle.grant(tx, mapOf("c" to SlotRequestEligibility(setOf(tx.slot.number)))).single().conversationId.value)
     }
 
     @Test fun `one conversation can hold several independent slots`() {
@@ -106,7 +106,7 @@ class SlotLifecycleTest {
     @Test fun `cancellation before grant removes request without creating lease`() {
         val tx = session(); lifecycle.enqueue(tx, request("a"))
         assertEquals(SlotRequest.State.CANCELLED, lifecycle.cancel(tx, "a").state)
-        assertTrue(lifecycle.grant(tx, mapOf("a" to null)).isEmpty())
+        assertTrue(lifecycle.grant(tx, mapOf("a" to SlotRequestEligibility(setOf(tx.slot.number)))).isEmpty())
         assertTrue(tx.activeLeases().isEmpty())
     }
 
@@ -120,7 +120,7 @@ class SlotLifecycleTest {
         val tx = session()
         lifecycle.enqueue(tx, request("a")); lifecycle.enqueue(tx, request("b"))
         assertTrue(lifecycle.grant(tx, emptyMap()).isEmpty())
-        val granted = lifecycle.grant(tx, mapOf("a" to "User removed", "b" to null))
+        val granted = lifecycle.grant(tx, mapOf("a" to SlotRequestEligibility(rejection = "User removed"), "b" to SlotRequestEligibility(setOf(tx.slot.number))))
         assertEquals("b", granted.single().conversationId.value)
         assertEquals(SlotRequest.State.REJECTED, tx.request("a")!!.state)
     }
@@ -143,7 +143,9 @@ class SlotLifecycleTest {
         assertFailsWith<IllegalArgumentException> { lifecycle.enqueue(tx, request("a").copy(actorUserId = User.Id("other"))) }
     }
 
-    private class Session(override var slot: Slot) : SlotTransaction {
+    private class Session(override var slot: Slot) : SlotTransaction, SlotQueueTransaction {
+        override val userId get() = slot.userId
+        override fun slots(): List<SlotTransaction> = listOf(this)
         val leases = linkedMapOf<String, SlotLease>()
         val requests = linkedMapOf<String, SlotRequest>()
         val events = mutableListOf<SlotEvent>()
