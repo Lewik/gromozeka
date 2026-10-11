@@ -166,6 +166,11 @@ tasks.withType<Test> {
         testLogging.showStandardStreams = true
     }
 
+    if (providers.environmentVariable("GROMOZEKA_SLOT_CLAUDE_SMOKE").orNull == "true") {
+        outputs.upToDateWhen { false }
+        testLogging.showStandardStreams = true
+    }
+
     val isLongMemEvalRun = providers.systemProperty("gromozeka.longmemeval")
         .map { it == "true" }
         .orElse(false)

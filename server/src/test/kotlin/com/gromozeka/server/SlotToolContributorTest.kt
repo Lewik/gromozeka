@@ -66,6 +66,8 @@ class SlotToolContributorTest {
         val tool = SlotToolContributor(slots, users).callbacks.single { it.definition.name == "grz_slot_acquire" }
         val schema = Json.parseToJsonElement(tool.definition.inputSchema).jsonObject
         assertEquals(listOf("access"), schema.getValue("required").jsonArray.map { it.jsonPrimitive.content })
+        assertContains(schema.getValue("properties").jsonObject.getValue("slot_number").jsonObject.getValue("description").jsonPrimitive.content, "new occupation")
+        assertContains(tool.definition.description, "Each fresh omitted-number call may acquire an additional different slot")
         val context = ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to user.id.value, TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
             TOOL_CONTEXT_AGENT_DEFINITION_ID to agent.value, TOOL_CONTEXT_THREAD_ID to "thread", "toolCallId" to "call"))
         val automatic = Json.parseToJsonElement(tool.call("""{"access":"WRITE"}""", context)).jsonObject

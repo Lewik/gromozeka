@@ -485,6 +485,37 @@ separate authenticated native-client confirmation operation completes it. The
 confirmation is for one lease; the former Conversation is notified and its files
 and processes are untouched. The model-facing tool has no approval boolean.
 
+A narrower opt-in `SlotClaudeCodeSmokeTest` exercises actual Haiku through the
+production Claude Code CLI backend, current `SlotToolContributor` schemas/callbacks,
+`SlotApplicationService`, `SlotRequestEnricher` and the real in-memory Conversation
+coordinator. It checks omitted-number acceptance, committed concrete grant/mount,
+and a policy-scoped versioned release after dropping **all** previous model history
+and tool discovery. Model text is not evidence: assertions inspect real callback
+results, registry transitions and the coordinator's event. Three bounded model
+steps are used; no answer wording/intelligence benchmark or fixture-level retries.
+Exact-number semantics and broader denied-policy cases remain deterministic tests.
+
+Run only in the allocated verification window, with an already installed and
+authorized Claude Code CLI (`GROMOZEKA_CLAUDE_EXECUTABLE` may select an existing
+executable path; no install/auth/configuration changes are made):
+
+```sh
+GROMOZEKA_SLOT_CLAUDE_SMOKE=true ./gradlew --no-parallel --max-workers=1 \
+  :server:test --tests 'com.gromozeka.server.SlotClaudeCodeSmokeTest'
+```
+
+This test needs no dev Server, Worker process, HTTP listener or PostgreSQL. It
+creates only a tiny private Spring bean context for the CLI executor/backend,
+temporary empty workspace and in-memory synthetic identities/catalogs. It does
+not read/write the global AI catalog or contact real slot conversations. Only the
+fixture's CLI processes are closed, including on failure/timeout. Native CLI
+session persistence is explicitly disabled so hidden provider history cannot make
+the release assertion pass. The CLI uses normal local authentication, safe mode,
+no native tools and no settings sources; credentials are not copied or printed.
+The fixture does **not** prove Worker RPC, actual filesystem inspection, Postgres
+persistence, ConversationEngine scheduling or the compaction algorithm itself.
+Use the separate storage tests and existing end-to-end fixture for those layers.
+
 The opt-in `SlotLiveFlowTest` exercises actual OpenAI Subscription inference and
 a separately managed real Worker, not cassette replay. It requires explicit
 `GROMOZEKA_SLOT_LIVE_TEST=true`, a fresh `slot_live_*` PostgreSQL schema, an unused
