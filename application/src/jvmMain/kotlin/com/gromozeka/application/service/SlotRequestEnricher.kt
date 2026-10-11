@@ -21,7 +21,7 @@ class SlotRequestEnricher(
         val actor = users.findActiveById(User.Id(actorId)) ?: return request
         val conversation = slots.authorizeConversation(actor, conversationId, ProjectPermission.READ)
         val catalog = slots.catalog(actor, conversation.projectId)
-        val views = catalog.slots
+        val views = catalog.slots.filter { it.snapshot.slot.projectId == conversation.projectId }
         val data = buildJsonObject {
             put("conversation_id", conversationId.value)
             put("automatic_requests", Json.encodeToJsonElement(catalog.automaticRequests.filter { it.conversationId == conversationId }))
