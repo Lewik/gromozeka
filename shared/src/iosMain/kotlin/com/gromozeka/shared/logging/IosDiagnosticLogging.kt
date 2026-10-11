@@ -6,6 +6,7 @@ import platform.Foundation.NSFileSize
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSLog
 import platform.Foundation.NSNumber
+import platform.Foundation.NSString
 import platform.posix.fclose
 import platform.posix.fopen
 import platform.posix.fputs
@@ -25,7 +26,12 @@ object IosDiagnosticLogging {
         )
         GromozekaLogging.configure(
             sink = CompositeGromozekaLogSink(
-                GromozekaLogSink { event -> NSLog("%@", event.format()) },
+                GromozekaLogSink { event ->
+                    // C varargs convert Kotlin String to char*, but %@ requires an Objective-C object.
+                    @Suppress("CAST_NEVER_SUCCEEDS") // Kotlin/Native's mapped String -> NSString bridge.
+                    val message = event.format() as NSString
+                    NSLog("%@", message)
+                },
                 fileSink,
             ),
             minimumLevel = minimumLevel,
