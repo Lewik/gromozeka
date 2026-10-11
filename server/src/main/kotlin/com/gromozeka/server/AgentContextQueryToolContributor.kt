@@ -1,8 +1,10 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.AgentContextQueryService
+import com.gromozeka.application.service.ContextSnapshotUnavailableException
 import com.gromozeka.domain.model.AGENT_CONTEXT_QUERY_TOOL_NAME
 import com.gromozeka.domain.tool.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.springframework.beans.factory.ObjectProvider
@@ -35,21 +37,34 @@ class AgentContextQueryToolContributor(private val queries: ObjectProvider<Agent
             val agent = text("target_agent_id", optional = true)
             require(question.length <= 32_000) { "Question must contain at most 32000 characters" }
             context?.cancellationSignal?.throwIfCancellationRequested()
-            val result = queries.getObject().query(context, target, question, agent)
-            val snapshot = result.snapshot
-            buildJsonObject {
-                put("answer", result.answer)
-                put("snapshot", buildJsonObject {
-                    put("conversation_id", snapshot.target.conversationId.value)
-                    put("thread_id", snapshot.target.threadId.value)
-                    put("agent_id", snapshot.target.agentId.value)
-                    put("captured_at", snapshot.capturedAt.toString())
-                    put("last_included_message_id", snapshot.lastIncludedMessageId?.value?.let(::JsonPrimitive) ?: JsonNull)
-                    put("source_message_count", snapshot.sourceMessageCount)
-                    put("omitted_incomplete_tail_count", snapshot.omittedTrailingMessageCount)
-                    put("globally_atomic", false)
-                })
-            }.toString()
+            // Preserve local argument validation above. Provider/decoder errors can contain
+            // requests, prompts, reasoning or credentials; never expose or chain their payload.
+            try {
+                val result = queries.getObject().query(context, target, question, agent)
+                val snapshot = result.snapshot
+                buildJsonObject {
+                    put("answer", result.answer)
+                    put("snapshot", buildJsonObject {
+                        put("conversation_id", snapshot.target.conversationId.value)
+                        put("thread_id", snapshot.target.threadId.value)
+                        put("agent_id", snapshot.target.agentId.value)
+                        put("captured_at", snapshot.capturedAt.toString())
+                        put("last_included_message_id", snapshot.lastIncludedMessageId?.value?.let(::JsonPrimitive) ?: JsonNull)
+                        put("source_message_count", snapshot.sourceMessageCount)
+                        put("omitted_incomplete_tail_count", snapshot.omittedTrailingMessageCount)
+                        put("globally_atomic", false)
+                    })
+                }.toString()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: ContextSnapshotUnavailableException) {
+                throw IllegalStateException("Context snapshot is unavailable (CONTEXT_SNAPSHOT_UNAVAILABLE).")
+            } catch (_: UnsupportedOperationException) {
+                throw IllegalStateException("Context query is unsupported (CONTEXT_QUERY_UNSUPPORTED).")
+            } catch (_: Exception) {
+                // A fresh failure, without raw cause/suppressed data. The common executor keeps isError=true.
+                throw IllegalStateException("Context query failed (CONTEXT_QUERY_FAILED).")
+            }
         }
     })
 }

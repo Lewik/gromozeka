@@ -1,11 +1,13 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.AgentContextQueryService
+import com.gromozeka.application.service.ContextSnapshotUnavailableException
 import com.gromozeka.application.service.ConversationContextSnapshot
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.tool.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.mockito.Mockito
@@ -41,6 +43,73 @@ class AgentContextQueryToolTest {
             assertFailsWith<IllegalArgumentException> { tool.call(input, context) }
         }
         Mockito.verifyNoInteractions(provider, service)
+    }
+
+    @Test fun `service failures stay failures without leaking private payload cause or suppressed data`() = runBlocking<Unit> {
+        val privatePayload = "PRIVATE_CONTEXT_SENTINEL PRIVATE_REASONING_SENTINEL PRIVATE_CREDENTIAL_SENTINEL"
+        val failure = IllegalStateException(privatePayload, IllegalArgumentException(privatePayload))
+        failure.addSuppressed(UnsupportedOperationException(privatePayload))
+        Mockito.`when`(provider.getObject()).thenReturn(service)
+        Mockito.doThrow(failure).`when`(service).query(context, "target", "Q", null)
+        val error = assertFailsWith<IllegalStateException> {
+            tool.callResult("""{"target_conversation_id":"target","question":"Q"}""", context)
+        }
+        assertEquals("Context query failed (CONTEXT_QUERY_FAILED).", error.message)
+        assertNull(error.cause)
+        assertTrue(error.suppressed.isEmpty())
+        for (sentinel in listOf("PRIVATE_CONTEXT_SENTINEL", "PRIVATE_REASONING_SENTINEL", "PRIVATE_CREDENTIAL_SENTINEL")) {
+            assertFalse(sentinel in error.stackTraceToString())
+            assertFalse(sentinel in "Error: ${error.message ?: error::class.simpleName}")
+        }
+        Mockito.verify(service).query(context, "target", "Q", null)
+        Mockito.verifyNoMoreInteractions(service)
+    }
+
+    @Test fun `snapshot and unsupported failures expose stable categories only`() = runBlocking<Unit> {
+        Mockito.`when`(provider.getObject()).thenReturn(service)
+        val failures = listOf(
+            ContextSnapshotUnavailableException("PRIVATE_CONTEXT_SENTINEL", IllegalStateException("PRIVATE_REASONING_SENTINEL")) to
+                "Context snapshot is unavailable (CONTEXT_SNAPSHOT_UNAVAILABLE).",
+            UnsupportedOperationException("PRIVATE_REASONING_SENTINEL", IllegalArgumentException("PRIVATE_CONTEXT_SENTINEL")) to
+                "Context query is unsupported (CONTEXT_QUERY_UNSUPPORTED).",
+        )
+        for ((failure, expectedMessage) in failures) {
+            Mockito.doThrow(failure).`when`(service).query(context, "target", "Q", null)
+            val error = assertFailsWith<IllegalStateException> {
+                tool.callResult("""{"target_conversation_id":"target","question":"Q"}""", context)
+            }
+            assertEquals(expectedMessage, error.message)
+            assertNull(error.cause)
+            assertTrue(error.suppressed.isEmpty())
+            assertFalse("PRIVATE_CONTEXT_SENTINEL" in error.stackTraceToString())
+            assertFalse("PRIVATE_REASONING_SENTINEL" in error.stackTraceToString())
+        }
+        Mockito.verify(service, Mockito.times(failures.size)).query(context, "target", "Q", null)
+        Mockito.verifyNoMoreInteractions(service)
+    }
+
+    @Test fun `lazy service resolution failures are also content-free`() {
+        Mockito.`when`(provider.getObject()).thenThrow(IllegalStateException("PRIVATE_CONTEXT_SENTINEL PRIVATE_REASONING_SENTINEL"))
+        val error = assertFailsWith<IllegalStateException> {
+            tool.callResult("""{"target_conversation_id":"target","question":"Q"}""", context)
+        }
+        assertEquals("Context query failed (CONTEXT_QUERY_FAILED).", error.message)
+        assertNull(error.cause)
+        Mockito.verify(provider).getObject()
+        Mockito.verifyNoMoreInteractions(provider)
+        Mockito.verifyNoInteractions(service)
+    }
+
+    @Test fun `cancellation propagates unchanged instead of becoming an operational failure`() = runBlocking<Unit> {
+        val cancelled = CancellationException("cancelled query")
+        Mockito.`when`(provider.getObject()).thenReturn(service)
+        Mockito.doThrow(cancelled).`when`(service).query(context, "target", "Q", null)
+        val error = assertFailsWith<CancellationException> {
+            tool.callResult("""{"target_conversation_id":"target","question":"Q"}""", context)
+        }
+        assertSame(cancelled, error)
+        Mockito.verify(service).query(context, "target", "Q", null)
+        Mockito.verifyNoMoreInteractions(service)
     }
 
     @Test fun `result contains final answer and bounded snapshot provenance not the target request`() = runBlocking {
