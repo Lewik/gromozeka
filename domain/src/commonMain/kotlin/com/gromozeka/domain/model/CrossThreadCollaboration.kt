@@ -85,8 +85,11 @@ data class AgentResponseDraft(
     val failure: String? = null,
 )
 
+const val AGENT_CONTEXT_QUERY_TOOL_NAME = "grz_agent_query_context"
+
 /** Built-in collaboration tools are unavailable in externally bound conversations. */
 val AGENT_COLLABORATION_TOOL_NAMES: Set<String> = setOf(
+    AGENT_CONTEXT_QUERY_TOOL_NAME,
     "grz_agent_sessions", "grz_agent_request", "grz_agent_message",
     "grz_agent_reply", "grz_agent_requests", "grz_agent_request_cancel",
 )

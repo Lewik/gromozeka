@@ -17,7 +17,8 @@ class AgentSessionInspectionToolTest {
     private val tool = contributor.callbacks.single { it.definition.name == "grz_agent_sessions" }
 
     @Test fun `existing discovery tool has optional inspection selectors and remains server-only`() {
-        assertEquals(AGENT_COLLABORATION_TOOL_NAMES, contributor.callbacks.map { it.definition.name }.toSet())
+        assertEquals(AGENT_COLLABORATION_TOOL_NAMES - AGENT_CONTEXT_QUERY_TOOL_NAME,
+            contributor.callbacks.map { it.definition.name }.toSet()) // Query has a separate lazy contributor.
         val schema = Json.parseToJsonElement(tool.definition.inputSchema).jsonObject
         assertEquals(setOf("conversation_id", "agent_id", "details"), schema.getValue("properties").jsonObject.keys)
         assertTrue(schema.getValue("required").jsonArray.isEmpty())

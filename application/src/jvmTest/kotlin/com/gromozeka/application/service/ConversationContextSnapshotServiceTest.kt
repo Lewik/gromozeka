@@ -83,7 +83,7 @@ class ConversationContextSnapshotServiceTest {
         val now = Instant.fromEpochMilliseconds(0)
         val actor = User.Id("operator")
         val project = Project(Project.Id("project"), "Project", createdAt = now, lastUsedAt = now)
-        val agent = AgentDefinition(AgentDefinition.Id("agent"), "Agent", prompts = emptyList(),
+        val agent = AgentDefinition(AgentDefinition.Id("agent"), name = "Agent", prompts = emptyList(),
             runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model")), type = AgentDefinition.Type.Global,
             createdAt = now, updatedAt = now)
         val conversation = Conversation(Conversation.Id("target"), project.id,
