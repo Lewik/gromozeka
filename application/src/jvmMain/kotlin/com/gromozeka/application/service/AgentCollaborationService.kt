@@ -51,16 +51,39 @@ class AgentCollaborationService(
         return conversation
     }
 
-    private data class EligibleSession(val conversation: Conversation, val agent: AgentDefinition)
+    /** A checked peer at resolution time, not a durable authorization or an atomic snapshot. */
+    data class EligibleTarget(
+        val endpoint: AgentEndpoint,
+        val conversation: Conversation,
+        val agent: AgentDefinition,
+    )
 
-    private suspend fun sameBoundary(source: AgentEndpoint, target: AgentEndpoint, actor: User.Id): EligibleSession {
+    /**
+     * Resolve the same peer accepted by send, without inspecting history/runtime or scheduling work.
+     * Callers can obtain the authenticated source and actor with [source].
+     */
+    suspend fun resolveEligibleTarget(
+        source: AgentEndpoint,
+        actor: User.Id,
+        targetConversationId: String,
+        targetAgentId: String? = null,
+    ): EligibleTarget {
+        val conversation = conversations.findById(Conversation.Id(targetConversationId)) ?: error("Target conversation unavailable")
+        val agentId = targetAgentId?.let(AgentDefinition::Id) ?: conversation.participants.filterIsInstance<Conversation.Participant.Agent>().singleOrNull()?.agentDefinitionId
+            ?: error("Specify target_agent_id when a conversation contains several agents")
+        val target = AgentEndpoint(conversation.id, conversation.currentThread, agentId)
+        require(target.conversationId != source.conversationId) { "Use the current conversation for local work" }
+        return sameBoundary(source, target, actor)
+    }
+
+    private suspend fun sameBoundary(source: AgentEndpoint, target: AgentEndpoint, actor: User.Id): EligibleTarget {
         val from = authorize(source, actor)
         val to = authorize(target, actor)
         require(from.projectId == to.projectId) { "Cross-project communication is disabled" }
         val sourceAgent = agents.findById(source.agentId) ?: error("Source agent unavailable")
         val targetAgent = agents.findById(target.agentId) ?: error("Target agent unavailable")
         require(sourceAgent.toolAccess == targetAgent.toolAccess) { "This experiment requires matching agent tool policies" }
-        return EligibleSession(to, targetAgent)
+        return EligibleTarget(target, to, targetAgent)
     }
 
     private data class SessionObservation(
@@ -131,12 +154,7 @@ class AgentCollaborationService(
     suspend fun send(source: AgentEndpoint, actor: User.Id, targetConversationId: String, targetAgentId: String?, text: String, key: String, request: Boolean): String {
         require(text.isNotBlank() && text.length <= 32_000) { "Message must contain 1..32000 characters" }
         require(key.isNotBlank() && key.length <= 256) { "Stable request key required" }
-        val conversation = conversations.findById(Conversation.Id(targetConversationId)) ?: error("Target conversation unavailable")
-        val agentId = targetAgentId?.let(AgentDefinition::Id) ?: conversation.participants.filterIsInstance<Conversation.Participant.Agent>().singleOrNull()?.agentDefinitionId
-            ?: error("Specify target_agent_id when a conversation contains several agents")
-        val target = AgentEndpoint(conversation.id, conversation.currentThread, agentId)
-        require(target.conversationId != source.conversationId) { "Use the current conversation for local work" }
-        sameBoundary(source, target, actor)
+        val target = resolveEligibleTarget(source, actor, targetConversationId, targetAgentId).endpoint
         val id = "agent-${digest(source.toString() + ':' + actor.value + ':' + key)}"
         if (request && repository.findRequest(id) == null) {
             require(repository.requests(source.conversationId).count { it.isOpen } < 32 && repository.requests(target.conversationId).count { it.isOpen } < 32) { "Too many open collaboration requests" }

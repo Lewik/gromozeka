@@ -43,6 +43,93 @@ class AgentCollaborationServiceTest {
         tools = AgentPreloadedTools(listOf("grz_visual")),
     )
 
+    @Test fun `peer resolution returns checked identity across runtimes without runtime or history effects`(): Unit = runBlocking {
+        setup()
+        val definition = targetOnAnotherRuntime()
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(definition)
+        val repository = mock<AgentCollaborationRepository>()
+        val history = mock<ConversationDomainService>()
+        val reader = AgentCollaborationService(repository, conversations, identities, access, agents, coordinator, sync, history)
+        val resolved = reader.resolveEligibleTarget(source, actor.id, "b")
+        assertEquals(target, resolved.endpoint)
+        assertEquals(conversation(target), resolved.conversation)
+        assertEquals(definition, resolved.agent)
+        Mockito.verify(access, Mockito.times(2)).requirePermission(actor.id, Project.Id("p"), ProjectPermission.WRITE)
+        Mockito.verifyNoInteractions(repository, coordinator, sync, history)
+        assertTrue(reader.wakeups.tryReceive().isFailure)
+        assertTrue(Mockito.mockingDetails(conversations).invocations.all { it.method.name.substringBefore('-') == "findById" })
+    }
+
+    @Test fun `peer resolution requires an explicit connected agent for ambiguous conversations`(): Unit = runBlocking {
+        setup()
+        val several = conversation(target).copy(participants = conversation(target).participants +
+            Conversation.Participant.Agent(AgentDefinition.Id("second-agent")))
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(several)
+        assertEquals("Specify target_agent_id when a conversation contains several agents",
+            assertFailsWith<IllegalStateException> { service.resolveEligibleTarget(source, actor.id, "b") }.message)
+        assertEquals(target, service.resolveEligibleTarget(source, actor.id, "b", "bb").endpoint)
+        assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "b", "not-connected") }
+        Mockito.verifyNoInteractions(coordinator, sync)
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+    }
+
+    @Test fun `peer resolution rejects local work and preserves peer visibility policy`(): Unit = runBlocking {
+        setup()
+        assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "a") }
+        for (hidden in listOf(
+            conversation(target).copy(projectId = Project.Id("other-project")),
+            conversation(target).copy(participants = setOf(Conversation.Participant.Agent(target.agentId))),
+            conversation(target).copy(externalChannel = ExternalConversationChannel("telegram", "synthetic", "chat")),
+        )) {
+            Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(hidden)
+            assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "b", "bb") }
+        }
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target))
+        Mockito.`when`(agents.findById(target.agentId)).thenReturn(agent(target.agentId).copy(toolAccess = ToolAccessPolicy.AllowOnly()))
+        assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "b", "bb") }
+        Mockito.verifyNoInteractions(coordinator, sync)
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+    }
+
+    @Test fun `peer resolution independently authorizes source and actor`(): Unit = runBlocking {
+        setup()
+        for (invalidSource in listOf(
+            conversation(source).copy(externalChannel = ExternalConversationChannel("telegram", "synthetic", "chat")),
+            conversation(source).copy(participants = setOf(Conversation.Participant.Agent(source.agentId))),
+            conversation(source).copy(participants = setOf(Conversation.Participant.User(actor.id))),
+            conversation(source).copy(currentThread = Conversation.Thread.Id("new-source-thread")),
+        )) {
+            Mockito.`when`(conversations.findById(source.conversationId)).thenReturn(invalidSource)
+            assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "b") }
+        }
+        Mockito.`when`(conversations.findById(source.conversationId)).thenReturn(conversation(source))
+        Mockito.`when`(identities.findUserById(actor.id)).thenReturn(null)
+        assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "b") }
+        Mockito.verifyNoInteractions(coordinator, sync)
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+    }
+
+    @Test fun `peer resolution rejects a target branch changed during selection`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target),
+            conversation(target).copy(currentThread = Conversation.Thread.Id("new-target-thread")))
+        assertEquals("History branch changed; collaboration needs a new request",
+            assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "b") }.message)
+        Mockito.verifyNoInteractions(coordinator, sync)
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+    }
+
+    @Test fun `peer resolution propagates project access denial without resolving an agent`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(access.requirePermission(actor.id, Project.Id("p"), ProjectPermission.WRITE))
+            .thenThrow(IllegalArgumentException("Access denied"))
+        assertEquals("Access denied", assertFailsWith<IllegalArgumentException> {
+            service.resolveEligibleTarget(source, actor.id, "b")
+        }.message)
+        Mockito.verifyNoInteractions(agents, coordinator, sync)
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+    }
+
     @Test fun `runtime selections and preloads do not restrict discovery or informational delivery`(): Unit = runBlocking {
         setup()
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
