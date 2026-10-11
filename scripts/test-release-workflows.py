@@ -75,6 +75,11 @@ class WorkflowContracts(unittest.TestCase):
 
     def test_ios_checks_compile_unsigned_swift_shells_for_both_sdks(self):
         job = JOBS["verify-ios"]
+        options = job.get("env", {}).get("GRADLE_OPTS", "")
+        for required in ("-Xmx4g", "org.gradle.workers.max=1", "org.gradle.parallel=false",
+                         "kotlin.compiler.execution.strategy=in-process"):
+            self.assertIn(required, options)
+        self.assertFalse(any("GRADLE_OPTS" in step.get("env", {}) for step in job["steps"]))
         matrix = job["strategy"]["matrix"]["include"]
         expected = {
             "client-device": ("iosApp", "iphoneos", "Gromozeka.app"),
