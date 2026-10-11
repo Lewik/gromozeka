@@ -17,10 +17,13 @@ class SlotRequestEnricher(
 ) : ConversationRequestEnricher {
     override suspend fun enrichSnapshot(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
-        enrich(conversationId, rootUserMessageId, turnId, model, request)
+        enrichView(conversationId, request, readOnly = true)
 
     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
-        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest {
+        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+        enrichView(conversationId, request, readOnly = false)
+
+    private suspend fun enrichView(conversationId: Conversation.Id, request: AiRuntimeRequest, readOnly: Boolean): AiRuntimeRequest {
         val actorId = request.options.toolContext[TOOL_CONTEXT_USER_ID] as? String ?: return request
         val actor = users.findActiveById(User.Id(actorId)) ?: return request
         val conversation = slots.authorizeConversation(actor, conversationId, ProjectPermission.READ)
@@ -47,7 +50,9 @@ class SlotRequestEnricher(
         val hasLease = views.any { view -> view.snapshot.leases.any {
             it.active && it.conversationId == conversationId && it.actorUserId == actor.id
         } }
-        val release = if (hasLease) toolCatalog.serverTool(
+        // serverTool may register contracts. A snapshot only needs the same slot state/prompt,
+        // never the live turn's release-tool preload or its resolver side effects.
+        val release = if (!readOnly && hasLease) toolCatalog.serverTool(
             QualifiedToolName("gromozeka", "grz_slot_release"), request.options.toolAccess,
         ) else null
         val tools = if (release != null && request.tools.none { it.definition.name == release.definition.name })

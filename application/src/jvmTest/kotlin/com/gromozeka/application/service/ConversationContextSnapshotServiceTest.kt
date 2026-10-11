@@ -13,7 +13,7 @@ import kotlin.test.*
 import kotlin.time.Instant
 
 class ConversationContextSnapshotServiceTest {
-    @Test fun `pinned prefix includes available runtime layers without turn preparation or catalog writes`() = runBlocking {
+    @Test fun `pinned prefix includes available runtime layers without turn preparation or catalog writes`() = runBlocking<Unit> {
         val f = Fixture()
         val original = listOf(f.user, f.incompleteCall)
         Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(original)
@@ -42,7 +42,7 @@ class ConversationContextSnapshotServiceTest {
         Mockito.verifyNoInteractions(f.artifactRepository, f.contentStore)
     }
 
-    @Test fun `history reader never follows an advanced current branch`() = runBlocking {
+    @Test fun `history reader never follows an advanced current branch`() = runBlocking<Unit> {
         val f = Fixture()
         val advanced = f.conversation.copy(currentThread = Conversation.Thread.Id("advanced"))
         Mockito.`when`(f.conversations.findById(f.conversation.id)).thenReturn(advanced)
@@ -54,13 +54,29 @@ class ConversationContextSnapshotServiceTest {
         Mockito.verify(f.conversations, Mockito.never()).findById(f.conversation.id)
     }
 
-    @Test fun `missing mandatory cached catalog fails instead of reduced history-only view`() = runBlocking {
+    @Test fun `missing mandatory cached catalog fails instead of reduced history-only view`() = runBlocking<Unit> {
         val f = Fixture()
         Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
         Mockito.`when`(f.capabilities.cachedPromptFor(emptyList())).thenThrow(ContextSnapshotUnavailableException("not ready"))
         assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
         assertEquals(0, f.snapshotEnrichments)
         Mockito.verifyNoInteractions(f.artifactRepository, f.contentStore)
+    }
+
+    @Test fun `excluded incomplete tail cannot erase sticky instructions from retained prefix`() = runBlocking<Unit> {
+        val f = Fixture()
+        val retained = Conversation.Message.Instruction.UserInstruction("retained", "Retained", "Retained instruction")
+        val newer = Conversation.Message.Instruction.UserInstruction("newer", "Newer", "Excluded instruction")
+        val group = MessageInstructionGroup("mode", "Mode", controls = listOf(
+            MessageInstructionGroup.Control(retained, "R"), MessageInstructionGroup.Control(newer, "N")),
+            retentionMode = MessageInstructionGroup.RetentionMode.STICKY_LATEST)
+        Mockito.`when`(f.settings.userProfile).thenReturn(UserProfile(messageInstructionGroups = listOf(group)))
+        val first = f.user.copy(instructions = listOf(retained))
+        val tail = f.user.copy(id = Conversation.Message.Id("excluded"), instructions = listOf(newer))
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(first, f.incompleteCall, tail))
+        val snapshot = f.capture()
+        assertEquals(listOf(retained), snapshot.request.messages.single().instructions.filterIsInstance<Conversation.Message.Instruction.UserInstruction>())
+        assertEquals(2, snapshot.omittedTrailingMessageCount)
     }
 
     @Test fun `ordinary and snapshot assemblers share the unchanged ordered system prefix`() {

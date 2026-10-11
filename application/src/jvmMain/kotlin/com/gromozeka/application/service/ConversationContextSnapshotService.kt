@@ -76,13 +76,25 @@ class ConversationContextSnapshotService(
                 "modelName" to resolved.modelConfiguration.providerModelId,
             ),
         )
+        val projectionRequest = AiRuntimeRequest(emptyList(), original, options = options)
+        val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
+        val projected = projectionRequest.projectedMessages(nativeProvider)
+        val prefix = completeToolGroupPrefix(projected)
+        // An excluded pending group may contain newer sticky instructions. It must not erase
+        // instructions from the retained prefix. Preserve ordinary temporal/coverage semantics
+        // by materializing the raw prefix (including covered sources), then projecting it again.
+        val rawBoundary = prefix.lastOrNull()?.id?.let { last ->
+            original.indexOfLast { it.id == last }.also { index ->
+                check(index >= 0) { "Snapshot prefix has no canonical history boundary" }
+            }
+        } ?: -1
         val runtimeMessages = sticky.materialize(
-            temporal.enrich(original, profile.agentSettings.includeMessageTemporalContext),
+            temporal.enrich(original.take(rawBoundary + 1), profile.agentSettings.includeMessageTemporalContext),
             profile.messageInstructionGroups,
         )
-        val projected = AiRuntimeRequest(emptyList(), runtimeMessages, options = options)
-            .projectedMessages(resolved.connection.kind.nativeCompactionProvider())
-        val prefix = completeToolGroupPrefix(projected)
+        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(nativeProvider)
+        if (materializedPrefix.map { it.id } != prefix.map { it.id }) throw ContextSnapshotUnavailableException(
+            "Incomplete history checkpoint prevents a stable projected context prefix")
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)
         val skillContext = skills.prepare(agent, project.id, baseCatalog)
         val catalog = skillContext.toolCatalog
@@ -110,7 +122,7 @@ class ConversationContextSnapshotService(
         }
         val root = prefix.lastOrNull { it.role == Conversation.Message.Role.USER }?.id
             ?: Conversation.Message.Id("context-snapshot:${uuid7()}")
-        var request = AiRuntimeRequest(systemPrompts, prefix, options = options.copy(
+        var request = AiRuntimeRequest(systemPrompts, materializedPrefix, options = options.copy(
             toolContext = options.toolContext + (TOOL_CONTEXT_TARGET_MESSAGE_ID to root.value),
         ))
         val observationId = ConversationRuntimeTurnId("context-snapshot:${uuid7()}")

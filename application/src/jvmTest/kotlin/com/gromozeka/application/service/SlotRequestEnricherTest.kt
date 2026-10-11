@@ -108,6 +108,22 @@ class SlotRequestEnricherTest {
         assertFalse("mount-7" in enriched.systemPrompts.last())
     }
 
+    @Test fun `snapshot retains current slot and automatic wait context without resolving release contracts`() = runBlocking {
+        val f = Fixture()
+        f.automatic = listOf(SlotRequest("waiting", "key", null, f.conversation.id, f.user.id,
+            AgentDefinition.Id("agent"), SlotAccess.WRITE, NOW, projectId = f.conversation.projectId))
+        val request = f.request()
+        val snapshot = f.enrich(request, readOnly = true)
+        assertTrue(snapshot.tools.isEmpty())
+        assertTrue(f.contracts.findAll().isEmpty())
+        assertContains(snapshot.systemPrompts.last(), "mount-7")
+        assertContains(snapshot.systemPrompts.last(), "waiting")
+        val ordinary = f.enrich(request)
+        assertEquals(snapshot.systemPrompts, ordinary.systemPrompts)
+        assertEquals(listOf("grz_slot_release"), ordinary.tools.map { it.definition.name })
+        assertFalse(f.contracts.findAll().isEmpty())
+    }
+
     private class Fixture(val release: AiToolCallback = tool("grz_slot_release")) {
         val user = User(User.Id("user"), displayName = "User", status = User.Status.ACTIVE, createdAt = NOW, updatedAt = NOW)
         val conversation = Conversation(Conversation.Id("conversation"), Project.Id("project"),
@@ -133,11 +149,12 @@ class SlotRequestEnricherTest {
                 toolContext = mapOf(TOOL_CONTEXT_USER_ID to user.id.value, TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
                     TOOL_CONTEXT_THREAD_ID to "history", TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent")),
         )
-        suspend fun enrich(request: AiRuntimeRequest): AiRuntimeRequest {
+        suspend fun enrich(request: AiRuntimeRequest, readOnly: Boolean = false): AiRuntimeRequest {
             Mockito.`when`(users.findActiveById(user.id)).thenReturn(user)
             Mockito.`when`(slots.authorizeConversation(user, conversation.id, ProjectPermission.READ)).thenReturn(conversation)
             Mockito.`when`(slots.catalog(user, conversation.projectId)).thenReturn(SlotCatalogSnapshot(views, automatic))
-            return enricher.enrich(conversation.id, Conversation.Message.Id("root"), ConversationRuntimeTurnId("turn"), MODEL, request)
+            return if (readOnly) enricher.enrichSnapshot(conversation.id, Conversation.Message.Id("root"), ConversationRuntimeTurnId("turn"), MODEL, request)
+            else enricher.enrich(conversation.id, Conversation.Message.Id("root"), ConversationRuntimeTurnId("turn"), MODEL, request)
         }
     }
 

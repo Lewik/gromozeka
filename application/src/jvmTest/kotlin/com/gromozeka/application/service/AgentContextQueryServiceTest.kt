@@ -9,7 +9,7 @@ import kotlin.test.*
 import kotlin.time.Instant
 
 class AgentContextQueryServiceTest {
-    @Test fun `uses shared eligibility before reading before invoking and before returning without creating work`() = runBlocking {
+    @Test fun `uses shared eligibility before reading before invoking and before returning without creating work`() = runBlocking<Unit> {
         val f = Fixture()
         val result = f.service.query(f.context, "target", "Question", "receiver")
         assertEquals("Unknown from context", result.answer)
@@ -23,7 +23,7 @@ class AgentContextQueryServiceTest {
         Mockito.verifyNoMoreInteractions(f.invoker)
     }
 
-    @Test fun `shared eligibility rejection stops before snapshot or invocation`() = runBlocking {
+    @Test fun `shared eligibility rejection stops before snapshot or invocation`() = runBlocking<Unit> {
         val f = Fixture()
         Mockito.`when`(f.collaboration.resolveEligibleTarget(f.source, f.actor, "target", null))
             .thenThrow(IllegalArgumentException("Specify target_agent_id"))
@@ -31,7 +31,7 @@ class AgentContextQueryServiceTest {
         Mockito.verifyNoInteractions(f.snapshots, f.invoker)
     }
 
-    @Test fun `revocation during model call cannot return the captured context`() = runBlocking {
+    @Test fun `revocation during model call cannot return the captured context`() = runBlocking<Unit> {
         val f = Fixture()
         Mockito.`when`(f.collaboration.resolveEligibleTarget(f.source, f.actor, "target", "receiver"))
             .thenReturn(f.peer).thenReturn(f.peer).thenThrow(IllegalArgumentException("Access revoked"))
@@ -39,7 +39,7 @@ class AgentContextQueryServiceTest {
         Mockito.verify(f.invoker).answer(f.snapshot, "Question")
     }
 
-    @Test fun `changed branch during assembly prevents invocation`() = runBlocking {
+    @Test fun `changed branch during assembly prevents invocation`() = runBlocking<Unit> {
         val f = Fixture()
         Mockito.`when`(f.collaboration.resolveEligibleTarget(f.source, f.actor, "target", "receiver"))
             .thenReturn(f.peer).thenReturn(f.peer.copy(endpoint = f.peer.endpoint.copy(threadId = Conversation.Thread.Id("new"))))
