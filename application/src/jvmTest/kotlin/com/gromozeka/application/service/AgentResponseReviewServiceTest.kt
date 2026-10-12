@@ -22,7 +22,7 @@ class AgentResponseReviewServiceTest {
     private val text = ContentItem.AssistantMessage(Conversation.Message.StructuredText("Actual model answer", ttsText = "Wrong recipient", attentionRequested = true))
     private val message = Conversation.Message(Conversation.Message.Id("draft-answer"), b.conversationId, role = Conversation.Message.Role.ASSISTANT, author = Conversation.Message.Author.Agent(b.agentId, "B"), content = listOf(text), createdAt = now)
     private val draft = AgentResponseDraft("draft", b, user, Conversation.Message.Id("root"), "turn", 1, listOf(message), listOf(incoming), emptyList(), listOf("command-1"), "", listOf("root"), now)
-    private val service = AgentResponseReviewService(mock(), mock(), mock(), mock())
+    private val service = AgentResponseReviewService(mock(), mock(), mock(), emptyConversationPinnedPrompt(), mock())
     private fun complete() = AgentResponseDecision(null, AgentResponseDecision.Next.COMPLETE, emptyList(), listOf(AgentResponseDecision.RequestDecision(incoming.id, AgentRequest.State.COMPLETED, "Result for A", emptyList())))
 
     @Test fun `external channel final answers bypass response review before any repository access`() = runBlocking {
@@ -30,7 +30,7 @@ class AgentResponseReviewServiceTest {
         val repository = mock<AgentCollaborationRepository>()
         val coordinator = mock<ConversationRuntimeCoordinator>()
         val sync = mock<ConversationRuntimeStateSyncService>()
-        val reviewer = AgentResponseReviewService(collaboration, repository, coordinator, sync)
+        val reviewer = AgentResponseReviewService(collaboration, repository, coordinator, emptyConversationPinnedPrompt(), sync)
         val conversation = Conversation(b.conversationId, Project.Id("project"), setOf(Conversation.Participant.User(user), Conversation.Participant.Agent(b.agentId)),
             currentThread = b.threadId, createdAt = now, updatedAt = now,
             externalChannel = ExternalConversationChannel("telegram", "test", "chat"))
@@ -116,5 +116,26 @@ class AgentResponseReviewServiceTest {
         assertFailsWith<IllegalStateException> { service.review(draft, runtime, AiRuntimeOptions()) }
         assertEquals(2, calls)
     }
+    @Test fun `each review correction reads current pins without changing isolation or retry bounds`() = runBlocking<Unit> {
+        val pins = ReadOnlyTestPins().apply { values = listOf(testPin(b.conversationId, "REVIEW_PIN_A")) }
+        val reviewer = AgentResponseReviewService(mock(), mock(), mock(), ConversationPinnedPrompt(pins), mock())
+        val seen = mutableListOf<AiRuntimeRequest>()
+        val runtime = object : AiRuntime {
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                seen += request
+                pins.values = listOf(testPin(b.conversationId, "REVIEW_PIN_B"))
+                val body = if (seen.size == 1) "{}" else Json.encodeToString(complete())
+                return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText(body))))))
+            }
+            override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("No streaming")
+        }
+        reviewer.review(draft, runtime, AiRuntimeOptions())
+        assertEquals(listOf(b.conversationId, b.conversationId), pins.reads)
+        assertTrue(seen.first().systemPrompts.last().contains("REVIEW_PIN_A"))
+        assertTrue(seen.last().systemPrompts.last().contains("REVIEW_PIN_B"))
+        assertTrue(seen.all { it.tools.isEmpty() && it.options.toolChoice == AiToolChoice.None && it.options.autoCompactionThresholdTokens == null })
+        assertTrue(seen.all { it.systemPrompts.size == 2 })
+    }
+
     private inline fun <reified T> mock(): T = Mockito.mock(T::class.java)
 }

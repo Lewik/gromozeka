@@ -105,7 +105,7 @@ class ExposedConversationPinRepository : ConversationPinRepository {
         val current = findPin(conversationId, pinId) ?: throw ConversationPinNotFoundException()
         if (current.revision != expectedRevision) throw ConversationPinConflictException()
         val deleted = ConversationPins.deleteWhere {
-            (ConversationPins.conversationId eq conversationId.value) and (id eq pinId.value) and (revision eq expectedRevision)
+            (ConversationPins.conversationId eq conversationId.value) and (ConversationPins.id eq pinId.value) and (ConversationPins.revision eq expectedRevision)
         }
         if (deleted != 1) throw ConversationPinConflictException()
         // Keep creation receipts so a delayed duplicate cannot recreate this pin.

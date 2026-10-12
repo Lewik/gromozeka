@@ -1451,8 +1451,10 @@ class ClaudeCodeCliRuntimeTest {
         val history = listOf(firstUser, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next"))
         val result = runtime.call(request(history, emptyList(), AiRuntimeOptions(
             autoCompactionThresholdTokens = 10, toolContext = testToolContext(),
-        )))
+        )).copy(systemPrompts = listOf("base", "Pinned conversation context:\n\nNATIVE_COMPACTION_PIN")))
         assertEquals("/compact", executor.commands[1].userPrompt)
+        assertTrue(executor.commands[1].systemPrompt.contains("NATIVE_COMPACTION_PIN"))
+        assertEquals(executor.commands[1].systemPrompt, executor.commands[2].systemPrompt)
         assertTrue(executor.commands[2].userPrompt.contains("Next"))
         val checkpoint = result.messages.first().content.single() as Conversation.Message.ContentItem.ContextCompactionResult
         assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY, checkpoint.origin)
@@ -1547,6 +1549,30 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun conversationPinEditAndDeleteReachActualCommandSystemPromptWithoutChangingProviderSuffix() = runBlocking<Unit> {
+        // PIN_PREFIX_V1 consumer; application ConversationPinnedPromptTest asserts exact producer formatting.
+        val parsed = response(structuredOutput = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK")))
+        val executor = FakeClaudeCodeCliExecutor(parsed, parsed, parsed)
+        val runtime = runtime(executor)
+        val base = request(listOf(userMessage("Question")), emptyList())
+        val before = "Pinned conversation context:\n\nPIN_COMMAND_BEFORE"
+        val after = "Pinned conversation context:\n\nPIN_COMMAND_AFTER"
+        runtime.call(base.copy(systemPrompts = base.systemPrompts + before))
+        runtime.call(base.copy(systemPrompts = base.systemPrompts + after))
+        runtime.call(base)
+        val first = executor.commands[0].systemPrompt
+        val edited = executor.commands[1].systemPrompt
+        val deleted = executor.commands[2].systemPrompt
+        val baseText = base.systemPrompts.joinToString("\n\n")
+        assertTrue(first.startsWith(baseText + "\n\n" + before))
+        assertTrue(edited.startsWith(baseText + "\n\n" + after))
+        assertFalse(edited.contains("PIN_COMMAND_BEFORE"))
+        assertFalse(deleted.contains("Pinned conversation context:"))
+        assertEquals(first.removePrefix(baseText + "\n\n" + before), edited.removePrefix(baseText + "\n\n" + after))
+        assertEquals(edited.removePrefix(baseText + "\n\n" + after), deleted.removePrefix(baseText))
+    }
+
+    @Test
     fun isolatedContextQueryNeverTouchesNativeSessionRepositoryOrEnablesTools() = runBlocking {
         val sessions = object : ClaudeCodeSessionStateRepository {
             override suspend fun find(key: ClaudeCodeSessionState.Key): ClaudeCodeSessionState? = error("Query must not read native session")
@@ -1558,8 +1584,9 @@ class ClaudeCodeCliRuntimeTest {
         runtime(executor, sessions).call(request(listOf(userMessage("Historical context"), userMessage("Isolated question")),
             emptyList(), AiRuntimeOptions(usagePurpose = com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE,
                 toolChoice = AiToolChoice.None, toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
-                toolContext = testToolContext())))
+                toolContext = testToolContext())).copy(systemPrompts = listOf("base", "Pinned conversation context:\n\nISOLATED_PIN")))
         val command = executor.commands.single()
+        assertTrue(command.systemPrompt.contains("Pinned conversation context:\n\nISOLATED_PIN"))
         assertNull(command.cacheKey)
         assertNull(command.resumeSessionId)
         assertTrue(command.noSessionPersistence)

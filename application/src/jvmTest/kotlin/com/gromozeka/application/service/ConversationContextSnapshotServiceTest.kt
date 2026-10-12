@@ -252,6 +252,34 @@ class ConversationContextSnapshotServiceTest {
         return requireNotNull(sent) to answer
     }
 
+    @Test fun `pins are the last application block and query keeps the target owner under synthetic invocation`() = runBlocking<Unit> {
+        val f = Fixture()
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+        f.pins.values = listOf(testPin(f.conversation.id, "  PIN_TARGET_A\n", 2), testPin(f.conversation.id, "PIN_TARGET_B", 1))
+        val snapshot = f.capture()
+        val block = snapshot.request.systemPrompts.last()
+        assertTrue(block.indexOf("PIN_TARGET_B") < block.indexOf("  PIN_TARGET_A\n"))
+        assertEquals("read-only-runtime", snapshot.request.systemPrompts[snapshot.request.systemPrompts.lastIndex - 1])
+        assertFalse(block.contains("PRIVATE_"))
+        f.pins.values = emptyList()
+        val (sent, _) = invokeOnce(snapshot, f.configuration)
+        assertEquals(block, sent.systemPrompts.last())
+        assertEquals(listOf(f.conversation.id), f.pins.reads)
+        assertNotEquals(f.conversation.id.value, sent.options.toolContext[TOOL_CONTEXT_CONVERSATION_ID])
+        assertTrue(sent.tools.isEmpty())
+        assertEquals(AiToolChoice.None, sent.options.toolChoice)
+        assertNull(sent.options.autoCompactionThresholdTokens)
+        assertEquals(snapshot.request.systemPrompts.dropLast(1), f.capture().request.systemPrompts)
+    }
+
+    @Test fun `pin read error is content free and does not produce an empty snapshot`() = runBlocking<Unit> {
+        val f = Fixture()
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+        f.pins.failure = IllegalStateException("PRIVATE_PIN_TEXT PRIVATE_CREDENTIAL")
+        val error = assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
+        assertFalse(error.toString().contains("PRIVATE_")); assertNull(error.cause)
+    }
+
     private class Fixture(nativeClaude: Boolean = false) {
         val now = Instant.fromEpochMilliseconds(0)
         val actor = User.Id("operator")
@@ -278,6 +306,7 @@ class ConversationContextSnapshotServiceTest {
         val skills = Mockito.mock(AgentSkillRuntimeCatalogService::class.java)
         val artifactRepository = Mockito.mock(ArtifactRepository::class.java)
         val contentStore = Mockito.mock(ArtifactContentStore::class.java)
+        val pins = ReadOnlyTestPins()
         val baseCatalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
         var snapshotEnrichments = 0
         val enricher = object : ConversationRequestEnricher {
@@ -310,6 +339,6 @@ class ConversationContextSnapshotServiceTest {
         }
         suspend fun capture() = ConversationContextSnapshotService(conversations, history, configuration, prompts, settings,
             catalog, skills, capabilities, AiToolRuntimeCatalogService(), MessageTemporalContextService(), StickyMessageInstructionService(),
-            ConversationArtifactApplicationService(artifactRepository, contentStore), listOf(enricher)).capture(target, conversation, agent, actor)
+            ConversationArtifactApplicationService(artifactRepository, contentStore), ConversationPinnedPrompt(pins), listOf(enricher)).capture(target, conversation, agent, actor)
     }
 }

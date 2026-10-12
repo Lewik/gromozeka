@@ -235,8 +235,56 @@ class ConversationEngineDeliveryTest {
         assertTrue(Mockito.mockingDetails(f.reviewRepository).invocations.none { it.method.name.startsWith("applyDecision") })
     }
 
-    private inner class Fixture(enableReview: Boolean = false) {
+    @Test fun `pin add edit delete affects next ordinary or post-tool call but never the in-flight request`() = runBlocking<Unit> {
+        val f = Fixture(withEnricher = true); val first = f.begin()
+        f.onCall = { request ->
+            f.pins.values = listOf(testPin(conversation.id, "PIN_ADDED"))
+            assertFalse(request.systemPrompts.any { "PIN_ADDED" in it })
+            answer(AiStepOutcome.CONTINUE)
+        }
+        val next = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(first, executor) {}).nextTask
+        f.advance(first, next)
+        val callId = ContentItem.ToolCall.Id("pin-tool")
+        f.messages += Conversation.Message(Conversation.Message.Id("tool-call"), conversation.id,
+            role = Conversation.Message.Role.ASSISTANT, content = listOf(ContentItem.ToolCall(callId,
+                ContentItem.ToolCall.Data("test", kotlinx.serialization.json.JsonObject(emptyMap())))), createdAt = now)
+        val toolResult = Conversation.Message(Conversation.Message.Id("tool-result"), conversation.id,
+            role = Conversation.Message.Role.USER, content = listOf(ContentItem.ToolResult(callId, "test",
+                listOf(ContentItem.ToolResult.Data.Text("done")), false)), createdAt = now)
+        f.messages += toolResult
+        val processing = next.copy(id = ConversationRuntimeTask.Id("process-pins"), parentTaskId = next.id,
+            idempotencyKey = "process-pins", payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
+                Conversation.Message.Id("root"), toolResult.id, agentId, 2, returnDirect = false))
+        f.advance(next, processing)
+        val postTool = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(processing, executor) {}).nextTask
+        assertEquals(1, f.pins.reads.size, "Tool result processing itself is not a model request")
+        f.advance(processing, postTool)
+        f.onCall = { request ->
+            assertTrue(request.systemPrompts.last().contains("PIN_ADDED"))
+            f.pins.values = listOf(testPin(conversation.id, "PIN_EDITED"))
+            assertFalse(request.systemPrompts.last().contains("PIN_EDITED"))
+            answer(AiStepOutcome.CONTINUE)
+        }
+        val edited = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(postTool, executor) {}).nextTask
+        f.advance(postTool, edited)
+        f.onCall = { request ->
+            assertTrue(request.systemPrompts.last().contains("PIN_EDITED"))
+            f.pins.values = emptyList()
+            answer(AiStepOutcome.CONTINUE)
+        }
+        val deleted = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(edited, executor) {}).nextTask
+        f.advance(edited, deleted); f.onCall = { answer() }
+        f.engine.runRuntimeTask(deleted, executor) {}
+        assertEquals(List(4) { conversation.id }, f.pins.reads)
+        assertEquals(f.requests.first().systemPrompts, f.requests.last().systemPrompts)
+        assertEquals("ENRICHER_LAST", f.requests[1].systemPrompts[f.requests[1].systemPrompts.lastIndex - 1])
+        assertTrue(f.requests[1].messages.any { it.id == toolResult.id })
+        assertFalse(f.messages.any { message -> message.content.any { it is ContentItem.UserMessage && "PIN_" in it.text } })
+    }
+
+    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
+        val pins = ReadOnlyTestPins()
         val messages = mutableListOf(requireNotNull(input("root").userMessageOrNull()))
         val emitted = mutableListOf<Conversation.Message>()
         val requests = mutableListOf<AiRuntimeRequest>()
@@ -298,8 +346,14 @@ class ConversationEngineDeliveryTest {
             }, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = PendingSecretRevealService(),
             suggestedRepliesGenerationService = mock(),
+            conversationPins = ConversationPinnedPrompt(pins),
+            requestEnrichers = if (withEnricher) listOf(object : ConversationRequestEnricher {
+                override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+                    turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+                    request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
+            }) else emptyList(),
             collaboration = collaboration.takeIf { enableReview },
-            responseReview = if (enableReview) AgentResponseReviewService(collaboration, reviewRepository, coordinator, mock()) else null,
+            responseReview = if (enableReview) AgentResponseReviewService(collaboration, reviewRepository, coordinator, ConversationPinnedPrompt(pins), mock()) else null,
         )
         suspend fun begin(): ConversationRuntimeTask {
             val root = input("root")

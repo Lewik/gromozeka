@@ -117,7 +117,7 @@ class ConversationApplicationService(
         )
 
         val createdConversation = if (pinsFrom == null) conversationRepo.create(conversation)
-            else conversationRepo.createWithCopiedPins(conversation, pinsFrom)
+            else createPinCopy(conversation, pinsFrom)
         threadRepo.save(initialThread)
         if (pinsFrom != null) stateChanges.publish(DeclarativeStateKey.conversationPins(createdConversation.id))
         return createdConversation.also(::publishConversationList)
@@ -330,7 +330,7 @@ class ConversationApplicationService(
             updatedAt = now,
         )
         
-        conversationRepo.createWithCopiedPins(newConversation, sourceConversation.id)
+        createPinCopy(newConversation, sourceConversation.id)
         threadRepo.save(newThread)
         
         val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
@@ -638,6 +638,18 @@ class ConversationApplicationService(
         log.debug("Deleted ${messageIds.size} selected message(s), ${allIdsToDelete.size} including pairs and dependent summaries; created new thread ${newThread.id}")
 
         return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
+    }
+
+    private suspend fun createPinCopy(conversation: Conversation, sourceId: Conversation.Id): Conversation = try {
+        conversationRepo.createWithCopiedPins(conversation, sourceId)
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (error: com.gromozeka.domain.model.ConversationPinException) {
+        throw error
+    } catch (_: IllegalArgumentException) {
+        throw IllegalArgumentException("Conversation pin copying requires an available source in the same project")
+    } catch (_: Exception) {
+        throw com.gromozeka.domain.model.ConversationPinOperationFailedException()
     }
 
     private fun publishConversationList(conversation: Conversation) {

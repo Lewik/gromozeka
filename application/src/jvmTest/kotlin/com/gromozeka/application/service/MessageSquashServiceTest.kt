@@ -97,6 +97,22 @@ class MessageSquashServiceTest {
         }
     }
 
+    @Test fun `AI squash uses current ordered pins while concatenate makes no model request`() = runBlocking<Unit> {
+        for (strategy in SquashType.entries) {
+            val f = Fixture()
+            f.pins.values = listOf(testPin(f.conversation.id, "SQUASH_PIN"))
+            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id, f.third.id), strategy)
+            if (strategy == SquashType.CONCATENATE) {
+                assertTrue(f.pins.reads.isEmpty()); assertTrue(f.runtimeProvider.requests.isEmpty())
+            } else {
+                assertEquals(listOf(f.conversation.id), f.pins.reads)
+                assertTrue(f.runtimeProvider.requests.single().systemPrompts.last().contains("SQUASH_PIN"))
+                assertEquals(AiToolChoice.None, f.runtimeProvider.requests.single().options.toolChoice)
+            }
+            assertEquals("SQUASH_PIN", f.pins.values.single().text)
+        }
+    }
+
     @Test
     fun `AI failure leaves conversation storage unchanged`() = runBlocking {
         val fixture = Fixture(runtimeFailure = IllegalStateException("provider failed"))
@@ -466,6 +482,7 @@ class MessageSquashServiceTest {
             forceConflict = commitConflict,
         )
         val runtimeProvider = FixedRuntimeProvider(runtimeFailure)
+        val pins = ReadOnlyTestPins()
         private val configurationProvider = FixedConfigurationProvider()
 
         fun service(): MessageSquashService {
@@ -484,6 +501,7 @@ class MessageSquashServiceTest {
                 threadMessageRepository = threadMessages,
                 toolCallPairingService = pairingService,
                 compactionCommitter = committer,
+                conversationPins = ConversationPinnedPrompt(pins),
             )
         }
 

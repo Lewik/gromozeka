@@ -204,6 +204,7 @@ class BackgroundActivityOriginRecorderTest {
             aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(), artifactService = artifacts,
             activeGenerationPublisher = mock(), messageTemporalContextService = mock(), stickyMessageInstructionService = mock(),
             pendingSecretRevealService = mock(), suggestedRepliesGenerationService = mock(),
+            conversationPins = mock(),
         )
         return engine.runRuntimeTask(task, executor) {}
     }

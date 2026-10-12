@@ -69,6 +69,24 @@ class ClaudeCodeProcessCacheTest {
     }
 
     @Test
+    fun pinEditAndDeleteChangeTheProcessFingerprintButIdenticalPinsReuseIt() = runBlocking<Unit> {
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        try {
+            val before = "base\n\nPinned conversation context:\n\nPIN_CACHE_BEFORE"
+            val after = "base\n\nPinned conversation context:\n\nPIN_CACHE_AFTER"
+            val first = executor.execute(command(cacheKey = "pins", systemPrompt = before))
+            executor.execute(command(cacheKey = "pins", resumeSessionId = first.sessionId, systemPrompt = before))
+            assertEquals(1, factory.started.size)
+            val second = executor.execute(command(cacheKey = "pins", resumeSessionId = first.sessionId, systemPrompt = after))
+            assertEquals(2, factory.started.size)
+            executor.execute(command(cacheKey = "pins", resumeSessionId = second.sessionId, systemPrompt = "base"))
+            assertEquals(3, factory.started.size)
+            assertEquals(listOf(before, after, "base"), factory.started.map { it.startCommand.systemPrompt })
+        } finally { executor.shutdown() }
+    }
+
+    @Test
     fun replacesProcessWhenReasoningModeChanges() = runBlocking {
         val factory = FakeProcessFactory()
         val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
