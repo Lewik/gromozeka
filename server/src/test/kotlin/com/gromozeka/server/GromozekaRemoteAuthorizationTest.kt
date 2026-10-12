@@ -42,7 +42,7 @@ import kotlin.test.assertFailsWith
 
 class GromozekaRemoteAuthorizationTest {
     @Test
-    fun `delivery preference is personal for both members and owners`() = runBlocking {
+    fun `delivery preference is personal for both members and owners`() = runBlocking<Unit> {
         for (role in listOf(User.Role.MEMBER, User.Role.OWNER)) {
             val user = testUser(role)
             authorization.authorize(user, com.gromozeka.remote.protocol.GetMessageDeliveryModeRequest)
@@ -60,7 +60,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `tool contract catalog requires project read access or global owner access`() = runBlocking {
+    fun `tool contract catalog requires project read access or global owner access`() = runBlocking<Unit> {
         val user = testUser()
         val projectId = Project.Id("catalog-project")
         authorization.authorize(user, com.gromozeka.remote.protocol.GetAgentToolCatalogRequest(projectId))
@@ -72,7 +72,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `automatic responder settings require conversation access and project write permission`() = runBlocking {
+    fun `automatic responder settings require conversation access and project write permission`() = runBlocking<Unit> {
         val user = testUser()
         val conversation = testConversation()
         Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation)
@@ -102,7 +102,7 @@ class GromozekaRemoteAuthorizationTest {
     )
 
     @Test
-    fun `AI catalog reads are available to members`() = runBlocking {
+    fun `AI catalog reads are available to members`() = runBlocking<Unit> {
         authorization.authorize(testUser(User.Role.MEMBER), GetAiCatalogRequest)
         authorization.authorize(testUser(User.Role.OWNER), GetAiCatalogRequest)
         authorization.authorize(
@@ -112,7 +112,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `global configuration requires server owner`() = runBlocking {
+    fun `global configuration requires server owner`() = runBlocking<Unit> {
         authorization.authorize(testUser(User.Role.OWNER), ListMcpServersRequest)
         authorization.authorize(
             testUser(User.Role.OWNER),
@@ -131,7 +131,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `user administration requires runtime owner`() = runBlocking {
+    fun `user administration requires runtime owner`() = runBlocking<Unit> {
         assertFailsWith<ProjectAccessDeniedException> {
             authorization.authorize(testUser(User.Role.MEMBER), ListUsersRequest)
         }
@@ -145,7 +145,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `project mutation requires project write permission`() = runBlocking {
+    fun `project mutation requires project write permission`() = runBlocking<Unit> {
         val user = testUser()
         val projectId = Project.Id("project")
 
@@ -162,7 +162,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `state pulls require read permission for their resource`() = runBlocking {
+    fun `state pulls require read permission for their resource`() = runBlocking<Unit> {
         val user = testUser()
         val projectId = Project.Id("direct-project")
         val conversation = testConversation()
@@ -189,9 +189,9 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `declarative state authorization follows snapshot resource access`() = runBlocking {
+    fun `declarative state authorization follows snapshot resource access`() = runBlocking<Unit> {
         val member = testUser(User.Role.MEMBER)
-        val owner = testUser(User.Role.OWNER)
+        val owner = testUser(User.Role.OWNER).copy(id = User.Id("remote-authorization-other-owner"))
         val projectId = Project.Id("project-state")
         val cursor = RemoteStateSyncCursor("server", streamEpoch = 1, generation = 2)
 
@@ -252,7 +252,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `conversation reads and writes use different permissions`() = runBlocking {
+    fun `conversation reads and writes use different permissions`() = runBlocking<Unit> {
         val user = testUser()
         val conversation = testConversation()
         Mockito.`when`(conversationService.findById(conversation.id))
@@ -277,7 +277,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `project membership does not grant access to a disconnected conversation`() = runBlocking {
+    fun `project membership does not grant access to a disconnected conversation`() = runBlocking<Unit> {
         val user = testUser()
         val conversation = testConversation().copy(
             participants = setOf(
@@ -293,7 +293,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `project membership reads and mutations use different permissions`() = runBlocking {
+    fun `project membership reads and mutations use different permissions`() = runBlocking<Unit> {
         val user = testUser()
         val projectId = Project.Id("project")
 
@@ -327,7 +327,7 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
-    fun `missing resource fails closed`() = runBlocking {
+    fun `missing resource fails closed`() = runBlocking<Unit> {
         val conversationId = Conversation.Id("missing")
         Mockito.`when`(conversationService.findById(conversationId))
             .thenReturn(null)
