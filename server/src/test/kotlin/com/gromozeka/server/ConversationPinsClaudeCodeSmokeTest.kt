@@ -121,7 +121,13 @@ class ConversationPinsClaudeCodeSmokeTest {
                     assertTrue(f.repository.snapshot().isEmpty())
                     assertEquals(List(3) { DeclarativeStateKey.conversationPins(f.b.conversationId) }, f.invalidations)
                     messages += user("The operation is complete. Brief acknowledgment only; no more tools or work.")
-                    assertTrue(ask(null).toolCalls.isEmpty())
+                    val finalResponse = ask(null)
+                    assertEquals(AiStepOutcome.COMPLETE, finalResponse.outcome)
+                    assertTrue(finalResponse.toolCalls.isEmpty())
+                    val finalText = finalResponse.messages.flatMap { it.content }
+                        .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+                        .lastOrNull()?.structured?.fullText
+                    assertTrue(!finalText.isNullOrBlank(), "Final protocol response must contain visible fullText")
                     f.assertNoRuntimeEffects()
                     assertEquals(6, modelCalls[f.a.conversationId]); assertEquals(0, modelCalls[f.b.conversationId] ?: 0)
                     println("CONVERSATION_PINS_CLAUDE_SMOKE real create/list/get/update/delete effects and receipt replay verified; A runtime calls=6 B=0; pause/history/outbox unchanged")
