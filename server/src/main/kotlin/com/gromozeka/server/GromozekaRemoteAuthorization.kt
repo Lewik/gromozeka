@@ -222,6 +222,12 @@ class GromozekaRemoteAuthorization(
             ListSlotsRequest, is PrepareSlotReclaimRequest, is ConfirmSlotReclaimRequest, is CancelSlotRequest -> Unit
             is PullStateSyncRequest -> authorizeStateQuery(user, request.query)
 
+            is CreateConversationWithCopiedPinsRequest -> {
+                val source = requireConversation(user, request.sourceConversationId, ProjectPermission.READ)
+                if (source.projectId != request.projectId) throw ProjectAccessDeniedException()
+                projectAccessService.requirePermission(user.id, request.projectId, ProjectPermission.WRITE)
+            }
+
             is CreateConversationRequest,
             is FindConversationsByProjectRequest,
             is FindWorkspacesByProjectRequest,
@@ -256,6 +262,8 @@ class GromozekaRemoteAuthorization(
             is GetTokenStatsRequest,
             is GetMemoryActionItemsRequest,
             is ListVisualsRequest,
+            is ListConversationPinsRequest,
+            is GetConversationPinRequest,
             -> requireConversation(
                 user,
                 request.conversationId(),
@@ -287,6 +295,9 @@ class GromozekaRemoteAuthorization(
             is UpdateVisualRequest,
             is CloseVisualRequest,
             is VisualActionRequest,
+            is CreateConversationPinRequest,
+            is UpdateConversationPinRequest,
+            is DeleteConversationPinRequest,
             -> requireConversation(
                 user,
                 request.conversationId(),
@@ -371,6 +382,12 @@ class GromozekaRemoteAuthorization(
             RemoteDeclarativeStateResource.MESSAGE_DELIVERY_PREFERENCE,
             ->
                 if (query.scopeId != user.id.value) throw ProjectAccessDeniedException()
+
+            RemoteDeclarativeStateResource.CONVERSATION_PINS -> requireConversation(
+                user,
+                Conversation.Id(query.scopeId?.takeIf { it.isNotBlank() } ?: throw ProjectAccessDeniedException()),
+                ProjectPermission.READ,
+            )
 
             RemoteDeclarativeStateResource.WORKSPACE_MOUNTS -> requireWorkspace(
                 user,
@@ -481,6 +498,11 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is ControlConversationRuntimeRequest -> conversationId
     is CancelCommandTaskRequest -> conversationId
     is CancelCommandMonitorRequest -> conversationId
+    is ListConversationPinsRequest -> conversationId
+    is GetConversationPinRequest -> conversationId
+    is CreateConversationPinRequest -> conversationId
+    is UpdateConversationPinRequest -> conversationId
+    is DeleteConversationPinRequest -> conversationId
     is ListVisualsRequest -> conversationId
     is CreateVisualRequest -> conversationId
     is UpdateVisualRequest -> conversationId

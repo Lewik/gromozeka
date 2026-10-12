@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.remote.protocol.ConversationResponse
 import com.gromozeka.remote.protocol.ConversationsResponse
 import com.gromozeka.remote.protocol.CreateConversationRequest
+import com.gromozeka.remote.protocol.CreateConversationWithCopiedPinsRequest
 import com.gromozeka.remote.protocol.DeleteConversationRequest
 import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.FindConversationsByProjectRequest
@@ -35,6 +36,15 @@ internal class RemoteConversationService(
         client.requestTyped<CreateConversationRequest, ConversationResponse>(
             CreateConversationRequest(projectId, participants, displayName)
         ).conversation ?: error("Server returned null conversation after create")
+
+    override suspend fun createWithCopiedPins(
+        projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
+        sourceConversationId: Conversation.Id,
+        displayName: String,
+    ): Conversation = client.requestTyped<CreateConversationWithCopiedPinsRequest, ConversationResponse>(
+        CreateConversationWithCopiedPinsRequest(projectId, participants, sourceConversationId, displayName),
+    ).conversation ?: error("Server returned no conversation after copying pins")
 
     override suspend fun findById(id: Conversation.Id): Conversation? =
         client.requestTyped<FindConversationRequest, ConversationResponse>(FindConversationRequest(id)).conversation

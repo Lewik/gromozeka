@@ -111,6 +111,7 @@ class GromozekaRemoteServer(
     private val workerAccessService: WorkerAccessService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val visualService: com.gromozeka.application.service.VisualApplicationService,
+    private val conversationPinService: com.gromozeka.application.service.ConversationPinApplicationService,
     private val slotService: com.gromozeka.application.service.SlotApplicationService,
     private val conversationRuntimeDispatcher: ConversationRuntimeDispatcher,
     private val conversationRuntimeStateSyncService: ConversationRuntimeStateSyncService,
@@ -302,6 +303,8 @@ class GromozekaRemoteServer(
 
     private fun ClientRequest.isConcurrentRequest(): Boolean =
         this is CreateVisualRequest || this is UpdateVisualRequest || this is VisualActionRequest || this is CloseVisualRequest ||
+            this is ListConversationPinsRequest || this is GetConversationPinRequest ||
+            this is CreateConversationPinRequest || this is UpdateConversationPinRequest || this is DeleteConversationPinRequest ||
             this is GetSpeechCaptureAvailabilityRequest ||
             this is StartSpeechCaptureRequest ||
             this is StopSpeechCaptureRequest ||
@@ -674,6 +677,14 @@ class GromozekaRemoteServer(
                     )
                 )
 
+                is CreateConversationWithCopiedPinsRequest -> ConversationResponse(
+                    conversationDomainService.createWithCopiedPins(
+                        projectId = request.projectId,
+                        participants = request.participants + Conversation.Participant.User(user.id),
+                        sourceConversationId = request.sourceConversationId,
+                        displayName = request.displayName,
+                    )
+                )
                 is FindConversationRequest -> ConversationResponse(conversationDomainService.findById(request.conversationId))
                 is GetProjectRequest -> ProjectResponse(conversationDomainService.getProject(request.conversationId))
                 is FindRecentProjectsRequest -> ProjectsResponse(
@@ -858,6 +869,18 @@ class GromozekaRemoteServer(
                 is ConfirmSlotReclaimRequest -> SlotLeaseResponse(slotService.confirmReclaim(user, request.leaseId, request.confirmationId))
                 is CancelSlotRequest -> SlotRequestResponse(slotService.cancel(user, null, request.requestId))
 
+                is ListConversationPinsRequest -> ConversationPinsResponse(conversationPinService.list(user.id, request.conversationId))
+                is GetConversationPinRequest -> ConversationPinResponse(conversationPinService.get(user.id, request.conversationId, request.pinId))
+                is CreateConversationPinRequest -> ConversationPinResponse(
+                    conversationPinService.create(user.id, request.conversationId, request.text, request.source, request.creationKey)
+                )
+                is UpdateConversationPinRequest -> ConversationPinResponse(
+                    conversationPinService.update(user.id, request.conversationId, request.pinId, request.expectedRevision, request.text)
+                )
+                is DeleteConversationPinRequest -> {
+                    conversationPinService.delete(user.id, request.conversationId, request.pinId, request.expectedRevision)
+                    OperationResultResponse(true)
+                }
                 is ListVisualsRequest -> VisualsResponse(visualService.list(user, request.conversationId))
                 is CreateVisualRequest -> VisualResponse(visualService.create(user, request.conversationId, request.visual))
                 is UpdateVisualRequest -> VisualResponse(visualService.update(user, request.conversationId, request.visualId, request.update))
@@ -894,12 +917,16 @@ class GromozekaRemoteServer(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }
-            ErrorResponse(
-                error.message ?: "Unknown server error",
-                error::class.simpleName,
-                (error as? SpeechAvailabilityException)?.failure,
-            )
+            if (request.isConversationPinOperation()) {
+                conversationPinErrorResponse(error)
+            } else {
+                log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }
+                ErrorResponse(
+                    error.message ?: "Unknown server error",
+                    error::class.simpleName,
+                    (error as? SpeechAvailabilityException)?.failure,
+                )
+            }
         }
 
         sender.send(requestId, response, encoding)

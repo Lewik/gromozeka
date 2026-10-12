@@ -1392,6 +1392,15 @@ class TabViewModel(
         _uiState.update { it.copy(selectedMessageIds = emptySet()) }
     }
 
+    /** Paging projections can be truncated; pin from one explicitly loaded full message instead. */
+    suspend fun loadPinMessageText(messageId: Conversation.Message.Id): String? {
+        val message = conversationHistoryService.loadMessage(conversationId, messageId)
+        require(message.id == messageId && message.conversationId == conversationId) {
+            "Conversation pin source is unavailable"
+        }
+        return message.pinTextSnapshot()
+    }
+
     fun startEditMessage(messageId: Conversation.Message.Id) {
         if (messageId in ConversationContext(_allMessages.value).protectedMessageIds()) return
         scope.launch {

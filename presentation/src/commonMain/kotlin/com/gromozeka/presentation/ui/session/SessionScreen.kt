@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.ConversationMessageSelection
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutScope
@@ -44,6 +45,7 @@ import com.gromozeka.presentation.ui.format
 import com.gromozeka.presentation.ui.viewmodel.MessageSquashUiState
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import com.gromozeka.presentation.ui.viewmodel.editableText
+import com.gromozeka.presentation.ui.viewmodel.pinTextSnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
@@ -106,6 +108,10 @@ fun SessionScreen(
     contentPadding: Dp = 16.dp,
     slotService: com.gromozeka.domain.slot.SlotService? = null,
     onOpenSlotConversation: (com.gromozeka.domain.model.Conversation.Id) -> Unit = {},
+    showPinsPanel: Boolean = false,
+    onShowPinsPanelChange: ((Boolean) -> Unit)? = null,
+    onPinMessage: ((Conversation.Message.Id) -> Unit)? = null,
+    pinMessageEnabled: Boolean = true,
 ) {
     val localization = LocalTranslation.current
     val spacing = GromozekaTheme.spacing
@@ -193,6 +199,14 @@ fun SessionScreen(
                                     icon = Icons.Default.RuntimePanel,
                                     contentDescription = localization.text("runtime.title"),
                                 )
+                                onShowPinsPanelChange?.let { toggle ->
+                                    CompactButton(
+                                        onClick = { toggle(!showPinsPanel) },
+                                        modifier = Modifier.testTag("pins-button").semantics { selected = showPinsPanel },
+                                        tooltip = localization.text(if (showPinsPanel) "pins.hide" else "pins.show"),
+                                        colors = CompactButtonDefaults.tonalColors(showPinsPanel),
+                                    ) { Text(localization.text("pins.title"), maxLines = 1) }
+                                }
                             }
                         } else {
                             // Row 1: Navigation buttons (New, Fork, Restart) + Info buttons (Message count, Token stats, etc.)
@@ -281,6 +295,15 @@ fun SessionScreen(
                                     contentDescription = localization.text("runtime.title"),
                                     colors = CompactButtonDefaults.tonalColors(showRuntimePanel),
                                 )
+                                onShowPinsPanelChange?.let { toggle ->
+                                    Spacer(modifier = Modifier.width(spacing.controlGap))
+                                    CompactButton(
+                                        onClick = { toggle(!showPinsPanel) },
+                                        modifier = Modifier.testTag("pins-button").semantics { selected = showPinsPanel },
+                                        tooltip = localization.text(if (showPinsPanel) "pins.hide" else "pins.show"),
+                                        colors = CompactButtonDefaults.tonalColors(showPinsPanel),
+                                    ) { Text(localization.text("pins.title"), maxLines = 1) }
+                                }
 
                                 Spacer(modifier = Modifier.width(spacing.controlGap))
 
@@ -473,6 +496,18 @@ fun SessionScreen(
                                 }
 
                                 Spacer(modifier = Modifier.width(spacing.controlGap))
+
+                                onPinMessage?.let { pin ->
+                                    val hasPinText = remember(selectedMessage) { selectedMessage?.pinTextSnapshot() != null }
+                                    CompactButton(
+                                        onClick = { selectedMessage?.let { pin(it.id) } },
+                                        modifier = Modifier.testTag("pin-selected-message"),
+                                        enabled = hasPinText && pinMessageEnabled && !messageSquashRunning,
+                                        tooltip = localization.text("pins.pinMessage"),
+                                        colors = toolbarColors,
+                                    ) { Text(localization.text("pins.pinMessage"), maxLines = 1) }
+                                    Spacer(modifier = Modifier.width(spacing.controlGap))
+                                }
 
                                 // Concat - disabled when 0 or 1 message selected
                                 CompactButton(

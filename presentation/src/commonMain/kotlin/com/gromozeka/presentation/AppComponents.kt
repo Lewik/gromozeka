@@ -94,6 +94,7 @@ data class AppComponents(
     val workerCatalogService: WorkerCatalogService,
     val conversationService: ConversationDomainService,
     val visualService: com.gromozeka.domain.visual.VisualService,
+    val conversationPinService: com.gromozeka.domain.service.ConversationPinService,
     val slotService: com.gromozeka.domain.slot.SlotService? = null,
     val messageDeliveryPreferenceService: com.gromozeka.domain.service.CurrentUserMessageDeliveryPreferenceService? = null,
     val quickTextActionService: QuickTextActionService,

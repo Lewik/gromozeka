@@ -918,6 +918,7 @@ enum class RemoteDeclarativeStateResource {
     PROJECT_MEMBERSHIPS,
     SETTINGS,
     QUICK_TEXT_ACTIONS,
+    CONVERSATION_PINS,
 }
 
 @Serializable

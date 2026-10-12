@@ -10,6 +10,8 @@ import com.gromozeka.presentation.services.translation.data.Translation
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -104,15 +106,90 @@ class AppViewModelConversationSyncTest {
         assertEquals(result, fixture.app.conversations.value[conversation.id])
     }
 
+    @Test
+    fun restartCopiesPinsWithTheCurrentDefaultAgentAndClosesOnlyTheCapturedSource() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val source = fixture.add("source", "project-a")
+        val other = fixture.add("other", "project-a")
+        fixture.open(source); fixture.open(other); runCurrent()
+        fixture.app.restartWithCopiedPins(source.id)
+        runCurrent()
+        assertEquals(listOf(source.id), fixture.copiedSources)
+        assertEquals(listOf(source.id), fixture.closedTabs)
+        val expected = setOf(Conversation.Participant.User(User.Id("user")), Conversation.Participant.Agent(fixture.defaultAgent.id))
+        assertEquals(listOf(expected), fixture.copiedParticipants)
+        assertEquals(listOf(other.id, Conversation.Id("restart-1")), fixture.app.tabs.value.map { it.conversationId })
+        assertEquals(Conversation.Id("restart-1"), fixture.app.currentTab.value?.conversationId)
+    }
+
+    @Test
+    fun failedPinCopyDoesNotCloseTheOldTabOrFallBackToCreate() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val source = fixture.add("source", "project-a")
+        fixture.open(source); runCurrent(); fixture.failCopy = true
+        assertFailsWith<ConversationPinOperationFailedException> { fixture.app.restartWithCopiedPins(source.id) }
+        assertEquals(listOf(source.id), fixture.app.tabs.value.map { it.conversationId })
+        assertTrue(fixture.closedTabs.isEmpty())
+        assertTrue(fixture.copiedSources.isEmpty())
+    }
+
+    @Test
+    fun messagePinReadsTheFullMessageInsteadOfTheLoadedHistoryProjection() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val source = fixture.add("source", "project-a")
+        fixture.open(source); runCurrent()
+        val text = "  full text beyond a preview\r\nשלום 😀  "
+        val message = Conversation.Message(Conversation.Message.Id("full-message"), source.id,
+            role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
+            createdAt = Instant.fromEpochSeconds(0))
+        fixture.fullMessages[message.id.value] = message
+        val tab = fixture.app.tabs.value.single()
+        assertTrue(tab.allMessages.value.isEmpty())
+        assertEquals(text, tab.loadPinMessageText(message.id))
+        assertEquals(listOf(source.id.value to message.id.value), fixture.messageLoads)
+    }
+
+    @Test
+    fun messagePinRejectsAFullMessageFromAnotherConversation() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val source = fixture.add("source", "project-a")
+        fixture.open(source); runCurrent()
+        val id = Conversation.Message.Id("wrong-owner")
+        fixture.fullMessages[id.value] = Conversation.Message(id, Conversation.Id("other"), role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("PRIVATE_OTHER_TEXT")), createdAt = Instant.fromEpochSeconds(0))
+        val failure = assertFailsWith<IllegalArgumentException> { fixture.app.tabs.value.single().loadPinMessageText(id) }
+        assertTrue(!failure.message.orEmpty().contains("PRIVATE_OTHER_TEXT"))
+    }
+
     private class Fixture(scope: CoroutineScope) {
         private val records = mutableMapOf<String, Conversation>()
         private val projects = mutableMapOf<Project.Id, MutableStateFlow<List<Conversation>>>()
         val activeObservers = mutableMapOf<Project.Id, Int>()
         val startedObservers = mutableMapOf<Project.Id, Int>()
         private val settings = TestSettingsService()
+        val copiedSources = mutableListOf<Conversation.Id>()
+        val copiedParticipants = mutableListOf<Set<Conversation.Participant>>()
+        val closedTabs = mutableListOf<Conversation.Id>()
+        val fullMessages = mutableMapOf<String, Conversation.Message>()
+        val messageLoads = mutableListOf<Pair<String, String>>()
+        var failCopy = false
+        val defaultAgent = AgentDefinition(id = AgentDefinition.Id("current-default"), name = "Default", prompts = emptyList(),
+            runtimeSelection = com.gromozeka.domain.model.ai.AiRuntimeSelection(com.gromozeka.domain.model.ai.AiModelConfiguration.Id("test-model")),
+            type = AgentDefinition.Type.Global, createdAt = Instant.fromEpochSeconds(0), updatedAt = Instant.fromEpochSeconds(0))
         private val conversationService: ConversationDomainService = stub { name, args ->
             when {
                 name.startsWith("findById") -> records[args.first().toString()]
+                name.startsWith("createWithCopiedPins") -> {
+                    if (failCopy) throw ConversationPinOperationFailedException()
+                    val project = Project.Id(args[0].toString())
+                    @Suppress("UNCHECKED_CAST") val participants = args[1] as Set<Conversation.Participant>
+                    val source = Conversation.Id(args[2].toString())
+                    copiedSources += source; copiedParticipants += participants
+                    val created = add("restart-${copiedSources.size}", project.value).copy(participants = participants)
+                    records[created.id.value] = created
+                    projects.getValue(project).value = records.values.filter { it.projectId == project }
+                    created
+                }
                 name.startsWith("observeByProject") -> {
                     val projectId = Project.Id(args.first().toString())
                     flow {
@@ -146,9 +223,13 @@ class AppViewModelConversationSyncTest {
                 if (name.startsWith("observe")) emptyFlow<Nothing>() else error(name)
             },
             conversationService = conversationService,
-            conversationHistoryService = stub { name, _ ->
+            conversationHistoryService = stub { name, args ->
                 when {
                     name.startsWith("loadPage") -> com.gromozeka.domain.model.ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+                    name.startsWith("loadMessage") -> {
+                        messageLoads += args[0].toString() to args[1].toString()
+                        fullMessages.getValue(args[1].toString())
+                    }
                     else -> error("Unexpected history method: $name")
                 }
             },
@@ -156,9 +237,10 @@ class AppViewModelConversationSyncTest {
             scope = scope,
             attachmentAcquisitionController = NoOpAttachmentAcquisitionController,
             artifactTransferService = stub(),
-            defaultAgentProvider = stub(),
+            defaultAgentProvider = stub { name, _ -> if (name.startsWith("getDefault")) defaultAgent else error(name) },
             tokenStatsService = stub { name, _ -> if (name.startsWith("getTokenStats")) null else error(name) },
-            conversationTabLayoutService = stub { name, _ ->
+            conversationTabLayoutService = stub { name, args ->
+                if (name.startsWith("close")) closedTabs += Conversation.Id(args.first().toString())
                 if (name.startsWith("open") || name.startsWith("close")) ConversationTabLayout() else error(name)
             },
             conversationUnreadStateService = stub { name, _ ->

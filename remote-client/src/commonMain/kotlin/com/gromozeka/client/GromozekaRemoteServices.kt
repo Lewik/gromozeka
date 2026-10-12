@@ -106,6 +106,7 @@ class GromozekaRemoteServices(
         RemoteConversationUnreadStateService(client, authenticatedUserId)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
     val visualService: com.gromozeka.domain.visual.VisualService = RemoteVisualService(client)
+    val conversationPinService: com.gromozeka.domain.service.ConversationPinService = RemoteConversationPinService(client)
     val slotService: com.gromozeka.domain.slot.SlotService = RemoteSlotService(client)
     val conversationSearchService: ConversationSearchService = RemoteConversationSearchService(client)
     val conversationTokenStatsService: ConversationTokenStatsService = RemoteConversationTokenStatsService(client)

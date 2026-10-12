@@ -108,6 +108,25 @@ open class AppViewModel(
         windowFocused.value = focused
     }
 
+    /** Restart keeps the existing default-agent/new-history behavior, but copies the pin catalog atomically. */
+    suspend fun restartWithCopiedPins(sourceConversationId: Conversation.Id) {
+        val source = conversationService.findById(sourceConversationId)
+            ?: error("Conversation is unavailable for restart")
+        val defaultAgent = defaultAgentProvider.getDefault()
+        val created = conversationService.createWithCopiedPins(
+            projectId = source.projectId,
+            participants = setOf(
+                Conversation.Participant.User(currentUserAuthor.userId),
+                Conversation.Participant.Agent(defaultAgent.id),
+            ),
+            sourceConversationId = sourceConversationId,
+        )
+        createTab(projectId = created.projectId, conversationId = created.id, initiator = ConversationInitiator.User)
+        // Close by captured identity, not an index which another tab change may have shifted.
+        conversationTabLayoutService.close(sourceConversationId)
+        mutex.withLock { removeLocalTab(sourceConversationId) }
+    }
+
     override suspend fun createTab(
         projectId: Project.Id,
         agent: AgentDefinition?,

@@ -57,6 +57,8 @@ import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.ConversationParticipantsPanel
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
+import com.gromozeka.presentation.ui.session.ConversationPinsPanel
+import com.gromozeka.presentation.ui.session.ConversationPinsPanelState
 import com.gromozeka.presentation.ui.session.VisualContent
 import com.gromozeka.presentation.ui.session.VisualPanelState
 import com.gromozeka.presentation.ui.session.RuntimeInspectionRequest
@@ -114,6 +116,9 @@ fun GromozekaAppContent(
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
+    var showPinsPanel by remember { mutableStateOf(false) }
+    val pinsPanelState = remember(appComponents) { ConversationPinsPanelState() }
+    var pinSourceLoads by remember(appComponents) { mutableStateOf(emptySet<Conversation.Id>()) }
     val runtimeAgentTabSelection = remember(appComponents) { RuntimeAgentTabSelection() }
     val visualPanelState = remember(appComponents) { VisualPanelState() }
     LaunchedEffect(appComponents.clientPresentationService) {
@@ -143,7 +148,10 @@ fun GromozekaAppContent(
         val conversationId = currentTab?.conversationId ?: return@LaunchedEffect
         try {
             appComponents.visualService.observe(conversationId).collect { snapshots ->
-                if (visualPanelState.accept(conversationId, snapshots)) showRuntimePanel = true
+                if (visualPanelState.accept(conversationId, snapshots)) {
+                    showRuntimePanel = true
+                    showPinsPanel = false
+                }
             }
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (error: Exception) { visualPanelState.loadError = error.message ?: localization.text("visuals.loadFailed") }
@@ -328,6 +336,7 @@ fun GromozekaAppContent(
                             showSettingsPanel = visible
                             if (visible && isCompactLayout) {
                                 showRuntimePanel = false
+                                showPinsPanel = false
                                 showParticipantsPanel = false
                                 showMemoryActionItemsPanel = false
                             }
@@ -336,6 +345,7 @@ fun GromozekaAppContent(
                             showRuntimePanel = visible
                             if (visible) {
                                 showParticipantsPanel = false
+                                showPinsPanel = false
                             }
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
@@ -346,6 +356,7 @@ fun GromozekaAppContent(
                             showParticipantsPanel = visible
                             if (visible) {
                                 showRuntimePanel = false
+                                showPinsPanel = false
                             }
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
@@ -357,7 +368,19 @@ fun GromozekaAppContent(
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
                                 showRuntimePanel = false
+                                showPinsPanel = false
                                 showParticipantsPanel = false
+                            }
+                        }
+                        val setPinsPanel: (Boolean) -> Unit = { visible ->
+                            showPinsPanel = visible
+                            if (visible) {
+                                showRuntimePanel = false
+                                showParticipantsPanel = false
+                                if (isCompactLayout) {
+                                    showSettingsPanel = false
+                                    showMemoryActionItemsPanel = false
+                                }
                             }
                         }
                         val leaveDisconnectedConversation: () -> Unit = {
@@ -371,6 +394,7 @@ fun GromozekaAppContent(
                             isCompactLayout,
                             showSettingsPanel,
                             showRuntimePanel,
+                            showPinsPanel,
                             showParticipantsPanel,
                             showMemoryActionItemsPanel,
                         ) {
@@ -379,6 +403,10 @@ fun GromozekaAppContent(
                                     showSettingsPanel && showRuntimePanel -> showRuntimePanel = false
                                     showSettingsPanel && showParticipantsPanel -> showParticipantsPanel = false
                                     showSettingsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
+                                    showSettingsPanel && showPinsPanel -> showPinsPanel = false
+                                    showRuntimePanel && showPinsPanel -> showPinsPanel = false
+                                    showParticipantsPanel && showPinsPanel -> showPinsPanel = false
+                                    showPinsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
                                     showRuntimePanel && showParticipantsPanel -> showParticipantsPanel = false
                                     showRuntimePanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
                                     showParticipantsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
@@ -470,14 +498,9 @@ fun GromozekaAppContent(
                                                             }
                                                         },
                                                         onRestartSession = {
+                                                            val sourceConversationId = tabViewModel.conversationId
                                                             coroutineScope.launch {
-                                                                val projectId = currentTab!!.projectId
-                                                                val oldIndex = currentTabIndex!!
-                                                                appComponents.appViewModel.createTab(
-                                                                    projectId = projectId,
-                                                                    initiator = ConversationInitiator.User
-                                                                )
-                                                                appComponents.appViewModel.closeTab(oldIndex)
+                                                                appComponents.appViewModel.restartWithCopiedPins(sourceConversationId)
                                                             }
                                                         },
                                                         onCloseTab = {
@@ -507,6 +530,33 @@ fun GromozekaAppContent(
                                                         onShowParticipantsPanelChange = setParticipantsPanel,
                                                         showRuntimePanel = showRuntimePanel,
                                                         onShowRuntimePanelChange = setRuntimePanel,
+                                                        showPinsPanel = showPinsPanel,
+                                                        onShowPinsPanelChange = setPinsPanel,
+                                                        pinMessageEnabled = !pinsPanelState.hasDraft(tabViewModel.conversationId) && tabViewModel.conversationId !in pinSourceLoads,
+                                                        onPinMessage = { messageId ->
+                                                            val owner = tabViewModel.conversationId
+                                                            setPinsPanel(true)
+                                                            if (!pinsPanelState.hasDraft(owner) && owner !in pinSourceLoads) {
+                                                                pinSourceLoads = pinSourceLoads + owner
+                                                                coroutineScope.launch {
+                                                                    try {
+                                                                        val text = tabViewModel.loadPinMessageText(messageId)
+                                                                        if (text == null) {
+                                                                            if (!pinsPanelState.hasDraft(owner)) pinsPanelState.sourceLoadFailed(owner)
+                                                                        } else {
+                                                                            pinsPanelState.beginCreate(owner, text,
+                                                                                com.gromozeka.domain.model.ConversationPinSource(owner, messageId))
+                                                                        }
+                                                                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                                                        throw cancelled
+                                                                    } catch (_: Exception) {
+                                                                        if (!pinsPanelState.hasDraft(owner)) pinsPanelState.sourceLoadFailed(owner)
+                                                                    } finally {
+                                                                        pinSourceLoads = pinSourceLoads - owner
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
                                                         onInspectRuntime = { section ->
                                                             runtimeInspectionRequest = RuntimeInspectionRequest(
                                                                 tabViewModel.conversationId, section, (runtimeInspectionRequest?.sequence ?: 0) + 1,
@@ -683,6 +733,14 @@ fun GromozekaAppContent(
                                         }
 
                                         if (!isCompactLayout) currentTab?.let { tabViewModel ->
+                                            ConversationPinsPanel(
+                                                isVisible = showPinsPanel,
+                                                conversationId = tabViewModel.conversationId,
+                                                service = appComponents.conversationPinService,
+                                                state = pinsPanelState,
+                                                onClose = { setPinsPanel(false) },
+                                                modifier = Modifier.testTag("conversation-pins-panel"),
+                                            )
                                             conversations[tabViewModel.conversationId]?.let { conversation ->
                                                 Box(modifier = Modifier.testTag(UiTestTag.ParticipantsPanel.value)) {
                                                     ConversationParticipantsPanel(
@@ -836,6 +894,18 @@ fun GromozekaAppContent(
                             }
 
                             currentTab?.let { tabViewModel ->
+                                Box(Modifier.fillMaxSize().zIndex(2f)) {
+                                    ConversationPinsPanel(
+                                        isVisible = showPinsPanel,
+                                        conversationId = tabViewModel.conversationId,
+                                        service = appComponents.conversationPinService,
+                                        state = pinsPanelState,
+                                        onClose = { setPinsPanel(false) },
+                                        modifier = Modifier.testTag("conversation-pins-panel"),
+                                        fullScreen = true,
+                                        slideFromRight = true,
+                                    )
+                                }
                                 key(tabViewModel.conversationId) {
                                     val tokenStats by tabViewModel.tokenStats.collectAsState()
                                     val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
