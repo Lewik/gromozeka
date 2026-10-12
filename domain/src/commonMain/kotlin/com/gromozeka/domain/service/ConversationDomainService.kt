@@ -44,6 +44,14 @@ interface ConversationDomainService {
         displayName: String = "",
     ): Conversation
 
+    /** New empty history with the caller's participants/default agent, copying only source pins. */
+    suspend fun createWithCopiedPins(
+        projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
+        sourceConversationId: Conversation.Id,
+        displayName: String = "",
+    ): Conversation = throw UnsupportedOperationException("Atomic conversation pin copying is unavailable")
+
     /**
      * Finds conversation by unique identifier.
      *

@@ -19,6 +19,7 @@ enum class DeclarativeStateResource {
     PROJECTS,
     PROJECT_CONVERSATIONS,
     CONVERSATION_UNREAD_STATE,
+    CONVERSATION_PINS,
     PROJECT_WORKSPACES,
     WORKSPACE_MOUNTS,
     AGENTS,
@@ -54,6 +55,9 @@ data class DeclarativeStateKey(
 
         fun projectConversations(projectId: Project.Id) =
             DeclarativeStateKey(DeclarativeStateResource.PROJECT_CONVERSATIONS, projectId.value)
+
+        fun conversationPins(conversationId: Conversation.Id) =
+            DeclarativeStateKey(DeclarativeStateResource.CONVERSATION_PINS, conversationId.value)
 
         fun conversationUnreadState(userId: User.Id) =
             DeclarativeStateKey(DeclarativeStateResource.CONVERSATION_UNREAD_STATE, userId.value)

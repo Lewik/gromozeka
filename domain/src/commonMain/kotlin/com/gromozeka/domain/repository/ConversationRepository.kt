@@ -26,6 +26,12 @@ interface ConversationRepository {
      */
     suspend fun create(conversation: Conversation): Conversation
 
+    /** Atomic SQL creation of the Conversation and independent ordered copies of active source pins.
+     * Source and target must be in the same project. Does not claim atomicity of history/artifact copying.
+     */
+    suspend fun createWithCopiedPins(conversation: Conversation, sourceConversationId: Conversation.Id): Conversation =
+        throw UnsupportedOperationException("Atomic conversation pin copying is unavailable")
+
     /**
      * Finds conversation by unique identifier.
      *
