@@ -97,7 +97,8 @@ class ExposedConversationPinRepository : ConversationPinRepository {
             it[updatedAt] = next.updatedAt
         }
         if (changed != 1) throw ConversationPinConflictException()
-        next
+        // Return the persisted representation (including SQL timestamp precision), as create does.
+        checkNotNull(findPin(conversationId, pinId))
     }
 
     override suspend fun delete(conversationId: Conversation.Id, pinId: ConversationPin.Id, expectedRevision: Long): Unit = dbQuery {
