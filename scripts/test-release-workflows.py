@@ -75,6 +75,7 @@ class WorkflowContracts(unittest.TestCase):
 
     def test_ios_checks_compile_unsigned_swift_shells_for_both_sdks(self):
         job = JOBS["verify-ios"]
+        self.assertEqual(90, int(job["timeout-minutes"]))
         options = job.get("env", {}).get("GRADLE_OPTS", "")
         for required in ("-Xmx4g", "org.gradle.workers.max=1", "org.gradle.parallel=false",
                          "kotlin.compiler.execution.strategy=in-process"):

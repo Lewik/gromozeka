@@ -258,7 +258,8 @@ jobs:
     if: ${{ !inputs.skip_ios }}
     needs: metadata
     runs-on: macos-latest
-    timeout-minutes: 60
+    # Cold client framework + unsigned app verification can take over 50 minutes.
+    timeout-minutes: 90
     # Bound both standalone native tasks and Xcode's embedded Gradle invocation.
     env:
       GRADLE_OPTS: >-
