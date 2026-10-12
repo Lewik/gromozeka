@@ -210,7 +210,8 @@ class AgentSessionsClaudeCodeSmokeTest {
         }
     }
 
-    private companion object {
+    internal companion object {
+        // Shared only with the narrow conversation-pin protocol smoke; no application runtime starts.
         fun claudeBackendContext() = GenericApplicationContext().apply {
             beanFactory.registerSingleton("smokeSessions", object : ClaudeCodeSessionStateRepository {
                 override suspend fun find(key: ClaudeCodeSessionState.Key): ClaudeCodeSessionState? = error("Smoke must use stateless calls")

@@ -137,5 +137,10 @@ class ConversationPinToolSupportTest {
         assertNotEquals(key, ConversationPinToolSupport.creationKey(endpoint, User.Id("other"), "call"))
         assertNotEquals(key, ConversationPinToolSupport.creationKey(endpoint, actor, "other"))
         for (missing in listOf(null, "", " ")) assertFailsWith<IllegalStateException> { ConversationPinToolSupport.creationKey(endpoint, actor, missing) }
+        for (malformed in listOf("\uD800", "\uDC00")) {
+            val error = assertFailsWith<IllegalStateException> { ConversationPinToolSupport.creationKey(endpoint, actor, malformed) }
+            assertNull(error.cause)
+            assertFailsWith<IllegalStateException> { ConversationPinToolSupport.creationKey(endpoint.copy(threadId = Conversation.Thread.Id(malformed)), actor, "call") }
+        }
     }
 }

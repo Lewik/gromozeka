@@ -89,9 +89,7 @@ internal object ConversationPinToolSupport {
             // Only absence means current. Null, empty, whitespace and wrong JSON types all fail.
             conversationId = if ("conversation_id" in input) identifier("conversation_id") else null,
             pinId = if ("pin_id" in input) identifier("pin_id") else null,
-            text = if ("text" in input) string("text").also {
-                require(it.isNotBlank() && it.length <= ConversationPinLimits.MAX_TEXT_LENGTH)
-            } else null,
+            text = if ("text" in input) string("text").also(ConversationPinLimits::validateText) else null,
             revision = if ("expected_revision" in input) integer("expected_revision").also { require(it > 0) } else null,
             cursor = if ("cursor" in input) decodeCursor(string("cursor")) else null,
             limit = if ("limit" in input) integer("limit").also { require(it in 1L..PAGE_LIMIT.toLong()) }.toInt() else DEFAULT_PAGE_SIZE,
@@ -165,8 +163,11 @@ internal object ConversationPinToolSupport {
     /** Key material comes exclusively from the trusted execution endpoint, actor and call identity. */
     fun creationKey(source: AgentEndpoint, actor: User.Id, toolCallId: String?): String {
         if (toolCallId.isNullOrBlank()) throw IllegalStateException("Pin create requires a trusted tool-call identity (PIN_OPERATION_FAILED).")
-        val material = JsonArray(listOf(source.conversationId.value, source.threadId.value, source.agentId.value, actor.value, toolCallId)
-            .map(::JsonPrimitive)).toString().toByteArray(StandardCharsets.UTF_8)
+        val fields = listOf(source.conversationId.value, source.threadId.value, source.agentId.value, actor.value, toolCallId)
+        // This is trusted key preimage, not pin text/source validation. Never hash replacement bytes
+        // for malformed endpoint/call identities: the downstream hash is otherwise valid UTF-16.
+        if (fields.any { !StandardCharsets.UTF_8.newEncoder().canEncode(it) }) operationFailed()
+        val material = JsonArray(fields.map(::JsonPrimitive)).toString().toByteArray(StandardCharsets.UTF_8)
         val digest = MessageDigest.getInstance("SHA-256").digest(material).joinToString("") { "%02x".format(it) }
         return "pin-tool-v1:$digest"
     }
