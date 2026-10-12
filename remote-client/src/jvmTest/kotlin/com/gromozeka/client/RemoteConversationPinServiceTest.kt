@@ -157,13 +157,25 @@ class RemoteConversationPinServiceTest {
         }) { client ->
             coroutineScope {
                 val cancelled = CancellationException("Synthetic pin copy cancellation")
+                val boundaryFailure = CompletableDeferred<Throwable>()
                 val call = async {
-                    RemoteConversationService(client).createWithCopiedPins(Project.Id("project"), emptySet(), cid, "")
+                    try {
+                        RemoteConversationService(client).createWithCopiedPins(Project.Id("project"), emptySet(), cid, "")
+                    } catch (error: Throwable) {
+                        boundaryFailure.complete(error)
+                        throw error
+                    }
                 }
                 try {
                     entered.await()
                     call.cancel(cancelled)
-                    assertSame(cancelled, assertFailsWith<CancellationException> { call.await() })
+                    // Inspect the service failure itself, not only the already-cancelled Job.
+                    // Coroutine stack-trace recovery can copy CancellationException at suspend
+                    // boundaries, retaining the exact original as its cause.
+                    val chain = generateSequence(boundaryFailure.await()) { it.cause }.take(8).toList()
+                    assertTrue(chain.all { it is CancellationException && it.message == cancelled.message })
+                    assertSame(cancelled, chain.last())
+                    assertFailsWith<CancellationException> { call.await() }
                     assertEquals(1, calls)
                 } finally {
                     release.complete(Unit)
