@@ -17,6 +17,15 @@ class TelegramRequestEnricher(
     private val coordinator: ConversationRuntimeCoordinator,
     private val access: TelegramBindingAccess,
 ) : ConversationRequestEnricher {
+    override suspend fun enrichSnapshot(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest {
+        // A synthetic snapshot turn cannot authorize Telegram's live-invocation history filter.
+        if (conversations.findById(conversationId)?.externalChannel?.provider == "telegram") {
+            throw UnsupportedOperationException("Telegram context does not support read-only snapshots")
+        }
+        return request
+    }
+
     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest {
         val channel = conversations.findById(conversationId)?.externalChannel ?: return request

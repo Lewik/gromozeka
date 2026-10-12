@@ -7,6 +7,8 @@ import com.gromozeka.domain.service.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.mockito.Mockito
+import org.springframework.context.annotation.AnnotationConfigApplicationContext
+import org.springframework.core.env.MapPropertySource
 import kotlin.test.*
 import kotlin.time.Instant
 
@@ -255,6 +257,65 @@ class TelegramChannelTest {
         gateway.complete = true; processor.synchronize()
         assertEquals("interpreter.stopped", repository.state.invocations.single().statusKey)
         callback(42); assertEquals(1, gateway.stops.size)
+    }
+
+    @Test fun `registered Telegram enricher does not block ordinary snapshots when Telegram is disabled`() = runBlocking<Unit> {
+        val repository = Mockito.mock(TelegramChannelRepository::class.java)
+        val conversations = Mockito.mock(ConversationDomainService::class.java)
+        val coordinator = Mockito.mock(ConversationRuntimeCoordinator::class.java)
+        val access = Mockito.mock(TelegramBindingAccess::class.java)
+        val conversation = Conversation(binding.conversationId, Project.Id("project"),
+            setOf(Conversation.Participant.User(connection.ownerUserId)),
+            currentThread = Conversation.Thread.Id("thread"), createdAt = instant, updatedAt = instant)
+        Mockito.`when`(conversations.findById(conversation.id)).thenReturn(conversation)
+        val root = textMessage("snapshot-root", "Retained context", Conversation.Message.Role.USER)
+        val request = AiRuntimeRequest(systemPrompts = listOf("unchanged-prefix"), messages = listOf(root),
+            options = AiRuntimeOptions(toolChoice = AiToolChoice.None))
+        val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
+            AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
+        AnnotationConfigApplicationContext().use { context ->
+            context.environment.propertySources.addFirst(MapPropertySource("telegram-disabled",
+                mapOf("gromozeka.telegram.enabled" to false)))
+            context.beanFactory.registerSingleton("repository", repository)
+            context.beanFactory.registerSingleton("conversations", conversations)
+            context.beanFactory.registerSingleton("coordinator", coordinator)
+            context.beanFactory.registerSingleton("access", access)
+            context.register(TelegramRequestEnricher::class.java)
+            context.refresh()
+            val enrichers = context.getBeansOfType(ConversationRequestEnricher::class.java).values.toList()
+            assertTrue(enrichers.single() is TelegramRequestEnricher)
+            // The snapshot builder calls the interface on every registered enricher, not enrich().
+            val snapshot = enrichers.single().enrichSnapshot(conversation.id, root.id,
+                ConversationRuntimeTurnId("context-snapshot:synthetic"), model, request)
+            assertSame(request, snapshot)
+        }
+        Mockito.verify(conversations).findById(conversation.id)
+        Mockito.verifyNoMoreInteractions(conversations)
+        Mockito.verifyNoInteractions(repository, coordinator, access)
+    }
+
+    @Test fun `Telegram snapshots remain unsupported without an authorized live invocation`() = runBlocking<Unit> {
+        val repository = Mockito.mock(TelegramChannelRepository::class.java)
+        val conversations = Mockito.mock(ConversationDomainService::class.java)
+        val coordinator = Mockito.mock(ConversationRuntimeCoordinator::class.java)
+        val access = Mockito.mock(TelegramBindingAccess::class.java)
+        val conversation = Conversation(binding.conversationId, Project.Id("project"),
+            setOf(Conversation.Participant.User(connection.ownerUserId)),
+            currentThread = Conversation.Thread.Id("thread"), createdAt = instant, updatedAt = instant,
+            externalChannel = connection.channel(binding))
+        Mockito.`when`(conversations.findById(conversation.id)).thenReturn(conversation)
+        val root = textMessage("snapshot-root", "Channel history must not escape filtering", Conversation.Message.Role.USER)
+        val request = AiRuntimeRequest(systemPrompts = listOf("unchanged-prefix"), messages = listOf(root),
+            options = AiRuntimeOptions(toolChoice = AiToolChoice.None))
+        val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
+            AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
+        val enricher = TelegramRequestEnricher(repository, conversations, coordinator, access)
+        assertFailsWith<UnsupportedOperationException> {
+            enricher.enrichSnapshot(conversation.id, root.id, ConversationRuntimeTurnId("context-snapshot:synthetic"), model, request)
+        }
+        Mockito.verify(conversations).findById(conversation.id)
+        Mockito.verifyNoMoreInteractions(conversations)
+        Mockito.verifyNoInteractions(repository, coordinator, access)
     }
 
     @Test fun `enrichment preserves only own tool protocol and quotes other agents as bounded history`() {
