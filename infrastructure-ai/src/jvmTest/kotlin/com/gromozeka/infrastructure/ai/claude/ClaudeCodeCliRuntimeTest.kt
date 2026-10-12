@@ -1173,7 +1173,9 @@ class ClaudeCodeCliRuntimeTest {
             assertNull(retry.resumeSessionId)
             assertEquals(scenario != "reset", retry.userPrompt.contains("AURORA_713"))
             assertFalse(retry.userPrompt.contains("Old context already compacted"))
-            assertFalse(retry.userPrompt.contains("REJECTED_"))
+            assertFalse(retry.userPrompt.substringBefore(CLAUDE_CODE_CLEAN_RETRY_REMINDER).contains("REJECTED_"))
+            assertTrue(retry.userPrompt.contains(JsonPrimitive("REJECTED_EXECUTION_CLAIM").toString()))
+            assertFalse(retry.userPrompt.contains("REJECTED_CHECKPOINT"))
             assertFalse(result.messages.flatMap { it.content }.any { it is Conversation.Message.ContentItem.ContextCompactionResult })
             assertEquals("clean", sessions.savedStates.last().claudeSessionId)
             assertFalse(sessions.savedStates.last().replayState.toString().contains("REJECTED_"))
@@ -1282,10 +1284,140 @@ class ClaudeCodeCliRuntimeTest {
     ))
 
     @Test
+    fun unwrapsWholeJsonFencesWithoutAnotherModelCall() = runBlocking<Unit> {
+        val valid = actionResponse("README.md")
+        for ((opening, closing) in listOf(
+            "```json" to "```", "```" to "```", "```JSON" to "```",
+            "'''json" to "'''", "'''" to "'''",
+        )) {
+            val fenced = "  \r\n$opening\r\n${valid.result}\r\n$closing\r\n  "
+            val executor = FakeClaudeCodeCliExecutor(valid.withNativeText(fenced))
+            val result = runtime(executor).call(request(listOf(userMessage("Read README.md")), listOf(readFileTool())))
+            assertEquals(1, executor.commands.size)
+            assertEquals("README.md", result.toolCalls.single().call.input.jsonObject.getValue("path").jsonPrimitive.content)
+            assertEquals(10, result.usage?.promptTokens)
+            assertNull(result.providerMetadata["claudeCodeCleanRetry"])
+        }
+    }
+
+    @Test
+    fun validJsonPreservesMarkdownAndQuotesInsideStringValues() = runBlocking<Unit> {
+        val text = "Example:\n```json\n{\"value\":\"'literal'\"}\n```\n'''json is text, not an outer wrapper."
+        val valid = response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive(text),
+        ))
+        val executor = FakeClaudeCodeCliExecutor(valid)
+        val result = runtime(executor).call(request(listOf(userMessage("Show an example")), listOf(readFileTool())))
+        assertEquals(text, result.messages.single().text())
+        assertEquals(1, executor.commands.size)
+    }
+
+    @Test
+    fun correctsInvalidJsonOnceWithRejectedTextAsDataAndAcceptsFencedRepair() = runBlocking<Unit> {
+        val valid = actionResponse("README.md")
+        val rejected = "PRIVATE_REJECTED_CANDIDATE: I would read the file.\nNo tool has executed."
+        val executor = FakeClaudeCodeCliExecutor(
+            valid.withNativeText(rejected),
+            valid.copy(sessionId = "corrected-session").withNativeText("```json\n${valid.result}\n```"),
+        )
+        val result = runtime(executor).call(request(listOf(userMessage("Read README.md")), listOf(readFileTool())))
+        assertEquals(2, executor.commands.size)
+        assertEquals(1, result.toolCalls.size)
+        assertEquals("README.md", result.toolCalls.single().call.input.jsonObject.getValue("path").jsonPrimitive.content)
+        val correction = executor.commands.last()
+        assertNull(correction.resumeSessionId)
+        assertEquals(executor.commands.first().systemPrompt, correction.systemPrompt)
+        assertTrue(correction.userPrompt.contains(JsonPrimitive(rejected).toString()))
+        assertTrue(correction.userPrompt.contains("directly parseable as JSON"))
+        assertTrue(correction.userPrompt.contains("No Markdown fences"))
+        assertTrue(correction.userPrompt.contains("No external Gromozeka actions from that candidate were dispatched"))
+        assertEquals(20, result.usage?.promptTokens)
+        assertEquals(true, result.providerMetadata["claudeCodeCleanRetry"])
+    }
+
+    @Test
+    fun malformedFencedRepairFailsAfterExactlyTwoResponsesWithoutLeakingCandidate() = runBlocking<Unit> {
+        val valid = actionResponse("README.md")
+        val rejected = "PRIVATE_REJECTED_CANDIDATE"
+        val sessions = InMemoryClaudeCodeSessionStateRepository()
+        val executor = FakeClaudeCodeCliExecutor(
+            valid.withNativeText(rejected),
+            valid.withNativeText("```json\n{\"PRIVATE_SECOND_CANDIDATE\":\n```"),
+            valid,
+        )
+        val error = assertFailsWith<ClaudeCodeResponseFormatException> {
+            runtime(executor, sessions).call(request(listOf(userMessage("Read README.md")), listOf(readFileTool())))
+        }
+        assertEquals(2, executor.commands.size)
+        assertTrue(error.cleanRetryFailed)
+        assertEquals(0, sessions.activeSessionCount)
+        assertFalse(error.toString().contains("PRIVATE_"))
+        assertNull(error.cause)
+        assertTrue(error.suppressedExceptions.isEmpty())
+    }
+
+    @Test
+    fun doesNotExtractJsonFromProseOrMalformedOuterFences() = runBlocking<Unit> {
+        val valid = actionResponse("README.md")
+        for (invalid in listOf(
+            "Here is the JSON:\n```json\n${valid.result}\n```",
+            "```json\n${valid.result}\n```\nDone.",
+            "```json\n${valid.result}\n'''",
+            "```javascript\n${valid.result}\n```",
+            "'${valid.result}'",
+            "```json\n${valid.result}\n${valid.result}\n```",
+        )) {
+            val executor = FakeClaudeCodeCliExecutor(valid.withNativeText(invalid), valid.withNativeText(invalid))
+            val error = assertFailsWith<ClaudeCodeResponseFormatException> {
+                runtime(executor).call(request(listOf(userMessage("Read README.md")), listOf(readFileTool())))
+            }
+            assertTrue(error.cleanRetryFailed)
+            assertEquals(2, executor.commands.size)
+        }
+    }
+
+    @Test
+    fun fencedJsonStillEnforcesSchemaAndToolArguments() = runBlocking<Unit> {
+        val valid = actionResponse("README.md")
+        for (invalid in listOf(
+            valid.result.replace("\"README.md\"", "42"),
+            valid.result.replace("read_file", "unknown_action"),
+            valid.result.replace("\"path\":", "\"path\":\"first\",\"path\":"),
+        )) {
+            val rejected = valid.withNativeText("```json\n$invalid\n```")
+            val executor = FakeClaudeCodeCliExecutor(rejected, rejected)
+            val sessions = InMemoryClaudeCodeSessionStateRepository()
+            assertFailsWith<ClaudeCodeResponseFormatException> {
+                runtime(executor, sessions).call(request(listOf(userMessage("Read README.md")), listOf(readFileTool())))
+            }
+            assertEquals(2, executor.commands.size)
+            assertEquals(0, sessions.activeSessionCount)
+        }
+    }
+
+    @Test
+    fun unwrapsJsonSchemaResponseWithoutToolsButLeavesPlainTextRequestsAlone() = runBlocking<Unit> {
+        val jsonText = """{"answer":"Привет: 'literal'"}"""
+        val fenced = "```json\n$jsonText\n```"
+        val response = actionResponse("unused").withNativeText(fenced)
+        val schema = Json.parseToJsonElement("""{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}""").jsonObject
+        for (structured in listOf(true, false)) {
+            val executor = FakeClaudeCodeCliExecutor(response)
+            val result = runtime(executor).call(request(listOf(userMessage("Say hello")), emptyList(), AiRuntimeOptions(
+                responseFormat = if (structured) AiResponseFormat.JsonSchema("answer", schema) else AiResponseFormat.Text,
+                assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                toolContext = testToolContext(),
+            )))
+            assertEquals(if (structured) jsonText else fenced, result.messages.single().text())
+            assertEquals(1, executor.commands.size)
+        }
+    }
+
+    @Test
     fun retriesInvalidResponseOnceFromCanonicalHistoryBeforeReturningValidatedActions() = runBlocking {
         val valid = actionResponse("README.md")
         for (invalidText in listOf(
-            "```json\n${valid.result}\n```",
+            "The answer is prose, not JSON.",
             """{"response":{"kind":"tool_calls","content":[{"kind":"message","message":"Working."}]}}""",
             valid.result.replace("\"README.md\"", "42"),
         )) {
@@ -1308,7 +1440,8 @@ class ClaudeCodeCliRuntimeTest {
             assertEquals(executor.commands.first().systemPrompt, retry.systemPrompt)
             assertTrue(retry.userPrompt.contains("Read README.md without executing anything twice"))
             assertTrue(retry.userPrompt.contains("single automatic retry"))
-            assertFalse(retry.userPrompt.contains(invalidText))
+            assertTrue(retry.userPrompt.contains(JsonPrimitive(invalidText).toString()))
+            assertFalse(retry.userPrompt.substringBefore(CLAUDE_CODE_CLEAN_RETRY_REMINDER).contains(invalidText))
             val assistant = assistantMessage("").copy(content = result.messages.single().content)
             val toolResult = userMessage("").copy(content = listOf(Conversation.Message.ContentItem.ToolResult(
                 toolUseId = result.toolCalls.single().id, toolName = "read_file",

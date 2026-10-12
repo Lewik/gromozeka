@@ -187,6 +187,7 @@ internal class ClaudeCodeCliRuntime(
         diagnosticId: String,
         cleanRetry: Boolean = false,
         rejectedUsage: JsonObject? = null,
+        rejectedAssistantText: String? = null,
     ): AiRuntimeResponse {
         val preparationStartedAt = System.nanoTime()
         val toolProtocol = request.toolProtocol()
@@ -218,7 +219,7 @@ internal class ClaudeCodeCliRuntime(
             modelName = modelName,
             workspaceDirectory = workspaceDirectory,
             systemPrompt = systemPrompt,
-            userPrompt = userInput.prompt + if (cleanRetry) "\n\n$CLAUDE_CODE_CLEAN_RETRY_REMINDER" else "",
+            userPrompt = userInput.prompt + if (cleanRetry) "\n\n${claudeCodeCleanRetryReminder(rejectedAssistantText)}" else "",
             userContentBlocks = userInput.contentBlocks,
             effort = request.options.reasoning?.effort,
             reasoningMode = request.options.reasoning?.mode,
@@ -233,7 +234,7 @@ internal class ClaudeCodeCliRuntime(
         } catch (error: ClaudeCodeSessionUnavailableException) {
             if (sessionStateKey == null || sessionPlan.resumeSessionId == null) throw error
             sessionStateRepository.delete(sessionStateKey)
-            return callLocked(request, sessionStateKey, "$diagnosticId-recovered", cleanRetry, rejectedUsage)
+            return callLocked(request, sessionStateKey, "$diagnosticId-recovered", cleanRetry, rejectedUsage, rejectedAssistantText)
         } catch (error: ClaudeCodeResponseFormatException) {
             // withSession has already evicted/closed the failed process. Never resume its transcript,
             // even if a subsequent formatting correction could produce acceptable JSON.
@@ -247,7 +248,7 @@ internal class ClaudeCodeCliRuntime(
                 "CLAUDE_CODE_TRACE call=$diagnosticId phase=clean_response_retry reason=${error.reason} " +
                     "responseSha256=${error.responseFingerprint}"
             }
-            return callLocked(request, sessionStateKey, "$diagnosticId-response-retry", true, consumedUsage)
+            return callLocked(request, sessionStateKey, "$diagnosticId-response-retry", true, consumedUsage, error.rejectedAssistantText)
         }.let { response -> response.copy(usage = sumCliUsage(listOfNotNull(rejectedUsage, response.usage))) }
         log.debug {
             "CLAUDE_CODE_TRACE call=$diagnosticId phase=cli_response executionMs=${elapsedMillis(executionStartedAt)} " +
@@ -309,10 +310,10 @@ internal class ClaudeCodeCliRuntime(
         val usage = sumCliUsage(responses.mapNotNull { it.usage })
         val completeText = try {
             val text = response.completeAssistantText()
-            if (contract?.validationErrors(text)?.isNotEmpty() == true) {
-                throw ClaudeCodeResponseFormatException(reason = "invalid_complete_response_schema")
-            }
-            text
+            if (contract == null) text else contract.validatedText(text)
+                ?: throw ClaudeCodeResponseFormatException(
+                    reason = "invalid_complete_response_schema", rejectedAssistantText = text,
+                )
         } catch (error: ClaudeCodeResponseFormatException) {
             val fingerprint = sha256(response.replayEvents.toString() + response.result).take(16)
             log.warn {
@@ -321,7 +322,7 @@ internal class ClaudeCodeCliRuntime(
             }
             throw ClaudeCodeResponseFormatException(
                 reason = error.reason, diagnosticId = command.diagnosticId,
-                responseFingerprint = fingerprint, usage = usage,
+                responseFingerprint = fingerprint, usage = usage, rejectedAssistantText = error.rejectedAssistantText,
             )
         }
         log.debug {
