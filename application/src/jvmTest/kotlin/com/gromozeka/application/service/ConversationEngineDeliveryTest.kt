@@ -253,7 +253,7 @@ class ConversationEngineDeliveryTest {
                 listOf(ContentItem.ToolResult.Data.Text("done")), false)), createdAt = now)
         f.messages += toolResult
         val processing = next.copy(id = ConversationRuntimeTask.Id("process-pins"), parentTaskId = next.id,
-            idempotencyKey = "process-pins", payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
+            idempotencyKey = "process-pins", requirements = requirements, payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 Conversation.Message.Id("root"), toolResult.id, agentId, 2, returnDirect = false))
         f.advance(next, processing)
         val postTool = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(processing, executor) {}).nextTask

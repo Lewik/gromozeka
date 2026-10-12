@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.compactions
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
@@ -482,7 +483,7 @@ class MessageSquashServiceTest {
             forceConflict = commitConflict,
         )
         val runtimeProvider = FixedRuntimeProvider(runtimeFailure)
-        val pins = ReadOnlyTestPins()
+        val pins = conversations.pinCatalog
         private val configurationProvider = FixedConfigurationProvider()
 
         fun service(): MessageSquashService {
@@ -623,8 +624,21 @@ private class InMemoryConversationRepository(
     vararg conversations: Conversation,
 ) : ConversationRepository {
     val values = conversations.associateBy(Conversation::id).toMutableMap()
+    val pinCatalog = ReadOnlyTestPins()
 
     override suspend fun create(conversation: Conversation): Conversation = conversation.also { values[it.id] = it }
+    override suspend fun createWithCopiedPins(conversation: Conversation, sourceConversationId: Conversation.Id): Conversation {
+        val source = requireNotNull(values[sourceConversationId])
+        require(source.projectId == conversation.projectId)
+        check(conversation.id !in values)
+        val copies = pinCatalog.values.filter { it.conversationId == sourceConversationId }.map { pin ->
+            pin.copy(id = ConversationPin.Id("copy:${conversation.id.value}:${pin.id.value}"), conversationId = conversation.id,
+                revision = 1, createdAt = conversation.createdAt, updatedAt = conversation.createdAt)
+        }
+        values[conversation.id] = conversation
+        pinCatalog.values = pinCatalog.values + copies
+        return conversation
+    }
     override suspend fun findById(id: Conversation.Id): Conversation? = values[id]
     override suspend fun findByProject(projectId: Project.Id): List<Conversation> =
         values.values.filter { it.projectId == projectId }
