@@ -66,6 +66,7 @@ class MemoryApplicationService(
     private val llmCallObservers: List<MemoryRunLlmCallObserver>,
     private val embeddingIndexer: MemoryEmbeddingIndexer,
     private val backgroundAiExecutionPacer: BackgroundAiExecutionPacer,
+    private val conversationPins: ConversationPinnedPrompt,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -182,7 +183,7 @@ class MemoryApplicationService(
         )
         return collectMemoryRunTimings(llmCallObservers) {
             LlmMemoryQuestionAnswerer(
-                runtime = runtime,
+                runtime = conversationPins.bindMemoryRuntime(runtimeContext, runtime),
                 runtimeSystemPrompts = runtimeSystemPrompts,
             ).answer(
                 question = targetMessage.memoryQuestionText(),
@@ -204,13 +205,14 @@ class MemoryApplicationService(
                     selection = selection,
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
-                purpose.backgroundWorkloadOrNull()?.let { workload ->
+                val paced = purpose.backgroundWorkloadOrNull()?.let { workload ->
                     backgroundAiExecutionPacer.wrap(
                         delegate = delegate,
                         runtime = aiConfigurationProvider.resolveAiRuntime(selection),
                         workload = workload,
                     )
                 } ?: delegate
+                conversationPins.bindMemoryRuntime(runtimeContext, paced)
             }
     }
 

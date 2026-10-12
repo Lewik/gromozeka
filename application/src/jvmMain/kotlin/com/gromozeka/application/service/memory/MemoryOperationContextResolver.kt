@@ -81,7 +81,7 @@ class MemoryOperationContextResolver(
         return MemoryOperationContext(
             conversation = conversation,
             agent = agent,
-            runtimeContext = runtimeContext,
+            runtimeContext = runtimeContext.copy(conversation = RuntimeEnvironmentContext.ConversationInfo(conversation.id, conversation.displayName)),
             systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
             memoryTools = memoryTools(agent),
             threadMessages = threadMessages,

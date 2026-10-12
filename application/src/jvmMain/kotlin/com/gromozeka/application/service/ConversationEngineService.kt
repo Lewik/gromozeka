@@ -119,6 +119,7 @@ class ConversationEngineService(
     private val stickyMessageInstructionService: StickyMessageInstructionService,
     private val pendingSecretRevealService: PendingSecretRevealService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
+    private val conversationPins: ConversationPinnedPrompt,
     private val requestEnrichers: List<ConversationRequestEnricher> = emptyList(),
     private val collaboration: AgentCollaborationService? = null,
     private val responseReview: AgentResponseReviewService? = null,
@@ -396,6 +397,7 @@ class ConversationEngineService(
             runtimeRequest = enricher.enrich(conversationId, payload.rootUserMessageId, task.turnId, context.modelSpec, runtimeRequest)
         }
         runtimeRequest = runtimeRequest.copy(messages = artifactService.materialize(conversationId, runtimeRequest.messages))
+        runtimeRequest = conversationPins.append(conversationId, runtimeRequest)
         context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
 
         val generationStartedAt = Clock.System.now()

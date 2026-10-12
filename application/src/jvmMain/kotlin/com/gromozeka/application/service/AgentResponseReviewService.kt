@@ -19,6 +19,7 @@ class AgentResponseReviewService(
     private val collaboration: AgentCollaborationService,
     private val repository: AgentCollaborationRepository,
     private val coordinator: ConversationRuntimeCoordinator,
+    private val conversationPins: ConversationPinnedPrompt,
     private val stateSync: ConversationRuntimeStateSyncService,
 ) {
     suspend fun prepare(task: ConversationRuntimeTask, payload: ConversationRuntimeTask.Payload.LlmCall,
@@ -61,7 +62,7 @@ class AgentResponseReviewService(
         var correction = ""
         repeat(2) { attempt ->
             val request = AiRuntimeRequest(
-                systemPrompts = listOf(REVIEW_PROMPT + "\nOutput JSON schema:\n" + SCHEMA.toString()),
+                systemPrompts = conversationPins.append(draft.endpoint.conversationId, listOf(REVIEW_PROMPT + "\nOutput JSON schema:\n" + SCHEMA.toString())),
                 messages = listOf(Conversation.Message(
                     id = Conversation.Message.Id("${draft.id}:check:$attempt"), conversationId = draft.endpoint.conversationId,
                     role = Conversation.Message.Role.USER, content = listOf(ContentItem.UserMessage(data + correction)), createdAt = draft.createdAt,

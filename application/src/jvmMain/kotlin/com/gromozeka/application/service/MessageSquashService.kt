@@ -21,6 +21,7 @@ class MessageSquashService internal constructor(
     private val conversationRepository: ConversationRepository,
     private val threadMessageRepository: ThreadMessageRepository,
     private val toolCallPairingService: ToolCallPairingService,
+    private val conversationPins: ConversationPinnedPrompt,
     private val compactionCommitter: ContextCompactionCommitter,
 ) {
     private val log = KLoggers.logger(this)
@@ -105,7 +106,7 @@ class MessageSquashService internal constructor(
         }
         val response = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null).call(
             AiRuntimeRequest(
-                systemPrompts = emptyList(),
+                systemPrompts = conversationPins.append(conversation.id, emptyList()),
                 // A fresh service request, not a replay of the live conversation.
                 // Historical raw provider messages must not override selection text.
                 messages = listOf(commandMessage),

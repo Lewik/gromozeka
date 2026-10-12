@@ -20,7 +20,17 @@ import kotlinx.serialization.json.Json
 @Service
 class ExposedConversationRepository : ConversationRepository {
 
-    override suspend fun create(conversation: Conversation): Conversation = dbQuery {
+    override suspend fun create(conversation: Conversation): Conversation = dbQuery { insertConversation(conversation) }
+
+    override suspend fun createWithCopiedPins(conversation: Conversation, sourceConversationId: Conversation.Id): Conversation = dbQuery {
+        val source = lockPinOwner(sourceConversationId)
+        require(source[Conversations.projectId] == conversation.projectId.value) { "Conversation pin copying requires the same project" }
+        insertConversation(conversation)
+        copyConversationPins(sourceConversationId, conversation.id)
+        conversation
+    }
+
+    private fun insertConversation(conversation: Conversation): Conversation {
         Conversations.insert {
             it[id] = conversation.id.value
             it[projectId] = conversation.projectId.value
@@ -32,7 +42,7 @@ class ExposedConversationRepository : ConversationRepository {
         }
         saveParticipants(conversation.id, conversation.participants)
         saveAutoResponders(conversation.id, conversation.autoRespondAgentIds)
-        conversation
+        return conversation
     }
 
     override suspend fun findById(id: Conversation.Id): Conversation? = dbQuery {

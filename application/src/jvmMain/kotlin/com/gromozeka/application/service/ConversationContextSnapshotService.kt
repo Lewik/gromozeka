@@ -29,6 +29,7 @@ class ConversationContextSnapshotService(
     private val temporal: MessageTemporalContextService,
     private val sticky: StickyMessageInstructionService,
     private val artifacts: ConversationArtifactApplicationService,
+    private val conversationPins: ConversationPinnedPrompt,
     private val enrichers: List<ConversationRequestEnricher> = emptyList(),
     private val collaboration: AgentCollaborationService? = null,
 ) {
@@ -137,6 +138,10 @@ class ConversationContextSnapshotService(
             request = enricher.enrichSnapshot(conversation.id, root, observationId, resolved.modelSpec, request)
         }
         request = request.copy(messages = artifacts.materializeSnapshot(conversation.id, request.messages))
+        request = try { conversationPins.append(conversation.id, request) }
+        catch (_: ConversationPinReadFailedException) {
+            throw ContextSnapshotUnavailableException("Conversation pins are unavailable")
+        }
         resolved.modelSpec.requireSupportsInputs(request.messages)
         check(request.tools.isEmpty() && request.options.toolChoice == AiToolChoice.None) {
             "A snapshot enricher enabled tools"

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service
 @Service
 class SuggestedRepliesGenerationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
+    private val conversationPins: ConversationPinnedPrompt,
     private val aiConfigurationProvider: AiConfigurationProvider,
 ) {
     fun requireConfiguredRuntimeSelection(): AiRuntimeSelection =
@@ -45,7 +46,7 @@ class SuggestedRepliesGenerationService(
         )
         val response = runtime.call(
             AiRuntimeRequest(
-                systemPrompts = listOf(SYSTEM_PROMPT),
+                systemPrompts = conversationPins.append(conversation.id, listOf(SYSTEM_PROMPT)),
                 messages = listOf(requestMessage),
                 options = AiRuntimeOptions(
                     maxOutputTokens = 256,

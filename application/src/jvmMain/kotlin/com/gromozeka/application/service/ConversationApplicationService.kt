@@ -75,6 +75,20 @@ class ConversationApplicationService(
         projectId: Project.Id,
         participants: Set<Conversation.Participant>,
         displayName: String,
+    ): Conversation = createConversation(projectId, participants, displayName, pinsFrom = null)
+
+    override suspend fun createWithCopiedPins(
+        projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
+        sourceConversationId: Conversation.Id,
+        displayName: String,
+    ): Conversation = createConversation(projectId, participants, displayName, sourceConversationId)
+
+    private suspend fun createConversation(
+        projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
+        displayName: String,
+        pinsFrom: Conversation.Id?,
     ): Conversation {
         val project = projectService.findById(projectId)
             ?: error("Project not found: ${projectId.value}")
@@ -102,8 +116,10 @@ class ConversationApplicationService(
             updatedAt = now,
         )
 
-        val createdConversation = conversationRepo.create(conversation)
+        val createdConversation = if (pinsFrom == null) conversationRepo.create(conversation)
+            else conversationRepo.createWithCopiedPins(conversation, pinsFrom)
         threadRepo.save(initialThread)
+        if (pinsFrom != null) stateChanges.publish(DeclarativeStateKey.conversationPins(createdConversation.id))
         return createdConversation.also(::publishConversationList)
     }
 
@@ -314,7 +330,7 @@ class ConversationApplicationService(
             updatedAt = now,
         )
         
-        conversationRepo.create(newConversation)
+        conversationRepo.createWithCopiedPins(newConversation, sourceConversation.id)
         threadRepo.save(newThread)
         
         val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
@@ -358,6 +374,7 @@ class ConversationApplicationService(
         
         log.debug("Forked conversation $conversationId to ${newConversation.id}")
         
+        stateChanges.publish(DeclarativeStateKey.conversationPins(newConversation.id))
         return newConversation.also(::publishConversationList)
     }
 

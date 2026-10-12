@@ -1,5 +1,6 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.application.service.ConversationPinnedPrompt
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.memory.MemoryIngestBlock
@@ -26,6 +27,7 @@ internal class MemoryIngestPreflightApplicationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val llmCallObservers: List<MemoryRunLlmCallObserver>,
+    private val conversationPins: ConversationPinnedPrompt,
 ) {
     private val engine = MemoryIngestPreflightEngine()
 
@@ -40,12 +42,12 @@ internal class MemoryIngestPreflightApplicationService(
                 contentText = contentText,
                 sourceLabel = sourceLabel,
                 planner = LlmMemoryIngestPlanner(
-                    runtime = aiRuntimeProvider.getRuntime(
+                    runtime = conversationPins.bindMemoryRuntime(runtimeContext, aiRuntimeProvider.getRuntime(
                         selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(
                             AiRuntimeAssignment.Purpose.MEMORY_WRITE_INGEST_PLANNER
                         ),
                         workspaceRootPath = runtimeContext.workspaceRootPath,
-                    ),
+                    )),
                     runtimeSystemPrompts = runtimeSystemPrompts,
                 ),
             ).copy(llmCalls = timingCollector.snapshot())

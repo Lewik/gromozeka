@@ -1,5 +1,6 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.application.service.ConversationPinnedPrompt
 import com.gromozeka.application.service.BackgroundAiExecutionPacer
 import com.gromozeka.application.service.backgroundWorkloadOrNull
 import com.gromozeka.domain.model.AgentDefinition
@@ -45,6 +46,7 @@ class MemoryMessageRoutingApplicationService(
     private val llmCallObservers: List<MemoryRunLlmCallObserver>,
     private val embeddingIndexer: MemoryEmbeddingIndexer,
     private val backgroundAiExecutionPacer: BackgroundAiExecutionPacer,
+    private val conversationPins: ConversationPinnedPrompt,
 ) {
     private val log = KLoggers.logger(this)
     private val sourceMapper = ConversationMessageMemorySourceMapper()
@@ -566,13 +568,14 @@ class MemoryMessageRoutingApplicationService(
                     selection = selection,
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
-                purpose.backgroundWorkloadOrNull()?.let { workload ->
+                val paced = purpose.backgroundWorkloadOrNull()?.let { workload ->
                     backgroundAiExecutionPacer.wrap(
                         delegate = delegate,
                         runtime = aiConfigurationProvider.resolveAiRuntime(selection),
                         workload = workload,
                     )
                 } ?: delegate
+                conversationPins.bindMemoryRuntime(runtimeContext, paced)
             }
     }
 
