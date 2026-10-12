@@ -1109,6 +1109,13 @@ Build-only mode creates Actions artifacts, not release tags, registry images
 or GitHub Releases. iOS checks are skipped by default; opt in explicitly with
 `skip_ios=false`. `skip_android=true` omits Android checks and APK publication;
 JVM client verification still runs. Android remains enabled by default.
+With iOS enabled, the matrix verifies Release Kotlin frameworks and complete
+unsigned Swift client/Worker app bundles for device and simulator (arm64), plus
+shared/client/Worker simulator tests. The app builds disable signing and do not
+request provisioning, install apps or access a physical device; they are build
+checks, not signed iOS distributions. The iOS job bounds both direct Gradle and
+Xcode's embedded Gradle invocation to one worker and a 4 GiB heap for native
+Release linking, without changing local project-wide Gradle settings.
 Windows service and Linux/Windows command-process checks run
 through the reusable Worker workflow; translation/font validation and Compose
 E2E run inside the main workflow. JNI library builds remain separately manual.
