@@ -15409,5 +15409,211 @@
     ],
     "description": "Label for an automatic slot request still waiting for Runtime to select a slot; no slot number or location has been assigned yet. Also shown in the conversation header with a pending count.",
     "args": []
+  },
+  "pins.title": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Pins",
+    "args": []
+  },
+  "pins.show": {
+    "source": [],
+    "description": "Parent conversation toolbar/message action; final call sites are added during App integration. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Show pins",
+    "args": []
+  },
+  "pins.hide": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Close pins",
+    "args": []
+  },
+  "pins.pinMessage": {
+    "source": [],
+    "description": "Parent conversation toolbar/message action; final call sites are added during App integration. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Pin message",
+    "args": []
+  },
+  "pins.sourceLoadFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Could not load the message text. The existing draft was not changed.",
+    "args": []
+  },
+  "pins.new": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: New pin",
+    "args": []
+  },
+  "pins.edit": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Edit pin",
+    "args": []
+  },
+  "pins.deletedDraft": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: This pin was deleted. Your draft is kept.",
+    "args": []
+  },
+  "pins.changedDraft": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: This pin changed elsewhere. Your draft is kept.",
+    "args": []
+  },
+  "pins.text": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Text",
+    "args": []
+  },
+  "pins.reload": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Replace draft with current version",
+    "args": []
+  },
+  "pins.save": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Save",
+    "args": []
+  },
+  "pins.discard": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Discard draft",
+    "args": []
+  },
+  "pins.add": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Add pin",
+    "args": []
+  },
+  "pins.loading": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Loading pins…",
+    "args": []
+  },
+  "pins.retry": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Retry loading",
+    "args": []
+  },
+  "pins.empty": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: No pins yet",
+    "args": []
+  },
+  "pins.delete": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Delete",
+    "args": []
+  },
+  "pins.deleteTitle": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Delete pin?",
+    "args": []
+  },
+  "pins.deletePrompt": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Remove this pin from the conversation? This cannot be undone.",
+    "args": []
+  },
+  "pins.cancel": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Cancel",
+    "args": []
+  },
+  "pins.readFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Could not load pins. Try loading again.",
+    "args": []
+  },
+  "pins.writeFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Could not confirm the change. Check the current state before retrying.",
+    "args": []
+  },
+  "pins.invalidText": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Invalid or blank text.",
+    "args": []
+  },
+  "pins.limit": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Pin count or text length limit exceeded.",
+    "args": []
+  },
+  "pins.conflict": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: This pin changed since it was loaded. Load its current version before trying again.",
+    "args": []
+  },
+  "pins.createConflict": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: This draft conflicts with an earlier create request. Your text and request key are kept.",
+    "args": []
+  },
+  "pins.notFound": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: This pin is no longer available. Unsaved text is kept.",
+    "args": []
+  },
+  "pins.accessDenied": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: You do not have access to these pins.",
+    "args": []
+  },
+  "pins.reloadEdited": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+    ],
+    "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: The draft changed while loading. Your newer text is kept.",
+    "args": []
   }
 }
