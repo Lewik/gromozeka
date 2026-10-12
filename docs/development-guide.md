@@ -640,6 +640,62 @@ This checks the model protocol and application read path, **not** Worker RPC, Po
 ConversationEngine dispatch or crash recovery. Idle/active/control variants, bounds,
 authorization exclusions and stale timestamps are covered by the deterministic tests.
 
+## Isolated Context Questions
+
+`grz_agent_query_context(target_conversation_id, question, target_agent_id?)`
+asks one question using an eligible peer's context view and selected model. The
+agent selector is required when the target conversation has several agents.
+It shares collaboration authorization and external-channel exclusion; it does
+not create a collaboration request, wake the peer, resume its pause, drain its
+queue, append target history or create a persistent child conversation.
+
+The snapshot pins one history thread and a complete tool-call/result-group
+prefix. It includes configured prompts, identity, cached tool/skill catalogs,
+environment and read-only Runtime enrichments. Missing mandatory cached data or
+an inconsistent cutoff is an operational failure, not a silently reduced
+history-only view. In particular, a discarded checkpoint must not make otherwise
+usable history look empty. Truly empty or wholly unfinished history can still
+produce a normal answer that information is missing. Observations collected
+during assembly are not a globally atomic distributed snapshot.
+
+The invoker makes one application-level model call, with a temporary question at
+the end, no tools or native capabilities, no automatic compaction and no model or
+Worker fallback. Pending one-use secret reveals are not consumed. Claude native
+cache/resume/session persistence are disabled; OpenAI Subscription transport
+state uses an independent namespace. Copilot is initially unsupported for this
+strict zero-tool contract. A Worker target must advertise
+`AI_ISOLATED_CONTEXT_QUERY`; the internal `isolated_context_query_v1` wire kind
+also makes a legacy Worker reject the operation before model dispatch after a
+reconnect. Ordinary Worker calls keep their existing wire shape.
+
+The result contains the final answer and bounded snapshot provenance, not the
+internal request or thinking blocks. Public failures use fixed
+`CONTEXT_SNAPSHOT_UNAVAILABLE`, `CONTEXT_QUERY_UNSUPPORTED` or
+`CONTEXT_QUERY_FAILED` categories without raw provider exception payloads.
+Cancellation propagates. Preserving a base prompt/cache namespace does not
+promise a provider cache hit; counters are measurements, not success criteria.
+
+The opt-in direct-backend protocol smoke uses the installed Claude CLI and
+existing authorization; it performs a real model call and needs network access
+(`--offline` below applies only to Gradle). It does not boot a Server/Worker,
+use real conversation IDs, install anything or change global configuration:
+
+```bash
+DISABLE_UPDATES=1 GROMOZEKA_RUN_CONTEXT_QUERY_CLAUDE_SMOKE=true \
+GROMOZEKA_CONTEXT_QUERY_SMOKE_MODEL=haiku GROMOZEKA_CLAUDE_CODE_REAL=false \
+GROMOZEKA_CLAUDE_COMPACTION_LIVE=false \
+./gradlew --offline --no-daemon --no-configuration-cache --no-parallel --max-workers=1 \
+  -Dorg.gradle.jvmargs='-Xmx3g -Xms256m -XX:MaxMetaspaceSize=768m' \
+  -Pkotlin.compiler.execution.strategy=in-process \
+  :infrastructure-ai:jvmTest --rerun --tests '*ClaudeCodeContextQueryRealTest'
+```
+
+It checks one executor command, a final response, no tool operations, forbidden
+native-session repository access and isolation flags. It does not test answer
+intelligence or guarantee cache reuse. Capture/invocation and stateless native
+checkpoint reconstruction have linked offline producer/consumer regressions;
+these are not a full Server/Worker RPC or persisted-fork end-to-end test.
+
 ## Tool Output Storage
 
 Tool results retain their original bytes as managed Artifacts. Text responses are
