@@ -32,6 +32,7 @@ class ExposedConversationPinRepository : ConversationPinRepository {
     ): ConversationPinCreation = dbQuery {
         ConversationPinLimits.validateText(text)
         ConversationPinLimits.validateCreationKey(creationKey)
+        ConversationPinLimits.validateSource(source)
         lockPinOwner(conversationId)
         val fingerprint = payloadFingerprint(text, source)
         if (creationKey != null) {

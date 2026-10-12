@@ -69,6 +69,30 @@ class ConversationPinApplicationServiceTest {
         Mockito.verifyNoInteractions(f.repository); assertTrue(f.events.isEmpty())
     }
 
+    @Test fun `malformed text keys and provenance fail before any repository write or publication`() = runBlocking<Unit> {
+        for (bad in listOf("PRIVATE_\uD800", "PRIVATE_\uDC00", "\uD800x", "\uDC00\uD800")) {
+            for (field in listOf("text", "key", "source-conversation", "source-message")) {
+                val f = Fixture(); f.authorize()
+                val text = if (field == "text") bad else "valid text 😀"
+                val key = if (field == "key") bad else "key"
+                val source = when (field) {
+                    "source-conversation" -> ConversationPinSource(Conversation.Id(bad), Conversation.Message.Id("message"))
+                    "source-message" -> ConversationPinSource(Conversation.Id("source"), Conversation.Message.Id(bad))
+                    else -> null
+                }
+                Mockito.`when`(f.repository.create(owner, actor, text, source, key)).thenReturn(ConversationPinCreation(testPin(owner, text), true))
+                val error = assertFailsWith<IllegalArgumentException> { f.service.create(actor, owner, text, source, key) }
+                assertFalse(error.toString().contains("PRIVATE_")); assertNull(error.cause)
+                Mockito.verifyNoInteractions(f.repository); assertTrue(f.events.isEmpty())
+            }
+            val f = Fixture(); f.authorize()
+            val pin = testPin(owner, "old")
+            Mockito.`when`(f.repository.update(owner, pin.id, 1, bad)).thenReturn(pin.copy(text = bad, revision = 2))
+            assertFailsWith<IllegalArgumentException> { f.service.update(actor, owner, pin.id, 1, bad) }
+            Mockito.verifyNoInteractions(f.repository); assertTrue(f.events.isEmpty())
+        }
+    }
+
     private inner class Fixture {
         val repository = Mockito.mock(ConversationPinRepository::class.java)
         val conversations = Mockito.mock(ConversationRepository::class.java)

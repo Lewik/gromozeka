@@ -38,12 +38,38 @@ object ConversationPinLimits {
 
     fun validateText(text: String) {
         require(text.isNotBlank()) { "Conversation pin text must not be blank" }
+        validateLiteralUtf16(text)
         if (text.length > MAX_TEXT_LENGTH) throw ConversationPinLimitException()
     }
 
     fun validateCreationKey(key: String?) {
         require(key == null || (key.isNotBlank() && key.length <= MAX_CREATION_KEY_LENGTH)) {
             "Invalid conversation pin creation key"
+        }
+        key?.let(::validateLiteralUtf16)
+    }
+
+    /** Provenance is never looked up, but must cross UTF-8 hashing/storage without replacement. */
+    fun validateSource(source: ConversationPinSource?) {
+        source?.let {
+            validateLiteralUtf16(it.conversationId.value)
+            validateLiteralUtf16(it.messageId.value)
+        }
+    }
+
+    private fun validateLiteralUtf16(value: String) {
+        var index = 0
+        while (index < value.length) {
+            val unit = value[index++]
+            when (unit) {
+                in '\uD800'..'\uDBFF' -> {
+                    require(index < value.length && value[index] in '\uDC00'..'\uDFFF') {
+                        "Malformed Unicode in conversation pin request"
+                    }
+                    index++
+                }
+                in '\uDC00'..'\uDFFF' -> throw IllegalArgumentException("Malformed Unicode in conversation pin request")
+            }
         }
     }
 }

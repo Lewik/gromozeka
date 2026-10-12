@@ -34,6 +34,7 @@ class ConversationPinApplicationService(
         authorize(actor, conversationId, ProjectPermission.WRITE)
         ConversationPinLimits.validateText(text)
         ConversationPinLimits.validateCreationKey(creationKey)
+        ConversationPinLimits.validateSource(source)
         val result = repository.create(conversationId, actor, text, source, creationKey)
         // Repository has committed; no invalidation on an idempotent replay.
         if (result.created) stateChanges.publish(DeclarativeStateKey.conversationPins(conversationId))

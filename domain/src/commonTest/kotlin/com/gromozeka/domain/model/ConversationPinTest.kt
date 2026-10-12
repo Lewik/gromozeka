@@ -12,6 +12,33 @@ class ConversationPinTest {
         assertFailsWith<ConversationPinLimitException> { ConversationPinLimits.validateText("x".repeat(32_001)) }
     }
 
+    @Test fun loneHighSurrogateIsRejectedWithoutContent() {
+        val error = assertFailsWith<IllegalArgumentException> { ConversationPinLimits.validateText("PRIVATE_TEXT_\uD800") }
+        assertFalse(error.toString().contains("PRIVATE_TEXT")); assertNull(error.cause)
+    }
+
+    @Test fun loneLowSurrogateIsRejectedWithoutContent() {
+        val error = assertFailsWith<IllegalArgumentException> { ConversationPinLimits.validateText("PRIVATE_TEXT_\uDC00") }
+        assertFalse(error.toString().contains("PRIVATE_TEXT")); assertNull(error.cause)
+    }
+
+    @Test fun malformedCreationKeyIsRejectedWithoutContent() {
+        for (value in listOf("PRIVATE_KEY_\uD800", "PRIVATE_KEY_\uDC00", "\uD800x", "\uDC00\uD800")) {
+            val error = assertFailsWith<IllegalArgumentException> { ConversationPinLimits.validateCreationKey(value) }
+            assertFalse(error.toString().contains("PRIVATE_KEY")); assertNull(error.cause)
+        }
+    }
+
+    @Test fun validSurrogatePairsAndUnicodeRemainLiteralCodeUnits() {
+        for (value in listOf("\uD800\uDC00", "\uDBFF\uDFFF", "😀", "👩🏽‍💻", "א\u0301\r\n  ")) {
+            ConversationPinLimits.validateText(value)
+            ConversationPinLimits.validateCreationKey(value)
+        }
+        assertEquals(2, "\uD800\uDC00".length)
+        ConversationPinLimits.validateText("\uD800\uDC00".repeat(16_000))
+        assertFailsWith<ConversationPinLimitException> { ConversationPinLimits.validateText("\uD800\uDC00".repeat(16_000) + "x") }
+    }
+
     @Test fun creationKeysAreInternalBoundedMetadata() {
         ConversationPinLimits.validateCreationKey(null)
         ConversationPinLimits.validateCreationKey("k".repeat(512))
