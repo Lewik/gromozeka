@@ -7,7 +7,7 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
 import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Instant
@@ -79,6 +79,122 @@ class ConversationContextSnapshotServiceTest {
         assertEquals(2, snapshot.omittedTrailingMessageCount)
     }
 
+    @Test fun `empty history streaming first message and incomplete first parallel group permit an empty snapshot`() = runBlocking<Unit> {
+        val f = Fixture()
+        val streaming = f.user.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("unfinished", state = Conversation.Message.BlockState.STREAMING)))
+        val calls = f.incompleteCall.copy(content = listOf(toolCall("a"), toolCall("b")))
+        val onlyFirstResult = f.user.copy(id = Conversation.Message.Id("result-a"), content = listOf(toolResult("a")))
+        for (raw in listOf(emptyList(), listOf(streaming), listOf(calls, onlyFirstResult))) {
+            Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(raw)
+            val snapshot = f.capture()
+            assertTrue(snapshot.request.messages.isEmpty())
+            assertEquals(raw.size, snapshot.sourceMessageCount)
+            val (sent, answer) = invokeOnce(snapshot, f.configuration)
+            assertEquals("Not enough information", answer)
+            assertEquals(1, sent.messages.size) // Only the temporary question, not a technical failure.
+        }
+    }
+
+    @Test fun `excluded native owner full checkpoint cannot erase otherwise complete history`() = runBlocking<Unit> {
+        val f = Fixture(nativeClaude = true)
+        val checkpoint = f.user.copy(id = Conversation.Message.Id("native-checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(summary(listOf(f.user.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS, native = true),
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("still streaming"), state = Conversation.Message.BlockState.STREAMING)))
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, checkpoint))
+        assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
+    }
+
+    @Test fun `excluded readable selective summary cannot erase otherwise complete history`() = runBlocking<Unit> {
+        val f = Fixture()
+        val checkpoint = f.user.copy(id = Conversation.Message.Id("selective-checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(summary(listOf(f.user.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES),
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("still streaming"), state = Conversation.Message.BlockState.STREAMING)))
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, checkpoint))
+        assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
+    }
+
+    @Test fun `completed selective summary behind an unfinished group cannot erase the preceding complete prefix`() = runBlocking<Unit> {
+        val f = Fixture()
+        val checkpoint = f.user.copy(id = Conversation.Message.Id("selective-checkpoint"), content = listOf(
+            summary(listOf(f.user.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+        val raw = listOf(f.user, f.incompleteCall, checkpoint)
+        assertTrue(raw.flatMap { it.content }.none { it.state == Conversation.Message.BlockState.STREAMING })
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(raw)
+        assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
+    }
+
+    @Test fun `full and selective coverage of completed parallel groups stays valid`() = runBlocking<Unit> {
+        for (coverage in Conversation.Message.ContentItem.ContextCompactionResult.Coverage.entries) {
+            val f = Fixture()
+            val calls = f.incompleteCall.copy(content = listOf(toolCall("a"), toolCall("b")))
+            val first = f.user.copy(id = Conversation.Message.Id("result-a"), content = listOf(toolResult("a")))
+            val second = f.user.copy(id = Conversation.Message.Id("result-b"), content = listOf(toolResult("b")))
+            val checkpoint = f.user.copy(id = Conversation.Message.Id("completed-checkpoint"), content = listOf(
+                summary(listOf(calls.id, first.id, second.id), coverage)))
+            Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, calls, first, second, checkpoint))
+            val snapshot = f.capture()
+            val expected = if (coverage == Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS)
+                listOf(checkpoint.id) else listOf(f.user.id, checkpoint.id)
+            assertEquals(expected, snapshot.request.messages.map { it.id })
+            assertTrue(snapshot.request.messages.flatMap { it.content }.none {
+                it is Conversation.Message.ContentItem.ToolCall || it is Conversation.Message.ContentItem.ToolResult })
+            assertEquals(0, snapshot.omittedTrailingMessageCount)
+        }
+    }
+
+    @Test fun `native fork fixture passes through production capture and isolated invoker without material loss`() = runBlocking<Unit> {
+        val f = Fixture(nativeClaude = true)
+        fun user(id: String, text: String) = f.user.copy(id = Conversation.Message.Id(id),
+            content = listOf(Conversation.Message.ContentItem.UserMessage(text)))
+        val preNative = user("pre-native", "PRE_NATIVE_SOURCE_SENTINEL")
+        val checkpoint = user("checkpoint", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(
+            summary(listOf(preNative.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS, native = true)))
+        val selected = user("selected-source", "SELECTIVE_SOURCE_SENTINEL")
+        val retained = user("retained", "UNRELATED_RETAINED_SENTINEL")
+        val calls = f.incompleteCall.copy(id = Conversation.Message.Id("calls"),
+            content = listOf(Conversation.Message.ContentItem.Thinking("CANONICAL_PRIVATE_THINKING_SENTINEL"), toolCall("a"), toolCall("b")),
+            providerMetadata = buildJsonObject { put(AI_REPLAY_THREAD_METADATA_KEY, "original-thread") })
+        val first = user("result-a", "").copy(content = listOf(toolResult("a")))
+        val second = user("result-b", "").copy(content = listOf(toolResult("b")))
+        val readable = user("summary", "").copy(content = listOf(
+            summary(listOf(selected.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+        val tail = user("tail", "CAPTURE_TAIL_SENTINEL")
+        val originals = listOf(preNative, checkpoint, selected, retained, calls, first, second, readable, tail)
+            .map { it.copy(conversationId = Conversation.Id("source-before-fork")) }
+        // The persisted post-fork shape: canonical message/coverage IDs change; native transcript UUIDs do not.
+        val ids = originals.associate { it.id to Conversation.Message.Id("fork-${it.id.value}") }
+        val forked = originals.map { message -> message.copy(id = ids.getValue(message.id), conversationId = f.conversation.id,
+            content = message.content.map { item -> if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
+                sourceMessageIds = item.sourceMessageIds.map(ids::getValue),
+                invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { ids[it] ?: it },
+            ) else item }) }
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(forked)
+        val snapshot = f.capture()
+        val expectedIds = listOf("fork-checkpoint", "fork-retained", "fork-calls", "fork-result-a", "fork-result-b", "fork-summary", "fork-tail")
+        assertEquals(expectedIds, snapshot.request.messages.map { it.id.value })
+        val (sent, answer) = invokeOnce(snapshot, f.configuration)
+        assertEquals("Not enough information", answer)
+        val history = sent.messages.dropLast(1)
+        assertEquals(expectedIds, history.map { it.id.value })
+        val content = history.flatMap { it.content }
+        val checkpoints = content.filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
+        assertEquals(nativeState(), assertIs<Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState>(checkpoints.first().payload).state)
+        assertEquals(listOf(Conversation.Message.Id("fork-selected-source")), checkpoints.last().sourceMessageIds)
+        assertEquals(listOf("a", "b"), content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().map { it.id.value })
+        assertEquals(listOf("a", "b"), content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>().map { it.toolUseId.value })
+        assertEquals(history, completeToolGroupPrefix(history))
+        assertTrue(content.none { it is Conversation.Message.ContentItem.Thinking })
+        assertFalse("PRE_NATIVE_SOURCE_SENTINEL" in content.toString())
+        assertFalse("SELECTIVE_SOURCE_SENTINEL" in content.toString())
+        assertEquals(AI_CONTEXT_QUERY_PURPOSE, sent.options.usagePurpose)
+        assertEquals(AiToolChoice.None, sent.options.toolChoice)
+        assertTrue(sent.tools.isEmpty())
+        assertFalse(TOOL_CONTEXT_THREAD_ID in sent.options.toolContext)
+        assertTrue(sent.messages.all { it.conversationId.value.startsWith("context-query:") })
+        assertEquals(9, forked.size)
+        assertEquals(listOf(selected.id), (readable.content.single() as Conversation.Message.ContentItem.ContextCompactionResult).sourceMessageIds)
+    }
+
     @Test fun `ordinary and snapshot assemblers share the unchanged ordered system prefix`() {
         val f = Fixture()
         for (format in AiModelConfiguration.AssistantResponseFormat.entries) {
@@ -95,7 +211,48 @@ class ConversationContextSnapshotServiceTest {
         }
     }
 
-    private class Fixture {
+    private fun toolCall(id: String) = Conversation.Message.ContentItem.ToolCall(Conversation.Message.ContentItem.ToolCall.Id(id),
+        Conversation.Message.ContentItem.ToolCall.Data("synthetic_read", buildJsonObject { put("sentinel", "CALL_${id.uppercase()}_SENTINEL") }))
+    private fun toolResult(id: String) = Conversation.Message.ContentItem.ToolResult(Conversation.Message.ContentItem.ToolCall.Id(id),
+        "synthetic_read", listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("RESULT_${id.uppercase()}_SENTINEL")))
+
+    private fun summary(ids: List<Conversation.Message.Id>, coverage: Conversation.Message.ContentItem.ContextCompactionResult.Coverage,
+        native: Boolean = false) = Conversation.Message.ContentItem.ContextCompactionResult(
+        payload = if (native) Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(nativeState())
+            else Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("READABLE_SUMMARY_SENTINEL"),
+        origin = if (native) Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO
+            else Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+        providerScope = if (native) Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(AiConnection.Kind.CLAUDE_CODE.name) else null,
+        coverage = coverage, sourceMessageIds = ids,
+    )
+
+    // CTX_QUERY_NATIVE_FORK_V1: the consumer half is ClaudeCodeCliRuntimeTest's isolated query reconstruction test.
+    private fun nativeState() = Json.parseToJsonElement("""{"kind":"claude_code_transcript","messages":[{"uuid":"provider-summary","type":"user","isSynthetic":true,"message":{"role":"user","content":"NATIVE_SUMMARY_SENTINEL"}},{"uuid":"provider-tail","type":"user","message":{"role":"user","content":[{"type":"text","text":"NATIVE_RETAINED_TAIL_SENTINEL"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"aGVsbG8="}},{"type":"thinking","thinking":"OPAQUE_PRIVATE_THINKING_SENTINEL"}]}}]}""").jsonObject
+
+    private suspend fun invokeOnce(snapshot: ConversationContextSnapshot, configuration: AiConfigurationProvider): Pair<AiRuntimeRequest, String> {
+        var sent: AiRuntimeRequest? = null
+        var calls = 0
+        val provider = object : AiRuntimeProvider {
+            override fun getRuntime(selection: AiRuntimeSelection, workspaceRootPath: String?): AiRuntime {
+                assertEquals(snapshot.runtimeSelection, selection)
+                assertNull(workspaceRootPath)
+                return object : AiRuntime {
+                    override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                        calls++
+                        sent = request
+                        return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(Conversation.Message.ContentItem.AssistantMessage(
+                            Conversation.Message.StructuredText("Not enough information"))))))
+                    }
+                    override fun stream(request: AiRuntimeRequest): kotlinx.coroutines.flow.Flow<AiRuntimeResponse> = error("No streaming/turn loop")
+                }
+            }
+        }
+        val answer = IsolatedContextQueryInvoker(provider, configuration).answer(snapshot, "ISOLATED_QUESTION_SENTINEL: What does this snapshot establish?")
+        assertEquals(1, calls)
+        return requireNotNull(sent) to answer
+    }
+
+    private class Fixture(nativeClaude: Boolean = false) {
         val now = Instant.fromEpochMilliseconds(0)
         val actor = User.Id("operator")
         val project = Project(Project.Id("project"), "Project", createdAt = now, lastUsedAt = now)
@@ -134,10 +291,11 @@ class ConversationContextSnapshotServiceTest {
             }
         }
         init {
-            val connection = AiConnection.OpenAiSubscription(AiConnection.Id("connection"), "Connection", enabled = true)
+            val connection = if (nativeClaude) AiConnection.ClaudeCode(AiConnection.Id("connection"), "Connection", enabled = true, executionTarget = AiExecutionTarget.Worker("synthetic-native-worker"))
+                else AiConnection.OpenAiSubscription(AiConnection.Id("connection"), "Connection", enabled = true)
             val model = AiModelConfiguration(agent.runtimeSelection.modelConfigurationId, connection.id, "test", "Test")
-            val resolved = ResolvedAiRuntime(connection, model, AiModelSpec("test", AiProvider.OPENAI,
-                setOf(AiModelCapability.TEXT_GENERATION), AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(100_000))))
+            val resolved = ResolvedAiRuntime(connection, model, AiModelSpec("test", connection.kind.provider,
+                setOf(AiModelCapability.TEXT_GENERATION, AiModelCapability.IMAGE_INPUT), AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(100_000))))
             Mockito.`when`(configuration.resolveAiRuntime(agent.runtimeSelection)).thenReturn(resolved)
             Mockito.`when`(settings.userProfile).thenReturn(UserProfile())
             runBlocking {

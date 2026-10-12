@@ -80,6 +80,13 @@ class ConversationContextSnapshotService(
         val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
         val projected = projectionRequest.projectedMessages(nativeProvider)
         val prefix = completeToolGroupPrefix(projected)
+        // Empty projection is not proof of empty usable history: a checkpoint in the discarded
+        // tail may already have hidden a complete canonical prefix. Fail closed in that case.
+        // Do not move the general pair check before projection; retained checkpoints may validly
+        // cover old tool groups. Truly empty/wholly incomplete history still permits an empty view.
+        if (prefix.isEmpty() && completeToolGroupPrefix(projectionRequest.originalCollaborationMessages()).isNotEmpty()) {
+            throw ContextSnapshotUnavailableException("Projected cutoff would discard otherwise complete context")
+        }
         // An excluded pending group may contain newer sticky instructions. It must not erase
         // instructions from the retained prefix. Preserve ordinary temporal/coverage semantics
         // by materializing the raw prefix (including covered sources), then projecting it again.

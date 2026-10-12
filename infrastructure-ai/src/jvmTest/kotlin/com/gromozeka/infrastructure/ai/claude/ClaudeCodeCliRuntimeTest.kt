@@ -1588,6 +1588,74 @@ class ClaudeCodeCliRuntimeTest {
         assertFalse(prompt.contains("Source no longer sent"))
     }
 
+    @Test
+    fun isolatedContextQueryReconstructsForkedNativeAndSelectiveContext() = runBlocking<Unit> {
+        // CTX_QUERY_NATIVE_FORK_V1 consumer seam. The producer test in
+        // ConversationContextSnapshotServiceTest asserts these exact retained canonical IDs,
+        // native payload, remapped selective source IDs and complete parallel tool group.
+        val isolated = Conversation.Id("context-query:synthetic-fixture")
+        fun user(id: String, text: String) = userMessage(text).copy(id = Conversation.Message.Id(id), conversationId = isolated)
+        fun call(id: String) = Conversation.Message.ContentItem.ToolCall(Conversation.Message.ContentItem.ToolCall.Id(id),
+            Conversation.Message.ContentItem.ToolCall.Data("synthetic_read", jsonObject("sentinel" to JsonPrimitive("CALL_${id.uppercase()}_SENTINEL"))))
+        fun result(id: String) = Conversation.Message.ContentItem.ToolResult(Conversation.Message.ContentItem.ToolCall.Id(id),
+            "synthetic_read", listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("RESULT_${id.uppercase()}_SENTINEL")))
+        val nativeState = Json.parseToJsonElement("""{"kind":"claude_code_transcript","messages":[{"uuid":"provider-summary","type":"user","isSynthetic":true,"message":{"role":"user","content":"NATIVE_SUMMARY_SENTINEL"}},{"uuid":"provider-tail","type":"user","message":{"role":"user","content":[{"type":"text","text":"NATIVE_RETAINED_TAIL_SENTINEL"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"aGVsbG8="}},{"type":"thinking","thinking":"OPAQUE_PRIVATE_THINKING_SENTINEL"}]}}]}""").jsonObject
+        val checkpoint = user("fork-checkpoint", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(
+            Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(nativeState),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                sourceMessageIds = listOf(Conversation.Message.Id("fork-pre-native")),
+                providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope("CLAUDE_CODE"),
+            )))
+        val calls = user("fork-calls", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(call("a"), call("b")))
+        val readable = user("fork-summary", "").copy(content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+            payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("READABLE_SUMMARY_SENTINEL"),
+            origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+            coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+            sourceMessageIds = listOf(Conversation.Message.Id("fork-selected-source")),
+        )))
+        val canonical = listOf(checkpoint, user("fork-retained", "UNRELATED_RETAINED_SENTINEL"), calls,
+            user("fork-result-a", "").copy(content = listOf(result("a"))), user("fork-result-b", "").copy(content = listOf(result("b"))),
+            readable, user("fork-tail", "CAPTURE_TAIL_SENTINEL"))
+        assertEquals(listOf("fork-checkpoint", "fork-retained", "fork-calls", "fork-result-a", "fork-result-b", "fork-summary", "fork-tail"), canonical.map { it.id.value })
+        val forbiddenSessions = object : ClaudeCodeSessionStateRepository {
+            override suspend fun find(key: ClaudeCodeSessionState.Key): ClaudeCodeSessionState? = error("Query must not read native session")
+            override suspend fun save(state: ClaudeCodeSessionState): ClaudeCodeSessionState = error("Query must not save native session")
+            override suspend fun delete(key: ClaudeCodeSessionState.Key) { error("Query must not delete native session") }
+        }
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))
+        val response = runtime(executor, forbiddenSessions).call(request(canonical + user("context-query:question",
+            "ISOLATED_QUESTION_SENTINEL: What does this snapshot establish?"), emptyList(), AiRuntimeOptions(
+            usagePurpose = com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE, toolChoice = AiToolChoice.None,
+            toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+            toolContext = mapOf("conversationId" to isolated.value, "promptCacheKey" to "target", "projectId" to "project"),
+        )))
+        val command = executor.commands.single()
+        val prompt = command.userPrompt
+        for (marker in listOf("NATIVE_SUMMARY_SENTINEL", "NATIVE_RETAINED_TAIL_SENTINEL", "UNRELATED_RETAINED_SENTINEL",
+            "READABLE_SUMMARY_SENTINEL", "CALL_A_SENTINEL", "CALL_B_SENTINEL", "RESULT_A_SENTINEL", "RESULT_B_SENTINEL",
+            "CAPTURE_TAIL_SENTINEL", "ISOLATED_QUESTION_SENTINEL")) {
+            assertEquals(1, Regex(Regex.escape(marker)).findAll(prompt).count(), "Exactly once: $marker")
+        }
+        for (removed in listOf("PRE_NATIVE_SOURCE_SENTINEL", "SELECTIVE_SOURCE_SENTINEL", "OPAQUE_PRIVATE_THINKING_SENTINEL", "CANONICAL_PRIVATE_THINKING_SENTINEL")) {
+            assertFalse(removed in prompt, "Must not replay: $removed")
+        }
+        assertTrue(prompt.indexOf("CALL_A_SENTINEL") < prompt.indexOf("RESULT_A_SENTINEL"))
+        assertTrue(prompt.indexOf("CALL_B_SENTINEL") < prompt.indexOf("RESULT_B_SENTINEL"))
+        assertEquals("image", command.userContentBlocks.single().getValue("type").jsonPrimitive.content)
+        assertEquals("aGVsbG8=", command.userContentBlocks.single().getValue("source").jsonObject.getValue("data").jsonPrimitive.content)
+        assertNull(command.cacheKey)
+        assertNull(command.resumeSessionId)
+        assertTrue(command.noSessionPersistence)
+        assertTrue(command.disableCompaction)
+        assertTrue(command.nativeTools.isEmpty())
+        assertEquals(AiStepOutcome.COMPLETE, response.outcome)
+        assertTrue(response.toolCalls.isEmpty())
+    }
+
     private fun runtime(
         executor: ClaudeCodeCliExecutor,
         sessions: ClaudeCodeSessionStateRepository = InMemoryClaudeCodeSessionStateRepository(),
