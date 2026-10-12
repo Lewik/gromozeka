@@ -96,14 +96,79 @@ class RemoteConversationPinServiceTest {
         }
     }
 
-    @Test fun `unsupported pin preserving restart never falls back to ordinary create`() {
+    @Test fun `pin preserving restart sanitizes incompatible replies without fallback or retry`() {
         val calls = mutableListOf<ClientRequest>()
-        withClient({ request -> calls += request; ErrorResponse("Unsupported operation") }) { client ->
-            assertFailsWith<IllegalStateException> {
-                RemoteConversationService(client).createWithCopiedPins(Project.Id("project"), emptySet(), cid, "")
+        var response: ServerResponse = ErrorResponse("PRIVATE_PIN_AND_STORAGE_DETAIL", "UNKNOWN")
+        withClient({ request -> calls += request; response }) { client ->
+            val cases = listOf<ServerResponse>(
+                ErrorResponse("PRIVATE_PIN_AND_STORAGE_DETAIL", "UNKNOWN"),
+                ConversationPinResponse(pin("PRIVATE_UNEXPECTED_PIN_BODY")),
+                ConversationResponse(null),
+                ErrorResponse("PRIVATE_DENIAL_DETAIL", "PIN_TARGET_UNAVAILABLE"),
+            )
+            val service = RemoteConversationService(client)
+            for (reply in cases) {
+                response = reply
+                val error = assertFailsWith<Exception> {
+                    service.createWithCopiedPins(Project.Id("project"), emptySet(), cid, "")
+                }
+                if (reply is ErrorResponse && reply.type == "PIN_TARGET_UNAVAILABLE") {
+                    assertIs<ProjectAccessDeniedException>(error)
+                } else {
+                    assertIs<ConversationPinOperationFailedException>(error)
+                }
+                assertFalse(error.toString().contains("PRIVATE_"))
+                assertNull(error.cause); assertTrue(error.suppressed.isEmpty())
             }
-            assertEquals(1, calls.size); assertIs<CreateConversationWithCopiedPinsRequest>(calls.single())
+            assertEquals(cases.size, calls.size)
+            assertTrue(calls.all { it is CreateConversationWithCopiedPinsRequest })
             assertFalse(calls.any { it is CreateConversationRequest })
+        }
+    }
+
+    @Test fun `copy only RPC forwards the full request and returns the new conversation`() {
+        val project = Project.Id("pin-copy-project")
+        val participants = setOf(Conversation.Participant.User(User.Id("pin-copy-user")),
+            Conversation.Participant.Agent(AgentDefinition.Id("pin-copy-default-agent")))
+        val created = Conversation(Conversation.Id("pin-copy-created"), project, participants,
+            currentThread = Conversation.Thread.Id("pin-copy-thread"),
+            createdAt = Instant.fromEpochMilliseconds(1), updatedAt = Instant.fromEpochMilliseconds(1))
+        var calls = 0
+        withClient({ request ->
+            calls++
+            assertEquals(CreateConversationWithCopiedPinsRequest(project, participants, cid, "  new name  "), request)
+            ConversationResponse(created)
+        }) { client ->
+            assertEquals(created, RemoteConversationService(client).createWithCopiedPins(project, participants, cid, "  new name  "))
+            assertEquals(1, calls)
+        }
+    }
+
+    @Test fun `copy only RPC preserves caller cancellation without fallback or retry`() {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var calls = 0
+        withClient({ request ->
+            assertIs<CreateConversationWithCopiedPinsRequest>(request)
+            calls++
+            entered.complete(Unit)
+            release.await()
+            ConversationResponse(null)
+        }) { client ->
+            coroutineScope {
+                val cancelled = CancellationException("Synthetic pin copy cancellation")
+                val call = async {
+                    RemoteConversationService(client).createWithCopiedPins(Project.Id("project"), emptySet(), cid, "")
+                }
+                try {
+                    entered.await()
+                    call.cancel(cancelled)
+                    assertSame(cancelled, assertFailsWith<CancellationException> { call.await() })
+                    assertEquals(1, calls)
+                } finally {
+                    release.complete(Unit)
+                }
+            }
         }
     }
 

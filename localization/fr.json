@@ -2065,6 +2065,7 @@
     "pins.createConflict": "Ce brouillon est en conflit avec une demande de création précédente. Le texte et la clé de la demande sont conservés.",
     "pins.notFound": "Ce texte épinglé n’est plus disponible. Le texte non enregistré est conservé.",
     "pins.accessDenied": "Vous n’avez pas accès à ces textes épinglés.",
-    "pins.reloadEdited": "Le brouillon a changé pendant le chargement. Le texte le plus récent est conservé."
+    "pins.reloadEdited": "Le brouillon a changé pendant le chargement. Le texte le plus récent est conservé.",
+    "pins.restartFailed": "Impossible de terminer le redémarrage de la conversation en conservant ses textes épinglés. Vérifiez la liste des conversations avant de réessayer."
   }
 }

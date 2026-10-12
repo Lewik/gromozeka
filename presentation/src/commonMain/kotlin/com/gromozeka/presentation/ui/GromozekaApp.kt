@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -67,6 +69,7 @@ import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -117,6 +120,18 @@ fun GromozekaAppContent(
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
     var showPinsPanel by remember { mutableStateOf(false) }
+    var pinRestartFailed by remember(appComponents) { mutableStateOf(false) }
+    if (pinRestartFailed) {
+        AlertDialog(
+            onDismissRequest = { pinRestartFailed = false },
+            text = { Text(localization.text("pins.restartFailed")) },
+            confirmButton = {
+                TextButton(onClick = { pinRestartFailed = false }) {
+                    Text(localization.text("common.close"))
+                }
+            },
+        )
+    }
     val pinsPanelState = remember(appComponents) { ConversationPinsPanelState() }
     var pinSourceLoads by remember(appComponents) { mutableStateOf(emptySet<Conversation.Id>()) }
     val runtimeAgentTabSelection = remember(appComponents) { RuntimeAgentTabSelection() }
@@ -500,7 +515,10 @@ fun GromozekaAppContent(
                                                         onRestartSession = {
                                                             val sourceConversationId = tabViewModel.conversationId
                                                             coroutineScope.launch {
-                                                                appComponents.appViewModel.restartWithCopiedPins(sourceConversationId)
+                                                                performPinPreservingRestart(
+                                                                    restart = { appComponents.appViewModel.restartWithCopiedPins(sourceConversationId) },
+                                                                    reportFailure = { pinRestartFailed = true },
+                                                                )
                                                             }
                                                         },
                                                         onCloseTab = {
@@ -1076,4 +1094,18 @@ private fun RuntimeReplyRouting(viewModel: TabViewModel) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+/** Local UI boundary: no retry, raw exception text or cause enters the user-facing failure. */
+internal suspend fun performPinPreservingRestart(
+    restart: suspend () -> Unit,
+    reportFailure: () -> Unit,
+) {
+    try {
+        restart()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        reportFailure()
+    }
 }

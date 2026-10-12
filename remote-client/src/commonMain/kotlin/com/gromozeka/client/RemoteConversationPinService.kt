@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.ConversationPinService
 import com.gromozeka.domain.service.ProjectAccessDeniedException
 import com.gromozeka.remote.protocol.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CancellationException
 
 internal class RemoteConversationPinService(private val client: GromozekaWsClient) : ConversationPinService {
     override fun observe(conversationId: Conversation.Id): Flow<List<ConversationPin>> =
@@ -19,17 +20,17 @@ internal class RemoteConversationPinService(private val client: GromozekaWsClien
         }
 
     override suspend fun list(conversationId: Conversation.Id): List<ConversationPin> =
-        request<ConversationPinsResponse>(ListConversationPinsRequest(conversationId)).pins
+        client.requestConversationPin<ConversationPinsResponse>(ListConversationPinsRequest(conversationId)).pins
 
     override suspend fun get(conversationId: Conversation.Id, pinId: ConversationPin.Id): ConversationPin? =
-        request<ConversationPinResponse>(GetConversationPinRequest(conversationId, pinId)).pin
+        client.requestConversationPin<ConversationPinResponse>(GetConversationPinRequest(conversationId, pinId)).pin
 
     override suspend fun create(
         conversationId: Conversation.Id,
         text: String,
         source: ConversationPinSource?,
         creationKey: String?,
-    ): ConversationPin = request<ConversationPinResponse>(
+    ): ConversationPin = client.requestConversationPin<ConversationPinResponse>(
         CreateConversationPinRequest(conversationId, text, source, creationKey),
     ).pin ?: throw ConversationPinOperationFailedException()
 
@@ -38,7 +39,7 @@ internal class RemoteConversationPinService(private val client: GromozekaWsClien
         pinId: ConversationPin.Id,
         expectedRevision: Long,
         text: String,
-    ): ConversationPin = request<ConversationPinResponse>(
+    ): ConversationPin = client.requestConversationPin<ConversationPinResponse>(
         UpdateConversationPinRequest(conversationId, pinId, expectedRevision, text),
     ).pin ?: throw ConversationPinOperationFailedException()
 
@@ -47,20 +48,26 @@ internal class RemoteConversationPinService(private val client: GromozekaWsClien
         pinId: ConversationPin.Id,
         expectedRevision: Long,
     ) {
-        val result = request<OperationResultResponse>(DeleteConversationPinRequest(conversationId, pinId, expectedRevision))
+        val result = client.requestConversationPin<OperationResultResponse>(DeleteConversationPinRequest(conversationId, pinId, expectedRevision))
         if (!result.success) throw ConversationPinOperationFailedException()
     }
 
-    private suspend inline fun <reified T : ServerResponse> request(payload: ClientRequest): T =
-        when (val response = client.request(payload)) {
-            is ErrorResponse -> throw when (response.type) {
-                ConversationPinErrorCode.PIN_NOT_FOUND.name -> ConversationPinNotFoundException()
-                ConversationPinErrorCode.PIN_CONFLICT.name -> ConversationPinConflictException()
-                ConversationPinErrorCode.PIN_LIMIT_EXCEEDED.name -> ConversationPinLimitException()
-                ConversationPinErrorCode.PIN_TARGET_UNAVAILABLE.name -> ProjectAccessDeniedException()
-                else -> ConversationPinOperationFailedException()
-            }
-            is T -> response
-            else -> throw ConversationPinOperationFailedException()
+}
+
+/** Pin-specific transport boundary, shared with the copy-only Restart RPC. Never echo an unexpected response. */
+internal suspend inline fun <reified T : ServerResponse> GromozekaWsClient.requestConversationPin(payload: ClientRequest): T {
+    val response = try { request(payload) }
+    catch (cancelled: CancellationException) { throw cancelled }
+    catch (_: Exception) { throw ConversationPinOperationFailedException() }
+    return when (response) {
+        is ErrorResponse -> throw when (response.type) {
+            ConversationPinErrorCode.PIN_NOT_FOUND.name -> ConversationPinNotFoundException()
+            ConversationPinErrorCode.PIN_CONFLICT.name -> ConversationPinConflictException()
+            ConversationPinErrorCode.PIN_LIMIT_EXCEEDED.name -> ConversationPinLimitException()
+            ConversationPinErrorCode.PIN_TARGET_UNAVAILABLE.name -> ProjectAccessDeniedException()
+            else -> ConversationPinOperationFailedException()
         }
+        is T -> response
+        else -> throw ConversationPinOperationFailedException()
+    }
 }

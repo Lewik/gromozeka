@@ -1991,6 +1991,7 @@
     "pins.createConflict": "Draf ini bertentangan dengan permintaan pembuatan sebelumnya. Teks dan kunci permintaan tetap disimpan.",
     "pins.notFound": "Teks tersemat ini tidak lagi tersedia. Teks yang belum disimpan tetap dipertahankan.",
     "pins.accessDenied": "Anda tidak memiliki akses ke teks tersemat ini.",
-    "pins.reloadEdited": "Draf berubah saat dimuat. Teks yang lebih baru tetap disimpan."
+    "pins.reloadEdited": "Draf berubah saat dimuat. Teks yang lebih baru tetap disimpan.",
+    "pins.restartFailed": "Tidak dapat menyelesaikan mulai ulang percakapan dengan teks yang disematkan. Periksa daftar percakapan sebelum mencoba lagi."
   }
 }

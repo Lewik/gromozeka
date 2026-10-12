@@ -15412,26 +15412,32 @@
   },
   "pins.title": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"
     ],
     "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Pins",
     "args": []
   },
   "pins.show": {
-    "source": [],
-    "description": "Parent conversation toolbar/message action; final call sites are added during App integration. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Show pins",
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"
+    ],
+    "description": "Conversation toolbar and selected-message action. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Show pins",
     "args": []
   },
   "pins.hide": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"
     ],
     "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Close pins",
     "args": []
   },
   "pins.pinMessage": {
-    "source": [],
-    "description": "Parent conversation toolbar/message action; final call sites are added during App integration. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Pin message",
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"
+    ],
+    "description": "Conversation toolbar and selected-message action. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: Pin message",
     "args": []
   },
   "pins.sourceLoadFailed": {
@@ -15614,6 +15620,13 @@
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationPinsPanel.kt"
     ],
     "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: The draft changed while loading. Your newer text is kept.",
+    "args": []
+  },
+  "pins.restartFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/GromozekaApp.kt"
+    ],
+    "description": "Fixed content-free failure shown by the parent pin-preserving Restart action. No raw error, pin text or source details. The outcome may be uncertain; ask the user to inspect the conversation list before a manual retry. Never promise that no new conversation was created.",
     "args": []
   }
 }

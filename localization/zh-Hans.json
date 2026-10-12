@@ -1991,6 +1991,7 @@
     "pins.createConflict": "此草稿与先前的创建请求冲突。正文和请求键已保留。",
     "pins.notFound": "此内容已不可用。未保存的正文已保留。",
     "pins.accessDenied": "你无权访问这些置顶内容。",
-    "pins.reloadEdited": "草稿在加载期间发生更改。较新的正文已保留。"
+    "pins.reloadEdited": "草稿在加载期间发生更改。较新的正文已保留。",
+    "pins.restartFailed": "未能完成保留固定文本的对话重启。重试前请检查对话列表。"
   }
 }

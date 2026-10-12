@@ -2028,6 +2028,7 @@
     "pins.createConflict": "This draft conflicts with an earlier create request. Your text and request key are kept.",
     "pins.notFound": "This pin is no longer available. Unsaved text is kept.",
     "pins.accessDenied": "You do not have access to these pins.",
-    "pins.reloadEdited": "The draft changed while loading. Your newer text is kept."
+    "pins.reloadEdited": "The draft changed while loading. Your newer text is kept.",
+    "pins.restartFailed": "Could not finish restarting the conversation with its pins. Check the conversation list before trying again."
   }
 }

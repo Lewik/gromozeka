@@ -2028,6 +2028,7 @@
     "pins.createConflict": "Der Entwurf steht im Konflikt mit einer früheren Erstellungsanfrage. Text und Anfrageschlüssel bleiben erhalten.",
     "pins.notFound": "Dieser angeheftete Text ist nicht mehr verfügbar. Ungespeicherter Text bleibt erhalten.",
     "pins.accessDenied": "Du hast keinen Zugriff auf diese angehefteten Texte.",
-    "pins.reloadEdited": "Der Entwurf wurde während des Ladens geändert. Der neuere Text bleibt erhalten."
+    "pins.reloadEdited": "Der Entwurf wurde während des Ladens geändert. Der neuere Text bleibt erhalten.",
+    "pins.restartFailed": "Der Neustart der Unterhaltung mit ihren angehefteten Texten konnte nicht abgeschlossen werden. Prüfe vor einem erneuten Versuch die Unterhaltungsliste."
   }
 }

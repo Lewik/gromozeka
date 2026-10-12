@@ -1991,6 +1991,7 @@
     "pins.createConflict": "此草稿與先前的建立請求衝突。正文和請求金鑰已保留。",
     "pins.notFound": "此內容已無法使用。未儲存的正文已保留。",
     "pins.accessDenied": "你無權存取這些置頂內容。",
-    "pins.reloadEdited": "草稿在載入期間發生變更。較新的正文已保留。"
+    "pins.reloadEdited": "草稿在載入期間發生變更。較新的正文已保留。",
+    "pins.restartFailed": "未能完成保留固定文字的對話重新啟動。重試前請檢查對話清單。"
   }
 }

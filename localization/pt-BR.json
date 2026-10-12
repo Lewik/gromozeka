@@ -2065,6 +2065,7 @@
     "pins.createConflict": "O rascunho conflita com uma solicitação de criação anterior. O texto e a chave da solicitação foram mantidos.",
     "pins.notFound": "Esta nota não está mais disponível. O texto não salvo foi mantido.",
     "pins.accessDenied": "Você não tem acesso a estas notas fixadas.",
-    "pins.reloadEdited": "O rascunho mudou durante o carregamento. O texto mais recente foi mantido."
+    "pins.reloadEdited": "O rascunho mudou durante o carregamento. O texto mais recente foi mantido.",
+    "pins.restartFailed": "Não foi possível concluir o reinício da conversa mantendo os textos fixados. Confira a lista de conversas antes de tentar novamente."
   }
 }

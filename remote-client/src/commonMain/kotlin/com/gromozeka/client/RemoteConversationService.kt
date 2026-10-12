@@ -42,9 +42,9 @@ internal class RemoteConversationService(
         participants: Set<Conversation.Participant>,
         sourceConversationId: Conversation.Id,
         displayName: String,
-    ): Conversation = client.requestTyped<CreateConversationWithCopiedPinsRequest, ConversationResponse>(
+    ): Conversation = client.requestConversationPin<ConversationResponse>(
         CreateConversationWithCopiedPinsRequest(projectId, participants, sourceConversationId, displayName),
-    ).conversation ?: error("Server returned no conversation after copying pins")
+    ).conversation ?: throw com.gromozeka.domain.model.ConversationPinOperationFailedException()
 
     override suspend fun findById(id: Conversation.Id): Conversation? =
         client.requestTyped<FindConversationRequest, ConversationResponse>(FindConversationRequest(id)).conversation

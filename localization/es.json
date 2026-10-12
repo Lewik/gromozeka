@@ -2065,6 +2065,7 @@
     "pins.createConflict": "El borrador entra en conflicto con una solicitud de creación anterior. Se conservan el texto y la clave de solicitud.",
     "pins.notFound": "Esta nota ya no está disponible. Se conserva el texto sin guardar.",
     "pins.accessDenied": "No tienes acceso a estas notas fijadas.",
-    "pins.reloadEdited": "El borrador cambió durante la carga. Se conserva el texto más reciente."
+    "pins.reloadEdited": "El borrador cambió durante la carga. Se conserva el texto más reciente.",
+    "pins.restartFailed": "No se pudo completar el reinicio de la conversación conservando sus textos fijados. Revisa la lista de conversaciones antes de volver a intentarlo."
   }
 }
