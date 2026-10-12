@@ -119,6 +119,8 @@ jobs:
         env:
           GROMOZEKA_POSTGRES_RUNTIME_TEST: 'true'
           GROMOZEKA_POSTGRES_URL: jdbc:postgresql://localhost:5432/gromozeka
+          GROMOZEKA_POSTGRES_USER: gromozeka
+          GROMOZEKA_POSTGRES_PASSWORD: gromozeka
         run: >
           ./gradlew :infrastructure-db:jvmTest
           --tests '*PostgresConversationSearchRepositoryTest'
@@ -127,6 +129,7 @@ jobs:
           --tests '*PostgresAiToolContractRepositoryTest'
           --tests '*PostgresBackgroundActivityOriginRepositoryTest'
           --tests '*PostgresSlotRepositoryTest'
+          --tests '*PostgresConversationPinRepositoryTest'
           --tests '*PostgresWorkerRequestRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
@@ -136,6 +139,7 @@ jobs:
           ./gradlew
           :server:test
           :worker:test
+          :domain:jvmTest --tests '*ConversationPinTest'
           :application:jvmTest
           --tests '*SecretArgumentSubstitutorTest'
           --tests '*NamedSecretApplicationServiceTest'
@@ -143,6 +147,19 @@ jobs:
           --tests '*BackgroundActivityLifecycleApplicationServiceTest'
           --tests '*VisualSecretArgumentsTest'
           --tests '*Slot*'
+          --tests '*ConversationPin*Test'
+          --tests '*ConversationAgentAccessServiceTest'
+          --tests '*AgentCollaborationServiceTest'
+          --tests '*AgentContextQueryServiceTest'
+          --tests '*ConversationContextSnapshotServiceTest'
+          --tests '*ConversationEngineDeliveryTest'
+          --tests '*AgentResponseReviewServiceTest'
+          --tests '*MessageSquashServiceTest'
+          --tests '*AgentSessionRuntimeProjectionTest'
+          --tests '*DistributedAiToolRoutingTest'
+          :infrastructure-ai:jvmTest
+          --tests '*ClaudeCodeCliRuntimeTest.conversationPin*'
+          --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 

@@ -176,6 +176,21 @@ class WorkflowContracts(unittest.TestCase):
         for check in ("*PostgresSlotRepositoryTest", "*PostgresWorkerRequestRepositoryTest", "*Slot*"):
             self.assertIn(check, verification)
 
+    def test_conversation_pins_are_verified_with_explicit_isolated_database_credentials(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*PostgresConversationPinRepositoryTest", "*ConversationPinTest", "*ConversationPin*Test",
+                      "*ConversationAgentAccessServiceTest", "*DistributedAiToolRoutingTest",
+                      "*ClaudeCodeCliRuntimeTest.conversationPin*", "*ClaudeCodeProcessCacheTest.pinEditAndDelete*"):
+            self.assertIn(check, verification)
+        postgres = next(step for step in JOBS["verify-runtime"]["steps"]
+                        if "*PostgresConversationPinRepositoryTest" in step.get("run", ""))
+        self.assertEqual("true", postgres["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
+        self.assertEqual("jdbc:postgresql://localhost:5432/gromozeka", postgres["env"]["GROMOZEKA_POSTGRES_URL"])
+        self.assertEqual("gromozeka", postgres["env"]["GROMOZEKA_POSTGRES_USER"])
+        self.assertEqual("gromozeka", postgres["env"]["GROMOZEKA_POSTGRES_PASSWORD"])
+        # This is the job's disposable container, never a deployment's credentials or live CLI opt-in.
+        self.assertNotIn("CONVERSATION_PINS_CLAUDE_SMOKE", str(JOBS["verify-runtime"]))
+
     def test_graph_has_no_cycles_or_unknown_dependencies(self):
         def visit(job, path):
             self.assertIn(job, JOBS)

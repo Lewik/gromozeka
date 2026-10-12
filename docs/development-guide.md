@@ -640,6 +640,123 @@ This checks the model protocol and application read path, **not** Worker RPC, Po
 ConversationEngine dispatch or crash recovery. Idle/active/control variants, bounds,
 authorization exclusions and stale timestamps are covered by the deterministic tests.
 
+## Conversation Pins
+
+Pins are independent literal text owned by a **Conversation**, not by an agent,
+internal history thread or source message. Open the Pins panel from the conversation
+toolbar to add arbitrary text, or select one message and choose Pin message to
+prepare an editable snapshot of its full user text or assistant final text. This
+never copies thinking, tool payloads, native checkpoints or speech-only fields.
+Only text is editable; source references are inert provenance, not live links.
+Changing/deleting the source does not change a pin. Pins are not Visual documents.
+
+The native panel is closed by default, a right-side panel on desktop and full-screen
+on compact clients. External pin changes do not open it. Drafts are retained per
+Conversation across closing, reopening and tab changes. Observations refresh on
+reopen and through declarative state invalidation/reconnect; a read failure is not
+an empty catalog. Editing uses the observed revision; a conflict keeps the draft
+and requires an explicit reload or decision, not an automatic write retry.
+
+### Requests and lifecycle
+
+One fresh ordered catalog read adds one final application system-prefix block per
+Conversation-bound model request, after normal/read-only enrichers. This includes
+ordinary calls and tool continuations, isolated context queries, response review,
+suggested replies, model-based squash, and conversation-owned memory stages/retries.
+An already captured in-flight request is not changed. Native compaction/clean retries
+inside that backend call inherit its captured prefix; provider protocol suffixes
+remain in their original positions. Empty pins leave the previous prefix unchanged;
+read failures fail explicitly. No pin IDs, timestamps, revisions or source metadata
+are put in this block.
+
+Ownership is explicit, not guessed from usage attribution. Standalone clipboard/text
+transforms, live interpreter/audio, embeddings, shared cached capability/skill analysis
+and memory work without a Conversation owner do not acquire an active tab's pins.
+Pin CRUD does not call a model, write history, enqueue work, unpause, wake or interrupt
+a target. It only changes the catalog and publishes successful state invalidation.
+
+Compaction and internal thread changes preserve the Conversation's pins. Fork copies
+an ordered independent catalog with new pin IDs/revision 1. UI Restart retains its
+previous semantics: a new empty Conversation with the **current default agent**,
+copying only the pins rather than the old agent/history. It uses the separate
+`create_conversation_with_copied_pins` RPC; an older Server must fail, never silently
+fall back to ordinary create without pins. Copy/transport failures are content-free.
+An uncertain Restart outcome asks the user to check the conversation list before a
+manual retry; it does not promise that no new Conversation was created.
+
+`ConversationRepository.createWithCopiedPins` commits the new Conversation,
+participants and pin catalog in one SQL transaction. All pin mutations/copies lock
+the owner Conversation row. This is **not** a new all-or-nothing guarantee for the
+rest of the pre-existing fork/history/artifact-file pipeline.
+
+### CRUD, limits and authorization
+
+`ConversationPinService` is the actorless client facade. The Server application
+service takes the trusted authenticated actor separately. Human UI list/get/state
+subscription require project READ and participation; mutations require WRITE and
+participation, without substituting an agent tool policy or requiring AI access.
+
+The five Server tools are `grz_conversation_pin_list`, `_get`, `_create`, `_update`
+and `_delete`. Omitted `conversation_id` selects the current Conversation; explicit
+null/empty/invalid values do not. List returns ordered metadata and previews up to
+256 UTF-16 units, default 50/max 100 per page, with a target-bound best-effort cursor.
+Get returns full text. Create takes text, not an ID, source lookup or model-chosen
+idempotency key. Update/delete require a positive last-observed `expected_revision`.
+
+Tools additionally use the shared `ConversationAgentAccessService`: active AI-enabled
+actor, participation, WRITE even for reads, current source branch, same project and
+matching tool policies of **all** attached target agents, including self. Empty,
+missing or mixed agent sets fail closed; external-channel conversations are excluded.
+There is no AI-connection equality restriction or dependency on collaboration.enabled.
+Eligibility is rechecked immediately before CRUD, not cached as a durable permit or
+claimed to be an atomic distributed permission snapshot. Existing agent-scoped
+collaboration selection/no-self rules remain unchanged.
+
+Shared engineering limits are 32,000 UTF-16 units per nonblank pin, 100 pins and
+128,000 units of total text per Conversation. Literal whitespace and valid Unicode
+are preserved without trim, truncation or normalization; malformed UTF-16 is rejected
+before hashing/storage, including internal creation keys and provenance strings.
+Limits are not a token meter and do not override backend SQL text restrictions.
+Only text changes on update. A current-revision same-text update is a no-op; even a
+same-text stale update conflicts. Error categories are fixed/content-free and
+cancellation propagates; pin text is not a permission grant.
+
+Optional internal create keys (maximum 512 units) have durable receipts scoped by
+actor and target. The UI keeps one generated key per draft across explicit retries;
+tools derive it from trusted source/actor/tool-call identity. Same-key different
+payload conflicts. Replay returns the current live pin; replay after deletion fails
+without resurrecting it. Receipts are not copied by fork. State invalidation follows
+successful committed changes only, not conflict, failed copy, replay or no-op.
+
+### Verification boundaries
+
+Deterministic suites cover shared validation, application/model-request ownership,
+authorization, actual callbacks against synthetic storage, transport codec/WS test
+peers, panel state/Compose UI and Restart handling. Native prompt/cache tests use the
+actual backend command construction with fake executors; they do not prove provider
+cache hits. Memory matrix tests cover the bound runtime/retry seam and owner resolver,
+not every full memory workflow end to end. Worker-only wiring is checked by its actual
+component scan/import graph, not by adding speculative guards.
+
+`PostgresConversationPinRepositoryTest` is opt-in. With
+`GROMOZEKA_POSTGRES_RUNTIME_TEST=true`, URL, USER and PASSWORD must all be explicitly
+set (an empty password is allowed); without opt-in the assumption runs before any
+connection. Run only against an owned disposable cluster/schema. It exercises
+migration 71→72, exact text readback, receipts/CAS/limits, copy independence,
+trigger-induced transaction rollback and bounded concurrent creates/copies. The
+release workflow includes it using the job's disposable PostgreSQL container.
+
+The separate optional `ConversationPinsClaudeCodeSmokeTest` requires
+`GROMOZEKA_CONVERSATION_PINS_CLAUDE_SMOKE=true` and installed/authorized Claude Code.
+Set `DISABLE_UPDATES=1` only for that test process. It uses synthetic IDs and an empty
+temporary workspace: six Haiku protocol calls on A, real create/list/get/update/delete
+callbacks and core application effects, a final tool-free response, and no calls on
+paused B. Native sessions are not persisted and owned processes/files are closed on
+exit. This is not deployed Server/Worker RPC, PostgreSQL or ConversationEngine
+end-to-end coverage, and does not evaluate answer intelligence. Gradle `--offline`
+does not make an explicitly enabled model smoke network-free. Never run it implicitly
+alongside offline tests or retry it merely to obtain a different response/cache hit.
+
 ## Isolated Context Questions
 
 `grz_agent_query_context(target_conversation_id, question, target_agent_id?)`

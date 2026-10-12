@@ -62,6 +62,7 @@ Gromozeka accepts this residual risk explicitly instead of presenting command fi
 ## What Gromozeka Does
 
 - Runs Compose chat UI with tabs and project-aware sessions.
+- Keeps editable [conversation pins](docs/development-guide.md#conversation-pins): independent text included in conversation-bound model requests, managed through a native panel or authorized tools.
 - Supports remote UI clients over WebSocket: JVM desktop locally, Wasm web/PWA in a browser.
 - Calls LLM runtimes through domain-level `AiRuntime` abstractions.
 - Exposes internal tools for filesystem, shell, web search, code navigation, planning, and inter-agent workflows.
