@@ -56,6 +56,34 @@ class PostgresConversationPinRepositoryTest {
         }
     }
 
+    @Test fun updateReturnsPersistedRowForCanonicalTimestamp() = runBlocking<Unit> {
+        withDatabase { source ->
+            val conversations = ExposedConversationRepository(); val pins = ExposedConversationPinRepository()
+            val owner = conversations.create(conversation("canonical-update")).id
+            val created = pins.create(owner, actor, "before", creationKey = "canonical-key").pin
+            val canonical = Instant.parse("2001-02-03T04:05:06.123456Z")
+            // Force DB-side timestamp canonicalization independently of the host clock resolution.
+            // This proves the persisted-row return contract; it is not a replay of a Linux CI trace.
+            sql(source, """CREATE FUNCTION canonical_pin_timestamp() RETURNS trigger LANGUAGE plpgsql AS ${'$'}${'$'}
+                BEGIN NEW.updated_at = TIMESTAMPTZ '2001-02-03T04:05:06.123456Z'; RETURN NEW; END ${'$'}${'$'};
+                CREATE TRIGGER canonical_timestamp BEFORE UPDATE ON conversation_pins FOR EACH ROW
+                EXECUTE FUNCTION canonical_pin_timestamp();""")
+            val changed = pins.update(owner, created.id, created.revision, " after\n")
+            val stored = assertNotNull(ExposedConversationPinRepository().get(owner, created.id))
+            assertEquals(canonical, stored.updatedAt)
+            assertEquals(stored, changed, "Mutation response must be the canonical persisted row")
+            assertEquals(created.createdAt, changed.createdAt)
+            assertEquals(created.ordinal, changed.ordinal)
+            assertEquals(2L, changed.revision)
+            assertEquals(" after\n", changed.text)
+            assertEquals(changed, pins.update(owner, changed.id, changed.revision, changed.text))
+            assertEquals(changed, ExposedConversationPinRepository().create(owner, actor, "before", creationKey = "canonical-key").pin)
+            assertEquals(listOf(changed), pins.list(owner))
+            assertFailsWith<ConversationPinConflictException> { pins.update(owner, changed.id, created.revision, changed.text) }
+            assertEquals(changed, pins.get(owner, changed.id))
+        }
+    }
+
     @Test fun `UTF16 text count and total limits are enforced inside the transaction`() = runBlocking<Unit> {
         withDatabase { _ ->
             val conversations = ExposedConversationRepository(); val pins = ExposedConversationPinRepository()

@@ -133,7 +133,7 @@ jobs:
           --tests '*PostgresWorkerRequestRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
-          -q
+          --console=plain
       - name: Verify Server and Worker
         run: >
           ./gradlew
@@ -162,6 +162,22 @@ jobs:
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
+
+      - name: Upload runtime test diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verify-runtime-diagnostics
+          path: |
+            infrastructure-db/build/test-results/
+            infrastructure-db/build/reports/tests/
+            server/build/test-results/
+            worker/build/test-results/
+            application/build/test-results/
+            domain/build/test-results/
+            infrastructure-ai/build/test-results/
+          if-no-files-found: warn
+          retention-days: 7
 
   verify-windows-worker:
     needs: metadata

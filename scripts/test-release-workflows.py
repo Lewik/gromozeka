@@ -191,6 +191,18 @@ class WorkflowContracts(unittest.TestCase):
         # This is the job's disposable container, never a deployment's credentials or live CLI opt-in.
         self.assertNotIn("CONVERSATION_PINS_CLAUDE_SMOKE", str(JOBS["verify-runtime"]))
 
+    def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
+        upload = next(step for step in JOBS["verify-runtime"]["steps"]
+                      if step.get("with", {}).get("name") == "verify-runtime-diagnostics")
+        self.assertEqual("always()", upload["if"])
+        self.assertIn("infrastructure-db/build/test-results/", upload["with"]["path"])
+        self.assertIn("infrastructure-db/build/reports/tests/", upload["with"]["path"])
+        self.assertIn("server/build/test-results/", upload["with"]["path"])
+        postgres = next(step["run"] for step in JOBS["verify-runtime"]["steps"]
+                        if "*PostgresConversationPinRepositoryTest" in step.get("run", ""))
+        self.assertNotIn("-q", postgres.split())
+        self.assertIn("--console=plain", postgres)
+
     def test_graph_has_no_cycles_or_unknown_dependencies(self):
         def visit(job, path):
             self.assertIn(job, JOBS)
