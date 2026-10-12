@@ -160,6 +160,31 @@ class DistributedAiToolRoutingTest {
     }
 
     @Test
+    fun `external channels hide all five pin contracts including versioned read-only catalog routes`() = runBlocking {
+        val names = setOf("grz_conversation_pin_list", "grz_conversation_pin_get", "grz_conversation_pin_create",
+            "grz_conversation_pin_update", "grz_conversation_pin_delete")
+        val descriptors = names.map { name -> conversationRuntimeTool.copy(definition = conversationRuntimeTool.definition.copy(name = name)) }
+        val contracts = InMemoryAiToolContractRepository()
+        contracts.resolveAll(descriptors.map { it.copy(definition = it.definition.copy(description = "Synthetic previous pin contract")) })
+        val catalog = distributedCatalog(InMemoryConversationRuntimeWorkerRegistry(),
+            TestWorkspaceDomainService(listOf(project), emptyList(), emptyList()),
+            descriptors + conversationRuntimeTool, contractRepository = contracts)
+        val normal = conversation(project.id)
+        val external = normal.copy(externalChannel = com.gromozeka.domain.model.ExternalConversationChannel("telegram", "synthetic", "chat"))
+        val ordinary = catalog.snapshot(project, conversation = normal)
+        assertTrue(ordinary.entries.values.map { it.logicalName }.containsAll(names))
+        assertTrue(names.all { name -> ordinary.tools.any { it.definition.name == "${name}__v2" } })
+        val before = contracts.findAll()
+        for (hidden in listOf(catalog.snapshot(project, conversation = external), catalog.readSnapshot(project, conversation = external))) {
+            assertTrue(hidden.entries.values.none { it.logicalName in names })
+            assertTrue(hidden.tools.none { it.definition.name.removeSuffix("__v2") in names })
+            assertTrue(names.none { it in hidden.environmentPrompt })
+            assertEquals(setOf(conversationRuntimeTool.definition.name), hidden.entries.values.map { it.logicalName }.toSet())
+        }
+        assertEquals(before, contracts.findAll())
+    }
+
+    @Test
     fun `conversation runtime tools execute on Server without an explicit target`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val workspaceService = TestWorkspaceDomainService(

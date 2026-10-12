@@ -40,6 +40,11 @@ const val AI_TOOL_EXECUTION_TARGET_FIELD = "execution_target"
 const val AI_TOOL_EXECUTION_WORKER_ID_FIELD = "worker_id"
 const val AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD = "workspace_mount_id"
 
+private val CONVERSATION_PIN_TOOLS = setOf(
+    "grz_conversation_pin_list", "grz_conversation_pin_get", "grz_conversation_pin_create",
+    "grz_conversation_pin_update", "grz_conversation_pin_delete",
+)
+
 data class DistributedAiTool(
     val descriptor: AiToolDescriptor,
     val workers: List<DistributedAiToolWorker>,
@@ -113,9 +118,10 @@ class DistributedAiToolCatalog(
         registerContracts: Boolean,
     ): DistributedAiToolCatalogSnapshot {
         fun allowed(descriptor: AiToolDescriptor, logicalName: String, fingerprint: String): Boolean {
-            val collaborationUnavailable = conversation?.externalChannel != null &&
-                descriptor.definition.source == "gromozeka" && logicalName in AGENT_COLLABORATION_TOOL_NAMES
-            return !collaborationUnavailable && toolAccess.allows(
+            val externalUnavailable = conversation?.externalChannel != null &&
+                descriptor.definition.source == "gromozeka" &&
+                (logicalName in AGENT_COLLABORATION_TOOL_NAMES || logicalName in CONVERSATION_PIN_TOOLS)
+            return !externalUnavailable && toolAccess.allows(
                 QualifiedToolName(descriptor.definition.source, logicalName), fingerprint)
         }
         val now = Clock.System.now()
