@@ -150,10 +150,14 @@ class PostgresConversationPinRepositoryTest {
     private suspend fun withDatabase(block: suspend (PGSimpleDataSource) -> Unit) {
         assumeTrue("Requires a separately authorized PostgreSQL test window", System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
         val schema = "pins_test_${UUID.randomUUID().toString().replace("-", "") }"
+        val jdbcUrl = requireNotNull(System.getenv("GROMOZEKA_POSTGRES_URL")) { "Explicit GROMOZEKA_POSTGRES_URL is required" }
+        val jdbcUser = requireNotNull(System.getenv("GROMOZEKA_POSTGRES_USER")) { "Explicit GROMOZEKA_POSTGRES_USER is required" }
+        val jdbcPassword = requireNotNull(System.getenv("GROMOZEKA_POSTGRES_PASSWORD")) { "Explicit GROMOZEKA_POSTGRES_PASSWORD is required (empty is allowed)" }
+        require(jdbcUrl.isNotBlank() && jdbcUser.isNotBlank()) { "Explicit PostgreSQL URL and user must not be blank" }
         val source = PGSimpleDataSource().apply {
-            setURL(System.getenv("GROMOZEKA_POSTGRES_URL") ?: "jdbc:postgresql://localhost:5434/gromozeka")
-            user = System.getenv("GROMOZEKA_POSTGRES_USER") ?: "gromozeka"
-            password = System.getenv("GROMOZEKA_POSTGRES_PASSWORD") ?: "gromozeka"
+            setURL(jdbcUrl)
+            user = jdbcUser
+            password = jdbcPassword
             currentSchema = "$schema,public"
         }
         try {
