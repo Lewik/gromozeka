@@ -135,7 +135,8 @@ class AgentSessionsClaudeCodeSmokeTest {
         val history = Mockito.mock(ConversationDomainService::class.java)
         val sync = Mockito.mock(ConversationRuntimeStateSyncService::class.java)
         val repository = SessionsSmokeRepository()
-        val service = AgentCollaborationService(repository, conversations, identities, access, agents, coordinator, sync, history)
+        private val agentAccess = ConversationAgentAccessService(conversations, identities, access, agents)
+        val service = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, history)
         val nativeTool = AgentCollaborationToolContributor(service).callbacks.single { it.definition.name == "grz_agent_sessions" }
         private val contracts = SessionsSmokeContracts()
         private val workers = Mockito.mock(ConversationRuntimeWorkerRegistry::class.java)

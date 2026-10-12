@@ -3,7 +3,6 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.AgentCollaborationRepository
 import com.gromozeka.domain.repository.ConversationRepository
-import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
 import kotlinx.coroutines.CancellationException
@@ -20,8 +19,7 @@ import kotlin.time.Clock
 class AgentCollaborationService(
     val repository: AgentCollaborationRepository,
     private val conversations: ConversationRepository,
-    private val identities: IdentityRepository,
-    private val access: ProjectAccessService,
+    private val agentAccess: ConversationAgentAccessService,
     private val agents: AgentDomainService,
     private val coordinator: ConversationRuntimeCoordinator,
     private val stateSync: ConversationRuntimeStateSyncService,
@@ -30,26 +28,9 @@ class AgentCollaborationService(
     val wakeups = Channel<Unit>(Channel.CONFLATED)
     fun signal() { wakeups.trySend(Unit) }
 
-    suspend fun source(context: ToolExecutionContext?): Pair<AgentEndpoint, User.Id> {
-        val id = context?.getString(TOOL_CONTEXT_CONVERSATION_ID)?.let(Conversation::Id) ?: error("Conversation context required")
-        val thread = context.getString(TOOL_CONTEXT_THREAD_ID)?.let(Conversation.Thread::Id) ?: error("Thread context required")
-        val endpoint = AgentEndpoint(id, thread, context.requiredAgentDefinitionId())
-        val actor = context.requiredUserId()
-        authorize(endpoint, actor)
-        return endpoint to actor
-    }
+    suspend fun source(context: ToolExecutionContext?): Pair<AgentEndpoint, User.Id> = agentAccess.source(context)
 
-    suspend fun authorize(endpoint: AgentEndpoint, actor: User.Id): Conversation {
-        val user = identities.findUserById(actor)
-        require(user?.canUseAi == true) { "Active AI-enabled user required" }
-        val conversation = conversations.findById(endpoint.conversationId) ?: error("Conversation unavailable")
-        access.requirePermission(actor, conversation.projectId, ProjectPermission.WRITE)
-        require(conversation.currentThread == endpoint.threadId) { "History branch changed; collaboration needs a new request" }
-        require(conversation.externalChannel == null) { "External-channel conversations are not supported by this experiment" }
-        require(Conversation.Participant.User(actor) in conversation.participants) { "User must participate in both conversations" }
-        require(Conversation.Participant.Agent(endpoint.agentId) in conversation.participants) { "Target agent is no longer connected" }
-        return conversation
-    }
+    suspend fun authorize(endpoint: AgentEndpoint, actor: User.Id): Conversation = agentAccess.authorize(endpoint, actor)
 
     /** A checked peer at resolution time, not a durable authorization or an atomic snapshot. */
     data class EligibleTarget(
@@ -77,13 +58,8 @@ class AgentCollaborationService(
     }
 
     private suspend fun sameBoundary(source: AgentEndpoint, target: AgentEndpoint, actor: User.Id): EligibleTarget {
-        val from = authorize(source, actor)
-        val to = authorize(target, actor)
-        require(from.projectId == to.projectId) { "Cross-project communication is disabled" }
-        val sourceAgent = agents.findById(source.agentId) ?: error("Source agent unavailable")
-        val targetAgent = agents.findById(target.agentId) ?: error("Target agent unavailable")
-        require(sourceAgent.toolAccess == targetAgent.toolAccess) { "This experiment requires matching agent tool policies" }
-        return EligibleTarget(target, to, targetAgent)
+        val boundary = agentAccess.sameBoundary(source, target, actor)
+        return EligibleTarget(target, boundary.targetConversation, boundary.targetAgent)
     }
 
     private data class SessionObservation(

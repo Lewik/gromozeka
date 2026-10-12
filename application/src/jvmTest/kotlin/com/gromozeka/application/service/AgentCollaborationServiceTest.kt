@@ -27,7 +27,8 @@ class AgentCollaborationServiceTest {
     private val agents = mock<AgentDomainService>()
     private val coordinator = mock<ConversationRuntimeCoordinator>()
     private val sync = mock<ConversationRuntimeStateSyncService>()
-    private val service = AgentCollaborationService(repo, conversations, identities, access, agents, coordinator, sync)
+    private val agentAccess = ConversationAgentAccessService(conversations, identities, access, agents)
+    private val service = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync)
     private fun agent(id: AgentDefinition.Id) = AgentDefinition(id, name = id.value, prompts = emptyList(), runtimeSelection = selection, type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
     private fun conversation(endpoint: AgentEndpoint) = Conversation(endpoint.conversationId, Project.Id("p"), setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)), currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
     private suspend fun setup() {
@@ -49,7 +50,7 @@ class AgentCollaborationServiceTest {
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(definition)
         val repository = mock<AgentCollaborationRepository>()
         val history = mock<ConversationDomainService>()
-        val reader = AgentCollaborationService(repository, conversations, identities, access, agents, coordinator, sync, history)
+        val reader = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, history)
         val resolved = reader.resolveEligibleTarget(source, actor.id, "b")
         assertEquals(target, resolved.endpoint)
         assertEquals(conversation(target), resolved.conversation)
@@ -130,12 +131,42 @@ class AgentCollaborationServiceTest {
         assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
     }
 
+    @Test fun `conversation-wide access does not relax legacy self exclusion`(): Unit = runBlocking {
+        setup()
+        assertEquals(conversation(source), agentAccess.resolveEligibleConversation(source, actor.id, "a"))
+        assertEquals("Use the current conversation for local work", assertFailsWith<IllegalArgumentException> {
+            service.resolveEligibleTarget(source, actor.id, "a", "aa")
+        }.message)
+        assertFailsWith<IllegalArgumentException> { service.send(source, actor.id, "a", "aa", "No local send", "self", false) }
+        assertTrue(service.sessions(source, actor.id, "a", "aa", details = true).isEmpty())
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+        Mockito.verifyNoInteractions(coordinator, sync)
+    }
+
+    @Test fun `legacy discovery and explicit sends stay agent scoped in mixed-policy conversations`(): Unit = runBlocking {
+        setup()
+        val other = AgentDefinition.Id("restricted-agent")
+        val mixed = conversation(target).copy(participants = conversation(target).participants + Conversation.Participant.Agent(other))
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(mixed)
+        Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(mixed))
+        Mockito.`when`(agents.findById(other)).thenReturn(agent(other).copy(toolAccess = ToolAccessPolicy.AllowOnly()))
+        assertFailsWith<IllegalArgumentException> { agentAccess.resolveEligibleConversation(source, actor.id, "b") }
+        assertEquals("Specify target_agent_id when a conversation contains several agents", assertFailsWith<IllegalStateException> {
+            service.resolveEligibleTarget(source, actor.id, "b")
+        }.message)
+        assertEquals(target, service.resolveEligibleTarget(source, actor.id, "b", "bb").endpoint)
+        assertEquals("bb", service.sessions(source, actor.id).single().jsonObject.getValue("agent_id").jsonPrimitive.content)
+        val id = service.send(source, actor.id, "b", "bb", "Existing agent-scoped behavior", "mixed-explicit", false)
+        assertEquals(target, repo.deliveries.getValue("$id:input").target)
+        assertTrue(repo.items.isEmpty())
+    }
+
     @Test fun `runtime selections and preloads do not restrict discovery or informational delivery`(): Unit = runBlocking {
         setup()
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
         Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(conversation(source), conversation(target)))
         val scheduler = InMemoryConversationRuntimeCoordinator()
-        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, scheduler, sync)
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync)
         val endpoint = transport.sessions(source, actor.id).single().jsonObject
         assertEquals(target.conversationId.value, endpoint.getValue("conversation_id").jsonPrimitive.content)
         assertEquals(target.agentId.value, endpoint.getValue("agent_id").jsonPrimitive.content)
@@ -204,7 +235,7 @@ class AgentCollaborationServiceTest {
             state = AgentRequest.State.WAITING_RESULT, waitFor = listOf("known-command"))
         val itemsBefore = repo.items.toMap()
         val history = mock<ConversationDomainService>()
-        val reader = AgentCollaborationService(repo, conversations, identities, access, agents, coordinator, sync, history)
+        val reader = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync, history)
         val row = reader.sessions(source, actor.id, "b", "bb", details = true).single().jsonObject
         val runtime = row.getValue("runtime").jsonObject
         assertEquals("tb", row.getValue("thread_id").jsonPrimitive.content)
@@ -360,7 +391,7 @@ class AgentCollaborationServiceTest {
                     state = ConversationExecutionState(conversationId, ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
                 else scheduler.schedulingSnapshot(conversationId)
         }
-        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, controlled, sync)
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, controlled, sync)
         // Equal timestamps force the cursor to use id as well as createdAt. The first page remains pending.
         val deliveries = (0 until 130).map { index ->
             val toPaused = index < 64
@@ -393,7 +424,7 @@ class AgentCollaborationServiceTest {
         setup()
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
         val scheduler = InMemoryConversationRuntimeCoordinator()
-        val transport = AgentCollaborationService(repo, conversations, identities, access, agents, scheduler, sync)
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync)
         val id = transport.send(source, actor.id, "b", null, "Investigate", "round-trip", true)
         transport.deliverPending()
         transport.deliverPending()
