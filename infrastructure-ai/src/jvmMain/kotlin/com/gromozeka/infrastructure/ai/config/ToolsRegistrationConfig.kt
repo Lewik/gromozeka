@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.config
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallResult
 import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -67,6 +68,9 @@ class TypedToolCallbackAdapter {
                 name = tool.name,
                 description = tool.description,
                 inputSchema = schema,
+                source = tool.source,
+                outputSchema = tool.outputSchema,
+                annotations = tool.annotations,
             )
             override val metadata = tool.metadata
             override val available: Boolean
@@ -76,6 +80,7 @@ class TypedToolCallbackAdapter {
                 val request = objectMapper.readValue(toolInput, tool.requestType)
                 val response = tool.execute(request, context)
                 return when (response) {
+                    is AiToolCallResult -> response.renderText()
                     is String -> response
                     is AiToolResult.Text -> response.content
                     is AiToolResult.Binary -> objectMapper.writeValueAsString(
@@ -89,10 +94,11 @@ class TypedToolCallbackAdapter {
                 }
             }
 
-            override fun callResult(toolInput: String, context: ToolExecutionContext?): List<AiToolResult> {
+            override suspend fun callResult(toolInput: String, context: ToolExecutionContext?): AiToolCallResult {
                 val request = objectMapper.readValue(toolInput, tool.requestType)
                 val response = tool.execute(request, context)
-                return when (response) {
+                if (response is AiToolCallResult) return response
+                val content = when (response) {
                     is AiToolResult -> listOf(response)
                     is List<*> -> response
                         .takeIf { it.isNotEmpty() && it.all { item -> item is AiToolResult } }
@@ -101,6 +107,7 @@ class TypedToolCallbackAdapter {
                     is String -> listOf(AiToolResult.Text(response))
                     else -> listOf(AiToolResult.Text(objectMapper.writeValueAsString(response)))
                 }
+                return AiToolCallResult(content = content)
             }
         }
     }

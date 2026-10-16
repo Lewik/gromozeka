@@ -4,6 +4,7 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Framework-agnostic executable tool descriptor.
@@ -20,8 +21,23 @@ interface AiToolCallback {
 
     fun call(toolInput: String, context: ToolExecutionContext? = null): String
 
-    fun callResult(toolInput: String, context: ToolExecutionContext? = null): List<AiToolResult> =
-        listOf(AiToolResult.Text(call(toolInput, context)))
+    suspend fun callResult(toolInput: String, context: ToolExecutionContext? = null): AiToolCallResult =
+        AiToolCallResult(content = listOf(AiToolResult.Text(call(toolInput, context))))
+}
+
+/** One invocation outcome, independent of the model provider and MCP transport. */
+data class AiToolCallResult(
+    val content: List<AiToolResult> = emptyList(),
+    val structuredContent: JsonObject? = null,
+    val isError: Boolean = false,
+) {
+    fun contentForModel(): List<AiToolResult> =
+        if (content.isNotEmpty()) content
+        else structuredContent?.let { listOf(AiToolResult.Text(it.toString())) }.orEmpty()
+
+    fun renderText(): String = contentForModel()
+        .filterIsInstance<AiToolResult.Text>()
+        .joinToString("\n") { it.content }
 }
 
 sealed interface AiToolResult {
@@ -67,7 +83,24 @@ data class AiToolDefinition(
     val description: String,
     val inputSchema: String,
     val source: String = "gromozeka",
+    val outputSchema: String? = null,
+    val annotations: AiToolAnnotations? = null,
 )
+
+/** Descriptive hints, not authorization grants. Null means unspecified. */
+@Serializable
+data class AiToolAnnotations(
+    val readOnlyHint: Boolean? = null,
+    val destructiveHint: Boolean? = null,
+    val idempotentHint: Boolean? = null,
+    val openWorldHint: Boolean? = null,
+)
+
+@Serializable
+enum class AiToolAccessPolicy {
+    AUTHENTICATED,
+    SERVER_OWNER,
+}
 
 @Serializable
 data class AiToolMetadata(
@@ -77,6 +110,8 @@ data class AiToolMetadata(
     val loadingPolicy: AiToolLoadingPolicy = AiToolLoadingPolicy.ON_DEMAND,
     val visibleToMemoryPipeline: Boolean = true,
     val logInput: Boolean = true,
+    /** Additional identity gate declared by the tool; resource authorization remains in its operation. */
+    val accessPolicy: AiToolAccessPolicy? = null,
 )
 
 @Serializable

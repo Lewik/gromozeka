@@ -1,5 +1,9 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+import com.gromozeka.domain.tool.AiToolAccessPolicy
+
 import com.gromozeka.application.service.McpServerManagementService
 import com.gromozeka.domain.model.mcp.McpServer
 import com.gromozeka.domain.model.mcp.McpServerConfig
@@ -19,15 +23,16 @@ import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
 @Service
-internal class ControlMcpServerCatalogTools(
+internal class McpServerCatalogToolContributor(
+    private val toolFactory: ServerJsonToolFactory,
     private val managementService: McpServerManagementService,
-) : ControlMcpToolProvider {
-    override val tools: List<ControlMcpTool> = listOf(
-        controlMcpTool(
+) : AiToolCallbackContributor {
+    override val callbacks: List<AiToolCallback> = listOf(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_mcp_server_list",
             description = "List centrally managed external MCP servers, their exact Workers, revisions, snapshots, and refresh state.",
             readOnly = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) {
             buildJsonObject {
                 put(
@@ -36,12 +41,12 @@ internal class ControlMcpServerCatalogTools(
                 )
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_mcp_server_get",
             description = "Read one centrally managed external MCP server by stable id.",
             inputSchema = serverIdSchema(),
             readOnly = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val id = McpServerId(input.requiredString("serverId"))
             val server = managementService.get(id)
@@ -50,12 +55,12 @@ internal class ControlMcpServerCatalogTools(
                 put("server", server.toRedactedJson())
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_mcp_server_create",
             description = "Connect and fully validate an external MCP server on one exact online Worker, then persist and activate it. No retry occurs after execution starts. Use grz_control_help for the canonical Browser Use self-setup recipe.",
             inputSchema = configMutationSchema(requireRevision = false),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val server = managementService.create(
                 input.decodeRequired("config", McpServerConfig.serializer())
@@ -64,13 +69,13 @@ internal class ControlMcpServerCatalogTools(
                 put("server", server.toRedactedJson())
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_mcp_server_update",
             description = "Update one MCP configuration after validation on its exact Worker. " +
                 "Stored environment and HTTP header values are preserved unless replaced in config or explicitly removed.",
             inputSchema = configMutationSchema(requireRevision = true),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val server = managementService.update(
                 config = input.decodeRequired("config", McpServerConfig.serializer()),
@@ -86,12 +91,12 @@ internal class ControlMcpServerCatalogTools(
                 put("server", server.toRedactedJson())
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_mcp_server_refresh",
             description = "Explicitly fetch and validate the current MCP tool list, replace its stored snapshot, and clear refreshAvailable.",
             inputSchema = serverIdSchema(requireRevision = true),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val server = managementService.refresh(
                 serverId = McpServerId(input.requiredString("serverId")),
@@ -101,13 +106,13 @@ internal class ControlMcpServerCatalogTools(
                 put("server", server.toRedactedJson())
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_mcp_server_delete",
             description = "Delete and disconnect one external MCP server from its exact online Worker.",
             inputSchema = serverIdSchema(requireRevision = true),
             readOnly = false,
             destructive = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val id = McpServerId(input.requiredString("serverId"))
             managementService.delete(
@@ -122,7 +127,7 @@ internal class ControlMcpServerCatalogTools(
 }
 
 private fun configMutationSchema(requireRevision: Boolean) =
-    ControlMcpSchemas.objectSchema(
+    ServerToolSchemas.objectSchema(
         properties = buildMap {
             put(
                 "config",
@@ -131,7 +136,7 @@ private fun configMutationSchema(requireRevision: Boolean) =
             if (requireRevision) {
                 put(
                     "expectedRevision",
-                    ControlMcpSchemas.integer("Current MCP server revision.", minimum = 1),
+                    ServerToolSchemas.integer("Current MCP server revision.", minimum = 1),
                 )
                 put(
                     "removeEnvironmentVariables",
@@ -205,7 +210,7 @@ private fun mcpServerConfigSchema(isUpdate: Boolean): JsonObject =
             "excludedTools" to nonBlankStringArray(
                 "Remote tool names to exclude. Defaults to an empty list."
             ),
-            "forwardGrzConversationContext" to ControlMcpSchemas.boolean(
+            "forwardGrzConversationContext" to ServerToolSchemas.boolean(
                 "Whether Gromozeka conversation context is injected into calls to this MCP. Defaults to false."
             ),
         ),
@@ -226,7 +231,7 @@ private fun stdioTransportSchema(isUpdate: Boolean): JsonObject =
                     "Environment variables added to the MCP process. Defaults to an empty object."
                 }
             ),
-            "ephemeralWorkingDirectory" to ControlMcpSchemas.boolean(
+            "ephemeralWorkingDirectory" to ServerToolSchemas.boolean(
                 "Run the MCP process in a fresh temporary directory and delete it when the process stops. Defaults to false."
             ),
         ),
@@ -247,7 +252,7 @@ private fun bundledStdioTransportSchema(isUpdate: Boolean): JsonObject =
                     "Environment variables added to the bundled MCP process. Defaults to an empty object."
                 }
             ),
-            "ephemeralWorkingDirectory" to ControlMcpSchemas.boolean(
+            "ephemeralWorkingDirectory" to ServerToolSchemas.boolean(
                 "Run the MCP process in a fresh temporary directory and delete it when the process stops. Defaults to false."
             ),
         ),
@@ -327,13 +332,13 @@ private fun stringMap(description: String): JsonObject =
     }
 
 private fun serverIdSchema(requireRevision: Boolean = false) =
-    ControlMcpSchemas.objectSchema(
+    ServerToolSchemas.objectSchema(
         properties = buildMap {
-            put("serverId", ControlMcpSchemas.string("Stable MCP server id."))
+            put("serverId", ServerToolSchemas.string("Stable MCP server id."))
             if (requireRevision) {
                 put(
                     "expectedRevision",
-                    ControlMcpSchemas.integer("Current MCP server revision.", minimum = 1),
+                    ServerToolSchemas.integer("Current MCP server revision.", minimum = 1),
                 )
             }
         },
@@ -346,8 +351,8 @@ private fun serverIdSchema(requireRevision: Boolean = false) =
     )
 
 internal fun McpServer.toRedactedJson(): JsonObject {
-    val encoded = controlMcpJson.parseToJsonElement(
-        controlMcpJson.encodeToString(McpServer.serializer(), this)
+    val encoded = serverToolJson.parseToJsonElement(
+        serverToolJson.encodeToString(McpServer.serializer(), this)
     ).jsonObject
     val encodedConfig = encoded.getValue("config").jsonObject
     val encodedTransport = encodedConfig.getValue("transport").jsonObject
@@ -390,7 +395,7 @@ private fun <T> JsonObject.decodeRequired(
     name: String,
     serializer: KSerializer<T>,
 ): T =
-    controlMcpJson.decodeFromString(
+    serverToolJson.decodeFromString(
         serializer,
-        controlMcpJson.encodeToString(JsonObject.serializer(), requiredObject(name)),
+        serverToolJson.encodeToString(JsonObject.serializer(), requiredObject(name)),
     )

@@ -282,12 +282,12 @@ class ParallelToolExecutor(
                 )
             }
 
-            log.debug { "Tool $toolName completed successfully" }
+            log.debug { "Tool $toolName completed: isError=${result.isError}" }
 
             return ContentItem.ToolResult(
                 toolUseId = toolId,
                 toolName = toolName,
-                result = result.map { item ->
+                result = result.contentForModel().map { item ->
                     when (item) {
                         is AiToolResult.Text -> ContentItem.ToolResult.Data.Text(item.content)
                         is AiToolResult.Binary -> ContentItem.ToolResult.Data.Base64Data(
@@ -297,7 +297,7 @@ class ParallelToolExecutor(
                         )
                     }
                 },
-                isError = false
+                isError = result.isError
             )
 
         } catch (e: CancellationException) {

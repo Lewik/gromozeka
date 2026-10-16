@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -46,6 +47,15 @@ fun AiToolDescriptor.contractFingerprint(): String =
             put("description", definition.description)
             put("input_schema", canonicalInputSchema(definition.inputSchema))
             put("source", definition.source)
+            put("output_schema", definition.outputSchema?.let(::canonicalInputSchema) ?: JsonNull)
+            put("annotations", definition.annotations?.let { annotations ->
+                buildJsonObject {
+                    put("read_only_hint", annotations.readOnlyHint)
+                    put("destructive_hint", annotations.destructiveHint)
+                    put("idempotent_hint", annotations.idempotentHint)
+                    put("open_world_hint", annotations.openWorldHint)
+                }
+            } ?: JsonNull)
         }
         putJsonObject("metadata") {
             put("return_direct", metadata.returnDirect)
@@ -59,6 +69,7 @@ fun AiToolDescriptor.contractFingerprint(): String =
             put("loading_policy", metadata.loadingPolicy.name)
             put("visible_to_memory_pipeline", metadata.visibleToMemoryPipeline)
             put("log_input", metadata.logInput)
+            put("access_policy", metadata.accessPolicy?.name)
         }
     }.toString().sha256()
 

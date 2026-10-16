@@ -9,6 +9,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallResult
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
@@ -290,8 +291,8 @@ private class BinaryTestTool(
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = error("Text call is not supported")
 
-    override fun callResult(toolInput: String, context: ToolExecutionContext?): List<AiToolResult> =
-        listOf(AiToolResult.Binary(bytes, "capture.png", "image/png"))
+    override suspend fun callResult(toolInput: String, context: ToolExecutionContext?): AiToolCallResult =
+        AiToolCallResult(content = listOf(AiToolResult.Binary(bytes, "capture.png", "image/png")))
 }
 
 private class TestTool(

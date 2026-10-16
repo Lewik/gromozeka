@@ -24,12 +24,12 @@ import org.mockito.Mockito
 
 class ControlMcpAgentSkillToolsTest {
     @Test
-    fun `skill list is compact and cursor paginated`() = runBlocking {
+    fun `skill list is compact and cursor paginated`() = runBlocking<Unit> {
         val projectId = Project.Id("project-1")
         val skills = listOf(skill("skill-1", "Alpha", "first instructions"), skill("skill-2", "Beta", "second instructions"))
         val service = mock<AgentSkillDomainService>()
         Mockito.`when`(service.findByProject(projectId)).thenReturn(skills)
-        val tool = provider(service).tools.single { it.definition.name == "grz_skill_list" }
+        val tool = provider(service).callbacks.single { it.definition.name == "grz_skill_list" }
 
         val first = tool.invokeStructured(
             testControlMcpContext(),
@@ -57,7 +57,7 @@ class ControlMcpAgentSkillToolsTest {
     }
 
     @Test
-    fun `skill get returns instructions and manifest without file contents`() = runBlocking {
+    fun `skill get returns instructions and manifest without file contents`() = runBlocking<Unit> {
         val skill = skill("skill-1", "Release", "Follow checks.")
         val packageValue = AgentSkillPackage(
             skill,
@@ -69,7 +69,7 @@ class ControlMcpAgentSkillToolsTest {
         val service = mock<AgentSkillDomainService>()
         Mockito.`when`(service.findById(skill.id)).thenReturn(skill)
         Mockito.`when`(service.exportPackage(skill.id)).thenReturn(packageValue)
-        val tool = provider(service).tools.single { it.definition.name == "grz_skill_get" }
+        val tool = provider(service).callbacks.single { it.definition.name == "grz_skill_get" }
 
         val result = tool.invokeStructured(
             testControlMcpContext(),
@@ -85,9 +85,9 @@ class ControlMcpAgentSkillToolsTest {
 
     @Test
     fun `inline import schema defines canonical files and replacement semantics`() {
-        val tool = provider(mock<AgentSkillDomainService>()).tools
+        val tool = provider(mock<AgentSkillDomainService>()).callbacks
             .single { it.definition.name == "grz_skill_import_inline" }
-        val files = checkNotNull(tool.definition.inputSchema.properties)
+        val files = serverToolJson.parseToJsonElement(tool.definition.inputSchema).jsonObject.getValue("properties").jsonObject
             .getValue("files")
             .jsonObject
         val items = files.getValue("items").jsonObject
@@ -106,7 +106,7 @@ class ControlMcpAgentSkillToolsTest {
     }
 
     @Test
-    fun `skill export uses one explicit encoding per file`() = runBlocking {
+    fun `skill export uses one explicit encoding per file`() = runBlocking<Unit> {
         val skill = skill("skill-1", "Release", "Follow checks.")
         val packageValue = AgentSkillPackage(
             skill,
@@ -118,7 +118,7 @@ class ControlMcpAgentSkillToolsTest {
         val service = mock<AgentSkillDomainService>()
         Mockito.`when`(service.findById(skill.id)).thenReturn(skill)
         Mockito.`when`(service.exportPackage(skill.id)).thenReturn(packageValue)
-        val tool = provider(service).tools.single { it.definition.name == "grz_skill_export_inline" }
+        val tool = provider(service).callbacks.single { it.definition.name == "grz_skill_export_inline" }
 
         val result = tool.invokeStructured(
             testControlMcpContext(),
@@ -136,7 +136,7 @@ class ControlMcpAgentSkillToolsTest {
         assertTrue(files.all { it.keys == setOf("path", "encoding", "content") })
     }
 
-    private fun provider(skillService: AgentSkillDomainService) = ControlMcpAgentCatalogTools(
+    private fun provider(skillService: AgentSkillDomainService) = AgentCatalogToolContributor(testServerToolFactory(),
         agentService = mock<AgentDomainService>(),
         promptService = mock<PromptDomainService>(),
         skillService = skillService,

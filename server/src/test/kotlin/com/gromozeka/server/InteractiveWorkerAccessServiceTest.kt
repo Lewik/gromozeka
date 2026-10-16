@@ -72,7 +72,7 @@ class InteractiveWorkerAccessServiceTest {
     }
 
     @Test
-    fun `authenticated Worker user is redirected through a fresh DCV grant`() = runBlocking {
+    fun `authenticated Worker user is redirected through a fresh DCV grant`() = runBlocking<Unit> {
         val service = service()
         val authenticationService = Mockito.mock(AuthenticationService::class.java)
         val workerAccessService = Mockito.mock(WorkerAccessService::class.java)
@@ -146,7 +146,7 @@ class InteractiveWorkerAccessServiceTest {
     }
 
     @Test
-    fun `interactive access control tool returns only the stable link`() = runBlocking {
+    fun `interactive access control tool returns only the stable link`() = runBlocking<Unit> {
         val service = service()
         val workerAccessService = Mockito.mock(WorkerAccessService::class.java)
         val context = testControlMcpContext()
@@ -158,18 +158,18 @@ class InteractiveWorkerAccessServiceTest {
                 projectId = null,
             )
         ).thenReturn(worker(context.user.id))
-        val provider = ControlMcpInteractiveWorkerAccessTools(service, workerAccessService)
+        val provider = InteractiveWorkerAccessToolContributor(testServerToolFactory(), service, workerAccessService)
 
-        val result = provider.tools.single().invokeStructured(
+        val result = provider.callbacks.single().invokeStructured(
             context,
             kotlinx.serialization.json.buildJsonObject { put("workerId", workerId.value) },
         )
         val openUrl = result.getValue("result").jsonObject.getValue("openUrl").jsonPrimitive.content
 
-        assertEquals("grz_worker_interactive_access_get", provider.tools.single().definition.name)
+        assertEquals("grz_worker_interactive_access_get", provider.callbacks.single().definition.name)
         assertEquals(service.openUrl(workerId), openUrl)
         assertFalse(openUrl.contains("authToken"))
-        assertTrue(provider.tools.single().definition.annotations?.readOnlyHint == true)
+        assertTrue(provider.callbacks.single().definition.annotations?.readOnlyHint == true)
     }
 
     private fun service(clock: Clock = Clock.fixed(Instant.parse("2026-08-05T12:00:00Z"), ZoneOffset.UTC)) =

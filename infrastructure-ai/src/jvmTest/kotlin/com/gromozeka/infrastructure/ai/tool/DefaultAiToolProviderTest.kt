@@ -2,6 +2,12 @@ package com.gromozeka.infrastructure.ai.tool
 
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallResult
+import com.gromozeka.domain.tool.AiToolAnnotations
+import com.gromozeka.domain.tool.AiToolAccessPolicy
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlin.test.assertSame
 import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -14,6 +20,7 @@ import com.gromozeka.infrastructure.ai.config.ToolsRegistrationConfig
 import com.gromozeka.infrastructure.ai.config.ToolCallbacksRegistrar
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import org.springframework.context.support.StaticApplicationContext
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -59,17 +66,43 @@ class DefaultAiToolProviderTest {
     }
 
     @Test
-    fun `typed tool preserves mixed text and binary results`() {
+    fun `typed tool preserves mixed text and binary results`() = runBlocking<Unit> {
         val bytes = byteArrayOf(1, 2, 3)
         val callback = TypedToolCallbackAdapter().adapt(MixedResultTool(bytes))
 
         val result = callback.callResult("{}", ToolExecutionContext())
 
-        assertEquals(AiToolResult.Text("observation"), result[0])
-        val binary = result[1] as AiToolResult.Binary
+        assertEquals(AiToolResult.Text("observation"), result.content[0])
+        val binary = result.content[1] as AiToolResult.Binary
         assertEquals("screen.png", binary.fileName)
         assertEquals("image/png", binary.mediaType)
         assertEquals(bytes.toList(), binary.content.toList())
+    }
+
+    @Test
+    fun `typed declaration retains complete metadata and invocation outcome`() = runBlocking<Unit> {
+        val outcome = AiToolCallResult(
+            content = listOf(AiToolResult.Text("failure")),
+            structuredContent = buildJsonObject { put("code", "rejected") },
+            isError = true,
+        )
+        val tool = object : Tool<TestRequest, AiToolCallResult> {
+            override val name = "typed_outcome"
+            override val description = "Typed outcome"
+            override val source = "test-source"
+            override val requestType = TestRequest::class.java
+            override val outputSchema = """{"type":"object"}"""
+            override val annotations = AiToolAnnotations(readOnlyHint = true)
+            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER,
+                accessPolicy = AiToolAccessPolicy.AUTHENTICATED)
+            override fun execute(request: TestRequest, context: ToolExecutionContext?) = outcome
+        }
+        val callback = TypedToolCallbackAdapter().adapt(tool)
+        assertEquals(tool.source, callback.definition.source)
+        assertEquals(tool.outputSchema, callback.definition.outputSchema)
+        assertEquals(tool.annotations, callback.definition.annotations)
+        assertEquals(tool.metadata, callback.metadata)
+        assertSame(outcome, callback.callResult("{}"))
     }
 
     private fun provider(

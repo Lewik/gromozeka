@@ -1,5 +1,9 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+import com.gromozeka.domain.tool.AiToolAccessPolicy
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.RuntimeSqlAccessDeniedException
@@ -11,12 +15,13 @@ import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Service
 
 @Service
-internal class ControlMcpSqlTools(
+internal class SqlToolContributor(
+    private val toolFactory: ServerJsonToolFactory,
     private val sql: RuntimeSqlService,
     private val conversations: ConversationRepository,
-) : ControlMcpToolProvider {
-    override val tools = listOf(
-        controlMcpTool(
+) : AiToolCallbackContributor {
+    override val callbacks = listOf(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_sql",
             description = "Execute PostgreSQL SQL against this Runtime database with the application's full database privileges. " +
                 "Supports reads, writes, DDL and multiple statements; this is NOT a read-only tool or sandbox. " +
@@ -28,42 +33,42 @@ internal class ControlMcpSqlTools(
                 "For device telemetry, inspect context_state_events and context_state_projections, retaining observed_at versus received_at. " +
                 "Use information_schema or pg_catalog to discover the actual schema. Direct SQL bypasses application validation, caches, " +
                 "state-sync notifications and ordinary business audit hooks; prefer dedicated tools for routine configuration changes.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "sql" to ControlMcpSchemas.string("SQL statement or script to execute. No table or statement allowlist."),
-                    "max_rows" to ControlMcpSchemas.integer("Maximum returned rows per result set; default 1000. Only output is limited, not affected rows.", 1, 10_000),
-                    "timeout_seconds" to ControlMcpSchemas.integer("Optional PostgreSQL statement timeout in seconds; 0 (default) means no tool-imposed timeout.", 0, 86_400),
+                    "sql" to ServerToolSchemas.string("SQL statement or script to execute. No table or statement allowlist."),
+                    "max_rows" to ServerToolSchemas.integer("Maximum returned rows per result set; default 1000. Only output is limited, not affected rows.", 1, 10_000),
+                    "timeout_seconds" to ServerToolSchemas.integer("Optional PostgreSQL statement timeout in seconds; 0 (default) means no tool-imposed timeout.", 0, 86_400),
                 ),
                 required = listOf("sql"),
             ),
             readOnly = false,
             destructive = true,
             idempotent = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             // Origin comes only from trusted runtime context, never from tool arguments.
             if (callingAgentId != null && conversationId == null) {
-                throw ControlMcpToolException("forbidden", "Conversation SQL calls require a trusted conversation identity")
+                throw ServerToolException("forbidden", "Conversation SQL calls require a trusted conversation identity")
             }
             conversationId?.let { id ->
                 val conversation = conversations.findById(id)
-                    ?: throw ControlMcpToolException("forbidden", "SQL conversation is unavailable")
+                    ?: throw ServerToolException("forbidden", "SQL conversation is unavailable")
                 if (conversation.externalChannel != null || Conversation.Participant.User(user.id) !in conversation.participants ||
                     callingAgentId?.let { Conversation.Participant.Agent(it) !in conversation.participants } == true) {
-                    throw ControlMcpToolException("forbidden", "SQL is only available in a private conversation of the Runtime owner")
+                    throw ServerToolException("forbidden", "SQL is only available in a private conversation of the Runtime owner")
                 }
             }
             try {
-                controlMcpJson.encodeToJsonElement(RuntimeSqlResult.serializer(), sql.execute(
+                serverToolJson.encodeToJsonElement(RuntimeSqlResult.serializer(), sql.execute(
                     user.id,
                     RuntimeSqlRequest(input.requiredString("sql"), input.optionalInt("max_rows", 1_000, 1..10_000),
                         input.optionalInt("timeout_seconds", 0, 0..86_400)),
                     cancellationSignal,
                 )).jsonObject
             } catch (error: RuntimeSqlAccessDeniedException) {
-                throw ControlMcpToolException("forbidden", error.message.orEmpty())
+                throw ServerToolException("forbidden", error.message.orEmpty())
             } catch (error: RuntimeSqlExecutionException) {
-                throw ControlMcpToolException("sql_error", "SQLSTATE ${error.sqlState ?: "unknown"}: ${error.message}")
+                throw ServerToolException("sql_error", "SQLSTATE ${error.sqlState ?: "unknown"}: ${error.message}")
             }
         },
     )

@@ -66,9 +66,9 @@ class WorkerRequestToolContributorTest {
         )), false)
         requests.accept(worker, WorkerGatewayMessage.Response(id, WorkerGatewayMessage.Response.Status.SUCCEEDED, Json.encodeToString(result).encodeToByteArray()))
         val output = tools.getValue("grz_worker_request_get").callResult("""{"request_id":"$id"}""", context)
-        assertEquals(AiToolResult.Binary(byteArrayOf(1, 2, 3), "screen.png", "image/png"), output.last())
-        assertTrue(output.filterIsInstance<AiToolResult.Text>().none { it.content.contains("AQID") })
-        assertTrue(output.filterIsInstance<AiToolResult.Text>().any { it.content.contains("SUCCEEDED") })
+        assertEquals(AiToolResult.Binary(byteArrayOf(1, 2, 3), "screen.png", "image/png"), output.content.last())
+        assertTrue(output.content.filterIsInstance<AiToolResult.Text>().none { it.content.contains("AQID") })
+        assertTrue(output.content.filterIsInstance<AiToolResult.Text>().any { it.content.contains("SUCCEEDED") })
         assertEquals(output, tools.getValue("grz_worker_request_get").callResult("""{"request_id":"$id"}""", context))
     }
 }

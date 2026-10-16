@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+
 import com.gromozeka.application.service.ConversationSearchApplicationService
 import com.gromozeka.domain.model.CONVERSATION_SEARCH_DEFAULT_LIMIT
 import com.gromozeka.domain.model.CONVERSATION_SEARCH_MAX_LIMIT
@@ -12,35 +15,36 @@ import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
 @Service
-internal class ControlMcpConversationSearchTools(
+internal class ConversationSearchToolContributor(
+    private val toolFactory: ServerJsonToolFactory,
     private val conversationSearchService: ConversationSearchApplicationService,
-) : ControlMcpToolProvider {
-    override val tools: List<ControlMcpTool> = listOf(
-        controlMcpTool(
+) : AiToolCallbackContributor {
+    override val callbacks: List<AiToolCallback> = listOf(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_message_search",
             description = """
                 Search visible user and assistant message text across accessible Gromozeka conversations.
                 Results contain bounded excerpts and an opaque cursor, never complete messages or internal tool payloads.
                 Pass nextCursor as cursor to continue the same search without repeating earlier hits.
             """.trimIndent(),
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "query" to ControlMcpSchemas.string("Text to find in conversation messages."),
-                    "projectId" to ControlMcpSchemas.string("Optional project id filter."),
-                    "conversationId" to ControlMcpSchemas.string("Optional conversation id filter."),
-                    "roles" to ControlMcpSchemas.stringArray(
+                    "query" to ServerToolSchemas.string("Text to find in conversation messages."),
+                    "projectId" to ServerToolSchemas.string("Optional project id filter."),
+                    "conversationId" to ServerToolSchemas.string("Optional conversation id filter."),
+                    "roles" to ServerToolSchemas.stringArray(
                         "Optional roles to search: USER and/or ASSISTANT. Defaults to both."
                     ),
-                    "threadScope" to ControlMcpSchemas.string(
+                    "threadScope" to ServerToolSchemas.string(
                         description = "Search CURRENT conversation threads or ALL historical branches.",
                         enum = ConversationSearchRequest.ThreadScope.entries.map { it.name },
                     ),
-                    "limit" to ControlMcpSchemas.integer(
+                    "limit" to ServerToolSchemas.integer(
                         description = "Maximum hits in this page.",
                         minimum = 1,
                         maximum = CONVERSATION_SEARCH_MAX_LIMIT,
                     ),
-                    "cursor" to ControlMcpSchemas.string("Opaque nextCursor from the previous page."),
+                    "cursor" to ServerToolSchemas.string("Opaque nextCursor from the previous page."),
                 ),
                 required = listOf("query"),
             ),
@@ -53,14 +57,14 @@ internal class ControlMcpConversationSearchTools(
                 roleNames.mapTo(linkedSetOf()) { role ->
                     runCatching { Conversation.Message.Role.valueOf(role.uppercase()) }
                         .getOrElse {
-                            throw ControlMcpToolException(
+                            throw ServerToolException(
                                 "invalid_argument",
                                 "'roles' accepts only USER and ASSISTANT",
                             )
                         }
                         .also {
                             if (it == Conversation.Message.Role.SYSTEM) {
-                                throw ControlMcpToolException(
+                                throw ServerToolException(
                                     "invalid_argument",
                                     "'roles' accepts only USER and ASSISTANT",
                                 )
@@ -72,7 +76,7 @@ internal class ControlMcpConversationSearchTools(
                 ?.let { value ->
                     runCatching { ConversationSearchRequest.ThreadScope.valueOf(value.uppercase()) }
                         .getOrElse {
-                            throw ControlMcpToolException(
+                            throw ServerToolException(
                                 "invalid_argument",
                                 "'threadScope' accepts CURRENT or ALL",
                             )

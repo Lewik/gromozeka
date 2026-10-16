@@ -1,5 +1,9 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+import com.gromozeka.domain.tool.AiToolAccessPolicy
+
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.UserProfile
@@ -25,17 +29,18 @@ import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
 @Service
-internal class ControlMcpAiSettingsTools(
+internal class AiSettingsToolContributor(
+    private val toolFactory: ServerJsonToolFactory,
     private val aiConfigurationService: AiConfigurationService,
     private val aiCatalogManagementService: AiCatalogManagementService,
     private val settingsService: SettingsService,
-) : ControlMcpToolProvider {
-    override val tools: List<ControlMcpTool> = listOf(
-        controlMcpTool(
+) : AiToolCallbackContributor {
+    override val callbacks: List<AiToolCallback> = listOf(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_control_help",
             description = "Explain Gromozeka configuration ownership, safe Control MCP workflows, and Browser Use self-setup.",
             readOnly = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) {
             val browserUseArguments = BrowserUseMcpPreset.arguments.joinToString(
                 prefix = "[",
@@ -66,11 +71,11 @@ internal class ControlMcpAiSettingsTools(
                 )
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_catalog_get",
             description = "Read the complete AI catalog and optimistic revision. Inline secret values are always redacted.",
             readOnly = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) {
             aiConfigurationService.refreshIfChanged()
             redactedEntityResult(
@@ -79,20 +84,20 @@ internal class ControlMcpAiSettingsTools(
                 aiConfigurationService.snapshot,
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_connection_upsert",
             description = "Create or replace one AI connection using the latest AI catalog revision. Missing API keys preserve the existing secret by default.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "connection",
                 description = "Serialized AiConnection object with connectionKind discriminator.",
                 extra = mapOf(
-                    "preserveExistingSecret" to ControlMcpSchemas.boolean(
+                    "preserveExistingSecret" to ServerToolSchemas.boolean(
                         "Preserve an existing API key when the supplied connection has no key. Defaults to true."
                     )
                 ),
             ),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val connection = input.decodeRequired("connection", AiConnection.serializer())
             val snapshot = aiCatalogManagementService.upsertConnection(
@@ -107,13 +112,13 @@ internal class ControlMcpAiSettingsTools(
                 value = snapshot.catalog.connections.single { it.id == connection.id },
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_connection_delete",
             description = "Delete one unreferenced AI connection using the latest AI catalog revision.",
             inputSchema = aiDeleteSchema("connectionId", "AI connection id."),
             readOnly = false,
             destructive = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val connectionId = AiConnection.Id(input.requiredString("connectionId"))
             aiDeleteResult(
@@ -125,7 +130,7 @@ internal class ControlMcpAiSettingsTools(
                 id = connectionId.value,
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_model_spec_upsert",
             description = "Create or replace static capability and limit metadata for one provider model.",
             inputSchema = aiEntityMutationSchema(
@@ -133,7 +138,7 @@ internal class ControlMcpAiSettingsTools(
                 description = "Serialized AiModelSpec object.",
             ),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val modelSpec = input.decodeRequired("modelSpec", AiModelSpec.serializer())
             val snapshot = aiCatalogManagementService.upsertModelSpec(
@@ -149,23 +154,23 @@ internal class ControlMcpAiSettingsTools(
                 },
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_model_spec_delete",
             description = "Delete one unreferenced provider model specification.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "provider" to ControlMcpSchemas.string(
+                    "provider" to ServerToolSchemas.string(
                         "AiProvider enum value.",
                         AiProvider.entries.map(AiProvider::name),
                     ),
-                    "modelId" to ControlMcpSchemas.string("Provider model id."),
-                    "expectedRevision" to ControlMcpSchemas.integer("Latest AI catalog revision.", minimum = 0),
+                    "modelId" to ServerToolSchemas.string("Provider model id."),
+                    "expectedRevision" to ServerToolSchemas.integer("Latest AI catalog revision.", minimum = 0),
                 ),
                 required = listOf("provider", "modelId", "expectedRevision"),
             ),
             readOnly = false,
             destructive = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val provider = input.requiredEnum("provider", AiProvider.entries)
             val modelId = input.requiredString("modelId")
@@ -179,7 +184,7 @@ internal class ControlMcpAiSettingsTools(
                 id = "${provider.name}/$modelId",
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_model_configuration_upsert",
             description = "Create or replace one concrete model configuration attached to an AI connection.",
             inputSchema = aiEntityMutationSchema(
@@ -187,7 +192,7 @@ internal class ControlMcpAiSettingsTools(
                 description = "Serialized AiModelConfiguration object.",
             ),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val configuration = input.decodeRequired(
                 "modelConfiguration",
@@ -204,13 +209,13 @@ internal class ControlMcpAiSettingsTools(
                 value = snapshot.catalog.modelConfigurations.single { it.id == configuration.id },
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_model_configuration_delete",
             description = "Delete one model configuration that is not referenced by assignments or Agents.",
             inputSchema = aiDeleteSchema("modelConfigurationId", "AI model configuration id."),
             readOnly = false,
             destructive = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val configurationId = AiModelConfiguration.Id(input.requiredString("modelConfigurationId"))
             aiDeleteResult(
@@ -222,7 +227,7 @@ internal class ControlMcpAiSettingsTools(
                 id = configurationId.value,
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_runtime_assignment_set",
             description = "Set the model selection for one runtime purpose using the latest AI catalog revision.",
             inputSchema = aiEntityMutationSchema(
@@ -230,7 +235,7 @@ internal class ControlMcpAiSettingsTools(
                 description = "Serialized AiRuntimeAssignment object containing purpose and selection.",
             ),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val assignment = input.decodeRequired(
                 "assignment",
@@ -247,18 +252,18 @@ internal class ControlMcpAiSettingsTools(
                 value = snapshot.catalog.runtimeAssignments.single { it.purpose == assignment.purpose },
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_default_agent_set",
             description = "Select an existing global Agent as the default Agent.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "agentId" to ControlMcpSchemas.string("Global Agent id."),
-                    "expectedRevision" to ControlMcpSchemas.integer("Latest AI catalog revision.", minimum = 0),
+                    "agentId" to ServerToolSchemas.string("Global Agent id."),
+                    "expectedRevision" to ServerToolSchemas.integer("Latest AI catalog revision.", minimum = 0),
                 ),
                 required = listOf("agentId", "expectedRevision"),
             ),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val snapshot = aiCatalogManagementService.setDefaultAgent(
                 agentId = AgentDefinition.Id(input.requiredString("agentId")),
@@ -269,19 +274,19 @@ internal class ControlMcpAiSettingsTools(
                 put("defaultAgentId", snapshot.catalog.defaultAgentId.value)
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_web_tools_update",
             description = "Replace central web tool configuration. Missing Brave and Jina API keys preserve their existing values by default.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "configuration" to ControlMcpSchemas.objectValue(
+                    "configuration" to ServerToolSchemas.objectValue(
                         "Serialized AiWebToolConfiguration object."
                     ),
-                    "expectedRevision" to ControlMcpSchemas.integer(
+                    "expectedRevision" to ServerToolSchemas.integer(
                         "Latest AI catalog revision.",
                         minimum = 0,
                     ),
-                    "preserveExistingSecrets" to ControlMcpSchemas.boolean(
+                    "preserveExistingSecrets" to ServerToolSchemas.boolean(
                         "Preserve existing Brave and Jina API keys when omitted. Defaults to true."
                     ),
                 ),
@@ -289,7 +294,7 @@ internal class ControlMcpAiSettingsTools(
             ),
             readOnly = false,
             idempotent = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val configuration = input.decodeRequired(
                 "configuration",
@@ -307,11 +312,11 @@ internal class ControlMcpAiSettingsTools(
                 value = snapshot.catalog.webTools,
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_user_profile_get",
             description = "Read shared user behavior settings. Device-specific UI settings are not included.",
             readOnly = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) {
             redactedEntityResult(
                 "userProfile",
@@ -319,18 +324,18 @@ internal class ControlMcpAiSettingsTools(
                 settingsService.userProfile,
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_user_profile_update",
             description = "Replace shared user behavior settings while preserving the profile id and leaving device-specific settings unchanged.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "userProfile" to ControlMcpSchemas.objectValue("Serialized UserProfile object."),
+                    "userProfile" to ServerToolSchemas.objectValue("Serialized UserProfile object."),
                 ),
                 required = listOf("userProfile"),
             ),
             readOnly = false,
             idempotent = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) { input ->
             val existing = settingsService.userProfile
             val supplied = input.decodeRequired("userProfile", UserProfile.serializer())
@@ -350,7 +355,7 @@ private fun <T> aiMutationResult(
     serializer: KSerializer<T>,
     value: T,
 ): JsonObject {
-    val redacted = controlMcpJson.encodeToJsonElement(serializer, value).redactInlineSecrets()
+    val redacted = serverToolJson.encodeToJsonElement(serializer, value).redactInlineSecrets()
     return buildJsonObject {
         put("revision", snapshot.revision)
         put(name, redacted.value)
@@ -378,11 +383,11 @@ private fun aiEntityMutationSchema(
     entityField: String,
     description: String,
     extra: Map<String, JsonElement> = emptyMap(),
-): io.modelcontextprotocol.kotlin.sdk.types.ToolSchema =
-    ControlMcpSchemas.objectSchema(
+): JsonObject =
+    ServerToolSchemas.objectSchema(
         properties = mapOf(
-            entityField to ControlMcpSchemas.objectValue(description),
-            "expectedRevision" to ControlMcpSchemas.integer("Latest AI catalog revision.", minimum = 0),
+            entityField to ServerToolSchemas.objectValue(description),
+            "expectedRevision" to ServerToolSchemas.integer("Latest AI catalog revision.", minimum = 0),
         ) + extra,
         required = listOf(entityField, "expectedRevision"),
     )
@@ -390,17 +395,17 @@ private fun aiEntityMutationSchema(
 private fun aiDeleteSchema(
     idField: String,
     description: String,
-): io.modelcontextprotocol.kotlin.sdk.types.ToolSchema =
-    ControlMcpSchemas.objectSchema(
+): JsonObject =
+    ServerToolSchemas.objectSchema(
         properties = mapOf(
-            idField to ControlMcpSchemas.string(description),
-            "expectedRevision" to ControlMcpSchemas.integer("Latest AI catalog revision.", minimum = 0),
+            idField to ServerToolSchemas.string(description),
+            "expectedRevision" to ServerToolSchemas.integer("Latest AI catalog revision.", minimum = 0),
         ),
         required = listOf(idField, "expectedRevision"),
     )
 
 private fun <T> JsonObject.decodeRequired(name: String, serializer: KSerializer<T>): T =
-    controlMcpJson.decodeFromJsonElement(serializer, requiredObject(name))
+    serverToolJson.decodeFromJsonElement(serializer, requiredObject(name))
 
 private inline fun <reified T : Enum<T>> JsonObject.requiredEnum(
     name: String,
@@ -408,7 +413,7 @@ private inline fun <reified T : Enum<T>> JsonObject.requiredEnum(
 ): T {
     val raw = requiredString(name)
     return values.firstOrNull { it.name.equals(raw, ignoreCase = true) }
-        ?: throw ControlMcpToolException(
+        ?: throw ServerToolException(
             "invalid_argument",
             "'$name' must be one of ${values.joinToString { it.name }}",
         )
@@ -419,7 +424,7 @@ private fun <T> redactedEntityResult(
     serializer: KSerializer<T>,
     value: T,
 ): JsonObject {
-    val redacted = controlMcpJson.encodeToJsonElement(serializer, value).redactInlineSecrets()
+    val redacted = serverToolJson.encodeToJsonElement(serializer, value).redactInlineSecrets()
     return buildJsonObject {
         put(name, redacted.value)
         if (redacted.configuredInlineSecretPaths.isNotEmpty()) {

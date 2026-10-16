@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+
 import com.gromozeka.domain.tool.AgentPreloadedTools
 import com.gromozeka.domain.tool.AgentToolCatalogEntry
 import com.gromozeka.domain.tool.ToolAccessPolicy
@@ -34,19 +37,20 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 @Service
-internal class ControlMcpAgentCatalogTools(
+internal class AgentCatalogToolContributor(
+    private val toolFactory: ServerJsonToolFactory,
     private val agentService: AgentDomainService,
     private val promptService: PromptDomainService,
     private val skillService: AgentSkillDomainService,
     private val templateService: RuntimeCatalogTemplateService,
     private val projectAccessService: ProjectAccessService,
     private val toolPolicyAuthority: AgentToolPolicyAuthority? = null,
-) : ControlMcpToolProvider {
-    override val tools: List<ControlMcpTool> = listOf(
-        controlMcpTool(
+) : AiToolCallbackContributor {
+    override val callbacks: List<AiToolCallback> = listOf(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_agent_tool_catalog",
             description = "List source-qualified tool contracts and revisions for Agent access policy and preloading. Omit projectId for the owner-only registry view.",
-            inputSchema = ControlMcpSchemas.objectSchema(mapOf("projectId" to ControlMcpSchemas.string("Optional project id."))),
+            inputSchema = ServerToolSchemas.objectSchema(mapOf("projectId" to ServerToolSchemas.string("Optional project id."))),
             readOnly = true,
         ) { input ->
             val projectId = input.optionalString("projectId")?.let(Project::Id)
@@ -54,7 +58,7 @@ internal class ControlMcpAgentCatalogTools(
             requireScopeAccess(projectId, ProjectPermission.READ)
             listResult("tools", AgentToolCatalogEntry.serializer(), agentService.toolCatalog(projectId))
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_runtime_template_get",
             description = "Read bundled Agent, Prompt, and AI catalog templates. Templates are blueprints, not live configuration.",
             readOnly = true,
@@ -65,7 +69,7 @@ internal class ControlMcpAgentCatalogTools(
                 templateService.getTemplates(),
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_agent_list",
             description = "List Agents. Omit projectId for the complete catalog; provide it for global Agents plus that project's Agents.",
             inputSchema = optionalProjectSchema(),
@@ -86,7 +90,7 @@ internal class ControlMcpAgentCatalogTools(
             }
             listResult("agents", AgentDefinition.serializer(), agents)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_agent_get",
             description = "Read one server-managed Agent definition by id.",
             inputSchema = idSchema("agentId", "Agent id."),
@@ -101,7 +105,7 @@ internal class ControlMcpAgentCatalogTools(
                 agent,
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_agent_create",
             description = "Create a global or project Agent from existing Prompt, Skill, tool, and model configuration ids.",
             inputSchema = agentWriteSchema(includeId = false, includeProjectId = true),
@@ -130,7 +134,7 @@ internal class ControlMcpAgentCatalogTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_agent_update",
             description = "Replace every mutable field of an existing Agent definition. " +
                 "The updated definition applies to the next model request, including a continuation of the current turn.",
@@ -162,14 +166,14 @@ internal class ControlMcpAgentCatalogTools(
                 ) ?: notFound("Agent", id),
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_agent_duplicate",
             description = "Create a new Agent by copying an existing Agent into global or project scope.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "sourceAgentId" to ControlMcpSchemas.string("Source Agent id."),
-                    "projectId" to ControlMcpSchemas.string("Optional destination project id. Omit for global scope."),
-                    "name" to ControlMcpSchemas.string("Name for the new Agent."),
+                    "sourceAgentId" to ServerToolSchemas.string("Source Agent id."),
+                    "projectId" to ServerToolSchemas.string("Optional destination project id. Omit for global scope."),
+                    "name" to ServerToolSchemas.string("Name for the new Agent."),
                 ),
                 required = listOf("sourceAgentId", "name"),
             ),
@@ -192,7 +196,7 @@ internal class ControlMcpAgentCatalogTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_agent_delete",
             description = "Delete an Agent. The current default Agent cannot be deleted.",
             inputSchema = idSchema("agentId", "Agent id."),
@@ -206,7 +210,7 @@ internal class ControlMcpAgentCatalogTools(
             agentService.delete(agentId)
             deletedResult("agent", id)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_prompt_list",
             description = "List Prompts. Omit projectId for the complete catalog; provide it for global Prompts plus that project's Prompts.",
             inputSchema = optionalProjectSchema(),
@@ -227,7 +231,7 @@ internal class ControlMcpAgentCatalogTools(
             }
             listResult("prompts", Prompt.serializer(), prompts)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_prompt_get",
             description = "Read one server-managed Prompt by id.",
             inputSchema = idSchema("promptId", "Prompt id."),
@@ -242,7 +246,7 @@ internal class ControlMcpAgentCatalogTools(
                 prompt,
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_prompt_create",
             description = "Create a global or project Prompt from explicit text content.",
             inputSchema = promptWriteSchema(includeId = false, includeProjectId = true),
@@ -260,7 +264,7 @@ internal class ControlMcpAgentCatalogTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_prompt_update",
             description = "Replace the name and content of an existing Prompt. " +
                 "The new content applies to the next model request, including a continuation of the current turn; " +
@@ -282,7 +286,7 @@ internal class ControlMcpAgentCatalogTools(
                 ) ?: notFound("Prompt", id),
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_prompt_delete",
             description = "Delete an unreferenced Prompt. Prompts still used by Agents are rejected.",
             inputSchema = idSchema("promptId", "Prompt id."),
@@ -296,18 +300,18 @@ internal class ControlMcpAgentCatalogTools(
             promptService.deletePrompt(promptId)
             deletedResult("prompt", id)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_skill_list",
             description = "List paginated Skill summaries for a project. Instructions and files are omitted.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "projectId" to ControlMcpSchemas.string("Project id."),
-                    "limit" to ControlMcpSchemas.integer(
+                    "projectId" to ServerToolSchemas.string("Project id."),
+                    "limit" to ServerToolSchemas.integer(
                         description = "Maximum skill summaries in this page.",
                         minimum = 1,
                         maximum = SKILL_LIST_MAX_LIMIT,
                     ),
-                    "cursor" to ControlMcpSchemas.string("Opaque nextCursor from the previous page."),
+                    "cursor" to ServerToolSchemas.string("Opaque nextCursor from the previous page."),
                 ),
                 required = listOf("projectId"),
             ),
@@ -332,7 +336,7 @@ internal class ControlMcpAgentCatalogTools(
                 put("hasMore", candidates.size > limit)
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_skill_get",
             description = "Read Skill metadata, instructions, materialization analysis, and file manifest without file contents.",
             inputSchema = idSchema("skillId", "Agent Skill id."),
@@ -348,27 +352,27 @@ internal class ControlMcpAgentCatalogTools(
             val packageValue = skillService.exportPackage(skill.id)
                 ?: notFound("Agent Skill", id)
             buildJsonObject {
-                put("skill", controlMcpJson.encodeToJsonElement(AgentSkill.serializer(), skill))
+                put("skill", serverToolJson.encodeToJsonElement(AgentSkill.serializer(), skill))
                 put("files", packageValue.toManifestJson())
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_skill_import_inline",
             description = "Import a complete Skill package inline, replacing every file under the same name. " +
                 "Text and base64 binaries enter model context; prefer directory import for editing. Limit: 4 MiB.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "projectId" to ControlMcpSchemas.string("Owning project id."),
-                    "directoryName" to ControlMcpSchemas.string("Skill package directory name."),
-                    "files" to ControlMcpSchemas.objectArray(
+                    "projectId" to ServerToolSchemas.string("Owning project id."),
+                    "directoryName" to ServerToolSchemas.string("Skill package directory name."),
+                    "files" to ServerToolSchemas.objectArray(
                         description = "Complete package files. Use utf-8 for exact text or base64 for binary bytes.",
                         properties = mapOf(
-                            "path" to ControlMcpSchemas.string("Normalized relative package path."),
-                            "encoding" to ControlMcpSchemas.string(
+                            "path" to ServerToolSchemas.string("Normalized relative package path."),
+                            "encoding" to ServerToolSchemas.string(
                                 description = "How content is encoded.",
                                 enum = listOf("utf-8", "base64"),
                             ),
-                            "content" to ControlMcpSchemas.string("Complete file content in the selected encoding."),
+                            "content" to ServerToolSchemas.string("Complete file content in the selected encoding."),
                         ),
                         required = listOf("path", "encoding", "content"),
                     ),
@@ -391,7 +395,7 @@ internal class ControlMcpAgentCatalogTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_skill_export_inline",
             description = "Export a complete Skill package inline as text and base64. All files enter model context; " +
                 "prefer directory export for editing.",
@@ -406,7 +410,7 @@ internal class ControlMcpAgentCatalogTools(
                 ?: notFound("Agent Skill", id)
             packageValue.toControlJson()
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_skill_delete",
             description = "Delete an Agent Skill that is not assigned to an Agent.",
             inputSchema = idSchema("skillId", "Agent Skill id."),
@@ -422,21 +426,21 @@ internal class ControlMcpAgentCatalogTools(
         },
     )
 
-    private suspend fun ControlMcpCallContext.requireAgentAccess(
+    private suspend fun ServerToolContext.requireAgentAccess(
         agent: AgentDefinition,
         permission: ProjectPermission,
     ) {
         requireScopeAccess(agent.projectId, permission)
     }
 
-    private suspend fun ControlMcpCallContext.requirePromptAccess(
+    private suspend fun ServerToolContext.requirePromptAccess(
         prompt: Prompt,
         permission: ProjectPermission,
     ) {
         requireScopeAccess(prompt.projectId, permission)
     }
 
-    private suspend fun ControlMcpCallContext.requireScopeAccess(
+    private suspend fun ServerToolContext.requireScopeAccess(
         projectId: Project.Id?,
         permission: ProjectPermission,
     ) {
@@ -451,9 +455,9 @@ internal class ControlMcpAgentCatalogTools(
 }
 
 private fun optionalProjectSchema() =
-    ControlMcpSchemas.objectSchema(
+    ServerToolSchemas.objectSchema(
         properties = mapOf(
-            "projectId" to ControlMcpSchemas.string("Optional project id."),
+            "projectId" to ServerToolSchemas.string("Optional project id."),
         )
     )
 
@@ -461,26 +465,26 @@ private fun agentWriteSchema(
     includeId: Boolean,
     includeProjectId: Boolean,
 ) =
-    ControlMcpSchemas.objectSchema(
+    ServerToolSchemas.objectSchema(
         properties = buildMap {
-            if (includeId) put("agentId", ControlMcpSchemas.string("Agent id."))
+            if (includeId) put("agentId", ServerToolSchemas.string("Agent id."))
             if (includeProjectId) {
-                put("projectId", ControlMcpSchemas.string("Optional project id. Omit for global scope."))
+                put("projectId", ServerToolSchemas.string("Optional project id. Omit for global scope."))
             }
-            put("name", ControlMcpSchemas.string("Agent name."))
-            put("promptIds", ControlMcpSchemas.stringArray("Ordered Prompt ids."))
+            put("name", ServerToolSchemas.string("Agent name."))
+            put("promptIds", ServerToolSchemas.stringArray("Ordered Prompt ids."))
             put(
                 "runtimeSelection",
-                ControlMcpSchemas.objectValue("AiRuntimeSelection object containing modelConfigurationId."),
+                ServerToolSchemas.objectValue("AiRuntimeSelection object containing modelConfigurationId."),
             )
             put(
                 "runtimeOverrides",
-                ControlMcpSchemas.objectValue("Optional AiRuntimeOverrides object."),
+                ServerToolSchemas.objectValue("Optional AiRuntimeOverrides object."),
             )
-            put("tools", ControlMcpSchemas.objectValue("Preload configuration: {names: [model or qualified logical tool names]}. Blocked entries are saved but never loaded."))
+            put("tools", ServerToolSchemas.objectValue("Preload configuration: {names: [model or qualified logical tool names]}. Blocked entries are saved but never loaded."))
             put("toolAccess", agentToolAccessSchema())
-            put("description", ControlMcpSchemas.string("Optional Agent description."))
-            put("skillIds", ControlMcpSchemas.stringArray("Project Agent Skill ids."))
+            put("description", ServerToolSchemas.string("Optional Agent description."))
+            put("skillIds", ServerToolSchemas.stringArray("Project Agent Skill ids."))
         },
         required = buildList {
             if (includeId) add("agentId")
@@ -489,7 +493,7 @@ private fun agentWriteSchema(
         },
     )
 
-private fun agentToolAccessSchema() = ControlMcpSchemas.objectValue(
+private fun agentToolAccessSchema() = ServerToolSchemas.objectValue(
     "ToolAccessPolicy: {type: allow_only|deny_listed, entries: [selector]}. " +
         "Selector: {type: exact_revision, fingerprint: full_SHA256} or " +
         "{type: by_name, tool: {source: source_id, name: logical_name}}. " +
@@ -501,14 +505,14 @@ private fun promptWriteSchema(
     includeId: Boolean,
     includeProjectId: Boolean,
 ) =
-    ControlMcpSchemas.objectSchema(
+    ServerToolSchemas.objectSchema(
         properties = buildMap {
-            if (includeId) put("promptId", ControlMcpSchemas.string("Prompt id."))
+            if (includeId) put("promptId", ServerToolSchemas.string("Prompt id."))
             if (includeProjectId) {
-                put("projectId", ControlMcpSchemas.string("Optional project id. Omit for global scope."))
+                put("projectId", ServerToolSchemas.string("Optional project id. Omit for global scope."))
             }
-            put("name", ControlMcpSchemas.string("Prompt name."))
-            put("content", ControlMcpSchemas.string("Exact Prompt text."))
+            put("name", ServerToolSchemas.string("Prompt name."))
+            put("content", ServerToolSchemas.string("Exact Prompt text."))
         },
         required = buildList {
             if (includeId) add("promptId")
@@ -521,12 +525,12 @@ private fun JsonObject.requiredRawString(name: String): String =
         ?.takeIf(JsonPrimitive::isString)
         ?.content
         ?.takeIf(String::isNotBlank)
-        ?: throw ControlMcpToolException("invalid_argument", "'$name' must be a non-blank string")
+        ?: throw ServerToolException("invalid_argument", "'$name' must be a non-blank string")
 
 private fun <T> JsonObject.decodeObject(
     name: String,
     serializer: kotlinx.serialization.KSerializer<T>,
-): T = controlMcpJson.decodeFromJsonElement(serializer, requiredObject(name))
+): T = serverToolJson.decodeFromJsonElement(serializer, requiredObject(name))
 
 private fun <T> JsonObject.decodeOptionalObject(
     name: String,
@@ -534,8 +538,8 @@ private fun <T> JsonObject.decodeOptionalObject(
 ): T? {
     val value = this[name] ?: return null
     val objectValue = value as? JsonObject
-        ?: throw ControlMcpToolException("invalid_argument", "'$name' must be an object")
-    return controlMcpJson.decodeFromJsonElement(serializer, objectValue)
+        ?: throw ServerToolException("invalid_argument", "'$name' must be an object")
+    return serverToolJson.decodeFromJsonElement(serializer, objectValue)
 }
 
 private fun <T> listResult(
@@ -543,22 +547,22 @@ private fun <T> listResult(
     serializer: kotlinx.serialization.KSerializer<T>,
     values: List<T>,
 ): JsonObject = buildJsonObject {
-    put(name, controlMcpJson.encodeToJsonElement(ListSerializer(serializer), values))
+    put(name, serverToolJson.encodeToJsonElement(ListSerializer(serializer), values))
 }
 
 private fun JsonObject.toInlineSkillPackage(): AgentSkillPackageSource {
     val fileValues = this["files"] as? JsonArray
-        ?: throw ControlMcpToolException("invalid_argument", "'files' must be an array")
+        ?: throw ServerToolException("invalid_argument", "'files' must be an array")
     require(fileValues.isNotEmpty()) { "Agent Skill package must contain files" }
     val files = fileValues.mapIndexed { index, value ->
         val file = value as? JsonObject
-            ?: throw ControlMcpToolException("invalid_argument", "'files[$index]' must be an object")
+            ?: throw ServerToolException("invalid_argument", "'files[$index]' must be an object")
         val path = file.requiredString("path")
         val encoding = file.requiredString("encoding")
         val encodedContent = (file["content"] as? JsonPrimitive)
             ?.takeIf(JsonPrimitive::isString)
             ?.content
-            ?: throw ControlMcpToolException(
+            ?: throw ServerToolException(
                 "invalid_argument",
                 "Agent Skill file '$path' content must be a string",
             )
@@ -566,12 +570,12 @@ private fun JsonObject.toInlineSkillPackage(): AgentSkillPackageSource {
             "utf-8" -> encodedContent.toByteArray(StandardCharsets.UTF_8)
             "base64" -> runCatching { Base64.getDecoder().decode(encodedContent) }
                 .getOrElse {
-                    throw ControlMcpToolException(
+                    throw ServerToolException(
                         "invalid_argument",
                         "Agent Skill file '$path' contains invalid base64",
                     )
                 }
-            else -> throw ControlMcpToolException(
+            else -> throw ServerToolException(
                 "invalid_argument",
                 "Agent Skill file '$path' encoding must be utf-8 or base64",
             )
@@ -648,11 +652,11 @@ private fun String.decodeSkillListCursor(): SkillListKey {
     val decoded = runCatching {
         Base64.getUrlDecoder().decode(this).toString(StandardCharsets.UTF_8)
     }.getOrElse {
-        throw ControlMcpToolException("invalid_argument", "Invalid skill list cursor")
+        throw ServerToolException("invalid_argument", "Invalid skill list cursor")
     }
     val separator = decoded.indexOf('\u0000')
     if (separator <= 0 || separator == decoded.lastIndex) {
-        throw ControlMcpToolException("invalid_argument", "Invalid skill list cursor")
+        throw ServerToolException("invalid_argument", "Invalid skill list cursor")
     }
     return SkillListKey(decoded.substring(0, separator), decoded.substring(separator + 1))
 }

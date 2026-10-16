@@ -1,5 +1,9 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+import com.gromozeka.domain.tool.AiToolAccessPolicy
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ExternalConversationChannel
@@ -39,21 +43,21 @@ class ControlMcpSqlToolsTest {
     )
     private val conversations = Mockito.mock(ConversationRepository::class.java)
     private val executor = RecordingSql()
-    private val provider = ControlMcpSqlTools(executor, conversations)
-    private val tool get() = provider.tools.single()
+    private val provider = SqlToolContributor(testServerToolFactory(), executor, conversations)
+    private val tool get() = provider.callbacks.single()
     private val query = buildJsonObject { put("sql", "SELECT 1") }
 
     @Test
     fun `tool is privileged destructive and not idempotent or read only`() {
         assertEquals("grz_sql", tool.definition.name)
-        assertEquals(ControlMcpAccessPolicy.SERVER_OWNER, tool.accessPolicy)
+        assertEquals(AiToolAccessPolicy.SERVER_OWNER, tool.metadata.accessPolicy)
         assertEquals(false, tool.definition.annotations?.readOnlyHint)
         assertEquals(true, tool.definition.annotations?.destructiveHint)
         assertEquals(false, tool.definition.annotations?.idempotentHint)
     }
 
     @Test
-    fun `direct authenticated owner call receives SQL results and explicit execution options`() = runBlocking {
+    fun `direct authenticated owner call receives SQL results and explicit execution options`() = runBlocking<Unit> {
         val result = tool.invokeStructured(testControlMcpContext(), buildJsonObject {
             put("sql", "UPDATE example SET value=1"); put("max_rows", 25); put("timeout_seconds", 0)
         })
@@ -64,14 +68,14 @@ class ControlMcpSqlToolsTest {
     }
 
     @Test
-    fun `member cannot reach the SQL executor`() = runBlocking {
+    fun `member cannot reach the SQL executor`() = runBlocking<Unit> {
         assertEquals(JsonPrimitive(false), tool.invokeStructured(testControlMcpContext(User.Role.MEMBER), query)["success"])
         assertEquals(0, executor.calls)
     }
 
     @Test
-    fun `agent call without trusted conversation is denied even with a forged argument`() = runBlocking {
-        val result = tool.invokeStructured(ControlMcpCallContext(owner, agent), buildJsonObject {
+    fun `agent call without trusted conversation is denied even with a forged argument`() = runBlocking<Unit> {
+        val result = tool.invokeStructured(ServerToolContext(owner, agent), buildJsonObject {
             put("sql", "SELECT 1"); put("conversationId", "private")
         })
         assertEquals(JsonPrimitive(false), result["success"])
@@ -79,24 +83,20 @@ class ControlMcpSqlToolsTest {
     }
 
     @Test
-    fun `Telegram is denied by stored channel regardless of calling owner's privileges`() = runBlocking {
+    fun `Telegram is denied by stored channel regardless of calling owner's privileges`() = runBlocking<Unit> {
         Mockito.`when`(conversations.findById(privateConversation.id)).thenReturn(privateConversation.copy(
             externalChannel = ExternalConversationChannel("telegram", "bot", "group")))
-        val result = tool.invokeStructured(ControlMcpCallContext(owner, agent, privateConversation.id), query)
+        val result = tool.invokeStructured(ServerToolContext(owner, agent, privateConversation.id), query)
         assertEquals(JsonPrimitive(false), result["success"])
         assertEquals(0, executor.calls)
     }
 
     @Test
-    fun `conversation adapter forwards trusted origin and cancellation to SQL`() = runBlocking {
+    fun `native callback forwards trusted origin and cancellation to SQL`() = runBlocking<Unit> {
         Mockito.`when`(conversations.findById(privateConversation.id)).thenReturn(privateConversation)
-        val users = object : UserDirectoryService {
-            override suspend fun findActiveById(id: User.Id) = owner.takeIf { it.id == id }
-            override suspend fun listActive() = listOf(owner)
-        }
-        val callback = ControlMcpConversationToolContributor(ControlMcpToolCatalog(listOf(provider)), users).callbacks.single()
+        val callback = provider.callbacks.single()
         val cancellation = ToolCancellationSignal { }
-        val result = controlMcpJson.parseToJsonElement(callback.call(query.toString(), ToolExecutionContext(mapOf(
+        val result = serverToolJson.parseToJsonElement(callback.call(query.toString(), ToolExecutionContext(mapOf(
             TOOL_CONTEXT_USER_ID to owner.id.value,
             TOOL_CONTEXT_AGENT_DEFINITION_ID to agent.value,
             TOOL_CONTEXT_CONVERSATION_ID to privateConversation.id.value,
@@ -105,7 +105,7 @@ class ControlMcpSqlToolsTest {
         assertTrue(executor.cancellation === cancellation)
         Mockito.`when`(conversations.findById(privateConversation.id)).thenReturn(privateConversation.copy(
             externalChannel = ExternalConversationChannel("telegram", "bot", "group")))
-        val rejected = controlMcpJson.parseToJsonElement(callback.call(query.toString(), ToolExecutionContext(mapOf(
+        val rejected = serverToolJson.parseToJsonElement(callback.call(query.toString(), ToolExecutionContext(mapOf(
             TOOL_CONTEXT_USER_ID to owner.id.value,
             TOOL_CONTEXT_AGENT_DEFINITION_ID to agent.value,
             TOOL_CONTEXT_CONVERSATION_ID to privateConversation.id.value,
@@ -115,16 +115,16 @@ class ControlMcpSqlToolsTest {
     }
 
     @Test
-    fun `missing conversation and disconnected agent fail closed`() = runBlocking {
-        assertEquals(JsonPrimitive(false), tool.invokeStructured(ControlMcpCallContext(owner, agent, privateConversation.id), query)["success"])
+    fun `missing conversation and disconnected agent fail closed`() = runBlocking<Unit> {
+        assertEquals(JsonPrimitive(false), tool.invokeStructured(ServerToolContext(owner, agent, privateConversation.id), query)["success"])
         Mockito.`when`(conversations.findById(privateConversation.id)).thenReturn(privateConversation.copy(
             participants = setOf(Conversation.Participant.User(owner.id))))
-        assertEquals(JsonPrimitive(false), tool.invokeStructured(ControlMcpCallContext(owner, agent, privateConversation.id), query)["success"])
+        assertEquals(JsonPrimitive(false), tool.invokeStructured(ServerToolContext(owner, agent, privateConversation.id), query)["success"])
         assertEquals(0, executor.calls)
     }
 
     @Test
-    fun `runtime login rejection is returned as forbidden without retry`() = runBlocking {
+    fun `runtime login rejection is returned as forbidden without retry`() = runBlocking<Unit> {
         executor.denied = true
         val result = tool.invokeStructured(testControlMcpContext(), query)
         assertEquals(JsonPrimitive(false), result["success"])

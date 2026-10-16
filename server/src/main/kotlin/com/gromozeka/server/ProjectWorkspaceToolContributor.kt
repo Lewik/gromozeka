@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
@@ -23,15 +26,16 @@ import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
 @Service
-internal class ControlMcpProjectWorkspaceTools(
+internal class ProjectWorkspaceToolContributor(
+    private val toolFactory: ServerJsonToolFactory,
     private val projectAccessService: ProjectAccessService,
     private val workspaceService: WorkspaceDomainService,
     private val workspaceManagementService: WorkspaceManagementService,
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
     private val workerAccessService: WorkerAccessService,
-) : ControlMcpToolProvider {
-    override val tools: List<ControlMcpTool> = listOf(
-        controlMcpTool(
+) : AiToolCallbackContributor {
+    override val callbacks: List<AiToolCallback> = listOf(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_list",
             description = "List every logical Gromozeka project.",
             readOnly = true,
@@ -39,14 +43,14 @@ internal class ControlMcpProjectWorkspaceTools(
             buildJsonObject {
                 put(
                     "projects",
-                    controlMcpJson.encodeToJsonElement(
+                    serverToolJson.encodeToJsonElement(
                         ListSerializer(Project.serializer()),
                         projectAccessService.findAll(user.id),
                     )
                 )
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_get",
             description = "Read one logical Gromozeka project by id.",
             inputSchema = idSchema("projectId", "Project id."),
@@ -57,13 +61,13 @@ internal class ControlMcpProjectWorkspaceTools(
                 ?: notFound("Project", id)
             entityResult("project", Project.serializer(), project)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_create",
             description = "Create a logical project. A project does not imply a filesystem workspace.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "name" to ControlMcpSchemas.string("Human-readable project name."),
-                    "description" to ControlMcpSchemas.string("Optional project description."),
+                    "name" to ServerToolSchemas.string("Human-readable project name."),
+                    "description" to ServerToolSchemas.string("Optional project description."),
                 ),
                 required = listOf("name"),
             ),
@@ -79,14 +83,14 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_update",
             description = "Replace a project's mutable name and description.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "projectId" to ControlMcpSchemas.string("Project id."),
-                    "name" to ControlMcpSchemas.string("Human-readable project name."),
-                    "description" to ControlMcpSchemas.string("Optional project description."),
+                    "projectId" to ServerToolSchemas.string("Project id."),
+                    "name" to ServerToolSchemas.string("Human-readable project name."),
+                    "description" to ServerToolSchemas.string("Optional project description."),
                 ),
                 required = listOf("projectId", "name"),
             ),
@@ -104,7 +108,7 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_delete",
             description = "Delete a project and its project-owned data. This is destructive.",
             inputSchema = idSchema("projectId", "Project id."),
@@ -115,7 +119,7 @@ internal class ControlMcpProjectWorkspaceTools(
             projectAccessService.delete(user.id, Project.Id(id))
             deletedResult("project", id)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_membership_list",
             description = "List users and roles assigned to one project.",
             inputSchema = idSchema("projectId", "Project id."),
@@ -125,21 +129,21 @@ internal class ControlMcpProjectWorkspaceTools(
             buildJsonObject {
                 put(
                     "memberships",
-                    controlMcpJson.encodeToJsonElement(
+                    serverToolJson.encodeToJsonElement(
                         ListSerializer(ProjectMembership.serializer()),
                         projectAccessService.listMemberships(user.id, projectId),
                     )
                 )
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_membership_set",
             description = "Add a Runtime user to a project or replace that user's project role.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "projectId" to ControlMcpSchemas.string("Project id."),
-                    "userId" to ControlMcpSchemas.string("Runtime user id."),
-                    "role" to ControlMcpSchemas.string(
+                    "projectId" to ServerToolSchemas.string("Project id."),
+                    "userId" to ServerToolSchemas.string("Runtime user id."),
+                    "role" to ServerToolSchemas.string(
                         description = "Project role.",
                         enum = ProjectMembership.Role.entries.map { it.name },
                     ),
@@ -160,13 +164,13 @@ internal class ControlMcpProjectWorkspaceTools(
                 ),
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_project_membership_remove",
             description = "Remove a Runtime user's access to one project.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "projectId" to ControlMcpSchemas.string("Project id."),
-                    "userId" to ControlMcpSchemas.string("Runtime user id."),
+                    "projectId" to ServerToolSchemas.string("Project id."),
+                    "userId" to ServerToolSchemas.string("Runtime user id."),
                 ),
                 required = listOf("projectId", "userId"),
             ),
@@ -183,7 +187,7 @@ internal class ControlMcpProjectWorkspaceTools(
             )
             deletedResult("project_membership", "$projectId:$userId")
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_workspace_list",
             description = "List filesystem workspaces in one project, including their worker-specific mounts.",
             inputSchema = idSchema("projectId", "Project id."),
@@ -201,7 +205,7 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_workspace_get",
             description = "Read one filesystem workspace and every worker mount attached to it.",
             inputSchema = idSchema("workspaceId", "Workspace id."),
@@ -211,13 +215,13 @@ internal class ControlMcpProjectWorkspaceTools(
             val workspace = requireWorkspace(Workspace.Id(id), ProjectPermission.READ)
             workspaceWithMounts(workspace)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_workspace_create",
             description = "Create an unmounted filesystem workspace inside a project.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "projectId" to ControlMcpSchemas.string("Owning project id."),
-                    "name" to ControlMcpSchemas.string("Workspace name."),
+                    "projectId" to ServerToolSchemas.string("Owning project id."),
+                    "name" to ServerToolSchemas.string("Workspace name."),
                 ),
                 required = listOf("projectId", "name"),
             ),
@@ -234,13 +238,13 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_workspace_update",
             description = "Rename a filesystem workspace.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "workspaceId" to ControlMcpSchemas.string("Workspace id."),
-                    "name" to ControlMcpSchemas.string("New workspace name."),
+                    "workspaceId" to ServerToolSchemas.string("Workspace id."),
+                    "name" to ServerToolSchemas.string("New workspace name."),
                 ),
                 required = listOf("workspaceId", "name"),
             ),
@@ -257,7 +261,7 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_workspace_delete",
             description = "Delete a logical workspace and its mounts. This does not delete files from workers.",
             inputSchema = idSchema("workspaceId", "Workspace id."),
@@ -270,14 +274,14 @@ internal class ControlMcpProjectWorkspaceTools(
             workspaceManagementService.delete(workspaceId)
             deletedResult("workspace", id)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_workspace_mount_create",
             description = "Attach a filesystem workspace to one exact worker-local root path.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "workspaceId" to ControlMcpSchemas.string("Workspace id."),
-                    "workerId" to ControlMcpSchemas.string("Exact worker id."),
-                    "rootPath" to ControlMcpSchemas.string("Absolute worker-local workspace root path."),
+                    "workspaceId" to ServerToolSchemas.string("Workspace id."),
+                    "workerId" to ServerToolSchemas.string("Exact worker id."),
+                    "rootPath" to ServerToolSchemas.string("Absolute worker-local workspace root path."),
                 ),
                 required = listOf("workspaceId", "workerId", "rootPath"),
             ),
@@ -298,12 +302,12 @@ internal class ControlMcpProjectWorkspaceTools(
                 rootPath = input.requiredString("rootPath"),
             )
             buildJsonObject {
-                put("project", controlMcpJson.encodeToJsonElement(Project.serializer(), execution.project))
-                put("workspace", controlMcpJson.encodeToJsonElement(Workspace.serializer(), execution.workspace))
-                put("mount", controlMcpJson.encodeToJsonElement(WorkspaceMount.serializer(), execution.mount))
+                put("project", serverToolJson.encodeToJsonElement(Project.serializer(), execution.project))
+                put("workspace", serverToolJson.encodeToJsonElement(Workspace.serializer(), execution.workspace))
+                put("mount", serverToolJson.encodeToJsonElement(WorkspaceMount.serializer(), execution.mount))
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_workspace_mount_delete",
             description = "Detach a workspace mount. This does not delete the workspace or worker files.",
             inputSchema = idSchema("mountId", "Workspace mount id."),
@@ -317,7 +321,7 @@ internal class ControlMcpProjectWorkspaceTools(
             workspaceManagementService.deleteMount(mountId)
             deletedResult("workspace_mount", id)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_list",
             description = "List registered worker sessions, capabilities, advertised tools, and heartbeat state.",
             readOnly = true,
@@ -327,14 +331,14 @@ internal class ControlMcpProjectWorkspaceTools(
             buildJsonObject {
                 put(
                     "workers",
-                    controlMcpJson.encodeToJsonElement(
+                    serverToolJson.encodeToJsonElement(
                         ListSerializer(com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration.serializer()),
                         workerRegistry.list().filter { it.identity.workerId in accessibleWorkerIds },
                     )
                 )
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_access_get",
             description = "Read one worker's owner, runtime-wide access, and explicit user and project grants.",
             inputSchema = idSchema("workerId", "Worker id."),
@@ -347,30 +351,30 @@ internal class ControlMcpProjectWorkspaceTools(
                 permission = WorkerPermission.MANAGE,
             )
             buildJsonObject {
-                put("worker", controlMcpJson.encodeToJsonElement(WorkerResource.serializer(), worker))
+                put("worker", serverToolJson.encodeToJsonElement(WorkerResource.serializer(), worker))
                 put(
                     "userGrants",
-                    controlMcpJson.encodeToJsonElement(
+                    serverToolJson.encodeToJsonElement(
                         ListSerializer(WorkerUserGrant.serializer()),
                         workerAccessService.listUserGrants(user, workerId),
                     )
                 )
                 put(
                     "projectGrants",
-                    controlMcpJson.encodeToJsonElement(
+                    serverToolJson.encodeToJsonElement(
                         ListSerializer(WorkerProjectGrant.serializer()),
                         workerAccessService.listProjectGrants(user, workerId),
                     )
                 )
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_user_grant",
             description = "Allow one active user to use a worker.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "workerId" to ControlMcpSchemas.string("Worker id."),
-                    "userId" to ControlMcpSchemas.string("User id."),
+                    "workerId" to ServerToolSchemas.string("Worker id."),
+                    "userId" to ServerToolSchemas.string("User id."),
                 ),
                 required = listOf("workerId", "userId"),
             ),
@@ -387,13 +391,13 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_user_revoke",
             description = "Remove one user's direct access to a worker.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "workerId" to ControlMcpSchemas.string("Worker id."),
-                    "userId" to ControlMcpSchemas.string("User id."),
+                    "workerId" to ServerToolSchemas.string("Worker id."),
+                    "userId" to ServerToolSchemas.string("User id."),
                 ),
                 required = listOf("workerId", "userId"),
             ),
@@ -410,13 +414,13 @@ internal class ControlMcpProjectWorkspaceTools(
             )
             deletedResult("worker_user_grant", "$workerId:$userId")
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_project_grant",
             description = "Allow writable members of one project to use a worker.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "workerId" to ControlMcpSchemas.string("Worker id."),
-                    "projectId" to ControlMcpSchemas.string("Project id."),
+                    "workerId" to ServerToolSchemas.string("Worker id."),
+                    "projectId" to ServerToolSchemas.string("Project id."),
                 ),
                 required = listOf("workerId", "projectId"),
             ),
@@ -433,13 +437,13 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_project_revoke",
             description = "Remove one project's access to a worker.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "workerId" to ControlMcpSchemas.string("Worker id."),
-                    "projectId" to ControlMcpSchemas.string("Project id."),
+                    "workerId" to ServerToolSchemas.string("Worker id."),
+                    "projectId" to ServerToolSchemas.string("Project id."),
                 ),
                 required = listOf("workerId", "projectId"),
             ),
@@ -456,13 +460,13 @@ internal class ControlMcpProjectWorkspaceTools(
             )
             deletedResult("worker_project_grant", "$workerId:$projectId")
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_runtime_access_set",
             description = "Enable or disable worker use for every authenticated user.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "workerId" to ControlMcpSchemas.string("Worker id."),
-                    "enabled" to ControlMcpSchemas.boolean("Whether runtime-wide use is enabled."),
+                    "workerId" to ServerToolSchemas.string("Worker id."),
+                    "enabled" to ServerToolSchemas.boolean("Whether runtime-wide use is enabled."),
                 ),
                 required = listOf("workerId", "enabled"),
             ),
@@ -479,7 +483,7 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_worker_revoke",
             description = "Revoke a worker and all future use. This is destructive.",
             inputSchema = idSchema("workerId", "Worker id."),
@@ -500,17 +504,17 @@ internal class ControlMcpProjectWorkspaceTools(
 
     private suspend fun workspaceWithMounts(workspace: Workspace): JsonObject =
         buildJsonObject {
-            put("workspace", controlMcpJson.encodeToJsonElement(Workspace.serializer(), workspace))
+            put("workspace", serverToolJson.encodeToJsonElement(Workspace.serializer(), workspace))
             put(
                 "mounts",
-                controlMcpJson.encodeToJsonElement(
+                serverToolJson.encodeToJsonElement(
                     ListSerializer(WorkspaceMount.serializer()),
                     workspaceService.findMounts(workspace.id),
                 )
             )
         }
 
-    private suspend fun ControlMcpCallContext.requireWorkspace(
+    private suspend fun ServerToolContext.requireWorkspace(
         workspaceId: Workspace.Id,
         permission: ProjectPermission,
     ): Workspace {
@@ -522,8 +526,8 @@ internal class ControlMcpProjectWorkspaceTools(
 }
 
 internal fun idSchema(field: String, description: String) =
-    ControlMcpSchemas.objectSchema(
-        properties = mapOf(field to ControlMcpSchemas.string(description)),
+    ServerToolSchemas.objectSchema(
+        properties = mapOf(field to ServerToolSchemas.string(description)),
         required = listOf(field),
     )
 
@@ -532,7 +536,7 @@ internal fun <T> entityResult(
     serializer: kotlinx.serialization.KSerializer<T>,
     value: T,
 ): JsonObject = buildJsonObject {
-    put(name, controlMcpJson.encodeToJsonElement(serializer, value))
+    put(name, serverToolJson.encodeToJsonElement(serializer, value))
 }
 
 internal fun deletedResult(entity: String, id: String): JsonObject =

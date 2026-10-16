@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+
 import com.gromozeka.domain.model.TranslationMetadata
 import com.gromozeka.domain.model.TranslationSnapshot
 import com.gromozeka.domain.model.User
@@ -13,7 +16,6 @@ import com.gromozeka.shared.localization.TranslationPackage
 import com.gromozeka.shared.localization.TranslationSource
 import com.gromozeka.shared.localization.TranslationValidationIssue
 import com.gromozeka.shared.localization.TranslationValidator
-import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -24,32 +26,33 @@ import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
 @Service
-internal class ControlMcpTranslationTools(
+internal class TranslationToolContributor(
+    private val toolFactory: ServerJsonToolFactory,
     private val translationService: UserTranslationService,
     private val clientPresentationRegistry: ClientPresentationRegistry,
-) : ControlMcpToolProvider {
-    override val tools: List<ControlMcpTool> = listOf(
-        controlMcpTool(
+) : AiToolCallbackContributor {
+    override val callbacks: List<AiToolCallback> = listOf(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_list",
             description = "List your bundled and personal UI translations, revision, common/per-client choices and known client IDs. Omit clientId for the common selection; pass one of your listed IDs for that client's selection. Package bodies are available through grz_translation_get. No Project or Server owner permission is required.",
-            inputSchema = ControlMcpSchemas.objectSchema(mapOf("clientId" to translationClientSchema())),
+            inputSchema = ServerToolSchemas.objectSchema(mapOf("clientId" to translationClientSchema())),
             readOnly = true,
         ) { input ->
             input.requireTranslationFields("clientId")
             val clientId = approvedClientId(user.id, input)
             snapshotResult(user.id, translationService.snapshot(user.id, clientId))
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_source",
             description = "Read paginated English UI messages with their exact semantic context and translation guide. Defaults to 100 messages, with glossary and translator prompt on the first page. Use keys or keyPrefix to focus work and nextOffset to continue the same filters. Source pages are fragments: a new language must translate every source key and pass full validation, without filling omissions with English. targetLocale returns its CLDR plural requirements.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "keys" to ControlMcpSchemas.stringArray("Optional exact source message IDs. May be combined with keyPrefix as an intersection."),
-                    "keyPrefix" to ControlMcpSchemas.string("Optional message ID prefix, for example agents. or settings. See availablePrefixes."),
-                    "offset" to ControlMcpSchemas.integer("Zero-based offset within the filtered source. Defaults to 0.", minimum = 0),
-                    "limit" to ControlMcpSchemas.integer("Number of messages in this page. Defaults to 100.", minimum = 1),
-                    "includeGuide" to ControlMcpSchemas.boolean("Include the glossary and translator prompt. Defaults to true at offset 0, false on subsequent pages."),
-                    "targetLocale" to ControlMcpSchemas.string("Optional BCP 47 target locale, including custom languages beyond the bundled locales."),
+                    "keys" to ServerToolSchemas.stringArray("Optional exact source message IDs. May be combined with keyPrefix as an intersection."),
+                    "keyPrefix" to ServerToolSchemas.string("Optional message ID prefix, for example agents. or settings. See availablePrefixes."),
+                    "offset" to ServerToolSchemas.integer("Zero-based offset within the filtered source. Defaults to 0.", minimum = 0),
+                    "limit" to ServerToolSchemas.integer("Number of messages in this page. Defaults to 100.", minimum = 1),
+                    "includeGuide" to ServerToolSchemas.boolean("Include the glossary and translator prompt. Defaults to true at offset 0, false on subsequent pages."),
+                    "targetLocale" to ServerToolSchemas.string("Optional BCP 47 target locale, including custom languages beyond the bundled locales."),
                 ),
             ),
             readOnly = true,
@@ -57,10 +60,10 @@ internal class ControlMcpTranslationTools(
             input.requireTranslationFields("keys", "keyPrefix", "offset", "limit", "includeGuide", "targetLocale")
             sourcePage(input)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_get",
             description = "Read one complete bundled or personal translation package by its exact selectionId. Personal packages are visible only to their owner. Use grz_translation_list for IDs and the latest revision; use grz_translation_source for translation context and guidance.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 mapOf("selectionId" to translationSelectionSchema()),
                 required = listOf("selectionId"),
             ),
@@ -74,7 +77,7 @@ internal class ControlMcpTranslationTools(
                 put("translation", translation.toTranslationJson())
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_validate",
             description = "Validate a complete translation without saving it. Supply exactly one of translation (an object) or json (the raw JSON string, checked for duplicate keys). Returns valid and structured issues, including parse failures. All source keys, text/plural shapes, locale plural categories, placeholders and metadata must be valid.",
             inputSchema = translationPackageInputSchema(mutation = false),
@@ -89,11 +92,11 @@ internal class ControlMcpTranslationTools(
             buildJsonObject {
                 put("valid", issues.isEmpty())
                 put("issues", JsonArray(issues.map {
-                    controlMcpJson.encodeToJsonElement(TranslationValidationIssue.serializer(), it)
+                    serverToolJson.encodeToJsonElement(TranslationValidationIssue.serializer(), it)
                 }))
             }
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_save",
             description = "Save a complete validated personal translation using the latest expectedRevision. Supply exactly one of translation or raw json. Omit packageId to create personal:<UUID>; pass an existing personal ID to replace it. Bundled packages cannot be overwritten. For a new language translate all keys, without English fallback for missing work. Saving does not select the language; use grz_translation_select explicitly.",
             inputSchema = translationPackageInputSchema(mutation = true),
@@ -109,14 +112,14 @@ internal class ControlMcpTranslationTools(
             )
             snapshotResult(user.id, result.snapshot, mapOf("packageId" to JsonPrimitive(result.packageId)))
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_customize",
             description = "Create a personal copy of an existing translation with a custom name and selected message replacements, for example changing one UI term. sourceSelectionId may be bundled or personal. The source locale and direction stay unchanged; omitted messages are copied from that source. This is not a way to create a new language with English fallback. Every replacement must use a known key and preserve its text/plural shape and arguments. Requires expectedRevision and does not select the copy. Use grz_translation_save to update an existing personal package.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
                     "sourceSelectionId" to translationSelectionSchema(),
-                    "name" to ControlMcpSchemas.string("Name of the new personal translation; its locale and direction are inherited from the source."),
-                    "messages" to ControlMcpSchemas.objectValue("Partial map of known message IDs to replacement strings or complete plural objects. Read grz_translation_source for each key's semantic context."),
+                    "name" to ServerToolSchemas.string("Name of the new personal translation; its locale and direction are inherited from the source."),
+                    "messages" to ServerToolSchemas.objectValue("Partial map of known message IDs to replacement strings or complete plural objects. Read grz_translation_source for each key's semantic context."),
                     "expectedRevision" to translationRevisionSchema(),
                     "clientId" to translationClientSchema(),
                 ),
@@ -140,7 +143,7 @@ internal class ControlMcpTranslationTools(
             )
             snapshotResult(user.id, result.snapshot, mapOf("packageId" to JsonPrimitive(result.packageId)))
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_delete",
             description = "Delete your personal translation using expectedRevision. Bundled translations cannot be deleted. Every common or per-client choice referencing the deleted package is reset to builtin:en.",
             inputSchema = translationSelectionInputSchema(),
@@ -157,7 +160,7 @@ internal class ControlMcpTranslationTools(
             )
             snapshotResult(user.id, snapshot, mapOf("deleted" to JsonPrimitive(true), "packageId" to JsonPrimitive(selectionId)))
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_select",
             description = "Explicitly select one available translation using expectedRevision. With synchronization enabled, changes the common choice for your clients. With synchronization disabled, requires an exact clientId from grz_translation_list and changes only that client's choice. MCP has no implicit current client; never guess its ID.",
             inputSchema = translationSelectionInputSchema(),
@@ -172,12 +175,12 @@ internal class ControlMcpTranslationTools(
             )
             snapshotResult(user.id, snapshot)
         },
-        controlMcpTool(
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_translation_synchronize",
             description = "Enable or disable synchronized language selection for your clients using expectedRevision. Enabling adopts the specified client's effective selection as the common choice and clears per-client overrides; clientId is required if overrides exist. Disabling retains the common choice as fallback and starts with no overrides. Omit clientId only when no per-client choice must be adopted; never invent a client ID.",
-            inputSchema = ControlMcpSchemas.objectSchema(
+            inputSchema = ServerToolSchemas.objectSchema(
                 properties = mapOf(
-                    "synchronizeClients" to ControlMcpSchemas.boolean("Whether your clients should use one common translation selection."),
+                    "synchronizeClients" to ServerToolSchemas.boolean("Whether your clients should use one common translation selection."),
                     "expectedRevision" to translationRevisionSchema(),
                     "clientId" to translationClientSchema(),
                 ),
@@ -217,7 +220,7 @@ internal class ControlMcpTranslationTools(
         return buildJsonObject {
             put("revision", snapshot.revision)
             put("available", JsonArray(snapshot.available.map {
-                controlMcpJson.encodeToJsonElement(TranslationMetadata.serializer(), it)
+                serverToolJson.encodeToJsonElement(TranslationMetadata.serializer(), it)
             }))
             put("synchronizeClients", snapshot.synchronizeClients)
             put("commonSelectionId", snapshot.commonSelectionId)
@@ -291,7 +294,7 @@ private fun JsonObject.decodeTranslationPackage(): TranslationPackage {
         requiredObject("translation").toString()
     } else {
         (get("json") as? JsonPrimitive)?.takeIf { it.isString }?.content
-            ?: throw ControlMcpToolException("invalid_argument", "'json' must be a raw JSON string")
+            ?: throw ServerToolException("invalid_argument", "'json' must be a raw JSON string")
     }
     return TranslationJson.decode(value)
 }
@@ -307,20 +310,20 @@ private fun JsonObject.requireTranslationFields(vararg allowed: String) {
     require(unknown.isEmpty()) { "Unknown translation tool arguments: ${unknown.sorted().joinToString()}" }
 }
 
-private fun translationClientSchema(): JsonObject = ControlMcpSchemas.string(
+private fun translationClientSchema(): JsonObject = ServerToolSchemas.string(
     "Optional exact client ID from grz_translation_list. Omit for the common selection; MCP has no implicit current client.",
 )
 
-private fun translationSelectionSchema(): JsonObject = ControlMcpSchemas.string(
+private fun translationSelectionSchema(): JsonObject = ServerToolSchemas.string(
     "Exact selection ID from grz_translation_list: builtin:<locale> or personal:<UUID>.",
 )
 
-private fun translationRevisionSchema(): JsonObject = ControlMcpSchemas.integer(
+private fun translationRevisionSchema(): JsonObject = ServerToolSchemas.integer(
     "Latest user translation revision from grz_translation_list or the previous mutation result. Refresh after a conflict.",
     minimum = 0,
 )
 
-private fun translationSelectionInputSchema(): ToolSchema = ControlMcpSchemas.objectSchema(
+private fun translationSelectionInputSchema(): JsonObject = ServerToolSchemas.objectSchema(
     properties = mapOf(
         "selectionId" to translationSelectionSchema(),
         "expectedRevision" to translationRevisionSchema(),
@@ -329,14 +332,14 @@ private fun translationSelectionInputSchema(): ToolSchema = ControlMcpSchemas.ob
     required = listOf("selectionId", "expectedRevision"),
 )
 
-private fun translationPackageInputSchema(mutation: Boolean): ToolSchema = ControlMcpSchemas.objectSchema(
+private fun translationPackageInputSchema(mutation: Boolean): JsonObject = ServerToolSchemas.objectSchema(
     properties = mapOf(
-        "translation" to ControlMcpSchemas.objectValue(
+        "translation" to ServerToolSchemas.objectValue(
             "Complete package object: schemaVersion=1, locale, name, direction (LTR/RTL), messages containing every source ID with matching text/plural shape. Supply exactly one of translation or json.",
         ),
-        "json" to ControlMcpSchemas.string("Alternative raw package JSON string, including duplicate-key validation. Supply exactly one of translation or json."),
+        "json" to ServerToolSchemas.string("Alternative raw package JSON string, including duplicate-key validation. Supply exactly one of translation or json."),
     ) + if (mutation) mapOf(
-        "packageId" to ControlMcpSchemas.string("Existing personal:<UUID> to replace; omit to create a new personal package."),
+        "packageId" to ServerToolSchemas.string("Existing personal:<UUID> to replace; omit to create a new personal package."),
         "expectedRevision" to translationRevisionSchema(),
         "clientId" to translationClientSchema(),
     ) else emptyMap(),

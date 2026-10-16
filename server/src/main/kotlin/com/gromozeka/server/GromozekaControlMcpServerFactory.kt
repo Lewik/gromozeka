@@ -1,69 +1,88 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.tool.AiToolCallResult
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolResult
+import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
+import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
+import io.modelcontextprotocol.kotlin.sdk.types.BlobResourceContents
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.EmbeddedResource
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
-import klog.KLoggers
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
 import org.springframework.stereotype.Service
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 
-internal interface ControlMcpToolProvider {
-    val tools: List<ControlMcpTool>
-}
+internal const val CONTROL_TOOL_SOURCE = "gromozeka:control"
 
-@Service
-internal class ControlMcpToolCatalog(
-    providers: List<ControlMcpToolProvider>,
-) {
-    val tools = providers
-        .flatMap(ControlMcpToolProvider::tools)
-        .sortedBy { it.definition.name }
-        .also { registered ->
-            val duplicateNames = registered
-                .groupingBy { it.definition.name }
-                .eachCount()
-                .filterValues { it > 1 }
-                .keys
-            require(duplicateNames.isEmpty()) {
-                "Duplicate Gromozeka Control MCP tools: ${duplicateNames.sorted()}"
-            }
-        }
-}
-
+/** HTTP presentation of the same native callbacks used by conversation execution. */
 @Service
 internal class GromozekaControlMcpServerFactory(
-    private val catalog: ControlMcpToolCatalog,
+    private val tools: AiToolProvider,
 ) {
-    private val log = KLoggers.logger(this)
-
-    init {
-        log.info {
-            "Registered ${catalog.tools.size} Gromozeka Control MCP tools: " +
-                catalog.tools.joinToString { it.definition.name }
-        }
-    }
-
     fun create(caller: AuthenticatedMcpCaller): Server {
-        val context = ControlMcpCallContext(caller.user)
+        val context = ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to caller.user.id.value))
         val server = Server(
-            serverInfo = Implementation(
-                name = "gromozeka-control",
-                version = "dev",
-            ),
-            options = ServerOptions(
-                ServerCapabilities(
-                    tools = ServerCapabilities.Tools(listChanged = false),
-                )
-            ),
+            serverInfo = Implementation(name = "gromozeka-control", version = "dev"),
+            options = ServerOptions(ServerCapabilities(
+                tools = ServerCapabilities.Tools(listChanged = false),
+            )),
         )
-        catalog.tools.forEach { tool ->
-            server.addTool(tool.definition) { request ->
-                tool.invoke(
-                    context,
-                    request.arguments ?: kotlinx.serialization.json.JsonObject(emptyMap()),
-                )
+        tools.getTools()
+            .filter { it.available && it.definition.source == CONTROL_TOOL_SOURCE &&
+                it.metadata.executionScope == AiToolExecutionScope.SERVER }
+            .sortedBy { it.definition.name }
+            .forEach { callback ->
+                server.addTool(callback.definition.toMcpTool()) { request ->
+                    withContext(Dispatchers.IO) {
+                        callback.callResult(
+                            (request.arguments ?: JsonObject(emptyMap())).toString(),
+                            context,
+                        ).toMcpResult()
+                    }
+                }
             }
-        }
         return server
     }
 }
+
+internal fun AiToolDefinition.toMcpTool(): Tool = Tool(
+    name = name,
+    description = description,
+    inputSchema = serverToolJson.decodeFromString(ToolSchema.serializer(), inputSchema),
+    outputSchema = outputSchema?.let { serverToolJson.decodeFromString(ToolSchema.serializer(), it) },
+    annotations = annotations?.let { ToolAnnotations(
+        readOnlyHint = it.readOnlyHint,
+        destructiveHint = it.destructiveHint,
+        idempotentHint = it.idempotentHint,
+        openWorldHint = it.openWorldHint,
+    ) },
+)
+
+internal fun AiToolCallResult.toMcpResult(): CallToolResult = CallToolResult(
+    content = contentForModel().map { item ->
+        when (item) {
+            is AiToolResult.Text -> TextContent(item.content)
+            is AiToolResult.Binary -> EmbeddedResource(BlobResourceContents(
+                uri = "urn:gromozeka:tool-result:" + URLEncoder.encode(item.fileName, StandardCharsets.UTF_8),
+                mimeType = item.mediaType,
+                blob = Base64.getEncoder().encodeToString(item.content),
+            ))
+        }
+    },
+    structuredContent = structuredContent,
+    isError = isError,
+)

@@ -7,6 +7,7 @@ import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.AiToolResult
+import com.gromozeka.domain.tool.AiToolCallResult
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredUserId
@@ -17,6 +18,7 @@ import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -46,9 +48,9 @@ class WorkerRequestToolContributor(
         )
 
         override fun call(toolInput: String, context: ToolExecutionContext?): String =
-            callResult(toolInput, context).filterIsInstance<AiToolResult.Text>().joinToString("\n") { it.content }
+            runBlocking { callResult(toolInput, context).renderText() }
 
-        override fun callResult(toolInput: String, context: ToolExecutionContext?): List<AiToolResult> = runBlocking {
+        override suspend fun callResult(toolInput: String, context: ToolExecutionContext?): AiToolCallResult = coroutineScope {
             try {
                 val id = requireNotNull(Json.parseToJsonElement(toolInput).jsonObject["request_id"]).jsonPrimitive.content
                 var record = requireNotNull(requests.find(id)) { "Request unavailable" }
@@ -75,7 +77,7 @@ class WorkerRequestToolContributor(
                         response.errorMessage?.let { put("error", it) }
                     }
                 }.toString()
-                buildList {
+                val content = buildList {
                     add(AiToolResult.Text(status))
                     val request = WorkerGatewayCodec.decode(record.request) as WorkerGatewayMessage.Request
                     if (!cancel && request.operation == WorkerGatewayOperation.TOOL_EXECUTION && response?.payload != null) {
@@ -93,10 +95,14 @@ class WorkerRequestToolContributor(
                         }
                     }
                 }
+                AiToolCallResult(content = content)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                listOf(AiToolResult.Text(buildJsonObject { put("error", error.message ?: "Worker request unavailable") }.toString()))
+                AiToolCallResult(
+                    content = listOf(AiToolResult.Text(buildJsonObject { put("error", error.message ?: "Worker request unavailable") }.toString())),
+                    isError = true,
+                )
             }
         }
     }

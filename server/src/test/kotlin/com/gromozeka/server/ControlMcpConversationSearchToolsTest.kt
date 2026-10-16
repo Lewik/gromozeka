@@ -23,7 +23,7 @@ import kotlin.time.Instant
 
 class ControlMcpConversationSearchToolsTest {
     @Test
-    fun `message search returns bounded page data and forwards opaque cursor`() = runBlocking {
+    fun `message search returns bounded page data and forwards opaque cursor`() = runBlocking<Unit> {
         val context = testControlMcpContext()
         val project = project()
         val request = ConversationSearchRequest(
@@ -41,7 +41,7 @@ class ControlMcpConversationSearchToolsTest {
                 nextCursor = "next-cursor",
             )
         )
-        val tool = ControlMcpConversationSearchTools(service).tools.single()
+        val tool = ConversationSearchToolContributor(testServerToolFactory(), service).callbacks.single()
 
         val response = tool.invokeStructured(
             context,

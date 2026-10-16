@@ -88,7 +88,7 @@ class AgentContextQueryToolTest {
         Mockito.verifyNoMoreInteractions(service)
     }
 
-    @Test fun `lazy service resolution failures are also content-free`() {
+    @Test fun `lazy service resolution failures are also content-free`() = runBlocking<Unit> {
         Mockito.`when`(provider.getObject()).thenThrow(IllegalStateException("PRIVATE_CONTEXT_SENTINEL PRIVATE_REASONING_SENTINEL"))
         val error = assertFailsWith<IllegalStateException> {
             tool.callResult("""{"target_conversation_id":"target","question":"Q"}""", context)

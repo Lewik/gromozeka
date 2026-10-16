@@ -6,7 +6,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
-import com.gromozeka.domain.tool.AiToolResult
+import com.gromozeka.domain.tool.AiToolCallResult
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
@@ -17,6 +17,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.*
 
 class McpToolCallbackAdapter(
@@ -48,13 +49,13 @@ class McpToolCallbackAdapter(
         }
     }
 
-    override fun callResult(
+    override suspend fun callResult(
         toolInput: String,
         context: ToolExecutionContext?,
-    ): List<AiToolResult> = runBlocking {
+    ): AiToolCallResult = coroutineScope {
         try {
             log.debug { "Calling MCP tool: ${tool.remoteName} with typed result" }
-            client.callToolResult(tool.remoteName, arguments(toolInput, context))
+            AiToolCallResult(content = client.callToolResult(tool.remoteName, arguments(toolInput, context)))
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {

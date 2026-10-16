@@ -17,39 +17,39 @@ class GromozekaControlMcpSurfaceTest {
     @Test
     fun `control MCP exposes the complete server-managed configuration surface`() {
         val server = GromozekaControlMcpServerFactory(
-            ControlMcpToolCatalog(
+            testNativeToolProvider(
                 listOf(
-                    ControlMcpProjectWorkspaceTools(
+                    ProjectWorkspaceToolContributor(testServerToolFactory(),
                         projectAccessService = mock(),
                         workspaceService = mock(),
                         workspaceManagementService = mock(),
                         workerRegistry = mock(),
                         workerAccessService = mock(),
                     ),
-                    ControlMcpAgentCatalogTools(
+                    AgentCatalogToolContributor(testServerToolFactory(),
                         agentService = mock(),
                         promptService = mock(),
                         skillService = mock(),
                         templateService = mock(),
                         projectAccessService = mock(),
                     ),
-                    ControlMcpAiSettingsTools(
+                    AiSettingsToolContributor(testServerToolFactory(),
                         aiConfigurationService = mock(),
                         aiCatalogManagementService = mock(),
                         settingsService = mock(),
                     ),
-                    ControlMcpServerCatalogTools(
+                    McpServerCatalogToolContributor(testServerToolFactory(),
                         managementService = mock(),
                     ),
-                    ControlMcpIdentityTools(
+                    IdentityToolContributor(testServerToolFactory(),
                         userAdministrationService = mock(),
                         userDirectoryService = mock(),
                         securityAuditService = mock(),
                     ),
-                    ControlMcpConversationSearchTools(
+                    ConversationSearchToolContributor(testServerToolFactory(),
                         conversationSearchService = mock(),
                     ),
-                    ControlMcpTranslationTools(
+                    TranslationToolContributor(testServerToolFactory(),
                         translationService = mock(),
                         clientPresentationRegistry = mock(),
                     ),
@@ -191,13 +191,13 @@ class GromozekaControlMcpSurfaceTest {
     }
 
     @Test
-    fun `control help documents browser use self setup without exposing its token`() = runBlocking {
-        val provider = ControlMcpAiSettingsTools(
+    fun `control help documents browser use self setup without exposing its token`() = runBlocking<Unit> {
+        val provider = AiSettingsToolContributor(testServerToolFactory(),
             aiConfigurationService = mock(),
             aiCatalogManagementService = mock(),
             settingsService = mock(),
         )
-        val result = provider.tools
+        val result = provider.callbacks
             .single { it.definition.name == "grz_control_help" }
             .invokeStructured(testControlMcpContext(), buildJsonObject {})
         val guide = result.getValue("result").jsonObject

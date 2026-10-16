@@ -12,6 +12,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.infrastructure.ai.config.TypedToolCallbackAdapter
 import kotlin.time.Instant
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -19,7 +20,7 @@ import kotlin.test.assertTrue
 
 class GrzComputerUseToolsImplTest {
     @Test
-    fun `typed adapter maps nested actions and preserves screenshot result`() {
+    fun `typed adapter maps nested actions and preserves screenshot result`() = runBlocking<Unit> {
         val controller = FakeComputerUseController()
         val observationReferences = ComputerUseObservationReferenceStore()
         val callback = TypedToolCallbackAdapter().adapt(
@@ -39,8 +40,8 @@ class GrzComputerUseToolsImplTest {
         assertEquals(25, click.point?.x)
         assertEquals(30, click.point?.y)
         assertEquals(2, click.count)
-        assertIs<AiToolResult.Text>(result[0])
-        assertIs<AiToolResult.Binary>(result[1])
+        assertIs<AiToolResult.Text>(result.content[0])
+        assertIs<AiToolResult.Binary>(result.content[1])
         assertTrue(callback.definition.inputSchema.contains("\"actions\""))
         assertTrue(callback.definition.inputSchema.contains("\"CLICK\""))
     }

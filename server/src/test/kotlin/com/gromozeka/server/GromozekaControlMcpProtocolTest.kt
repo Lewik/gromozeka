@@ -1,6 +1,15 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
+import com.gromozeka.domain.tool.AiToolAccessPolicy
+
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.EmbeddedResource
+import io.modelcontextprotocol.kotlin.sdk.types.BlobResourceContents
+import com.gromozeka.domain.tool.AiToolCallResult
+import com.gromozeka.domain.tool.AiToolResult
+import java.util.Base64
 import com.gromozeka.domain.model.User
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -19,8 +28,8 @@ import kotlinx.serialization.json.put
 
 class GromozekaControlMcpProtocolTest {
     @Test
-    fun `factory exposes provider tools with structured results`() = runBlocking {
-        val tool = controlMcpTool(
+    fun `factory exposes provider tools with structured results`() = runBlocking<Unit> {
+        val tool = testServerToolFactory().create(CONTROL_TOOL_SOURCE,
             name = "grz_test_read",
             description = "Test tool.",
             readOnly = true,
@@ -28,7 +37,7 @@ class GromozekaControlMcpProtocolTest {
             buildJsonObject { put("value", "ok") }
         }
         val server = GromozekaControlMcpServerFactory(
-            ControlMcpToolCatalog(listOf(provider(tool)))
+            testNativeToolProvider(listOf(provider(tool)))
         ).create(testControlMcpCaller())
 
         val result = server.tools.getValue("grz_test_read").callForTest(
@@ -48,8 +57,8 @@ class GromozekaControlMcpProtocolTest {
     }
 
     @Test
-    fun `optional arguments reject wrong types instead of using defaults`() = runBlocking {
-        val tool = controlMcpTool(
+    fun `optional arguments reject wrong types instead of using defaults`() = runBlocking<Unit> {
+        val tool = testServerToolFactory().create(CONTROL_TOOL_SOURCE,
             name = "grz_test_boolean",
             description = "Test tool.",
             readOnly = true,
@@ -69,8 +78,8 @@ class GromozekaControlMcpProtocolTest {
     }
 
     @Test
-    fun `unexpected failures are opaque to MCP clients`() = runBlocking {
-        val tool = controlMcpTool(
+    fun `unexpected failures are opaque to MCP clients`() = runBlocking<Unit> {
+        val tool = testServerToolFactory().create(CONTROL_TOOL_SOURCE,
             name = "grz_test_failure",
             description = "Test tool.",
             readOnly = true,
@@ -88,7 +97,7 @@ class GromozekaControlMcpProtocolTest {
 
     @Test
     fun `cancellation is never converted into an MCP result`() {
-        val tool = controlMcpTool(
+        val tool = testServerToolFactory().create(CONTROL_TOOL_SOURCE,
             name = "grz_test_cancel",
             description = "Test tool.",
             readOnly = true,
@@ -102,13 +111,13 @@ class GromozekaControlMcpProtocolTest {
     }
 
     @Test
-    fun `server owner policy rejects members before tool execution`() = runBlocking {
+    fun `server owner policy rejects members before tool execution`() = runBlocking<Unit> {
         var executed = false
-        val tool = controlMcpTool(
+        val tool = testServerToolFactory().create(CONTROL_TOOL_SOURCE,
             name = "grz_test_owner_only",
             description = "Owner-only test tool.",
             readOnly = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
         ) {
             executed = true
             buildJsonObject {}
@@ -152,7 +161,7 @@ class GromozekaControlMcpProtocolTest {
         assertFalse(value.toString().contains("sk-secret"))
         assertEquals(JsonNull, value["apiKey"])
         assertEquals(listOf("/apiKey"), redacted.configuredInlineSecretPaths)
-        assertContains(controlMcpJson.encodeToString(JsonObject.serializer(), value), "\"apiKey\":null")
+        assertContains(serverToolJson.encodeToString(JsonObject.serializer(), value), "\"apiKey\":null")
         assertEquals(
             "OPENAI_API_KEY",
             value["environmentSecret"]?.jsonObject?.get("name")?.jsonPrimitive?.content,
@@ -161,23 +170,43 @@ class GromozekaControlMcpProtocolTest {
 
     @Test
     fun `duplicate tool names fail during factory construction`() {
-        val first = controlMcpTool("grz_duplicate", "First.", readOnly = true) {
+        val first = testServerToolFactory().create(CONTROL_TOOL_SOURCE, "grz_duplicate", "First.", readOnly = true) {
             buildJsonObject {}
         }
-        val second = controlMcpTool("grz_duplicate", "Second.", readOnly = true) {
+        val second = testServerToolFactory().create(CONTROL_TOOL_SOURCE, "grz_duplicate", "Second.", readOnly = true) {
             buildJsonObject {}
         }
 
-        assertFailsWith<IllegalArgumentException> {
-            ControlMcpToolCatalog(listOf(provider(first), provider(second)))
+        assertFailsWith<IllegalStateException> {
+            testNativeToolProvider(listOf(provider(first), provider(second))).getTools()
         }
     }
 
-    private fun provider(vararg tools: ControlMcpTool): ControlMcpToolProvider =
-        object : ControlMcpToolProvider {
-            override val tools = tools.toList()
+    @Test
+    fun `MCP export preserves mixed content structured data and explicit failure`() {
+        val bytes = byteArrayOf(1, 2, 3)
+        val structured = buildJsonObject { put("code", "rejected") }
+        val outcome = AiToolCallResult(
+            content = listOf(AiToolResult.Text("details"), AiToolResult.Binary(bytes, "result file.bin", "application/octet-stream")),
+            structuredContent = structured,
+            isError = true,
+        ).toMcpResult()
+        assertTrue(outcome.isError == true)
+        assertEquals(structured, outcome.structuredContent)
+        assertEquals("details", (outcome.content[0] as TextContent).text)
+        val binary = (outcome.content[1] as EmbeddedResource).resource as BlobResourceContents
+        assertTrue(bytes.contentEquals(Base64.getDecoder().decode(binary.blob)))
+        assertEquals("application/octet-stream", binary.mimeType)
+        val structuredOnly = AiToolCallResult(structuredContent = structured).toMcpResult()
+        assertEquals(structured.toString(), (structuredOnly.content.single() as TextContent).text)
+        assertFalse(structuredOnly.isError == true)
+    }
+
+    private fun provider(vararg tools: AiToolCallback): AiToolCallbackContributor =
+        object : AiToolCallbackContributor {
+            override val callbacks = tools.toList()
         }
 
     private fun io.modelcontextprotocol.kotlin.sdk.types.CallToolResult.textOutput() =
-        controlMcpJson.parseToJsonElement((content.single() as TextContent).text.orEmpty()).jsonObject
+        serverToolJson.parseToJsonElement((content.single() as TextContent).text.orEmpty()).jsonObject
 }

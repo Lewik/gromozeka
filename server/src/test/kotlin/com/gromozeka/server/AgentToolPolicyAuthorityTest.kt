@@ -16,7 +16,7 @@ import kotlin.test.*
 import kotlin.time.Clock
 
 class AgentToolPolicyAuthorityTest {
-    @Test fun `model control tools cannot create update or duplicate a broader agent`() = runBlocking {
+    @Test fun `model control tools cannot create update or duplicate a broader agent`() = runBlocking<Unit> {
         val agents = Mockito.mock(AgentDomainService::class.java)
         val contracts = Mockito.mock(AiToolContractRepository::class.java)
         Mockito.`when`(contracts.findAll()).thenReturn(emptyList())
@@ -32,8 +32,8 @@ class AgentToolPolicyAuthorityTest {
         val context = testControlMcpContext().copy(callingAgentId = caller.id)
         authority.requireWithinCaller(context, caller.toolAccess)
         authority.requireWithinCaller(testControlMcpContext(), unrestricted.toolAccess)
-        assertFailsWith<ControlMcpToolException> { authority.requireWithinCaller(context, unrestricted.toolAccess) }
-        val provider = ControlMcpAgentCatalogTools(agents, Mockito.mock(), Mockito.mock(), Mockito.mock(), Mockito.mock(), authority)
+        assertFailsWith<ServerToolException> { authority.requireWithinCaller(context, unrestricted.toolAccess) }
+        val provider = AgentCatalogToolContributor(testServerToolFactory(), agents, Mockito.mock(), Mockito.mock(), Mockito.mock(), Mockito.mock(), authority)
         for (name in listOf("grz_agent_create", "grz_agent_update", "grz_agent_duplicate")) {
             val input = buildJsonObject {
                 put("agentId", unrestricted.id.value)
@@ -41,7 +41,7 @@ class AgentToolPolicyAuthorityTest {
                 put("name", "Requested copy")
                 put("toolAccess", buildJsonObject { put("type", "deny_listed") })
             }
-            val response = provider.tools.single { it.definition.name == name }.invokeStructured(context, input)
+            val response = provider.callbacks.single { it.definition.name == name }.invokeStructured(context, input)
             assertEquals("forbidden", response.getValue("error").jsonObject.getValue("code").jsonPrimitive.content, name)
         }
     }
