@@ -30,6 +30,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import klog.KLoggers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 
 internal const val MCP_MEMORY_HELP_TOOL_NAME = "memory_help"
@@ -37,6 +38,9 @@ internal const val MCP_MEMORY_HELP_TOOL_NAME = "memory_help"
 @Service
 class GromozekaMcpServerFactory(
     private val providedTools: List<AiToolCallback>,
+    // Publication gate only: the legacy memory implementation is being replaced independently.
+    @Value("\${gromozeka.mcp.memory-tools-enabled:false}")
+    private val memoryToolsEnabled: Boolean = false,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -71,16 +75,17 @@ class GromozekaMcpServerFactory(
 
         val exposedProvidedTools = providedTools
             .filter { toolExposure.exposes(it.definition.name) }
+            .filter { memoryToolsEnabled || it.definition.name !in GromozekaMcpToolExposure.MEMORY_TOOL_NAMES }
             .sortedBy { it.definition.name }
         exposedProvidedTools.forEach { callback -> server.addAiToolCallback(callback, namespace, userId) }
-        if (toolExposure.exposes(MCP_MEMORY_HELP_TOOL_NAME)) {
+        if (memoryToolsEnabled && toolExposure.exposes(MCP_MEMORY_HELP_TOOL_NAME)) {
             server.addMemoryHelpTool()
         }
 
         val hiddenToolNames = availableToolNames - server.tools.keys
         log.info {
             "Created Gromozeka MCP server with ${server.tools.size}/${availableToolNames.size} tools: " +
-                "mode=${toolExposure.description} exposed=${server.tools.keys.sorted()} hidden=${hiddenToolNames.sorted()}"
+                "memory_enabled=$memoryToolsEnabled mode=${toolExposure.description} exposed=${server.tools.keys.sorted()} hidden=${hiddenToolNames.sorted()}"
         }
         return server
     }
@@ -382,7 +387,7 @@ internal class GromozekaMcpToolExposure private constructor(
     }
 
     companion object {
-        val DEFAULT_TOOL_NAMES = setOf(
+        val MEMORY_TOOL_NAMES = setOf(
             MCP_MEMORY_HELP_TOOL_NAME,
             MEMORY_QUEUE_STATUS_TOOL_NAME,
             MEMORY_ENRICH_CONTEXT_TOOL_NAME,
@@ -406,8 +411,8 @@ internal class GromozekaMcpToolExposure private constructor(
             val normalized = value?.trim().orEmpty()
             if (normalized.isBlank()) {
                 return GromozekaMcpToolExposure(
-                    exposedToolNames = DEFAULT_TOOL_NAMES,
-                    description = "default:${DEFAULT_TOOL_NAMES.sorted().joinToString(",")}",
+                    exposedToolNames = MEMORY_TOOL_NAMES,
+                    description = "default:${MEMORY_TOOL_NAMES.sorted().joinToString(",")}",
                 )
             }
 

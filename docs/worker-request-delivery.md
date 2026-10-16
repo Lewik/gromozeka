@@ -57,7 +57,11 @@ and access, and final operation authorization/tool policy and approval still app
 Runtime execution and existing Control HTTP use the common schema/parser and context
 validation. `ToolInvocationContextResolver` prepares unbound authenticated invocations
 without executing tools; the all-category HTTP MCP catalog is a separate next stage.
-The personal-memory HTTP surface is not broadened by this change.
+Legacy memory tools, including `memory_help`, are not published through MCP by default while
+memory is being replaced. This publication gate is independent of global memory settings and
+cannot be bypassed by the MCP `all`/`*`/explicit tool allowlist. The old adapter can be explicitly
+opted into with `gromozeka.mcp.memory-tools-enabled=true`; ordinary native tools and Control
+MCP are unaffected. The replacement memory implementation is not changed by this gate.
 
 There is no `execution_target` compatibility alias. V74 invalidates the derived contract
 registry; it does not rewrite messages, cached tool calls or exact-revision access policies.

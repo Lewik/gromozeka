@@ -20,6 +20,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertContains
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -28,8 +29,8 @@ import kotlinx.serialization.json.buildJsonObject
 
 class GromozekaMcpServerFactoryMemoryHelpTest {
     @Test
-    fun `memory help is exposed by default and returns domain guide`() = withClearedMcpTools {
-        val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider.getTools())
+    fun `explicitly enabled memory help returns domain guide`() = withClearedMcpTools {
+        val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider.getTools(), memoryToolsEnabled = true)
             .create(MemoryNamespace.Global)
 
         assertTrue(server.tools.containsKey(MCP_MEMORY_HELP_TOOL_NAME))
@@ -64,11 +65,44 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
 
     @Test
     fun `memory help is available in explicit MCP tool allowlist`() = withMcpTools(MCP_MEMORY_HELP_TOOL_NAME) {
-        val server = GromozekaMcpServerFactory(EmptyToolProvider.getTools())
+        val server = GromozekaMcpServerFactory(EmptyToolProvider.getTools(), memoryToolsEnabled = true)
             .create(MemoryNamespace.Global)
 
         assertTrue(server.tools.containsKey(MCP_MEMORY_HELP_TOOL_NAME))
         assertFalse(server.tools.containsKey("memory_remember"))
+    }
+
+    @Test
+    fun `memory tools and help are absent by default without changing native callbacks`() = withMcpTools("") {
+        val native = DefaultMemoryToolProvider.getTools()
+        val server = GromozekaMcpServerFactory(native).create(MemoryNamespace.Global)
+        assertTrue(server.tools.isEmpty())
+        assertEquals(10, native.size)
+        assertTrue(native.all { it.available })
+    }
+
+    @Test
+    fun `all wildcard and explicit allowlists cannot bypass disabled memory publication`() {
+        for (configured in listOf("all", "*", GromozekaMcpToolExposure.MEMORY_TOOL_NAMES.joinToString(","))) {
+            withMcpTools(configured) {
+                val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider.getTools())
+                    .create(MemoryNamespace.Global)
+                assertTrue(server.tools.isEmpty(), configured)
+            }
+        }
+    }
+
+    @Test
+    fun `memory publication gate does not hide an unrelated MCP callback`() = withMcpTools("all") {
+        val ordinary = SimpleToolCallback("test_non_memory")
+        val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider.getTools() + ordinary)
+            .create(MemoryNamespace.Global)
+        assertEquals(setOf("test_non_memory"), server.tools.keys)
+        val result = runBlocking {
+            server.tools.getValue("test_non_memory").callForTest(
+                CallToolRequest(CallToolRequestParams(name = "test_non_memory", arguments = buildJsonObject {})))
+        }
+        assertFalse(result.isError == true)
     }
 
     private fun withClearedMcpTools(block: () -> Unit) {
