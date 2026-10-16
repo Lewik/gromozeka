@@ -88,7 +88,7 @@ interface GrzSendCommandInputTool : Tool<SendCommandInputRequest, Map<String, An
     override val requestType: Class<SendCommandInputRequest> get() = SendCommandInputRequest::class.java
     override val description: String get() = """
         Send UTF-8 text to a running command's stdin, optionally closing it with EOF.
-        The task ID selects its owning Worker and workspace mount; do not supply execution_target.
+        The task ID selects its owning Worker and workspace mount; do not supply a Worker or mount selector in _grz.
         Input is not shell code and is not executed by Gromozeka; the running program interprets it.
         Writes are serialized per task and flushed. Include newlines explicitly when required.
         Success means the bytes were written to the pipe, not that the program processed them.

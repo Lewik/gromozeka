@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -42,6 +45,7 @@ class WorkerRequestToolContributor(
             inputSchema = """{"type":"object","properties":{"request_id":{"type":"string"}},"required":["request_id"],"additionalProperties":false}""",
         )
         override val metadata = AiToolMetadata(
+            contextRequirements = AiToolContextRequirements(setOf(USER, PROJECT)),
             executionScope = AiToolExecutionScope.SERVER,
             loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
             visibleToMemoryPipeline = false,

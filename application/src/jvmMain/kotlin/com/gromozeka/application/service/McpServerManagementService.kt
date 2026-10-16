@@ -19,6 +19,7 @@ import com.gromozeka.domain.service.WorkerToolExecutionClient
 import com.gromozeka.domain.service.DeclarativeStateChangePublisher
 import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
+import com.gromozeka.domain.tool.AI_TOOL_INVOCATION_CONTEXT_FIELD
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
 import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -140,7 +141,7 @@ class McpServerManagementService(
                 name = toolName,
                 input = buildJsonObject {
                     put("type", "png")
-                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                    putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                         put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, server.config.workerId.value)
                     }
                 },

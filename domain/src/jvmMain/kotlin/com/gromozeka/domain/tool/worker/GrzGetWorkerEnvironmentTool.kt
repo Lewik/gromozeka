@@ -1,5 +1,8 @@
 package com.gromozeka.domain.tool.worker
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.service.MAX_WORKER_ENVIRONMENT_EXECUTABLE_REQUESTS
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -30,7 +33,7 @@ interface GrzGetWorkerEnvironmentTool : Tool<GetWorkerEnvironmentRequest, Map<St
         get() = "grz_get_worker_environment"
 
     override val metadata
-        get() = WorkerInspectionToolMetadata
+        get() = WorkerInspectionToolMetadata.withContextRequirements(PROJECT)
 
     override val description: String
         get() = """

@@ -142,6 +142,19 @@ class GromozekaStatelessMcpHttpTest {
         assertTrue(deniedResult.getValue("isError").jsonPrimitive.boolean)
         assertEquals(JsonPrimitive("forbidden"), deniedResult.getValue("structuredContent").jsonObject.getValue("error").jsonObject["code"])
         assertEquals(HttpStatusCode.Unauthorized, rpc("tools/call", arguments, null).status)
+        assertFalse("_grz" in definition.getValue("inputSchema").jsonObject.getValue("properties").jsonObject)
+        for (injected in listOf(
+            buildJsonObject { put("_grz", buildJsonObject { put("user_id", owner.id.value) }) },
+            buildJsonObject { put("_grz", buildJsonObject { put("conversation_id", "unneeded") }) },
+            buildJsonObject { put("execution_target", JsonObject(emptyMap())) },
+        )) {
+            val response = rpc("tools/call", buildJsonObject {
+                put("name", callback.definition.name); put("arguments", injected)
+            })
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(serverToolJson.parseToJsonElement(response.bodyAsText()).jsonObject
+                .getValue("result").jsonObject.getValue("isError").jsonPrimitive.boolean)
+        }
         assertEquals(1, executions)
     }
 

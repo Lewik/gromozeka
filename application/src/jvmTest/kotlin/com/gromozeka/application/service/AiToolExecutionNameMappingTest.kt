@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.tool.AI_TOOL_INVOCATION_CONTEXT_FIELD
+import com.gromozeka.domain.tool.parseInvocationInput
+
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -13,7 +16,7 @@ class AiToolExecutionNameMappingTest {
     fun `execution alias translation changes only the tool name`() {
         val input = buildJsonObject {
             put("query", "original body")
-            putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+            putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                 put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-a")
             }
         }
@@ -33,7 +36,8 @@ class AiToolExecutionNameMappingTest {
         assertEquals(input, translated.call.input)
         assertEquals(
             buildJsonObject { put("query", "original body") },
-            translated.call.input.withoutExecutionTarget(),
+            com.gromozeka.domain.tool.AiToolMetadata(executionScope = com.gromozeka.domain.tool.AiToolExecutionScope.WORKER)
+                .parseInvocationInput(translated.call.input).arguments,
         )
     }
 

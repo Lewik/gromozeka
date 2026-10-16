@@ -70,6 +70,10 @@ fun AiToolDescriptor.contractFingerprint(): String =
             put("visible_to_memory_pipeline", metadata.visibleToMemoryPipeline)
             put("log_input", metadata.logInput)
             put("access_policy", metadata.accessPolicy?.name)
+            putJsonObject("context_requirements") {
+                putJsonArray("required") { metadata.contextRequirements.required.map { it.name }.sorted().forEach { add(JsonPrimitive(it)) } }
+                putJsonArray("optional") { metadata.contextRequirements.optional.map { it.name }.sorted().forEach { add(JsonPrimitive(it)) } }
+            }
         }
     }.toString().sha256()
 

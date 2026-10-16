@@ -29,9 +29,43 @@ uses the common snapshot journal with its Keystore/atomic-file adapter and an
 [explicit foreground-service lifecycle](android-worker-gateway.md).
 There is no new Worker session domain or desired-state reconciler.
 
+## Tool invocation context
+
+Tool declarations separate execution scope, context data requirements and access policy.
+`AiToolMetadata.contextRequirements` declares mandatory and conditionally used context;
+conditional business validation remains in the operation. A Server tool does not implicitly
+require a Conversation, and a Conversation never supplies an implicit filesystem mount.
+
+The common schema builder exposes a flat reserved `_grz` object only for relevant selectors
+not already bound by the entry point. Examples for an unbound authenticated caller:
+
+- Rename: `{"display_name":"New title","_grz":{"conversation_id":"…"}}`.
+  Runtime-bound rename needs only `display_name`.
+- Read file: `{"file_path":"README.md","_grz":{"workspace_mount_id":"…"}}`.
+  This is also required inside a Conversation unless a mount is explicitly bound.
+- Global Control catalog: `{}`. Its authenticated-user and Server-owner gates do not
+  imply Conversation/project/Worker selectors.
+
+`_grz` is stripped before business execution. Business targets such as pin-tools'
+`conversation_id` remain outside it. User identity, memory namespace, thread, filesystem
+root and tool-call identity cannot be supplied in `_grz`. A selected Conversation derives
+its project/current thread; a selected mount derives its project/Worker/root. Matching
+bound selectors may be echoed, but a binding cannot be replaced. Parsing alone never
+promotes a selector to trusted context: Server resolution checks resource consistency
+and access, and final operation authorization/tool policy and approval still apply.
+
+Runtime execution and existing Control HTTP use the common schema/parser and context
+validation. `ToolInvocationContextResolver` prepares unbound authenticated invocations
+without executing tools; the all-category HTTP MCP catalog is a separate next stage.
+The personal-memory HTTP surface is not broadened by this change.
+
+There is no `execution_target` compatibility alias. V74 invalidates the derived contract
+registry; it does not rewrite messages, cached tool calls or exact-revision access policies.
+Tools and exact-revision selections must be reinitialized after the coordinated update.
+
 ## Timing and cancellation
 
-Worker and Workspace tool `execution_target` accepts these optional integer fields:
+Worker and Workspace tool `_grz` accepts these optional integer fields:
 
 | Field | Meaning | Default | Maximum |
 | --- | --- | --- | --- |

@@ -112,6 +112,7 @@ data class AiToolMetadata(
     val logInput: Boolean = true,
     /** Additional identity gate declared by the tool; resource authorization remains in its operation. */
     val accessPolicy: AiToolAccessPolicy? = null,
+    val contextRequirements: AiToolContextRequirements = AiToolContextRequirements(),
 )
 
 @Serializable

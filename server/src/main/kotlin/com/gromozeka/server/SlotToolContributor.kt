@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.application.service.SlotApplicationService
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.service.UserDirectoryService
@@ -62,7 +65,12 @@ class SlotToolContributor(private val slots: SlotApplicationService, private val
             override val definition = AiToolDefinition(name, description, buildJsonObject {
                 put("type", "object"); put("properties", props); put("required", JsonArray(required.map(::JsonPrimitive))); put("additionalProperties", false)
             }.toString())
-            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER,
+            override val metadata = AiToolMetadata(
+                contextRequirements = AiToolContextRequirements(
+                    required = setOf(USER, CONVERSATION) + if (name == "grz_slot_acquire") setOf(AGENT, TOOL_CALL_ID) else emptySet(),
+                    optional = if (name == "grz_slot_acquire") setOf(THREAD) else emptySet(),
+                ),
+                executionScope = AiToolExecutionScope.SERVER,
                 loadingPolicy = AiToolLoadingPolicy.ON_DEMAND, visibleToMemoryPipeline = false, logInput = false)
             override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
                 val input = json.parseToJsonElement(toolInput).jsonObject

@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.service.ConversationDomainService
@@ -36,6 +39,7 @@ internal class ConversationToolContributor(
             inputSchema = RENAME_CONVERSATION_SCHEMA,
         )
         override val metadata = AiToolMetadata(
+            contextRequirements = AiToolContextRequirements(setOf(USER, CONVERSATION)),
             executionScope = AiToolExecutionScope.SERVER,
             loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
             visibleToMemoryPipeline = false,

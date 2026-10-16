@@ -1,6 +1,8 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.tool.*
+import kotlinx.coroutines.CancellationException
 import com.gromozeka.domain.tool.AiToolCallResult
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -46,12 +48,19 @@ internal class GromozekaControlMcpServerFactory(
                 it.metadata.executionScope == AiToolExecutionScope.SERVER }
             .sortedBy { it.definition.name }
             .forEach { callback ->
-                server.addTool(callback.definition.toMcpTool()) { request ->
+                server.addTool(AiToolDescriptor(callback.definition, callback.metadata)
+                    .withInvocationContext(AiToolContextBindings.from(context)).definition.toMcpTool()) { request ->
                     withContext(Dispatchers.IO) {
-                        callback.callResult(
-                            (request.arguments ?: JsonObject(emptyMap())).toString(),
-                            context,
-                        ).toMcpResult()
+                        try {
+                            val input = callback.metadata.parseInvocationInput(request.arguments ?: JsonObject(emptyMap()), context)
+                            input.requireResolvedSelectors(context)
+                            callback.metadata.requireInvocationContext(context)
+                            callback.callResult(input.arguments.toString(), context).toMcpResult()
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            AiToolCallResult(content = listOf(AiToolResult.Text("Invalid tool invocation context or operation failed")), isError = true).toMcpResult()
+                        }
                     }
                 }
             }

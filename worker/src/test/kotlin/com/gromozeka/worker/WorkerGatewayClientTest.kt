@@ -1,6 +1,7 @@
 package com.gromozeka.worker
 
-import com.gromozeka.application.service.AI_TOOL_EXECUTION_TARGET_FIELD
+import com.gromozeka.domain.tool.AI_TOOL_INVOCATION_CONTEXT_FIELD
+
 import com.gromozeka.application.service.AI_TOOL_EXECUTION_WORKER_ID_FIELD
 import com.gromozeka.application.service.AutoApproveToolApprovalService
 import com.gromozeka.application.service.ParallelToolExecutor
@@ -77,7 +78,7 @@ class WorkerGatewayClientTest {
     }
 
     @Test
-    fun `gateway executes tool only on exact worker and strips routing metadata`() = runBlocking {
+    fun `gateway executes tool only on exact worker and strips routing metadata`() = runBlocking<Unit> {
         var receivedInput: String? = null
         var receivedContext: ToolExecutionContext? = null
         val tool = object : AiToolCallback {
@@ -113,12 +114,12 @@ class WorkerGatewayClientTest {
         )
         assertEquals("worker-result", payload.results.single().result.single().textContent())
         assertEquals(true, payload.returnDirect)
-        assertFalse(receivedInput.orEmpty().contains(AI_TOOL_EXECUTION_TARGET_FIELD))
+        assertFalse(receivedInput.orEmpty().contains(AI_TOOL_INVOCATION_CONTEXT_FIELD))
         assertEquals("context-value", receivedContext?.getString("context-key"))
     }
 
     @Test
-    fun `gateway refuses tool request targeting another worker`() = runBlocking {
+    fun `gateway refuses tool request targeting another worker`() = runBlocking<Unit> {
         val handler = operationHandler(
             object : AiToolCallback {
                 override val definition = AiToolDefinition(
@@ -146,7 +147,7 @@ class WorkerGatewayClientTest {
     }
 
     @Test
-    fun `gateway does not convert request cancellation into a tool failure`() = runBlocking {
+    fun `gateway does not convert request cancellation into a tool failure`() = runBlocking<Unit> {
         val handler = operationHandler(
             object : AiToolCallback {
                 override val definition = AiToolDefinition(
@@ -210,7 +211,7 @@ class WorkerGatewayClientTest {
                         name = toolName,
                         input = buildJsonObject {
                             put("path", "README.md")
-                            putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                            putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                                 put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, targetWorkerId.value)
                             }
                         },

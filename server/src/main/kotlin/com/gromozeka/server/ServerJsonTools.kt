@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
@@ -86,6 +89,7 @@ internal class ServerJsonToolFactory(private val users: UserDirectoryService) {
             ),
         )
         override val metadata = AiToolMetadata(
+            contextRequirements = AiToolContextRequirements(setOf(USER)),
             executionScope = AiToolExecutionScope.SERVER,
             visibleToMemoryPipeline = false,
             logInput = false,

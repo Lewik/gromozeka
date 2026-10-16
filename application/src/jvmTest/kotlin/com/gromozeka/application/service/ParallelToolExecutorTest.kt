@@ -1,5 +1,9 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.tool.*
+import com.gromozeka.domain.tool.AiToolContextField.*
+import kotlinx.serialization.json.Json
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
@@ -259,6 +263,45 @@ class ParallelToolExecutorTest {
         assertTrue(startedConcurrently)
         assertEquals(calls.map { it.id }, result.results.map { it.toolUseId })
         assertTrue(result.returnDirect)
+    }
+
+    @Test
+    fun `context validation precedes approval and callback and cannot be filled from arguments`() = runBlocking<Unit> {
+        var calls = 0
+        var approvals = 0
+        val tool = object : AiToolCallback {
+            override val definition = AiToolDefinition("bound", "Bound tool", "{}")
+            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER)
+                .withContextRequirements(USER, CONVERSATION, TOOL_CALL_ID)
+            override fun call(toolInput: String, context: ToolExecutionContext?): String {
+                calls++
+                assertEquals("call-bound", context?.getString("toolCallId"))
+                assertEquals("user", context?.getString(TOOL_CONTEXT_USER_ID))
+                assertEquals("{}", toolInput)
+                return "ok"
+            }
+        }
+        val executor = ParallelToolExecutor(object : AiToolProvider {
+            override fun getTools() = listOf(tool)
+        }, object : ToolApprovalService {
+            override suspend fun approve(toolCalls: List<Conversation.Message.ContentItem.ToolCall>): ApprovalResult {
+                approvals++
+                return ApprovalResult.Approved
+            }
+        })
+        val bound = ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to "user", TOOL_CONTEXT_CONVERSATION_ID to "c"))
+        suspend fun execute(input: String, context: ToolExecutionContext = bound) = executor.executeParallel(
+            listOf(toolCall("bound").let { it.copy(call = it.call.copy(input = Json.parseToJsonElement(input))) }),
+            context, null, server, ConversationRuntimeTaskTarget.Server,
+        )
+        for (input in listOf("""{"_grz":{"conversation_id":"other"}}""", """{"_grz":{"user_id":"owner"}}""", """{"_grz":{"toolCallId":"spoof"}}""", """{"execution_target":{}}""")) {
+            assertFailsWith<IllegalArgumentException> { execute(input) }
+        }
+        assertFailsWith<IllegalArgumentException> { execute("{}", ToolExecutionContext()) }
+        assertFailsWith<IllegalArgumentException> { execute("""{"_grz":{"conversation_id":"c"}}""", ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to "user"))) }
+        assertEquals(0, approvals); assertEquals(0, calls)
+        assertFalse(execute("""{"_grz":{"conversation_id":"c"}}""").results.single().isError)
+        assertEquals(1, approvals); assertEquals(1, calls)
     }
 
     private fun executor(vararg tools: AiToolCallback): ParallelToolExecutor =

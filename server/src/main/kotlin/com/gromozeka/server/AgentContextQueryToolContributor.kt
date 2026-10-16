@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.application.service.AgentContextQueryService
 import com.gromozeka.application.service.ContextSnapshotUnavailableException
 import com.gromozeka.domain.model.AGENT_CONTEXT_QUERY_TOOL_NAME
@@ -21,7 +24,9 @@ class AgentContextQueryToolContributor(private val queries: ObjectProvider<Agent
             "Ask one tool-free, isolated question using an eligible existing agent session's available context and its selected model. Does not start its turn, send messages or create an obligation. The snapshot pins a complete history prefix; runtime observations are not globally atomic. Answers may say information is missing. Missing snapshot data, unsupported backends (including Copilot), and provider failures are operational errors, without fallback. target_agent_id is required if the conversation has several agents. No cache hit is guaranteed.",
             """{"type":"object","properties":{"target_conversation_id":{"type":"string","minLength":1},"target_agent_id":{"type":["string","null"],"minLength":1},"question":{"type":"string","minLength":1,"maxLength":32000}},"required":["target_conversation_id","question"],"additionalProperties":false}""",
         )
-        override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER,
+        override val metadata = AiToolMetadata(
+            contextRequirements = AiToolContextRequirements(setOf(USER, CONVERSATION, THREAD, AGENT)),
+            executionScope = AiToolExecutionScope.SERVER,
             loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE, visibleToMemoryPipeline = false, logInput = false)
         override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
             val input = Json.parseToJsonElement(toolInput).jsonObject

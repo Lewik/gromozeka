@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
@@ -413,7 +416,7 @@ class SearchToolsToolCallback(
         source = "gromozeka",
     )
 
-    override val metadata = PreloadedServerToolMetadata
+    override val metadata = PreloadedServerToolMetadata.withContextRequirements(PROJECT, CONVERSATION, AGENT)
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = json.decodeFromString<Input>(toolInput)

@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillPackage
@@ -89,7 +92,7 @@ class ActivateAgentSkillToolCallback(
 
     override val definition: AiToolDefinition = activateAgentSkillDefinition()
 
-    override val metadata = PreloadedServerToolMetadata
+    override val metadata = PreloadedServerToolMetadata.withContextRequirements(PROJECT, AGENT)
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = json.decodeFromString<Input>(toolInput)
@@ -155,7 +158,7 @@ class ReadAgentSkillResourceToolCallback(
 
     override val definition: AiToolDefinition = readAgentSkillResourceDefinition()
 
-    override val metadata = PreloadedServerToolMetadata
+    override val metadata = PreloadedServerToolMetadata.withContextRequirements(PROJECT, AGENT)
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = json.decodeFromString<Input>(toolInput)

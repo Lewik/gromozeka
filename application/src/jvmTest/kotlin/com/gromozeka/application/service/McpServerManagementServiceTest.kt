@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.tool.AI_TOOL_INVOCATION_CONTEXT_FIELD
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.mcp.McpServer
@@ -63,7 +65,7 @@ class McpServerManagementServiceTest {
             assertEquals(
                 fixture.identity.workerId.value,
                 toolCall.call.input.jsonObject
-                    .getValue(AI_TOOL_EXECUTION_TARGET_FIELD)
+                    .getValue(AI_TOOL_INVOCATION_CONTEXT_FIELD)
                     .jsonObject
                     .getValue(AI_TOOL_EXECUTION_WORKER_ID_FIELD)
                     .jsonPrimitive

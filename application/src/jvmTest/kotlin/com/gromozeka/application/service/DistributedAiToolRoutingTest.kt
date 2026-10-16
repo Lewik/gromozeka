@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.tool.AI_TOOL_INVOCATION_CONTEXT_FIELD
+import com.gromozeka.domain.tool.parseInvocationInput
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
@@ -220,7 +223,7 @@ class DistributedAiToolRoutingTest {
             call = call.call.copy(
                 input = JsonObject(
                     call.call.input.jsonObject + (
-                        AI_TOOL_EXECUTION_TARGET_FIELD to buildJsonObject {
+                        AI_TOOL_INVOCATION_CONTEXT_FIELD to buildJsonObject {
                             put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-a")
                         }
                     )
@@ -240,7 +243,7 @@ class DistributedAiToolRoutingTest {
             accepted.executionTargetsByCallId.getValue(call.id.value),
         )
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
-        assertTrue(rejected.errors.single().message.contains("must not declare execution_target"))
+        assertTrue(rejected.errors.single().message.contains("Unsupported _grz field"))
     }
 
     @Test
@@ -260,7 +263,7 @@ class DistributedAiToolRoutingTest {
             call = Conversation.Message.ContentItem.ToolCall.Data(
                 name = workerEnvironmentTool.definition.name,
                 input = buildJsonObject {
-                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                    putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                         put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
                         put("delivery_ttl_seconds", 600)
                         put("execution_timeout_seconds", 15)
@@ -292,7 +295,7 @@ class DistributedAiToolRoutingTest {
             catalog.tools.single().definition.inputSchema
         ).jsonObject
         val targetSchema = schema.getValue("properties").jsonObject
-            .getValue(AI_TOOL_EXECUTION_TARGET_FIELD).jsonObject
+            .getValue(AI_TOOL_INVOCATION_CONTEXT_FIELD).jsonObject
         assertEquals(
             setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds"),
             targetSchema.getValue("properties").jsonObject.keys,
@@ -309,8 +312,9 @@ class DistributedAiToolRoutingTest {
 
     @Test
     fun `request timing policy rejects invalid values and supports maximum TTL without explicit wait`() {
-        val valid = Json.parseToJsonElement("""{"execution_target":{"worker_id":"worker-a","delivery_ttl_seconds":604800}}""")
-            .parseExecutionTarget().requestPolicy!!
+        val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
+        val valid = metadata.parseInvocationInput(Json.parseToJsonElement("""{"_grz":{"worker_id":"worker-a","delivery_ttl_seconds":604800}}"""))
+            .executionTarget!!.requestPolicy!!
         assertEquals(604_800_000L, valid.deliveryTtlMillis)
         assertEquals(604_800_000L, valid.waitTimeoutMillis)
         for ((field, value) in listOf(
@@ -319,7 +323,7 @@ class DistributedAiToolRoutingTest {
             "wait_timeout_seconds" to "\"5\"", "wait_timeout_seconds" to "9223372036854775807",
         )) {
             kotlin.test.assertFailsWith<IllegalArgumentException>("$field=$value") {
-                Json.parseToJsonElement("""{"execution_target":{"worker_id":"worker-a","$field":$value}}""").parseExecutionTarget()
+                metadata.parseInvocationInput(Json.parseToJsonElement("""{"_grz":{"worker_id":"worker-a","$field":$value}}"""))
             }
         }
     }
@@ -351,7 +355,7 @@ class DistributedAiToolRoutingTest {
             call = Conversation.Message.ContentItem.ToolCall.Data(
                 name = workerEnvironmentTool.definition.name,
                 input = buildJsonObject {
-                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                    putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                         put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, workerId)
                     }
                 },
@@ -461,7 +465,7 @@ class DistributedAiToolRoutingTest {
             call = Conversation.Message.ContentItem.ToolCall.Data(
                 name = workerBEntry.modelName,
                 input = buildJsonObject {
-                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                    putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                         put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
                     }
                 },
@@ -521,7 +525,7 @@ class DistributedAiToolRoutingTest {
         val schema = Json.parseToJsonElement(snapshot.tools.single().definition.inputSchema).jsonObject
         val targetSchema = schema["properties"]
             ?.jsonObject
-            ?.get(AI_TOOL_EXECUTION_TARGET_FIELD)
+            ?.get(AI_TOOL_INVOCATION_CONTEXT_FIELD)
             ?.jsonObject
             ?: error("Execution target schema is missing")
         assertEquals(
@@ -571,7 +575,7 @@ class DistributedAiToolRoutingTest {
                     call = Conversation.Message.ContentItem.ToolCall.Data(
                         name = workerEnvironmentTool.definition.name,
                         input = buildJsonObject {
-                            putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                            putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                                 put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
                             }
                         },
@@ -667,7 +671,7 @@ class DistributedAiToolRoutingTest {
         val schema = Json.parseToJsonElement(
             catalog.tools.single().definition.inputSchema
         ).jsonObject
-        assertFalse(AI_TOOL_EXECUTION_TARGET_FIELD in schema.getValue("properties").jsonObject)
+        assertFalse(AI_TOOL_INVOCATION_CONTEXT_FIELD in schema.getValue("properties").jsonObject)
     }
 
     @Test
@@ -691,7 +695,7 @@ class DistributedAiToolRoutingTest {
                     name = monitorCommandTool.definition.name,
                     input = JsonObject(
                         baseCall.call.input.jsonObject + (
-                            AI_TOOL_EXECUTION_TARGET_FIELD to buildJsonObject {
+                            AI_TOOL_INVOCATION_CONTEXT_FIELD to buildJsonObject {
                                 put(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD, mountB.id.value)
                             }
                         )
@@ -707,7 +711,7 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(result)
-        assertTrue(result.errors.single().message.contains("must not declare execution_target"))
+        assertTrue(result.errors.single().message.contains("Unsupported _grz field"))
     }
 
     @Test
@@ -924,7 +928,7 @@ class DistributedAiToolRoutingTest {
                 input = JsonObject(
                     mapOf(
                         "path" to JsonPrimitive("README.md"),
-                        AI_TOOL_EXECUTION_TARGET_FIELD to buildJsonObject {
+                        AI_TOOL_INVOCATION_CONTEXT_FIELD to buildJsonObject {
                             put(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD, mountId.value)
                         },
                     )

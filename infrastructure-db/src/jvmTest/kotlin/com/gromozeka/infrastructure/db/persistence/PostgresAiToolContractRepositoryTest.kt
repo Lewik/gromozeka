@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.tool.*
+import com.gromozeka.domain.tool.AiToolContextField.*
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolAnnotations
 import com.gromozeka.domain.tool.AiToolAccessPolicy
@@ -79,9 +81,12 @@ class PostgresAiToolContractRepositoryTest {
                 AiToolDefinition(command.name, command.description, "{}"),
                 command.metadata,
             )
-            val storedCommand = repository.resolveAll(
+            val unscopedCommand = repository.resolveAll(
                 listOf(commandDescriptor.copy(metadata = PreloadedWorkspaceToolMetadata))
             ).single()
+            val storedCommand = repository.resolveAll(listOf(commandDescriptor)).single()
+            assertNotEquals(unscopedCommand.fingerprint, storedCommand.fingerprint)
+            assertEquals(setOf(CONVERSATION), storedCommand.descriptor.metadata.contextRequirements.required)
             assertEquals(storedCommand, repository.resolveAll(listOf(commandDescriptor)).single())
 
             repositoryDataSource.connection.use { connection ->
@@ -110,6 +115,15 @@ class PostgresAiToolContractRepositoryTest {
 
     @Test
     fun `unified metadata migration clears derived contracts without rewriting unrelated text`() = runBlocking<Unit> {
+        verifyResetMigration("V73__reset_unified_tool_contracts.sql")
+    }
+
+    @Test
+    fun `context contract migration clears derived registry and restores exact context requirements`() = runBlocking<Unit> {
+        verifyResetMigration("V74__reset_tool_context_contracts.sql")
+    }
+
+    private suspend fun verifyResetMigration(migration: String) {
         assumeTrue(System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
         val schema = "ai_tool_contract_test_${UUID.randomUUID().toString().replace("-", "")}"
         val admin = dataSource()
@@ -131,7 +145,7 @@ class PostgresAiToolContractRepositoryTest {
                     it.executeUpdate()
                 }
             }
-            applyMigration(source, "V73__reset_unified_tool_contracts.sql")
+            applyMigration(source, migration)
             source.connection.use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeQuery("SELECT count(*) FROM ai_tool_contracts").use {
@@ -149,7 +163,7 @@ class PostgresAiToolContractRepositoryTest {
                         outputSchema = """{"type":"object"}""",
                         annotations = AiToolAnnotations(true, false, true, false),
                     ),
-                    metadata = original.metadata.copy(accessPolicy = AiToolAccessPolicy.SERVER_OWNER),
+                    metadata = original.metadata.copy(accessPolicy = AiToolAccessPolicy.SERVER_OWNER).withContextRequirements(USER, CONVERSATION),
                 )
             }
             val created = ExposedAiToolContractRepository(Json).resolveAll(listOf(declaration)).single()

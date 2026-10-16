@@ -77,7 +77,7 @@ class SlotObservationAdapter(
         require(worker.tools.any { it.definition.name == "grz_inspect_checkout" }) { "Worker does not support checkout inspection" }
         val call = Conversation.Message.ContentItem.ToolCall(Conversation.Message.ContentItem.ToolCall.Id(uuid7()),
             Conversation.Message.ContentItem.ToolCall.Data("grz_inspect_checkout", buildJsonObject {
-                put("execution_target", buildJsonObject { put("workspace_mount_id", slot.mountId.value) })
+                put(AI_TOOL_INVOCATION_CONTEXT_FIELD, buildJsonObject { put("workspace_mount_id", slot.mountId.value) })
             }))
         val context = mapOf(
             TOOL_CONTEXT_USER_ID to actor.id.value, TOOL_CONTEXT_PROJECT_ID to slot.projectId.value,

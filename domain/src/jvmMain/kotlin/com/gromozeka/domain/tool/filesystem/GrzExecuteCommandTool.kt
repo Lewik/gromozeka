@@ -1,5 +1,8 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.Tool
@@ -165,7 +168,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, List<AiToolResult>
         get() = GRZ_EXECUTE_COMMAND_TOOL_NAME
 
     override val metadata
-        get() = PreloadedWorkspaceToolMetadata
+        get() = PreloadedWorkspaceToolMetadata.withContextRequirements(CONVERSATION, optional = setOf(AGENT))
     
     override val description: String
         get() = """

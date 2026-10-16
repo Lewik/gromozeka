@@ -1,5 +1,8 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -17,7 +20,7 @@ data class SaveToolOutputRequest(
 
 interface GrzSaveToolOutputTool : Tool<SaveToolOutputRequest, Map<String, Any>> {
     override val name: String get() = "grz_save_tool_output"
-    override val metadata get() = PreloadedWorkspaceToolMetadata
+    override val metadata get() = PreloadedWorkspaceToolMetadata.withContextRequirements(CONVERSATION)
     override val requestType: Class<SaveToolOutputRequest> get() = SaveToolOutputRequest::class.java
     override val description: String get() = """
         Save a result artifact from this conversation into the selected workspace without copying its content through the model.

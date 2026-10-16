@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.application.service.VisualApplicationService
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
@@ -22,6 +25,7 @@ class VisualToolContributor(
     override val callbacks = listOf(object : AiToolCallback {
         override val definition = AiToolDefinition("grz_visual", DESCRIPTION, SCHEMA)
         override val metadata = AiToolMetadata(
+            contextRequirements = AiToolContextRequirements(setOf(USER), optional = setOf(CONVERSATION, AGENT)),
             executionScope = AiToolExecutionScope.SERVER,
             loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
             visibleToMemoryPipeline = false,

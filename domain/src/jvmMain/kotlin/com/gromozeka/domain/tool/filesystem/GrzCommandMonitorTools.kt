@@ -1,5 +1,8 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.MAX_COMMAND_MONITOR_WAIT_MILLIS
@@ -117,7 +120,7 @@ interface GrzListCommandsAndMonitorsTool : Tool<ListCommandsAndMonitorsRequest, 
         get() = GRZ_LIST_COMMANDS_AND_MONITORS_TOOL_NAME
 
     override val metadata
-        get() = PreloadedServerToolMetadata
+        get() = PreloadedServerToolMetadata.withContextRequirements(CONVERSATION)
 
     override val description: String
         get() = """

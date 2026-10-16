@@ -12,6 +12,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolContextBindings
+import com.gromozeka.domain.tool.AI_TOOL_INVOCATION_CONTEXT_FIELD
+import com.gromozeka.domain.tool.withInvocationContext
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import com.gromozeka.domain.tool.QualifiedToolName
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -22,21 +25,16 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.contractFingerprint
 import com.gromozeka.shared.utils.sha256
 import kotlin.time.Clock
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.springframework.stereotype.Service
 
-const val AI_TOOL_EXECUTION_TARGET_FIELD = "execution_target"
 const val AI_TOOL_EXECUTION_WORKER_ID_FIELD = "worker_id"
 const val AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD = "workspace_mount_id"
 
@@ -75,8 +73,6 @@ class DistributedAiToolCatalog(
     private val workerAccessService: WorkerAccessService,
     private val aiToolContractRepository: AiToolContractRepository,
 ) {
-    private val json = Json
-
     suspend fun serverContracts() = aiToolContractRepository.resolveAll(aiToolProvider.getTools()
         .filter { it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER }
         .map { AiToolDescriptor(it.definition, it.metadata).asModelContractDescriptor() })
@@ -273,112 +269,22 @@ class DistributedAiToolCatalog(
         copy(
             definition = definition.copy(
                 description = definition.description.withExecutionTargetDescription(metadata.executionScope),
-                inputSchema = definition.inputSchema.withExecutionTargetSchema(
-                    toolName = definition.name,
-                    scope = metadata.executionScope,
-                ),
             )
-        )
+        ).withInvocationContext(AiToolContextBindings.ConversationRuntime)
 
     private fun String.withExecutionTargetDescription(scope: AiToolExecutionScope): String {
         val targetDescription = when (scope) {
             AiToolExecutionScope.SERVER -> return this
             AiToolExecutionScope.WORKER ->
-                "Select an exact compatible worker from the current execution environment in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
+                "Select an exact compatible worker from the current execution environment in `$AI_TOOL_INVOCATION_CONTEXT_FIELD`."
             AiToolExecutionScope.WORKSPACE ->
-                "Select the exact filesystem mount in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
+                "Select the exact filesystem mount in `$AI_TOOL_INVOCATION_CONTEXT_FIELD`."
             AiToolExecutionScope.COMMAND_TASK_OWNER ->
                 "The command task ID routes this call to the worker and mount that own the task."
             AiToolExecutionScope.COMMAND_MONITOR_OWNER ->
                 "The command monitor ID routes this call to the worker and mount that own the monitor."
         }
         return "$this\n\n$targetDescription"
-    }
-
-    private fun String.withExecutionTargetSchema(
-        toolName: String,
-        scope: AiToolExecutionScope,
-    ): String {
-        val schema = json.parseToJsonElement(this).jsonObject
-        val properties = schema["properties"]?.jsonObject.orEmpty()
-        check(AI_TOOL_EXECUTION_TARGET_FIELD !in properties) {
-            "Tool '$toolName' already declares reserved field " +
-                "'$AI_TOOL_EXECUTION_TARGET_FIELD'"
-        }
-        if (
-            scope == AiToolExecutionScope.SERVER ||
-            scope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
-            scope == AiToolExecutionScope.COMMAND_MONITOR_OWNER
-        ) {
-            return schema.toString()
-        }
-        val required = schema["required"]?.jsonArray.orEmpty()
-            .map { it.jsonPrimitive.content }
-            .toMutableSet()
-            .apply { add(AI_TOOL_EXECUTION_TARGET_FIELD) }
-        val workspaceRequired = scope == AiToolExecutionScope.WORKSPACE
-
-        val targetSchema = buildJsonObject {
-            put("type", "object")
-            put(
-                "description",
-                if (workspaceRequired) {
-                    "Exact filesystem workspace mount for this call."
-                } else {
-                    "Exact worker for this call."
-                }
-            )
-            putJsonObject("properties") {
-                putJsonObject("delivery_ttl_seconds") {
-                    put("type", "integer")
-                    put("minimum", 1)
-                    put("maximum", 604800)
-                    put("description", "Time allowed before execution starts, including offline delivery. Default 30 seconds. Expired requests never start.")
-                }
-                putJsonObject("execution_timeout_seconds") {
-                    put("type", "integer")
-                    put("minimum", 1)
-                    put("maximum", 86400)
-                    put("description", "Execution limit after starting, independent of delivery TTL. Default 1800 seconds.")
-                }
-                putJsonObject("wait_timeout_seconds") {
-                    put("type", "integer")
-                    put("minimum", 1)
-                    put("maximum", 604800)
-                    put("description", "How long this call waits. Default delivery TTL plus execution timeout, capped at 7 days. Ending the wait does not cancel execution; use grz_worker_request_get or grz_worker_request_cancel with the returned request ID.")
-                }
-                if (workspaceRequired) {
-                    putJsonObject(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD) {
-                        put("type", "string")
-                        put(
-                            "description",
-                            "Exact workspace mount ID from the current execution environment."
-                        )
-                    }
-                } else {
-                    putJsonObject(AI_TOOL_EXECUTION_WORKER_ID_FIELD) {
-                        put("type", "string")
-                        put("description", "Exact worker ID from the current execution environment.")
-                    }
-                }
-            }
-            putJsonArray("required") {
-                if (workspaceRequired) {
-                    add(JsonPrimitive(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD))
-                } else {
-                    add(JsonPrimitive(AI_TOOL_EXECUTION_WORKER_ID_FIELD))
-                }
-            }
-            put("additionalProperties", false)
-        }
-        val rewritten = JsonObject(
-            schema + mapOf(
-                "properties" to JsonObject(properties + (AI_TOOL_EXECUTION_TARGET_FIELD to targetSchema)),
-                "required" to JsonArray(required.sorted().map(::JsonPrimitive)),
-                "additionalProperties" to JsonPrimitive(false),
-            )
-        )
-        return rewritten.toString()
     }
 
     private fun buildEnvironmentTopology(
@@ -489,7 +395,7 @@ class DistributedAiToolCatalog(
             append("Active tool routes: ")
             append(toolContracts)
             append("\n")
-            append("Worker-scoped and workspace-scoped tool calls must include `$AI_TOOL_EXECUTION_TARGET_FIELD`; ")
+            append("Worker-scoped and workspace-scoped tool calls must include `$AI_TOOL_INVOCATION_CONTEXT_FIELD`; ")
             append("command-task operations route by task_id. ")
             append("Use only worker IDs and workspace mount IDs shown by this environment. Offline workers can receive queued requests within delivery_ttl_seconds. ")
             append("If a required target is absent or ambiguous, explain that instead of guessing. Waiting can end before execution; query the returned request ID instead of resubmitting an action. ")
@@ -497,11 +403,7 @@ class DistributedAiToolCatalog(
             append("Independent tool calls may target different workers or workspace mounts in one assistant response and execute concurrently. ")
             append("Dependent tool calls must be issued in later assistant responses after observing prerequisite results. ")
             append("Failed or unavailable targets are never retried or reassigned automatically.\n")
-            append("Versioned tool names are immutable contracts. Use the exact exposed name; routing removes only the reserved execution_target field and preserves the original tool input.\n")
+            append("Versioned tool names are immutable contracts. Use the exact exposed name; routing removes only the reserved _grz field and preserves the original tool input.\n")
             append("</execution_environment>")
         }
 }
-
-private fun JsonObject?.orEmpty(): JsonObject = this ?: JsonObject(emptyMap())
-
-private fun JsonArray?.orEmpty(): JsonArray = this ?: buildJsonArray {}

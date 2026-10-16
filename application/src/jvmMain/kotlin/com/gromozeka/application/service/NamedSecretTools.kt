@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.NamedSecret
 import com.gromozeka.domain.model.RevealedSecretRuntimeContext
@@ -57,7 +60,7 @@ class PendingSecretRevealService {
 class ListNamedSecretsToolCallback(
     private val namedSecretService: NamedSecretApplicationService,
 ) : AiToolCallback {
-    override val metadata = PreloadedServerToolMetadata
+    override val metadata = PreloadedServerToolMetadata.withContextRequirements(USER)
     override val definition = AiToolDefinition(
         name = "grz_list_secrets",
         description = "List the current user's durable named secrets without revealing their values. Use returned secret:// references as exact tool argument values or directly inside grz_execute_command.command.",
@@ -91,7 +94,7 @@ class RevealNamedSecretToolCallback(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override val metadata = PreloadedServerToolMetadata
+    override val metadata = PreloadedServerToolMetadata.withContextRequirements(USER, CONVERSATION)
     override val definition = AiToolDefinition(
         name = "grz_reveal_secret",
         description = "Reveal one named secret to the model for the next model request only. Ask the user for explicit confirmation immediately before calling this tool. Never call it merely to pass a secret to another tool; use secret:// references for that.",

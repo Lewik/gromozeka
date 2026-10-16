@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -12,7 +15,7 @@ import org.springframework.stereotype.Component
 class MemoryListNamespacesToolCallback(
     private val memoryToolApplicationService: MemoryToolApplicationService,
 ) : AiToolCallback {
-    override val metadata = ServerToolMetadata
+    override val metadata = ServerToolMetadata.withContextRequirements(MEMORY_NAMESPACE)
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_LIST_NAMESPACES_TOOL_NAME,
         description = "Inspect the current authorized memory bank and its item counts. The runtime selects this namespace from authenticated user or project context; tool arguments cannot override it.",

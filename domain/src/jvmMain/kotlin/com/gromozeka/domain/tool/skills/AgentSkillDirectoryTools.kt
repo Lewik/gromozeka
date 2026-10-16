@@ -1,5 +1,8 @@
 package com.gromozeka.domain.tool.skills
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.tool.PreloadedWorkerToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -46,7 +49,7 @@ interface ExportAgentSkillToDirectoryTool : Tool<ExportAgentSkillToDirectoryRequ
         get() = EXPORT_AGENT_SKILL_TO_DIRECTORY_TOOL_NAME
 
     override val metadata
-        get() = PreloadedWorkerToolMetadata
+        get() = PreloadedWorkerToolMetadata.withContextRequirements(PROJECT, AGENT)
 
     override val description: String
         get() = "Export an assigned Skill package to a new directory on the selected Worker."
@@ -65,7 +68,7 @@ interface ImportAgentSkillFromDirectoryTool : Tool<ImportAgentSkillFromDirectory
         get() = IMPORT_AGENT_SKILL_FROM_DIRECTORY_TOOL_NAME
 
     override val metadata
-        get() = PreloadedWorkerToolMetadata
+        get() = PreloadedWorkerToolMetadata.withContextRequirements(USER, PROJECT, AGENT)
 
     override val description: String
         get() = "Create or replace a complete Skill package from a Worker directory. " +

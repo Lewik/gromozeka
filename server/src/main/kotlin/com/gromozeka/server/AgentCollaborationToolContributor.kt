@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.application.service.AgentCollaborationService
 import com.gromozeka.domain.tool.*
 import kotlinx.coroutines.runBlocking
@@ -56,7 +59,10 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
             override val definition = AiToolDefinition(name, description, buildJsonObject {
                 put("type", "object"); put("properties", props); put("required", JsonArray(required.map(::JsonPrimitive))); put("additionalProperties", false)
             }.toString())
-            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER,
+            override val metadata = AiToolMetadata(
+                contextRequirements = AiToolContextRequirements(setOf(USER, CONVERSATION, THREAD, AGENT) +
+                    if (name in setOf("grz_agent_request", "grz_agent_message")) setOf(TOOL_CALL_ID) else emptySet()),
+                executionScope = AiToolExecutionScope.SERVER,
                 loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE, visibleToMemoryPipeline = false, logInput = false)
             override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
                 val input = Json.parseToJsonElement(toolInput).jsonObject

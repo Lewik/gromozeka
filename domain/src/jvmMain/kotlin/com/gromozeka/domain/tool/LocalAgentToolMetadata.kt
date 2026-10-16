@@ -20,12 +20,14 @@ val PreloadedWorkerToolMetadata = AiToolMetadata(
 val CommandTaskOwnerToolMetadata = AiToolMetadata(
     requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
     executionScope = AiToolExecutionScope.COMMAND_TASK_OWNER,
+    contextRequirements = AiToolContextRequirements(setOf(AiToolContextField.CONVERSATION)),
     loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
 )
 
 val CommandMonitorOwnerToolMetadata = AiToolMetadata(
     requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
     executionScope = AiToolExecutionScope.COMMAND_MONITOR_OWNER,
+    contextRequirements = AiToolContextRequirements(setOf(AiToolContextField.CONVERSATION)),
     loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
 )
 
@@ -40,6 +42,7 @@ val PreloadedServerToolMetadata = ServerToolMetadata.copy(
 val WorkerManagementToolMetadata = AiToolMetadata(
     requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
     executionScope = AiToolExecutionScope.WORKER,
+    contextRequirements = AiToolContextRequirements(setOf(AiToolContextField.PROJECT)),
 )
 
 val WorkerInspectionToolMetadata = AiToolMetadata(

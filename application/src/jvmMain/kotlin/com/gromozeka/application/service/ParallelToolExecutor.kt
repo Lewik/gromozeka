@@ -8,6 +8,8 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.parseInvocationInput
+import com.gromozeka.domain.tool.requireInvocationContext
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolCancellationSignal
@@ -18,7 +20,6 @@ import klog.KLoggers
 import kotlinx.coroutines.*
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlin.time.Clock
-import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Service
 import kotlin.coroutines.coroutineContext
 import java.util.Base64
@@ -70,17 +71,18 @@ class ParallelToolExecutor(
         toolCalls.forEach { toolCall ->
             val callback = callbackMap[toolCall.call.name]
                 ?: error("Runtime executor does not provide requested tool: ${toolCall.call.name}")
+            val invocation = callback.metadata.parseInvocationInput(toolCall.call.input, toolContext)
+            invocation.requireResolvedSelectors(toolContext)
+            // Runtime-supplied call identity is never accepted from _grz.
+            callback.metadata.requireInvocationContext(toolContext.withValue("toolCallId", toolCall.id.value))
             when (callback.metadata.executionScope) {
                 AiToolExecutionScope.SERVER -> {
                     require(expectedTarget == ConversationRuntimeTaskTarget.Server) {
                         "Conversation runtime tool ${toolCall.call.name} cannot execute on Worker"
                     }
-                    require(AI_TOOL_EXECUTION_TARGET_FIELD !in toolCall.call.input.jsonObject) {
-                        "Conversation runtime tool ${toolCall.call.name} must not declare execution_target"
-                    }
                 }
                 AiToolExecutionScope.WORKER -> {
-                    val requestedTarget = toolCall.call.input.parseExecutionTarget()
+                    val requestedTarget = checkNotNull(invocation.executionTarget)
                     val workerTarget = expectedTarget as? ConversationRuntimeTaskTarget.Worker
                         ?: error("Worker tool ${toolCall.call.name} cannot execute on Server")
                     require(requestedTarget.workerId == workerTarget.workerId) {
@@ -89,7 +91,7 @@ class ParallelToolExecutor(
                     }
                 }
                 AiToolExecutionScope.WORKSPACE -> {
-                    val requestedTarget = toolCall.call.input.parseExecutionTarget()
+                    val requestedTarget = checkNotNull(invocation.executionTarget)
                     val workerTarget = expectedTarget as? ConversationRuntimeTaskTarget.Worker
                         ?: error("Workspace tool ${toolCall.call.name} cannot execute on Server")
                     require(requestedTarget.workspaceMountId == workerTarget.workspaceMountId) {
@@ -205,7 +207,7 @@ class ParallelToolExecutor(
     ): ContentItem.ToolResult {
         val toolId = toolCall.id
         val toolName = toolCall.call.name
-        val arguments = toolCall.call.input.withoutExecutionTarget().toString()
+        val arguments = callbackMap.getValue(toolName).metadata.parseInvocationInput(toolCall.call.input, toolContext).arguments.toString()
 
         log.debug { "Executing tool: $toolName (${toolCall.id.value})" }
 

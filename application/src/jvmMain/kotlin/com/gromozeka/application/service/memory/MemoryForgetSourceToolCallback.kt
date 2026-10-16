@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ServerToolMetadata
@@ -13,7 +16,7 @@ import org.springframework.stereotype.Component
 class MemoryForgetSourceToolCallback(
     private val memoryOperations: MemoryAsyncOperationApplicationService,
 ) : AiToolCallback {
-    override val metadata = ServerToolMetadata
+    override val metadata = ServerToolMetadata.withContextRequirements(MEMORY_NAMESPACE, optional = setOf(CONVERSATION))
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Serializable

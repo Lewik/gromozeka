@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -12,7 +15,7 @@ import org.springframework.stereotype.Component
 class MemoryEmbeddingStatusToolCallback(
     private val memoryToolApplicationService: MemoryToolApplicationService,
 ) : AiToolCallback {
-    override val metadata = ServerToolMetadata
+    override val metadata = ServerToolMetadata.withContextRequirements(MEMORY_NAMESPACE, optional = setOf(CONVERSATION))
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_EMBEDDING_STATUS_TOOL_NAME,
         description = "Report vector embedding coverage for the current authorized memory bank under the configured embedding model. Counts embeddable memory items, expected embedding rows, existing rows, and missing rows. This does not modify memory.",

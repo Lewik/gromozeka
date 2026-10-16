@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.application.service.ConversationAgentAccessChangedException
 import com.gromozeka.application.service.ConversationAgentAccessService
 import com.gromozeka.application.service.ConversationPinApplicationService
@@ -21,7 +24,10 @@ class ConversationPinToolContributor(
     override val callbacks: List<AiToolCallback> = Operation.entries.map { operation ->
         object : AiToolCallback {
             override val definition = AiToolDefinition(operation.toolName, description(operation), ConversationPinToolSupport.schema(operation))
-            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER,
+            override val metadata = AiToolMetadata(
+                contextRequirements = AiToolContextRequirements(setOf(USER, CONVERSATION, THREAD, AGENT) +
+                    if (operation == Operation.CREATE) setOf(TOOL_CALL_ID) else emptySet()),
+                executionScope = AiToolExecutionScope.SERVER,
                 loadingPolicy = AiToolLoadingPolicy.ON_DEMAND, logInput = false, visibleToMemoryPipeline = false)
             override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
                 context?.cancellationSignal?.throwIfCancellationRequested()

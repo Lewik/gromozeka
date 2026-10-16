@@ -14,12 +14,14 @@ import com.gromozeka.domain.service.WorkerAccessDeniedException
 import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolExecutionTarget
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
+import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
+import com.gromozeka.domain.tool.parseInvocationInput
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
 
 sealed interface ConversationRuntimeToolRoutingResult {
@@ -68,11 +70,21 @@ class ConversationRuntimeToolRoutingService(
                 return@forEach
             }
 
+            try {
+                entry.descriptor.metadata.parseInvocationInput(toolCall.call.input, ToolExecutionContext(mapOf(
+                    TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
+                    TOOL_CONTEXT_PROJECT_ID to project.id.value,
+                    TOOL_CONTEXT_THREAD_ID to conversation.currentThread.value,
+                )))
+            } catch (error: IllegalArgumentException) {
+                errors += toolCall.routingError(error.message ?: "Invalid invocation context")
+                return@forEach
+            } catch (error: IllegalStateException) {
+                errors += toolCall.routingError(error.message ?: "Invalid invocation context")
+                return@forEach
+            }
             val target = when (entry.descriptor.metadata.executionScope) {
-                AiToolExecutionScope.SERVER -> resolveServerTarget(
-                    toolCall = toolCall,
-                    errors = errors,
-                )
+                AiToolExecutionScope.SERVER -> ConversationRuntimeTaskTarget.Server
                 AiToolExecutionScope.WORKER -> resolveWorkerTarget(toolCall, entry, errors)
                 AiToolExecutionScope.WORKSPACE -> resolveMountTarget(
                     conversation = conversation,
@@ -141,26 +153,12 @@ class ConversationRuntimeToolRoutingService(
         )
     }
 
-    private fun resolveServerTarget(
-        toolCall: Conversation.Message.ContentItem.ToolCall,
-        errors: MutableList<ConversationRuntimeToolRoutingError>,
-    ): ConversationRuntimeTaskTarget? {
-        if (AI_TOOL_EXECUTION_TARGET_FIELD in toolCall.call.input.jsonObject) {
-            errors += toolCall.routingError(
-                "Tool '${toolCall.call.name}' executes in the current conversation runtime " +
-                    "and must not declare execution_target."
-            )
-            return null
-        }
-        return ConversationRuntimeTaskTarget.Server
-    }
-
     private fun resolveWorkerTarget(
         toolCall: Conversation.Message.ContentItem.ToolCall,
         entry: DistributedAiTool,
         errors: MutableList<ConversationRuntimeToolRoutingError>,
     ): ConversationRuntimeTaskTarget? {
-        val requested = parseTarget(toolCall, errors) ?: return null
+        val requested = parseTarget(toolCall, entry, errors) ?: return null
         val workerId = requested.workerId
         if (workerId == null) {
             errors += toolCall.routingError(
@@ -184,7 +182,7 @@ class ConversationRuntimeToolRoutingService(
         entry: DistributedAiTool,
         errors: MutableList<ConversationRuntimeToolRoutingError>,
     ): ConversationRuntimeTaskTarget? {
-        val requested = parseTarget(toolCall, errors) ?: return null
+        val requested = parseTarget(toolCall, entry, errors) ?: return null
         val mountId = requested.workspaceMountId
         if (mountId == null) {
             errors += toolCall.routingError(
@@ -222,12 +220,6 @@ class ConversationRuntimeToolRoutingService(
         entry: DistributedAiTool,
         errors: MutableList<ConversationRuntimeToolRoutingError>,
     ): ConversationRuntimeTaskTarget? {
-        if (AI_TOOL_EXECUTION_TARGET_FIELD in toolCall.call.input.jsonObject) {
-            errors += toolCall.routingError(
-                "Tool '${toolCall.call.name}' routes by task_id and must not declare execution_target."
-            )
-            return null
-        }
         val taskId = (toolCall.call.input.jsonObject["task_id"] as? JsonPrimitive)
             ?.contentOrNull
             ?.takeIf { it.isNotBlank() }
@@ -276,12 +268,6 @@ class ConversationRuntimeToolRoutingService(
         entry: DistributedAiTool,
         errors: MutableList<ConversationRuntimeToolRoutingError>,
     ): ConversationRuntimeTaskTarget? {
-        if (AI_TOOL_EXECUTION_TARGET_FIELD in toolCall.call.input.jsonObject) {
-            errors += toolCall.routingError(
-                "Tool '${toolCall.call.name}' routes by monitor_id and must not declare execution_target."
-            )
-            return null
-        }
         val monitorId = (toolCall.call.input.jsonObject["monitor_id"] as? JsonPrimitive)
             ?.contentOrNull
             ?.takeIf { it.isNotBlank() }
@@ -347,8 +333,9 @@ class ConversationRuntimeToolRoutingService(
 
     private fun parseTarget(
         toolCall: Conversation.Message.ContentItem.ToolCall,
+        entry: DistributedAiTool,
         errors: MutableList<ConversationRuntimeToolRoutingError>,
-    ): AiToolExecutionTarget? = runCatching { toolCall.call.input.parseExecutionTarget() }
+    ): AiToolExecutionTarget? = runCatching { entry.descriptor.metadata.parseInvocationInput(toolCall.call.input).executionTarget }
         .getOrElse { error ->
             errors += toolCall.routingError(error.message ?: "Invalid execution target.")
             null
@@ -361,54 +348,6 @@ class ConversationRuntimeToolRoutingService(
         val target: ConversationRuntimeTaskTarget,
         val returnDirect: Boolean,
     )
-}
-
-fun JsonElement.parseExecutionTarget(): AiToolExecutionTarget {
-    val input = this as? JsonObject
-        ?: throw IllegalArgumentException("Tool input must be a JSON object.")
-    val target = input[AI_TOOL_EXECUTION_TARGET_FIELD] as? JsonObject
-        ?: throw IllegalArgumentException(
-            "Tool input must contain object '$AI_TOOL_EXECUTION_TARGET_FIELD'."
-        )
-    val workerId = target[AI_TOOL_EXECUTION_WORKER_ID_FIELD]
-        ?.jsonPrimitive
-        ?.contentOrNull
-        ?.trim()
-        ?.takeIf { it.isNotEmpty() }
-        ?.let(::ConversationRuntimeWorkerId)
-    val workspaceMountId = target[AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD]
-        ?.jsonPrimitive
-        ?.contentOrNull
-        ?.trim()
-        ?.takeIf { it.isNotEmpty() }
-        ?.let(WorkspaceMount::Id)
-    return AiToolExecutionTarget(
-        workerId = workerId,
-        workspaceMountId = workspaceMountId,
-        requestPolicy = target.workerRequestPolicy(),
-    )
-}
-
-private fun JsonObject.workerRequestPolicy(): com.gromozeka.domain.service.WorkerRequestPolicy? {
-    val fields = setOf("delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds")
-    if (keys.none { it in fields }) return null
-    fun seconds(name: String, fallback: Long): Long {
-        val value = get(name) ?: return fallback
-        val primitive = value as? JsonPrimitive
-        require(primitive != null && !primitive.isString) { "$name must be an integer" }
-        val number = requireNotNull(primitive.content.toLongOrNull()) { "$name must be an integer" }
-        require(number in 1..604_800) { "$name must be between 1 and 604800 seconds" }
-        return number * 1_000
-    }
-    val ttl = seconds("delivery_ttl_seconds", 30_000)
-    val execution = seconds("execution_timeout_seconds", 1_800_000)
-    return com.gromozeka.domain.service.WorkerRequestPolicy(ttl, execution, seconds("wait_timeout_seconds", minOf(ttl + execution, 604_800_000)))
-}
-
-fun JsonElement.withoutExecutionTarget(): JsonObject {
-    val input = this as? JsonObject
-        ?: throw IllegalArgumentException("Tool input must be a JSON object.")
-    return JsonObject(input - AI_TOOL_EXECUTION_TARGET_FIELD)
 }
 
 private fun Conversation.Message.ContentItem.ToolCall.routingError(

@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryReadResult
@@ -34,7 +37,9 @@ const val MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME = "memory_rebuild_embeddings"
 const val MEMORY_EMBEDDING_STATUS_TOOL_NAME = "memory_embedding_status"
 const val MEMORY_LIST_NAMESPACES_TOOL_NAME = "memory_list_namespaces"
 
-val PreloadedMemoryToolMetadata = ServerToolMetadata.copy(
+val PreloadedMemoryToolMetadata = ServerToolMetadata.withContextRequirements(
+    MEMORY_NAMESPACE, optional = setOf(CONVERSATION, PROJECT, USER, AGENT, THREAD, TARGET_MESSAGE),
+).copy(
     loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_MEMORY_ENABLED,
 )
 

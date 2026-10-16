@@ -197,7 +197,7 @@ class SlotLiveFlowTest {
                         1. At mount ${mounts[1].mount.id.value}, run exactly: printf 'SLOT_READ=%s\n' "${'$'}GRZ_SLOT"
                         2. At mount ${mounts[0].mount.id.value}, run exactly: printf 'SLOT_WRITE=%s\n' "${'$'}GRZ_SLOT"; printf 'intentional handoff\n' > handoff.txt
                         3. Release slot ${second.number} normally. Request release of slot ${first.number}, but STOP when it returns confirmation_id: keep the dirty lease until CONFIRM_DIRTY_RETURN.
-                        Do not delete handoff.txt or modify Git. These are two different execution_target.workspace_mount_id values.
+                        Do not delete handoff.txt or modify Git. These are two different _grz.workspace_mount_id values.
                     """.trimIndent())
                     await("dirty return warned without release", 240_000) {
                         repository.findLease(firstLease.id)?.let { it.active && it.releaseConfirmation != null } == true && repository.findLease(secondLease.id)?.active == false

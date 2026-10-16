@@ -1,5 +1,8 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.AiToolContextRequirements
+
 import com.gromozeka.application.service.ContextStateApplicationService
 import com.gromozeka.domain.model.ContextEvent
 import com.gromozeka.domain.model.User
@@ -94,6 +97,7 @@ internal class ContextStateToolContributor(
     ): AiToolCallback = object : AiToolCallback {
         override val definition = AiToolDefinition(name, description, schema)
         override val metadata = AiToolMetadata(
+            contextRequirements = AiToolContextRequirements(setOf(USER)),
             executionScope = AiToolExecutionScope.SERVER,
             loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
             visibleToMemoryPipeline = false,

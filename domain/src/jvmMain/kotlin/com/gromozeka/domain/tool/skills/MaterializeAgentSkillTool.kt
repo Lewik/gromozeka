@@ -1,5 +1,8 @@
 package com.gromozeka.domain.tool.skills
 
+import com.gromozeka.domain.tool.AiToolContextField.*
+import com.gromozeka.domain.tool.withContextRequirements
+
 import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -34,7 +37,7 @@ interface MaterializeAgentSkillTool : Tool<MaterializeAgentSkillRequest, Map<Str
         get() = MATERIALIZE_AGENT_SKILL_TOOL_NAME
 
     override val metadata
-        get() = PreloadedWorkspaceToolMetadata
+        get() = PreloadedWorkspaceToolMetadata.withContextRequirements(PROJECT, AGENT)
 
     override val description: String
         get() = "Copy an assigned Skill package to the selected workspace's managed .gromozeka/skills directory " +
