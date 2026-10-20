@@ -223,7 +223,7 @@ private fun CreatePersonalAccessTokenDialog(
     var name by remember { mutableStateOf("") }
     var expiresInDays by remember { mutableStateOf("365") }
     var scopes by remember {
-        mutableStateOf(setOf(PersonalAccessToken.Scope.MCP_MEMORY))
+        mutableStateOf(setOf(PersonalAccessToken.Scope.MCP_CONTROL))
     }
     val parsedExpiration = expiresInDays.toIntOrNull()
     val expirationValid = expiresInDays.isBlank() || parsedExpiration?.let { it in 1..3_650 } == true
@@ -240,7 +240,8 @@ private fun CreatePersonalAccessTokenDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                PersonalAccessToken.Scope.entries.forEach { scope ->
+                // Keep old token scopes readable/revocable; do not issue a memory-only token for the unified endpoint.
+                listOf(PersonalAccessToken.Scope.MCP_CONTROL).forEach { scope ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

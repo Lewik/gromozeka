@@ -1,59 +1,43 @@
 package com.gromozeka.server
 
-import kotlin.test.Test
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import com.gromozeka.domain.tool.*
+import kotlinx.coroutines.runBlocking
+import kotlin.test.*
 
 class GromozekaMcpToolExposureTest {
-    @Test
-    fun `blank configuration exposes only memory tools by default`() {
-        val exposure = GromozekaMcpToolExposure.fromConfiguredValue(null)
-
-        assertTrue(exposure.exposes("memory_help"))
-        assertTrue(exposure.exposes("memory_queue_status"))
-        assertTrue(exposure.exposes("memory_embedding_status"))
-        assertTrue(exposure.exposes("memory_enrich_context"))
-        assertTrue(exposure.exposes("memory_answer_question"))
-        assertTrue(exposure.exposes("memory_list_namespaces"))
-        assertTrue(exposure.exposes("memory_maintenance"))
-        assertTrue(exposure.exposes("memory_remember"))
-        assertTrue(exposure.exposes("memory_forget_source"))
-        assertTrue(exposure.exposes("memory_run_status"))
-        assertFalse(exposure.exposes("grz_execute_command"))
+    @Test fun `unified catalog includes native Control and ordinary Server callbacks`() = runBlocking<Unit> {
+        val control = testServerToolFactory().create(CONTROL_TOOL_SOURCE, "test_control", "Control", readOnly = true) { ServerToolSchemas.empty }
+        val ordinary = mcpTestTool("test_native")
+        val factory = testUnifiedMcpFactory(mcpTestProvider(control, ordinary))
+        assertEquals(setOf("test_control", "test_native"), factory.create(testControlMcpCaller()).tools.keys)
     }
 
-    @Test
-    fun `all configuration exposes every tool`() {
-        val exposure = GromozekaMcpToolExposure.fromConfiguredValue("all")
-
-        assertTrue(exposure.exposes("grz_execute_command"))
-        assertTrue(exposure.exposes("anything_dynamic"))
+    @Test fun `memory help and all legacy memory names are excluded without changing native callbacks`() = runBlocking<Unit> {
+        val names = listOf("memory_help", "memory_remember", "memory_enrich_context", "memory_answer_question",
+            "memory_forget_source", "memory_list_namespaces", "memory_maintenance", "memory_queue_status",
+            "memory_run_status", "memory_embedding_status", "memory_rebuild_embeddings")
+        val callbacks = names.map { mcpTestTool(it) }
+        val server = testUnifiedMcpFactory(mcpTestProvider(*callbacks.toTypedArray())).create(testControlMcpCaller())
+        assertTrue(server.tools.isEmpty())
+        assertTrue(callbacks.all { it.available })
+        assertEquals(names, callbacks.map { it.definition.name })
     }
 
-    @Test
-    fun `explicit configuration accepts comma and whitespace separated tool names`() {
-        val exposure = GromozekaMcpToolExposure.fromConfiguredValue(
-            "memory_help, memory_enrich_context, memory_answer_question, memory_remember, memory_forget_source\nmemory_run_status memory_queue_status memory_maintenance"
-        )
-
-        assertTrue(exposure.exposes("memory_help"))
-        assertTrue(exposure.exposes("memory_queue_status"))
-        assertTrue(exposure.exposes("memory_enrich_context"))
-        assertTrue(exposure.exposes("memory_answer_question"))
-        assertTrue(exposure.exposes("memory_maintenance"))
-        assertTrue(exposure.exposes("memory_remember"))
-        assertTrue(exposure.exposes("memory_forget_source"))
-        assertTrue(exposure.exposes("memory_run_status"))
-        assertFalse(exposure.exposes("brave_web_search"))
+    @Test fun `renaming a namespace dependent callback cannot reopen memory publication`() {
+        val callback = mcpTestTool("renamed_memory_operation", requirements = AiToolContextRequirements(setOf(AiToolContextField.MEMORY_NAMESPACE)))
+        assertFalse(isMcpExposed(AiToolDescriptor(callback.definition, callback.metadata)))
     }
 
-    @Test
-    fun `unknown explicit tool names fail fast`() {
-        val exposure = GromozekaMcpToolExposure.fromConfiguredValue("memory_enrich_context,missing_tool")
-
-        assertFailsWith<IllegalArgumentException> {
-            exposure.validateAgainst(setOf("memory_enrich_context", "memory_remember", "memory_maintenance"))
-        }
+    @Test fun `retired wildcard allowlist and opt in settings cannot reopen memory`() = runBlocking<Unit> {
+        val keys = listOf("gromozeka.mcp.exposed.tools", "gromozeka.mcp.memory-tools-enabled")
+        val old = keys.associateWith(System::getProperty)
+        try {
+            System.setProperty(keys[1], "true")
+            for (setting in listOf("all", "*", "memory_help,memory_remember")) {
+                System.setProperty(keys[0], setting)
+                val factory = testUnifiedMcpFactory(mcpTestProvider(mcpTestTool("memory_help"), mcpTestTool("memory_remember"), mcpTestTool("ordinary")))
+                assertEquals(setOf("ordinary"), factory.create(testControlMcpCaller()).tools.keys)
+            }
+        } finally { old.forEach { (key, value) -> if (value == null) System.clearProperty(key) else System.setProperty(key, value) } }
     }
 }

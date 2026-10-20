@@ -175,6 +175,49 @@ class WorkerGatewayClientTest {
         }
     }
 
+    @Test
+    fun `gateway wire preserves binary structured content and explicit failure together`() = runBlocking<Unit> {
+        val structured = buildJsonObject { put("code", "synthetic_error") }
+        val tool = object : AiToolCallback {
+            override val definition = AiToolDefinition("test_worker_tool", "Typed", """{"type":"object"}""")
+            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
+            override fun call(toolInput: String, context: ToolExecutionContext?): String = error("Typed path required")
+            override suspend fun callResult(toolInput: String, context: ToolExecutionContext?) = com.gromozeka.domain.tool.AiToolCallResult(
+                listOf(com.gromozeka.domain.tool.AiToolResult.Text("details"),
+                    com.gromozeka.domain.tool.AiToolResult.Binary(byteArrayOf(1, 2, 3), "file.bin", "application/octet-stream")),
+                structuredContent = structured, isError = true)
+        }
+        val identity = workerIdentity("worker-1")
+        val response = operationHandler(tool).execute(identity, toolRequest("typed-request", identity.workerId))
+        assertEquals(WorkerGatewayMessage.Response.Status.SUCCEEDED, response.status)
+        val result = json.decodeFromString<WorkerToolExecutionResponse>(assertNotNull(response.payload).decodeToString())
+        assertEquals(structured, result.structuredContentByCallId["tool-call-1"])
+        assertEquals(true, result.results.single().isError)
+        val binary = result.results.single().result.last() as Conversation.Message.ContentItem.ToolResult.Data.Base64Data
+        assertEquals("AQID", binary.data); assertEquals("file.bin", binary.fileName)
+        assertEquals("application/octet-stream", binary.mediaType.value)
+    }
+
+    @Test
+    fun `queued MCP call cannot execute a changed native contract under the same logical name`() = runBlocking<Unit> {
+        var calls = 0
+        val tool = object : AiToolCallback {
+            override val definition = AiToolDefinition("test_worker_tool", "Changed descriptor", """{"type":"object"}""")
+            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
+            override fun call(toolInput: String, context: ToolExecutionContext?): String { calls++; return "wrong revision" }
+        }
+        val identity = workerIdentity("worker-1")
+        val request = toolRequest("stale-contract", identity.workerId)
+        val input = json.decodeFromString<WorkerToolExecutionRequest>(request.payload.decodeToString())
+        val bound = input.copy(toolContext = input.toolContext +
+            (com.gromozeka.application.service.EXPECTED_TOOL_FINGERPRINTS_CONTEXT_KEY to
+                buildJsonObject { put("tool-call-1", "0".repeat(64)) }.toString()))
+        val response = operationHandler(tool).execute(identity, request.copy(payload = json.encodeToString(bound).encodeToByteArray()))
+        assertEquals(WorkerGatewayMessage.Response.Status.FAILED, response.status)
+        assertEquals("Tool contract changed before execution", response.errorMessage)
+        assertEquals(0, calls)
+    }
+
     private fun operationHandler(tool: AiToolCallback): WorkerGatewayOperationHandler =
         WorkerGatewayOperationHandler(
             workerControlHandler = WorkerControlHandler { error("Unused worker control request") },

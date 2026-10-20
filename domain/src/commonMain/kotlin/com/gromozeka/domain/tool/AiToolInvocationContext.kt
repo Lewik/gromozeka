@@ -50,6 +50,9 @@ private val timeoutFields = setOf("delivery_ttl_seconds", "execution_timeout_sec
 
 private fun AiToolMetadata.selectorFields(): Set<AiToolContextField> = buildSet {
     addAll(contextRequirements.fields.filter { it.selector != null })
+    // A Worker may be available through an explicit project grant, not a direct user grant.
+    // Runtime-bound projects are hidden by the same projection as other trusted bindings.
+    if (executionScope == AiToolExecutionScope.WORKER) add(AiToolContextField.PROJECT)
     if (AiToolContextField.THREAD in contextRequirements.fields) add(AiToolContextField.CONVERSATION)
 }
 

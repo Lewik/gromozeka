@@ -134,6 +134,18 @@ class AiToolInvocationContextTest {
         assertEquals(required.contractFingerprint(), base.copy(metadata = server.withContextRequirements(CONVERSATION, USER)).contractFingerprint())
     }
 
+    @Test fun workerProjectGrantSelectorIsOptionalOutsideRuntimeAndCannotOverrideBinding() {
+        val value = envelope(worker)
+        assertTrue("project_id" in value.getValue("properties").jsonObject)
+        assertEquals(listOf(JsonPrimitive("worker_id")), value.getValue("required").jsonArray.toList())
+        assertFalse("project_id" in envelope(worker, AiToolContextBindings.ConversationRuntime).getValue("properties").jsonObject)
+        val parsed = parse(worker, """{"_grz":{"worker_id":"w","project_id":"p"}}""")
+        assertEquals("p", parsed.selectors[PROJECT])
+        assertFailsWith<IllegalArgumentException> { parsed.requireResolvedSelectors(ToolExecutionContext()) }
+        assertFailsWith<IllegalArgumentException> { parse(worker, """{"_grz":{"worker_id":"w","project_id":"foreign"}}""",
+            ToolExecutionContext(mapOf(TOOL_CONTEXT_PROJECT_ID to "p"))) }
+    }
+
     @Test fun businessSchemasCannotClaimReservedEnvelope() {
         for (name in listOf("_grz", "execution_target")) {
             val value = descriptor(server).copy(definition = descriptor(server).definition.copy(inputSchema = """{"type":"object","properties":{"$name":{"type":"object"}}}"""))

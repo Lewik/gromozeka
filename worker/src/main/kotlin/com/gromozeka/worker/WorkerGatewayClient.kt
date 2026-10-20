@@ -300,6 +300,7 @@ class WorkerGatewayOperationHandler(
                         WorkerToolExecutionResponse(
                             results = result.results,
                             returnDirect = result.returnDirect,
+                            structuredContentByCallId = result.structuredContentByCallId,
                         )
                     ).encodeToByteArray()
                 }

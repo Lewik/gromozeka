@@ -78,7 +78,7 @@ class ServerJsonToolFactoryTest {
         assertSame(tool, provider.getTools().single())
         val arguments = buildJsonObject { put("userId", "forged-user") }
         val native = tool.callResult(arguments.toString(), context)
-        val exported = GromozekaControlMcpServerFactory(provider).create(testControlMcpCaller())
+        val exported = testUnifiedMcpFactory(provider).create(testControlMcpCaller())
             .tools.getValue(tool.definition.name).callForTest(request(tool, arguments))
         assertFalse(native.isError)
         assertFalse(exported.isError == true)
@@ -103,7 +103,7 @@ class ServerJsonToolFactoryTest {
             assertTrue(result.isError)
             assertEquals(JsonPrimitive("unauthenticated"), result.structuredContent!!.getValue("error").jsonObject["code"])
         }
-        val exported = GromozekaControlMcpServerFactory(provider(tool)).create(testControlMcpCaller())
+        val exported = testUnifiedMcpFactory(provider(tool)).create(testControlMcpCaller())
             .tools.getValue(tool.definition.name).callForTest(request(tool))
         assertTrue(exported.isError == true)
         assertFalse(executed)
@@ -119,7 +119,7 @@ class ServerJsonToolFactoryTest {
         }
         val member = testControlMcpCaller(User.Role.MEMBER)
         val native = tool.callResult("{}", ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to member.user.id.value)))
-        val http = GromozekaControlMcpServerFactory(provider(tool)).create(member)
+        val http = testUnifiedMcpFactory(provider(tool)).create(member)
             .tools.getValue(tool.definition.name).callForTest(request(tool))
         assertTrue(native.isError)
         assertTrue(http.isError == true)
@@ -162,7 +162,7 @@ class ServerJsonToolFactoryTest {
             throw RuntimeException("PRIVATE_CREDENTIAL_SENTINEL")
         }
         val native = tool.callResult("{}", context)
-        val http = GromozekaControlMcpServerFactory(provider(tool)).create(testControlMcpCaller())
+        val http = testUnifiedMcpFactory(provider(tool)).create(testControlMcpCaller())
             .tools.getValue(tool.definition.name).callForTest(request(tool))
         assertTrue(native.isError)
         assertTrue(http.isError == true)
@@ -186,7 +186,7 @@ class ServerJsonToolFactoryTest {
                     }
                 }
                 val operation = async {
-                    if (http) GromozekaControlMcpServerFactory(provider(tool)).create(testControlMcpCaller())
+                    if (http) testUnifiedMcpFactory(provider(tool)).create(testControlMcpCaller())
                         .tools.getValue(tool.definition.name).callForTest(request(tool))
                     else tool.callResult("{}", context)
                 }

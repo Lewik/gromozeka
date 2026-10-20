@@ -15,8 +15,8 @@ import org.mockito.Mockito
 
 class GromozekaControlMcpSurfaceTest {
     @Test
-    fun `control MCP exposes the complete server-managed configuration surface`() {
-        val server = GromozekaControlMcpServerFactory(
+    fun `control MCP exposes the complete server-managed configuration surface`() = runBlocking<Unit> {
+        val server = testUnifiedMcpFactory(
             testNativeToolProvider(
                 listOf(
                     ProjectWorkspaceToolContributor(testServerToolFactory(),

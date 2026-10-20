@@ -21,6 +21,8 @@ import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
@@ -41,11 +43,6 @@ class GromozekaStatelessMcpHttpTest {
         application {
             statelessMcpStreamableHttp(
                 path = "/mcp",
-                allowedHosts = null,
-                allowedOrigins = null,
-            ) { testServer() }
-            statelessMcpStreamableHttp(
-                path = "/mcp/control",
                 allowedHosts = null,
                 allowedOrigins = null,
             ) { testServer() }
@@ -98,16 +95,16 @@ class GromozekaStatelessMcpHttpTest {
         val provider = testNativeToolProvider(listOf(object : AiToolCallbackContributor {
             override val callbacks = listOf(callback)
         }))
-        val factory = GromozekaControlMcpServerFactory(provider)
+        val factory = testUnifiedMcpFactory(provider)
         application {
             installHttpAuthenticationErrors()
             installMcpAuthentication(authentication, tokens)
-            statelessMcpStreamableHttp("/mcp/control", null, null) { call ->
-                factory.create(call.attributes[authenticatedMcpCallerKey])
+            statelessMcpStreamableHttp("/mcp", null, null) { call ->
+                factory.create(call)
             }
         }
         suspend fun rpc(method: String, params: JsonObject = JsonObject(emptyMap()), session: String? = "owner-session") =
-            client.post("https://localhost/mcp/control") {
+            client.post("https://localhost/mcp") {
                 header(HttpHeaders.Host, "localhost")
                 header(HttpHeaders.ContentType, ContentType.Application.Json)
                 header(HttpHeaders.Accept, "${ContentType.Application.Json}, ${ContentType.Text.EventStream}")
@@ -156,6 +153,109 @@ class GromozekaStatelessMcpHttpTest {
                 .getValue("result").jsonObject.getValue("isError").jsonPrimitive.boolean)
         }
         assertEquals(1, executions)
+    }
+
+    @Test
+    fun `one authenticated endpoint lists and executes Server and Worker tools with native typed results`() = testApplication {
+        val control = testServerToolFactory().create(CONTROL_TOOL_SOURCE, "synthetic_control", "Control", readOnly = true) {
+            buildJsonObject { put("actor", user.id.value) }
+        }
+        val f = UnifiedMcpTestFixture(mcpTestProvider(control, mcpTestTool("synthetic_native"), mcpTestTool("memory_remember"))).initialize()
+        val structured = buildJsonObject { put("value", 7) }
+        f.advertise(mcpTestTool("synthetic_read", com.gromozeka.domain.tool.AiToolExecutionScope.WORKSPACE) { _, _ ->
+            com.gromozeka.domain.tool.AiToolCallResult(listOf(
+                com.gromozeka.domain.tool.AiToolResult.Text("from-worker"),
+                com.gromozeka.domain.tool.AiToolResult.Binary(byteArrayOf(1, 2, 3), "test.bin", "application/octet-stream")), structured, true)
+        }, mcpTestTool("mcp__synthetic__echo", com.gromozeka.domain.tool.AiToolExecutionScope.WORKER, source = "mcp:synthetic"))
+        val authentication = Mockito.mock(AuthenticationService::class.java)
+        val tokens = Mockito.mock(PersonalAccessTokenService::class.java)
+        Mockito.`when`(authentication.authenticate("synthetic-session")).thenReturn(AuthenticatedUser(f.user, UserSession.Id("synthetic-session")))
+        application {
+            installHttpAuthenticationErrors()
+            installMcpAuthentication(authentication, tokens)
+            statelessMcpStreamableHttp("/mcp", null, null) { call -> f.factory.create(call) }
+        }
+        suspend fun rpc(method: String, params: JsonObject = JsonObject(emptyMap())): JsonObject {
+            val response = client.post("https://localhost/mcp") {
+                header(HttpHeaders.Host, "localhost"); header(HttpHeaders.ContentType, ContentType.Application.Json)
+                header(HttpHeaders.Accept, "${ContentType.Application.Json}, ${ContentType.Text.EventStream}")
+                cookie(SESSION_COOKIE_NAME, "synthetic-session"); header("MCP-Protocol-Version", "2025-06-18")
+                setBody(buildJsonObject { put("jsonrpc", "2.0"); put("id", 1); put("method", method); put("params", params) }.toString())
+            }
+            assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
+            return serverToolJson.parseToJsonElement(response.bodyAsText()).jsonObject.getValue("result").jsonObject
+        }
+        rpc("initialize", buildJsonObject {
+            put("protocolVersion", "2025-06-18"); put("capabilities", JsonObject(emptyMap()))
+            put("clientInfo", buildJsonObject { put("name", "synthetic-client"); put("version", "1") })
+        })
+        val published = rpc("tools/list").getValue("tools").jsonArray.associate { it.jsonObject.getValue("name").jsonPrimitive.content to it.jsonObject }
+        assertEquals(setOf("synthetic_control", "synthetic_native", "synthetic_read", "mcp__synthetic__echo"), published.keys)
+        for (definition in f.service.list(f.user.id)) {
+            assertEquals(serverToolJson.parseToJsonElement(definition.inputSchema), published.getValue(definition.name)["inputSchema"])
+            definition.outputSchema?.let { assertEquals(serverToolJson.parseToJsonElement(it), published.getValue(definition.name)["outputSchema"]) }
+        }
+        assertEquals(JsonPrimitive(false), published.getValue("synthetic_read").getValue("inputSchema").jsonObject["additionalProperties"])
+        val local = rpc("tools/call", buildJsonObject { put("name", "synthetic_control"); put("arguments", JsonObject(emptyMap())) })
+        assertEquals(JsonPrimitive(f.user.id.value), local.getValue("structuredContent").jsonObject.getValue("result").jsonObject["actor"])
+        val result = f.withWorker { rpc("tools/call", buildJsonObject {
+            put("name", "synthetic_read"); put("arguments", buildJsonObject {
+                put("_grz", buildJsonObject { put("workspace_mount_id", f.mount.id.value) })
+            })
+        }) }
+        assertEquals(structured, result["structuredContent"])
+        assertTrue(result.getValue("isError").jsonPrimitive.boolean)
+        val content = result.getValue("content").jsonArray
+        assertEquals(JsonPrimitive("from-worker"), content.first().jsonObject["text"])
+        val binary = content.last().jsonObject.getValue("resource").jsonObject
+        assertEquals(JsonPrimitive("AQID"), binary["blob"])
+        assertEquals(JsonPrimitive("application/octet-stream"), binary["mimeType"])
+        assertEquals(1, f.received.size); assertEquals(1, f.records.records.size)
+        val obsolete = client.post("https://localhost/mcp/control") { cookie(SESSION_COOKIE_NAME, "synthetic-session") }
+        assertEquals(HttpStatusCode.NotFound, obsolete.status)
+    }
+
+    @Test
+    fun `server HTTP handler cancellation reaches the native operation`() = testApplication {
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val finished = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val handler = kotlinx.coroutines.CompletableDeferred<kotlinx.coroutines.Job>()
+        val callback = mcpTestTool("wait") { _, _ ->
+            try { started.complete(Unit); kotlinx.coroutines.awaitCancellation() } finally { finished.complete(Unit) }
+        }
+        val factory = testUnifiedMcpFactory(mcpTestProvider(callback))
+        val authentication = Mockito.mock(AuthenticationService::class.java)
+        Mockito.`when`(authentication.authenticate("session")).thenReturn(
+            AuthenticatedUser(testControlMcpCaller().user, UserSession.Id("session")))
+        application {
+            installHttpAuthenticationErrors()
+            installMcpAuthentication(authentication, Mockito.mock(PersonalAccessTokenService::class.java))
+            statelessMcpStreamableHttp("/mcp", null, null) { call ->
+                handler.complete(checkNotNull(call.coroutineContext[kotlinx.coroutines.Job]))
+                factory.create(call)
+            }
+        }
+        kotlinx.coroutines.withTimeout(5000) {
+            kotlinx.coroutines.coroutineScope {
+                val request = async {
+                    client.post("https://localhost/mcp") {
+                        header(HttpHeaders.Host, "localhost"); header(HttpHeaders.ContentType, ContentType.Application.Json)
+                        header(HttpHeaders.Accept, "${ContentType.Application.Json}, ${ContentType.Text.EventStream}")
+                        header("MCP-Protocol-Version", "2025-06-18")
+                        cookie(SESSION_COOKIE_NAME, "session")
+                        setBody("""{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"wait","arguments":{}}}""")
+                    }
+                }
+                // A client disconnect is not an assertion that the Server cancelled its job.
+                // Cancel the actual handler parent and require propagation through SDK -> executor -> callback.
+                try {
+                    started.await()
+                    handler.await().cancel(kotlinx.coroutines.CancellationException("synthetic handler cancellation"))
+                    finished.await()
+                    assertTrue(finished.isCompleted)
+                } finally { request.cancelAndJoin() }
+            }
+        }
     }
 
 }

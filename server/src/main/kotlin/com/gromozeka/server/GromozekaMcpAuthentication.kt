@@ -80,10 +80,8 @@ private suspend fun ApplicationCall.authenticateMcpCaller(
 
 private fun String.requiredMcpScope(): PersonalAccessToken.Scope? =
     when {
-        this == CONTROL_MCP_PATH || startsWith("$CONTROL_MCP_PATH/") ->
+        this == MCP_PATH || startsWith("$MCP_PATH/") ->
             PersonalAccessToken.Scope.MCP_CONTROL
-        this == MEMORY_MCP_PATH || startsWith("$MEMORY_MCP_PATH/") ->
-            PersonalAccessToken.Scope.MCP_MEMORY
         else -> null
     }
 
@@ -91,5 +89,4 @@ internal val authenticatedMcpCallerKey =
     AttributeKey<AuthenticatedMcpCaller>("gromozeka-authenticated-mcp-caller")
 
 private const val BEARER_PREFIX = "Bearer "
-private const val MEMORY_MCP_PATH = "/mcp"
-private const val CONTROL_MCP_PATH = "/mcp/control"
+private const val MCP_PATH = "/mcp"

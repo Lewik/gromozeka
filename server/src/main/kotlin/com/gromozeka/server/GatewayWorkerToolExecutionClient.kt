@@ -72,6 +72,7 @@ class GatewayWorkerToolExecutionClient(
         return WorkerToolExecutionResult(
             results = response.results,
             returnDirect = response.returnDirect,
+            structuredContentByCallId = response.structuredContentByCallId,
         )
     }
 }

@@ -20,4 +20,5 @@ data class WorkerToolExecutionRequest(
 data class WorkerToolExecutionResponse(
     val results: List<Conversation.Message.ContentItem.ToolResult>,
     val returnDirect: Boolean,
+    val structuredContentByCallId: Map<String, kotlinx.serialization.json.JsonObject> = emptyMap(),
 )

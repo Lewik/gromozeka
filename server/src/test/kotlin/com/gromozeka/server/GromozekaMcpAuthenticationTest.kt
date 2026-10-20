@@ -31,8 +31,8 @@ class GromozekaMcpAuthenticationTest {
             installTestMcpRoutes()
         }
 
-        val memoryResponse = client.get(MEMORY_MCP_URL)
-        val controlResponse = client.get(CONTROL_MCP_URL)
+        val memoryResponse = client.get(MCP_URL)
+        val controlResponse = client.get(OLD_CONTROL_MCP_URL)
 
         assertEquals(HttpStatusCode.Unauthorized, memoryResponse.status)
         assertEquals(HttpStatusCode.Unauthorized, controlResponse.status)
@@ -40,56 +40,31 @@ class GromozekaMcpAuthenticationTest {
     }
 
     @Test
-    fun `personal access tokens are restricted to their MCP scope`() = testApplication {
-        application {
-            installTestMcpRoutes()
-        }
-
-        assertEquals(
-            HttpStatusCode.OK,
-            client.get(MEMORY_MCP_URL) {
-                header(HttpHeaders.Authorization, "Bearer memory-token")
-            }.status,
-        )
-        assertEquals(
-            HttpStatusCode.Unauthorized,
-            client.get(CONTROL_MCP_URL) {
-                header(HttpHeaders.Authorization, "Bearer memory-token")
-            }.status,
-        )
-        assertEquals(
-            HttpStatusCode.OK,
-            client.get(CONTROL_MCP_URL) {
-                header(HttpHeaders.Authorization, "Bearer control-token")
-            }.status,
-        )
-        assertEquals(
-            HttpStatusCode.Unauthorized,
-            client.get(MEMORY_MCP_URL) {
-                header(HttpHeaders.Authorization, "Bearer control-token")
-            }.status,
-        )
+    fun `unified MCP requires existing control scope and never upgrades memory-only tokens`() = testApplication {
+        application { installTestMcpRoutes() }
+        assertEquals(HttpStatusCode.Unauthorized, client.get(MCP_URL) {
+            header(HttpHeaders.Authorization, "Bearer memory-token")
+        }.status)
+        assertEquals(HttpStatusCode.OK, client.get(MCP_URL) {
+            header(HttpHeaders.Authorization, "Bearer control-token")
+        }.status)
+        assertEquals(HttpStatusCode.Unauthorized, client.get(MCP_URL) {
+            header(HttpHeaders.Authorization, "Bearer revoked-or-invalid")
+        }.status)
+        assertEquals(HttpStatusCode.NotFound, client.get(OLD_CONTROL_MCP_URL) {
+            header(HttpHeaders.Authorization, "Bearer control-token")
+        }.status)
     }
 
     @Test
-    fun `authenticated browser session can use both MCP endpoints`() = testApplication {
-        application {
-            installTestMcpRoutes()
-        }
-
-        assertEquals(
-            HttpStatusCode.OK,
-            client.get(MEMORY_MCP_URL) {
-                cookie(SESSION_COOKIE_NAME, "session-token")
-            }.status,
-        )
-        assertEquals(
-            HttpStatusCode.OK,
-            client.get(CONTROL_MCP_URL) {
-                cookie(SESSION_COOKIE_NAME, "session-token")
-            }.status,
-        )
+    fun `authenticated browser session uses unified MCP without weakening HTTPS`() = testApplication {
+        application { installTestMcpRoutes() }
+        assertEquals(HttpStatusCode.OK, client.get(MCP_URL) { cookie(SESSION_COOKIE_NAME, "session-token") }.status)
+        assertEquals(HttpStatusCode.UpgradeRequired, client.get("http://localhost/mcp") {
+            header(HttpHeaders.Authorization, "Bearer control-token")
+        }.status)
     }
+
 }
 
 private fun io.ktor.server.application.Application.installTestMcpRoutes() {
@@ -100,10 +75,7 @@ private fun io.ktor.server.application.Application.installTestMcpRoutes() {
     )
     routing {
         get("/mcp") {
-            call.respondText("memory")
-        }
-        get("/mcp/control") {
-            call.respondText("control")
+            call.respondText("tools")
         }
     }
 }
@@ -190,5 +162,5 @@ private fun testPersonalAccessToken(scope: PersonalAccessToken.Scope) =
 
 private fun <T> unsupported(): T = error("Unsupported test operation")
 
-private const val MEMORY_MCP_URL = "https://localhost/mcp"
-private const val CONTROL_MCP_URL = "https://localhost/mcp/control"
+private const val MCP_URL = "https://localhost/mcp"
+private const val OLD_CONTROL_MCP_URL = "https://localhost/mcp/control"

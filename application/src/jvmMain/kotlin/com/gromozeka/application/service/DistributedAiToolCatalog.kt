@@ -52,6 +52,13 @@ data class DistributedAiTool(
     val contractFingerprint: String = descriptor.contractFingerprint(),
 )
 
+/** Unbound entry-point view; identity/revisions come from the SAME contract repository. */
+data class AuthenticatedAiTool(
+    val contract: com.gromozeka.domain.tool.AiToolContract,
+    val descriptor: AiToolDescriptor,
+    val workerIds: Set<ConversationRuntimeWorkerId>,
+)
+
 data class DistributedAiToolWorker(
     val workerId: ConversationRuntimeWorkerId,
     val workspaceMounts: List<WorkspaceMount>,
@@ -73,6 +80,31 @@ class DistributedAiToolCatalog(
     private val workerAccessService: WorkerAccessService,
     private val aiToolContractRepository: AiToolContractRepository,
 ) {
+    /** Read current advertisements, never contact or wake a Worker. Access is rechecked on invocation. */
+    suspend fun authenticatedTools(
+        user: com.gromozeka.domain.model.User,
+        include: (AiToolDescriptor) -> Boolean,
+    ): List<AuthenticatedAiTool> {
+        val accessible = workerAccessService.listAccessible(user).mapTo(mutableSetOf()) { it.id }
+        val advertised = workerRegistry.list().filter { it.identity.workerId in accessible }
+            .flatMap { registration ->
+                registration.tools.filter { it.metadata.executionScope != AiToolExecutionScope.SERVER && include(it) }
+                    .map { it to registration.identity.workerId }
+            }
+        val server = aiToolProvider.getTools().filter { it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER }
+            .map { AiToolDescriptor(it.definition, it.metadata) }.filter(include)
+        val raw = (server + advertised.map { it.first }).distinct()
+        val contracts = aiToolContractRepository.resolveAll(raw.map { it.asModelContractDescriptor() })
+            .associateBy { it.fingerprint }
+        return raw.map { descriptor ->
+            AuthenticatedAiTool(
+                contract = contracts.getValue(descriptor.asModelContractDescriptor().contractFingerprint()),
+                descriptor = descriptor,
+                workerIds = advertised.filter { it.first == descriptor }.mapTo(mutableSetOf()) { it.second },
+            )
+        }.sortedBy { it.contract.modelName }
+    }
+
     suspend fun serverContracts() = aiToolContractRepository.resolveAll(aiToolProvider.getTools()
         .filter { it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER }
         .map { AiToolDescriptor(it.definition, it.metadata).asModelContractDescriptor() })

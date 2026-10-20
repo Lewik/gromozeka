@@ -12,6 +12,7 @@ import com.gromozeka.domain.tool.parseInvocationInput
 import com.gromozeka.domain.tool.requireInvocationContext
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolResult
+import com.gromozeka.domain.tool.contractFingerprint
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
 import com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND
@@ -24,12 +25,16 @@ import org.springframework.stereotype.Service
 import kotlin.coroutines.coroutineContext
 import java.util.Base64
 
+/** Trusted Server binding, never an argument selector. Pins native callback revisions across queued delivery. */
+const val EXPECTED_TOOL_FINGERPRINTS_CONTEXT_KEY = "expectedToolFingerprints"
+
 /**
  * Result of parallel tool execution.
  */
 data class ToolExecutionResult(
     val results: List<ContentItem.ToolResult>,
     val returnDirect: Boolean,
+    val structuredContentByCallId: Map<String, kotlinx.serialization.json.JsonObject> = emptyMap(),
 )
 
 /**
@@ -68,9 +73,18 @@ class ParallelToolExecutor(
             "Runtime task target $expectedTarget does not match executor $executor"
         }
         val callbackMap = buildCallbackMap()
+        val expectedFingerprints = toolContext.getString(EXPECTED_TOOL_FINGERPRINTS_CONTEXT_KEY)?.let {
+            kotlinx.serialization.json.Json.decodeFromString<Map<String, String>>(it)
+        }
         toolCalls.forEach { toolCall ->
             val callback = callbackMap[toolCall.call.name]
                 ?: error("Runtime executor does not provide requested tool: ${toolCall.call.name}")
+            if (expectedFingerprints != null) {
+                require(expectedFingerprints[toolCall.id.value] ==
+                    com.gromozeka.domain.tool.AiToolDescriptor(callback.definition, callback.metadata).contractFingerprint()) {
+                    "Tool contract changed before execution"
+                }
+            }
             val invocation = callback.metadata.parseInvocationInput(toolCall.call.input, toolContext)
             invocation.requireResolvedSelectors(toolContext)
             // Runtime-supplied call identity is never accepted from _grz.
@@ -109,6 +123,7 @@ class ParallelToolExecutor(
             }
         }
 
+        val structured = java.util.concurrent.ConcurrentHashMap<String, kotlinx.serialization.json.JsonObject>()
         val results = coroutineScope {
             val deferreds: List<Deferred<ContentItem.ToolResult>> = toolCalls.map { toolCall ->
                 async {
@@ -120,6 +135,7 @@ class ParallelToolExecutor(
                         executor = executor,
                         onToolExecutionChanged = onToolExecutionChanged,
                         resolvedSecrets = resolvedSecretsByToolCallId[toolCall.id.value].orEmpty(),
+                        onStructuredContent = { structured[toolCall.id.value] = it },
                     )
                 }
             }
@@ -131,7 +147,7 @@ class ParallelToolExecutor(
             callbackMap[toolCall.call.name]?.metadata?.returnDirect == true
         }
 
-        return ToolExecutionResult(results, returnDirect)
+        return ToolExecutionResult(results, returnDirect, structured.toMap())
     }
 
     private suspend fun executeSingleToolWithProgress(
@@ -142,6 +158,7 @@ class ParallelToolExecutor(
         executor: ConversationRuntimeExecutorIdentity,
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit,
         resolvedSecrets: Map<String, String>,
+        onStructuredContent: (kotlinx.serialization.json.JsonObject) -> Unit,
     ): ContentItem.ToolResult {
         return try {
             val started = ConversationRuntimeToolExecution(
@@ -153,7 +170,7 @@ class ParallelToolExecutor(
                 startedAt = Clock.System.now(),
             )
             onToolExecutionChanged(started)
-            val result = executeSingleTool(toolCall, callbackMap, toolContext, resolvedSecrets)
+            val result = executeSingleTool(toolCall, callbackMap, toolContext, resolvedSecrets, onStructuredContent)
             onToolExecutionChanged(
                 started.copy(
                     status = if (result.isError) {
@@ -204,6 +221,7 @@ class ParallelToolExecutor(
         callbackMap: Map<String, AiToolCallback>,
         toolContext: ToolExecutionContext,
         resolvedSecrets: Map<String, String>,
+        onStructuredContent: (kotlinx.serialization.json.JsonObject) -> Unit,
     ): ContentItem.ToolResult {
         val toolId = toolCall.id
         val toolName = toolCall.call.name
@@ -284,6 +302,7 @@ class ParallelToolExecutor(
                 )
             }
 
+            result.structuredContent?.let(onStructuredContent)
             log.debug { "Tool $toolName completed: isError=${result.isError}" }
 
             return ContentItem.ToolResult(

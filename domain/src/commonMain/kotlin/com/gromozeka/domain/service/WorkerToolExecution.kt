@@ -7,6 +7,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 data class WorkerToolExecutionResult(
     val results: List<Conversation.Message.ContentItem.ToolResult>,
     val returnDirect: Boolean,
+    val structuredContentByCallId: Map<String, kotlinx.serialization.json.JsonObject> = emptyMap(),
 )
 
 interface WorkerToolExecutionClient {

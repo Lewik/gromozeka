@@ -23,11 +23,29 @@ internal fun Application.statelessMcpStreamableHttp(
     path: String,
     allowedHosts: List<String>?,
     allowedOrigins: List<String>?,
-    createServer: (ApplicationCall) -> Server,
+    createServer: suspend (ApplicationCall) -> Server,
 ) {
     installMcpContentNegotiation()
     routing {
         route(path) {
+            install(io.ktor.server.application.createRouteScopedPlugin("ExactNativeMcpSchemas") {
+                onCallRespond { call, _ ->
+                    transformBody { body ->
+                        val definitions = call.attributes.getOrNull(exactMcpToolDefinitions)
+                        val json = when (body) {
+                            is io.modelcontextprotocol.kotlin.sdk.types.JSONRPCResponse ->
+                                McpJson.encodeToJsonElement(io.modelcontextprotocol.kotlin.sdk.types.JSONRPCResponse.serializer(), body)
+                            is io.ktor.http.content.OutgoingContent.ByteArrayContent ->
+                                if (body.contentType?.withoutParameters() == io.ktor.http.ContentType.Application.Json)
+                                    kotlinx.serialization.json.Json.parseToJsonElement(body.bytes().decodeToString()) else null
+                            else -> null
+                        }
+                        val exact = if (definitions != null && json != null) json.withExactToolSchemas(definitions) else null
+                        if (exact == null) body else
+                            io.ktor.http.content.TextContent(exact.toString(), io.ktor.http.ContentType.Application.Json)
+                    }
+                }
+            })
             install(DnsRebindingProtection) {
                 this.allowedHosts = allowedHosts ?: LOCALHOST_ALLOWED_HOSTS
                 this.allowedOrigins = allowedOrigins
@@ -39,8 +57,12 @@ internal fun Application.statelessMcpStreamableHttp(
                 ).apply {
                     setSessionIdGenerator(null)
                 }
-                createServer(call).createSession(transport)
-                transport.handleRequest(null, call)
+                val session = createServer(call).createSession(transport)
+                try {
+                    transport.handleRequest(null, call)
+                } finally {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { session.close() }
+                }
             }
             get {
                 call.respond(HttpStatusCode.MethodNotAllowed)

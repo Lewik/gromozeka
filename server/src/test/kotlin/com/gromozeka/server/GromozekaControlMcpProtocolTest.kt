@@ -36,7 +36,7 @@ class GromozekaControlMcpProtocolTest {
         ) {
             buildJsonObject { put("value", "ok") }
         }
-        val server = GromozekaControlMcpServerFactory(
+        val server = testUnifiedMcpFactory(
             testNativeToolProvider(listOf(provider(tool)))
         ).create(testControlMcpCaller())
 
@@ -200,6 +200,21 @@ class GromozekaControlMcpProtocolTest {
         val structuredOnly = AiToolCallResult(structuredContent = structured).toMcpResult()
         assertEquals(structured.toString(), (structuredOnly.content.single() as TextContent).text)
         assertFalse(structuredOnly.isError == true)
+    }
+
+    @Test
+    fun `HTTP serialization preserves complete root schemas rather than SDK simplified view`() {
+        val input = """{"type":"object","properties":{"text":{"type":"string"}},"additionalProperties":false,"minProperties":1,"oneOf":[{"required":["text"]}],"${'$'}defs":{"value":{"type":"string"}}}"""
+        val output = """{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"],"additionalProperties":false}"""
+        val definition = com.gromozeka.domain.tool.AiToolDefinition("complete_schema", "Schema", input, outputSchema = output)
+        val response = io.modelcontextprotocol.kotlin.sdk.types.JSONRPCResponse(
+            io.modelcontextprotocol.kotlin.sdk.types.RequestId(9L),
+            io.modelcontextprotocol.kotlin.sdk.types.ListToolsResult(listOf(definition.toMcpTool())))
+        val body = response.withExactToolSchemas(mapOf(definition.name to definition))
+        val tool = body.getValue("result").jsonObject.getValue("tools").let { it as kotlinx.serialization.json.JsonArray }.single().jsonObject
+        assertEquals(serverToolJson.parseToJsonElement(input), tool["inputSchema"])
+        assertEquals(serverToolJson.parseToJsonElement(output), tool["outputSchema"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(9), body["id"])
     }
 
     private fun provider(vararg tools: AiToolCallback): AiToolCallbackContributor =
