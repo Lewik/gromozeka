@@ -37,6 +37,11 @@ fun main(args: Array<String>) {
         ))
         .run(*args)
 
+    val webContext = context as? org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext
+    if (webContext?.webServer?.port != settings.port) {
+        context.close()
+        error("Gromozeka Servlet HTTP listener did not start on the configured port")
+    }
     println("==== Gromozeka server started: ws://${settings.host}:${settings.port}/ws ====")
     println("==== Gromozeka MCP Streamable HTTP: http://${settings.host}:${settings.port}/mcp ====")
     println("==== Gromozeka memory HTTP: http://${settings.host}:${settings.port}/memory/status ====")
