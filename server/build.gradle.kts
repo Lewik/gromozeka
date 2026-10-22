@@ -38,6 +38,11 @@ dependencies {
     implementation(project(":infrastructure-ai:openai-subscription"))
 
     implementation(libs.spring.boot.starter)
+    implementation(libs.spring.boot.starter.webmvc)
+    implementation(libs.spring.boot.starter.websocket)
+    implementation(libs.spring.boot.starter.security)
+    implementation(libs.mcp.java.sdk)
+    implementation(libs.kotlinx.coroutines.reactor)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     implementation(libs.ktor.server.conditional.headers)
