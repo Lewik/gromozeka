@@ -207,14 +207,58 @@ class GromozekaControlMcpProtocolTest {
         val input = """{"type":"object","properties":{"text":{"type":"string"}},"additionalProperties":false,"minProperties":1,"oneOf":[{"required":["text"]}],"${'$'}defs":{"value":{"type":"string"}}}"""
         val output = """{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"],"additionalProperties":false}"""
         val definition = com.gromozeka.domain.tool.AiToolDefinition("complete_schema", "Schema", input, outputSchema = output)
-        val response = io.modelcontextprotocol.kotlin.sdk.types.JSONRPCResponse(
-            io.modelcontextprotocol.kotlin.sdk.types.RequestId(9L),
-            io.modelcontextprotocol.kotlin.sdk.types.ListToolsResult(listOf(definition.toMcpTool())))
-        val body = response.withExactToolSchemas(mapOf(definition.name to definition))
+        val mapper = SafeMcpJsonMapper()
+        val response = io.modelcontextprotocol.spec.McpSchema.JSONRPCResponse.result(9L,
+            io.modelcontextprotocol.spec.McpSchema.ListToolsResult.builder(listOf(definition.toMcpTool(mapper))).build())
+        val body = serverToolJson.parseToJsonElement(mapper.writeValueAsString(response)).jsonObject
         val tool = body.getValue("result").jsonObject.getValue("tools").let { it as kotlinx.serialization.json.JsonArray }.single().jsonObject
         assertEquals(serverToolJson.parseToJsonElement(input), tool["inputSchema"])
         assertEquals(serverToolJson.parseToJsonElement(output), tool["outputSchema"])
         assertEquals(kotlinx.serialization.json.JsonPrimitive(9), body["id"])
+    }
+
+    @Test
+    fun `Servlet SDK throwable errors never serialize private text or exception internals`() {
+        val mapper = SafeMcpJsonMapper()
+        val sdkError = io.modelcontextprotocol.spec.McpError.builder(-32603)
+            .message("PRIVATE_REQUEST_SENTINEL")
+            .data(mapOf("request" to "PRIVATE_DATA_SENTINEL"))
+            .build().apply {
+                initCause(IllegalStateException("PRIVATE_CAUSE_SENTINEL"))
+                addSuppressed(RuntimeException("PRIVATE_SUPPRESSED_SENTINEL"))
+            }
+        for (failure in listOf(sdkError, IllegalStateException("PRIVATE_OTHER_SENTINEL"))) {
+            for (wire in listOf(mapper.writeValueAsString(failure), mapper.writeValueAsBytes(failure).decodeToString())) {
+                assertFalse(wire.contains("PRIVATE_"))
+                assertFalse(wire.contains("stackTrace"))
+                assertFalse(wire.contains("suppressed"))
+                assertFalse(wire.contains("cause"))
+                val envelope = serverToolJson.parseToJsonElement(wire).jsonObject
+                assertEquals(setOf("jsonrpc", "id", "error"), envelope.keys)
+                assertEquals("2.0", envelope.getValue("jsonrpc").jsonPrimitive.content)
+                assertEquals(JsonNull, envelope["id"])
+                assertEquals(buildJsonObject {
+                    put("code", -32603)
+                    put("message", "MCP request failed")
+                }, envelope["error"])
+            }
+        }
+    }
+
+    @Test
+    fun `SDK JSON RPC error retains request id and code but removes raw message and data`() {
+        val mapper = SafeMcpJsonMapper()
+        val response = io.modelcontextprotocol.spec.McpSchema.JSONRPCResponse.error(17L,
+            io.modelcontextprotocol.spec.McpSchema.JSONRPCResponse.JSONRPCError(
+                -32602, "PRIVATE_MESSAGE_SENTINEL", mapOf("raw" to "PRIVATE_DATA_SENTINEL")))
+        val wire = mapper.writeValueAsString(response)
+        assertFalse(wire.contains("PRIVATE_"))
+        val envelope = serverToolJson.parseToJsonElement(wire).jsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(17), envelope["id"])
+        val error = envelope.getValue("error").jsonObject
+        assertEquals("-32602", error.getValue("code").jsonPrimitive.content)
+        assertEquals("MCP request failed", error.getValue("message").jsonPrimitive.content)
+        assertTrue(error["data"] == null || error["data"] == JsonNull)
     }
 
     private fun provider(vararg tools: AiToolCallback): AiToolCallbackContributor =

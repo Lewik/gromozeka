@@ -46,7 +46,7 @@ import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
-import io.ktor.client.request.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
@@ -62,6 +62,8 @@ import io.ktor.server.websocket.WebSockets as ServerWebSockets
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readBytes
+import io.ktor.websocket.readText
+import io.ktor.websocket.close
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
@@ -149,17 +151,13 @@ class WorkerGatewayTest {
         )
 
         application {
-            installHttpAuthenticationErrors()
             install(ServerWebSockets)
             routing {
-                route("/worker/ws") {
-                    install(workerGatewayAuthentication(authenticationService))
-                    webSocket {
-                        gatewayService.handle(
-                            socket = this,
-                            authenticatedWorker = call.attributes[authenticatedWorkerGatewayKey],
-                        )
-                    }
+                webSocket("/worker/ws") {
+                    // Protocol fixture for the unchanged Ktor Worker client. Spring's socket
+                    // lifecycle is tested separately by SpringWebSocketTransportTest and boot smoke.
+                    val principal = checkNotNull(authenticationService.authenticate(call.request.headers["Authorization"]))
+                    gatewayService.handle(KtorPeerSocket(this), principal)
                 }
             }
         }
@@ -238,30 +236,14 @@ class WorkerGatewayTest {
     }
 
     @Test
-    fun `worker gateway authentication fails closed`() = testApplication {
-        val authenticationService = WorkerGatewayAuthenticationService(
-            GatewayAuthenticationRepository(
-                credentialHash = sha256("gateway-credential-that-is-long-enough-for-validation"),
-                worker = worker("worker-1"),
-            )
-        )
-        application {
-            installHttpAuthenticationErrors()
-            routing {
-                route("/worker") {
-                    install(workerGatewayAuthentication(authenticationService))
-                    get {
-                        call.attributes[authenticatedWorkerGatewayKey]
-                        call.respondText("authenticated")
-                    }
-                }
-            }
+    fun `worker gateway authentication fails closed`() = runBlocking<Unit> {
+        val authentication = WorkerGatewayAuthenticationService(GatewayAuthenticationRepository(
+            sha256("gateway-credential-that-is-long-enough-for-validation"), worker("worker-1")))
+        SpringHttpTestFixture(workers = authentication).use { http ->
+            val response = http.perform(get("/worker/ws").secureTestRequest())
+            assertEquals(401, response.status)
+            assertEquals("""Bearer realm="gromozeka-worker"""", response.getHeader("WWW-Authenticate"))
         }
-
-        val response = client.get("/worker")
-
-        assertEquals(HttpStatusCode.Unauthorized, response.status)
-        assertEquals("""Bearer realm="gromozeka-worker"""", response.headers[HttpHeaders.WWWAuthenticate])
     }
 
     @Test
@@ -425,4 +407,26 @@ private class GatewayAuthenticationRepository(
         gatewayCredentialHash: String,
     ): WorkerResource? =
         worker.takeIf { gatewayCredentialHash == credentialHash }
+}
+
+/** Test-only fake network peer; it is not a production transport or compatibility path. */
+private class KtorPeerSocket(private val session: io.ktor.server.websocket.DefaultWebSocketServerSession) : ServerSocketConnection {
+    override suspend fun receive(): ServerSocketMessage? {
+        while (true) {
+            when (val frame = session.incoming.receiveCatching().getOrNull() ?: return null) {
+                is Frame.Binary -> return ServerSocketMessage.Binary(frame.readBytes())
+                is Frame.Text -> return ServerSocketMessage.Text(frame.readText())
+                else -> Unit
+            }
+        }
+    }
+    override suspend fun send(message: ServerSocketMessage) {
+        session.send(when (message) {
+            is ServerSocketMessage.Binary -> Frame.Binary(true, message.bytes)
+            is ServerSocketMessage.Text -> Frame.Text(message.text)
+        })
+    }
+    override suspend fun close(code: Int, reason: String) {
+        session.close(io.ktor.websocket.CloseReason(code.toShort(), reason))
+    }
 }

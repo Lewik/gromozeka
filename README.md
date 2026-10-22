@@ -21,7 +21,7 @@ The project is currently a local research/development application, not a polishe
 
 The current development shape is split:
 
-- `:server` accepts client commands, persists and schedules durable runtime work, streams events, and exposes the Ktor remote endpoint.
+- `:server` accepts client commands, persists and schedules durable runtime work, streams events, and exposes a single Spring Boot Servlet/MVC/WebSocket endpoint with Spring Security.
 - `:worker` receives exact Worker-targeted operations through the Server Gateway and executes configured tools and finite AI request-response operations.
 - `:presentation` owns UI code and can run either as a JVM desktop client or as a Wasm web client.
 - The server listens on `/ws` for remote UI traffic and serves already-built Wasm static files from `presentation/build/dist/wasmJs/developmentExecutable` by default.
@@ -377,7 +377,7 @@ domain/             Domain models, service contracts, tool contracts
 application/        Use cases and orchestration pipelines
 infrastructure-ai/  LLM runtimes, tools, MCP-related integrations
 infrastructure-db/  PostgreSQL persistence, search, repository implementations
-server/             Spring/server runtime composition, Ktor remote endpoint, server-owned resources
+server/             Spring Servlet/MVC/Security, runtime composition, server-owned resources
 presentation/       Compose JVM Desktop and Wasm web UI clients
 shared/             Shared utilities
 agent_memory_handoff/  Memory design handoff and reference architecture

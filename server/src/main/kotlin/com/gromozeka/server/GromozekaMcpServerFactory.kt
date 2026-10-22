@@ -1,35 +1,56 @@
 package com.gromozeka.server
 
-import io.modelcontextprotocol.kotlin.sdk.server.Server
-import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
-import io.modelcontextprotocol.kotlin.sdk.types.Implementation
-import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
+import io.modelcontextprotocol.server.McpServer
+import io.modelcontextprotocol.server.McpStatelessAsyncServer
+import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport
+import io.modelcontextprotocol.spec.McpSchema
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.reactor.asMono
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Service
 
-/** One authenticated HTTP surface for the existing Server and Worker tool registry. */
+/** A fresh authorized catalog per HTTP request, never a shared cross-user MCP registry. */
 @Service
 internal class GromozekaMcpServerFactory(private val tools: GromozekaMcpToolService) {
-    suspend fun create(call: io.ktor.server.application.ApplicationCall): Server =
-        create(call.attributes[authenticatedMcpCallerKey]) { definitions ->
-            call.attributes.put(exactMcpToolDefinitions, definitions.associateBy { it.name })
-        }
-
-    suspend fun create(
-        caller: AuthenticatedMcpCaller,
-        publishDefinitions: (List<com.gromozeka.domain.tool.AiToolDefinition>) -> Unit = {},
-    ): Server {
-        val server = Server(
-            serverInfo = Implementation(name = "gromozeka", version = "dev"),
-            options = ServerOptions(ServerCapabilities(tools = ServerCapabilities.Tools(listChanged = false))),
-        )
-        val definitions = tools.list(caller.user.id)
-        publishDefinitions(definitions)
-        definitions.forEach { definition ->
-            server.addTool(definition.toMcpTool()) { request ->
-                tools.call(caller.user.id, definition.name, request.arguments ?: JsonObject(emptyMap())).toMcpResult()
+    suspend fun create(caller: AuthenticatedMcpCaller): NativeMcpHttpSession {
+        // Own tool jobs in the HTTP request's structured scope, not a detached Reactor
+        // coroutine. Cancellation and request completion must include callback cleanup.
+        val requestScope = CoroutineScope(currentCoroutineContext())
+        val mapper = SafeMcpJsonMapper()
+        val transport = HttpServletStatelessServerTransport.builder()
+            .jsonMapper(mapper)
+            .messageEndpoint("/mcp")
+            .maxRequestSize(4 * 1024 * 1024)
+            .build()
+        val server = McpServer.async(transport)
+            .jsonMapper(mapper)
+            .serverInfo("gromozeka", "dev")
+            .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
+            // The native resolver/executor performs the authoritative validation, including
+            // trusted context and full contract fingerprints, after current authorization.
+            .validateToolInputs(false)
+        for (definition in tools.list(caller.user.id)) {
+            server.toolCall(definition.toMcpTool(mapper)) { _, request ->
+                val result = requestScope.async {
+                    val arguments = request.arguments()?.let {
+                        serverToolJson.parseToJsonElement(mapper.writeValueAsString(it)).jsonObject
+                    } ?: JsonObject(emptyMap())
+                    tools.call(caller.user.id, definition.name, arguments).toMcpResult(mapper)
+                }
+                result.asMono(Dispatchers.Unconfined).doOnCancel { result.cancel() }
             }
         }
-        return server
+        return NativeMcpHttpSession(transport, server.build())
     }
+}
+
+internal class NativeMcpHttpSession(
+    val transport: HttpServletStatelessServerTransport,
+    private val server: McpStatelessAsyncServer,
+) : AutoCloseable {
+    override fun close() { server.close() }
 }

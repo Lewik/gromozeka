@@ -1,17 +1,14 @@
 package com.gromozeka.server
 
-import io.ktor.server.application.ApplicationCall
-import io.ktor.util.AttributeKey
+import jakarta.servlet.http.HttpServletRequest
 
-internal fun ApplicationCall.isSecureTransport(): Boolean {
-    val connection = request.local
-    return isSecureTransport(
-        scheme = connection.scheme,
-        remoteAddress = connection.remoteAddress,
-        forwardedProto = request.headers[FORWARDED_PROTO_HEADER],
-        trustForwardedHttps = application.attributes.getOrNull(trustForwardedHttpsKey) ?: false,
+internal fun HttpServletRequest.isSecureTransport(settings: ServerHttpSettings): Boolean =
+    isSecureTransport(
+        scheme = scheme,
+        remoteAddress = remoteAddr,
+        forwardedProto = getHeader(FORWARDED_PROTO_HEADER),
+        trustForwardedHttps = settings.trustForwardedHttps,
     )
-}
 
 internal fun isSecureTransport(
     scheme: String,
@@ -29,9 +26,6 @@ internal fun resolveTrustForwardedHttps(configured: String?): Boolean {
     return configured.toBooleanStrictOrNull()
         ?: error("GROMOZEKA_TRUST_FORWARDED_HTTPS must be true or false")
 }
-
-internal val trustForwardedHttpsKey =
-    AttributeKey<Boolean>("GromozekaTrustForwardedHttps")
 
 private val loopbackAddresses = setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
 private const val FORWARDED_PROTO_HEADER = "X-Forwarded-Proto"

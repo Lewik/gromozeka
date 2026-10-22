@@ -2,26 +2,14 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.ContextStateApplicationService
 import com.gromozeka.application.service.WorkerContactApplicationService
-import com.gromozeka.domain.model.ContextEvent
-import com.gromozeka.domain.model.ContextEventAppendResult
-import com.gromozeka.domain.model.ContextStateEntry
-import com.gromozeka.domain.model.User
-import com.gromozeka.domain.model.WorkerContactKind
-import com.gromozeka.domain.model.WorkerContactObservation
-import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.ContextStateRepository
 import com.gromozeka.domain.repository.WorkerContactRepository
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.routing.routing
-import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import java.security.MessageDigest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,62 +21,53 @@ class WorkerEventRoutingTest {
     private val time = Instant.parse("2026-09-05T00:00:00Z")
     private val eventJson = """{"events":[{"id":"sample","observedAt":"2026-09-05T00:00:00Z","payload":{"type":"battery","levelPercent":50,"charging":false}}]}"""
 
+    private fun fixture(repository: Events, contacts: Contacts, enrollment: WorkerEnrollmentRepository): SpringHttpTestFixture {
+        val authentication = WorkerGatewayAuthenticationService(enrollment)
+        return SpringHttpTestFixture(WorkerEventRouting(authentication, ContextStateApplicationService(repository),
+            WorkerContactApplicationService(contacts), ServerHttpSettings()), workers = authentication)
+    }
+    private fun eventRequest(body: String, path: String = "/api/worker/events") = post(path).secureTestRequest()
+        .header("Authorization", "Bearer $credential").contentType("application/json").content(body)
+
     @Test
-    fun `desktop and Android Workers ingest and deduplicate their own events`() {
-        for (platform in listOf("macos", "android")) testApplication {
+    fun `desktop and Android Workers ingest and deduplicate their own events`() = runBlocking<Unit> {
+        for (platform in listOf("macos", "android")) {
             val repository = Events()
             val contacts = Contacts()
             val worker = worker(platform)
             val enrollment = Mockito.mock(WorkerEnrollmentRepository::class.java)
-            runBlocking { Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker) }
-            application {
-                routing {
-                    gromozekaWorkerEvents(
-                        WorkerGatewayAuthenticationService(enrollment),
-                        ContextStateApplicationService(repository),
-                        WorkerContactApplicationService(contacts),
-                    )
-                }
+            Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker)
+            fixture(repository, contacts, enrollment).use { http ->
+                val first = http.perform(eventRequest(eventJson))
+                assertEquals(200, first.status)
+                assertTrue(first.contentAsString.contains("\"acceptedEventIds\":[\"sample\"]"))
+                val retry = http.perform(eventRequest(eventJson))
+                assertEquals(200, retry.status)
+                assertTrue(retry.contentAsString.contains("\"duplicateEventIds\":[\"sample\"]"))
+                assertEquals(1, repository.events.size)
+                assertEquals(ContextEvent.Source.Worker(worker.id), repository.events.single().source)
+                assertEquals(worker.subjectUserId, repository.events.single().userId)
+                val locationJson = """{"events":[{"id":"location","observedAt":"2026-09-05T00:00:00Z","payload":{"type":"location","latitude":32.0,"longitude":34.8,"accuracyMeters":15.0,"cause":"LIVE_TRACKING"}}]}"""
+                assertEquals(200, http.perform(eventRequest(locationJson)).status)
+                val recorded = repository.events.last()
+                assertEquals(time, recorded.observedAt)
+                assertEquals(worker.subjectUserId, recorded.userId)
+                assertEquals(15.0, ((recorded.payload as ContextEvent.Payload.Device).event as DeviceStateEvent.Location).accuracyMeters)
+                val heartbeat = http.perform(eventRequest("""{"contact":{"requestId":"heartbeat","sentAt":"2026-09-05T00:00:00Z","appState":"BACKGROUND","appVersion":"test","pendingEventCount":0}}""", "/api/worker/heartbeat"))
+                assertEquals(200, heartbeat.status)
+                assertEquals(WorkerContactKind.HEARTBEAT, contacts.observations.last().kind)
+                assertEquals(worker.subjectUserId, contacts.observations.last().subjectUserId)
+                assertEquals(0, contacts.observations.last().eventCount)
             }
-            val first = client.post("https://localhost/api/worker/events") { header("Authorization", "Bearer $credential"); setBody(eventJson) }
-            assertEquals(HttpStatusCode.OK, first.status)
-            assertTrue(first.bodyAsText().contains("\"acceptedEventIds\":[\"sample\"]"))
-            val retry = client.post("https://localhost/api/worker/events") { header("Authorization", "Bearer $credential"); setBody(eventJson) }
-            assertEquals(HttpStatusCode.OK, retry.status)
-            assertTrue(retry.bodyAsText().contains("\"duplicateEventIds\":[\"sample\"]"))
-            assertEquals(1, repository.events.size)
-            assertEquals(ContextEvent.Source.Worker(worker.id), repository.events.single().source)
-            assertEquals(worker.subjectUserId, repository.events.single().userId)
-            val locationJson = """{"events":[{"id":"location","observedAt":"2026-09-05T00:00:00Z","payload":{"type":"location","latitude":32.0,"longitude":34.8,"accuracyMeters":15.0,"cause":"LIVE_TRACKING"}}]}"""
-            val location = client.post("https://localhost/api/worker/events") { header("Authorization", "Bearer $credential"); setBody(locationJson) }
-            assertEquals(HttpStatusCode.OK, location.status)
-            val recordedLocation = repository.events.last()
-            assertEquals(time, recordedLocation.observedAt)
-            assertEquals(worker.subjectUserId, recordedLocation.userId)
-            assertEquals(15.0, ((recordedLocation.payload as ContextEvent.Payload.Device).event as com.gromozeka.domain.model.DeviceStateEvent.Location).accuracyMeters)
-            val heartbeat = client.post("https://localhost/api/worker/heartbeat") {
-                header("Authorization", "Bearer $credential")
-                setBody("""{"contact":{"requestId":"heartbeat","sentAt":"2026-09-05T00:00:00Z","appState":"BACKGROUND","appVersion":"test","pendingEventCount":0}}""")
-            }
-            assertEquals(HttpStatusCode.OK, heartbeat.status)
-            assertEquals(WorkerContactKind.HEARTBEAT, contacts.observations.last().kind)
-            assertEquals(worker.subjectUserId, contacts.observations.last().subjectUserId)
-            assertEquals(0, contacts.observations.last().eventCount)
         }
     }
 
     @Test
-    fun `mixed Android telemetry is authenticated retained and deduplicated with device attribution`() = testApplication {
+    fun `mixed Android telemetry is authenticated retained and deduplicated with device attribution`() = runBlocking<Unit> {
         val repository = Events()
         val enrollment = Mockito.mock(WorkerEnrollmentRepository::class.java)
         val worker = worker("android")
-        runBlocking { Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker) }
-        application {
-            routing {
-                gromozekaWorkerEvents(WorkerGatewayAuthenticationService(enrollment),
-                    ContextStateApplicationService(repository), WorkerContactApplicationService(Contacts()))
-            }
-        }
+        Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker)
         val body = """{"events":[
             {"id":"app","observedAt":"2026-09-05T00:00:00Z","payload":{"type":"app_activity","packageName":"test.game","transition":"RESUMED"}},
             {"id":"screen","observedAt":"2026-09-05T00:00:01Z","payload":{"type":"screen_state","interactive":false,"keyguardShowing":true,"deviceLocked":true}},
@@ -99,44 +78,34 @@ class WorkerEventRoutingTest {
             {"id":"gap","observedAt":"2026-09-05T00:00:02Z","payload":{"type":"collection_gap","source":"APP_USAGE","from":"2026-09-04T00:00:00Z","to":"2026-09-05T00:00:00Z","reason":"HISTORY_LIMIT"}},
             {"id":"environment","observedAt":"2026-09-05T00:00:02Z","payload":{"type":"device_environment","networkTransports":["WIFI"],"internetValidated":true,"metered":false,"powerSaveMode":false,"deviceIdleMode":false,"timeZoneId":"UTC","bootCount":2,"elapsedRealtimeMillis":10000}}
         ]}"""
-        repeat(2) {
-            val response = client.post("https://localhost/api/worker/events") {
-                header("Authorization", "Bearer $credential"); setBody(body)
+        fixture(repository, Contacts(), enrollment).use { http ->
+            repeat(2) {
+                val response = http.perform(eventRequest(body))
+                assertEquals(200, response.status, response.contentAsString)
             }
-            assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
+            assertEquals(8, repository.events.size)
+            assertTrue(repository.events.all { it.userId == worker.subjectUserId &&
+                it.subject == ContextEvent.Subject.Device(worker.id) && it.source == ContextEvent.Source.Worker(worker.id) })
+            assertEquals(time, repository.events.first().observedAt)
+            assertTrue(repository.events.all { it.receivedAt > it.observedAt })
         }
-        assertEquals(8, repository.events.size)
-        assertTrue(repository.events.all { it.userId == worker.subjectUserId &&
-            it.subject == ContextEvent.Subject.Device(worker.id) && it.source == ContextEvent.Source.Worker(worker.id) })
-        assertEquals(time, repository.events.first().observedAt)
-        assertTrue(repository.events.all { it.receivedAt > it.observedAt })
     }
 
     @Test
-    fun `authentication binding and bounded payload are required`() = testApplication {
+    fun `authentication binding and bounded payload are required`() = runBlocking<Unit> {
         val repository = Events()
         val enrollment = Mockito.mock(WorkerEnrollmentRepository::class.java)
-        runBlocking { Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker("android")) }
-        application {
-            routing {
-                gromozekaWorkerEvents(
-                    WorkerGatewayAuthenticationService(enrollment),
-                    ContextStateApplicationService(repository),
-                    WorkerContactApplicationService(Contacts()),
-                )
-            }
+        Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker("android"))
+        fixture(repository, Contacts(), enrollment).use { http ->
+            val insecure = post("/api/worker/events").secureTestRequest().secure(false).with { it.scheme = "http"; it }.content(eventJson)
+            assertEquals(426, http.perform(insecure).status)
+            assertEquals(401, http.perform(post("/api/worker/events").secureTestRequest().content(eventJson)).status)
+            assertEquals(413, http.perform(eventRequest("x".repeat(256 * 1024 + 1))).status)
+            assertEquals(400, http.perform(eventRequest(eventJson.replace("sample", "invalid/id"))).status)
+            Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker("macos").copy(subjectUserId = null))
+            assertEquals(403, http.perform(eventRequest(eventJson)).status)
+            assertTrue(repository.events.isEmpty())
         }
-        assertEquals(HttpStatusCode.UpgradeRequired, client.post("/api/worker/events") { setBody(eventJson) }.status)
-        assertEquals(HttpStatusCode.Unauthorized, client.post("https://localhost/api/worker/events") { setBody(eventJson) }.status)
-        assertEquals(HttpStatusCode.PayloadTooLarge, client.post("https://localhost/api/worker/events") {
-            header("Authorization", "Bearer $credential"); setBody("x".repeat(256 * 1024 + 1))
-        }.status)
-        assertEquals(HttpStatusCode.BadRequest, client.post("https://localhost/api/worker/events") {
-            header("Authorization", "Bearer $credential"); setBody(eventJson.replace("sample", "invalid/id"))
-        }.status)
-        runBlocking { Mockito.`when`(enrollment.authenticateGatewayCredential(hash())).thenReturn(worker("macos").copy(subjectUserId = null)) }
-        assertEquals(HttpStatusCode.Forbidden, client.post("https://localhost/api/worker/events") { header("Authorization", "Bearer $credential"); setBody(eventJson) }.status)
-        assertTrue(repository.events.isEmpty())
     }
 
     private fun worker(platform: String) = WorkerResource(ConversationRuntimeWorkerId("worker-$platform"), "Worker", User.Id("owner"), platform, User.Id("subject"), false, WorkerResource.Status.ACTIVE, time, time)

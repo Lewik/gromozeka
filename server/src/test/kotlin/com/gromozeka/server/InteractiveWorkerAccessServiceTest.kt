@@ -7,17 +7,8 @@ import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.WorkerAccessService
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
-import io.ktor.server.routing.routing
-import io.ktor.server.testing.testApplication
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant as KotlinInstant
 import kotlinx.serialization.json.jsonObject
@@ -89,60 +80,33 @@ class InteractiveWorkerAccessServiceTest {
             )
         ).thenReturn(worker)
 
-        testApplication {
-            application {
-                routing {
-                    gromozekaInteractiveWorkerAccess(service, authenticationService, workerAccessService)
-                }
-            }
-            val noRedirectClient = createClient { followRedirects = false }
-            val response = noRedirectClient.get("https://localhost/api/workers/aws-computer/interactive-access") {
-                header(HttpHeaders.Cookie, "$SESSION_COOKIE_NAME=session-token")
-            }
-
-            assertEquals(HttpStatusCode.Found, response.status)
-            assertEquals("no-store", response.headers[HttpHeaders.CacheControl])
-            val redirect = requireNotNull(response.headers[HttpHeaders.Location])
-            assertEquals(
-                "gromozeka-computer",
-                service.consumeDcvGrant("aws-computer", redirect.authenticationToken()),
-            )
+        SpringHttpTestFixture(GromozekaInteractiveWorkerAccessRouting(service, authenticationService,
+            workerAccessService, ServerHttpSettings()), authentication = authenticationService).use { http ->
+            val response = http.perform(get("/api/workers/aws-computer/interactive-access").secureTestRequest("session-token"))
+            assertEquals(302, response.status)
+            assertEquals("no-store", response.getHeader("Cache-Control"))
+            val redirect = requireNotNull(response.getHeader("Location"))
+            assertEquals("gromozeka-computer", service.consumeDcvGrant("aws-computer", redirect.authenticationToken()))
         }
     }
 
     @Test
-    fun `DCV verifier returns Amazon DCV XML and consumes the grant`() = testApplication {
+    fun `DCV verifier returns Amazon DCV XML and consumes the grant`() = runBlocking<Unit> {
         val service = service()
         val token = service.issueRedirect(workerId).authenticationToken()
-        application {
-            routing {
-                gromozekaInteractiveWorkerAccess(
-                    service,
-                    Mockito.mock(AuthenticationService::class.java),
-                    Mockito.mock(WorkerAccessService::class.java),
-                )
-            }
+        SpringHttpTestFixture(GromozekaInteractiveWorkerAccessRouting(service,
+            Mockito.mock(AuthenticationService::class.java), Mockito.mock(WorkerAccessService::class.java),
+            ServerHttpSettings())).use { http ->
+            fun request() = post("/internal/dcv-auth").secureTestRequest()
+                .contentType("application/x-www-form-urlencoded")
+                .content("sessionId=aws-computer&authenticationToken=$token&clientAddress=100.64.0.1")
+            val first = http.perform(request())
+            val second = http.perform(request())
+            assertEquals(200, first.status)
+            assertEquals("application/xml", first.contentType?.substringBefore(';'))
+            assertEquals("""<auth result="yes"><username>gromozeka-computer</username></auth>""", first.contentAsString)
+            assertEquals("""<auth result="no"><message>Authentication denied</message></auth>""", second.contentAsString)
         }
-
-        val first = client.post("/internal/dcv-auth") {
-            contentType(ContentType.Application.FormUrlEncoded)
-            setBody("sessionId=aws-computer&authenticationToken=$token&clientAddress=100.64.0.1")
-        }
-        val second = client.post("/internal/dcv-auth") {
-            contentType(ContentType.Application.FormUrlEncoded)
-            setBody("sessionId=aws-computer&authenticationToken=$token&clientAddress=100.64.0.1")
-        }
-
-        assertEquals(HttpStatusCode.OK, first.status)
-        assertEquals(ContentType.Application.Xml, first.contentType()?.withoutParameters())
-        assertEquals(
-            """<auth result="yes"><username>gromozeka-computer</username></auth>""",
-            first.bodyAsText(),
-        )
-        assertEquals(
-            """<auth result="no"><message>Authentication denied</message></auth>""",
-            second.bodyAsText(),
-        )
     }
 
     @Test

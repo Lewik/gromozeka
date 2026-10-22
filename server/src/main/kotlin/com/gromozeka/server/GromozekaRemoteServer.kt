@@ -58,13 +58,6 @@ import com.gromozeka.domain.service.PersonalAccessTokenService
 import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.infrastructure.ai.openai.TtsService
 import com.gromozeka.remote.protocol.*
-import io.ktor.server.websocket.DefaultWebSocketServerSession
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
-import io.ktor.websocket.send
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.CancellationException
@@ -148,7 +141,7 @@ class GromozekaRemoteServer(
     }
 
     internal suspend fun handle(
-        session: DefaultWebSocketServerSession,
+        session: ServerSocketConnection,
         authenticatedSession: AuthenticatedRemoteSession,
     ) {
         val connectionId = uuid7()
@@ -173,22 +166,18 @@ class GromozekaRemoteServer(
                 while (isActive) {
                     delay(AUTHENTICATION_RECHECK_INTERVAL_MILLIS)
                     if (authenticationService.authenticate(authenticatedSession.token) == null) {
-                        session.close(
-                            CloseReason(
-                                CloseReason.Codes.VIOLATED_POLICY,
-                                "Authentication session is no longer active",
-                            )
-                        )
+                        session.close(1008, "Authentication session is no longer active")
                         break
                     }
                 }
             }
             try {
-                for (frame in session.incoming) {
+                while (true) {
+                    val frame = session.receive() ?: break
                     val currentUser = sessionAccessGuard.requireUser(authenticatedSession)
                     val decoded = when (frame) {
-                        is Frame.Binary -> RemoteProtocolEncoding.CBOR to RemoteProtocolCodec.decodeClientBinary(frame.readBytes())
-                        is Frame.Text -> RemoteProtocolEncoding.JSON to RemoteProtocolCodec.decodeClientText(frame.readText())
+                        is ServerSocketMessage.Binary -> RemoteProtocolEncoding.CBOR to RemoteProtocolCodec.decodeClientBinary(frame.bytes)
+                        is ServerSocketMessage.Text -> RemoteProtocolEncoding.JSON to RemoteProtocolCodec.decodeClientText(frame.text)
                         else -> null
                     }
                     if (decoded != null) {
@@ -1528,7 +1517,7 @@ internal suspend fun <T> String.usePasswordChars(block: suspend (CharArray) -> T
 }
 
 private class RemoteSessionSender(
-    private val session: DefaultWebSocketServerSession,
+    private val session: ServerSocketConnection,
 ) {
     private val mutex = Mutex()
 
@@ -1540,8 +1529,8 @@ private class RemoteSessionSender(
         val envelope = GromozekaServerEnvelope(id, payload)
         mutex.withLock {
             when (encoding) {
-                RemoteProtocolEncoding.CBOR -> session.send(Frame.Binary(true, RemoteProtocolCodec.encodeServerBinary(envelope)))
-                RemoteProtocolEncoding.JSON -> session.send(RemoteProtocolCodec.encodeServerText(envelope))
+                RemoteProtocolEncoding.CBOR -> session.send(ServerSocketMessage.Binary(RemoteProtocolCodec.encodeServerBinary(envelope)))
+                RemoteProtocolEncoding.JSON -> session.send(ServerSocketMessage.Text(RemoteProtocolCodec.encodeServerText(envelope)))
             }
         }
     }

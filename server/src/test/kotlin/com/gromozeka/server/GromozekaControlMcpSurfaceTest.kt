@@ -214,7 +214,7 @@ class GromozekaControlMcpSurfaceTest {
         assertContains(guide, "Never ask the user to paste PLAYWRIGHT_MCP_EXTENSION_TOKEN")
     }
 
-    private fun io.modelcontextprotocol.kotlin.sdk.server.Server.toolProperties(name: String) =
+    private fun NativeMcpHttpSession.toolProperties(name: String) =
         requireNotNull(tools.getValue(name).tool.inputSchema?.properties)
 
     private inline fun <reified T> mock(): T = Mockito.mock(T::class.java)

@@ -145,6 +145,7 @@ constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayou
 
 # MCP (Model Context Protocol)
 mcp-kotlin-sdk = { module = "io.modelcontextprotocol:kotlin-sdk", version.ref = "mcp-kotlin-sdk" }
+mcp-kotlin-sdk-client = { module = "io.modelcontextprotocol:kotlin-sdk-client", version.ref = "mcp-kotlin-sdk" }
 
 # Logging
 klog = { module = "com.github.lewik.klog:klog-jvm", version.ref = "klog" }

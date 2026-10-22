@@ -1,83 +1,57 @@
 package com.gromozeka.server
 
-import com.gromozeka.domain.model.AuthenticatedPersonalAccessToken
-import com.gromozeka.domain.model.AuthenticatedUser
-import com.gromozeka.domain.model.IssuedPersonalAccessToken
-import com.gromozeka.domain.model.IssuedUserSession
-import com.gromozeka.domain.model.PersonalAccessToken
-import com.gromozeka.domain.model.User
-import com.gromozeka.domain.model.UserSession
+import com.gromozeka.domain.model.*
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.PersonalAccessTokenService
-import io.ktor.client.request.cookie
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.call
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
-import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.runBlocking
+import org.springframework.boot.test.context.TestComponent
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RestController
 import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class GromozekaMcpAuthenticationTest {
+    private fun fixture() = SpringHttpTestFixture(McpAuthenticationTestController(),
+        authentication = TestAuthenticationService, tokens = TestPersonalAccessTokenService)
+
     @Test
-    fun `MCP endpoints reject requests without authentication`() = testApplication {
-        application {
-            installTestMcpRoutes()
+    fun `MCP endpoints reject requests without authentication`() = runBlocking<Unit> {
+        fixture().use { http ->
+            val response = http.perform(get("/mcp").secureTestRequest())
+            assertEquals(401, response.status)
+            assertNotNull(response.getHeader("WWW-Authenticate"))
+            assertEquals(401, http.perform(get("/mcp/control").secureTestRequest()).status)
         }
-
-        val memoryResponse = client.get(MCP_URL)
-        val controlResponse = client.get(OLD_CONTROL_MCP_URL)
-
-        assertEquals(HttpStatusCode.Unauthorized, memoryResponse.status)
-        assertEquals(HttpStatusCode.Unauthorized, controlResponse.status)
-        assertNotNull(memoryResponse.headers[HttpHeaders.WWWAuthenticate])
     }
 
     @Test
-    fun `unified MCP requires existing control scope and never upgrades memory-only tokens`() = testApplication {
-        application { installTestMcpRoutes() }
-        assertEquals(HttpStatusCode.Unauthorized, client.get(MCP_URL) {
-            header(HttpHeaders.Authorization, "Bearer memory-token")
-        }.status)
-        assertEquals(HttpStatusCode.OK, client.get(MCP_URL) {
-            header(HttpHeaders.Authorization, "Bearer control-token")
-        }.status)
-        assertEquals(HttpStatusCode.Unauthorized, client.get(MCP_URL) {
-            header(HttpHeaders.Authorization, "Bearer revoked-or-invalid")
-        }.status)
-        assertEquals(HttpStatusCode.NotFound, client.get(OLD_CONTROL_MCP_URL) {
-            header(HttpHeaders.Authorization, "Bearer control-token")
-        }.status)
+    fun `unified MCP requires existing control scope and never upgrades memory-only tokens`() = runBlocking<Unit> {
+        fixture().use { http ->
+            assertEquals(401, http.perform(get("/mcp").secureTestRequest().header("Authorization", "Bearer memory-token")).status)
+            assertEquals(200, http.perform(get("/mcp").secureTestRequest().header("Authorization", "Bearer control-token")).status)
+            assertEquals(401, http.perform(get("/mcp").secureTestRequest().header("Authorization", "Bearer revoked-or-invalid")).status)
+            assertEquals(404, http.perform(get("/mcp/control").secureTestRequest().header("Authorization", "Bearer control-token")).status)
+        }
     }
 
     @Test
-    fun `authenticated browser session uses unified MCP without weakening HTTPS`() = testApplication {
-        application { installTestMcpRoutes() }
-        assertEquals(HttpStatusCode.OK, client.get(MCP_URL) { cookie(SESSION_COOKIE_NAME, "session-token") }.status)
-        assertEquals(HttpStatusCode.UpgradeRequired, client.get("http://localhost/mcp") {
-            header(HttpHeaders.Authorization, "Bearer control-token")
-        }.status)
+    fun `authenticated browser session uses unified MCP without weakening HTTPS`() = runBlocking<Unit> {
+        fixture().use { http ->
+            assertEquals(200, http.perform(get("/mcp").secureTestRequest("session-token")).status)
+            val insecure = get("/mcp").secureTestRequest().secure(false).with { it.scheme = "http"; it }
+                .header("Authorization", "Bearer control-token")
+            assertEquals(426, http.perform(insecure).status)
+        }
     }
-
 }
 
-private fun io.ktor.server.application.Application.installTestMcpRoutes() {
-    installHttpAuthenticationErrors()
-    installMcpAuthentication(
-        authenticationService = TestAuthenticationService,
-        personalAccessTokenService = TestPersonalAccessTokenService,
-    )
-    routing {
-        get("/mcp") {
-            call.respondText("tools")
-        }
-    }
+@TestComponent
+@RestController
+private class McpAuthenticationTestController {
+    @GetMapping("/mcp") fun tools(): String = "tools"
 }
 
 private object TestAuthenticationService : AuthenticationService {

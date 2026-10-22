@@ -8,198 +8,142 @@ import com.gromozeka.remote.protocol.DeviceConnectionCodeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionConsumeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionPasswordRequest
 import com.gromozeka.remote.protocol.DeviceConnectionStartRequest
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.post
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
-internal fun Routing.gromozekaDeviceConnections(
-    deviceConnectionService: DeviceConnectionService,
-    authenticationService: AuthenticationService,
-    attemptLimiter: AuthenticationAttemptLimiter,
-    secureCookie: Boolean,
+@RestController
+@RequestMapping("/auth/device-connections")
+internal class GromozekaDeviceConnectionHttp(
+    private val deviceConnectionService: DeviceConnectionService,
+    private val authenticationService: AuthenticationService,
+    private val attemptLimiter: AuthenticationAttemptLimiter,
+    private val settings: ServerHttpSettings,
 ) {
-    post("/auth/device-connections") {
-        if (!call.requireAllowedAuthenticationOrigin()) return@post
-        if (!call.requireSecureAuthenticationTransport()) return@post
+    private fun accepts(request: HttpServletRequest, response: HttpServletResponse): Boolean =
+        request.requireAllowedAuthenticationOrigin(response) && request.requireSecureAuthenticationTransport(response, settings)
+
+    @PostMapping
+    suspend fun start(request: HttpServletRequest, response: HttpServletResponse) {
+        if (!accepts(request, response)) return
         if (!authenticationService.hasUsers()) {
-            call.respondAuthenticationJson(
-                AuthenticationErrorResponse(AuthenticationErrorCode.RUNTIME_NOT_INITIALIZED, "Runtime initialization is required"),
-                HttpStatusCode.Conflict,
-            )
-            return@post
+            response.respondAuthenticationJson(AuthenticationErrorResponse(
+                AuthenticationErrorCode.RUNTIME_NOT_INITIALIZED, "Runtime initialization is required"), HttpStatus.CONFLICT)
+            return
         }
-        val remoteAddress = call.request.local.remoteAddress
-        val retryAfterSeconds = attemptLimiter.deviceConnectionRetryAfterSeconds(remoteAddress)
-        if (retryAfterSeconds != null) {
-            call.response.headers.append(HttpHeaders.RetryAfter, retryAfterSeconds.toString())
-            call.respondAuthenticationJson(
-                AuthenticationErrorResponse(AuthenticationErrorCode.DEVICE_CONNECTION_RATE_LIMITED, "Too many device connection requests"),
-                HttpStatusCode.TooManyRequests,
-            )
-            return@post
+        val retry = attemptLimiter.deviceConnectionRetryAfterSeconds(request.remoteAddr)
+        if (retry != null) {
+            response.setHeader(HttpHeaders.RETRY_AFTER, retry.toString())
+            response.respondAuthenticationJson(AuthenticationErrorResponse(AuthenticationErrorCode.DEVICE_CONNECTION_RATE_LIMITED,
+                "Too many device connection requests"), HttpStatus.TOO_MANY_REQUESTS)
+            return
         }
-        val request = call.receiveAuthenticationRequest<DeviceConnectionStartRequest>() ?: return@post
+        val body = request.receiveAuthenticationRequest<DeviceConnectionStartRequest>(response) ?: return
         try {
-            val challenge = deviceConnectionService.create(request)
-            attemptLimiter.recordDeviceConnectionRequest(remoteAddress)
-            call.respondAuthenticationJson(challenge, HttpStatusCode.Created)
+            val challenge = deviceConnectionService.create(body)
+            attemptLimiter.recordDeviceConnectionRequest(request.remoteAddr)
+            response.respondAuthenticationJson(challenge, HttpStatus.CREATED)
         } catch (error: IllegalArgumentException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.BadRequest)
+            response.respondDeviceConnectionError(error, HttpStatus.BAD_REQUEST)
         } catch (error: IllegalStateException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.ServiceUnavailable)
+            response.respondDeviceConnectionError(error, HttpStatus.SERVICE_UNAVAILABLE)
         }
     }
 
-    post("/auth/device-connections/preview") {
-        if (!call.requireAllowedAuthenticationOrigin()) return@post
-        if (!call.requireSecureAuthenticationTransport()) return@post
-        val principal = call.authenticateOrNull(authenticationService)
-        if (principal == null) {
-            call.respondAuthenticationJson(
-                AuthenticationErrorResponse(AuthenticationErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"),
-                HttpStatusCode.Unauthorized,
-            )
-            return@post
+    @PostMapping("/preview")
+    suspend fun preview(request: HttpServletRequest, response: HttpServletResponse) {
+        if (!accepts(request, response)) return
+        if (request.authenticateOrNull(authenticationService) == null) {
+            response.authenticationRequired()
+            return
         }
-        val request = call.receiveAuthenticationRequest<DeviceConnectionCodeRequest>() ?: return@post
-        try {
-            call.respondAuthenticationJson(deviceConnectionService.preview(request.userCode))
-        } catch (error: IllegalArgumentException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.NotFound)
-        }
+        val body = request.receiveAuthenticationRequest<DeviceConnectionCodeRequest>(response) ?: return
+        try { response.respondAuthenticationJson(deviceConnectionService.preview(body.userCode)) }
+        catch (error: IllegalArgumentException) { response.respondDeviceConnectionError(error, HttpStatus.NOT_FOUND) }
     }
 
-    post("/auth/device-connections/approve") {
-        if (!call.requireAllowedAuthenticationOrigin()) return@post
-        if (!call.requireSecureAuthenticationTransport()) return@post
-        val principal = call.authenticateOrNull(authenticationService)
-        if (principal == null) {
-            call.respondAuthenticationJson(
-                AuthenticationErrorResponse(AuthenticationErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"),
-                HttpStatusCode.Unauthorized,
-            )
-            return@post
-        }
-        val request = call.receiveAuthenticationRequest<DeviceConnectionCodeRequest>() ?: return@post
-        try {
-            call.respondAuthenticationJson(
-                deviceConnectionService.approve(request.userCode, principal.user.id)
-            )
-        } catch (error: IllegalArgumentException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.BadRequest)
-        } catch (error: IllegalStateException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.Conflict)
-        }
+    @PostMapping("/approve")
+    suspend fun approve(request: HttpServletRequest, response: HttpServletResponse) {
+        if (!accepts(request, response)) return
+        val principal = request.authenticateOrNull(authenticationService)
+        if (principal == null) { response.authenticationRequired(); return }
+        val body = request.receiveAuthenticationRequest<DeviceConnectionCodeRequest>(response) ?: return
+        try { response.respondAuthenticationJson(deviceConnectionService.approve(body.userCode, principal.user.id)) }
+        catch (error: IllegalArgumentException) { response.respondDeviceConnectionError(error, HttpStatus.BAD_REQUEST) }
+        catch (error: IllegalStateException) { response.respondDeviceConnectionError(error, HttpStatus.CONFLICT) }
     }
 
-    post("/auth/device-connections/deny") {
-        if (!call.requireAllowedAuthenticationOrigin()) return@post
-        if (!call.requireSecureAuthenticationTransport()) return@post
-        val principal = call.authenticateOrNull(authenticationService)
-        if (principal == null) {
-            call.respondAuthenticationJson(
-                AuthenticationErrorResponse(AuthenticationErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"),
-                HttpStatusCode.Unauthorized,
-            )
-            return@post
-        }
-        val request = call.receiveAuthenticationRequest<DeviceConnectionCodeRequest>() ?: return@post
+    @PostMapping("/deny")
+    suspend fun deny(request: HttpServletRequest, response: HttpServletResponse) {
+        if (!accepts(request, response)) return
+        val principal = request.authenticateOrNull(authenticationService)
+        if (principal == null) { response.authenticationRequired(); return }
+        val body = request.receiveAuthenticationRequest<DeviceConnectionCodeRequest>(response) ?: return
         try {
-            deviceConnectionService.deny(request.userCode, principal.user.id)
-            call.respondAuthenticationJson(DeviceConnectionDecisionResponse(denied = true))
-        } catch (error: IllegalArgumentException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.BadRequest)
-        } catch (error: IllegalStateException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.Conflict)
-        }
+            deviceConnectionService.deny(body.userCode, principal.user.id)
+            response.respondAuthenticationJson(DeviceConnectionDecisionResponse(denied = true))
+        } catch (error: IllegalArgumentException) { response.respondDeviceConnectionError(error, HttpStatus.BAD_REQUEST) }
+        catch (error: IllegalStateException) { response.respondDeviceConnectionError(error, HttpStatus.CONFLICT) }
     }
 
-    post("/auth/device-connections/password") {
-        if (!call.requireAllowedAuthenticationOrigin()) return@post
-        if (!call.requireSecureAuthenticationTransport()) return@post
-        val request = call.receiveAuthenticationRequest<DeviceConnectionPasswordRequest>() ?: return@post
-        val remoteAddress = call.request.local.remoteAddress
-        val retryAfterSeconds = attemptLimiter.retryAfterSeconds(remoteAddress, request.username)
-        if (retryAfterSeconds != null) {
-            call.response.headers.append(HttpHeaders.RetryAfter, retryAfterSeconds.toString())
-            call.respondAuthenticationJson(
-                AuthenticationErrorResponse(AuthenticationErrorCode.RATE_LIMITED, "Too many authentication attempts"),
-                HttpStatusCode.TooManyRequests,
-            )
-            return@post
+    @PostMapping("/password")
+    suspend fun password(request: HttpServletRequest, response: HttpServletResponse) {
+        if (!accepts(request, response)) return
+        val body = request.receiveAuthenticationRequest<DeviceConnectionPasswordRequest>(response) ?: return
+        val retry = attemptLimiter.retryAfterSeconds(request.remoteAddr, body.username)
+        if (retry != null) {
+            response.setHeader(HttpHeaders.RETRY_AFTER, retry.toString())
+            response.respondAuthenticationJson(AuthenticationErrorResponse(
+                AuthenticationErrorCode.RATE_LIMITED, "Too many authentication attempts"), HttpStatus.TOO_MANY_REQUESTS)
+            return
         }
-        val password = request.password.toCharArray()
+        val password = body.password.toCharArray()
         try {
-            val outcome = deviceConnectionService.approveWithPassword(
-                deviceToken = request.deviceToken,
-                username = request.username,
-                password = password,
-            )
-            attemptLimiter.recordSuccess(request.username)
-            call.respondDeviceConnectionOutcome(outcome, secureCookie)
+            val outcome = deviceConnectionService.approveWithPassword(body.deviceToken, body.username, password)
+            attemptLimiter.recordSuccess(body.username)
+            response.respondDeviceConnectionOutcome(outcome, settings.secureCookie)
         } catch (_: AuthenticationRejectedException) {
-            attemptLimiter.recordFailure(remoteAddress, request.username)
-            call.respondAuthenticationJson(
-                AuthenticationErrorResponse(AuthenticationErrorCode.INVALID_CREDENTIALS, "Invalid username or password"),
-                HttpStatusCode.Unauthorized,
-            )
+            attemptLimiter.recordFailure(request.remoteAddr, body.username)
+            response.respondAuthenticationJson(AuthenticationErrorResponse(
+                AuthenticationErrorCode.INVALID_CREDENTIALS, "Invalid username or password"), HttpStatus.UNAUTHORIZED)
         } catch (error: IllegalArgumentException) {
-            attemptLimiter.recordFailure(remoteAddress, request.username)
-            call.respondDeviceConnectionError(error, HttpStatusCode.BadRequest)
-        } catch (error: IllegalStateException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.Conflict)
-        } finally {
-            password.fill('\u0000')
-        }
+            attemptLimiter.recordFailure(request.remoteAddr, body.username)
+            response.respondDeviceConnectionError(error, HttpStatus.BAD_REQUEST)
+        } catch (error: IllegalStateException) { response.respondDeviceConnectionError(error, HttpStatus.CONFLICT) }
+        finally { password.fill('\u0000') }
     }
 
-    post("/auth/device-connections/consume") {
-        if (!call.requireAllowedAuthenticationOrigin()) return@post
-        if (!call.requireSecureAuthenticationTransport()) return@post
-        val request = call.receiveAuthenticationRequest<DeviceConnectionConsumeRequest>() ?: return@post
-        try {
-            call.respondDeviceConnectionOutcome(
-                deviceConnectionService.consume(request.deviceToken),
-                secureCookie,
-            )
-        } catch (error: IllegalArgumentException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.BadRequest)
-        } catch (error: IllegalStateException) {
-            call.respondDeviceConnectionError(error, HttpStatusCode.Conflict)
-        }
+    @PostMapping("/consume")
+    suspend fun consume(request: HttpServletRequest, response: HttpServletResponse) {
+        if (!accepts(request, response)) return
+        val body = request.receiveAuthenticationRequest<DeviceConnectionConsumeRequest>(response) ?: return
+        try { response.respondDeviceConnectionOutcome(deviceConnectionService.consume(body.deviceToken), settings.secureCookie) }
+        catch (error: IllegalArgumentException) { response.respondDeviceConnectionError(error, HttpStatus.BAD_REQUEST) }
+        catch (error: IllegalStateException) { response.respondDeviceConnectionError(error, HttpStatus.CONFLICT) }
     }
 }
 
-private suspend fun io.ktor.server.application.ApplicationCall.respondDeviceConnectionOutcome(
-    outcome: DeviceConnectionConsumeOutcome,
-    secureCookie: Boolean,
-) {
-    val session = outcome.response.session
-    val sessionToken = outcome.sessionToken
-    if (session != null) {
-        check(sessionToken != null) { "Connected Client response has no session token" }
-        setSessionCookie(sessionToken, session.expiresAt.epochSeconds, secureCookie)
+private fun HttpServletResponse.authenticationRequired() = respondAuthenticationJson(
+    AuthenticationErrorResponse(AuthenticationErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"), HttpStatus.UNAUTHORIZED)
+
+private fun HttpServletResponse.respondDeviceConnectionOutcome(outcome: DeviceConnectionConsumeOutcome, secureCookie: Boolean) {
+    outcome.response.session?.let { session ->
+        setSessionCookie(checkNotNull(outcome.sessionToken) { "Connected Client response has no session token" },
+            session.expiresAt.epochSeconds, secureCookie)
     }
     respondAuthenticationJson(outcome.response)
 }
 
-private suspend fun io.ktor.server.application.ApplicationCall.respondDeviceConnectionError(
-    error: Throwable,
-    status: HttpStatusCode,
-) {
-    respondAuthenticationJson(
-        AuthenticationErrorResponse(
-            code = if (error is InvalidDeviceConnectionException || error is ExpiredDeviceConnectionException) {
-                AuthenticationErrorCode.INVALID_DEVICE_CONNECTION
-            } else {
-                AuthenticationErrorCode.DEVICE_CONNECTION_FAILED
-            },
-            message = error.message,
-        ),
-        status,
-    )
-}
+private fun HttpServletResponse.respondDeviceConnectionError(error: Throwable, status: HttpStatus) =
+    respondAuthenticationJson(AuthenticationErrorResponse(
+        code = if (error is InvalidDeviceConnectionException || error is ExpiredDeviceConnectionException)
+            AuthenticationErrorCode.INVALID_DEVICE_CONNECTION else AuthenticationErrorCode.DEVICE_CONNECTION_FAILED,
+        message = error.message,
+    ), status)
 
 @kotlinx.serialization.Serializable
 private data class DeviceConnectionDecisionResponse(val denied: Boolean)

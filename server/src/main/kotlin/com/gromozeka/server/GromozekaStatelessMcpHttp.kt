@@ -1,95 +1,47 @@
 package com.gromozeka.server
 
-import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.install
-import io.ktor.server.application.pluginOrNull
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.response.respond
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
-import io.ktor.util.AttributeKey
-import io.modelcontextprotocol.kotlin.sdk.server.DnsRebindingProtection
-import io.modelcontextprotocol.kotlin.sdk.server.Server
-import io.modelcontextprotocol.kotlin.sdk.server.StreamableHttpServerTransport
-import io.modelcontextprotocol.kotlin.sdk.types.McpJson
+import jakarta.servlet.ServletRequest
+import jakarta.servlet.ServletResponse
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.RestController
 
-internal fun Application.statelessMcpStreamableHttp(
-    path: String,
-    allowedHosts: List<String>?,
-    allowedOrigins: List<String>?,
-    createServer: suspend (ApplicationCall) -> Server,
-) {
-    installMcpContentNegotiation()
-    routing {
-        route(path) {
-            install(io.ktor.server.application.createRouteScopedPlugin("ExactNativeMcpSchemas") {
-                onCallRespond { call, _ ->
-                    transformBody { body ->
-                        val definitions = call.attributes.getOrNull(exactMcpToolDefinitions)
-                        val json = when (body) {
-                            is io.modelcontextprotocol.kotlin.sdk.types.JSONRPCResponse ->
-                                McpJson.encodeToJsonElement(io.modelcontextprotocol.kotlin.sdk.types.JSONRPCResponse.serializer(), body)
-                            is io.ktor.http.content.OutgoingContent.ByteArrayContent ->
-                                if (body.contentType?.withoutParameters() == io.ktor.http.ContentType.Application.Json)
-                                    kotlinx.serialization.json.Json.parseToJsonElement(body.bytes().decodeToString()) else null
-                            else -> null
-                        }
-                        val exact = if (definitions != null && json != null) json.withExactToolSchemas(definitions) else null
-                        if (exact == null) body else
-                            io.ktor.http.content.TextContent(exact.toString(), io.ktor.http.ContentType.Application.Json)
-                    }
+/** MVC owns request cancellation; the SDK owns the stateless MCP HTTP protocol. */
+@RestController
+internal class GromozekaStatelessMcpHttp(private val factory: GromozekaMcpServerFactory) {
+    @PostMapping("/mcp")
+    suspend fun post(request: HttpServletRequest, response: HttpServletResponse) {
+        val caller = request.getAttribute(AUTHENTICATED_MCP_CALLER) as? AuthenticatedMcpCaller
+            ?: throw HttpAuthenticationException(HttpStatus.UNAUTHORIZED, "Authentication required")
+        try {
+            factory.create(caller).use { session ->
+                val version = request.getHeader("MCP-Protocol-Version")
+                if (version != null && version !in session.transport.protocolVersions()) {
+                    response.writeHttpError(HttpStatus.BAD_REQUEST, "Unsupported MCP protocol version")
+                    return
                 }
-            })
-            install(DnsRebindingProtection) {
-                this.allowedHosts = allowedHosts ?: LOCALHOST_ALLOWED_HOSTS
-                this.allowedOrigins = allowedOrigins
-                    ?: LOCALHOST_ALLOWED_ORIGINS.takeIf { allowedHosts == null }
-            }
-            post {
-                val transport = StreamableHttpServerTransport(
-                    StreamableHttpServerTransport.Configuration(enableJsonResponse = true)
-                ).apply {
-                    setSessionIdGenerator(null)
-                }
-                val session = createServer(call).createSession(transport)
-                try {
-                    transport.handleRequest(null, call)
-                } finally {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { session.close() }
+                // Interrupting the MVC coroutine cancels the SDK's blocking subscription,
+                // which in turn cancels the native suspend callback. It is not a retry.
+                runInterruptible(Dispatchers.IO) {
+                    session.transport.service(request as ServletRequest, response as ServletResponse)
                 }
             }
-            get {
-                call.respond(HttpStatusCode.MethodNotAllowed)
-            }
-            delete {
-                call.respond(HttpStatusCode.MethodNotAllowed)
-            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            if (!response.isCommitted) response.writeHttpError(HttpStatus.INTERNAL_SERVER_ERROR, "MCP request failed")
         }
     }
-}
 
-private fun Application.installMcpContentNegotiation() {
-    if (attributes.getOrNull(mcpContentNegotiationInstalled) != null) return
-    check(pluginOrNull(ContentNegotiation) == null) {
-        "MCP routes require ContentNegotiation configured with McpJson"
+    @RequestMapping("/mcp", method = [RequestMethod.GET, RequestMethod.DELETE])
+    fun unsupported(response: HttpServletResponse) {
+        response.status = HttpStatus.METHOD_NOT_ALLOWED.value()
     }
-    install(ContentNegotiation) {
-        json(McpJson)
-    }
-    attributes.put(mcpContentNegotiationInstalled, Unit)
 }
-
-private val mcpContentNegotiationInstalled = AttributeKey<Unit>("GromozekaMcpContentNegotiationInstalled")
-
-private val LOCALHOST_ALLOWED_HOSTS = listOf("localhost", "127.0.0.1", "[::1]")
-private val LOCALHOST_ALLOWED_ORIGINS = listOf(
-    "http://localhost",
-    "http://127.0.0.1",
-    "http://[::1]",
-)

@@ -13,17 +13,6 @@ import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.createRouteScopedPlugin
-import io.ktor.server.request.header
-import io.ktor.server.websocket.DefaultWebSocketServerSession
-import io.ktor.util.AttributeKey
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -133,7 +122,7 @@ class WorkerGatewayService(
         }
 
     internal suspend fun handle(
-        socket: DefaultWebSocketServerSession,
+        socket: ServerSocketConnection,
         authenticatedWorker: AuthenticatedWorkerGateway,
     ) {
         val worker = authenticatedWorker.worker
@@ -218,19 +207,14 @@ class WorkerGatewayService(
                     while (isActive) {
                         delay(AUTHENTICATION_RECHECK_INTERVAL.toMillis())
                         if (!authenticationService.isActive(authenticatedWorker)) {
-                            socket.close(
-                                CloseReason(
-                                    CloseReason.Codes.VIOLATED_POLICY,
-                                    "Worker credential is no longer active",
-                                )
-                            )
+                            socket.close(1008, "Worker credential is no longer active")
                             break
                         }
                     }
                 }
                 val requestedDisconnectMonitor = launch {
                     val reason = gatewaySession.awaitRequestedDisconnect()
-                    socket.close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, reason))
+                    socket.close(1008, reason)
                 }
                 val aiCatalogUpdates = launch {
                     aiConfigurationProvider.snapshotFlow
@@ -241,7 +225,8 @@ class WorkerGatewayService(
                         }
                 }
                 try {
-                    for (frame in socket.incoming) {
+                    while (true) {
+                        val frame = socket.receive() ?: break
                         if (!authenticationService.isActive(authenticatedWorker)) {
                             return@coroutineScope socket.fail(
                                 "WORKER_AUTHENTICATION_REVOKED",
@@ -393,28 +378,28 @@ class WorkerGatewayService(
         }
     }
 
-    private suspend fun DefaultWebSocketServerSession.receiveMessage(): WorkerGatewayMessage {
-        val frame = incoming.receive()
+    private suspend fun ServerSocketConnection.receiveMessage(): WorkerGatewayMessage {
+        val frame = receive() ?: error("Worker Gateway disconnected")
         return frame.decodeMessage()
             ?: error("Worker Gateway accepts binary protocol frames only")
     }
 
-    private suspend fun DefaultWebSocketServerSession.sendMessage(message: WorkerGatewayMessage) {
-        send(Frame.Binary(true, WorkerGatewayCodec.encode(message)))
+    private suspend fun ServerSocketConnection.sendMessage(message: WorkerGatewayMessage) {
+        send(ServerSocketMessage.Binary(WorkerGatewayCodec.encode(message)))
     }
 
-    private suspend fun DefaultWebSocketServerSession.fail(
+    private suspend fun ServerSocketConnection.fail(
         code: String,
         message: String,
     ) {
         runCatching {
             sendMessage(WorkerGatewayMessage.Failure(code, message))
         }
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, code))
+        close(1008, code)
     }
 
-    private fun Frame.decodeMessage(): WorkerGatewayMessage? =
-        (this as? Frame.Binary)?.let { WorkerGatewayCodec.decode(it.readBytes()) }
+    private fun ServerSocketMessage.decodeMessage(): WorkerGatewayMessage? =
+        (this as? ServerSocketMessage.Binary)?.let { WorkerGatewayCodec.decode(it.bytes) }
 
     private fun Instant.minus(duration: Duration): Instant =
         Instant.fromEpochMilliseconds(toEpochMilliseconds() - duration.toMillis())
@@ -426,25 +411,6 @@ class WorkerGatewayService(
         val HEARTBEAT_INTERVAL: Duration = Duration.ofSeconds(10)
         val HEARTBEAT_STALE_AFTER: Duration = Duration.ofSeconds(30)
         val workerRequestConcurrency = Semaphore(64)
-    }
-}
-
-internal val authenticatedWorkerGatewayKey =
-    AttributeKey<AuthenticatedWorkerGateway>("AuthenticatedWorkerGateway")
-
-internal fun workerGatewayAuthentication(
-    authenticationService: WorkerGatewayAuthenticationService,
-) = createRouteScopedPlugin("WorkerGatewayAuthentication") {
-    onCall { call ->
-        val worker = authenticationService.authenticate(call.request.header(HttpHeaders.Authorization))
-        if (worker == null) {
-            throw HttpAuthenticationException(
-                status = HttpStatusCode.Unauthorized,
-                publicMessage = "Worker authentication required",
-                challenge = """Bearer realm="gromozeka-worker"""",
-            )
-        }
-        call.attributes.put(authenticatedWorkerGatewayKey, worker)
     }
 }
 

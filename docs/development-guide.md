@@ -39,6 +39,36 @@ storage, provider, and transport details stay in their infrastructure modules.
 Presentation bootstrap may wire infrastructure, but ordinary UI code should use
 domain and application abstractions.
 
+The central Server uses one Spring Boot Servlet container: MVC controllers for
+HTTP, Spring WebSocket handlers for `/ws` and `/worker/ws`, and one Spring
+Security filter chain. There is no parallel Ktor Server listener. The clients
+and shared Worker runtime retain Ktor Client and the common Kotlin serialization
+protocol. Moving the JVM Server does not move Spring dependencies into KMP clients
+or replace coroutine-based application services with Spring AI orchestration.
+
+`ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
+secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy
+header rewriting is disabled. HTTP authentication resolves existing opaque user
+sessions, Worker credentials, or MCP PATs; project/resource/tool authorization
+remains in the application services. Spring HTTP sessions, generated development
+passwords, form login, and HTTP Basic are not alternate login paths. This
+transport migration does not yet implement OAuth authorization/token endpoints
+or change PAT scopes.
+
+Native `/mcp` uses the official MCP Java SDK's stateless Servlet transport and
+complete schema maps. Each request gets a fresh authenticated native catalog;
+there is no second tool registry or Spring AI tool scan. Callback coroutine jobs
+belong to that HTTP request and are cancelled/joined with it. SDK errors are
+serialized as bounded protocol errors, never Throwable beans with causes or
+stack traces. The removed `/mcp/control` route and external memory publication
+are not restored. WebSocket callbacks feed a bounded coroutine channel; overload,
+failed sends, disconnects, and shutdown close that connection and its owned work.
+
+HTTP regression tests use actual MVC dispatch and the production Security filter
+chain without a database or listener. They are separate from opt-in boot/process
+smokes and from real provider calls. Server startup/packaging must not trigger a
+Wasm build: the static handler serves only an already-built configured directory.
+
 Declarative client state is synchronized by revisions rather than transported
 as mutation deltas. Application services publish affected resource keys after
 their transaction commits. Clients conflate invalidations, pull the latest

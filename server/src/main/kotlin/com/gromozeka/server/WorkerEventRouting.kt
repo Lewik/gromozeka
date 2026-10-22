@@ -9,199 +9,99 @@ import com.gromozeka.remote.protocol.WorkerEventBatchRequest
 import com.gromozeka.remote.protocol.WorkerEventBatchResponse
 import com.gromozeka.remote.protocol.WorkerHeartbeatRequest
 import com.gromozeka.remote.protocol.WorkerHeartbeatResponse
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.request.header
-import io.ktor.server.request.receiveChannel
-import io.ktor.utils.io.readRemaining
-import kotlinx.io.readByteArray
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.post
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RestController
 
 private val workerEventLog = KLoggers.logger("WorkerEventRouting")
-
-internal fun Routing.gromozekaWorkerEvents(
-    authenticationService: WorkerGatewayAuthenticationService,
-    contextStateService: ContextStateApplicationService,
-    contactService: WorkerContactApplicationService,
-) {
-    post("/api/worker/events") {
-        call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        val authenticated = call.authenticateWorkerEvent(authenticationService) ?: return@post
-        val request = call.receiveWorkerEventRequest<WorkerEventBatchRequest>(
-            invalidMessage = "Invalid Worker event batch",
-            unreadableMessage = "Worker event batch could not be read",
-            oversizedMessage = "Worker event batch is too large",
-        ) ?: return@post
-        try {
-            val result = contextStateService.ingestWorker(
-                worker = authenticated.worker,
-                observations = request.events.map { it.toObservation() },
-            )
-            val contact = request.contact
-            contactService.record(
-                worker = authenticated.worker,
-                requestId = contact?.requestId ?: request.events.first().id,
-                kind = WorkerContactKind.EVENT_BATCH,
-                appState = contact?.appState ?: WorkerAppState.UNKNOWN,
-                appVersion = contact?.appVersion ?: request.deviceInfoVersion(),
-                workerSentAt = contact?.sentAt,
-                eventCount = request.events.size,
-                pendingEventCount = contact?.pendingEventCount,
-                receivedAt = result.receivedAt,
-            )
-            call.respondText(
-                workerEventJson.encodeToString(
-                    WorkerEventBatchResponse(
-                        acceptedEventIds = result.acceptedIds,
-                        duplicateEventIds = result.duplicateIds,
-                        serverReceivedAt = result.receivedAt,
-                    )
-                ),
-                ContentType.Application.Json,
-            )
-        } catch (error: IllegalArgumentException) {
-            call.respondWorkerEventError(
-                error.message ?: "Worker synchronization failed",
-                HttpStatusCode.BadRequest,
-            )
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            workerEventLog.error {
-                "Worker synchronization failed: worker=${authenticated.worker.id.value} error=${error::class.simpleName}"
-            }
-            call.respondWorkerEventError(
-                "Worker synchronization failed",
-                HttpStatusCode.InternalServerError,
-            )
-        }
-    }
-
-    post("/api/worker/heartbeat") {
-        call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        val authenticated = call.authenticateWorkerEvent(authenticationService) ?: return@post
-        val request = call.receiveWorkerEventRequest<WorkerHeartbeatRequest>(
-            invalidMessage = "Invalid Worker heartbeat",
-            unreadableMessage = "Worker heartbeat could not be read",
-            oversizedMessage = "Worker heartbeat is too large",
-        ) ?: return@post
-        try {
-            val receivedAt = contactService.record(
-                worker = authenticated.worker,
-                requestId = request.contact.requestId,
-                kind = WorkerContactKind.HEARTBEAT,
-                appState = request.contact.appState,
-                appVersion = request.contact.appVersion,
-                workerSentAt = request.contact.sentAt,
-                eventCount = 0,
-                pendingEventCount = request.contact.pendingEventCount,
-            )
-            call.respondText(
-                workerEventJson.encodeToString(WorkerHeartbeatResponse(receivedAt)),
-                ContentType.Application.Json,
-            )
-        } catch (error: IllegalArgumentException) {
-            call.respondWorkerEventError(
-                error.message ?: "Worker heartbeat failed",
-                HttpStatusCode.BadRequest,
-            )
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            workerEventLog.error {
-                "Worker heartbeat failed: worker=${authenticated.worker.id.value} error=${error::class.simpleName}"
-            }
-            call.respondWorkerEventError(
-                "Worker heartbeat failed",
-                HttpStatusCode.InternalServerError,
-            )
-        }
-    }
-}
-
-private suspend fun io.ktor.server.application.ApplicationCall.authenticateWorkerEvent(
-    authenticationService: WorkerGatewayAuthenticationService,
-): AuthenticatedWorkerGateway? {
-    if (!isSecureTransport()) {
-        respondWorkerEventError("Worker synchronization requires HTTPS", HttpStatusCode.UpgradeRequired)
-        return null
-    }
-    val authenticated = authenticationService.authenticate(request.header(HttpHeaders.Authorization))
-    if (authenticated == null) {
-        respondWorkerEventError("Worker authentication required", HttpStatusCode.Unauthorized)
-        return null
-    }
-    if (authenticated.worker.subjectUserId == null) {
-        respondWorkerEventError("Worker is not bound to a user for context reporting", HttpStatusCode.Forbidden)
-        return null
-    }
-    return authenticated
-}
-
-private suspend inline fun <reified T> io.ktor.server.application.ApplicationCall.receiveWorkerEventRequest(
-    invalidMessage: String,
-    unreadableMessage: String,
-    oversizedMessage: String,
-): T? {
-    val contentLength = request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-    if (contentLength != null && contentLength > MAX_WORKER_EVENT_REQUEST_BYTES) {
-        respondWorkerEventError(oversizedMessage, HttpStatusCode.PayloadTooLarge)
-        return null
-    }
-    val requestBytes = try {
-        receiveChannel().readRemaining((MAX_WORKER_EVENT_REQUEST_BYTES + 1).toLong()).readByteArray()
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Throwable) {
-        respondWorkerEventError(unreadableMessage, HttpStatusCode.BadRequest)
-        return null
-    }
-    if (requestBytes.size > MAX_WORKER_EVENT_REQUEST_BYTES) {
-        respondWorkerEventError(oversizedMessage, HttpStatusCode.PayloadTooLarge)
-        return null
-    }
-    return try {
-        workerEventJson.decodeFromString<T>(requestBytes.decodeToString())
-    } catch (error: SerializationException) {
-        respondWorkerEventError(invalidMessage, HttpStatusCode.BadRequest)
-        null
-    } catch (error: IllegalArgumentException) {
-        respondWorkerEventError(invalidMessage, HttpStatusCode.BadRequest)
-        null
-    }
-}
-
-private fun WorkerEventBatchRequest.deviceInfoVersion(): String? =
-    events.asSequence()
-        .mapNotNull { (it.payload as? DeviceStateEvent.DeviceInfo)?.appVersion }
-        .firstOrNull()
-
-private suspend fun io.ktor.server.application.ApplicationCall.respondWorkerEventError(
-    message: String,
-    status: HttpStatusCode,
-) {
-    respondText(
-        workerEventJson.encodeToString(WorkerEventError(message)),
-        ContentType.Application.Json,
-        status,
-    )
-}
-
-@Serializable
-private data class WorkerEventError(val error: String)
-
-private val workerEventJson = Json {
-    encodeDefaults = true
-    ignoreUnknownKeys = false
-}
-
+private val workerEventJson = Json { encodeDefaults = true; ignoreUnknownKeys = false }
 private const val MAX_WORKER_EVENT_REQUEST_BYTES = 256 * 1024
+
+@RestController
+internal class WorkerEventRouting(
+    private val authentication: WorkerGatewayAuthenticationService,
+    private val contextState: ContextStateApplicationService,
+    private val contacts: WorkerContactApplicationService,
+    private val settings: ServerHttpSettings,
+) {
+    @PostMapping("/api/worker/events")
+    suspend fun events(request: HttpServletRequest, response: HttpServletResponse) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store")
+        val authenticated = authenticate(request, response) ?: return
+        val body = request.receiveWorkerEventRequest<WorkerEventBatchRequest>(response,
+            "Invalid Worker event batch", "Worker event batch could not be read", "Worker event batch is too large") ?: return
+        try {
+            val result = contextState.ingestWorker(worker = authenticated.worker, observations = body.events.map { it.toObservation() })
+            val contact = body.contact
+            contacts.record(worker = authenticated.worker, requestId = contact?.requestId ?: body.events.first().id,
+                kind = WorkerContactKind.EVENT_BATCH, appState = contact?.appState ?: WorkerAppState.UNKNOWN,
+                appVersion = contact?.appVersion ?: body.deviceInfoVersion(), workerSentAt = contact?.sentAt,
+                eventCount = body.events.size, pendingEventCount = contact?.pendingEventCount, receivedAt = result.receivedAt)
+            response.writeJson(WorkerEventBatchResponse(acceptedEventIds = result.acceptedIds,
+                duplicateEventIds = result.duplicateIds, serverReceivedAt = result.receivedAt), json = workerEventJson)
+        } catch (error: IllegalArgumentException) {
+            response.writeHttpError(HttpStatus.BAD_REQUEST, error.message ?: "Worker synchronization failed")
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            workerEventLog.error { "Worker synchronization failed: worker=${authenticated.worker.id.value} error=${error::class.simpleName}" }
+            response.writeHttpError(HttpStatus.INTERNAL_SERVER_ERROR, "Worker synchronization failed")
+        }
+    }
+
+    @PostMapping("/api/worker/heartbeat")
+    suspend fun heartbeat(request: HttpServletRequest, response: HttpServletResponse) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store")
+        val authenticated = authenticate(request, response) ?: return
+        val body = request.receiveWorkerEventRequest<WorkerHeartbeatRequest>(response,
+            "Invalid Worker heartbeat", "Worker heartbeat could not be read", "Worker heartbeat is too large") ?: return
+        try {
+            val receivedAt = contacts.record(worker = authenticated.worker, requestId = body.contact.requestId,
+                kind = WorkerContactKind.HEARTBEAT, appState = body.contact.appState, appVersion = body.contact.appVersion,
+                workerSentAt = body.contact.sentAt, eventCount = 0, pendingEventCount = body.contact.pendingEventCount)
+            response.writeJson(WorkerHeartbeatResponse(receivedAt), json = workerEventJson)
+        } catch (error: IllegalArgumentException) {
+            response.writeHttpError(HttpStatus.BAD_REQUEST, error.message ?: "Worker heartbeat failed")
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            workerEventLog.error { "Worker heartbeat failed: worker=${authenticated.worker.id.value} error=${error::class.simpleName}" }
+            response.writeHttpError(HttpStatus.INTERNAL_SERVER_ERROR, "Worker heartbeat failed")
+        }
+    }
+
+    private suspend fun authenticate(request: HttpServletRequest, response: HttpServletResponse): AuthenticatedWorkerGateway? {
+        if (!request.isSecureTransport(settings)) {
+            response.writeHttpError(HttpStatus.UPGRADE_REQUIRED, "Worker synchronization requires HTTPS")
+            return null
+        }
+        val worker = authentication.authenticate(request.getHeader(HttpHeaders.AUTHORIZATION))
+        if (worker == null) {
+            response.writeHttpError(HttpStatus.UNAUTHORIZED, "Worker authentication required")
+            return null
+        }
+        if (worker.worker.subjectUserId == null) {
+            response.writeHttpError(HttpStatus.FORBIDDEN, "Worker is not bound to a user for context reporting")
+            return null
+        }
+        return worker
+    }
+}
+
+private suspend inline fun <reified T> HttpServletRequest.receiveWorkerEventRequest(
+    response: HttpServletResponse, invalid: String, unreadable: String, oversized: String,
+): T? {
+    val bytes = try { readBoundedBody(MAX_WORKER_EVENT_REQUEST_BYTES) }
+    catch (cancelled: CancellationException) { throw cancelled }
+    catch (_: HttpRequestBodyTooLarge) { response.writeHttpError(HttpStatus.PAYLOAD_TOO_LARGE, oversized); return null }
+    catch (_: Exception) { response.writeHttpError(HttpStatus.BAD_REQUEST, unreadable); return null }
+    return try { workerEventJson.decodeFromString<T>(bytes.decodeToString(throwOnInvalidSequence = true)) }
+    catch (_: IllegalArgumentException) { response.writeHttpError(HttpStatus.BAD_REQUEST, invalid); null }
+}
+
+private fun WorkerEventBatchRequest.deviceInfoVersion(): String? = events.asSequence()
+    .mapNotNull { (it.payload as? DeviceStateEvent.DeviceInfo)?.appVersion }.firstOrNull()

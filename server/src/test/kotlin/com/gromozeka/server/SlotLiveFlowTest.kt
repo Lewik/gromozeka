@@ -11,13 +11,6 @@ import com.gromozeka.domain.tool.*
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionSession
 import com.gromozeka.server.testsupport.app.ServerTestHarness
 import com.gromozeka.shared.uuid.uuid7
-import io.ktor.server.application.install
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
-import io.ktor.server.websocket.WebSockets
-import io.ktor.server.websocket.webSocket
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -99,25 +92,8 @@ class SlotLiveFlowTest {
                 Files.setPosixFilePermissions(state.resolve("worker.yaml"), PosixFilePermissions.fromString("rw-------"))
                 context.getBean(WorkerAccessService::class.java).grantProject(user, workerId, project.id)
 
-                val remote = context.getBean(GromozekaRemoteServer::class.java)
-                val gateway = context.getBean(WorkerGatewayService::class.java)
-                val workerAuth = workerGatewayAuthentication(context.getBean(WorkerGatewayAuthenticationService::class.java))
-                val authorization = context.getBean(GromozekaRemoteAuthorization::class.java)
-                val http = embeddedServer(CIO, host = "127.0.0.1", port = port) {
-                    installHttpAuthenticationErrors(); install(gromozekaBrowserSecurityHeaders)
-                    install(WebSockets) { maxFrameSize = Long.MAX_VALUE }
-                    routing {
-                        gromozekaAuthentication(auth, bootstrap, context.getBean(AuthenticationAttemptLimiter::class.java), secureCookie = false)
-                        webSocket("/ws") { remote.handle(this, call.requireAuthenticated(auth)) }
-                        route("/worker/ws") {
-                            install(workerAuth)
-                            webSocket { gateway.handle(this, call.attributes[authenticatedWorkerGatewayKey]) }
-                        }
-                        gromozekaHistory(context.getBean(ConversationHistoryReadService::class.java), auth, authorization)
-                        gromozekaArtifacts(context.getBean(ConversationArtifactApplicationService::class.java), auth, authorization)
-                        gromozekaWeb(webRoot)
-                    }
-                }.start(wait = false)
+                val http = SpringServerTestHost(context, ServerHttpSettings(
+                    host = "127.0.0.1", port = port, secureCookie = false, webRoot = webRoot))
                 try {
                     stage("WAITING_FOR_WORKER")
                     val workers = context.getBean(ConversationRuntimeWorkerRegistry::class.java)
@@ -238,7 +214,7 @@ class SlotLiveFlowTest {
                     stage("PASSED")
                     println("SLOT_LIVE_PASS real LLM + real Worker + durable queue + GRZ_SLOT + warn/confirm + native UI reclaim")
                     delay(15_000)
-                } finally { http.stop(500, 2000) }
+                } finally { http.close() }
             }
         } finally {
             Files.deleteIfExists(state.resolve("worker.yaml"))

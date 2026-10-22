@@ -7,168 +7,97 @@ import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.service.AuthenticationService
-import io.ktor.http.ContentDisposition
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.request.receiveChannel
-import io.ktor.server.response.header
-import io.ktor.server.response.respondBytes
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.utils.io.readRemaining
-import kotlinx.io.readByteArray
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import java.nio.charset.StandardCharsets
 
-private val artifactHttpJson = Json {
-    encodeDefaults = true
-}
-
-internal fun Routing.gromozekaArtifacts(
-    artifactService: ConversationArtifactApplicationService,
-    authenticationService: AuthenticationService,
-    authorization: GromozekaRemoteAuthorization,
+@RestController
+@RequestMapping("/api/artifacts")
+internal class GromozekaArtifactRouting(
+    private val artifacts: ConversationArtifactApplicationService,
+    private val authentication: AuthenticationService,
+    private val authorization: GromozekaRemoteAuthorization,
 ) {
-    route("/api/artifacts") {
-        install(gromozekaBrowserOriginProtection)
-
-        post {
-            val session = call.requireAuthenticated(authenticationService)
-            val conversationId = call.request.queryParameters["conversation_id"]
-                ?.takeIf(String::isNotBlank)
-                ?.let(Conversation::Id)
-                ?: return@post call.respondArtifactError(HttpStatusCode.BadRequest, "conversation_id is required")
-            val conversation = authorization.requireConversation(
-                user = session.principal.user,
-                conversationId = conversationId,
-                permission = ProjectPermission.WRITE,
-            )
-            val fileName = call.request.queryParameters["file_name"]
-                ?.takeIf(String::isNotBlank)
-                ?: return@post call.respondArtifactError(HttpStatusCode.BadRequest, "file_name is required")
-            val mediaType = call.request.headers[HttpHeaders.ContentType]
-                ?: ContentType.Application.OctetStream.toString()
-            val purpose = call.request.queryParameters["purpose"]
-                ?.let { runCatching { Artifact.Purpose.valueOf(it) }.getOrNull() }
-                ?: Artifact.Purpose.USER_ATTACHMENT
-            if (purpose !in CLIENT_ARTIFACT_PURPOSES) {
-                return@post call.respondArtifactError(HttpStatusCode.BadRequest, "Invalid client artifact purpose")
-            }
-
-            val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-            if (contentLength != null && contentLength > ArtifactLimits.MAX_FILE_BYTES) {
-                return@post call.respondArtifactError(HttpStatusCode.PayloadTooLarge, "Artifact is too large")
-            }
-            val content = call.receiveChannel()
-                .readRemaining((ArtifactLimits.MAX_FILE_BYTES + 1).toLong())
-                .readByteArray()
-            if (content.size > ArtifactLimits.MAX_FILE_BYTES) {
-                return@post call.respondArtifactError(HttpStatusCode.PayloadTooLarge, "Artifact is too large")
-            }
-
-            val artifact = try {
-                artifactService.upload(
-                    conversation = conversation,
-                    createdByUserId = session.principal.user.id,
-                    upload = ArtifactUpload(
-                        fileName = fileName,
-                        mediaType = mediaType,
-                        content = content,
-                        purpose = purpose,
-                    ),
-                )
-            } catch (error: IllegalArgumentException) {
-                return@post call.respondArtifactError(
-                    HttpStatusCode.BadRequest,
-                    error.message ?: "Invalid artifact",
-                )
-            }
-            call.response.header(HttpHeaders.CacheControl, "no-store")
-            call.respondText(
-                artifactHttpJson.encodeToString(artifact.reference()),
-                ContentType.Application.Json,
-                HttpStatusCode.Created,
-            )
+    @PostMapping
+    suspend fun upload(request: HttpServletRequest, response: HttpServletResponse) {
+        val session = request.requireAuthenticated(authentication)
+        val query = try { request.artifactQueryParameters() }
+        catch (_: IllegalArgumentException) { return response.writeHttpError(HttpStatus.BAD_REQUEST, "Invalid artifact query") }
+        val id = query["conversation_id"]?.takeIf(String::isNotBlank)?.let(Conversation::Id)
+            ?: return response.writeHttpError(HttpStatus.BAD_REQUEST, "conversation_id is required")
+        val conversation = authorization.requireConversation(session.principal.user, id, ProjectPermission.WRITE)
+        val name = query["file_name"]?.takeIf(String::isNotBlank)
+            ?: return response.writeHttpError(HttpStatus.BAD_REQUEST, "file_name is required")
+        val mediaType = request.contentType ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
+        val purpose = query["purpose"]?.let { runCatching { Artifact.Purpose.valueOf(it) }.getOrNull() }
+            ?: Artifact.Purpose.USER_ATTACHMENT
+        if (purpose !in CLIENT_ARTIFACT_PURPOSES) return response.writeHttpError(HttpStatus.BAD_REQUEST, "Invalid client artifact purpose")
+        val content = try { request.readBoundedBody(ArtifactLimits.MAX_FILE_BYTES) }
+        catch (_: HttpRequestBodyTooLarge) { return response.writeHttpError(HttpStatus.PAYLOAD_TOO_LARGE, "Artifact is too large") }
+        val artifact = try {
+            artifacts.upload(conversation = conversation, createdByUserId = session.principal.user.id,
+                upload = ArtifactUpload(fileName = name, mediaType = mediaType, content = content, purpose = purpose))
+        } catch (error: IllegalArgumentException) {
+            return response.writeHttpError(HttpStatus.BAD_REQUEST, error.message ?: "Invalid artifact")
         }
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store")
+        response.writeJson(artifact.reference(), HttpStatus.CREATED)
+    }
 
-        get("/{artifactId}/content") {
-            val session = call.requireAuthenticated(authenticationService)
-            val artifactId = call.parameters["artifactId"]
-                ?.takeIf(String::isNotBlank)
-                ?.let(Artifact::Id)
-                ?: return@get call.respondArtifactError(HttpStatusCode.BadRequest, "artifactId is required")
-            val artifact = artifactService.find(artifactId)
-                ?: return@get call.respondArtifactError(HttpStatusCode.NotFound, "Artifact not found")
-            authorization.requireConversation(
-                user = session.principal.user,
-                conversationId = artifact.conversationId,
-                permission = ProjectPermission.READ,
-            )
-            val bytes = try {
-                artifactService.read(artifact.id)
-            } catch (error: com.gromozeka.domain.service.ArtifactContentUnavailableException) {
-                return@get call.respondArtifactError(HttpStatusCode.BadGateway, error.reason)
-            }
-            call.response.header(HttpHeaders.CacheControl,
-                if (artifact.source is Artifact.ContentSource.Managed) "private, max-age=31536000, immutable" else "private, no-store")
-            call.response.header(
-                HttpHeaders.ContentDisposition,
-                ContentDisposition.Inline.withParameter(ContentDisposition.Parameters.FileName, artifact.fileName).toString(),
-            )
-            call.respondBytes(
-                bytes = bytes,
-                contentType = ContentType.parse(artifact.mediaType),
-            )
+    @GetMapping("/{artifactId}/content")
+    suspend fun content(@PathVariable artifactId: String, request: HttpServletRequest, response: HttpServletResponse) {
+        val session = request.requireAuthenticated(authentication)
+        val artifact = artifacts.find(Artifact.Id(artifactId))
+            ?: return response.writeHttpError(HttpStatus.NOT_FOUND, "Artifact not found")
+        authorization.requireConversation(session.principal.user, artifact.conversationId, ProjectPermission.READ)
+        val bytes = try { artifacts.read(artifact.id) }
+        catch (error: com.gromozeka.domain.service.ArtifactContentUnavailableException) {
+            return response.writeHttpError(HttpStatus.BAD_GATEWAY, error.reason)
         }
+        response.setHeader(HttpHeaders.CACHE_CONTROL, if (artifact.source is Artifact.ContentSource.Managed)
+            "private, max-age=31536000, immutable" else "private, no-store")
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+            .filename(artifact.fileName, StandardCharsets.UTF_8).build().toString())
+        response.contentType = MediaType.parseMediaType(artifact.mediaType).toString()
+        response.setContentLengthLong(bytes.size.toLong())
+        runInterruptible(Dispatchers.IO) { response.outputStream.write(bytes) }
+    }
 
-        delete("/{artifactId}") {
-            val session = call.requireAuthenticated(authenticationService)
-            val artifactId = call.parameters["artifactId"]
-                ?.takeIf(String::isNotBlank)
-                ?.let(Artifact::Id)
-                ?: return@delete call.respondArtifactError(HttpStatusCode.BadRequest, "artifactId is required")
-            val artifact = artifactService.find(artifactId)
-                ?: return@delete call.respondArtifactError(HttpStatusCode.NotFound, "Artifact not found")
-            authorization.requireConversation(
-                user = session.principal.user,
-                conversationId = artifact.conversationId,
-                permission = ProjectPermission.WRITE,
-            )
-            when (artifactService.deleteDraft(artifact.conversationId, artifact.id)) {
-                ConversationArtifactApplicationService.DraftDeletionResult.DELETED ->
-                    call.respondText("", status = HttpStatusCode.NoContent)
-
-                ConversationArtifactApplicationService.DraftDeletionResult.NOT_FOUND ->
-                    call.respondArtifactError(HttpStatusCode.NotFound, "Artifact not found")
-
-                ConversationArtifactApplicationService.DraftDeletionResult.ALREADY_COMMITTED ->
-                    call.respondArtifactError(HttpStatusCode.Conflict, "Committed artifacts cannot be deleted as drafts")
-            }
+    @DeleteMapping("/{artifactId}")
+    suspend fun delete(@PathVariable artifactId: String, request: HttpServletRequest, response: HttpServletResponse) {
+        val session = request.requireAuthenticated(authentication)
+        val artifact = artifacts.find(Artifact.Id(artifactId))
+            ?: return response.writeHttpError(HttpStatus.NOT_FOUND, "Artifact not found")
+        authorization.requireConversation(session.principal.user, artifact.conversationId, ProjectPermission.WRITE)
+        when (artifacts.deleteDraft(artifact.conversationId, artifact.id)) {
+            ConversationArtifactApplicationService.DraftDeletionResult.DELETED -> response.status = HttpStatus.NO_CONTENT.value()
+            ConversationArtifactApplicationService.DraftDeletionResult.NOT_FOUND -> response.writeHttpError(HttpStatus.NOT_FOUND, "Artifact not found")
+            ConversationArtifactApplicationService.DraftDeletionResult.ALREADY_COMMITTED ->
+                response.writeHttpError(HttpStatus.CONFLICT, "Committed artifacts cannot be deleted as drafts")
         }
     }
 }
 
-private val CLIENT_ARTIFACT_PURPOSES = setOf(
-    Artifact.Purpose.USER_ATTACHMENT,
-    Artifact.Purpose.USER_SCREENSHOT,
-)
-
-private suspend fun io.ktor.server.application.ApplicationCall.respondArtifactError(
-    status: HttpStatusCode,
-    message: String,
-) {
-    response.header(HttpHeaders.CacheControl, "no-store")
-    respondText(
-        artifactHttpJson.encodeToString(ArtifactError(message)),
-        ContentType.Application.Json,
-        status,
-    )
+/** Servlet getParameter also parses form bodies, consuming bytes of a raw file upload. */
+private fun HttpServletRequest.artifactQueryParameters(): Map<String, String> = buildMap {
+    queryString.orEmpty().split('&').filter(String::isNotEmpty).forEach { parameter ->
+        val parts = parameter.split('=', limit = 2)
+        val name = java.net.URLDecoder.decode(parts[0], StandardCharsets.UTF_8)
+        val value = java.net.URLDecoder.decode(parts.getOrElse(1) { "" }, StandardCharsets.UTF_8)
+        putIfAbsent(name, value)
+    }
 }
 
-@kotlinx.serialization.Serializable
-private data class ArtifactError(val error: String)
+private val CLIENT_ARTIFACT_PURPOSES = setOf(Artifact.Purpose.USER_ATTACHMENT, Artifact.Purpose.USER_SCREENSHOT)

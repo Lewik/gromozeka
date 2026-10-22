@@ -1,138 +1,59 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.mcp.BrowserUseMcpPreset
-import com.gromozeka.remote.protocol.DistributionArchitecture
-import com.gromozeka.remote.protocol.DistributionArtifact
-import com.gromozeka.remote.protocol.DistributionComponent
-import com.gromozeka.remote.protocol.DistributionFormat
-import com.gromozeka.remote.protocol.DistributionManifest
-import com.gromozeka.remote.protocol.DistributionOperatingSystem
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.request.receiveText
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
+import com.gromozeka.remote.protocol.*
 import com.gromozeka.domain.service.AuthenticationService
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RestController
 
 private const val DEFAULT_RELEASE_REPOSITORY = "Lewik/gromozeka"
 
-internal fun Routing.gromozekaDistributions(
-    workerEnrollmentService: WorkerEnrollmentService,
-    authenticationService: AuthenticationService,
-    serverVersion: String = currentServerVersion(),
-    releaseRepository: String = configuredReleaseRepository(),
-    configuredDownloadBaseUrl: String? = configuredDistributionBaseUrl(),
+@RestController
+internal class GromozekaDistributionRouting(
+    private val workerEnrollmentService: WorkerEnrollmentService,
+    private val authenticationService: AuthenticationService,
+    private val settings: ServerHttpSettings,
 ) {
-    val releaseDownloadBaseUrl = resolveReleaseDownloadBaseUrl(
-        serverVersion = serverVersion,
-        releaseRepository = releaseRepository,
-        configuredDownloadBaseUrl = configuredDownloadBaseUrl,
-    )
-    val manifest = DistributionManifest(
-        serverVersion = serverVersion,
-        artifacts = distributionArtifacts(releaseDownloadBaseUrl),
-        checksumsUrl = "$releaseDownloadBaseUrl/SHA256SUMS",
-        workerEnrollment = workerEnrollmentService.availability(),
-    )
-    val manifestJson = Json {
-        prettyPrint = true
-        encodeDefaults = true
-    }.encodeToString(manifest)
+    private val serverVersion = currentServerVersion()
+    private val baseUrl = resolveReleaseDownloadBaseUrl(serverVersion, configuredReleaseRepository(), configuredDistributionBaseUrl())
+    private val manifest = DistributionManifest(serverVersion = serverVersion,
+        artifacts = distributionArtifacts(baseUrl), checksumsUrl = "$baseUrl/SHA256SUMS",
+        workerEnrollment = workerEnrollmentService.availability())
 
-    get("/api/distributions") {
-        call.respondText(manifestJson, ContentType.Application.Json)
+    @GetMapping("/api/distributions")
+    fun distributions(response: HttpServletResponse) = response.writeJson(manifest)
+
+    @PostMapping("/api/worker-enrollments")
+    suspend fun enroll(request: HttpServletRequest, response: HttpServletResponse) {
+        val principal = request.requireAuthenticated(authenticationService).principal
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store")
+        if (!request.isSecureTransport(settings)) return response.writeHttpError(HttpStatus.UPGRADE_REQUIRED, "Worker enrollment requires HTTPS")
+        try { response.writeJson(workerEnrollmentService.create(principal.user.id), HttpStatus.CREATED) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) { response.writeHttpError(HttpStatus.SERVICE_UNAVAILABLE, error.message ?: "Worker enrollment is unavailable") }
     }
-    post("/api/worker-enrollments") {
-        val authenticatedSession = call.authenticateOrNull(authenticationService)
-        if (authenticatedSession == null) {
-            call.respondText(
-                """{"error":"Authentication required"}""",
-                ContentType.Application.Json,
-                HttpStatusCode.Unauthorized,
-            )
-            return@post
-        }
-        call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        if (!call.isSecureTransport()) {
-            call.respondText(
-                """{"error":"Worker enrollment requires HTTPS"}""",
-                ContentType.Application.Json,
-                HttpStatusCode.UpgradeRequired,
-            )
-            return@post
-        }
-        runCatching { workerEnrollmentService.create(authenticatedSession.user.id) }
-            .onSuccess {
-                call.respondText(
-                    Json.encodeToString(it),
-                    ContentType.Application.Json,
-                    HttpStatusCode.Created,
-                )
-            }
-            .onFailure {
-                call.respondText(
-                    Json.encodeToString(EnrollmentError(it.message ?: "Worker enrollment is unavailable")),
-                    ContentType.Application.Json,
-                    HttpStatusCode.ServiceUnavailable,
-                )
-            }
-    }
-    post("/api/worker-enrollments/consume") {
-        call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        if (!call.isSecureTransport()) {
-            call.respondText(
-                """{"error":"Worker enrollment requires HTTPS"}""",
-                ContentType.Application.Json,
-                HttpStatusCode.UpgradeRequired,
-            )
-            return@post
-        }
-        val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-        if (contentLength != null && contentLength > MAX_ENROLLMENT_REQUEST_BYTES) {
-            call.respondText(
-                """{"error":"Worker enrollment request is too large"}""",
-                ContentType.Application.Json,
-                HttpStatusCode.PayloadTooLarge,
-            )
-            return@post
-        }
-        val requestText = try {
-            call.receiveText()
-        } catch (_: Exception) {
-            call.respondText(
-                """{"error":"Worker enrollment request could not be read"}""",
-                ContentType.Application.Json,
-                HttpStatusCode.BadRequest,
-            )
-            return@post
-        }
-        if (requestText.length > MAX_ENROLLMENT_REQUEST_BYTES) {
-            call.respondText(
-                """{"error":"Worker enrollment request is too large"}""",
-                ContentType.Application.Json,
-                HttpStatusCode.PayloadTooLarge,
-            )
-            return@post
-        }
-        runCatching {
-            val request = Json.decodeFromString<WorkerEnrollmentConsumeRequest>(requestText)
-            workerEnrollmentService.consume(request.token, request.workerId, request.platform, request.bindToUser)
-        }.onSuccess {
-            call.respondText(Json.encodeToString(it), ContentType.Application.Json)
-        }.onFailure {
-            call.respondText(
-                Json.encodeToString(EnrollmentError(it.message ?: "Worker enrollment failed")),
-                ContentType.Application.Json,
-                HttpStatusCode.BadRequest,
-            )
-        }
+
+    @PostMapping("/api/worker-enrollments/consume")
+    suspend fun consume(request: HttpServletRequest, response: HttpServletResponse) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store")
+        if (!request.isSecureTransport(settings)) return response.writeHttpError(HttpStatus.UPGRADE_REQUIRED, "Worker enrollment requires HTTPS")
+        val text = try { request.readBoundedBody(MAX_ENROLLMENT_REQUEST_BYTES).decodeToString(throwOnInvalidSequence = true) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: HttpRequestBodyTooLarge) { return response.writeHttpError(HttpStatus.PAYLOAD_TOO_LARGE, "Worker enrollment request is too large") }
+        catch (_: Exception) { return response.writeHttpError(HttpStatus.BAD_REQUEST, "Worker enrollment request could not be read") }
+        try {
+            val body = Json.decodeFromString<WorkerEnrollmentConsumeRequest>(text)
+            response.writeJson(workerEnrollmentService.consume(body.token, body.workerId, body.platform, body.bindToUser))
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) { response.writeHttpError(HttpStatus.BAD_REQUEST, error.message ?: "Worker enrollment failed") }
     }
 }
 

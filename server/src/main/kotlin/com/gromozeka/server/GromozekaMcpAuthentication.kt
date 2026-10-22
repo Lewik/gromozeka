@@ -5,88 +5,70 @@ import com.gromozeka.domain.model.AuthenticatedUser
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.PersonalAccessTokenService
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.createApplicationPlugin
-import io.ktor.server.application.install
-import io.ktor.server.request.path
-import io.ktor.util.AttributeKey
+import jakarta.servlet.http.HttpServletRequest
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 
 internal sealed interface AuthenticatedMcpCaller {
     val user: com.gromozeka.domain.model.User
-
-    data class UserSession(
-        val principal: AuthenticatedUser,
-    ) : AuthenticatedMcpCaller {
+    data class UserSession(val principal: AuthenticatedUser) : AuthenticatedMcpCaller {
         override val user = principal.user
     }
-
-    data class PersonalToken(
-        val principal: AuthenticatedPersonalAccessToken,
-    ) : AuthenticatedMcpCaller {
+    data class PersonalToken(val principal: AuthenticatedPersonalAccessToken) : AuthenticatedMcpCaller {
         override val user = principal.user
     }
 }
 
-internal fun Application.installMcpAuthentication(
+internal suspend fun HttpServletRequest.requireMcpCaller(
     authenticationService: AuthenticationService,
     personalAccessTokenService: PersonalAccessTokenService,
-) {
-    install(
-        createApplicationPlugin("GromozekaMcpAuthentication") {
-            onCall { call ->
-                val requiredScope = call.request.path().requiredMcpScope() ?: return@onCall
-                if (!call.isSecureTransport()) {
-                    throw HttpAuthenticationException(
-                        HttpStatusCode.UpgradeRequired,
-                        "MCP authentication requires HTTPS",
-                    )
-                }
-                val caller = call.authenticateMcpCaller(
-                    authenticationService = authenticationService,
-                    personalAccessTokenService = personalAccessTokenService,
-                    requiredScope = requiredScope,
-                ) ?: throw HttpAuthenticationException(
-                    HttpStatusCode.Unauthorized,
-                    "Invalid or missing MCP access token",
-                    """Bearer realm="gromozeka-mcp"""",
-                )
-                call.attributes.put(authenticatedMcpCallerKey, caller)
-            }
-        }
-    )
-}
-
-private suspend fun ApplicationCall.authenticateMcpCaller(
-    authenticationService: AuthenticationService,
-    personalAccessTokenService: PersonalAccessTokenService,
-    requiredScope: PersonalAccessToken.Scope,
-): AuthenticatedMcpCaller? {
-    request.cookies[SESSION_COOKIE_NAME]
-        ?.let { authenticationService.authenticate(it) }
+    settings: ServerHttpSettings,
+): AuthenticatedMcpCaller {
+    if (!isSecureTransport(settings)) {
+        throw HttpAuthenticationException(HttpStatus.UPGRADE_REQUIRED, "MCP authentication requires HTTPS")
+    }
+    requireMcpHttpHeaders(settings.mcp)
+    sessionToken()?.let { authenticationService.authenticate(it) }
         ?.let { return AuthenticatedMcpCaller.UserSession(it) }
-
-    val bearerToken = request.headers[HttpHeaders.Authorization]
-        ?.takeIf { it.startsWith(BEARER_PREFIX, ignoreCase = true) }
-        ?.substring(BEARER_PREFIX.length)
-        ?.trim()
-        ?.takeIf { it.isNotEmpty() }
-        ?: return null
-    return personalAccessTokenService.authenticate(bearerToken, requiredScope)
-        ?.let(AuthenticatedMcpCaller::PersonalToken)
+    val token = getHeader(HttpHeaders.AUTHORIZATION)
+        ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
+        ?.substring(7)?.trim()?.takeIf(String::isNotEmpty)
+    token?.let { personalAccessTokenService.authenticate(it, PersonalAccessToken.Scope.MCP_CONTROL) }
+        ?.let { return AuthenticatedMcpCaller.PersonalToken(it) }
+    throw HttpAuthenticationException(HttpStatus.UNAUTHORIZED, "Invalid or missing MCP access token",
+        """Bearer realm="gromozeka-mcp"""")
 }
 
-private fun String.requiredMcpScope(): PersonalAccessToken.Scope? =
-    when {
-        this == MCP_PATH || startsWith("$MCP_PATH/") ->
-            PersonalAccessToken.Scope.MCP_CONTROL
-        else -> null
+internal fun HttpServletRequest.requireMcpHttpHeaders(configuration: McpHttpSecurityConfiguration) {
+    fun withPorts(value: String): String {
+        if (value.endsWith(":*")) return value
+        val uri = runCatching { java.net.URI(if ("://" in value) value else "http://$value") }.getOrNull()
+        return if (uri != null && uri.port < 0) "$value:*" else value
     }
+    val hosts = configuration.allowedHosts ?: listOf("localhost", "127.0.0.1", "[::1]")
+    val origins = configuration.allowedOrigins ?: hosts.map { "http://$it" }
+    val validator = io.modelcontextprotocol.server.transport.DefaultServerTransportSecurityValidator.builder()
+        .allowedHosts(hosts.map { withPorts(it.lowercase()) })
+        .allowedOrigins(origins.map { withPorts(it.lowercase()) })
+        .build()
+    val origin = getHeader(HttpHeaders.ORIGIN)
+    if (origin != null) {
+        val authority = runCatching { java.net.URI(origin).rawAuthority }.getOrNull()
+        if (!isAllowedBrowserOrigin(origin, authority)) {
+            throw HttpAuthenticationException(HttpStatus.FORBIDDEN, "Invalid MCP Origin header")
+        }
+    }
+    try {
+        validator.validate(object : io.modelcontextprotocol.server.transport.HeaderAccessor {
+            override fun getHeader(name: String): List<String> = java.util.Collections.list(this@requireMcpHttpHeaders.getHeaders(name))
+                .map { if (name.equals("Host", true) || name.equals("Origin", true)) it.lowercase() else it }
+            override fun getHeaderNames(): List<String> = java.util.Collections.list(this@requireMcpHttpHeaders.headerNames)
+        })
+    } catch (error: io.modelcontextprotocol.server.transport.ServerTransportSecurityException) {
+        throw HttpAuthenticationException(HttpStatus.valueOf(error.statusCode), "Invalid MCP HTTP origin or host")
+    }
+}
 
-internal val authenticatedMcpCallerKey =
-    AttributeKey<AuthenticatedMcpCaller>("gromozeka-authenticated-mcp-caller")
-
-private const val BEARER_PREFIX = "Bearer "
-private const val MCP_PATH = "/mcp"
+internal const val AUTHENTICATED_MCP_CALLER = "gromozeka.authenticated-mcp-caller"
+internal const val AUTHENTICATED_REMOTE_SESSION = "gromozeka.authenticated-remote-session"
+internal const val AUTHENTICATED_WORKER_GATEWAY = "gromozeka.authenticated-worker-gateway"

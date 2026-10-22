@@ -9,12 +9,6 @@ import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
 import com.gromozeka.server.*
 import com.gromozeka.server.testsupport.app.ServerTestHarness
-import io.ktor.server.application.install
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.routing.routing
-import io.ktor.server.websocket.WebSockets
-import io.ktor.server.websocket.webSocket
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.springframework.boot.test.context.TestConfiguration
@@ -33,6 +27,7 @@ class TelegramBrowserFixtureTest {
         require(schema.matches(Regex("telegram_ui_[a-z0-9_]+")))
         val root = File(requireNotNull(System.getenv("GROMOZEKA_TELEGRAM_TEST_WEB_ROOT")))
         require(root.resolve("index.html").isFile)
+        val port = requireNotNull(System.getenv("GROMOZEKA_TELEGRAM_TEST_PORT")) { "Set the assigned test port explicitly" }.toInt()
         ServerTestHarness(subscriptionSession = null, systemProperties = mapOf(
             "gromozeka.postgres.jdbc-url" to requireNotNull(System.getenv("GROMOZEKA_POSTGRES_URL")),
             "gromozeka.postgres.schema" to schema, "gromozeka.telegram.enabled" to "true",
@@ -82,20 +77,11 @@ class TelegramBrowserFixtureTest {
                     createdAt = Clock.System.now()))
             }
             context.getBean(UserConversationTabLayoutService::class.java).open(user.id, conversation.id)
-            val remote = context.getBean(GromozekaRemoteServer::class.java)
-            val http = embeddedServer(CIO, host = "127.0.0.1", port = 8767) {
-                installHttpAuthenticationErrors()
-                install(gromozekaBrowserSecurityHeaders)
-                install(WebSockets) { maxFrameSize = Long.MAX_VALUE }
-                routing {
-                    gromozekaAuthentication(auth, bootstrap, context.getBean(AuthenticationAttemptLimiter::class.java), secureCookie = false)
-                    webSocket("/ws") { remote.handle(this, call.requireAuthenticated(auth)) }
-                    gromozekaWeb(root)
-                }
-            }.start(wait = false)
-            println("Telegram visual fixture ready at http://127.0.0.1:8767/ ; conversation=${conversation.id.value}; local=${local.id.value}; user=telegram-ui")
+            val http = SpringServerTestHost(context, ServerHttpSettings(
+                host = "127.0.0.1", port = port, secureCookie = false, webRoot = root))
+            println("Telegram visual fixture ready at http://127.0.0.1:$port/ ; conversation=${conversation.id.value}; local=${local.id.value}; user=telegram-ui")
             try { delay((System.getenv("GROMOZEKA_TELEGRAM_TEST_HOLD_SECONDS")?.toLong() ?: 900).coerceIn(1, 1800) * 1000) }
-            finally { http.stop(500, 2000) }
+            finally { http.close() }
         }
     }
 }

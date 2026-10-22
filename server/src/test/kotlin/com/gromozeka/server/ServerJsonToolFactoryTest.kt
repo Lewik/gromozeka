@@ -20,6 +20,12 @@ import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -175,25 +181,43 @@ class ServerJsonToolFactoryTest {
     fun `parent cancellation reaches a suspended operation through native and HTTP calls`() = runBlocking<Unit> {
         withTimeout(5_000) {
             for (http in listOf(false, true)) {
-                val started = CompletableDeferred<Unit>()
+                val started = CompletableDeferred<Job>()
+                val cleanupStarted = CompletableDeferred<Unit>()
+                val allowCleanup = CompletableDeferred<Unit>()
                 val finished = CompletableDeferred<Unit>()
                 val tool = factory.create(CONTROL_TOOL_SOURCE, "waiting_tool", "Test.", readOnly = true) {
                     try {
-                        started.complete(Unit)
+                        started.complete(currentCoroutineContext().job)
                         awaitCancellation()
                     } finally {
-                        finished.complete(Unit)
+                        withContext(NonCancellable) {
+                            cleanupStarted.complete(Unit)
+                            allowCleanup.await()
+                            finished.complete(Unit)
+                        }
                     }
                 }
                 val operation = async {
-                    if (http) testUnifiedMcpFactory(provider(tool)).create(testControlMcpCaller())
-                        .tools.getValue(tool.definition.name).callForTest(request(tool))
-                    else tool.callResult("{}", context)
+                    if (http) testUnifiedMcpFactory(provider(tool)).create(testControlMcpCaller()).use {
+                        it.tools.getValue(tool.definition.name).callForTest(request(tool))
+                    } else tool.callResult("{}", context)
                 }
-                started.await()
-                operation.cancelAndJoin()
-                assertTrue(finished.isCompleted)
-                assertFailsWith<CancellationException> { operation.await() }
+                try {
+                    fun Job.owns(child: Job): Boolean = this === child || children.any { it.owns(child) }
+                    assertTrue(operation.owns(started.await()), "Tool execution must belong to its request, http=$http")
+                    operation.cancel()
+                    cleanupStarted.await()
+                    val joined = async(start = CoroutineStart.UNDISPATCHED) { operation.join() }
+                    assertFalse(joined.isCompleted, "Request completion must wait for tool cleanup, http=$http")
+                    allowCleanup.complete(Unit)
+                    joined.await()
+                    assertTrue(finished.isCompleted)
+                    assertFailsWith<CancellationException> { operation.await() }
+                } finally {
+                    allowCleanup.complete(Unit)
+                    operation.cancelAndJoin()
+                    finished.await()
+                }
             }
         }
     }

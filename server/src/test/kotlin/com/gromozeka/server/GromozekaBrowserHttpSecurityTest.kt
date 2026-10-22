@@ -1,15 +1,10 @@
 package com.gromozeka.server
 
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.install
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
-import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.runBlocking
+import org.springframework.boot.test.context.TestComponent
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RestController
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,46 +12,23 @@ import kotlin.test.assertTrue
 
 class GromozekaBrowserHttpSecurityTest {
     @Test
-    fun `browser security headers are added to responses`() = testApplication {
-        application {
-            install(gromozekaBrowserSecurityHeaders)
-            routing {
-                get("/") {
-                    call.respondText("ok")
-                }
-            }
+    fun `browser security headers are added to responses`() = runBlocking<Unit> {
+        SpringHttpTestFixture(BrowserHeadersTestController()).use { http ->
+            val response = http.perform(get("/").secureTestRequest())
+            assertEquals("nosniff", response.getHeader("X-Content-Type-Options"))
+            assertEquals("no-referrer", response.getHeader("Referrer-Policy"))
+            assertEquals("DENY", response.getHeader("X-Frame-Options"))
+            assertEquals("camera=(self), microphone=(self), geolocation=(self), display-capture=(self)",
+                response.getHeader("Permissions-Policy"))
         }
-
-        val response = client.get("/")
-
-        assertEquals("nosniff", response.headers["X-Content-Type-Options"])
-        assertEquals("no-referrer", response.headers["Referrer-Policy"])
-        assertEquals("DENY", response.headers["X-Frame-Options"])
-        assertEquals(
-            "camera=(self), microphone=(self), geolocation=(self), display-capture=(self)",
-            response.headers["Permissions-Policy"],
-        )
     }
 
     @Test
-    fun `route protection rejects foreign browser origin`() = testApplication {
-        application {
-            installHttpAuthenticationErrors()
-            routing {
-                route("/protected") {
-                    install(gromozekaBrowserOriginProtection)
-                    get {
-                        call.respondText("not reached")
-                    }
-                }
-            }
+    fun `route protection rejects foreign browser origin`() = runBlocking<Unit> {
+        SpringHttpTestFixture(BrowserHeadersTestController()).use { http ->
+            val response = http.perform(get("/api/protected").secureTestRequest().header("Origin", "https://attacker.example"))
+            assertEquals(403, response.status)
         }
-
-        val response = client.get("/protected") {
-            header(HttpHeaders.Origin, "https://attacker.example")
-        }
-
-        assertEquals(HttpStatusCode.Forbidden, response.status)
     }
 
     @Test
@@ -107,4 +79,10 @@ class GromozekaBrowserHttpSecurityTest {
             )
         )
     }
+}
+
+@TestComponent
+@RestController
+private class BrowserHeadersTestController {
+    @GetMapping("/", "/api/protected") fun echo(): String = "ok"
 }
