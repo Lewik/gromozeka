@@ -42,6 +42,10 @@ dependencies {
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.spring.boot.starter.security)
     implementation(libs.mcp.java.sdk)
+    // Framework OAuth protocol + MCP registration helpers, without Spring AI auto-configuration.
+    implementation(libs.mcp.authorization.server)
+    implementation(libs.spring.jdbc)
+    implementation(libs.httpclient5)
     implementation(libs.kotlinx.coroutines.reactor)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.coroutines.core)
@@ -55,6 +59,7 @@ dependencies {
     testImplementation(project(":remote-client"))
     testImplementation(project(":worker-runtime"))
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.flyway.core)
     // Fake protocol peers for the unchanged Ktor Worker/client transport tests only.
     testImplementation(platform(libs.ktor.bom))
     testImplementation(libs.ktor.server.test.host)

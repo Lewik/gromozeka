@@ -63,10 +63,14 @@ request delivery. There is no second registration system and no implicit Convers
 Agent, filesystem mount or model turn. Use `tools/list` to discover current versioned names
 and schemas; do not guess an old logical name after a contract changes.
 
-Authentication remains the existing HTTPS browser session or bearer PAT with **`mcp:control`**.
-The PAT format, lifetime, storage, revocation and user/resource authorization are unchanged.
-An old `mcp:memory`-only token does not gain tool access. `/mcp/control` is removed, not an alias.
-`GET` and `DELETE /mcp` are unsupported by this stateless transport. OAuth is separate work.
+Authentication accepts the existing HTTPS browser session, a bearer PAT with **`mcp:control`**,
+or an opaque MCP OAuth access token when the explicit OAuth issuer is configured. OAuth
+uses Authorization Code + PKCE-S256, CIMD registration and rotating refresh tokens; see
+[the Server OAuth profile](development-guide.md#external-mcp-oauth). Explicit bearer
+credentials never borrow a valid browser cookie on failure. The PAT format, lifetime,
+storage and scopes are unchanged in this phase; an old `mcp:memory`-only token does not gain
+tool access. User/resource authorization remains shared. `/mcp/control` is removed, not an
+alias. `GET` and `DELETE /mcp` are unsupported by this stateless transport.
 
 Memory tools and `memory_help` are absent. The legacy memory-only HTTP adapter and its
 publication settings (`GROMOZEKA_MCP_EXPOSED_TOOLS`, `gromozeka.mcp.exposed.tools`,

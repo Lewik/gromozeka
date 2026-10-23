@@ -17,26 +17,38 @@ internal sealed interface AuthenticatedMcpCaller {
     data class PersonalToken(val principal: AuthenticatedPersonalAccessToken) : AuthenticatedMcpCaller {
         override val user = principal.user
     }
+    data class OAuth(val principal: McpOAuthPrincipal) : AuthenticatedMcpCaller {
+        override val user = principal.user
+    }
 }
 
 internal suspend fun HttpServletRequest.requireMcpCaller(
     authenticationService: AuthenticationService,
     personalAccessTokenService: PersonalAccessTokenService,
     settings: ServerHttpSettings,
+    oauth: McpOAuthAccessTokens? = null,
 ): AuthenticatedMcpCaller {
     if (!isSecureTransport(settings)) {
         throw HttpAuthenticationException(HttpStatus.UPGRADE_REQUIRED, "MCP authentication requires HTTPS")
     }
     requireMcpHttpHeaders(settings.mcp)
+    val headers = java.util.Collections.list(getHeaders(HttpHeaders.AUTHORIZATION))
+    if (headers.isNotEmpty()) {
+        // An explicit token must never borrow an unrelated ambient browser session.
+        val token = headers.singleOrNull()?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
+            ?.substring(7)?.trim()?.takeIf { it.isNotEmpty() && it.length <= McpOAuthSettings.MAX_TOKEN_LENGTH }
+        if (token != null) {
+            personalAccessTokenService.authenticate(token, PersonalAccessToken.Scope.MCP_CONTROL)
+                ?.let { return AuthenticatedMcpCaller.PersonalToken(it) }
+            oauth?.authenticate(token)?.let { return AuthenticatedMcpCaller.OAuth(it) }
+        }
+        throw HttpAuthenticationException(HttpStatus.UNAUTHORIZED, "Invalid MCP access token",
+            oauth?.challenge("invalid_token") ?: """Bearer realm="gromozeka-mcp"""")
+    }
     sessionToken()?.let { authenticationService.authenticate(it) }
         ?.let { return AuthenticatedMcpCaller.UserSession(it) }
-    val token = getHeader(HttpHeaders.AUTHORIZATION)
-        ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
-        ?.substring(7)?.trim()?.takeIf(String::isNotEmpty)
-    token?.let { personalAccessTokenService.authenticate(it, PersonalAccessToken.Scope.MCP_CONTROL) }
-        ?.let { return AuthenticatedMcpCaller.PersonalToken(it) }
-    throw HttpAuthenticationException(HttpStatus.UNAUTHORIZED, "Invalid or missing MCP access token",
-        """Bearer realm="gromozeka-mcp"""")
+    throw HttpAuthenticationException(HttpStatus.UNAUTHORIZED, "Missing MCP access token",
+        oauth?.challenge() ?: """Bearer realm="gromozeka-mcp"""")
 }
 
 internal fun HttpServletRequest.requireMcpHttpHeaders(configuration: McpHttpSecurityConfiguration) {

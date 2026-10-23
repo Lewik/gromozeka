@@ -38,6 +38,20 @@ class GromozekaMcpAuthenticationTest {
     }
 
     @Test
+    fun `explicit invalid bearer cannot borrow a valid browser session`() = runBlocking<Unit> {
+        fixture().use { http ->
+            for (header in listOf("Bearer revoked-or-invalid", "Bearer memory-token", "Basic unsupported", "Bearer ")) {
+                assertEquals(401, http.perform(get("/mcp").secureTestRequest("session-token")
+                    .header("Authorization", header)).status)
+            }
+            assertEquals(401, http.perform(get("/mcp").secureTestRequest("session-token")
+                .header("Authorization", "Bearer control-token", "Bearer other")).status)
+            assertEquals(200, http.perform(get("/mcp").secureTestRequest("session-token")
+                .header("Authorization", "Bearer control-token")).status)
+        }
+    }
+
+    @Test
     fun `authenticated browser session uses unified MCP without weakening HTTPS`() = runBlocking<Unit> {
         fixture().use { http ->
             assertEquals(200, http.perform(get("/mcp").secureTestRequest("session-token")).status)

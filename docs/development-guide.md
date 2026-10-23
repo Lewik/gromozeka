@@ -40,8 +40,8 @@ Presentation bootstrap may wire infrastructure, but ordinary UI code should use
 domain and application abstractions.
 
 The central Server uses one Spring Boot Servlet container: MVC controllers for
-HTTP, Spring WebSocket handlers for `/ws` and `/worker/ws`, and one Spring
-Security filter chain. There is no parallel Ktor Server listener. The clients
+HTTP, Spring WebSocket handlers for `/ws` and `/worker/ws`, and ordered Spring
+Security filter chains (OAuth endpoints first, native HTTP paths second). There is no parallel Ktor Server listener. The clients
 and shared Worker runtime retain Ktor Client and the common Kotlin serialization
 protocol. Moving the JVM Server does not move Spring dependencies into KMP clients
 or replace coroutine-based application services with Spring AI orchestration.
@@ -49,11 +49,66 @@ or replace coroutine-based application services with Spring AI orchestration.
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
 secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy
 header rewriting is disabled. HTTP authentication resolves existing opaque user
-sessions, Worker credentials, or MCP PATs; project/resource/tool authorization
-remains in the application services. Spring HTTP sessions, generated development
-passwords, form login, and HTTP Basic are not alternate login paths. This
-transport migration does not yet implement OAuth authorization/token endpoints
-or change PAT scopes.
+sessions, Worker credentials, MCP PATs, or scoped MCP OAuth tokens; project/resource/tool
+authorization remains in the application services. Generated development passwords,
+Spring's default form login and HTTP Basic are not alternate login paths. OAuth's small
+server-rendered login form calls the existing `AuthenticationService`; its temporary
+Servlet session stores CSRF and the pending redirect, not an independent user identity.
+
+### External MCP OAuth
+
+Set `GROMOZEKA_OAUTH_ISSUER` (property `gromozeka.oauth.issuer`) to the **explicit public
+HTTPS origin**, e.g. `https://gromozeka.example`. Paths, credentials, query and fragment
+are rejected; explicit HTTP loopback origins are allowed for isolated development only.
+Do not derive the issuer from Host or enable blanket proxy-header trust. Existing MCP
+allowed-host/allowed-origin and explicitly trusted TLS-proxy settings still apply.
+Without this property the OAuth configuration/pages are absent; native login and PATs
+continue to work. This phase does not redesign manual script-token scopes/lifetimes.
+
+The profile uses Spring Security Authorization Server's code/PKCE-S256, consent, token,
+metadata and revocation protocol. `/.well-known/oauth-protected-resource/mcp` describes
+`<issuer>/mcp`; `/.well-known/oauth-authorization-server` describes the issuer. Both the
+authorization and token request must carry that exact `resource`; the only scope is
+`mcp`. This is broad **existing-user** MCP tool authority, including mutations and Worker
+operations when that user is allowed to perform them, not a read-only scope or an AI
+permission grant. An explicit Authorization header never falls back to an ambient
+browser session if its bearer token is invalid.
+
+Registration uses HTTPS Client ID Metadata Documents (CIMD), with bounded transient
+caching and durable client snapshots for authenticated authorization attempts. The
+fetcher forbids redirects and private/link-local/loopback DNS results at socket resolution,
+limits response bytes and timeouts, and never forwards cookies/credentials. Public clients
+use `none` authentication; local callback ports may vary but host/path must match registered
+metadata. Pre-registered public clients are also supported internally. DCR, OIDC,
+client-credentials, DPoP and third-party browser-SPA CORS are not part of this profile;
+unsupported endpoint/capability metadata is not advertised. No Spring AI tool scan or
+parallel user database is introduced.
+
+Access tokens are opaque and expire after 10 minutes. Clients advertising `refresh_token`
+receive a rotating refresh token with an **absolute 30-day grant lifetime**. Spring's
+public-client refresh restriction is extended narrowly: its native grant validation and
+response generation remain in charge, while one PostgreSQL transaction locks the grant
+around the entire token operation. Old refresh hashes remain recognizable; a reused
+refresh token from the same client revokes the whole grant, including its successor.
+Two concurrent refresh attempts therefore do not both succeed; the loser triggers reuse
+revocation. Clients must serialize refresh and must not blindly retry after an uncertain
+response. Token responses are buffered until commit. V75 contains the framework JDBC
+schema and refresh history, separate from user sessions/PATs.
+
+`/oauth/connections` lists up to 100 active connections for the signed-in user and supports
+CSRF-protected revocation. `/oauth2/revoke` accepts a client's access or refresh token and
+revokes that grant. Each MCP request checks expiry, issuer/audience and the user's current
+active/login status; the existing application authorization still runs for every tool.
+A Server restart preserves approved clients/grants, not an unfinished browser CSRF session.
+The current server-rendered pages are English.
+
+`McpOAuthPolicyTest` covers deterministic input boundaries. The opt-in
+`PostgresMcpOAuthProtocolTest` exercises the production Spring filters and JDBC persistence
+against a fresh schema upgraded from V74 to V75; it requires
+`GROMOZEKA_POSTGRES_RUNTIME_TEST=true` and explicit `GROMOZEKA_POSTGRES_URL`,
+`GROMOZEKA_POSTGRES_USER`, `GROMOZEKA_POSTGRES_PASSWORD` (empty password allowed, unset not).
+It substitutes only CIMD HTTP retrieval and user-directory fixtures, not token/consent
+protocol or storage. It does not connect to a real client's account or call a model.
 
 Native `/mcp` uses the official MCP Java SDK's stateless Servlet transport and
 complete schema maps. Each request gets a fresh authenticated native catalog;
