@@ -105,6 +105,89 @@ There is no `execution_target` compatibility alias. V74 invalidates the derived 
 registry; it does not rewrite messages, cached tool calls or exact-revision access policies.
 Tools and exact-revision selections must be reinitialized after the coordinated update.
 
+## Shared Python and shell SDK
+
+Desktop/standalone Workers ship `grz.py` and `grz.sh` with the application. Each managed
+command receives `GRZ_SDK_HOME`, pointing to the same content-addressed directory under
+`GROMOZEKA_HOME/script-sdk/<sha256>`, and that directory is prepended to its `PYTHONPATH`.
+The bundled files are materialized atomically, reused without rewriting, and not removed
+when a command ends (including resumable commands). No user script is required: ordinary
+multiline shell, Python stdin/heredoc, and saved script files all use the same library.
+There is no script registry, new LLM tool, venv, pip install, daemon or interpreter download.
+Python **3.9+ must already be installed**; `GRZ_PYTHON` selects an existing executable for
+the shell wrapper without changing `PATH`. The wrapper is POSIX `sh`/Bash, not Windows
+cmd/PowerShell; Python and the shared path are also available on Windows.
+
+Authentication is **explicit**, not inherited from Worker Gateway enrollment. Set
+`GRZ_MCP_URL` to the Server HTTPS `/mcp` endpoint and `GRZ_MCP_TOKEN` to an existing
+`mcp:control` PAT, preferably using the existing named-secret substitution:
+
+```sh
+export GRZ_MCP_URL=https://your-server.example/mcp
+export GRZ_MCP_TOKEN=secret://my-mcp-pat
+python3 - <<'PY'
+from grz import Client
+with Client.from_env() as client:
+    tools = client.list_tools()
+    print([tool["name"] for tool in tools])
+    # Use an EXACT name and its inputSchema from this list; do not guess __vN.
+    # result = client.call(exact_name, arguments)
+PY
+```
+
+`secret://…` substitution applies when the command is submitted to Gromozeka, not when
+running an arbitrary terminal script. Never put a token in a saved script, command argument,
+log, or checked-in environment file. No PAT is minted automatically; its existing scope,
+lifetime and user authority are unchanged. This is the normal full-host command environment,
+**not a sandbox or a way to constrain a PAT's authority**. Do not provide credentials to
+untrusted scripts. The SDK does not perform OAuth login/refresh or access Keychain.
+
+Shell uses the same Python core (one helper process per call in this version):
+
+```sh
+. "$GRZ_SDK_HOME/grz.sh"
+grz_list_tools
+grz_describe_tool "$exact_name"
+grz_call "$exact_name" '{"some_argument":"literal value"}'
+# Or supply the argument object on stdin, useful for multiline JSON:
+grz_call "$exact_name" <<'JSON'
+{"some_argument":"line one\nline two"}
+JSON
+```
+
+Python offers `Client(url, token, context=..., timeout=60)`, `Client.from_env()`,
+`list_tools(refresh=True)`, `describe_tool(exact_name)`, and
+`call(exact_name, arguments, context=..., check=True)`. It is synchronous, not thread-safe.
+Defaults in `GRZ_MCP_CONTEXT` come from that command's project/conversation/agent/mount/Worker;
+no user ID, thread, filesystem root, tool-call ID or credentials are exported there.
+Only selectors declared by the chosen tool's `_grz` schema are forwarded. Explicit
+`context={...}` or `arguments['_grz']` **replaces** defaults rather than mixing two scopes;
+`context={}` disables them. Selectors are routing convenience, not trusted authorization:
+Server checks access and exact contracts on every invocation. A cached tool listing is not
+a permission grant; refresh is explicit, and names are never rebound to another version.
+
+Results retain the complete MCP object, including text/binary content, `structuredContent`,
+`isError`, and native `PENDING`/task receipts. Python raises `ToolError` with `.result` for
+`isError=true` (`check=False` returns it). Shell emits that result JSON on stdout and exits 2;
+transport/protocol/configuration errors exit 1 with a bounded stderr diagnostic. Success exits
+0, **including PENDING receipts, which do not mean the action completed**. There are no
+automatic tool retries, polling, cancellations or resumed SSE requests. On uncertain delivery,
+exceptions expose `outcome_unknown`; inspect the existing request/task when its ID is known,
+or verify the effect before considering another mutation. Closing the client does not cancel
+a Worker action. HTTP timeout is a socket timeout, separate from native delivery/execution/wait
+policy. Responses are bounded (default 16 MiB, configurable explicitly).
+
+This small stdlib-only implementation targets Gromozeka's **stateless HTTP MCP** profile:
+initialize, notifications/initialized, tools/list pagination and tools/call; JSON and POST SSE
+responses; current protocol version 2025-11-25, without legacy negotiation fallback. It is not a general MCP
+SDK, stdio bridge, sampling implementation or server-request executor. TLS uses system trust;
+redirects, ambient proxies and cookies are not used. Plain HTTP is allowed only on loopback.
+
+`LocalScriptSdkTest` checks materialization and executes the bundled Python unittest fixture
+(20 cases, synthetic loopback server; shell case skipped on Windows). Command-service and
+real process-runner tests cover per-launch routing, secret separation and path injection.
+Use `GRZ_TEST_PYTHON` to select the test interpreter; these tests never install one.
+
 ## Timing and cancellation
 
 Worker and Workspace tool `_grz` accepts these optional integer fields:

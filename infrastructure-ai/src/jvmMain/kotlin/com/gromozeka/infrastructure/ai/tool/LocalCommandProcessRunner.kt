@@ -28,6 +28,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         require(workingDirectory.isDirectory) {
             "Command working directory does not exist or is not a directory: ${workingDirectory.absolutePath}"
         }
+        val executionSpec = spec.copy(environment = LocalScriptSdk.environment(gromozekaHome(), spec.environment))
         val outputFile = commandOutputFile(spec)
         val processTreeFile = processTreeFile(outputFile)
         val processStartFile = processStartFile(outputFile)
@@ -37,7 +38,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         var workerLifetimeBinding: LocalWorkerLifetimeBinding? = null
         try {
             process = host.launch(
-                spec = spec,
+                spec = executionSpec,
                 workingDirectory = workingDirectory,
                 outputFile = outputFile,
                 errorFile = errorFile,

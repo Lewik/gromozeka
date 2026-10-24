@@ -5,6 +5,8 @@ import com.gromozeka.domain.slot.commandEnvironment
 
 import com.gromozeka.domain.model.BinaryContent
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.encodeToString
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
@@ -125,7 +127,7 @@ class DefaultCommandTaskService(
                     executionId = taskId.value,
                     command = request.command,
                     workingDirectory = workingDirectory,
-                    environment = context.secretEnvironment() + slotOrigin.commandEnvironment(),
+                    environment = context.secretEnvironment() + slotOrigin.commandEnvironment() + context.scriptSdkEnvironment(),
                     lifetime = processLifetime,
                 )
             )
@@ -991,6 +993,21 @@ class DefaultCommandTaskService(
             require(timeoutSeconds > 0) { "timeout_seconds must be positive when provided" }
         }
     }
+
+    /** Convenient routing defaults only. A script still authenticates with its own explicit MCP credential. */
+    private fun ToolExecutionContext.scriptSdkEnvironment(): Map<String, String> = mapOf(
+        "GRZ_MCP_CONTEXT" to buildJsonObject {
+            mapOf(
+                "projectId" to "project_id",
+                "conversationId" to "conversation_id",
+                TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent_id",
+                "workspaceMountId" to "workspace_mount_id",
+                "workerId" to "worker_id",
+            ).forEach { (key, selector) ->
+                getString(key)?.takeIf(String::isNotBlank)?.let { put(selector, it) }
+            }
+        }.toString(),
+    )
 
     private fun ToolExecutionContext.requiredConversationId(): Conversation.Id =
         getString("conversationId")

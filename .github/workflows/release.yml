@@ -135,6 +135,11 @@ jobs:
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           --console=plain
       - name: Verify Server and Worker
+        env:
+          GROMOZEKA_POSTGRES_RUNTIME_TEST: 'true'
+          GROMOZEKA_POSTGRES_URL: jdbc:postgresql://localhost:5432/gromozeka
+          GROMOZEKA_POSTGRES_USER: gromozeka
+          GROMOZEKA_POSTGRES_PASSWORD: gromozeka
         run: >
           ./gradlew
           :server:test

@@ -181,6 +181,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, List<AiToolResult>
             Use grz_cancel_command_task to terminate the process tree.
             To use a durable secret without exposing it to the model, place its exact secret://name reference directly in the command. Gromozeka replaces every occurrence with a collision-free, randomly named environment variable immediately before process start. On macOS/Linux, do not put secret references inside single-quoted shell text because variables do not expand there.
             Do not create unmanaged background processes with '&' on macOS/Linux or 'start' without '/WAIT' on Windows. Full merged stdout/stderr is saved to output_file.
+            Commands receive GRZ_SDK_HOME with shared grz.py/grz.sh (no per-script install). Python 3.9+: import grz; POSIX shell: . "${'$'}GRZ_SDK_HOME/grz.sh". Set GRZ_MCP_URL and GRZ_MCP_TOKEN explicitly to call HTTP MCP; credentials are not provisioned automatically. Use an existing secret:// reference rather than exposing a token. GRZ_MCP_CONTEXT contains routing defaults, not permissions. Discover exact tool names; SDK calls are never automatically retried. See the module docstrings for Client/list_tools/describe_tool/call.
             Use with caution - has full system access.
             
             Common use cases:

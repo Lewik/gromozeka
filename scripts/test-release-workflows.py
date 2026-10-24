@@ -51,6 +51,15 @@ class WorkflowContracts(unittest.TestCase):
             with self.subTest(workflow=filename):
                 self.assertEqual(events, set(load_yaml(WORKFLOWS / filename)["on"]))
 
+    def test_script_sdk_and_oauth_storage_are_checked_before_publication(self):
+        cross_platform = load_yaml(WORKFLOWS / "windows-worker-service.yml")
+        self.assertIn("*LocalScriptSdkTest", scripts(cross_platform["jobs"]["verify"]))
+        steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}
+        step = steps["Verify Server and Worker"]
+        self.assertIn(":server:test", step["run"])
+        self.assertEqual("true", step["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
+        self.assertEqual("jdbc:postgresql://localhost:5432/gromozeka", step["env"]["GROMOZEKA_POSTGRES_URL"])
+
     def test_safe_dispatch_defaults(self):
         inputs = RELEASE["on"]["workflow_dispatch"]["inputs"]
         for name, default in (("publish_release", "false"), ("deploy_aws", "false"), ("skip_android", "false"), ("skip_ios", "true")):

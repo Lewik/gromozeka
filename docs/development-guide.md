@@ -1344,13 +1344,13 @@ workflow's `patch` default is a technical default, not a versioning decision.
 
 That public surface includes documented Server APIs, Client and Worker
 protocols, configuration formats, and other contracts consumed outside the
-implementing component. Normally a newer Server must accept older Clients and
-Workers from the same major version. Lev may explicitly approve a per-release
-exception, such as a Worker protocol break in a minor release. Explain the
-incompatibility and required component updates; previous exceptions are not
-blanket permission. A newer Client or Worker may use functionality that an
-older Server does not provide, so compatibility in that direction is not
-guaranteed.
+implementing component. **Current development policy (Lev, 2026-10-24): backward
+compatibility is not maintained yet. Do not retain legacy endpoints, aliases or
+fallback implementations solely to support old contracts.** Document incompatible
+changes and required coordinated Client/Server/Worker updates rather than hiding
+them behind adapters. This does not authorize destructive data migration or
+unrequested deployment, and does not change the separate approval requirement for
+a major release. Version 5.0.0 is explicitly approved; deployment is not.
 
 Internal refactoring and database schema changes do not require a major version
 when existing persisted data is migrated forward automatically without loss.

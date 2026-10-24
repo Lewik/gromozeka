@@ -30,7 +30,7 @@ jobs:
           ./gradlew
           :worker:assemble :server:assemble
           :worker:test --tests '*JvmComputerUseControllerTest'
-          :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*JsonSchemaGeneratorTest'
+          :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*LocalScriptSdkTest' --tests '*JsonSchemaGeneratorTest'
           :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
           :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest'
           -q

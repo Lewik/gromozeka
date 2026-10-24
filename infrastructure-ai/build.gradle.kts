@@ -13,6 +13,7 @@ kotlin {
     
     sourceSets {
         val jvmMain by getting {
+            resources.exclude("**/__pycache__/**", "**/*.pyc")
             dependencies {
                 implementation(project(":domain"))  // Transitively provides :shared
 

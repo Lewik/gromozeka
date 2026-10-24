@@ -74,6 +74,24 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
+    fun `script defaults contain only current public routing selectors and no credentials`() = runBlocking<Unit> {
+        withService { service, runner, _, directory ->
+            runner.onStart = { it.complete(0) }
+            service.start(ExecuteCommandRequest("first", yield_time_ms = 2_000),
+                context(directory, AgentDefinition.Id("agent-one"))
+                    .withValue("userId", "private-user")
+                    .withValue("threadId", "private-thread")
+                    .withValue("toolCallId", "private-call"))
+            val parse = { value: String -> kotlinx.serialization.json.Json.parseToJsonElement(value) }
+            assertEquals(parse("""{"project_id":"project-1","conversation_id":"conversation-1","agent_id":"agent-one","workspace_mount_id":"mount-1","worker_id":"command-worker"}"""),
+                parse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT")))
+            assertEquals(setOf("GRZ_MCP_CONTEXT"), runner.lastSpec.environment.keys)
+            service.start(ExecuteCommandRequest("second", yield_time_ms = 2_000), context(directory))
+            assertFalse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT").contains("agent-one"))
+        }
+    }
+
+    @Test
     fun `only execution receives substituted command and secret environment`() = runBlocking {
         withService { service, runner, coordinator, directory ->
             val original = "curl secret://github-pat"
@@ -88,7 +106,8 @@ class DefaultCommandTaskServiceTest {
                 context(directory).withValue(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND, prepared.originalCommand)
                     .withValue(com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT, prepared.secretEnvironment))
             assertEquals(command, runner.lastSpec.command)
-            assertEquals(prepared.secretEnvironment, runner.lastSpec.environment)
+            assertEquals(prepared.secretEnvironment, runner.lastSpec.environment - "GRZ_MCP_CONTEXT")
+            assertFalse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT").contains("private-test-token"))
             assertEquals(original, result.task.command)
             assertEquals(original, coordinator.findCommandTask(conversationId, result.task.id)?.command)
             assertEquals(original, service.get(conversationId, result.task.id, 0, 0)?.task?.command)

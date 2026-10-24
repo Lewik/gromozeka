@@ -123,6 +123,29 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `runner exposes shared SDK files and per launch routing without an interpreter install`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(CommandProcessSpec(
+                executionId = "sdk-environment-task",
+                command = platformCommand(
+                    posix = "test -f \"${'$'}GRZ_SDK_HOME/grz.py\" && test -f \"${'$'}GRZ_SDK_HOME/grz.sh\" && " +
+                        "printf '%s\\n%s\\n' \"${'$'}GRZ_MCP_CONTEXT\" \"${'$'}PYTHONPATH\"",
+                    windows = "if not exist \"%GRZ_SDK_HOME%\\grz.py\" exit /b 4\n" +
+                        "if not exist \"%GRZ_SDK_HOME%\\grz.sh\" exit /b 5\n" +
+                        "echo %GRZ_MCP_CONTEXT%\necho %PYTHONPATH%",
+                ),
+                workingDirectory = home.absolutePath,
+                environment = mapOf("GRZ_MCP_CONTEXT" to "{\"conversation_id\":\"one\"}", "PYTHONPATH" to "previous"),
+            ))
+            assertTrue(process.waitFor(5_000))
+            assertEquals(0, process.exitCode())
+            val lines = File(process.outputFile).readLines()
+            assertEquals("{\"conversation_id\":\"one\"}", lines[0])
+            assertEquals(LocalScriptSdk.materialize(home).absolutePath + File.pathSeparator + "previous", lines[1])
+        }
+    }
+
+    @Test
     fun `runner injects command environment without changing command text`() {
         withTemporaryGromozekaHome { home ->
             val process = runner.start(
