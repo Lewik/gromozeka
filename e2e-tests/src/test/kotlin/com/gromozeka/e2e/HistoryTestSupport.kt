@@ -4,7 +4,8 @@ import com.gromozeka.domain.model.Conversation
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
-import io.ktor.http.HttpHeaders
+import io.ktor.client.call.save
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.encodedPath
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.json.Json
@@ -28,10 +29,13 @@ internal class HistoryNetworkProbe(private val client: HttpClient) {
             }
             val response = execute(request)
             if (history) {
-                response.response.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let(responseSizes::add)
+                // Content-Length is optional (e.g. Servlet chunked JSON). Measure actual
+                // payload bytes and return a saved call so the real client can still decode it.
+                val saved = response.save()
+                responseSizes += saved.response.bodyAsBytes().size.toLong()
                 gate?.await()
-            }
-            response
+                saved
+            } else response
         }
     }
 }
