@@ -188,6 +188,17 @@ redirects, ambient proxies and cookies are not used. Plain HTTP is allowed only 
 real process-runner tests cover per-launch routing, secret separation and path injection.
 Use `GRZ_TEST_PYTHON` to select the test interpreter; these tests never install one.
 
+Real process verification (2026-10-24, source `7a65e43e1`): isolated PostgreSQL 18.6,
+Server and Worker boot JARs, fresh V75 database and synthetic user/PAT. The packaged SDK
+(not a mock) discovered 132 tools, performed a nested Worker text write and byte-exact
+binary read, returned a real `PENDING` receipt without retry (one actual command effect),
+and renamed its Conversation through automatic context. Python stdin and saved-file paths,
+POSIX inline and saved Bash paths all passed. Named-secret substitution kept the PAT out
+of the stored command; missing credentials and revoked PAT failed explicitly. No model,
+Keychain, production registry, deployment or installed-client update was involved. Own
+Server/Worker/PostgreSQL processes stopped, private state was removed and assigned ports
+were free after cleanup. Local run artifacts: `build/verification/script-sdk/`.
+
 ## Timing and cancellation
 
 Worker and Workspace tool `_grz` accepts these optional integer fields:
