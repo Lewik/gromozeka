@@ -102,6 +102,46 @@ active/login status; the existing application authorization still runs for every
 A Server restart preserves approved clients/grants, not an unfinished browser CSRF session.
 The current server-rendered pages are English.
 
+#### Connecting Claude Code
+
+With the explicit issuer and MCP allowed host configured on the Server, add the endpoint
+without a PAT header or preconfigured client ID. Tested with the installed Claude Code
+2.1.296; the client discovers CIMD/PKCE automatically:
+
+```bash
+claude mcp add --transport http --scope user gromozeka https://gromozeka.example/mcp
+claude mcp login gromozeka
+claude mcp get gromozeka
+```
+
+`add` only saves configuration; check that `get` reports **Connected**, not merely exit 0.
+Use the browser to sign in with an existing Gromozeka user and approve MCP access.
+For headless/SSH use, `claude mcp login gromozeka --no-browser` prints the authorization
+URL. This flag suppresses automatic browser launch; it does not disable the client's
+loopback callback listener. A browser on the same machine can complete the callback
+directly. Pasting the redirect URL is an alternative when the automatic return cannot
+reach that listener, not a mandatory extra step after successful authentication.
+Revoke the connection at `<issuer>/oauth/connections`; subsequent client requests must
+no longer succeed. `claude mcp logout gromozeka` clears the client's local credentials.
+
+The isolated real-client check used the actual binary's `mcp login/get` and SDK-control
+`mcp_call`, not a simulated OAuth client or a model-generated account of tool effects.
+It covered browser login/consent, one native project creation, credential reuse in a new
+CLI process, refresh after controlled expiry of the disposable access-token DB row, and
+browser revocation followed by client rejection. No user/model messages were sent to a
+provider. Default client negotiation initially tried MCP 2026-07-28 and then successfully
+used 2025-11-25; this is not evidence that the Server supports the 2026 protocol revision.
+
+Do not replace a real macOS user's HOME to isolate a CLI test and assume Keychain will
+remain unaffected: the initial experiment coincided with a recurring Keychain dialog and was
+stopped. The successful OAuth transport check used a disposable config/credentials
+profile and the CLI's native file-storage fallback, making `security` unavailable only
+inside that test process's PATH; Chromium used its own headless profile with a mock
+Keychain. This is a test isolation measure, not a recommended user configuration and
+not validation of macOS Keychain integration. Real user configs and credentials are not
+copied into the fixture. Remove the private credential files and all owned processes
+when the check ends.
+
 `McpOAuthPolicyTest` covers deterministic input boundaries. The opt-in
 `PostgresMcpOAuthProtocolTest` exercises the production Spring filters and JDBC persistence
 against a fresh schema upgraded from V74 to V75; it requires
