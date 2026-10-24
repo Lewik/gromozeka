@@ -12,7 +12,15 @@ internal data class ServerHttpSettings(
     val mcp: McpHttpSecurityConfiguration = resolveMcpHttpSecurityConfiguration(null),
     val webRoot: File = File("presentation/build/dist/wasmJs/developmentExecutable"),
 ) {
-    init { require(port in 1..65535) { "Server port is out of range" } }
+    // Zero asks the Servlet container/OS to choose a free port (used by isolated E2E).
+    init { require(port in 0..65535) { "Server port is out of range" } }
+
+    fun requireBoundPort(actualPort: Int?): Int {
+        check(actualPort != null && actualPort in 1..65535 && (port == 0 || actualPort == port)) {
+            "Gromozeka Servlet HTTP listener did not start on the configured port"
+        }
+        return actualPort
+    }
 
     companion object {
         fun configured(): ServerHttpSettings {

@@ -38,13 +38,15 @@ fun main(args: Array<String>) {
         .run(*args)
 
     val webContext = context as? org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext
-    if (webContext?.webServer?.port != settings.port) {
+    val boundPort = try {
+        settings.requireBoundPort(webContext?.webServer?.port)
+    } catch (error: IllegalStateException) {
         context.close()
-        error("Gromozeka Servlet HTTP listener did not start on the configured port")
+        throw error
     }
-    println("==== Gromozeka server started: ws://${settings.host}:${settings.port}/ws ====")
-    println("==== Gromozeka MCP Streamable HTTP: http://${settings.host}:${settings.port}/mcp ====")
-    println("==== Gromozeka memory HTTP: http://${settings.host}:${settings.port}/memory/status ====")
+    println("==== Gromozeka server started: ws://${settings.host}:$boundPort/ws ====")
+    println("==== Gromozeka MCP Streamable HTTP: http://${settings.host}:$boundPort/mcp ====")
+    println("==== Gromozeka memory HTTP: http://${settings.host}:$boundPort/memory/status ====")
     val authentication = context.getBean(AuthenticationService::class.java)
     val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java)
     runBlocking {
@@ -55,6 +57,7 @@ fun main(args: Array<String>) {
 }
 
 private fun checkRemoteEndpointIsFree(host: String, port: Int) {
+    if (port == 0) return // There is no configured endpoint to probe before the OS assigns it.
     val probeHost = when (host) { "0.0.0.0", "::" -> "127.0.0.1"; else -> host }
     val acceptsConnections = runCatching {
         Socket().use { it.connect(InetSocketAddress(probeHost, port), 500) }
