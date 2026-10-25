@@ -106,9 +106,7 @@ class ConversationContextSnapshotService(
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)
         val skillContext = skills.prepare(agent, project.id, baseCatalog)
         val catalog = skillContext.toolCatalog
-        val definitions = catalog.tools.map { tool ->
-            baseCatalog.entries[tool.definition.name]?.descriptor?.definition ?: tool.definition
-        }
+        val definitions = catalog.tools.map { it.definition }
         val memoryEnabled = conversation.externalChannel == null && (
             (profile.memorySettings.autoRemember && configuration.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null) ||
                 (profile.memorySettings.autoRecall && configuration.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ) != null)

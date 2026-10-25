@@ -1209,10 +1209,7 @@ class ConversationEngineService(
             toolCatalog = baseToolCatalog,
         )
         val toolCatalog = agentSkillRuntime.toolCatalog
-        val capabilityCatalogDefinitions = toolCatalog.tools.map { tool ->
-            baseToolCatalog.entries[tool.definition.name]?.descriptor?.definition
-                ?: tool.definition
-        }
+        val capabilityCatalogDefinitions = toolCatalog.tools.map(AiToolCallback::definition)
         val toolCapabilityCatalogPrompt = aiToolCapabilityCatalogService.promptFor(capabilityCatalogDefinitions)
         val memoryPipelineTools = aiToolProvider.getTools()
             .forMemoryPipeline(agent.toolAccess)
