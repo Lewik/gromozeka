@@ -30,11 +30,11 @@ class VisualWorkerRuntime(
     private val cancelled = ConcurrentHashMap<String, Long>()
     private val log = klog.KLoggers.logger(this)
 
-    suspend fun execute(request: VisualWorkerCommand): VisualWorkerResult {
+    suspend fun execute(request: VisualWorkerCommand, workerRequest: WorkerRequestExecutionContext? = null): VisualWorkerResult {
         require(request.worker == identity) { "Visual operation targets another Worker session" }
         require(request.visualId.length in 1..128 && request.generation.length in 1..128) { "Invalid visual identity" }
         return when (request.operation) {
-            VisualWorkerCommand.Operation.START -> VisualWorkerResult(start(request))
+            VisualWorkerCommand.Operation.START -> VisualWorkerResult(start(request, workerRequest))
             VisualWorkerCommand.Operation.INPUT -> {
                 val entry = owned[request.generation] ?: error("Visual handler is not running on this Worker session")
                 require(entry.request.visualId == request.visualId && entry.request.conversationId == request.conversationId) { "Visual input owner does not match" }
@@ -64,7 +64,7 @@ class VisualWorkerRuntime(
         }
     }
 
-    private suspend fun start(request: VisualWorkerCommand): CommandTask {
+    private suspend fun start(request: VisualWorkerCommand, workerRequest: WorkerRequestExecutionContext?): CommandTask {
         pruneCancellations()
         check(!cancelled.containsKey(request.generation)) { "Visual was closed before handler startup" }
         val workspace = requireNotNull(request.workspace) { "Handler startup requires a workspace" }
@@ -85,7 +85,11 @@ class VisualWorkerRuntime(
             val result = commands.start(
                 ExecuteCommandRequest(command = spec.command, working_directory = spec.workingDirectory,
                     yield_time_ms = 0, survive_worker_restart = false),
-                ToolExecutionContext(values).withValue(TOOL_CONTEXT_VISUAL_ID, request.visualId)
+                ToolExecutionContext(values, workerRequest = workerRequest)
+                    .withCancellationSignal(ToolCancellationSignal {
+                        if (cancelled.containsKey(request.generation)) throw CancellationException("Visual was closed before handler launch")
+                    })
+                    .withValue(TOOL_CONTEXT_VISUAL_ID, request.visualId)
                     .withValue(TOOL_CONTEXT_SECRET_ENVIRONMENT, request.secretEnvironment),
             )
             entry.task.complete(result.task)

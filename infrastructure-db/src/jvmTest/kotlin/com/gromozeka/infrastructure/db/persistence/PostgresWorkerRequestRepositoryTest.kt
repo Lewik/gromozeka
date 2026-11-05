@@ -19,8 +19,8 @@ import kotlin.time.Duration.Companion.seconds
 
 class PostgresWorkerRequestRepositoryTest {
     @Test
-    fun `queue survives repository restart encrypts payload and fences completion`() = runBlocking {
-        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
+    fun `queue survives repository restart encrypts payload and fences completion`(): Unit = runBlocking {
+        org.junit.Assume.assumeTrue("Requires isolated PostgreSQL test configuration", System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
         val schema = "worker_requests_test_${UUID.randomUUID().toString().replace("-", "")}"
         val directory = Files.createTempDirectory("worker-request-cipher-test-")
         fun source() = PGSimpleDataSource().apply {
@@ -41,6 +41,7 @@ class PostgresWorkerRequestRepositoryTest {
                     requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V50__durable_worker_requests.sql"))
                         .readText().split(';').map(String::trim).filter(String::isNotEmpty).forEach(statement::execute)
                     statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V68__development_slots.sql")).readText())
+                    statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V77__worker_request_retention.sql")).readText())
                 }
             }
             val settings = Proxy.newProxyInstance(SettingsProvider::class.java.classLoader, arrayOf(SettingsProvider::class.java)) { _, method, _ ->
@@ -50,7 +51,7 @@ class PostgresWorkerRequestRepositoryTest {
             val repository = PostgresWorkerRequestRepository(dataSource, SecretCipher(settings))
             val now = Clock.System.now()
             val workerId = ConversationRuntimeWorkerId("worker")
-            val request = StoredWorkerRequest("request", workerId, "private-request-secret".encodeToByteArray(), now, now + 30.seconds, slotOrigin = com.gromozeka.domain.slot.SlotCommandOrigin("slot", 7, "lease"))
+            val request = StoredWorkerRequest("request", workerId, "private-request-secret".encodeToByteArray(), now, now + 30.seconds, slotOrigin = com.gromozeka.domain.slot.SlotCommandOrigin("slot", 7, "lease"), executionDeadline = now + 60.seconds)
             repository.create(request)
             assertEquals(listOf("request"), repository.pending(workerId, 10).map { it.id })
             val restarted = PostgresWorkerRequestRepository(dataSource, SecretCipher(settings))
@@ -87,6 +88,13 @@ class PostgresWorkerRequestRepositoryTest {
             assertFailsWith<IllegalArgumentException> { repository.create(request.copy(id = "queue-full")) }
             repository.cancel("live-0", now)
             repository.create(request.copy(id = "cancelled-slot-reused"))
+            assertTrue("request" in restarted.unprojectedCompletions(10))
+            assertEquals(0, restarted.deleteCompletedBefore(now + 3_600.seconds, 10))
+            restarted.markCompletionProjected("request", now)
+            assertEquals(1, restarted.deleteCompletedBefore(now + 3_600.seconds, 10))
+            kotlin.test.assertNull(restarted.find("request"))
+            kotlin.test.assertNotNull(restarted.find("live-1"))
+
         } finally {
             admin.connection.use { it.createStatement().use { it.execute("DROP SCHEMA $schema CASCADE") } }
             Files.walk(directory).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }

@@ -25,6 +25,7 @@ import com.gromozeka.domain.service.MAX_COMMAND_INPUT_BYTES
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.backgroundActivityLaunchReference
 import com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.requiredWorkspaceMountId
@@ -40,6 +41,8 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -120,8 +123,16 @@ class DefaultCommandTaskService(
         } else {
             CommandTask.ProcessLifetime.WORKER_BOUND
         }
+        val workspaceMountId = context.requiredWorkspaceMountId()
+        val launchReference = context.backgroundActivityLaunchReference()
+        val launchContext = currentCoroutineContext()
+        val startGuard = {
+            launchContext.ensureActive()
+            context.checkStartAllowed()
+        }
         val activeCommand = lifecycleMutex.withLock {
             check(!closed.get()) { "Command task service is closed" }
+            startGuard()
             val process = processRunner.start(
                 CommandProcessSpec(
                     executionId = taskId.value,
@@ -129,59 +140,61 @@ class DefaultCommandTaskService(
                     workingDirectory = workingDirectory,
                     environment = context.secretEnvironment() + slotOrigin.commandEnvironment() + context.scriptSdkEnvironment(),
                     lifetime = processLifetime,
+                    startGuard = startGuard,
+                    protectOutputUntilRegistration = true,
                 )
             )
-            val now = Clock.System.now()
-            val task = CommandTask(
-                id = taskId,
-                conversationId = conversationId,
-                workerId = workerId,
-                workspaceMountId = context.requiredWorkspaceMountId(),
-                slotOrigin = slotOrigin,
-                agentDefinitionId = context.agentDefinitionIdOrNull(),
-                visualId = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID),
-                command = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: request.command,
-                workingDirectory = workingDirectory,
-                processLifetime = processLifetime,
-                status = CommandTask.Status.WORKING,
-                processId = process.processId,
-                processStartedAt = process.processStartedAt,
-                processTreeId = process.processTreeId,
-                outputFile = process.outputFile,
-                outputBytes = 0,
-                timeoutAt = request.timeout_seconds?.let { now + it.seconds },
-                statusMessage = "Command is running",
-                createdAt = now,
-                updatedAt = now,
-            )
-            val command = ActiveCommand(task, process, taskMutex(task.id))
+            var created: ActiveCommand? = null
             try {
+                val now = Clock.System.now()
+                val task = CommandTask(
+                    id = taskId,
+                    conversationId = conversationId,
+                    workerId = workerId,
+                    workspaceMountId = workspaceMountId,
+                    slotOrigin = slotOrigin,
+                    launchReference = launchReference,
+                    agentDefinitionId = context.agentDefinitionIdOrNull(),
+                    visualId = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID),
+                    command = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: request.command,
+                    workingDirectory = workingDirectory,
+                    processLifetime = processLifetime,
+                    status = CommandTask.Status.WORKING,
+                    processId = process.processId,
+                    processStartedAt = process.processStartedAt,
+                    processTreeId = process.processTreeId,
+                    outputFile = process.outputFile,
+                    outputBytes = 0,
+                    timeoutAt = request.timeout_seconds?.let { now + it.seconds },
+                    statusMessage = "Command is running",
+                    createdAt = now,
+                    updatedAt = now,
+                )
+                val command = ActiveCommand(task, process, taskMutex(task.id))
+                created = command
                 command.mutex.withLock {
+                    currentCoroutineContext().ensureActive()
+                    context.cancellationSignal.throwIfCancellationRequested()
                     command.task = persistCommandTask(task)
+                    context.cancellationSignal.throwIfCancellationRequested()
                     activeCommands[task.id] = command
                     publishSnapshot(conversationId)
-                    scope.launch {
-                        monitor(command)
-                    }
+                    processRunner.releaseStartupOutputProtection(process.outputFile)
+                    scope.launch { monitor(command) }
                 }
+                command
             } catch (error: Throwable) {
-                activeCommands.remove(task.id, command)
-                try {
-                    process.terminateTree()
-                } catch (terminationError: Throwable) {
-                    error.addSuppressed(terminationError)
-                }
-                runCatching { processRunner.deleteOutputArtifacts(process.outputFile) }
-                    .onFailure(error::addSuppressed)
+                cleanupFailedStart(process, created, error)
                 throw error
             }
-            command
         }
 
         try {
             awaitInitialResult(activeCommand, request.yield_time_ms, context)
         } catch (error: CancellationException) {
-            cancel(conversationId, taskId)
+            withContext(NonCancellable) {
+                runCatching { cancel(conversationId, taskId) }.onFailure(error::addSuppressed)
+            }
             throw error
         }
         var resultTask = currentTask(conversationId, taskId) ?: activeCommand.task
@@ -189,6 +202,53 @@ class DefaultCommandTaskService(
             resultTask = requestCompletionNotification(activeCommand)
         }
         return output(resultTask, 0)
+    }
+
+    private suspend fun cleanupFailedStart(
+        process: RunningCommandProcess,
+        command: ActiveCommand?,
+        error: Throwable,
+    ): Unit = withContext(NonCancellable) {
+        val terminationError = runCatching(process::terminateTree).exceptionOrNull()
+        terminationError?.let {
+            error.addSuppressed(it)
+            log.error(it) { "Failed to terminate command after unsuccessful startup" }
+        }
+        if (command == null) {
+            // No registration could have been sent. If termination failed, keep recovery artifacts.
+            if (terminationError == null) {
+                runCatching { processRunner.deleteOutputArtifacts(process.outputFile) }.onFailure(error::addSuppressed)
+            }
+            return@withContext
+        }
+        command.mutex.withLock {
+            val now = Clock.System.now()
+            command.startupTerminationFailed = terminationError != null
+            val status = if (error is CancellationException) CommandTask.Status.CANCELLED else CommandTask.Status.FAILED
+            val message = if (terminationError == null) "Command startup failed; process stopped; partial effects are possible"
+                else "Command startup failed; process termination also failed; partial effects are possible"
+            // Set a terminal snapshot even if reading the last output bytes itself fails.
+            command.task = command.task.copy(status = status, statusMessage = message, updatedAt = now, completedAt = now)
+            runCatching { setTerminalState(command, status, null, message) }.onFailure(error::addSuppressed)
+            activeCommands[command.task.id] = command
+            command.completed.complete(Unit)
+        }
+        // The first registration may have committed despite a lost ACK. Reconcile the SAME id,
+        // outside the failed/cancelled RPC. Never rerun the process or delete its output here.
+        scope.launch {
+            var reconciled = false
+            try {
+                synchronizeTerminalStateUntilAvailable(command)
+                currentCoroutineContext().ensureActive()
+                reconciled = command.synchronization.rejection == null
+                if (!reconciled && !command.startupTerminationFailed) {
+                    processRunner.rejectStartupOutputProtection(command.task.outputFile)
+                }
+            } finally {
+                if (reconciled && !command.startupTerminationFailed) activeCommands.remove(command.task.id, command)
+            }
+        }
+        Unit
     }
 
     private fun ToolExecutionContext.secretEnvironment(): Map<String, String> =
@@ -702,6 +762,7 @@ class DefaultCommandTaskService(
             publishSnapshot(task.conversationId)
             activeCommand.lastControlPlaneWarningAtNanos = null
             activeCommand.synchronization.succeeded()
+            if (!activeCommand.startupTerminationFailed) processRunner.releaseStartupOutputProtection(task.outputFile)
             true
         } catch (error: CancellationException) {
             throw error
@@ -1042,7 +1103,7 @@ class DefaultCommandTaskService(
         runBlocking {
             lifecycleMutex.withLock {
                 activeCommands.values
-                    .filter { it.task.processLifetime == CommandTask.ProcessLifetime.WORKER_BOUND }
+                    .filter { it.task.processLifetime == CommandTask.ProcessLifetime.WORKER_BOUND || it.startupTerminationFailed }
                     .forEach { stopWorkerBoundCommand(it) }
             }
             supervisor.cancelAndJoin()
@@ -1051,7 +1112,14 @@ class DefaultCommandTaskService(
 
     private suspend fun stopWorkerBoundCommand(activeCommand: ActiveCommand) {
         activeCommand.mutex.withLock {
-            if (activeCommand.task.isTerminal) return
+            if (activeCommand.task.isTerminal) {
+                if (activeCommand.startupTerminationFailed) {
+                    runCatching(activeCommand.process::terminateTree)
+                        .onSuccess { activeCommand.startupTerminationFailed = false }
+                        .onFailure { log.error(it) { "Failed to stop command left by unsuccessful startup: ${activeCommand.task.id.value}" } }
+                }
+                return
+            }
             if (!activeCommand.process.isAlive()) {
                 val exitCode = runCatching(activeCommand.process::exitCode).getOrNull()
                 setTerminalState(
@@ -1093,6 +1161,7 @@ class DefaultCommandTaskService(
         val synchronization = CommandSynchronizationState()
         val controlReads = CommandSynchronizationState()
         var lastControlPlaneWarningAtNanos: Long? = null
+        var startupTerminationFailed = false
     }
 
     private companion object {

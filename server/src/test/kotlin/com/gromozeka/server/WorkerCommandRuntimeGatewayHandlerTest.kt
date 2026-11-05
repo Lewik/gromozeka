@@ -28,6 +28,8 @@ import com.gromozeka.remote.protocol.WorkerCommandRuntimeResponse
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.CompletableDeferred
 import kotlin.time.Instant
 import org.mockito.Mockito
 import kotlin.test.Test
@@ -259,7 +261,41 @@ class WorkerCommandRuntimeGatewayHandlerTest {
         )
     }
 
-    private suspend fun fixture(): Fixture {
+    @Test
+    fun `rejected initial admission never publishes a command`() = runBlocking {
+        val f = fixture()
+        val task = f.commandTask(f.workerId)
+        Mockito.doThrow(IllegalArgumentException("launch rejected")).`when`(f.origins).admit(task)
+        assertFailsWith<IllegalArgumentException> { f.execute(WorkerCommandRuntimeRequest.UpsertCommandTask(task)) }
+        assertNull(f.coordinator.findCommandTask(f.conversation.id, task.id))
+        Mockito.verify(f.origins).admit(task)
+    }
+
+    @Test
+    fun `delayed working writes cannot resurrect terminal task or monitor after gateway validation`() = runBlocking {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var arrivals = 0
+        val f = fixture { if (++arrivals == 2) entered.complete(Unit); release.await() }
+        val task = f.commandTask(f.workerId)
+        val monitor = f.commandMonitor(task)
+        f.coordinator.upsertCommandTask(task)
+        f.coordinator.synchronizeCommandMonitor(monitor)
+        val lateTask = async { f.execute(WorkerCommandRuntimeRequest.UpsertCommandTask(task)) }
+        val lateMonitor = async { f.execute(WorkerCommandRuntimeRequest.SynchronizeCommandMonitor(monitor, emptyList())) }
+        entered.await()
+        val terminalTask = task.copy(status = CommandTask.Status.CANCELLED, completedAt = f.now, statusMessage = "terminal task")
+        val terminalMonitor = monitor.copy(status = CommandMonitor.Status.FAILED, completedAt = f.now, statusMessage = "terminal monitor")
+        f.coordinator.upsertCommandTask(terminalTask)
+        f.coordinator.synchronizeCommandMonitor(terminalMonitor)
+        release.complete(Unit)
+        assertEquals(terminalTask, (lateTask.await() as WorkerCommandRuntimeResponse.CommandTaskUpserted).task)
+        assertEquals(terminalMonitor, (lateMonitor.await() as WorkerCommandRuntimeResponse.CommandMonitorSynchronized).monitor)
+        assertFailsWith<IllegalArgumentException> { f.coordinator.upsertCommandTask(task.copy(command = "changed")) }
+        assertFailsWith<IllegalArgumentException> { f.coordinator.synchronizeCommandMonitor(monitor.copy(filterCommand = "changed")) }
+    }
+
+    private suspend fun fixture(beforeWrite: suspend () -> Unit = {}): Fixture {
         val workerId = ConversationRuntimeWorkerId("worker-1")
         val now = Instant.parse("2026-07-30T00:00:00Z")
         val project = Project(
@@ -312,6 +348,7 @@ class WorkerCommandRuntimeGatewayHandlerTest {
             .thenReturn(WorkspaceExecutionContext(project, workspace, mount))
         Mockito.`when`(workerAccessService.requireProjectAccess(workerId, project.id)).thenReturn(worker)
         val coordinator = InMemoryConversationRuntimeCoordinator()
+        val origins = mock<BackgroundActivityOriginRecorder>()
         val state = ServerCommandRuntimeStateService(
             runtimeCoordinator = coordinator,
             runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
@@ -323,8 +360,17 @@ class WorkerCommandRuntimeGatewayHandlerTest {
             conversation = conversation,
             mount = mount,
             coordinator = coordinator,
+            origins = origins,
             handler = WorkerCommandRuntimeGatewayHandler(
                 commandRuntimeStateService = object : CommandRuntimeStateService by state {
+                    override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                        beforeWrite()
+                        return state.upsertCommandTask(task)
+                    }
+                    override suspend fun synchronizeCommandMonitor(monitor: CommandMonitor, events: List<com.gromozeka.domain.service.CommandMonitorEvent>) = run {
+                        beforeWrite()
+                        state.synchronizeCommandMonitor(monitor, events)
+                    }
                     override suspend fun findCommandTasks(): List<CommandTask> = error("Gateway must not request global task inventory")
                     override suspend fun findCommandMonitors(): List<CommandMonitor> = error("Gateway must not request global monitor inventory")
                 },
@@ -335,6 +381,7 @@ class WorkerCommandRuntimeGatewayHandlerTest {
                 conversationRepository = conversationRepository,
                 workspaceDomainService = workspaceService,
                 workerAccessService = workerAccessService,
+                origins = origins,
             ),
             now = now,
         )
@@ -346,6 +393,7 @@ class WorkerCommandRuntimeGatewayHandlerTest {
         val mount: WorkspaceMount,
         val coordinator: InMemoryConversationRuntimeCoordinator,
         val handler: WorkerCommandRuntimeGatewayHandler,
+        val origins: BackgroundActivityOriginRecorder,
         val now: Instant,
     ) {
         val identity = ConversationRuntimeWorkerIdentity(

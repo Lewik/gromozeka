@@ -228,7 +228,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
     private fun completionService(coordinator: ConversationRuntimeCoordinator) = BackgroundActivityCompletionApplicationService(
         coordinator,
         object : com.gromozeka.domain.repository.BackgroundActivityOriginRepository {
-            override suspend fun bind(origin: com.gromozeka.domain.repository.BackgroundActivityOrigin) = error("Not used")
+            override suspend fun bindWhileRequestPending(origin: com.gromozeka.domain.repository.BackgroundActivityOrigin, at: Instant) = error("Not used")
             override suspend fun find(conversationId: Conversation.Id, keys: Set<com.gromozeka.domain.repository.BackgroundActivityOrigin.Key>) =
                 emptyMap<com.gromozeka.domain.repository.BackgroundActivityOrigin.Key, com.gromozeka.domain.repository.BackgroundActivityOrigin>()
         },

@@ -42,6 +42,7 @@ fun CustomTabRow(
     onTabHover: (Int) -> Unit,
     onTabHoverExit: () -> Unit,
     onRenameConversation: suspend (Conversation.Id, String) -> Unit,
+    trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val translation = LocalTranslation.current
     val headers = tabs.map { tab ->
@@ -67,6 +68,7 @@ fun CustomTabRow(
         onTabHover = onTabHover,
         onTabHoverExit = onTabHoverExit,
         onRename = { renaming = it },
+        trailingContent = trailingContent,
     )
 
     renaming?.let { header ->
@@ -95,6 +97,7 @@ internal fun ConversationNavigationTabs(
     onTabHoverExit: () -> Unit,
     onRename: (ConversationTabHeader) -> Unit,
     modifier: Modifier = Modifier,
+    trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val translation = LocalTranslation.current
     BoxWithConstraints(modifier.fillMaxWidth().testTag(UiTestTag.TabRow.value)) {
@@ -147,7 +150,10 @@ internal fun ConversationNavigationTabs(
                         }
                     }
                 }
+            } else {
+                Spacer(Modifier.weight(1f))
             }
+            trailingContent()
         }
     }
 }

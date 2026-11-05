@@ -77,6 +77,7 @@ suspend fun createRemoteAppComponents(
         NoOpQuickTextActionRunner
     },
     turnCompletionNotificationSinkFactory: (() -> Translation) -> TurnCompletionNotificationSink = { NoOpTurnCompletionNotificationSink },
+    userNotificationSink: com.gromozeka.presentation.services.UserNotificationSink = com.gromozeka.presentation.services.NoOpUserNotificationSink,
     httpClient: HttpClient? = null,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
@@ -258,6 +259,8 @@ suspend fun createRemoteAppComponents(
             agentSkillService = remoteServices.agentSkillService,
             promptService = remoteServices.promptService,
             deviceLocationService = deviceLocationService,
+            userNotificationService = remoteServices.userNotificationService,
+            userNotificationSink = userNotificationSink,
             turnCompletionNotificationService = turnCompletionNotificationService,
         ),
         remoteServices = remoteServices,

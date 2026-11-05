@@ -42,6 +42,7 @@ data class CommandTask(
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
+    val launchReference: BackgroundActivityLaunchReference? = null,
 ) {
     init {
         require(completionNotificationDeliveredAt == null || completionNotificationRequestedAt != null) {

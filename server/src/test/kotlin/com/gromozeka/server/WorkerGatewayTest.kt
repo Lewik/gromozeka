@@ -236,6 +236,58 @@ class WorkerGatewayTest {
     }
 
     @Test
+    fun `late response after retention is acknowledged and the same socket serves the next request`() = testApplication {
+        val worker = worker("worker-1")
+        val credential = "gateway-credential-that-is-long-enough-for-validation"
+        val authentication = WorkerGatewayAuthenticationService(GatewayAuthenticationRepository(sha256(credential), worker))
+        val registry = InMemoryConversationRuntimeWorkerRegistry()
+        val sessions = WorkerGatewaySessionRegistry()
+        val repository = TestWorkerRequestRepository()
+        val requests = WorkerRequestService(repository, WorkerRequestAuthorization {})
+        val retired = requests.submit(worker.id, WorkerGatewayOperation.WORKER_CONTROL, byteArrayOf(), com.gromozeka.domain.service.WorkerRequestPolicy())
+        val old = kotlin.time.Clock.System.now() - kotlin.time.Duration.parse("2h")
+        repository.markDispatched(retired, old)
+        repository.complete(worker.id, retired, WorkerGatewayCodec.encode(success(retired)), old)
+        repository.markCompletionProjected(retired, old)
+        assertEquals(1, repository.deleteCompletedBefore(kotlin.time.Clock.System.now() - kotlin.time.Duration.parse("1h"), 10))
+        val gateway = WorkerGatewayService(registry, sessions, EmptyMcpServerRepository, emptyList(), TestAiConfigurationProvider, authentication, requests)
+        application {
+            install(ServerWebSockets)
+            routing { webSocket("/worker/ws") {
+                gateway.handle(KtorPeerSocket(this), checkNotNull(authentication.authenticate(call.request.headers["Authorization"])))
+            } }
+        }
+        val client = createClient { install(ClientWebSockets) }
+        client.webSocket(urlString = "/worker/ws", request = { header(HttpHeaders.Authorization, "Bearer $credential") }) {
+            suspend fun nextMessage(): WorkerGatewayMessage = withTimeout(5_000) {
+                WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
+            }
+            suspend fun acknowledge(id: String) {
+                assertEquals(WorkerGatewayMessage.ResponseAcknowledged(id), nextMessage())
+            }
+            val now = kotlin.time.Clock.System.now()
+            val registration = ConversationRuntimeWorkerRegistration(
+                identity = ConversationRuntimeWorkerIdentity(worker.id, ConversationRuntimeWorkerSessionId("retention-session")),
+                capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION), tools = emptyList(),
+                environmentProfile = workerEnvironment(now), version = "test", startedAt = now, lastHeartbeatAt = now,
+            )
+            send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Hello(registration))))
+            kotlin.test.assertIs<WorkerGatewayMessage.Welcome>(nextMessage())
+            send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Ready(emptyList()))))
+            send(Frame.Binary(true, WorkerGatewayCodec.encode(success(retired))))
+            acknowledge(retired)
+            val fresh = requests.submit(worker.id, WorkerGatewayOperation.WORKER_CONTROL, byteArrayOf(), com.gromozeka.domain.service.WorkerRequestPolicy())
+            assertEquals(fresh, (nextMessage() as WorkerGatewayMessage.Request).id)
+            send(Frame.Binary(true, WorkerGatewayCodec.encode(success(fresh))))
+            acknowledge(fresh)
+            assertEquals(success(fresh), requests.await(fresh, 1_000))
+            assertNull(repository.find(retired))
+            close()
+        }
+        client.close()
+    }
+
+    @Test
     fun `worker gateway authentication fails closed`() = runBlocking<Unit> {
         val authentication = WorkerGatewayAuthenticationService(GatewayAuthenticationRepository(
             sha256("gateway-credential-that-is-long-enough-for-validation"), worker("worker-1")))

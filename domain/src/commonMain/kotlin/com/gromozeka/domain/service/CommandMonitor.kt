@@ -47,6 +47,7 @@ data class CommandMonitor(
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
+    val launchReference: BackgroundActivityLaunchReference? = null,
 ) {
     init {
         require(filterCommand.isNotBlank()) { "Command monitor filter command must not be blank" }

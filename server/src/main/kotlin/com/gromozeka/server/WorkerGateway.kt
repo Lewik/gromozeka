@@ -253,9 +253,9 @@ class WorkerGatewayService(
                             }
 
                             is WorkerGatewayMessage.Response -> {
-                                if (!requests.accept(registration.identity.workerId, message)) {
-                                    return@coroutineScope socket.fail("UNKNOWN_RESPONSE", "Worker returned an unknown request result")
-                                }
+                                // An authenticated late result may outlive Server retention. Acknowledge
+                                // it so the Worker can retire its journal entry without repeating the action.
+                                requests.accept(registration.identity.workerId, message)
                                 gatewaySession.send(WorkerGatewayMessage.ResponseAcknowledged(message.requestId))
                             }
 

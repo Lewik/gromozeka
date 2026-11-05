@@ -25,8 +25,29 @@ class PostgresBackgroundActivityOriginRepository(private val dataSource: DataSou
         }
     }
 
-    override suspend fun bind(origin: BackgroundActivityOrigin) {
+    override suspend fun bindWhileRequestPending(origin: BackgroundActivityOrigin, at: kotlin.time.Instant) {
         transaction { connection ->
+            if (connection.hasSameBinding(origin)) return@transaction
+            connection.prepareStatement("""
+                SELECT worker_id, actor_user_id, dispatched_at, cancel_requested_at, completed_at, execution_deadline
+                FROM worker_requests WHERE id = ? FOR UPDATE
+            """.trimIndent()).use { statement ->
+                statement.setString(1, origin.workerRequestId)
+                statement.executeQuery().use { rows ->
+                    val found = rows.next()
+                    // A concurrent admission may have committed while this row lock was awaited.
+                    if (connection.hasSameBinding(origin)) return@transaction
+                    val decisionTime = maxOf(at, kotlin.time.Clock.System.now())
+                    require(found && rows.getString("worker_id") == origin.workerId.value &&
+                        rows.getString("actor_user_id") == origin.actorUserId.value &&
+                        rows.getTimestamp("dispatched_at") != null && rows.getTimestamp("cancel_requested_at") == null &&
+                        rows.getTimestamp("completed_at") == null &&
+                        rows.getTimestamp("execution_deadline")?.toInstant()?.isAfter(
+                            java.time.Instant.ofEpochSecond(decisionTime.epochSeconds, decisionTime.nanosecondsOfSecond.toLong())) == true) {
+                        "Background activity launch request is no longer pending"
+                    }
+                }
+            }
             connection.prepareStatement("""
                 INSERT INTO background_activity_origins
                     (kind, activity_id, conversation_id, actor_user_id, worker_request_id, tool_call_id, record_json)
@@ -38,17 +59,23 @@ class PostgresBackgroundActivityOriginRepository(private val dataSource: DataSou
                 }
                 statement.executeUpdate()
             }
-            connection.prepareStatement("SELECT record_json::text FROM background_activity_origins WHERE kind = ? AND activity_id = ?").use { statement ->
-                statement.setString(1, origin.kind.name)
-                statement.setString(2, origin.activityId)
-                statement.executeQuery().use { rows ->
-                    check(rows.next() && json.decodeFromString<BackgroundActivityOrigin>(rows.getString(1)) == origin) {
+            check(connection.hasSameBinding(origin)) { "A launch request cannot create a second background activity" }
+        }
+    }
+
+    private fun Connection.hasSameBinding(origin: BackgroundActivityOrigin): Boolean =
+        prepareStatement("SELECT record_json::text FROM background_activity_origins WHERE kind = ? AND activity_id = ?").use { statement ->
+            statement.setString(1, origin.kind.name)
+            statement.setString(2, origin.activityId)
+            statement.executeQuery().use { rows ->
+                if (!rows.next()) false else {
+                    require(json.decodeFromString<BackgroundActivityOrigin>(rows.getString(1)) == origin) {
                         "Background activity origin cannot be reassigned"
                     }
+                    true
                 }
             }
         }
-    }
 
     override suspend fun find(
         conversationId: Conversation.Id,

@@ -104,6 +104,8 @@ class GromozekaRemoteServices(
     val conversationTabLayoutService: ConversationTabLayoutService = RemoteConversationTabLayoutService(client)
     val conversationUnreadStateService: ConversationUnreadStateService =
         RemoteConversationUnreadStateService(client, authenticatedUserId)
+    val userNotificationService: com.gromozeka.domain.service.UserNotificationService =
+        RemoteUserNotificationService(client, authenticatedUserId)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
     val visualService: com.gromozeka.domain.visual.VisualService = RemoteVisualService(client)
     val conversationPinService: com.gromozeka.domain.service.ConversationPinService = RemoteConversationPinService(client)

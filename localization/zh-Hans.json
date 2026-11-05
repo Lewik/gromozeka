@@ -1992,6 +1992,23 @@
     "pins.notFound": "此内容已不可用。未保存的正文已保留。",
     "pins.accessDenied": "你无权访问这些置顶内容。",
     "pins.reloadEdited": "草稿在加载期间发生更改。较新的正文已保留。",
-    "pins.restartFailed": "未能完成保留固定文本的对话重启。重试前请检查对话列表。"
+    "pins.restartFailed": "未能完成保留固定文本的对话重启。重试前请检查对话列表。",
+    "notifications.title": "通知",
+    "notifications.close": "关闭",
+    "notifications.unreadOnly": "仅显示未读",
+    "notifications.refresh": "刷新",
+    "notifications.markAllRead": "全部标为已读",
+    "notifications.actionFailed": "无法更新通知。请刷新后重试。",
+    "notifications.conversationUnavailable": "无法打开此对话。通知仍然可用。",
+    "notifications.loadFailed": "无法加载通知。",
+    "notifications.empty": "暂无通知",
+    "notifications.level.info": "信息",
+    "notifications.level.warning": "警告",
+    "notifications.level.error": "错误",
+    "notifications.markRead": "标为已读",
+    "notifications.markUnread": "标为未读",
+    "notifications.openConversation": "打开对话",
+    "notifications.delete": "删除",
+    "notifications.loadMore": "加载更多"
   }
 }

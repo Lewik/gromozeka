@@ -2066,6 +2066,23 @@
     "pins.notFound": "Esta nota não está mais disponível. O texto não salvo foi mantido.",
     "pins.accessDenied": "Você não tem acesso a estas notas fixadas.",
     "pins.reloadEdited": "O rascunho mudou durante o carregamento. O texto mais recente foi mantido.",
-    "pins.restartFailed": "Não foi possível concluir o reinício da conversa mantendo os textos fixados. Confira a lista de conversas antes de tentar novamente."
+    "pins.restartFailed": "Não foi possível concluir o reinício da conversa mantendo os textos fixados. Confira a lista de conversas antes de tentar novamente.",
+    "notifications.title": "Notificações",
+    "notifications.close": "Fechar",
+    "notifications.unreadOnly": "Somente não lidas",
+    "notifications.refresh": "Atualizar",
+    "notifications.markAllRead": "Marcar todas como lidas",
+    "notifications.actionFailed": "Não foi possível atualizar as notificações. Atualize antes de tentar novamente.",
+    "notifications.conversationUnavailable": "Não foi possível abrir esta conversa. A notificação continua disponível.",
+    "notifications.loadFailed": "Não foi possível carregar as notificações.",
+    "notifications.empty": "Nenhuma notificação",
+    "notifications.level.info": "Informação",
+    "notifications.level.warning": "Aviso",
+    "notifications.level.error": "Erro",
+    "notifications.markRead": "Marcar como lida",
+    "notifications.markUnread": "Marcar como não lida",
+    "notifications.openConversation": "Abrir conversa",
+    "notifications.delete": "Excluir",
+    "notifications.loadMore": "Carregar mais"
   }
 }

@@ -1992,6 +1992,23 @@
     "pins.notFound": "此內容已無法使用。未儲存的正文已保留。",
     "pins.accessDenied": "你無權存取這些置頂內容。",
     "pins.reloadEdited": "草稿在載入期間發生變更。較新的正文已保留。",
-    "pins.restartFailed": "未能完成保留固定文字的對話重新啟動。重試前請檢查對話清單。"
+    "pins.restartFailed": "未能完成保留固定文字的對話重新啟動。重試前請檢查對話清單。",
+    "notifications.title": "通知",
+    "notifications.close": "關閉",
+    "notifications.unreadOnly": "僅顯示未讀",
+    "notifications.refresh": "重新整理",
+    "notifications.markAllRead": "全部標為已讀",
+    "notifications.actionFailed": "無法更新通知。請重新整理後再試。",
+    "notifications.conversationUnavailable": "無法開啟此對話。通知仍然可用。",
+    "notifications.loadFailed": "無法載入通知。",
+    "notifications.empty": "沒有通知",
+    "notifications.level.info": "資訊",
+    "notifications.level.warning": "警告",
+    "notifications.level.error": "錯誤",
+    "notifications.markRead": "標為已讀",
+    "notifications.markUnread": "標為未讀",
+    "notifications.openConversation": "開啟對話",
+    "notifications.delete": "刪除",
+    "notifications.loadMore": "載入更多"
   }
 }

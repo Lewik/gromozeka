@@ -2066,6 +2066,23 @@
     "pins.notFound": "הנעץ אינו זמין עוד. הטקסט שטרם נשמר נשמר בטיוטה.",
     "pins.accessDenied": "אין לך גישה לנעצים האלה.",
     "pins.reloadEdited": "הטיוטה השתנתה במהלך הטעינה. הטקסט החדש יותר נשמר.",
-    "pins.restartFailed": "לא ניתן היה להשלים את הפעלת השיחה מחדש תוך שמירת הטקסטים הנעוצים. יש לבדוק את רשימת השיחות לפני ניסיון נוסף."
+    "pins.restartFailed": "לא ניתן היה להשלים את הפעלת השיחה מחדש תוך שמירת הטקסטים הנעוצים. יש לבדוק את רשימת השיחות לפני ניסיון נוסף.",
+    "notifications.title": "התראות",
+    "notifications.close": "סגירה",
+    "notifications.unreadOnly": "רק התראות שלא נקראו",
+    "notifications.refresh": "רענון",
+    "notifications.markAllRead": "סימון הכול כנקרא",
+    "notifications.actionFailed": "לא ניתן לעדכן את ההתראות. יש לרענן לפני ניסיון נוסף.",
+    "notifications.conversationUnavailable": "לא ניתן לפתוח את השיחה. ההתראה עדיין זמינה.",
+    "notifications.loadFailed": "לא ניתן לטעון את ההתראות.",
+    "notifications.empty": "אין התראות",
+    "notifications.level.info": "מידע",
+    "notifications.level.warning": "אזהרה",
+    "notifications.level.error": "שגיאה",
+    "notifications.markRead": "סימון כנקרא",
+    "notifications.markUnread": "סימון כלא נקרא",
+    "notifications.openConversation": "פתיחת שיחה",
+    "notifications.delete": "מחיקה",
+    "notifications.loadMore": "טעינת עוד"
   }
 }

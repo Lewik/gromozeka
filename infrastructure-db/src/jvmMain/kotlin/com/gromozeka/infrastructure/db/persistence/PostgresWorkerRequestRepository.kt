@@ -44,7 +44,8 @@ internal class PostgresWorkerRequestRepository(
                 }
                 connection.prepareStatement("""
                     INSERT INTO worker_requests(id, worker_id, actor_user_id, project_id, request_ciphertext, request_nonce,
-                        request_version, created_at, start_deadline, slot_number, slot_origin_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+                        request_version, created_at, start_deadline, slot_number, slot_origin_json, execution_deadline)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?)
                 """.trimIndent()).use {
                     it.setString(1, request.id)
                     it.setString(2, request.workerId.value)
@@ -57,6 +58,7 @@ internal class PostgresWorkerRequestRepository(
                     it.setTimestamp(9, request.startDeadline.sql())
                     it.setObject(10, request.slotOrigin?.slotNumber)
                     it.setString(11, request.slotOrigin?.let { origin -> Json.encodeToString(origin) })
+                    it.setTimestamp(12, requireNotNull(request.executionDeadline) { "New Worker request requires an execution deadline" }.sql())
                     check(it.executeUpdate() == 1)
                 }
                 connection.commit()
@@ -144,6 +146,68 @@ internal class PostgresWorkerRequestRepository(
         }
     }
 
+    override suspend fun maintenanceCandidates(at: Instant, limit: Int): List<String> = withContext(Dispatchers.IO) {
+        require(limit in 1..256)
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("""
+                SELECT id FROM worker_requests WHERE completed_at IS NULL AND (
+                    execution_deadline IS NULL OR execution_deadline <= ? OR
+                    (dispatched_at IS NULL AND (start_deadline <= ? OR cancel_requested_at IS NOT NULL)))
+                ORDER BY COALESCE(execution_deadline, start_deadline), id LIMIT ?
+            """.trimIndent()).use {
+                it.setTimestamp(1, at.sql())
+                it.setTimestamp(2, at.sql())
+                it.setInt(3, limit)
+                it.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.getString(1)) } }
+            }
+        }
+    }
+
+    override suspend fun setExecutionDeadlineIfMissing(id: String, deadline: Instant): Unit = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("UPDATE worker_requests SET execution_deadline = ? WHERE id = ? AND execution_deadline IS NULL").use {
+                it.setTimestamp(1, deadline.sql())
+                it.setString(2, id)
+                it.executeUpdate()
+            }
+        }
+    }
+
+    override suspend fun unprojectedCompletions(limit: Int): List<String> = withContext(Dispatchers.IO) {
+        require(limit in 1..256)
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("SELECT id FROM worker_requests WHERE completed_at IS NOT NULL AND completion_projected_at IS NULL ORDER BY completed_at, id LIMIT ?").use {
+                it.setInt(1, limit)
+                it.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.getString(1)) } }
+            }
+        }
+    }
+
+    override suspend fun markCompletionProjected(id: String, at: Instant): Unit = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("UPDATE worker_requests SET completion_projected_at = COALESCE(completion_projected_at, ?) WHERE id = ? AND completed_at IS NOT NULL").use {
+                it.setTimestamp(1, at.sql())
+                it.setString(2, id)
+                it.executeUpdate()
+            }
+        }
+    }
+
+    override suspend fun deleteCompletedBefore(before: Instant, limit: Int): Int = withContext(Dispatchers.IO) {
+        require(limit in 1..256)
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("""
+                DELETE FROM worker_requests WHERE id IN (
+                    SELECT id FROM worker_requests WHERE completed_at < ? AND completion_projected_at IS NOT NULL
+                    ORDER BY completed_at, id LIMIT ? FOR UPDATE SKIP LOCKED)
+            """.trimIndent()).use {
+                it.setTimestamp(1, before.sql())
+                it.setInt(2, limit)
+                it.executeUpdate()
+            }
+        }
+    }
+
     override suspend fun pendingForSlot(number: Long): List<SlotPendingDispatch> = withContext(Dispatchers.IO) {
         dataSource.connection.use { c ->
             c.prepareStatement("""
@@ -181,6 +245,8 @@ internal class PostgresWorkerRequestRepository(
             cancelRequestedAt = getTimestamp("cancel_requested_at")?.kotlin(),
             response = getString("response_ciphertext")?.let { decrypt("response") },
             completedAt = getTimestamp("completed_at")?.kotlin(),
+            executionDeadline = getTimestamp("execution_deadline")?.kotlin(),
+            completionProjectedAt = getTimestamp("completion_projected_at")?.kotlin(),
         )
     }
 

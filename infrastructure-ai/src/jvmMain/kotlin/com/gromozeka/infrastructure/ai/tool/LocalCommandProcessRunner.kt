@@ -22,8 +22,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Service
 class LocalCommandProcessRunner : CommandProcessRunner {
     private val host: LocalCommandHost by lazy(::currentLocalCommandHost)
+    private val outputRetentionLock = Any()
+    private enum class StartupOutputState { UNRESOLVED, ACKNOWLEDGED, REJECTED }
+    private val startupOutputs = mutableMapOf<String, StartupOutputState>()
 
     override fun start(spec: CommandProcessSpec): RunningCommandProcess {
+        spec.startGuard()
         val workingDirectory = File(spec.workingDirectory)
         require(workingDirectory.isDirectory) {
             "Command working directory does not exist or is not a directory: ${workingDirectory.absolutePath}"
@@ -37,6 +41,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         var process: Process? = null
         var workerLifetimeBinding: LocalWorkerLifetimeBinding? = null
         try {
+            spec.startGuard()
             process = host.launch(
                 spec = executionSpec,
                 workingDirectory = workingDirectory,
@@ -60,6 +65,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             } else {
                 null
             }
+            spec.startGuard()
             host.releaseProcessStart(process, processStartFile)
             return LocalRunningCommandProcess(
                 process = process,
@@ -73,9 +79,14 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             )
         } catch (error: Throwable) {
             runCatching { workerLifetimeBinding?.disarm() }.onFailure(error::addSuppressed)
-            process?.toHandle()?.let { terminateStartupFailure(it, processTreeFile) }
-            runCatching { deleteOutputArtifacts(outputFile.absolutePath) }
-                .onFailure(error::addSuppressed)
+            val termination = runCatching {
+                process?.toHandle()?.let { terminateStartupFailure(it, processTreeFile) }
+            }
+            termination.exceptionOrNull()?.let(error::addSuppressed)
+            // Do not discard diagnostics / recovery artifacts when termination itself failed.
+            if (termination.isSuccess) {
+                runCatching { deleteOutputArtifacts(outputFile.absolutePath) }.onFailure(error::addSuppressed)
+            }
             throw error
         }
     }
@@ -133,7 +144,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         }
     }
 
-    override fun deleteOutputArtifacts(outputFile: String) {
+    override fun deleteOutputArtifacts(outputFile: String) = synchronized(outputRetentionLock) {
         val outputArtifact = managedOutputFile(outputFile)
         outputArtifacts(outputArtifact).forEach { artifact ->
             if (host is WindowsLocalCommandHost) {
@@ -144,17 +155,34 @@ class LocalCommandProcessRunner : CommandProcessRunner {
                 }
             }
         }
+        startupOutputs.remove(outputArtifact.absolutePath)
+        Unit
+    }
+
+    override fun releaseStartupOutputProtection(outputFile: String) = synchronized(outputRetentionLock) {
+        val path = managedOutputFile(outputFile).absolutePath
+        if (path in startupOutputs) startupOutputs[path] = StartupOutputState.ACKNOWLEDGED
+    }
+
+    override fun rejectStartupOutputProtection(outputFile: String) = synchronized(outputRetentionLock) {
+        val path = managedOutputFile(outputFile).absolutePath
+        if (path in startupOutputs) startupOutputs[path] = StartupOutputState.REJECTED
     }
 
     override fun garbageCollectOutputArtifacts(
         spec: CommandOutputGarbageCollectionSpec,
-    ): CommandOutputGarbageCollectionResult {
+    ): CommandOutputGarbageCollectionResult = synchronized(outputRetentionLock) {
         val referenced = spec.referencedOutputFiles.mapNotNullTo(mutableSetOf()) { path ->
             runCatching { managedOutputFile(path).absolutePath }.getOrNull()
         }
         val protected = spec.protectedOutputFiles.mapTo(mutableSetOf()) { path ->
             managedOutputFile(path).absolutePath
         }
+        // A snapshot fetched before registration may still be in flight after its ACK.
+        // Drop a pin only after an acknowledged artifact appears in the canonical inventory.
+        startupOutputs.entries.removeAll { (path, state) -> state == StartupOutputState.ACKNOWLEDGED && path in referenced }
+        referenced.addAll(startupOutputs.keys)
+        protected.addAll(startupOutputs.filterValues { it != StartupOutputState.REJECTED }.keys)
         val artifacts = outputDirectory().listFiles().orEmpty()
             .mapNotNull(::outputFileForArtifact)
             .distinctBy { it.absolutePath }
@@ -186,7 +214,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             retainedBytes -= group.sizeBytes
         }
 
-        return CommandOutputGarbageCollectionResult(
+        CommandOutputGarbageCollectionResult(
             deletedOutputFiles = deleted,
             retainedBytes = retainedBytes,
             protectedBytes = retained
@@ -196,22 +224,30 @@ class LocalCommandProcessRunner : CommandProcessRunner {
     }
 
     private fun terminateStartupFailure(processHandle: ProcessHandle, processTreeFile: File) {
+        var terminationError: Throwable? = null
         sequenceOf(processTreeFile, File("${processTreeFile.absolutePath}.tmp"))
             .mapNotNull(::readPositiveLong)
             .firstOrNull()
             ?.let { processTreeId ->
                 ProcessHandle.of(processTreeId).orElse(null)?.let { processTreeHandle ->
                     runCatching { host.processTree(processTreeId).terminate(processTreeHandle) }
+                        .onFailure { terminationError = it }
                 }
             }
-        forceTerminateHandleTree(processHandle)
+        runCatching { forceTerminateHandleTree(processHandle) }.onFailure { error ->
+            terminationError?.addSuppressed(error) ?: run { terminationError = error }
+        }
+        terminationError?.let { throw it }
     }
 
-    private fun commandOutputFile(spec: CommandProcessSpec): File = File(
-        outputDirectory(),
-        "command-${System.currentTimeMillis()}-${spec.command.sha256Prefix()}-${spec.executionId.take(8)}.log",
-    ).apply {
-        check(createNewFile()) { "Command output artifact already exists: $absolutePath" }
+    private fun commandOutputFile(spec: CommandProcessSpec): File = synchronized(outputRetentionLock) {
+        File(
+            outputDirectory(),
+            "command-${System.currentTimeMillis()}-${spec.command.sha256Prefix()}-${spec.executionId.take(8)}.log",
+        ).apply {
+            check(createNewFile()) { "Command output artifact already exists: $absolutePath" }
+            if (spec.protectOutputUntilRegistration) startupOutputs[canonicalPath] = StartupOutputState.UNRESOLVED
+        }
     }
 
     private fun outputDirectory(): File = File(gromozekaHome(), OUTPUT_DIRECTORY_NAME)
@@ -476,6 +512,7 @@ internal class PosixLocalCommandHost private constructor(
             redirectErrorStream(errorFile == null)
             errorFile?.let(::redirectError)
         }
+        .also { spec.startGuard() }
         .start()
 
     override fun resolveProcessTreeId(process: Process, processTreeFile: File): Long =
@@ -573,7 +610,7 @@ internal class WindowsLocalCommandHost(
             exitCodeFile = exitCodeFile,
             injectedEnvironment = spec.environment,
             startFile = processStartFile,
-        ).start()
+        ).also { spec.startGuard() }.start()
         try {
             // cmd.exe is blocked on stdin until releaseProcessStart, so the job
             // owns the root before the user's command can create any children.

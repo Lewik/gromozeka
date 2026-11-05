@@ -65,6 +65,17 @@ class VisualWorkerRuntimeTest {
         assertFails { f.runtime.execute(f.request.copy(operation = VisualWorkerCommand.Operation.INPUT, taskId = started.id, input = "{}\n")) }
     }
 
+    @Test fun `visual launch receives trusted deadline without inventing a tool call`() = fixture { f ->
+        val execution = WorkerRequestExecutionContext("visual-request", Instant.parse("2099-01-01T00:00:30Z"))
+        f.runtime.execute(f.request, execution)
+        val context = assertNotNull(f.commands.context)
+        assertEquals(execution, context.workerRequest)
+        assertEquals("visual-request", context.backgroundActivityLaunchReference()?.workerRequestId)
+        assertNull(context.backgroundActivityLaunchReference()?.toolCallId)
+        f.runtime.execute(f.request.copy(operation = VisualWorkerCommand.Operation.CANCEL, taskId = f.commands.task.id))
+        assertFailsWith<CancellationException> { context.checkStartAllowed() }
+    }
+
     private fun fixture(block: suspend CoroutineScope.(Fixture) -> Unit) = runBlocking {
         val f = Fixture()
         f.outbound.attach(f.outgoing)

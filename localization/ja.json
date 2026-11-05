@@ -1992,6 +1992,23 @@
     "pins.notFound": "このピンは利用できなくなりました。未保存の本文は保持されています。",
     "pins.accessDenied": "これらのピンへのアクセス権がありません。",
     "pins.reloadEdited": "読み込み中に下書きが変更されました。新しい本文は保持されています。",
-    "pins.restartFailed": "固定テキストを保持した会話の再開始を完了できませんでした。再試行する前に会話一覧を確認してください。"
+    "pins.restartFailed": "固定テキストを保持した会話の再開始を完了できませんでした。再試行する前に会話一覧を確認してください。",
+    "notifications.title": "通知",
+    "notifications.close": "閉じる",
+    "notifications.unreadOnly": "未読のみ",
+    "notifications.refresh": "更新",
+    "notifications.markAllRead": "すべて既読にする",
+    "notifications.actionFailed": "通知を更新できませんでした。再試行する前に一覧を更新してください。",
+    "notifications.conversationUnavailable": "この会話を開けませんでした。通知は引き続き利用できます。",
+    "notifications.loadFailed": "通知を読み込めませんでした。",
+    "notifications.empty": "通知はありません",
+    "notifications.level.info": "情報",
+    "notifications.level.warning": "警告",
+    "notifications.level.error": "エラー",
+    "notifications.markRead": "既読にする",
+    "notifications.markUnread": "未読にする",
+    "notifications.openConversation": "会話を開く",
+    "notifications.delete": "削除",
+    "notifications.loadMore": "さらに読み込む"
   }
 }

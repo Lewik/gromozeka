@@ -13,12 +13,12 @@ data class BackgroundActivityOrigin(
     val kind: Kind,
     val activityId: String,
     val conversationId: Conversation.Id,
-    val agentDefinitionId: AgentDefinition.Id,
+    val agentDefinitionId: AgentDefinition.Id?,
     val actorUserId: User.Id,
     val workerId: ConversationRuntimeWorkerId,
     val workspaceMountId: WorkspaceMount.Id,
     val workerRequestId: String,
-    val toolCallId: String,
+    val toolCallId: String?,
 ) {
     @Serializable
     enum class Kind { COMMAND, MONITOR }
@@ -27,8 +27,8 @@ data class BackgroundActivityOrigin(
 }
 
 interface BackgroundActivityOriginRepository {
-    /** Idempotent only for the same complete binding; reassignment must fail. */
-    suspend fun bind(origin: BackgroundActivityOrigin)
+    /** Atomically admit a launch against RPC completion. An existing identical binding survives request retention. */
+    suspend fun bindWhileRequestPending(origin: BackgroundActivityOrigin, at: kotlin.time.Instant)
     suspend fun find(
         conversationId: Conversation.Id,
         keys: Set<BackgroundActivityOrigin.Key>,

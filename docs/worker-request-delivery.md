@@ -205,7 +205,7 @@ Worker and Workspace tool `_grz` accepts these optional integer fields:
 
 | Field | Meaning | Default | Maximum |
 | --- | --- | --- | --- |
-| `delivery_ttl_seconds` | Time until execution may start, including offline and local queue time | 30 seconds | 7 days |
+| `delivery_ttl_seconds` | Time until execution may start, including offline and local queue time | 30 seconds | 5 minutes |
 | `execution_timeout_seconds` | Execution limit after starting | 30 minutes | 24 hours |
 | `wait_timeout_seconds` | How long this invocation waits for its result | TTL + execution, capped at 7 days | 7 days |
 
@@ -224,9 +224,12 @@ selected project must match the original. System requests are never exposed.
 Cancelling the Server execution coroutine also records cancellation. A client disconnect
 or abandoning an HTTP wait is not proof that this Server coroutine was cancelled. If the
 outcome is unknown, inspect/cancel the existing request; never retry the original mutation.
-Already performed effects cannot be undone. A terminal result wins over late cancellation. After possible
-dispatch, Server never invents a terminal expiry: Worker may already have started,
-so its receipt determines the result when it reconnects.
+Already performed effects cannot be undone. The first persisted terminal result wins over late
+cancellation or a late Worker response. Independent bounded Server maintenance closes undispatched
+requests at their start deadline, and dispatched requests at `startDeadline + executionTimeout`.
+The latter is `OUTCOME_UNKNOWN`, not a claim that the action did not execute. Only this canonical
+response drives completion projection. A durable pending marker lets projection recover after a
+Server restart and prevents retention from deleting an unprojected result.
 
 ## Bounds and scope
 
@@ -234,9 +237,12 @@ Server accepts at most 256 outstanding live or possibly dispatched requests per
 Worker. Expired or cancelled undispatched rows do not occupy those queue slots.
 Worker has 64 execution slots and at most 4096 retained receipts. Full storage fails
 closed before starting unrecorded work. Request payloads are limited to 64 MiB.
-Server currently retains terminal requests/results; there is no age-based cleanup.
-Unacknowledged Worker results also remain durable. Retention and disk budgets need
-an explicit policy before high-volume device telemetry is introduced.
+Server removes projected terminal requests/results after one hour from completion, in bounded
+batches. Active requests, managed commands, monitors and their origins are not deleted by this GC.
+A result removed between `await` reads is explicitly unavailable; callers must not resubmit the
+action to retrieve it. Authenticated unknown late responses are acknowledged and discarded without
+closing the Gateway; a known request belonging to another Worker is still rejected. Unacknowledged
+Worker responses retain their existing journal/replay behavior.
 
 General finite requests tolerate a different Worker process. Audio streams and
 Computer Use observation references still belong to their originating process.
@@ -247,6 +253,43 @@ Worker-to-Server state RPC remains connection-scoped. Device observation events
 use the [shared durable event outbox](worker-event-delivery.md), now adopted by the
 mobile runtime. Android now receives device commands through the same Gateway;
 individual device capabilities are added independently.
+
+## Managed launches and user notifications
+
+A managed command/monitor launch carries a correlation reference to its trusted Server request
+and tool-call ID. Visual START has its own request and no invented tool-call ID. Server binds the
+original actor and scope before publishing activity state or events. Admission locks the RPC row
+and writes the origin in one database transaction; later synchronization uses the immutable
+activity/origin and does not depend on retaining that RPC. Atomic coordinator merges enforce
+immutable identity and first-terminal-wins, including delayed WORKING updates.
+
+Worker checks cancellation and the start deadline after waiting for the lifecycle lock, after SDK
+setup, immediately before native spawn, and before releasing the existing process-start barrier.
+Once started, a command's lifetime is governed by its own timeout/cancellation settings, not the
+launch RPC TTL. Failed or uncertain initial registration stops only the newly created process/filter
+and reconciles a terminal snapshot under the same ID; it never reruns the process or stops a
+monitor's source command. Termination failures are preserved explicitly. Output stays protected
+while registration is uncertain; definitively rejected output follows ordinary retention/quota.
+Local startup snapshots and output pins are process-local, not a new durable startup journal.
+A Worker crash before any registration commit is not claimed to have durable local reconciliation.
+
+The user inbox is a separate feature (`UserNotificationPublisher` / `UserNotificationService`).
+Trusted Server producers publish a recipient, title, message, level, optional conversation link,
+and optional stable source key. Clients can access only their authenticated user's inbox; AI
+permission and an open conversation are not required. Keyset pagination, read/unread, mark-all-read
+and dismissal are supported. Dismissal retains the source record for idempotency, so replay does not
+resurrect a removed item. Deleting its source conversation does not delete the notification.
+
+Canonical command/monitor/Visual launch failures are one inbox producer. Nested tool errors count;
+an ordinary nonzero shell exit is not automatically classified as a launch failure. Messages do
+not copy commands, output, secrets or raw exception text. A dispatched timeout describes an unknown
+outcome, never an unstarted task. Connected desktop clients use the existing native popup service
+for a new unread item; initial historical snapshots are silent and the persistent inbox remains
+available on other clients. Popups are best-effort, not a second durable delivery channel.
+
+Gateway protocol 16 requires a coordinated Server/Worker update. The new activity fields and inbox
+UI also require updated clients; nullable fields are for persisted-state reads, not a promise of
+mixed-version wire compatibility. No release or restart is performed by these source changes.
 
 ## Verification
 

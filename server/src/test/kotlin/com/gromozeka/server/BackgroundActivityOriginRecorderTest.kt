@@ -27,18 +27,16 @@ class BackgroundActivityOriginRecorderTest {
         currentThread = Conversation.Thread.Id("thread"), createdAt = now, updatedAt = now)
 
     @Test
-    fun `late completion preserves creating user through real engine continuation and secret resolution`(): Unit = runBlocking {
+    fun `initial admission preserves creating user before final response and through continuation`(): Unit = runBlocking {
         val f = fixture()
         val task = command("command")
-        f.coordinator.upsertCommandTask(task)
         val call = call("create", "grz_execute_command", buildJsonObject { put("command", "curl secret://token") })
-        val requestId = f.submit(alice, call)
+        val requestId = f.register(alice, call, task)
         assertFailsWith<WorkerRequestPendingException> { f.requests.await(requestId, 1) }
-        val restarted = WorkerRequestService(f.requestsRepository, WorkerRequestAuthorization {}, listOf(f.recorder))
-        restarted.accept(worker, response(requestId, call, task.id.value))
-
         val batch = f.completions.prepareBatch(conversation.id)
         assertEquals(alice, batch.actorUserId)
+        val restarted = WorkerRequestService(f.requestsRepository, WorkerRequestAuthorization {})
+        restarted.accept(worker, response(requestId, call, task.id.value))
         val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(runBackground(f, batch))
         assertEquals(alice, outcome.nextTask.actorUserId)
         val secrets = mock<NamedSecretRepository>()
@@ -56,14 +54,15 @@ class BackgroundActivityOriginRecorderTest {
     fun `monitor uses its own creator and batches never mix users of the same agent`(): Unit = runBlocking {
         val f = fixture()
         val task = command("command")
-        f.coordinator.upsertCommandTask(task)
         val create = call("create", "grz_execute_command", buildJsonObject { put("command", "echo output") })
-        f.requests.accept(worker, response(f.submit(alice, create), create, task.id.value))
-        val monitor = monitor(task.id)
+        f.requests.accept(worker, response(f.register(alice, create, task), create, task.id.value))
+        val observe = call("observe", "grz_monitor_command", buildJsonObject { put("task_id", task.id.value); put("filter_command", "cat") })
+        val requestId = f.submit(bob, observe)
+        val monitor = monitor(task.id).copy(launchReference = BackgroundActivityLaunchReference(requestId, observe.id.value))
+        f.recorder.admit(monitor)
         f.coordinator.synchronizeCommandMonitor(monitor, listOf(CommandMonitorEvent(CommandMonitorEvent.Id("event"),
             conversation.id, monitor.id, 0, 5, BinaryContent.fromText("event"), false, now, true)))
-        val observe = call("observe", "grz_monitor_command", buildJsonObject { put("task_id", task.id.value); put("filter_command", "cat") })
-        f.requests.accept(worker, response(f.submit(bob, observe), observe, monitor.id.value))
+        assertNull(f.requestsRepository.find(requestId)?.response)
 
         val first = f.completions.prepareBatch(conversation.id)
         assertEquals(alice, first.actorUserId)
@@ -90,9 +89,8 @@ class BackgroundActivityOriginRecorderTest {
     fun `revoked continuation permission delivers output but does not call the model`(): Unit = runBlocking {
         val f = fixture()
         val task = command("command")
-        f.coordinator.upsertCommandTask(task)
         val create = call("create", "grz_execute_command", buildJsonObject { put("command", "echo output") })
-        f.requests.accept(worker, response(f.submit(alice, create), create, task.id.value))
+        f.requests.accept(worker, response(f.register(alice, create, task), create, task.id.value))
         f.allowed = false
         val batch = f.completions.prepareBatch(conversation.id)
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(runBackground(f, batch))
@@ -123,16 +121,15 @@ class BackgroundActivityOriginRecorderTest {
     fun `duplicate response cannot change binding and another request cannot steal an activity`(): Unit = runBlocking {
         val f = fixture()
         val task = command("command")
-        f.coordinator.upsertCommandTask(task)
         val create = call("create", "grz_execute_command", buildJsonObject { put("command", "echo output") })
-        val id = f.submit(alice, create)
+        val id = f.register(alice, create, task)
         f.requests.accept(worker, response(id, create, task.id.value))
         // Even a different duplicate body must be ignored in favor of the saved response.
         f.requests.accept(worker, response(id, create, "forged"))
         assertEquals(1, f.origins.records.size)
         val other = f.submit(bob, create.copy(id = ContentItem.ToolCall.Id("other-call")))
-        assertFailsWith<IllegalStateException> {
-            f.requests.accept(worker, response(other, create.copy(id = ContentItem.ToolCall.Id("other-call")), task.id.value))
+        assertFailsWith<IllegalArgumentException> {
+            f.recorder.admit(task.copy(launchReference = BackgroundActivityLaunchReference(other, "other-call")))
         }
         assertEquals(alice, f.origins.records.values.single().actorUserId)
     }
@@ -141,12 +138,29 @@ class BackgroundActivityOriginRecorderTest {
     fun `worker result cannot bind a command outside request execution scope`(): Unit = runBlocking {
         val f = fixture()
         val task = command("foreign").copy(workspaceMountId = WorkspaceMount.Id("another-mount"))
-        f.coordinator.upsertCommandTask(task)
         val create = call("create", "grz_execute_command", buildJsonObject { put("command", "echo output") })
         assertFailsWith<IllegalArgumentException> {
-            f.requests.accept(worker, response(f.submit(alice, create), create, task.id.value))
+            f.recorder.admit(task.copy(command = "echo output",
+                launchReference = BackgroundActivityLaunchReference(f.submit(alice, create), create.id.value)))
         }
         assertTrue(f.origins.records.isEmpty())
+    }
+
+    @Test
+    fun `admitted origin survives request deletion but a completed new launch is rejected`(): Unit = runBlocking {
+        val f = fixture()
+        val create = call("create", "grz_execute_command", buildJsonObject { put("command", "echo output") })
+        val id = f.register(alice, create, command("command"))
+        val task = requireNotNull(f.coordinator.findCommandTask(conversation.id, CommandTask.Id("command")))
+        f.requestsRepository.records.remove(id)
+        f.recorder.admit(task)
+        assertEquals(alice, f.completions.prepareBatch(conversation.id).actorUserId)
+        val late = f.submit(bob, create)
+        f.requests.accept(worker, response(late, create, "late"))
+        assertFailsWith<IllegalArgumentException> {
+            f.recorder.admit(command("late").copy(command = "echo output", launchReference = BackgroundActivityLaunchReference(late, create.id.value)))
+        }
+        assertEquals(1, f.origins.records.size)
     }
 
     private suspend fun fixture(): Fixture = Fixture().also {
@@ -156,13 +170,24 @@ class BackgroundActivityOriginRecorderTest {
     private inner class Fixture {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val conversations = mock<ConversationRepository>()
-        val origins = Origins()
-        val recorder = BackgroundActivityOriginRecorder(origins, coordinator, conversations)
         val requestsRepository = TestWorkerRequestRepository()
-        val requests = WorkerRequestService(requestsRepository, WorkerRequestAuthorization {}, listOf(recorder))
+        val requests = WorkerRequestService(requestsRepository, WorkerRequestAuthorization {})
+        val origins = Origins(requestsRepository)
+        val recorder = BackgroundActivityOriginRecorder(origins, requests, conversations)
         var allowed = true
         val completions = BackgroundActivityCompletionApplicationService(coordinator, origins,
             BackgroundActivityContinuationPolicy { _, _ -> allowed })
+
+        suspend fun register(actor: User.Id, call: ContentItem.ToolCall, task: CommandTask): String {
+            val id = submit(actor, call)
+            val registered = task.copy(
+                command = call.call.input.jsonObject.getValue("command").jsonPrimitive.content,
+                launchReference = BackgroundActivityLaunchReference(id, call.id.value),
+            )
+            recorder.admit(registered)
+            coordinator.upsertCommandTask(registered)
+            return id
+        }
 
         suspend fun submit(actor: User.Id, call: ContentItem.ToolCall): String {
             val payload = WorkerToolExecutionRequest(ConversationRuntimeTaskTarget.Worker(worker, mount), listOf(call), mapOf(
@@ -232,10 +257,14 @@ class BackgroundActivityOriginRecorderTest {
         outputFile = "/tmp/monitor.log", errorFile = "/tmp/monitor.err", outputBytes = 5, eventOutputCursor = 5,
         eventCount = 1, createdAt = now, updatedAt = now)
 
-    private class Origins : BackgroundActivityOriginRepository {
+    private class Origins(private val requests: TestWorkerRequestRepository) : BackgroundActivityOriginRepository {
         val records = mutableMapOf<BackgroundActivityOrigin.Key, BackgroundActivityOrigin>()
-        override suspend fun bind(origin: BackgroundActivityOrigin) {
-            check(records[origin.key]?.let { it == origin } != false) { "Origin cannot be reassigned" }
+        override suspend fun bindWhileRequestPending(origin: BackgroundActivityOrigin, at: Instant) {
+            records[origin.key]?.let { require(it == origin); return }
+            val request = requireNotNull(requests.find(origin.workerRequestId))
+            require(request.completedAt == null && request.dispatchedAt != null && request.cancelRequestedAt == null &&
+                request.actorUserId == origin.actorUserId && request.workerId == origin.workerId &&
+                requireNotNull(request.executionDeadline) > at)
             check(records.values.none { it.workerRequestId == origin.workerRequestId && it.toolCallId == origin.toolCallId && it.kind == origin.kind && it != origin })
             records[origin.key] = origin
         }

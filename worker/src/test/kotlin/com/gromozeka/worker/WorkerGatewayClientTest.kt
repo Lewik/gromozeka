@@ -105,7 +105,9 @@ class WorkerGatewayClientTest {
             request = toolRequest(
                 requestId = "request-1",
                 targetWorkerId = identity.workerId,
-            ),
+            ).copy(delivery = com.gromozeka.domain.service.WorkerRequestDelivery(
+                kotlin.time.Instant.parse("2099-01-01T00:00:30Z"), 30_000,
+            )),
         )
 
         assertEquals(WorkerGatewayMessage.Response.Status.SUCCEEDED, response.status)
@@ -116,6 +118,10 @@ class WorkerGatewayClientTest {
         assertEquals(true, payload.returnDirect)
         assertFalse(receivedInput.orEmpty().contains(AI_TOOL_INVOCATION_CONTEXT_FIELD))
         assertEquals("context-value", receivedContext?.getString("context-key"))
+        assertEquals("request-1", receivedContext?.workerRequest?.requestId)
+        assertEquals(kotlin.time.Instant.parse("2099-01-01T00:00:30Z"), receivedContext?.workerRequest?.startDeadline)
+        assertEquals("tool-call-1", receivedContext?.getString("toolCallId"))
+        assertFalse(receivedContext!!.asMap().values.contains(receivedContext!!.workerRequest))
     }
 
     @Test
@@ -267,6 +273,7 @@ class WorkerGatewayClientTest {
             id = requestId,
             operation = WorkerGatewayOperation.TOOL_EXECUTION,
             payload = json.encodeToString(payload).encodeToByteArray(),
+            delivery = com.gromozeka.domain.service.WorkerRequestDelivery(kotlin.time.Instant.parse("2099-01-01T00:00:30Z"), 30_000),
         )
     }
 

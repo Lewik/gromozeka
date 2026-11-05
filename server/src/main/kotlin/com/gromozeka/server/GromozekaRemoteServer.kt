@@ -105,6 +105,7 @@ class GromozekaRemoteServer(
     private val conversationRuntimeService: ConversationRuntimeService,
     private val visualService: com.gromozeka.application.service.VisualApplicationService,
     private val conversationPinService: com.gromozeka.application.service.ConversationPinApplicationService,
+    private val userNotificationService: com.gromozeka.application.service.UserNotificationApplicationService,
     private val slotService: com.gromozeka.application.service.SlotApplicationService,
     private val conversationRuntimeDispatcher: ConversationRuntimeDispatcher,
     private val conversationRuntimeStateSyncService: ConversationRuntimeStateSyncService,
@@ -291,7 +292,7 @@ class GromozekaRemoteServer(
     }
 
     private fun ClientRequest.isConcurrentRequest(): Boolean =
-        this is CreateVisualRequest || this is UpdateVisualRequest || this is VisualActionRequest || this is CloseVisualRequest ||
+        isUserNotificationOperation() || this is CreateVisualRequest || this is UpdateVisualRequest || this is VisualActionRequest || this is CloseVisualRequest ||
             this is ListConversationPinsRequest || this is GetConversationPinRequest ||
             this is CreateConversationPinRequest || this is UpdateConversationPinRequest || this is DeleteConversationPinRequest ||
             this is GetSpeechCaptureAvailabilityRequest ||
@@ -858,6 +859,20 @@ class GromozekaRemoteServer(
                 is ConfirmSlotReclaimRequest -> SlotLeaseResponse(slotService.confirmReclaim(user, request.leaseId, request.confirmationId))
                 is CancelSlotRequest -> SlotRequestResponse(slotService.cancel(user, null, request.requestId))
 
+                GetUserNotificationSummaryRequest -> UserNotificationSummaryResponse(userNotificationService.summary(user.id))
+                is ListUserNotificationsRequest -> UserNotificationsResponse(
+                    userNotificationService.list(user.id, request.before, request.limit, request.unreadOnly)
+                )
+                is SetUserNotificationReadRequest -> UserNotificationResponse(userNotificationService.setRead(user.id, request.id, request.read))
+                MarkAllUserNotificationsReadRequest -> {
+                    userNotificationService.markAllRead(user.id)
+                    OperationResultResponse(true)
+                }
+                is DeleteUserNotificationRequest -> {
+                    userNotificationService.delete(user.id, request.id)
+                    OperationResultResponse(true)
+                }
+
                 is ListConversationPinsRequest -> ConversationPinsResponse(conversationPinService.list(user.id, request.conversationId))
                 is GetConversationPinRequest -> ConversationPinResponse(conversationPinService.get(user.id, request.conversationId, request.pinId))
                 is CreateConversationPinRequest -> ConversationPinResponse(
@@ -906,7 +921,9 @@ class GromozekaRemoteServer(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            if (request.isConversationPinOperation()) {
+            if (request.isUserNotificationOperation()) {
+                userNotificationErrorResponse(error)
+            } else if (request.isConversationPinOperation()) {
                 conversationPinErrorResponse(error)
             } else {
                 log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }

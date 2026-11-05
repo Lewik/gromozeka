@@ -253,6 +253,13 @@ class GromozekaRemoteAuthorization(
                     ProjectPermission.WRITE,
                 )
 
+            GetUserNotificationSummaryRequest,
+            is ListUserNotificationsRequest,
+            is SetUserNotificationReadRequest,
+            MarkAllUserNotificationsReadRequest,
+            is DeleteUserNotificationRequest,
+            -> Unit
+
             is FindConversationRequest,
             is GetProjectRequest,
             is OpenConversationTabRequest,
@@ -378,6 +385,7 @@ class GromozekaRemoteAuthorization(
             )
 
             RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
+            RemoteDeclarativeStateResource.USER_NOTIFICATIONS,
             RemoteDeclarativeStateResource.TRANSLATIONS,
             RemoteDeclarativeStateResource.MESSAGE_DELIVERY_PREFERENCE,
             ->

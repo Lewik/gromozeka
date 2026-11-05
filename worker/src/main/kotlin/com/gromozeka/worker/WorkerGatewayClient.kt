@@ -20,6 +20,7 @@ import com.gromozeka.remote.protocol.WorkerWorkspaceTextFileGatewayCodec
 import com.gromozeka.remote.protocol.AiRequestResponseGatewayCodec
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.WorkerRequestExecutionContext
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import com.gromozeka.remote.protocol.WorkerToolExecutionRequest
 import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
@@ -278,7 +279,10 @@ class WorkerGatewayOperationHandler(
 
                 WorkerGatewayOperation.VISUAL_COMMAND -> {
                     val operation = json.decodeFromString<com.gromozeka.remote.protocol.VisualWorkerCommand>(request.payload.decodeToString())
-                    json.encodeToString(visualRuntime.execute(operation)).encodeToByteArray()
+                    json.encodeToString(visualRuntime.execute(
+                        operation,
+                        WorkerRequestExecutionContext(request.id, requireNotNull(request.delivery) { "Server request has no delivery metadata" }.startDeadline),
+                    )).encodeToByteArray()
                 }
 
                 WorkerGatewayOperation.TOOL_EXECUTION -> {
@@ -290,7 +294,10 @@ class WorkerGatewayOperationHandler(
                     }
                     val result = parallelToolExecutor.executeParallel(
                         toolCalls = toolRequest.toolCalls,
-                        toolContext = ToolExecutionContext(toolRequest.toolContext),
+                        toolContext = ToolExecutionContext(
+                            toolRequest.toolContext,
+                            workerRequest = WorkerRequestExecutionContext(request.id, requireNotNull(request.delivery) { "Server request has no delivery metadata" }.startDeadline),
+                        ),
                         runtimeTaskId = null,
                         executor = ConversationRuntimeExecutorIdentity.Worker(identity),
                         expectedTarget = toolRequest.executionTarget,

@@ -106,5 +106,7 @@ data class AppComponents(
     val agentSkillService: AgentSkillDomainService,
     val promptService: PromptDomainService,
     val deviceLocationService: DeviceLocationService,
+    val userNotificationService: com.gromozeka.domain.service.UserNotificationService,
+    val userNotificationSink: com.gromozeka.presentation.services.UserNotificationSink,
     val turnCompletionNotificationService: TurnCompletionNotificationService,
 )

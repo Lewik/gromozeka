@@ -15628,5 +15628,124 @@
     ],
     "description": "Fixed content-free failure shown by the parent pin-preserving Restart action. No raw error, pin text or source details. The outcome may be uncertain; ask the user to inspect the conversation list before a manual retry. Never promise that no new conversation was created.",
     "args": []
+  },
+  "notifications.title": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: title. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.close": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: close. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.unreadOnly": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: unreadOnly. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.refresh": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: refresh. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.markAllRead": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: markAllRead. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.actionFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: actionFailed. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.conversationUnavailable": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: conversationUnavailable. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.loadFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: loadFailed. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.empty": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: empty. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.level.info": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: level.info. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.level.warning": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: level.warning. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.level.error": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: level.error. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.markRead": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: markRead. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.markUnread": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: markUnread. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.openConversation": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: openConversation. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.delete": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: delete. Independent of the currently open conversation. No technical exception text.",
+    "args": []
+  },
+  "notifications.loadMore": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
+    ],
+    "description": "User-owned notification inbox: loadMore. Independent of the currently open conversation. No technical exception text.",
+    "args": []
   }
 }

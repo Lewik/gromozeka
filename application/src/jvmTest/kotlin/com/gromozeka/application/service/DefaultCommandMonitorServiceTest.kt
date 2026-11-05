@@ -23,6 +23,18 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.ToolCancellationSignal
+import com.gromozeka.domain.tool.WorkerRequestExecutionContext
+import com.gromozeka.domain.service.ControlPlaneUnavailableException
+import com.gromozeka.domain.service.ControlPlaneRequestRejectedException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.awaitCancellation
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.seconds
+import kotlin.test.assertFailsWith
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -53,6 +65,174 @@ class DefaultCommandMonitorServiceTest {
         ),
         environmentProfile = testWorkerEnvironmentProfile(),
     )
+
+    @Test
+    fun `expired or cancelled monitor launch never creates a filter`() = runBlocking {
+        withService { service, runner, coordinator, directory ->
+            val source = sourceTask(directory, "source still running")
+            coordinator.upsertCommandTask(source)
+            val spec = CommandMonitorSpec(source.id, "cat", CommandMonitor.Mode.CONTINUOUS, CommandMonitor.StartFrom.BEGINNING)
+            val expired = context(directory).withValue("toolCallId", "monitor-call").copy(
+                workerRequest = WorkerRequestExecutionContext("request", Clock.System.now() - 1.seconds),
+            )
+            assertFailsWith<IllegalStateException> { service.start(spec, expired) }
+            var cancelled = false
+            runner.beforeStart = { cancelled = true }
+            assertFailsWith<CancellationException> {
+                service.start(spec, context(directory).withCancellationSignal(ToolCancellationSignal {
+                    if (cancelled) throw CancellationException("RPC cancelled during setup")
+                }))
+            }
+            assertTrue(runner.processes.isEmpty())
+            assertEquals(source, coordinator.findCommandTask(conversationId, source.id))
+        }
+    }
+
+    @Test
+    fun `missing stdin or stderr handle cleans up the new filter only`() = runBlocking {
+        for (missingInput in listOf(true, false)) withService { service, runner, coordinator, directory ->
+            val source = sourceTask(directory, "unchanged source")
+            coordinator.upsertCommandTask(source)
+            runner.decorate = { process ->
+                if (missingInput) object : RunningCommandProcess by process { override val acceptsInput = false }
+                else object : RunningCommandProcess by process { override val errorFile: String? = null }
+            }
+            assertFailsWith<IllegalStateException> {
+                service.start(CommandMonitorSpec(source.id, "cat", CommandMonitor.Mode.CONTINUOUS, CommandMonitor.StartFrom.BEGINNING), context(directory))
+            }
+            val process = runner.processes.single()
+            assertTrue(process.terminateTreeCalled)
+            assertFalse(process.isAlive())
+            assertEquals(listOf(process.outputFile), runner.deletedOutputFiles)
+            assertEquals("unchanged source", File(source.outputFile).readText())
+            assertEquals(source, coordinator.findCommandTask(conversationId, source.id))
+        }
+    }
+
+    @Test
+    fun `lost monitor registration ACK reconciles same terminal id and retains stderr without touching source`() = runBlocking {
+        for (commit in listOf(false, true)) {
+            val directory = Files.createTempDirectory("monitor-lost-ack-").toFile()
+            val runner = FakeCommandProcessRunner(directory).apply {
+                onStart = { process -> File(process.outputFile).appendText("partial event\n"); File(process.errorFile).appendText("diagnostic") }
+            }
+            val delegate = InMemoryConversationRuntimeCoordinator()
+            val source = sourceTask(directory, "source output")
+            delegate.upsertCommandTask(source)
+            val writes = CopyOnWriteArrayList<CommandMonitor>()
+            val first = AtomicBoolean(true)
+            val available = AtomicBoolean(false)
+            val coordinator = object : ConversationRuntimeCoordinator by delegate {
+                override suspend fun synchronizeCommandMonitor(monitor: CommandMonitor, events: List<CommandMonitorEvent>): CommandMonitorSyncResult {
+                    writes += monitor
+                    if (first.compareAndSet(true, false)) {
+                        if (commit) delegate.synchronizeCommandMonitor(monitor, events)
+                        throw ControlPlaneUnavailableException("Initial ACK lost")
+                    }
+                    if (!available.get()) throw ControlPlaneUnavailableException("Offline")
+                    return delegate.synchronizeCommandMonitor(monitor, events)
+                }
+            }
+            val service = service(runner, coordinator)
+            try {
+                val context = context(directory).withValue("toolCallId", "monitor-call").copy(
+                    workerRequest = WorkerRequestExecutionContext("monitor-request", Clock.System.now() + 30.seconds),
+                )
+                assertFailsWith<ControlPlaneUnavailableException> {
+                    service.start(CommandMonitorSpec(source.id, "cat", CommandMonitor.Mode.CONTINUOUS, CommandMonitor.StartFrom.BEGINNING), context)
+                }
+                waitUntil { writes.size >= 2 }
+                val id = writes.first().id
+                val process = runner.processes.single()
+                assertFalse(process.isAlive())
+                assertEquals(CommandMonitor.Status.FAILED, writes.last().status)
+                assertEquals("monitor-request", writes.last().launchReference?.workerRequestId)
+                assertEquals("monitor-call", writes.last().launchReference?.toolCallId)
+                assertTrue(runner.deletedOutputFiles.isEmpty())
+                assertEquals("diagnostic", File(process.errorFile).readText())
+                assertEquals("partial event\n", File(process.outputFile).readText())
+                val local = withTimeout(1_000) { assertNotNull(service.get(conversationId, id, 0, 0)) }
+                assertEquals(CommandMonitor.Status.FAILED, local.monitor.status)
+                available.set(true)
+                waitUntil(5_000) { delegate.findCommandMonitor(conversationId, id)?.isTerminal == true }
+                assertEquals(CommandMonitor.Status.FAILED, delegate.findCommandMonitor(conversationId, id)?.status)
+                assertEquals(setOf(id), writes.map { it.id }.toSet())
+                assertEquals(source, delegate.findCommandTask(conversationId, source.id))
+                assertEquals("source output", File(source.outputFile).readText())
+                assertEquals(1, runner.processes.size)
+            } finally { available.set(true); service.close(); directory.deleteRecursively() }
+        }
+    }
+
+    @Test
+    fun `cancellation during monitor registration still stops filter and reconciles committed row`() = runBlocking {
+        val directory = Files.createTempDirectory("monitor-cancelled-start-").toFile()
+        val runner = FakeCommandProcessRunner(directory)
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val source = sourceTask(directory, "source alive")
+        delegate.upsertCommandTask(source)
+        val writes = CopyOnWriteArrayList<CommandMonitor>()
+        val first = AtomicBoolean(true)
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun synchronizeCommandMonitor(monitor: CommandMonitor, events: List<CommandMonitorEvent>): CommandMonitorSyncResult {
+                writes += monitor
+                val result = delegate.synchronizeCommandMonitor(monitor, events)
+                if (first.compareAndSet(true, false)) {
+                    currentCoroutineContext().cancel(CancellationException("RPC cancelled"))
+                    awaitCancellation()
+                }
+                return result
+            }
+        }
+        val service = service(runner, coordinator)
+        try {
+            val launch = async { service.start(CommandMonitorSpec(source.id, "cat", CommandMonitor.Mode.CONTINUOUS, CommandMonitor.StartFrom.BEGINNING), context(directory)) }
+            assertFailsWith<CancellationException> { launch.await() }
+            val id = writes.first().id
+            waitUntil { delegate.findCommandMonitor(conversationId, id)?.isTerminal == true }
+            assertEquals(CommandMonitor.Status.CANCELLED, delegate.findCommandMonitor(conversationId, id)?.status)
+            assertFalse(runner.processes.single().isAlive())
+            assertTrue(File(runner.processes.single().outputFile).isFile)
+            assertEquals(source, delegate.findCommandTask(conversationId, source.id))
+        } finally { service.close(); directory.deleteRecursively() }
+    }
+
+    @Test
+    fun `permanent monitor rejection preserves termination error and stops synchronization retries`() = runBlocking {
+        val directory = Files.createTempDirectory("monitor-rejected-start-").toFile()
+        val terminationFailure = IllegalStateException("synthetic filter termination failure")
+        val runner = FakeCommandProcessRunner(directory).apply { onStart = { it.terminationFailure = terminationFailure } }
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val source = sourceTask(directory, "source alive")
+        delegate.upsertCommandTask(source)
+        val writes = CopyOnWriteArrayList<CommandMonitor>()
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun synchronizeCommandMonitor(monitor: CommandMonitor, events: List<CommandMonitorEvent>): CommandMonitorSyncResult {
+                writes += monitor
+                throw ControlPlaneRequestRejectedException("REJECTED", "Synthetic refusal")
+            }
+        }
+        val service = service(runner, coordinator)
+        try {
+            val failure = assertFailsWith<ControlPlaneRequestRejectedException> {
+                service.start(CommandMonitorSpec(source.id, "cat", CommandMonitor.Mode.CONTINUOUS, CommandMonitor.StartFrom.BEGINNING), context(directory))
+            }
+            assertTrue(failure.suppressedExceptions.contains(terminationFailure))
+            waitUntil { writes.size >= 2 }
+            val local = assertNotNull(service.get(conversationId, writes.first().id, 0, 0))
+            assertEquals(CommandMonitor.Status.FAILED, local.monitor.status)
+            assertNotNull(local.monitor.synchronizationError)
+            assertTrue(local.monitor.statusMessage.orEmpty().contains("termination also failed"))
+            delay(1_200)
+            assertEquals(2, writes.size)
+            assertEquals(1, runner.processes.size)
+            assertTrue(runner.deletedOutputFiles.isEmpty())
+            assertEquals(source, delegate.findCommandTask(conversationId, source.id))
+        } finally {
+            runner.processes.forEach { it.terminationFailure = null; it.terminateTree() }
+            service.close(); directory.deleteRecursively()
+        }
+    }
 
     @Test
     fun `monitor retains slot provenance from its source command`() = runBlocking {
@@ -504,14 +684,21 @@ class DefaultCommandMonitorServiceTest {
     ) : CommandProcessRunner {
         private val nextPid = AtomicLong(10_000)
         val processes = mutableListOf<FakeFilterProcess>()
+        val deletedOutputFiles = mutableListOf<String>()
+        var beforeStart: (CommandProcessSpec) -> Unit = {}
+        var onStart: (FakeFilterProcess) -> Unit = {}
+        var decorate: (FakeFilterProcess) -> RunningCommandProcess = { it }
 
-        override fun start(spec: CommandProcessSpec): RunningCommandProcess =
-            FakeFilterProcess(
+        override fun start(spec: CommandProcessSpec): RunningCommandProcess {
+            beforeStart(spec)
+            spec.startGuard()
+            return FakeFilterProcess(
                 processId = nextPid.incrementAndGet(),
                 outputFile = File(outputDirectory, "${spec.executionId}.log"),
                 errorFile = File(outputDirectory, "${spec.executionId}.err"),
                 filterCommand = spec.command,
-            ).also(processes::add)
+            ).also { processes.add(it); onStart(it) }.let(decorate)
+        }
 
         override fun recover(spec: CommandProcessRecoverySpec): CommandProcessRecovery =
             processes.firstOrNull {
@@ -527,6 +714,7 @@ class DefaultCommandMonitorServiceTest {
             } ?: CommandProcessRecovery.Unavailable("Fake process is unavailable")
 
         override fun deleteOutputArtifacts(outputFile: String) {
+            deletedOutputFiles += outputFile
             File(outputFile).delete()
             File(outputFile.removeSuffix(".log") + ".err").delete()
         }
@@ -559,6 +747,7 @@ class DefaultCommandMonitorServiceTest {
             private set
         var terminationCount = 0
             private set
+        var terminationFailure: Throwable? = null
 
         override fun isAlive(): Boolean = alive
 
@@ -589,6 +778,7 @@ class DefaultCommandMonitorServiceTest {
             if (!alive) return
             terminateTreeCalled = true
             terminationCount += 1
+            terminationFailure?.let { throw it }
             alive = false
             code = 137
         }

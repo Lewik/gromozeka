@@ -56,6 +56,32 @@ import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
     @Test
+    fun `stale worker snapshots cannot resurrect terminal tasks or monitors after repository recreation`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val now = Instant.fromEpochSeconds(1)
+            val conversation = Conversation.Id("terminal-wins")
+            val task = CommandTask(CommandTask.Id("task"), conversation, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
+                command = "echo test", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
+                processId = 1, processStartedAt = now, outputFile = "/tmp/task.log", outputBytes = 0, createdAt = now, updatedAt = now)
+            val monitor = CommandMonitor(CommandMonitor.Id("monitor"), conversation, task.id, task.workerId, task.workspaceMountId,
+                filterCommand = "cat", mode = CommandMonitor.Mode.CONTINUOUS, startFrom = CommandMonitor.StartFrom.BEGINNING,
+                status = CommandMonitor.Status.WORKING, sourceOutputCursor = 0, processId = 2, processStartedAt = now,
+                outputFile = "/tmp/monitor.log", errorFile = "/tmp/monitor.err", outputBytes = 0, eventOutputCursor = 0, createdAt = now, updatedAt = now)
+            coordinator.upsertCommandTask(task)
+            coordinator.synchronizeCommandMonitor(monitor)
+            val terminal = task.copy(status = CommandTask.Status.FAILED, completedAt = now, statusMessage = "terminal")
+            val stopped = monitor.copy(status = CommandMonitor.Status.CANCELLED, completedAt = now, statusMessage = "stopped")
+            coordinator.upsertCommandTask(terminal)
+            coordinator.synchronizeCommandMonitor(stopped)
+            val restarted = PostgresConversationRuntimeCoordinator(source, json)
+            assertEquals(terminal, restarted.upsertCommandTask(task).task)
+            assertEquals(stopped, restarted.synchronizeCommandMonitor(monitor).monitor)
+            assertFailsWith<IllegalArgumentException> { restarted.upsertCommandTask(task.copy(command = "changed")) }
+            assertFailsWith<IllegalArgumentException> { restarted.synchronizeCommandMonitor(monitor.copy(filterCommand = "changed")) }
+        }
+    }
+
+    @Test
     fun `both message batch boundaries survive recreation with a frozen reservation and one acknowledgement`() = runBlocking {
         withInventoryDatabase { source, coordinator, json ->
             for (placement in QueuedMessagePlacement.entries) {

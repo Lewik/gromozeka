@@ -2029,6 +2029,23 @@
     "pins.notFound": "Dieser angeheftete Text ist nicht mehr verfügbar. Ungespeicherter Text bleibt erhalten.",
     "pins.accessDenied": "Du hast keinen Zugriff auf diese angehefteten Texte.",
     "pins.reloadEdited": "Der Entwurf wurde während des Ladens geändert. Der neuere Text bleibt erhalten.",
-    "pins.restartFailed": "Der Neustart der Unterhaltung mit ihren angehefteten Texten konnte nicht abgeschlossen werden. Prüfe vor einem erneuten Versuch die Unterhaltungsliste."
+    "pins.restartFailed": "Der Neustart der Unterhaltung mit ihren angehefteten Texten konnte nicht abgeschlossen werden. Prüfe vor einem erneuten Versuch die Unterhaltungsliste.",
+    "notifications.title": "Benachrichtigungen",
+    "notifications.close": "Schließen",
+    "notifications.unreadOnly": "Nur ungelesene",
+    "notifications.refresh": "Aktualisieren",
+    "notifications.markAllRead": "Alle als gelesen markieren",
+    "notifications.actionFailed": "Benachrichtigungen konnten nicht aktualisiert werden. Vor einem erneuten Versuch bitte aktualisieren.",
+    "notifications.conversationUnavailable": "Diese Unterhaltung konnte nicht geöffnet werden. Die Benachrichtigung ist weiterhin verfügbar.",
+    "notifications.loadFailed": "Benachrichtigungen konnten nicht geladen werden.",
+    "notifications.empty": "Keine Benachrichtigungen",
+    "notifications.level.info": "Information",
+    "notifications.level.warning": "Warnung",
+    "notifications.level.error": "Fehler",
+    "notifications.markRead": "Als gelesen markieren",
+    "notifications.markUnread": "Als ungelesen markieren",
+    "notifications.openConversation": "Unterhaltung öffnen",
+    "notifications.delete": "Löschen",
+    "notifications.loadMore": "Mehr laden"
   }
 }

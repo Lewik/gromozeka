@@ -55,6 +55,10 @@ data class CommandProcessSpec(
     val environment: Map<String, String> = emptyMap(),
     val captureStandardErrorSeparately: Boolean = false,
     val lifetime: CommandTask.ProcessLifetime = CommandTask.ProcessLifetime.WORKER_BOUND,
+    /** Rechecked at native launch and before releasing the existing process-start barrier. */
+    val startGuard: () -> Unit = {},
+    /** Protect output until initial registration (or its terminal reconciliation) is acknowledged. */
+    val protectOutputUntilRegistration: Boolean = false,
 ) {
     init {
         require(executionId.isNotBlank()) { "Command process execution id must not be blank" }
@@ -92,6 +96,12 @@ interface CommandProcessRunner {
     fun recover(spec: CommandProcessRecoverySpec): CommandProcessRecovery
 
     fun deleteOutputArtifacts(outputFile: String)
+
+    /** Acknowledges persistence, not process execution. An older GC inventory must not unpin the output. */
+    fun releaseStartupOutputProtection(outputFile: String) = Unit
+
+    /** Definitive rejection keeps local diagnostics under ordinary retention and quota, not an indefinite pin. */
+    fun rejectStartupOutputProtection(outputFile: String) = Unit
 
     fun garbageCollectOutputArtifacts(
         spec: CommandOutputGarbageCollectionSpec,

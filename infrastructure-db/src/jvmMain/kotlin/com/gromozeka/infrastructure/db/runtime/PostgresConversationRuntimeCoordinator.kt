@@ -9,6 +9,7 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorSyncResult
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.mergeCoordinatorState
 import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeActiveTaskAssignment
@@ -1570,36 +1571,6 @@ class PostgresConversationRuntimeCoordinator(
         CommandMonitor.Status.COMPLETED -> ConversationRuntimeTraceEntry.Status.COMPLETED
         CommandMonitor.Status.FAILED -> ConversationRuntimeTraceEntry.Status.FAILED
         CommandMonitor.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
-    }
-
-    private fun CommandTask.mergeCoordinatorState(existing: CommandTask?): CommandTask {
-        if (existing == null) return this
-        val preserveCancellationStatus =
-            !isTerminal && cancellationRequestedAt == null && existing.cancellationRequestedAt != null
-        return copy(
-            cancellationRequestedAt = cancellationRequestedAt ?: existing.cancellationRequestedAt,
-            completionNotificationRequestedAt =
-                completionNotificationRequestedAt ?: existing.completionNotificationRequestedAt,
-            completionNotificationDeliveredAt =
-                completionNotificationDeliveredAt ?: existing.completionNotificationDeliveredAt,
-            statusMessage = if (preserveCancellationStatus) existing.statusMessage else statusMessage,
-            updatedAt = maxOf(updatedAt, existing.updatedAt),
-        )
-    }
-
-    private fun CommandMonitor.mergeCoordinatorState(existing: CommandMonitor?): CommandMonitor {
-        if (existing == null) return this
-        val preserveCancellationStatus =
-            !isTerminal && cancellationRequestedAt == null && existing.cancellationRequestedAt != null
-        return copy(
-            cancellationRequestedAt = cancellationRequestedAt ?: existing.cancellationRequestedAt,
-            terminalNotificationRequestedAt =
-                terminalNotificationRequestedAt ?: existing.terminalNotificationRequestedAt,
-            terminalNotificationDeliveredAt =
-                terminalNotificationDeliveredAt ?: existing.terminalNotificationDeliveredAt,
-            statusMessage = if (preserveCancellationStatus) existing.statusMessage else statusMessage,
-            updatedAt = maxOf(updatedAt, existing.updatedAt),
-        )
     }
 
     private companion object {

@@ -2066,6 +2066,23 @@
     "pins.notFound": "Esta nota ya no está disponible. Se conserva el texto sin guardar.",
     "pins.accessDenied": "No tienes acceso a estas notas fijadas.",
     "pins.reloadEdited": "El borrador cambió durante la carga. Se conserva el texto más reciente.",
-    "pins.restartFailed": "No se pudo completar el reinicio de la conversación conservando sus textos fijados. Revisa la lista de conversaciones antes de volver a intentarlo."
+    "pins.restartFailed": "No se pudo completar el reinicio de la conversación conservando sus textos fijados. Revisa la lista de conversaciones antes de volver a intentarlo.",
+    "notifications.title": "Notificaciones",
+    "notifications.close": "Cerrar",
+    "notifications.unreadOnly": "Solo sin leer",
+    "notifications.refresh": "Actualizar",
+    "notifications.markAllRead": "Marcar todas como leídas",
+    "notifications.actionFailed": "No se pudieron actualizar las notificaciones. Actualiza antes de volver a intentarlo.",
+    "notifications.conversationUnavailable": "No se pudo abrir esta conversación. La notificación sigue disponible.",
+    "notifications.loadFailed": "No se pudieron cargar las notificaciones.",
+    "notifications.empty": "No hay notificaciones",
+    "notifications.level.info": "Información",
+    "notifications.level.warning": "Advertencia",
+    "notifications.level.error": "Error",
+    "notifications.markRead": "Marcar como leída",
+    "notifications.markUnread": "Marcar como no leída",
+    "notifications.openConversation": "Abrir conversación",
+    "notifications.delete": "Eliminar",
+    "notifications.loadMore": "Cargar más"
   }
 }

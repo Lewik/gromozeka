@@ -76,9 +76,13 @@ fun AiToolDescriptor.withInvocationContext(bindings: AiToolContextBindings): AiT
         if (worker || workspace) timeoutFields.forEach { name ->
             put(name, buildJsonObject {
                 put("type", "integer"); put("minimum", 1)
-                put("maximum", if (name == "execution_timeout_seconds") 86400 else 604800)
+                put("maximum", when (name) {
+                    "delivery_ttl_seconds" -> 300
+                    "execution_timeout_seconds" -> 86400
+                    else -> 604800
+                })
                 put("description", when (name) {
-                    "delivery_ttl_seconds" -> "Delivery lifetime before execution starts. Default 30 seconds. Expired requests never start."
+                    "delivery_ttl_seconds" -> "Delivery lifetime before execution starts. Default 30 seconds, maximum 300 seconds. Expired requests never start."
                     "execution_timeout_seconds" -> "Execution limit after starting. Default 1800 seconds."
                     else -> "Call wait, not cancellation. Default delivery plus execution limits, capped at 7 days. Inspect the returned request ID rather than resubmitting."
                 })
@@ -166,7 +170,11 @@ fun AiToolMetadata.parseInvocationInput(input: JsonElement, bound: ToolExecution
             if (name !in envelope) return defaultMillis
             val value = envelope[name] as? JsonPrimitive
             val seconds = value?.takeUnless { it.isString }?.longOrNull
-            val maximum = if (name == "execution_timeout_seconds") 86400L else 604800L
+            val maximum = when (name) {
+                "delivery_ttl_seconds" -> 300L
+                "execution_timeout_seconds" -> 86400L
+                else -> 604800L
+            }
             require(seconds != null && seconds in 1..maximum) { "Invalid _grz.$name" }
             return seconds * 1000
         }

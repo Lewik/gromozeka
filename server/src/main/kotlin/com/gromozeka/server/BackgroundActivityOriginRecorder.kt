@@ -1,92 +1,133 @@
 package com.gromozeka.server
 
-import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.BackgroundActivityOrigin
 import com.gromozeka.domain.repository.BackgroundActivityOriginRepository
 import com.gromozeka.domain.repository.ConversationRepository
-import com.gromozeka.domain.service.CommandMonitor
-import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.StoredWorkerRequest
-import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
-import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
-import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
-import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
+import com.gromozeka.domain.service.*
+import com.gromozeka.domain.slot.SlotCommandOrigin
+import com.gromozeka.domain.tool.*
 import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
-import com.gromozeka.remote.protocol.WorkerGatewayCodec
-import com.gromozeka.remote.protocol.WorkerGatewayMessage
-import com.gromozeka.remote.protocol.WorkerGatewayOperation
-import com.gromozeka.remote.protocol.WorkerToolExecutionRequest
-import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
+import com.gromozeka.remote.protocol.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.springframework.stereotype.Service
+import kotlin.time.Clock
 
-/** Bind authority from a durable Server request, never from Worker-provided user fields. */
+/** Initial admission precedes state publication. A final tool response is not an authority source. */
 @Service
 class BackgroundActivityOriginRecorder(
     private val origins: BackgroundActivityOriginRepository,
-    private val coordinator: ConversationRuntimeCoordinator,
+    private val requests: WorkerRequestService,
     private val conversations: ConversationRepository,
-) : WorkerRequestCompletionObserver {
+) {
     private val json = Json { ignoreUnknownKeys = false }
 
-    override suspend fun completed(record: StoredWorkerRequest, response: WorkerGatewayMessage.Response) {
-        if (response.status != WorkerGatewayMessage.Response.Status.SUCCEEDED) return
-        val actor = record.actorUserId ?: return
+    suspend fun admit(task: CommandTask) = admit(Launch(
+        BackgroundActivityOrigin.Kind.COMMAND, task.id.value, task.conversationId, task.agentDefinitionId,
+        task.workerId, task.workspaceMountId, task.slotOrigin, requireNotNull(task.launchReference) {
+            "New command registration requires its creating Worker request"
+        }, task.command, visualId = task.visualId,
+    ))
+
+    suspend fun admit(monitor: CommandMonitor) = admit(Launch(
+        BackgroundActivityOrigin.Kind.MONITOR, monitor.id.value, monitor.conversationId, monitor.agentDefinitionId,
+        monitor.workerId, monitor.workspaceMountId, monitor.slotOrigin, requireNotNull(monitor.launchReference) {
+            "New monitor registration requires its creating Worker request"
+        }, monitor.filterCommand, sourceTaskId = monitor.commandTaskId,
+    ))
+
+    private suspend fun admit(launch: Launch) {
+        val key = BackgroundActivityOrigin.Key(launch.kind, launch.id)
+        origins.find(launch.conversationId, setOf(key))[key]?.let { existing ->
+            require(existing.workerId == launch.workerId && existing.workspaceMountId == launch.mountId &&
+                existing.agentDefinitionId == launch.agentId && existing.workerRequestId == launch.reference.workerRequestId &&
+                existing.toolCallId == launch.reference.toolCallId) { "Background activity launch origin cannot change" }
+            return
+        }
+        val record = requireNotNull(requests.find(launch.reference.workerRequestId)) {
+            "Background activity launch request is no longer retained"
+        }
+        val actor = requireNotNull(record.actorUserId) { "Background activity launch has no authenticated actor" }
+        require(record.workerId == launch.workerId) { "Background activity launch belongs to another Worker" }
+        val conversation = requireNotNull(conversations.findById(launch.conversationId)) { "Launch conversation no longer exists" }
+        require(record.projectId == conversation.projectId) { "Background activity launch belongs to another project" }
         val request = WorkerGatewayCodec.decode(record.request) as WorkerGatewayMessage.Request
-        if (request.operation != WorkerGatewayOperation.TOOL_EXECUTION) return
+        require(request.id == record.id) { "Stored Worker request identity mismatch" }
+        when (request.operation) {
+            WorkerGatewayOperation.TOOL_EXECUTION -> validateTool(launch, record, request)
+            WorkerGatewayOperation.VISUAL_COMMAND -> validateVisual(launch, record, request)
+            else -> error("Worker request does not create a background activity")
+        }
+        // This repository operation locks the RPC row and binds in the same transaction as its
+        // pending check. A concurrent terminal CAS either wins before admission or follows it.
+        origins.bindWhileRequestPending(BackgroundActivityOrigin(
+            launch.kind, launch.id, launch.conversationId, launch.agentId, actor, record.workerId,
+            launch.mountId, record.id, launch.reference.toolCallId,
+        ), Clock.System.now())
+    }
+
+    private fun validateTool(launch: Launch, record: StoredWorkerRequest, request: WorkerGatewayMessage.Request) {
+        require(launch.visualId == null) { "A tool call cannot impersonate a Visual handler" }
         val toolRequest = json.decodeFromString<WorkerToolExecutionRequest>(request.payload.decodeToString())
-        if (toolRequest.toolCalls.none { it.call.name in setOf(GRZ_EXECUTE_COMMAND_TOOL_NAME, "grz_monitor_command") }) return
-        val context = toolRequest.toolContext
-        val agent = context[TOOL_CONTEXT_AGENT_DEFINITION_ID]?.let(AgentDefinition::Id) ?: return
-        val conversationId = context[TOOL_CONTEXT_CONVERSATION_ID]?.let(Conversation::Id) ?: return
-        val conversation = conversations.findById(conversationId) ?: return // Deleted while executing.
-        require(record.projectId == conversation.projectId && context[TOOL_CONTEXT_PROJECT_ID] == conversation.projectId.value) {
-            "Background activity request belongs to another project"
+        validateContext(launch, record, toolRequest.toolContext)
+        require(toolRequest.executionTarget.workerId == launch.workerId &&
+            toolRequest.executionTarget.workspaceMountId == launch.mountId) { "Launch execution target does not match its request" }
+        require(toolRequest.toolCalls.map { it.id }.distinct().size == toolRequest.toolCalls.size) { "Duplicate tool call identity" }
+        val callId = requireNotNull(launch.reference.toolCallId) { "Tool launch requires a tool call id" }
+        val call = toolRequest.toolCalls.singleOrNull { it.id.value == callId }
+            ?: error("Unknown background activity tool call")
+        val expectedTool = when (launch.kind) {
+            BackgroundActivityOrigin.Kind.COMMAND -> GRZ_EXECUTE_COMMAND_TOOL_NAME
+            BackgroundActivityOrigin.Kind.MONITOR -> "grz_monitor_command"
         }
-        require(context[TOOL_CONTEXT_USER_ID] == actor.value && toolRequest.executionTarget.workerId == record.workerId) {
-            "Background activity request actor or Worker does not match its Server envelope"
-        }
-        val mount = requireNotNull(toolRequest.executionTarget.workspaceMountId) { "Background activity requires an exact mount" }
-        val calls = toolRequest.toolCalls.associateBy { it.id }
-        require(calls.size == toolRequest.toolCalls.size) { "Duplicate tool-call identity" }
-        val result = json.decodeFromString<WorkerToolExecutionResponse>(requireNotNull(response.payload).decodeToString())
-        for (item in result.results) {
-            val call = requireNotNull(calls[item.toolUseId]) { "Worker returned an unknown tool-call identity" }
-            if (item.isError) continue
-            val kind = when (call.call.name) {
-                GRZ_EXECUTE_COMMAND_TOOL_NAME -> BackgroundActivityOrigin.Kind.COMMAND
-                "grz_monitor_command" -> BackgroundActivityOrigin.Kind.MONITOR
-                else -> continue
-            }
-            require(item.toolName == call.call.name) { "Worker result tool does not match its request" }
-            val metadata = item.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
-                .firstOrNull()?.content?.let { json.parseToJsonElement(it) as? JsonObject } ?: continue
-            val field = if (kind == BackgroundActivityOrigin.Kind.COMMAND) "task_id" else "monitor_id"
-            val id = (metadata[field] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull ?: continue
-            when (kind) {
-                BackgroundActivityOrigin.Kind.COMMAND -> {
-                    val task = coordinator.findCommandTask(conversationId, CommandTask.Id(id)) ?: continue
-                    require(task.workerId == record.workerId && task.workspaceMountId == mount && task.agentDefinitionId == agent && task.slotOrigin == record.slotOrigin) {
-                        "Command result does not belong to its creating request"
-                    }
-                }
-                BackgroundActivityOrigin.Kind.MONITOR -> {
-                    val monitor = coordinator.findCommandMonitor(conversationId, CommandMonitor.Id(id)) ?: continue
-                    require(monitor.workerId == record.workerId && monitor.workspaceMountId == mount && monitor.agentDefinitionId == agent) {
-                        "Monitor result does not belong to its creating request"
-                    }
-                    val sourceId = ((call.call.input as? JsonObject)?.get("task_id") as? JsonPrimitive)?.contentOrNull
-                    require(monitor.commandTaskId.value == sourceId) { "Monitor result has another source command" }
-                }
-            }
-            origins.bind(BackgroundActivityOrigin(kind, id, conversationId, agent, actor, record.workerId,
-                WorkspaceMount.Id(mount.value), record.id, call.id.value))
+        require(call.call.name == expectedTool) { "Tool call does not create this activity kind" }
+        val input = call.call.input as? JsonObject ?: error("Launch tool input must be an object")
+        fun text(name: String) = (input[name] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+        val commandKey = if (launch.kind == BackgroundActivityOrigin.Kind.COMMAND) "command" else "filter_command"
+        require(text(commandKey) == launch.command) { "Background activity command does not match its request" }
+        if (launch.kind == BackgroundActivityOrigin.Kind.MONITOR) {
+            require(text("task_id") == launch.sourceTaskId?.value) { "Monitor request names another source command" }
+        } else {
+            require(record.slotOrigin == launch.slotOrigin) { "Command launch changed its slot origin" }
         }
     }
+
+    private fun validateVisual(launch: Launch, record: StoredWorkerRequest, request: WorkerGatewayMessage.Request) {
+        val command = json.decodeFromString<VisualWorkerCommand>(request.payload.decodeToString())
+        require(launch.kind == BackgroundActivityOrigin.Kind.COMMAND && launch.reference.toolCallId == null &&
+            command.operation == VisualWorkerCommand.Operation.START && command.visualId == launch.visualId &&
+            command.conversationId == launch.conversationId && command.worker.workerId == launch.workerId &&
+            command.workspace?.mount?.id == launch.mountId) { "Visual launch does not match its request" }
+        validateContext(launch, record, command.toolContext)
+        require(command.toolContext[TOOL_CONTEXT_VISUAL_ID] == launch.visualId && record.slotOrigin == launch.slotOrigin &&
+            (command.toolContext[TOOL_CONTEXT_ORIGINAL_COMMAND] ?: command.spec?.command) == launch.command) {
+            "Visual launch changed its command or origin"
+        }
+    }
+
+    private fun validateContext(launch: Launch, record: StoredWorkerRequest, context: Map<String, String>) {
+        require(context[TOOL_CONTEXT_USER_ID] == record.actorUserId?.value &&
+            context[TOOL_CONTEXT_CONVERSATION_ID] == launch.conversationId.value &&
+            context[TOOL_CONTEXT_PROJECT_ID] == record.projectId?.value &&
+            context[TOOL_CONTEXT_AGENT_DEFINITION_ID] == launch.agentId?.value) {
+            "Background activity request context does not match its Server-owned scope"
+        }
+    }
+
+    private data class Launch(
+        val kind: BackgroundActivityOrigin.Kind,
+        val id: String,
+        val conversationId: Conversation.Id,
+        val agentId: AgentDefinition.Id?,
+        val workerId: ConversationRuntimeWorkerId,
+        val mountId: WorkspaceMount.Id,
+        val slotOrigin: SlotCommandOrigin?,
+        val reference: BackgroundActivityLaunchReference,
+        val command: String,
+        val visualId: String? = null,
+        val sourceTaskId: CommandTask.Id? = null,
+    )
 }

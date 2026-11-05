@@ -2103,6 +2103,23 @@
     "pins.notFound": "Этот пин больше недоступен. Несохранённый текст оставлен.",
     "pins.accessDenied": "У вас нет доступа к этим пинам.",
     "pins.reloadEdited": "Черновик изменился во время загрузки. Более новый текст сохранён.",
-    "pins.restartFailed": "Не удалось завершить перезапуск беседы с сохранением пинов. Перед повторной попыткой проверьте список бесед."
+    "pins.restartFailed": "Не удалось завершить перезапуск беседы с сохранением пинов. Перед повторной попыткой проверьте список бесед.",
+    "notifications.title": "Уведомления",
+    "notifications.close": "Закрыть",
+    "notifications.unreadOnly": "Только непрочитанные",
+    "notifications.refresh": "Обновить",
+    "notifications.markAllRead": "Прочитать все",
+    "notifications.actionFailed": "Не удалось обновить уведомления. Обновите список перед повторной попыткой.",
+    "notifications.conversationUnavailable": "Не удалось открыть этот диалог. Уведомление по-прежнему доступно.",
+    "notifications.loadFailed": "Не удалось загрузить уведомления.",
+    "notifications.empty": "Уведомлений нет",
+    "notifications.level.info": "Информация",
+    "notifications.level.warning": "Предупреждение",
+    "notifications.level.error": "Ошибка",
+    "notifications.markRead": "Отметить прочитанным",
+    "notifications.markUnread": "Отметить непрочитанным",
+    "notifications.openConversation": "Открыть диалог",
+    "notifications.delete": "Удалить",
+    "notifications.loadMore": "Загрузить ещё"
   }
 }

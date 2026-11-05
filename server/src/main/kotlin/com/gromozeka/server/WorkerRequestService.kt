@@ -22,12 +22,18 @@ import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.hours
 import klog.KLoggers
 
 class WorkerRequestPendingException(val requestId: String) : IllegalStateException(
     "Worker request $requestId is still pending. Waiting ended, but the request was not cancelled. Query grz_worker_request_get or cancel it explicitly.",
 )
 
+class WorkerRequestResultUnavailableException(val requestId: String) : IllegalStateException(
+    "Worker request $requestId is unknown or its result is no longer retained. Do not resubmit the action to retrieve it.",
+)
+
+/** Delivery is at least once and always uses the durable canonical response. Implementations must be idempotent. */
 fun interface WorkerRequestCompletionObserver {
     suspend fun completed(record: StoredWorkerRequest, response: WorkerGatewayMessage.Response)
 }
@@ -83,6 +89,7 @@ class WorkerRequestService(
             slotOrigin = slotOrigin,
             createdAt = createdAt,
             startDeadline = delivery.startDeadline,
+            executionDeadline = delivery.startDeadline + delivery.executionTimeoutMillis.milliseconds,
             actorUserId = actorUserId,
             projectId = projectId,
         )
@@ -95,34 +102,70 @@ class WorkerRequestService(
         return request.id
     }
 
-    suspend fun find(id: String): StoredWorkerRequest? {
-        val record = repository.find(id) ?: return null
-        if (record.response == null && record.dispatchedAt == null) {
-            val failure = when {
-                record.cancelRequestedAt != null -> failure(id, "CANCELLED", "Request cancelled before dispatch")
-                Clock.System.now() >= record.startDeadline -> failure(id, "EXPIRED", "Delivery TTL expired before dispatch")
-                else -> null
-            }
-            if (failure != null) {
-                repository.complete(record.workerId, id, WorkerGatewayCodec.encode(failure), Clock.System.now(), onlyIfUndispatched = true)
-                return repository.find(id)
+    suspend fun find(id: String): StoredWorkerRequest? = repository.find(id)?.let { expire(it, Clock.System.now()) }
+
+    private suspend fun expire(record: StoredWorkerRequest, at: kotlin.time.Instant): StoredWorkerRequest? {
+        if (record.response != null) return record
+        val executionDeadline = record.executionDeadline ?: run {
+            val request = WorkerGatewayCodec.decode(record.request) as WorkerGatewayMessage.Request
+            val delivery = requireNotNull(request.delivery) { "Stored Worker request has no delivery policy" }
+            check(delivery.startDeadline.toEpochMilliseconds() == record.startDeadline.toEpochMilliseconds()) { "Stored Worker request deadline mismatch" }
+            (delivery.startDeadline + delivery.executionTimeoutMillis.milliseconds).also {
+                repository.setExecutionDeadlineIfMissing(record.id, it)
             }
         }
-        return record
+        val failure = when {
+            record.dispatchedAt == null && record.cancelRequestedAt != null ->
+                failure(record.id, "CANCELLED", "Request cancelled before dispatch")
+            record.dispatchedAt == null && at >= record.startDeadline ->
+                failure(record.id, "EXPIRED", "Delivery TTL expired before dispatch")
+            at >= executionDeadline -> failure(record.id, "OUTCOME_UNKNOWN",
+                "Worker response deadline passed. The action may have run; inspect its state instead of automatically repeating it.")
+            else -> return record.copy(executionDeadline = executionDeadline)
+        }
+        repository.complete(record.workerId, record.id, WorkerGatewayCodec.encode(failure), at,
+            onlyIfUndispatched = record.dispatchedAt == null)
+        return repository.find(record.id)
+    }
+
+    /** Bounded maintenance independent of connected Workers, callers, and managed process lifetimes. */
+    suspend fun maintain(at: kotlin.time.Instant = Clock.System.now()) {
+        for (id in repository.maintenanceCandidates(at, 32)) {
+            repository.find(id)?.let { expire(it, at) }
+        }
+        for (id in repository.unprojectedCompletions(32)) {
+            val record = repository.find(id) ?: continue
+            check(record.completedAt != null) { "Uncompleted Worker request selected for projection" }
+            val response = WorkerGatewayCodec.decode(requireNotNull(record.response)) as WorkerGatewayMessage.Response
+            try {
+                completionObservers.forEach { it.completed(record, response) }
+                repository.markCompletionProjected(id, at)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                // The durable pending marker survives this failure and prevents retention GC.
+                // Decoder exceptions can embed private tool output in their messages.
+                log.error { "Worker request completion projection failed: $id (${error::class.simpleName}); retained for retry" }
+            }
+        }
+        repository.deleteCompletedBefore(at - 1.hours, 256)
     }
 
     suspend fun await(id: String, timeoutMillis: Long): WorkerGatewayMessage.Response {
         require(timeoutMillis > 0) { "Worker response wait must be positive" }
-        val initial = requireNotNull(find(id)) { "Unknown Worker request $id" }
+        val initial = find(id) ?: throw WorkerRequestResultUnavailableException(id)
         val deadline = kotlin.time.TimeSource.Monotonic.markNow() + timeoutMillis.milliseconds
         while (true) {
-            val progress = requireNotNull(repository.progress(id)) { "Unknown Worker request $id" }
+            val progress = repository.progress(id) ?: throw WorkerRequestResultUnavailableException(id)
             if (progress.completedAt != null) {
                 log.debug { "WORKER_REQUEST_TRACE request=$id phase=result_observed" }
-                return WorkerGatewayCodec.decode(requireNotNull(repository.find(id)?.response)) as WorkerGatewayMessage.Response
+                val completed = repository.find(id) ?: throw WorkerRequestResultUnavailableException(id)
+                return WorkerGatewayCodec.decode(requireNotNull(completed.response)) as WorkerGatewayMessage.Response
             }
-            if (progress.dispatchedAt == null && (progress.cancelRequestedAt != null || Clock.System.now() >= initial.startDeadline)) {
-                find(id)
+            val now = Clock.System.now()
+            if ((progress.dispatchedAt == null && (progress.cancelRequestedAt != null || now >= initial.startDeadline)) ||
+                initial.executionDeadline?.let { now >= it } == true) {
+                find(id) ?: throw WorkerRequestResultUnavailableException(id)
                 continue
             }
             if (deadline.hasPassedNow()) throw WorkerRequestPendingException(id)
@@ -173,17 +216,14 @@ class WorkerRequestService(
     suspend fun accept(workerId: ConversationRuntimeWorkerId, response: WorkerGatewayMessage.Response): Boolean {
         val record = repository.find(response.requestId) ?: return false
         require(record.workerId == workerId) { "Worker returned another Worker's result" }
+        if (record.response != null) return true
         require(record.dispatchedAt != null) { "Worker returned an undispatched request result" }
-        // Record provenance before publishing completion, including late results after
-        // the original caller stopped waiting. Duplicates use the saved response only.
-        val accepted = record.response?.let { WorkerGatewayCodec.decode(it) as WorkerGatewayMessage.Response } ?: response
-        completionObservers.forEach { it.completed(record, accepted) }
-        if (record.response == null) {
-            repository.complete(workerId, response.requestId, WorkerGatewayCodec.encode(response), Clock.System.now())
-        }
+        val completed = repository.complete(workerId, response.requestId, WorkerGatewayCodec.encode(response), Clock.System.now())
+        // Projection reads the winner of this CAS later. A late success cannot replace a timeout,
+        // and a crash between completion and projection cannot lose the notification.
         log.debug {
             "WORKER_REQUEST_TRACE request=${response.requestId} phase=result_persisted " +
-                "status=${response.status} duplicate=${record.response != null} bytes=${response.payload?.size ?: 0}"
+                "won=$completed bytes=${response.payload?.size ?: 0}"
         }
         return true
     }

@@ -60,6 +60,9 @@ internal suspend fun startRemotePresentation(
                     currentTranslation = currentTranslation,
                 )
             },
+            userNotificationSink = com.gromozeka.presentation.services.UserNotificationSink { notification ->
+                desktopNotificationService.show("user-notification-${notification.id.value}", notification.title, notification.message)
+            },
             turnCompletionNotificationSinkFactory = { currentTranslation ->
                 TurnCompletionNotificationSink {
                     desktopNotificationService.show("turn-completed", "Gromozeka", currentTranslation().text("native.turnCompleted"))

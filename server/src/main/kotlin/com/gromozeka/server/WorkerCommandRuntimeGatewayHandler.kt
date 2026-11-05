@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.requireSameIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.WorkerAccessService
@@ -34,6 +35,7 @@ class WorkerCommandRuntimeGatewayHandler(
     private val conversationRepository: ConversationRepository,
     private val workspaceDomainService: WorkspaceDomainService,
     private val workerAccessService: WorkerAccessService,
+    private val origins: BackgroundActivityOriginRecorder,
 ) : WorkerGatewayServerRequestHandler {
     override val operation = WorkerGatewayOperation.COMMAND_RUNTIME_STATE
 
@@ -131,16 +133,14 @@ class WorkerCommandRuntimeGatewayHandler(
         }
         requireExecutionScope(workerId, requested.conversationId, requested.workspaceMountId)
         val existing = commandRuntimeStateService.findCommandTask(requested.conversationId, requested.id)
-            ?: return requested
+        if (existing == null) {
+            origins.admit(requested)
+            return requested
+        }
         require(existing.workerId == workerId) {
             "Worker cannot replace a command task owned by another Worker"
         }
-        require(existing.immutableIdentity() == requested.immutableIdentity()) {
-            "Worker cannot change command task identity or execution scope"
-        }
-        require(!existing.isTerminal || requested.status == existing.status) {
-            "Worker cannot move a terminal command task to another state"
-        }
+        existing.requireSameIdentity(requested)
         return requested
     }
 
@@ -165,16 +165,14 @@ class WorkerCommandRuntimeGatewayHandler(
             "Command monitor events must belong to the synchronized monitor"
         }
         val existing = commandRuntimeStateService.findCommandMonitor(requested.conversationId, requested.id)
-            ?: return requested
+        if (existing == null) {
+            origins.admit(requested)
+            return requested
+        }
         require(existing.workerId == workerId) {
             "Worker cannot replace a command monitor owned by another Worker"
         }
-        require(existing.immutableIdentity() == requested.immutableIdentity()) {
-            "Worker cannot change command monitor identity or execution scope"
-        }
-        require(!existing.isTerminal || requested.status == existing.status) {
-            "Worker cannot move a terminal command monitor to another state"
-        }
+        existing.requireSameIdentity(requested)
         return requested
     }
 
@@ -203,79 +201,4 @@ class WorkerCommandRuntimeGatewayHandler(
         return conversation
     }
 
-    private fun CommandTask.immutableIdentity(): CommandTaskIdentity =
-        CommandTaskIdentity(
-            id = id,
-            conversationId = conversationId,
-            workerId = workerId,
-            workspaceMountId = workspaceMountId,
-            agentDefinitionId = agentDefinitionId,
-            command = command,
-            workingDirectory = workingDirectory,
-            processLifetime = processLifetime,
-            processId = processId,
-            processStartedAt = processStartedAt,
-            processTreeId = processTreeId,
-            outputFile = outputFile,
-            slotOrigin = slotOrigin,
-            timeoutAt = timeoutAt,
-            createdAt = createdAt,
-        )
-
-    private fun CommandMonitor.immutableIdentity(): CommandMonitorIdentity =
-        CommandMonitorIdentity(
-            id = id,
-            conversationId = conversationId,
-            commandTaskId = commandTaskId,
-            workerId = workerId,
-            workspaceMountId = workspaceMountId,
-            agentDefinitionId = agentDefinitionId,
-            filterCommand = filterCommand,
-            mode = mode,
-            startFrom = startFrom,
-            processId = processId,
-            processStartedAt = processStartedAt,
-            processTreeId = processTreeId,
-            outputFile = outputFile,
-            errorFile = errorFile,
-            slotOrigin = slotOrigin,
-            createdAt = createdAt,
-        )
-
-    private data class CommandTaskIdentity(
-        val id: CommandTask.Id,
-        val conversationId: Conversation.Id,
-        val workerId: ConversationRuntimeWorkerId,
-        val workspaceMountId: com.gromozeka.domain.model.WorkspaceMount.Id,
-        val agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id?,
-        val command: String,
-        val workingDirectory: String,
-        val processLifetime: CommandTask.ProcessLifetime,
-        val processId: Long?,
-        val processStartedAt: kotlin.time.Instant?,
-        val processTreeId: Long?,
-        val outputFile: String,
-        val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin?,
-        val timeoutAt: kotlin.time.Instant?,
-        val createdAt: kotlin.time.Instant,
-    )
-
-    private data class CommandMonitorIdentity(
-        val id: CommandMonitor.Id,
-        val conversationId: Conversation.Id,
-        val commandTaskId: CommandTask.Id,
-        val workerId: ConversationRuntimeWorkerId,
-        val workspaceMountId: com.gromozeka.domain.model.WorkspaceMount.Id,
-        val agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id?,
-        val filterCommand: String,
-        val mode: CommandMonitor.Mode,
-        val startFrom: CommandMonitor.StartFrom,
-        val processId: Long?,
-        val processStartedAt: kotlin.time.Instant?,
-        val processTreeId: Long?,
-        val outputFile: String,
-        val errorFile: String,
-        val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin?,
-        val createdAt: kotlin.time.Instant,
-    )
 }

@@ -23,7 +23,7 @@ data class WorkerRequestPolicy(
     val waitTimeoutMillis: Long = minOf(deliveryTtlMillis + executionTimeoutMillis, 604_800_000),
 ) {
     init {
-        require(deliveryTtlMillis in 1..604_800_000) { "Worker delivery TTL must be between 1 ms and 7 days" }
+        require(deliveryTtlMillis in 1..300_000) { "Worker delivery TTL must be between 1 ms and 5 minutes" }
         require(executionTimeoutMillis in 1..86_400_000) { "Worker execution timeout must be between 1 ms and 24 hours" }
         require(waitTimeoutMillis in 1..604_800_000) { "Worker response wait must be between 1 ms and 7 days" }
     }
@@ -43,6 +43,9 @@ data class StoredWorkerRequest(
     val completedAt: Instant? = null,
     /** Server-private origin captured before dispatch, including offline delivery. */
     val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
+    /** Latest possible RPC completion, not a managed process lifetime. Null only on pre-migration rows. */
+    val executionDeadline: Instant? = null,
+    val completionProjectedAt: Instant? = null,
 )
 
 data class PendingWorkerRequest(val id: String, val cancelRequested: Boolean)

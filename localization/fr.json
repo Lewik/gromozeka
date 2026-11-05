@@ -2066,6 +2066,23 @@
     "pins.notFound": "Ce texte épinglé n’est plus disponible. Le texte non enregistré est conservé.",
     "pins.accessDenied": "Vous n’avez pas accès à ces textes épinglés.",
     "pins.reloadEdited": "Le brouillon a changé pendant le chargement. Le texte le plus récent est conservé.",
-    "pins.restartFailed": "Impossible de terminer le redémarrage de la conversation en conservant ses textes épinglés. Vérifiez la liste des conversations avant de réessayer."
+    "pins.restartFailed": "Impossible de terminer le redémarrage de la conversation en conservant ses textes épinglés. Vérifiez la liste des conversations avant de réessayer.",
+    "notifications.title": "Notifications",
+    "notifications.close": "Fermer",
+    "notifications.unreadOnly": "Non lues uniquement",
+    "notifications.refresh": "Actualiser",
+    "notifications.markAllRead": "Tout marquer comme lu",
+    "notifications.actionFailed": "Impossible de mettre à jour les notifications. Actualisez avant de réessayer.",
+    "notifications.conversationUnavailable": "Impossible d’ouvrir cette conversation. La notification reste disponible.",
+    "notifications.loadFailed": "Impossible de charger les notifications.",
+    "notifications.empty": "Aucune notification",
+    "notifications.level.info": "Information",
+    "notifications.level.warning": "Avertissement",
+    "notifications.level.error": "Erreur",
+    "notifications.markRead": "Marquer comme lue",
+    "notifications.markUnread": "Marquer comme non lue",
+    "notifications.openConversation": "Ouvrir la conversation",
+    "notifications.delete": "Supprimer",
+    "notifications.loadMore": "Charger plus"
   }
 }

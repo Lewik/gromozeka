@@ -53,6 +53,22 @@ internal class TestWorkerRequestRepository : WorkerRequestRepository {
         }
         return changed
     }
+    override suspend fun maintenanceCandidates(at: Instant, limit: Int) = records.values.filter {
+        it.completedAt == null && (it.executionDeadline?.let { deadline -> deadline <= at } != false ||
+            (it.dispatchedAt == null && (it.startDeadline <= at || it.cancelRequestedAt != null)))
+    }.take(limit).map { it.id }
+    override suspend fun setExecutionDeadlineIfMissing(id: String, deadline: Instant) {
+        records.computeIfPresent(id) { _, record -> record.copy(executionDeadline = record.executionDeadline ?: deadline) }
+    }
+    override suspend fun unprojectedCompletions(limit: Int) = records.values.filter {
+        it.completedAt != null && it.completionProjectedAt == null
+    }.take(limit).map { it.id }
+    override suspend fun markCompletionProjected(id: String, at: Instant) {
+        records.computeIfPresent(id) { _, record -> record.copy(completionProjectedAt = record.completionProjectedAt ?: at) }
+    }
+    override suspend fun deleteCompletedBefore(before: Instant, limit: Int): Int = records.values.filter {
+        it.completedAt?.let { time -> time < before } == true && it.completionProjectedAt != null
+    }.take(limit).count { records.remove(it.id, it) }
 }
 
 class WorkerRequestServiceTest {

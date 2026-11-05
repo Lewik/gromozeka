@@ -20,6 +20,18 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.ToolCancellationSignal
+import com.gromozeka.domain.tool.WorkerRequestExecutionContext
+import com.gromozeka.domain.service.ControlPlaneUnavailableException
+import com.gromozeka.domain.service.ControlPlaneRequestRejectedException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.awaitCancellation
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.seconds
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +66,170 @@ class DefaultCommandTaskServiceTest {
         ),
         environmentProfile = testWorkerEnvironmentProfile(),
     )
+
+    @Test
+    fun `expired delivery and parent cancellation cannot start a command`() = runBlocking {
+        withService { service, runner, _, directory ->
+            val expired = context(directory).withValue("toolCallId", "call").copy(
+                workerRequest = WorkerRequestExecutionContext("request", Clock.System.now() - 1.seconds),
+            )
+            assertFailsWith<IllegalStateException> { service.start(ExecuteCommandRequest("expired"), expired) }
+            assertEquals(0, runner.startCount)
+            var cancelled = false
+            runner.beforeStart = { cancelled = true }
+            val cancellation = ToolCancellationSignal { if (cancelled) throw CancellationException("outer RPC cancelled") }
+            // The callback's nested runBlocking need not inherit the outer RPC Job.
+            assertFailsWith<CancellationException> {
+                runBlocking { service.start(ExecuteCommandRequest("cancelled"), context(directory).withCancellationSignal(cancellation)) }
+            }
+            assertEquals(0, runner.startCount)
+        }
+    }
+
+    @Test
+    fun `delivery deadline is checked again after waiting for the launch mutex`() = runBlocking {
+        val directory = Files.createTempDirectory("command-start-mutex-").toFile()
+        val runner = FakeCommandProcessRunner(directory)
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                if (task.command == "blocker" && !task.isTerminal) { entered.complete(Unit); release.await() }
+                return delegate.upsertCommandTask(task)
+            }
+        }
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        try {
+            val first = async { service.start(ExecuteCommandRequest("blocker", yield_time_ms = 0), context(directory)) }
+            withTimeout(3_000) { entered.await() }
+            val deadline = Clock.System.now() + 1.seconds
+            val second = async {
+                runCatching { service.start(ExecuteCommandRequest("expired-waiter", yield_time_ms = 0),
+                    context(directory).withValue("toolCallId", "second").copy(workerRequest = WorkerRequestExecutionContext("second-request", deadline))) }
+            }
+            while (Clock.System.now() < deadline) delay(25)
+            release.complete(Unit)
+            first.await()
+            assertTrue(second.await().exceptionOrNull() is IllegalStateException)
+            assertEquals(1, runner.startCount)
+        } finally { release.complete(Unit); service.close(); directory.deleteRecursively() }
+    }
+
+    @Test
+    fun `lost initial registration ACK reconciles the same failed task before or after commit`() = runBlocking {
+        for (commit in listOf(false, true)) {
+            val directory = Files.createTempDirectory("command-lost-ack-").toFile()
+            val runner = FakeCommandProcessRunner(directory).apply { onStart = { it.appendOutput("partial output") } }
+            val delegate = InMemoryConversationRuntimeCoordinator()
+            val writes = CopyOnWriteArrayList<CommandTask>()
+            val first = AtomicBoolean(true)
+            val available = AtomicBoolean(false)
+            val coordinator = object : ConversationRuntimeCoordinator by delegate {
+                override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                    writes += task
+                    if (first.compareAndSet(true, false)) {
+                        if (commit) delegate.upsertCommandTask(task)
+                        throw ControlPlaneUnavailableException("Initial ACK lost")
+                    }
+                    if (!available.get()) throw ControlPlaneUnavailableException("Still offline")
+                    return delegate.upsertCommandTask(task)
+                }
+            }
+            val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+            try {
+                val context = context(directory).withValue("toolCallId", "start-call").copy(
+                    workerRequest = WorkerRequestExecutionContext("start-request", Clock.System.now() + 30.seconds),
+                )
+                assertFailsWith<ControlPlaneUnavailableException> { service.start(ExecuteCommandRequest("partial", yield_time_ms = 0), context) }
+                val id = writes.first().id
+                val local = assertNotNull(service.get(conversationId, id, 0, 0))
+                assertEquals(CommandTask.Status.FAILED, local.task.status)
+                assertEquals("partial output", local.output)
+                assertFalse(runner.lastProcess.isAlive())
+                assertTrue(runner.deletedOutputFiles.isEmpty())
+                assertEquals("start-request", local.task.launchReference?.workerRequestId)
+                assertEquals("start-call", local.task.launchReference?.toolCallId)
+                available.set(true)
+                waitUntil(5_000) { delegate.findCommandTask(conversationId, id)?.isTerminal == true }
+                val stored = assertNotNull(delegate.findCommandTask(conversationId, id))
+                assertEquals(CommandTask.Status.FAILED, stored.status)
+                assertEquals("partial output", stored.terminalOutput)
+                assertEquals(setOf(id), writes.map { it.id }.toSet())
+                assertEquals(1, runner.startCount)
+                assertTrue(File(stored.outputFile).isFile)
+            } finally { available.set(true); service.close(); directory.deleteRecursively() }
+        }
+    }
+
+    @Test
+    fun `cancelled registration cleans up and synchronizes outside the cancelled RPC job`() = runBlocking {
+        val directory = Files.createTempDirectory("command-cancelled-registration-").toFile()
+        val runner = FakeCommandProcessRunner(directory)
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val writes = CopyOnWriteArrayList<CommandTask>()
+        val first = AtomicBoolean(true)
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                writes += task
+                val result = delegate.upsertCommandTask(task)
+                if (first.compareAndSet(true, false)) {
+                    currentCoroutineContext().cancel(CancellationException("RPC cancelled"))
+                    awaitCancellation()
+                }
+                return result
+            }
+        }
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        try {
+            val launch = async { service.start(ExecuteCommandRequest("cancelled", yield_time_ms = 0), context(directory)) }
+            assertFailsWith<CancellationException> { launch.await() }
+            val id = writes.first().id
+            waitUntil(3_000) { delegate.findCommandTask(conversationId, id)?.isTerminal == true }
+            assertEquals(CommandTask.Status.CANCELLED, delegate.findCommandTask(conversationId, id)?.status)
+            assertFalse(runner.lastProcess.isAlive())
+            assertEquals(1, runner.startCount)
+            assertTrue(File(runner.lastProcess.outputFile).isFile)
+        } finally { service.close(); directory.deleteRecursively() }
+    }
+
+    @Test
+    fun `permanent startup rejection retains diagnostics and termination failure without retrying forever`() = runBlocking {
+        val directory = Files.createTempDirectory("command-start-rejected-").toFile()
+        val terminationFailure = IllegalStateException("synthetic termination failure")
+        val runner = FakeCommandProcessRunner(directory).apply {
+            onStart = { it.appendOutput("diagnostic"); it.terminationFailure = terminationFailure }
+        }
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val writes = CopyOnWriteArrayList<CommandTask>()
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                writes += task
+                throw ControlPlaneRequestRejectedException("REJECTED", "Synthetic registration rejection")
+            }
+        }
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        try {
+            val failure = assertFailsWith<ControlPlaneRequestRejectedException> {
+                service.start(ExecuteCommandRequest("rejected", yield_time_ms = 0), context(directory))
+            }
+            assertTrue(failure.suppressedExceptions.contains(terminationFailure))
+            waitUntil(3_000) { writes.size >= 2 }
+            val local = assertNotNull(service.get(conversationId, writes.first().id, 0, 0))
+            assertEquals(CommandTask.Status.FAILED, local.task.status)
+            assertNotNull(local.task.synchronizationError)
+            assertTrue(local.task.statusMessage.orEmpty().contains("termination also failed"))
+            assertEquals("diagnostic", local.output)
+            delay(1_200)
+            assertEquals(2, writes.size) // one initial attempt, one terminal reconciliation, no permanent retry loop
+            assertEquals(1, runner.startCount)
+            assertTrue(runner.deletedOutputFiles.isEmpty())
+        } finally {
+            runner.lastProcess.terminationFailure = null
+            runner.lastProcess.terminateTree()
+            service.close(); directory.deleteRecursively()
+        }
+    }
 
     @Test
     fun `slot environment is per process and completed tasks retain launch provenance`() = runBlocking {
@@ -520,13 +696,15 @@ class DefaultCommandTaskServiceTest {
                 context(projectDirectory),
             )
             service.close()
-            coordinator.upsertCommandTask(
+            // Seed the crash snapshot; a live task's lifetime is immutable.
+            val recoveredCoordinator = InMemoryConversationRuntimeCoordinator()
+            recoveredCoordinator.upsertCommandTask(
                 result.task.copy(processLifetime = CommandTask.ProcessLifetime.WORKER_BOUND)
             )
 
             val recoveredService = DefaultCommandTaskService(
                 processRunner = runner,
-                runtimeState = runtimeState(coordinator),
+                runtimeState = runtimeState(recoveredCoordinator),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             )
             try {
@@ -535,7 +713,7 @@ class DefaultCommandTaskServiceTest {
                 assertTrue(runner.lastProcess.terminateTreeCalled)
                 assertEquals(
                     CommandTask.Status.FAILED,
-                    coordinator.findCommandTask(conversationId, result.task.id)?.status,
+                    recoveredCoordinator.findCommandTask(conversationId, result.task.id)?.status,
                 )
             } finally {
                 recoveredService.close()
@@ -904,11 +1082,16 @@ class DefaultCommandTaskServiceTest {
         lateinit var lastProcess: FakeRunningCommandProcess
         lateinit var lastSpec: CommandProcessSpec
         var onStart: (FakeRunningCommandProcess) -> Unit = {}
+        var beforeStart: (CommandProcessSpec) -> Unit = {}
+        var startCount = 0
         val deletedOutputFiles = mutableListOf<String>()
         lateinit var garbageCollectionSpec: CommandOutputGarbageCollectionSpec
 
-        override fun start(spec: CommandProcessSpec): RunningCommandProcess =
-            FakeRunningCommandProcess(
+        override fun start(spec: CommandProcessSpec): RunningCommandProcess {
+            beforeStart(spec)
+            spec.startGuard()
+            startCount++
+            return FakeRunningCommandProcess(
                 processId = nextPid.incrementAndGet(),
                 outputArtifact = File(outputDirectory, "${spec.executionId}.log").apply { createNewFile() },
             ).also { process ->
@@ -916,6 +1099,7 @@ class DefaultCommandTaskServiceTest {
                 lastProcess = process
                 onStart(process)
             }
+        }
 
         override fun recover(spec: CommandProcessRecoverySpec): CommandProcessRecovery {
             val process = lastProcess.takeIf {
@@ -1001,6 +1185,7 @@ class DefaultCommandTaskServiceTest {
             private set
         var terminationCount = 0
             private set
+        var terminationFailure: Throwable? = null
 
         override fun isAlive(): Boolean = alive
 
@@ -1027,6 +1212,7 @@ class DefaultCommandTaskServiceTest {
         override fun terminateTree() {
             terminateTreeCalled = true
             terminationCount += 1
+            terminationFailure?.let { throw it }
             alive = false
             code = 137
         }

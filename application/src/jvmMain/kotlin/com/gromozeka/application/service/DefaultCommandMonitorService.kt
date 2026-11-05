@@ -23,6 +23,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.backgroundActivityLaunchReference
 import com.gromozeka.domain.tool.requiredWorkspaceMountId
 import com.gromozeka.shared.uuid.uuid7
 import jakarta.annotation.PreDestroy
@@ -33,6 +34,8 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -99,7 +102,14 @@ class DefaultCommandMonitorService(
         }
 
         val monitorId = CommandMonitor.Id(uuid7())
+        val launchReference = context.backgroundActivityLaunchReference()
+        val launchContext = currentCoroutineContext()
+        val startGuard = {
+            launchContext.ensureActive()
+            context.checkStartAllowed()
+        }
         val activeMonitor = lifecycleMutex.withLock {
+            startGuard()
             val process = processRunner.start(
                 CommandProcessSpec(
                     executionId = "monitor-${monitorId.value}",
@@ -108,63 +118,116 @@ class DefaultCommandMonitorService(
                     environment = sourceTask.slotOrigin.commandEnvironment(),
                     captureStandardErrorSeparately = true,
                     lifetime = CommandTask.ProcessLifetime.RESUMABLE,
+                    startGuard = startGuard,
+                    protectOutputUntilRegistration = true,
                 )
             )
-            check(process.acceptsInput) { "New command monitor process must accept streaming input" }
-            val errorFile = process.errorFile
-                ?: error("Command monitor process must capture standard error separately")
-            val now = Clock.System.now()
-            val sourceCursor = when (spec.startFrom) {
-                CommandMonitor.StartFrom.NOW -> sourceOutputFile.length()
-                CommandMonitor.StartFrom.BEGINNING -> 0L
-            }
-            val monitor = CommandMonitor(
-                id = monitorId,
-                conversationId = conversationId,
-                commandTaskId = sourceTask.id,
-                slotOrigin = sourceTask.slotOrigin,
-                workerId = workerId,
-                workspaceMountId = sourceTask.workspaceMountId,
-                agentDefinitionId = context.agentDefinitionIdOrNull(),
-                filterCommand = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: spec.filterCommand,
-                mode = spec.mode,
-                startFrom = spec.startFrom,
-                status = CommandMonitor.Status.WORKING,
-                sourceOutputCursor = sourceCursor,
-                processId = process.processId,
-                processStartedAt = process.processStartedAt,
-                processTreeId = process.processTreeId,
-                outputFile = process.outputFile,
-                errorFile = errorFile,
-                outputBytes = 0,
-                eventOutputCursor = 0,
-                createdAt = now,
-                updatedAt = now,
-                terminalNotificationRequestedAt = now.takeIf { context.agentDefinitionIdOrNull() != null },
-            )
-            val active = ActiveMonitor(
-                monitor = monitor,
-                process = process,
-                sourceTask = sourceTask,
-                mutex = monitorMutex(monitor.id),
-            )
+            var created: ActiveMonitor? = null
             try {
+                check(process.acceptsInput) { "New command monitor process must accept streaming input" }
+                val errorFile = process.errorFile
+                    ?: error("Command monitor process must capture standard error separately")
+                val now = Clock.System.now()
+                val sourceCursor = when (spec.startFrom) {
+                    CommandMonitor.StartFrom.NOW -> sourceOutputFile.length()
+                    CommandMonitor.StartFrom.BEGINNING -> 0L
+                }
+                val monitor = CommandMonitor(
+                    id = monitorId,
+                    conversationId = conversationId,
+                    commandTaskId = sourceTask.id,
+                    slotOrigin = sourceTask.slotOrigin,
+                    launchReference = launchReference,
+                    workerId = workerId,
+                    workspaceMountId = sourceTask.workspaceMountId,
+                    agentDefinitionId = context.agentDefinitionIdOrNull(),
+                    filterCommand = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: spec.filterCommand,
+                    mode = spec.mode,
+                    startFrom = spec.startFrom,
+                    status = CommandMonitor.Status.WORKING,
+                    sourceOutputCursor = sourceCursor,
+                    processId = process.processId,
+                    processStartedAt = process.processStartedAt,
+                    processTreeId = process.processTreeId,
+                    outputFile = process.outputFile,
+                    errorFile = errorFile,
+                    outputBytes = 0,
+                    eventOutputCursor = 0,
+                    createdAt = now,
+                    updatedAt = now,
+                    terminalNotificationRequestedAt = now.takeIf { context.agentDefinitionIdOrNull() != null },
+                )
+                val active = ActiveMonitor(monitor, process, sourceTask, monitorMutex(monitor.id))
+                created = active
                 active.mutex.withLock {
+                    currentCoroutineContext().ensureActive()
+                    context.cancellationSignal.throwIfCancellationRequested()
                     active.monitor = synchronize(active.monitor).monitor
+                    context.cancellationSignal.throwIfCancellationRequested()
                     activeMonitors[monitor.id] = active
                     publishSnapshot(conversationId)
+                    processRunner.releaseStartupOutputProtection(process.outputFile)
                     scope.launch { monitor(active) }
                 }
+                active
             } catch (error: Throwable) {
-                activeMonitors.remove(monitor.id, active)
-                runCatching(process::terminateTree)
-                runCatching { processRunner.deleteOutputArtifacts(process.outputFile) }
-                    .onFailure(error::addSuppressed)
+                cleanupFailedStart(process, created, error)
                 throw error
             }
-            active
         }
         return activeMonitor.monitor
+    }
+
+    private suspend fun cleanupFailedStart(
+        process: RunningCommandProcess,
+        active: ActiveMonitor?,
+        error: Throwable,
+    ): Unit = withContext(NonCancellable) {
+        // Only the filter created by this call is stopped; never the source command.
+        val terminationError = runCatching(process::terminateTree).exceptionOrNull()
+        terminationError?.let {
+            error.addSuppressed(it)
+            log.error(it) { "Failed to terminate filter after unsuccessful monitor startup" }
+        }
+        if (active == null) {
+            if (terminationError == null) {
+                runCatching { processRunner.deleteOutputArtifacts(process.outputFile) }.onFailure(error::addSuppressed)
+            }
+            return@withContext
+        }
+        active.mutex.withLock {
+            val now = Clock.System.now()
+            active.startupTerminationFailed = terminationError != null
+            active.monitor = active.monitor.copy(
+                status = if (error is CancellationException) CommandMonitor.Status.CANCELLED else CommandMonitor.Status.FAILED,
+                statusMessage = if (terminationError == null) "Monitor startup failed; filter stopped; partial effects are possible"
+                    else "Monitor startup failed; filter termination also failed; partial effects are possible",
+                updatedAt = now,
+                completedAt = now,
+            )
+            runCatching { active.monitor = active.monitor.withTerminalOutput() }.onFailure(error::addSuppressed)
+            activeMonitors[active.monitor.id] = active
+            active.completed.complete(Unit)
+        }
+        scope.launch {
+            var reconciled = false
+            try {
+                while (currentCoroutineContext().isActive) {
+                    val done = active.mutex.withLock { trySynchronizeTerminalState(active, emptyList()) }
+                    if (done) {
+                        reconciled = active.synchronization.rejection == null
+                        if (!reconciled && !active.startupTerminationFailed) {
+                            processRunner.rejectStartupOutputProtection(active.monitor.outputFile)
+                        }
+                        break
+                    }
+                    delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                }
+            } finally {
+                if (reconciled && !active.startupTerminationFailed) activeMonitors.remove(active.monitor.id, active)
+            }
+        }
+        Unit
     }
 
     override suspend fun get(
@@ -542,25 +605,33 @@ class DefaultCommandMonitorService(
     ) {
         active.monitor = monitor
         while (currentCoroutineContext().isActive) {
-            active.synchronization.rejection?.let {
-                active.monitor = active.monitor.copy(synchronizationError = it)
-                return
-            }
-            if (!active.synchronization.canAttempt()) {
-                delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
-                continue
-            }
-            try {
-                active.monitor = synchronize(active.monitor, events).monitor
-                active.synchronization.succeeded()
-                active.lastControlPlaneWarningAtNanos = null
-                publishSnapshot(active.monitor.conversationId)
-                return
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                recordSynchronizationFailure(active, error)
-            }
+            if (trySynchronizeTerminalState(active, events)) return
+            delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+        }
+    }
+
+    /** Called under the activity mutex; startup cleanup releases it between retry attempts. */
+    private suspend fun trySynchronizeTerminalState(
+        active: ActiveMonitor,
+        events: List<CommandMonitorEvent>,
+    ): Boolean {
+        active.synchronization.rejection?.let {
+            active.monitor = active.monitor.copy(synchronizationError = it)
+            return true
+        }
+        if (!active.synchronization.canAttempt()) return false
+        return try {
+            active.monitor = synchronize(active.monitor, events).monitor
+            active.synchronization.succeeded()
+            active.lastControlPlaneWarningAtNanos = null
+            publishSnapshot(active.monitor.conversationId)
+            if (!active.startupTerminationFailed) processRunner.releaseStartupOutputProtection(active.monitor.outputFile)
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            recordSynchronizationFailure(active, error)
+            active.synchronization.rejection != null
         }
     }
 
@@ -874,7 +945,18 @@ class DefaultCommandMonitorService(
     }
 
     @PreDestroy
-    fun close() = runBlocking { supervisor.cancelAndJoin() }
+    fun close() = runBlocking {
+        supervisor.cancelAndJoin()
+        lifecycleMutex.withLock {
+            activeMonitors.values.filter { it.startupTerminationFailed }.forEach { active ->
+                active.mutex.withLock {
+                    runCatching(active.process::terminateTree)
+                        .onSuccess { active.startupTerminationFailed = false }
+                        .onFailure { log.error(it) { "Failed to stop filter left by unsuccessful startup: ${active.monitor.id.value}" } }
+                }
+            }
+        }
+    }
 
     private class ActiveMonitor(
         var monitor: CommandMonitor,
@@ -888,6 +970,7 @@ class DefaultCommandMonitorService(
         val completed = CompletableDeferred<Unit>()
         val synchronization = CommandSynchronizationState()
         val controlReads = CommandSynchronizationState()
+        var startupTerminationFailed = false
     }
 
     private data class EventScan(

@@ -6,6 +6,11 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import kotlin.time.Clock
+import kotlin.time.Instant
+
+/** Trusted transport metadata. Never decoded from tool arguments or the public context map. */
+data class WorkerRequestExecutionContext(val requestId: String, val startDeadline: Instant)
 
 const val TOOL_CONTEXT_CONVERSATION_ID = "conversationId"
 const val TOOL_CONTEXT_THREAD_ID = "threadId"
@@ -33,7 +38,16 @@ const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC = "conversation_runtime"
 data class ToolExecutionContext(
     private val values: Map<String, Any?> = emptyMap(),
     val cancellationSignal: ToolCancellationSignal = ToolCancellationSignal.None,
+    val workerRequest: WorkerRequestExecutionContext? = null,
 ) {
+    /** Only a start fence: never apply the delivery TTL to an already running command. */
+    fun checkStartAllowed(now: Instant = Clock.System.now()) {
+        cancellationSignal.throwIfCancellationRequested()
+        check(workerRequest?.let { now < it.startDeadline } != false) {
+            "Worker request start deadline expired before process launch"
+        }
+    }
+
     fun get(key: String): Any? = values[key]
 
     fun getString(key: String): String? = values[key] as? String
@@ -48,6 +62,17 @@ data class ToolExecutionContext(
     fun withValue(key: String, value: Any?): ToolExecutionContext =
         copy(values = values + (key to value))
 }
+
+/** Server resolves this correlation against its stored request; it is not an actor assertion. */
+fun ToolExecutionContext.backgroundActivityLaunchReference(): com.gromozeka.domain.service.BackgroundActivityLaunchReference? =
+    workerRequest?.let { request ->
+        val callId = if (getString(TOOL_CONTEXT_VISUAL_ID) != null) null else {
+            requireNotNull(getString("toolCallId")?.takeIf(String::isNotBlank)) {
+                "Worker tool launch requires its trusted tool call id"
+            }
+        }
+        com.gromozeka.domain.service.BackgroundActivityLaunchReference(request.requestId, callId)
+    }
 
 fun ToolExecutionContext?.requiredProjectId(): Project.Id =
     requiredString(TOOL_CONTEXT_PROJECT_ID, "Project id").let(Project::Id)

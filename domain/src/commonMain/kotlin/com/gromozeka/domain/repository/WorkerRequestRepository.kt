@@ -14,4 +14,9 @@ interface WorkerRequestRepository {
     suspend fun markDispatched(id: String, at: Instant): Boolean
     suspend fun cancel(id: String, at: Instant)
     suspend fun complete(workerId: ConversationRuntimeWorkerId, id: String, response: ByteArray, at: Instant, onlyIfUndispatched: Boolean = false): Boolean
+    suspend fun maintenanceCandidates(at: Instant, limit: Int): List<String>
+    suspend fun setExecutionDeadlineIfMissing(id: String, deadline: Instant)
+    suspend fun unprojectedCompletions(limit: Int): List<String>
+    suspend fun markCompletionProjected(id: String, at: Instant)
+    suspend fun deleteCompletedBefore(before: Instant, limit: Int): Int
 }

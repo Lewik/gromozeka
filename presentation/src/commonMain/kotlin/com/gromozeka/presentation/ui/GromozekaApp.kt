@@ -1,5 +1,8 @@
 package com.gromozeka.presentation.ui
 
+import com.gromozeka.presentation.ui.notifications.UserNotificationsState
+import com.gromozeka.presentation.ui.notifications.UserNotificationsDialog
+
 import com.gromozeka.presentation.services.translation.data.Translation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -120,6 +123,15 @@ fun GromozekaAppContent(
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
     var showPinsPanel by remember { mutableStateOf(false) }
+    val notificationState = remember(appComponents) { UserNotificationsState(appComponents.authenticatedUser.id) }
+    LaunchedEffect(appComponents, notificationState.observationRetry) {
+        notificationState.observe(appComponents.userNotificationService, appComponents.userNotificationSink)
+    }
+    UserNotificationsDialog(notificationState, appComponents.userNotificationService) { id ->
+        val conversation = appComponents.conversationService.findById(id)
+            ?: error("Notification conversation is not available")
+        appComponents.appViewModel.createTab(projectId = conversation.projectId, conversationId = id, setAsCurrent = true)
+    }
     var pinRestartFailed by remember(appComponents) { mutableStateOf(false) }
     if (pinRestartFailed) {
         AlertDialog(
@@ -457,6 +469,24 @@ fun GromozekaAppContent(
                                         onTabHoverExit = { hoveredTabIndex = -1 },
                                         onRenameConversation = { conversationId, newName ->
                                             appComponents.appViewModel.renameConversation(conversationId, newName)
+                                        },
+                                        trailingContent = {
+                                            androidx.compose.material3.BadgedBox(badge = {
+                                                val unread = notificationState.summary?.unreadCount ?: 0
+                                                if (notificationState.summaryFailed || unread > 0) androidx.compose.material3.Badge {
+                                                    Text(if (notificationState.summaryFailed) "!" else if (unread > 99) "99+" else unread.toString())
+                                                }
+                                            }) {
+                                                androidx.compose.material3.IconButton(
+                                                    onClick = { coroutineScope.launch { notificationState.open(appComponents.userNotificationService) } },
+                                                    modifier = Modifier.size(48.dp).testTag("notifications-open"),
+                                                ) {
+                                                    com.gromozeka.presentation.ui.icons.Icon(
+                                                        com.gromozeka.presentation.ui.icons.Icons.Default.Inventory2,
+                                                        localization.text("notifications.title"),
+                                                    )
+                                                }
+                                            }
                                         },
                                     )
                                 }

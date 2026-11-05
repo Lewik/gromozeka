@@ -2177,6 +2177,23 @@
     "pins.notFound": "لم يعد هذا النص المثبت متاحًا. تم الاحتفاظ بالنص غير المحفوظ.",
     "pins.accessDenied": "ليست لديك صلاحية الوصول إلى هذه النصوص المثبتة.",
     "pins.reloadEdited": "تغيرت المسودة أثناء التحميل. تم الاحتفاظ بالنص الأحدث.",
-    "pins.restartFailed": "تعذّر إكمال إعادة بدء المحادثة مع الاحتفاظ بنصوصها المثبّتة. تحقّق من قائمة المحادثات قبل المحاولة مجددًا."
+    "pins.restartFailed": "تعذّر إكمال إعادة بدء المحادثة مع الاحتفاظ بنصوصها المثبّتة. تحقّق من قائمة المحادثات قبل المحاولة مجددًا.",
+    "notifications.title": "الإشعارات",
+    "notifications.close": "إغلاق",
+    "notifications.unreadOnly": "غير المقروءة فقط",
+    "notifications.refresh": "تحديث",
+    "notifications.markAllRead": "تحديد الكل كمقروء",
+    "notifications.actionFailed": "تعذر تحديث الإشعارات. حدّث القائمة قبل إعادة المحاولة.",
+    "notifications.conversationUnavailable": "تعذر فتح هذه المحادثة. لا يزال الإشعار متاحًا.",
+    "notifications.loadFailed": "تعذر تحميل الإشعارات.",
+    "notifications.empty": "لا توجد إشعارات",
+    "notifications.level.info": "معلومات",
+    "notifications.level.warning": "تحذير",
+    "notifications.level.error": "خطأ",
+    "notifications.markRead": "تحديد كمقروء",
+    "notifications.markUnread": "تحديد كغير مقروء",
+    "notifications.openConversation": "فتح المحادثة",
+    "notifications.delete": "حذف",
+    "notifications.loadMore": "تحميل المزيد"
   }
 }

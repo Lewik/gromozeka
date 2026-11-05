@@ -109,11 +109,18 @@ class AiToolInvocationContextTest {
 
     @Test fun timingDefaultsLimitsAndWorkerBindingAreShared() {
         val bound = ToolExecutionContext(mapOf(TOOL_CONTEXT_WORKER_ID to "w"))
-        val target = parse(worker, """{"_grz":{"delivery_ttl_seconds":604800}}""", bound).executionTarget!!
+        val target = parse(worker, """{"_grz":{"delivery_ttl_seconds":300}}""", bound).executionTarget!!
         assertEquals("w", target.workerId?.value)
+        assertEquals(300_000L, target.requestPolicy?.deliveryTtlMillis)
+        assertNull(parse(worker, "{}", bound).executionTarget!!.requestPolicy)
+        assertEquals(30_000L, com.gromozeka.domain.service.WorkerRequestPolicy().deliveryTtlMillis)
+        assertEquals(30_000L, parse(worker, """{"_grz":{"execution_timeout_seconds":10}}""", bound).executionTarget!!.requestPolicy?.deliveryTtlMillis)
+        assertEquals(604_800_000L, parse(worker, """{"_grz":{"wait_timeout_seconds":604800}}""", bound).executionTarget!!.requestPolicy?.waitTimeoutMillis)
+        assertEquals(300, schema(worker).getValue("properties").jsonObject.getValue("_grz").jsonObject
+            .getValue("properties").jsonObject.getValue("delivery_ttl_seconds").jsonObject.getValue("maximum").jsonPrimitive.int)
         assertEquals(1_800_000L, target.requestPolicy?.executionTimeoutMillis)
-        assertEquals(604_800_000L, target.requestPolicy?.waitTimeoutMillis)
-        for ((field, value) in listOf("delivery_ttl_seconds" to "604801", "execution_timeout_seconds" to "86401", "wait_timeout_seconds" to "null", "wait_timeout_seconds" to "1.5", "wait_timeout_seconds" to "\"3\""))
+        assertEquals(2_100_000L, target.requestPolicy?.waitTimeoutMillis)
+        for ((field, value) in listOf("delivery_ttl_seconds" to "301", "execution_timeout_seconds" to "86401", "wait_timeout_seconds" to "null", "wait_timeout_seconds" to "1.5", "wait_timeout_seconds" to "\"3\""))
             assertFailsWith<IllegalArgumentException> { parse(worker, """{"_grz":{"$field":$value}}""", bound) }
     }
 

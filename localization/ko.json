@@ -1992,6 +1992,23 @@
     "pins.notFound": "이 고정 텍스트를 더 이상 사용할 수 없습니다. 저장하지 않은 내용은 유지됩니다.",
     "pins.accessDenied": "이 고정 텍스트에 접근할 권한이 없습니다.",
     "pins.reloadEdited": "불러오는 동안 초안이 변경되었습니다. 더 최근의 내용은 유지됩니다.",
-    "pins.restartFailed": "고정된 텍스트를 유지한 채 대화 재시작을 완료하지 못했습니다. 다시 시도하기 전에 대화 목록을 확인하세요."
+    "pins.restartFailed": "고정된 텍스트를 유지한 채 대화 재시작을 완료하지 못했습니다. 다시 시도하기 전에 대화 목록을 확인하세요.",
+    "notifications.title": "알림",
+    "notifications.close": "닫기",
+    "notifications.unreadOnly": "읽지 않은 알림만",
+    "notifications.refresh": "새로고침",
+    "notifications.markAllRead": "모두 읽음으로 표시",
+    "notifications.actionFailed": "알림을 업데이트하지 못했습니다. 다시 시도하기 전에 새로고침하세요.",
+    "notifications.conversationUnavailable": "이 대화를 열지 못했습니다. 알림은 계속 확인할 수 있습니다.",
+    "notifications.loadFailed": "알림을 불러오지 못했습니다.",
+    "notifications.empty": "알림이 없습니다",
+    "notifications.level.info": "정보",
+    "notifications.level.warning": "경고",
+    "notifications.level.error": "오류",
+    "notifications.markRead": "읽음으로 표시",
+    "notifications.markUnread": "읽지 않음으로 표시",
+    "notifications.openConversation": "대화 열기",
+    "notifications.delete": "삭제",
+    "notifications.loadMore": "더 불러오기"
   }
 }

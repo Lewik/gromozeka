@@ -37,6 +37,96 @@ class LocalCommandProcessRunnerTest {
     private val isLinux = System.getProperty("os.name").lowercase().contains("linux")
 
     @Test
+    fun `expired launch is fenced after SDK setup at native spawn and at payload release`() {
+        // Runner entry, after SDK, immediately before ProcessBuilder.start, then barrier release.
+        for (deniedCheck in 1..4) withTemporaryGromozekaHome { home ->
+            val deadline = Instant.parse("2026-01-01T00:00:30Z")
+            val context = com.gromozeka.domain.tool.ToolExecutionContext(
+                workerRequest = com.gromozeka.domain.tool.WorkerRequestExecutionContext("request", deadline),
+            )
+            var checks = 0
+            assertFailsWith<IllegalStateException> {
+                runner.start(CommandProcessSpec(
+                    executionId = "expired-$deniedCheck",
+                    command = platformCommand("printf started > payload", "echo started > payload"),
+                    workingDirectory = home.absolutePath,
+                    protectOutputUntilRegistration = true,
+                    startGuard = {
+                        checks++
+                        context.checkStartAllowed(if (checks == deniedCheck) deadline else Instant.parse("2026-01-01T00:00:29Z"))
+                    },
+                ))
+            }
+            assertEquals(deniedCheck, checks)
+            assertFalse(File(home, "payload").exists())
+            assertTrue(File(home, "tool-outputs").listFiles().orEmpty().isEmpty())
+        }
+    }
+
+    @Test
+    fun `parent cancellation immediately before barrier release never executes payload`() {
+        withTemporaryGromozekaHome { home ->
+            var checks = 0
+            val failure = kotlinx.coroutines.CancellationException("cancelled during startup")
+            assertEquals(failure, assertFailsWith<kotlinx.coroutines.CancellationException> {
+                runner.start(CommandProcessSpec(
+                    executionId = "cancelled-barrier",
+                    command = platformCommand("printf started > payload", "echo started > payload"),
+                    workingDirectory = home.absolutePath,
+                    startGuard = { if (++checks == 4) throw failure },
+                ))
+            })
+            assertEquals(4, checks)
+            assertFalse(File(home, "payload").exists())
+            assertTrue(File(home, "tool-outputs").listFiles().orEmpty().isEmpty())
+        }
+    }
+
+    @Test
+    fun `unresolved registration retains output even across stale inventory and zero quota`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(CommandProcessSpec(
+                executionId = "unacknowledged-output",
+                command = platformCommand("printf diagnostic", "echo diagnostic"),
+                workingDirectory = home.absolutePath,
+                protectOutputUntilRegistration = true,
+            ))
+            assertTrue(process.waitFor(5_000))
+            fun collect(references: Set<String>) = runner.garbageCollectOutputArtifacts(
+                CommandOutputGarbageCollectionSpec(references, emptySet(), Instant.parse("2099-01-01T00:00:00Z"), 0),
+            )
+            collect(emptySet()) // no commit
+            collect(setOf(process.outputFile)) // commit happened, ACK still unknown
+            assertTrue(File(process.outputFile).isFile)
+            runner.releaseStartupOutputProtection(process.outputFile)
+            collect(emptySet()) // an inventory captured BEFORE the commit
+            assertTrue(File(process.outputFile).isFile)
+            collect(setOf(process.outputFile)) // known persisted terminal artifact is now subject to retention
+            assertFalse(File(process.outputFile).exists())
+        }
+    }
+
+    @Test
+    fun `definitively rejected registration remains subject to output retention`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(CommandProcessSpec(
+                executionId = "rejected-output", command = platformCommand("printf diagnostic", "echo diagnostic"),
+                workingDirectory = home.absolutePath, protectOutputUntilRegistration = true,
+            ))
+            assertTrue(process.waitFor(5_000))
+            runner.rejectStartupOutputProtection(process.outputFile)
+            runner.garbageCollectOutputArtifacts(CommandOutputGarbageCollectionSpec(
+                emptySet(), emptySet(), Instant.parse("2000-01-01T00:00:00Z"), Long.MAX_VALUE,
+            ))
+            assertTrue(File(process.outputFile).isFile)
+            runner.garbageCollectOutputArtifacts(CommandOutputGarbageCollectionSpec(
+                emptySet(), emptySet(), Instant.parse("2099-01-01T00:00:00Z"), 0,
+            ))
+            assertFalse(File(process.outputFile).exists())
+        }
+    }
+
+    @Test
     fun `runner drains large merged output into artifact`() {
         withTemporaryGromozekaHome { home ->
             val process = runner.start(
