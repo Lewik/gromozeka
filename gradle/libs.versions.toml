@@ -11,6 +11,7 @@ spring-boot = "4.1.0"
 spring-dependency-management = "1.1.7"
 jackson-2 = "2.21.4"
 snakeyaml = "2.6"
+re2j = "1.8"
 jetbrains-compose = "1.13.0-alpha02"
 kotlinx-serialization = "1.11.0"
 kotlinx-datetime = "0.8.0"
@@ -98,6 +99,7 @@ jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+re2j = { module = "com.google.re2j:re2j", version.ref = "re2j" }
 
 # Kotlinx
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }

@@ -18,6 +18,7 @@ kotlin {
                 
                 implementation(libs.spring.boot.starter)
                 implementation(libs.snakeyaml)
+                implementation(libs.re2j)
                 implementation("org.springframework:spring-tx:6.2.19")
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)

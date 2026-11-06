@@ -15,6 +15,40 @@ class PostgresConversationHistoryRepository(
     private val dataSource: DataSource,
     private val json: Json,
 ) : ConversationHistoryRepository {
+    override suspend fun latestMessageTimes(threadIds: Set<Conversation.Thread.Id>): Map<Conversation.Thread.Id, kotlin.time.Instant?> {
+        if (threadIds.isEmpty()) return emptyMap()
+        return withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                val ids = connection.createArrayOf("varchar", threadIds.map { it.value }.toTypedArray())
+                try {
+                    connection.prepareStatement("""
+                        SELECT t.id, last_message.created_at
+                        FROM threads t
+                        LEFT JOIN LATERAL (
+                            SELECT m.created_at
+                            FROM thread_messages tm JOIN messages m ON m.id = tm.message_id
+                            WHERE tm.thread_id = t.id
+                            ORDER BY tm.position DESC LIMIT 1
+                        ) last_message ON TRUE
+                        WHERE t.id = ANY (?)
+                    """.trimIndent()).use { statement ->
+                        statement.setArray(1, ids)
+                        statement.executeQuery().use { rows ->
+                            buildMap {
+                                while (rows.next()) {
+                                    val timestamp = rows.getTimestamp(2)?.toInstant()
+                                    put(Conversation.Thread.Id(rows.getString(1)), timestamp?.let {
+                                        kotlin.time.Instant.fromEpochSeconds(it.epochSecond, it.nano.toLong())
+                                    })
+                                }
+                            }
+                        }
+                    }
+                } finally { ids.free() }
+            }
+        }
+    }
+
     override suspend fun page(threadId: Conversation.Thread.Id, before: Int?, after: Int?, limit: Int): List<PositionedConversationMessage> {
         require(limit in 1..101)
         require(before == null || after == null)

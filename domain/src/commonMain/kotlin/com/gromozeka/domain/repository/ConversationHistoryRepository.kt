@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.ConversationMessageSelection
 data class PositionedConversationMessage(val position: Int, val message: Conversation.Message)
 
 interface ConversationHistoryRepository {
+    /** Timestamp of the last linked message by position, for each existing thread; null for an empty thread. Never loads message bodies. */
+    suspend fun latestMessageTimes(threadIds: Set<Conversation.Thread.Id>): Map<Conversation.Thread.Id, kotlin.time.Instant?>
     suspend fun page(threadId: Conversation.Thread.Id, before: Int?, after: Int?, limit: Int): List<PositionedConversationMessage>
     suspend fun position(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Int?
     suspend fun message(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): PositionedConversationMessage?

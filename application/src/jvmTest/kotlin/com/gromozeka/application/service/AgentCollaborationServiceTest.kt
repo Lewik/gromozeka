@@ -8,8 +8,10 @@ import com.gromozeka.domain.tool.AgentPreloadedTools
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Instant
@@ -27,11 +29,15 @@ class AgentCollaborationServiceTest {
     private val agents = mock<AgentDomainService>()
     private val coordinator = mock<ConversationRuntimeCoordinator>()
     private val sync = mock<ConversationRuntimeStateSyncService>()
+    private val tabLayouts = mock<UserConversationTabLayoutService>()
+    private val messageHistory = mock<ConversationHistoryRepository>()
     private val agentAccess = ConversationAgentAccessService(conversations, identities, access, agents)
-    private val service = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync)
+    private val service = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory)
     private fun agent(id: AgentDefinition.Id) = AgentDefinition(id, name = id.value, prompts = emptyList(), runtimeSelection = selection, type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
     private fun conversation(endpoint: AgentEndpoint) = Conversation(endpoint.conversationId, Project.Id("p"), setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)), currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
     private suspend fun setup() {
+        Mockito.`when`(tabLayouts.snapshot(actor.id)).thenReturn(ConversationTabLayout(listOf(target.conversationId)))
+        Mockito.`when`(messageHistory.latestMessageTimes(setOf(target.threadId))).thenReturn(mapOf(target.threadId to null))
         Mockito.`when`(identities.findUserById(actor.id)).thenReturn(actor)
         Mockito.`when`(conversations.findById(source.conversationId)).thenReturn(conversation(source))
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target))
@@ -50,7 +56,7 @@ class AgentCollaborationServiceTest {
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(definition)
         val repository = mock<AgentCollaborationRepository>()
         val history = mock<ConversationDomainService>()
-        val reader = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, history)
+        val reader = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory, history)
         val resolved = reader.resolveEligibleTarget(source, actor.id, "b")
         assertEquals(target, resolved.endpoint)
         assertEquals(conversation(target), resolved.conversation)
@@ -138,7 +144,7 @@ class AgentCollaborationServiceTest {
             service.resolveEligibleTarget(source, actor.id, "a", "aa")
         }.message)
         assertFailsWith<IllegalArgumentException> { service.send(source, actor.id, "a", "aa", "No local send", "self", false) }
-        assertTrue(service.sessions(source, actor.id, "a", "aa", details = true).isEmpty())
+        assertTrue(service.sessions(source, actor.id, "a", "aa", details = true).getValue("sessions").jsonArray.isEmpty())
         assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
         Mockito.verifyNoInteractions(coordinator, sync)
     }
@@ -155,7 +161,7 @@ class AgentCollaborationServiceTest {
             service.resolveEligibleTarget(source, actor.id, "b")
         }.message)
         assertEquals(target, service.resolveEligibleTarget(source, actor.id, "b", "bb").endpoint)
-        assertEquals("bb", service.sessions(source, actor.id).single().jsonObject.getValue("agent_id").jsonPrimitive.content)
+        assertEquals("bb", service.sessions(source, actor.id).getValue("sessions").jsonArray.single().jsonObject.getValue("agent_id").jsonPrimitive.content)
         val id = service.send(source, actor.id, "b", "bb", "Existing agent-scoped behavior", "mixed-explicit", false)
         assertEquals(target, repo.deliveries.getValue("$id:input").target)
         assertTrue(repo.items.isEmpty())
@@ -166,8 +172,8 @@ class AgentCollaborationServiceTest {
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
         Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(conversation(source), conversation(target)))
         val scheduler = InMemoryConversationRuntimeCoordinator()
-        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync)
-        val endpoint = transport.sessions(source, actor.id).single().jsonObject
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory)
+        val endpoint = transport.sessions(source, actor.id).getValue("sessions").jsonArray.single().jsonObject
         assertEquals(target.conversationId.value, endpoint.getValue("conversation_id").jsonPrimitive.content)
         assertEquals(target.agentId.value, endpoint.getValue("agent_id").jsonPrimitive.content)
 
@@ -186,7 +192,7 @@ class AgentCollaborationServiceTest {
             val unnamed = conversation(target).copy(displayName = title)
             Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(unnamed))
             Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(unnamed)
-            val row = service.sessions(source, actor.id).single().jsonObject
+            val row = service.sessions(source, actor.id).getValue("sessions").jsonArray.single().jsonObject
             assertEquals("New conversation", row.getValue("title").jsonPrimitive.content)
             assertEquals(title, row.getValue("stored_title").jsonPrimitive.content)
             assertEquals(JsonPrimitive(true), row["title_is_fallback"])
@@ -204,12 +210,12 @@ class AgentCollaborationServiceTest {
         val named = conversation(target).copy(displayName = "Original title")
         Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(named))
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(named)
-        val original = service.sessions(source, actor.id).single().jsonObject
+        val original = service.sessions(source, actor.id).getValue("sessions").jsonArray.single().jsonObject
         assertEquals("Original title", original.getValue("title").jsonPrimitive.content)
         assertEquals(JsonPrimitive(false), original["title_is_fallback"])
         // Discovery's initial list may predate a rename; sameBoundary reads the current identity.
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(named.copy(displayName = "Renamed title"))
-        val renamed = service.sessions(source, actor.id).single().jsonObject
+        val renamed = service.sessions(source, actor.id).getValue("sessions").jsonArray.single().jsonObject
         assertEquals("Renamed title", renamed.getValue("title").jsonPrimitive.content)
         assertEquals("Renamed title", renamed.getValue("stored_title").jsonPrimitive.content)
         assertEquals(original.getValue("conversation_id"), renamed.getValue("conversation_id"))
@@ -221,7 +227,7 @@ class AgentCollaborationServiceTest {
         setup()
         Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(conversation(target)))
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(agent(target.agentId), null)
-        val row = service.sessions(source, actor.id).single().jsonObject
+        val row = service.sessions(source, actor.id).getValue("sessions").jsonArray.single().jsonObject
         assertEquals(target.agentId.value, row.getValue("agent_name").jsonPrimitive.content)
         Mockito.verify(agents, Mockito.times(1)).findById(target.agentId)
     }
@@ -235,8 +241,8 @@ class AgentCollaborationServiceTest {
             state = AgentRequest.State.WAITING_RESULT, waitFor = listOf("known-command"))
         val itemsBefore = repo.items.toMap()
         val history = mock<ConversationDomainService>()
-        val reader = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync, history)
-        val row = reader.sessions(source, actor.id, "b", "bb", details = true).single().jsonObject
+        val reader = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory, history)
+        val row = reader.sessions(source, actor.id, "b", "bb", details = true).getValue("sessions").jsonArray.single().jsonObject
         val runtime = row.getValue("runtime").jsonObject
         assertEquals("tb", row.getValue("thread_id").jsonPrimitive.content)
         assertEquals("PAUSED", runtime.getValue("foreground_state").jsonPrimitive.content)
@@ -259,12 +265,12 @@ class AgentCollaborationServiceTest {
             conversation(target).copy(externalChannel = ExternalConversationChannel("telegram", "connection", "chat")),
         )) {
             Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(hidden)
-            assertTrue(service.sessions(source, actor.id, "b", "bb", details = true).isEmpty())
+            assertTrue(service.sessions(source, actor.id, "b", "bb", details = true).getValue("sessions").jsonArray.isEmpty())
         }
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target))
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(agent(target.agentId).copy(toolAccess = ToolAccessPolicy.AllowOnly()))
-        assertTrue(service.sessions(source, actor.id, "b", "bb", details = true).isEmpty())
-        assertTrue(service.sessions(source, actor.id, "a", "aa", details = true).isEmpty())
+        assertTrue(service.sessions(source, actor.id, "b", "bb", details = true).getValue("sessions").jsonArray.isEmpty())
+        assertTrue(service.sessions(source, actor.id, "a", "aa", details = true).getValue("sessions").jsonArray.isEmpty())
         Mockito.verifyNoInteractions(coordinator, sync)
         assertTrue(repo.items.isEmpty())
         assertTrue(repo.deliveries.isEmpty())
@@ -294,22 +300,131 @@ class AgentCollaborationServiceTest {
         val paused = ConversationRuntimeSchedulingSnapshot(target.conversationId,
             state = ConversationExecutionState(target.conversationId, ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
         Mockito.`when`(coordinator.schedulingSnapshot(target.conversationId)).thenReturn(paused, ConversationRuntimeSchedulingSnapshot(target.conversationId))
-        val first = service.sessions(source, actor.id)
-        assertEquals(200, first.size)
+        val first = service.sessions(source, actor.id).getValue("sessions").jsonArray
+        assertEquals(AgentSessionQuery.DEFAULT_LIMIT, first.size)
         assertTrue(first.all { it.jsonObject.getValue("runtime").jsonObject.getValue("foreground_state").jsonPrimitive.content == "PAUSED" })
-        val second = service.sessions(source, actor.id)
-        assertEquals(200, second.size)
+        val second = service.sessions(source, actor.id).getValue("sessions").jsonArray
+        assertEquals(AgentSessionQuery.DEFAULT_LIMIT, second.size)
         assertTrue(second.all { it.jsonObject.getValue("runtime").jsonObject.getValue("foreground_state").jsonPrimitive.content == "IDLE" })
         Mockito.verify(coordinator, Mockito.times(2)).schedulingSnapshot(target.conversationId)
         Mockito.verifyNoMoreInteractions(coordinator)
         Mockito.verifyNoInteractions(sync)
     }
 
+    @Test fun `saved open tabs are the default and explicit inspection can include closed tabs`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(tabLayouts.snapshot(actor.id)).thenReturn(ConversationTabLayout())
+        assertTrue(service.sessions(source, actor.id, "b", "bb").getValue("sessions").jsonArray.isEmpty())
+        Mockito.verifyNoInteractions(messageHistory, coordinator)
+        val closed = service.sessions(source, actor.id, "b", "bb", query = AgentSessionQuery(openOnly = false))
+            .getValue("sessions").jsonArray.single().jsonObject
+        assertEquals(JsonPrimitive(false), closed.getValue("is_open_tab"))
+        assertEquals(kotlinx.serialization.json.JsonNull, closed.getValue("last_message_at"))
+        Mockito.verify(tabLayouts, Mockito.times(2)).snapshot(actor.id)
+    }
+
+    @Test fun `open and title filters see conversations beyond the old first 200 cap`(): Unit = runBlocking {
+        setup()
+        val candidates = (0..220).map { i -> sessionConversation("entry-${i.toString().padStart(3, '0')}", if (i == 220) "Wanted [C++]" else "Other $i") }
+        directory(candidates.map { it to now }, listOf(candidates.last().id))
+        for (query in listOf(AgentSessionQuery(), AgentSessionQuery(openOnly = false, query = "wanted [c++]"),
+            AgentSessionQuery(openOnly = false, query = "^wanted", queryMode = AgentSessionQuery.Mode.REGEX))) {
+            val page = service.sessions(source, actor.id, query = query)
+            val row = page.getValue("sessions").jsonArray.single().jsonObject
+            assertEquals("entry-220", row.getValue("conversation_id").jsonPrimitive.content)
+            assertEquals(JsonPrimitive(true), row.getValue("is_open_tab"))
+            assertEquals(kotlinx.serialization.json.JsonNull, page.getValue("next_cursor"))
+        }
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+        Mockito.verifyNoInteractions(sync)
+    }
+
+    @Test fun `last message ordering and independent strict bounds ignore conversation update times`(): Unit = runBlocking {
+        setup()
+        val low = Instant.parse("2026-11-01T00:00:00Z")
+        val middle = Instant.parse("2026-11-03T00:00:00Z")
+        val high = Instant.parse("2026-11-06T00:00:00Z")
+        directory(listOf(sessionConversation("old").copy(updatedAt = high) to low,
+            sessionConversation("empty").copy(updatedAt = high) to null,
+            sessionConversation("new") to high, sessionConversation("middle") to middle))
+        suspend fun ids(query: AgentSessionQuery) = service.sessions(source, actor.id, query = query).getValue("sessions").jsonArray
+            .map { it.jsonObject.getValue("conversation_id").jsonPrimitive.content }
+        assertEquals(listOf("new", "middle", "old", "empty"), ids(AgentSessionQuery()))
+        assertEquals(listOf("new", "middle"), ids(AgentSessionQuery(messageGt = low)))
+        assertEquals(listOf("old"), ids(AgentSessionQuery(messageLt = middle)))
+        assertEquals(listOf("middle"), ids(AgentSessionQuery(messageGt = low, messageLt = high)))
+        assertTrue(ids(AgentSessionQuery(messageGt = high)).isEmpty())
+        assertTrue(Mockito.mockingDetails(messageHistory).invocations.all { it.method.name == "latestMessageTimes" })
+    }
+
+    @Test fun `keyset pages traverse equal times multiple agents and empty threads without duplicates`(): Unit = runBlocking {
+        setup()
+        val one = sessionConversation("one").let { it.copy(participants = it.participants +
+            setOf(Conversation.Participant.Agent(AgentDefinition.Id("second-one")), Conversation.Participant.Agent(AgentDefinition.Id("denied")))) }
+        val two = sessionConversation("two").let { it.copy(participants = it.participants + Conversation.Participant.Agent(AgentDefinition.Id("second-two"))) }
+        directory(listOf(sessionConversation("empty") to null, two to now, one to now))
+        Mockito.`when`(agents.findById(AgentDefinition.Id("denied"))).thenReturn(agent(AgentDefinition.Id("denied")).copy(toolAccess = ToolAccessPolicy.AllowOnly()))
+        val seen = mutableListOf<String>()
+        var cursor: String? = null
+        var pages = 0
+        do {
+            val page = service.sessions(source, actor.id, query = AgentSessionQuery(limit = 2, cursor = cursor))
+            val rows = page.getValue("sessions").jsonArray
+            assertTrue(rows.size <= 2)
+            seen += rows.map { row -> row.jsonObject.let { it.getValue("conversation_id").jsonPrimitive.content + ":" + it.getValue("agent_id").jsonPrimitive.content } }
+            cursor = page.getValue("next_cursor").jsonPrimitive.contentOrNull
+            assertTrue(++pages <= 3)
+        } while (cursor != null)
+        assertEquals(listOf("one:agent-one", "one:second-one", "two:agent-two", "two:second-two", "empty:agent-empty"), seen)
+        assertEquals(seen.size, seen.distinct().size)
+        assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
+        assertTrue(service.wakeups.tryReceive().isFailure)
+    }
+
+    @Test fun `cursor validates caller query and syntax instead of restarting the first page`(): Unit = runBlocking {
+        setup()
+        directory(listOf(sessionConversation("one") to now, sessionConversation("two") to now))
+        val first = service.sessions(source, actor.id, query = AgentSessionQuery(limit = 1))
+        val cursor = requireNotNull(first.getValue("next_cursor").jsonPrimitive.contentOrNull)
+        assertFailsWith<IllegalArgumentException> { service.sessions(source, actor.id, query = AgentSessionQuery(openOnly = false, cursor = cursor)) }
+        assertFailsWith<IllegalArgumentException> { service.sessions(source, actor.id, query = AgentSessionQuery(query = "one", cursor = cursor)) }
+        assertFailsWith<IllegalArgumentException> { service.sessions(source, actor.id, query = AgentSessionQuery(cursor = "not-a-cursor")) }
+        val second = service.sessions(source, actor.id, query = AgentSessionQuery(limit = 200, cursor = cursor))
+        assertEquals("two", second.getValue("sessions").jsonArray.single().jsonObject.getValue("conversation_id").jsonPrimitive.content)
+    }
+
+    @Test fun `message metadata failure cannot masquerade as empty history`(): Unit = runBlocking {
+        setup()
+        Mockito.`when`(messageHistory.latestMessageTimes(setOf(target.threadId))).thenReturn(emptyMap())
+        assertFailsWith<IllegalStateException> { service.sessions(source, actor.id, "b", "bb") }
+        Mockito.verifyNoInteractions(coordinator, sync)
+    }
+
+    private fun sessionConversation(id: String, title: String = id): Conversation = conversation(
+        AgentEndpoint(Conversation.Id(id), Conversation.Thread.Id("thread-$id"), AgentDefinition.Id("agent-$id")),
+    ).copy(displayName = title)
+
+    private suspend fun directory(entries: List<Pair<Conversation, Instant?>>, open: List<Conversation.Id> = entries.map { it.first.id }) {
+        Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(entries.map { it.first })
+        Mockito.`when`(tabLayouts.snapshot(actor.id)).thenReturn(ConversationTabLayout(open))
+        entries.forEach { (conversation, _) ->
+            Mockito.`when`(conversations.findById(conversation.id)).thenReturn(conversation)
+            conversation.participants.filterIsInstance<Conversation.Participant.Agent>().forEach {
+                Mockito.`when`(agents.findById(it.agentDefinitionId)).thenReturn(agent(it.agentDefinitionId))
+            }
+            Mockito.`when`(coordinator.schedulingSnapshot(conversation.id)).thenReturn(ConversationRuntimeSchedulingSnapshot(conversation.id))
+        }
+        val times = entries.associate { it.first.currentThread to it.second }
+        Mockito.`when`(messageHistory.latestMessageTimes(Mockito.anySet())).thenAnswer { invocation ->
+            invocation.getArgument<Set<Conversation.Thread.Id>>(0).associateWith { times.getValue(it) }
+        }
+    }
+
     @Test fun `different tool policies remain rejected across runtime selections`(): Unit = runBlocking {
         setup()
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime().copy(toolAccess = ToolAccessPolicy.AllowOnly()))
         Mockito.`when`(conversations.findByProject(Project.Id("p"))).thenReturn(listOf(conversation(source), conversation(target)))
-        assertTrue(service.sessions(source, actor.id).isEmpty())
+        assertTrue(service.sessions(source, actor.id).getValue("sessions").jsonArray.isEmpty())
         val error = assertFailsWith<IllegalArgumentException> {
             service.send(source, actor.id, "b", null, "Do not bypass tool policy", "policy-boundary", true)
         }
@@ -391,7 +506,7 @@ class AgentCollaborationServiceTest {
                     state = ConversationExecutionState(conversationId, ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
                 else scheduler.schedulingSnapshot(conversationId)
         }
-        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, controlled, sync)
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, controlled, sync, tabLayouts, messageHistory)
         // Equal timestamps force the cursor to use id as well as createdAt. The first page remains pending.
         val deliveries = (0 until 130).map { index ->
             val toPaused = index < 64
@@ -424,7 +539,7 @@ class AgentCollaborationServiceTest {
         setup()
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(targetOnAnotherRuntime())
         val scheduler = InMemoryConversationRuntimeCoordinator()
-        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync)
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory)
         val id = transport.send(source, actor.id, "b", null, "Investigate", "round-trip", true)
         transport.deliverPending()
         transport.deliverPending()

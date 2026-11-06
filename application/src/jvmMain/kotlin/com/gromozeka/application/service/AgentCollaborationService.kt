@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.AgentCollaborationRepository
 import com.gromozeka.domain.repository.ConversationRepository
+import com.gromozeka.domain.repository.ConversationHistoryRepository
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
 import kotlinx.coroutines.CancellationException
@@ -23,6 +24,8 @@ class AgentCollaborationService(
     private val agents: AgentDomainService,
     private val coordinator: ConversationRuntimeCoordinator,
     private val stateSync: ConversationRuntimeStateSyncService,
+    private val tabLayouts: UserConversationTabLayoutService,
+    private val messageHistory: ConversationHistoryRepository,
     private val history: ConversationDomainService? = null,
 ) {
     val wakeups = Channel<Unit>(Channel.CONFLATED)
@@ -84,46 +87,75 @@ class AgentCollaborationService(
         conversationId: String? = null,
         agentId: String? = null,
         details: Boolean = false,
-    ): JsonArray {
+        query: AgentSessionQuery = AgentSessionQuery(),
+    ): JsonObject {
         require(conversationId == null || conversationId.isNotBlank()) { "conversation_id must not be blank" }
         require(agentId == null || agentId.isNotBlank()) { "agent_id must not be blank" }
         require(agentId == null || conversationId != null) { "agent_id requires conversation_id" }
         require(!details || (conversationId != null && agentId != null)) { "details requires conversation_id and agent_id" }
         val conversation = authorize(source, actor)
-        val candidates = if (conversationId == null) conversations.findByProject(conversation.projectId).take(200)
-            else listOfNotNull(conversations.findById(Conversation.Id(conversationId)))
-        val observations = mutableMapOf<Conversation.Id, SessionObservation>()
-        var emitted = 0
-        return buildJsonArray {
-            for (candidate in candidates) {
-                if (candidate.id == source.conversationId || candidate.projectId != conversation.projectId ||
-                    candidate.externalChannel != null || Conversation.Participant.User(actor) !in candidate.participants) continue
-                for (participant in candidate.participants.filterIsInstance<Conversation.Participant.Agent>()) {
-                    if (agentId != null && participant.agentDefinitionId.value != agentId) continue
-                    val endpoint = AgentEndpoint(candidate.id, candidate.currentThread, participant.agentDefinitionId)
-                    val eligible = try { sameBoundary(source, endpoint, actor) } catch (_: IllegalArgumentException) { null }
-                        ?: continue
-                    // No runtime/obligation reads until the existing identity and policy checks have passed.
-                    // Reuse the same bounded observation for multiple eligible agents in one conversation.
-                    val observed = observations[candidate.id] ?: sessionObservation(candidate.id)
-                        .also { observations[candidate.id] = it }
-                    val storedTitle = eligible.conversation.displayName
-                    add(buildJsonObject {
-                        put("conversation_id", eligible.conversation.id.value)
-                        put("thread_id", eligible.conversation.currentThread.value)
-                        // Match the UI's blank-title presentation, without inventing a persisted name.
-                        put("title", storedTitle.takeIf(String::isNotBlank) ?: "New conversation")
-                        put("stored_title", storedTitle)
-                        put("title_is_fallback", storedTitle.isBlank())
-                        put("agent_id", eligible.agent.id.value)
-                        put("agent_name", eligible.agent.name)
-                        put("runtime", AgentSessionRuntimeProjection.project(endpoint, actor,
-                            observed.scheduling, observed.requests, observed.readAt, details))
-                    })
-                    emitted++
-                    if (emitted == 200) return@buildJsonArray
-                }
+        val cursorScope = digest(buildJsonObject {
+            put("source", Json.encodeToJsonElement(source)); put("actor", actor.value)
+            put("project", conversation.projectId.value); put("conversation", conversationId); put("agent", agentId)
+            put("details", details); put("open_only", query.openOnly)
+            put("query", query.query); put("query_mode", query.queryMode.name)
+            put("gt", query.messageGt?.toString()); put("lt", query.messageLt?.toString())
+        }.toString())
+        val after = query.after(cursorScope)
+        val openTabs = tabLayouts.snapshot(actor).conversationIds.toSet()
+        val candidates = (if (conversationId == null) conversations.findByProject(conversation.projectId)
+            else listOfNotNull(conversations.findById(Conversation.Id(conversationId)))).filter { candidate ->
+            candidate.id != source.conversationId && candidate.projectId == conversation.projectId &&
+                candidate.externalChannel == null && Conversation.Participant.User(actor) in candidate.participants &&
+                (!query.openOnly || candidate.id in openTabs)
+        }
+        val threads = candidates.mapTo(mutableSetOf()) { it.currentThread }
+        val times = if (threads.isEmpty()) emptyMap() else messageHistory.latestMessageTimes(threads)
+        check(times.keys.containsAll(threads)) { "Stored message metadata is unavailable for a current thread" }
+        val ordered = candidates.sortedWith(compareByDescending<Conversation> { times.getValue(it.currentThread) }.thenBy { it.id.value })
+        data class Selected(val target: EligibleTarget, val position: AgentSessionPosition)
+        val selected = mutableListOf<Selected>()
+        discovery@ for (candidate in ordered) {
+            val lastMessageAt = times.getValue(candidate.currentThread)
+            if (!query.matchesTime(lastMessageAt)) continue
+            for (participant in candidate.participants.filterIsInstance<Conversation.Participant.Agent>().sortedBy { it.agentDefinitionId.value }) {
+                if (agentId != null && participant.agentDefinitionId.value != agentId) continue
+                val position = AgentSessionPosition(lastMessageAt, candidate.id.value, participant.agentDefinitionId.value)
+                if (after != null && position <= after) continue
+                val endpoint = AgentEndpoint(candidate.id, candidate.currentThread, participant.agentDefinitionId)
+                val eligible = try { sameBoundary(source, endpoint, actor) } catch (_: IllegalArgumentException) { null }
+                    ?: continue
+                val title = eligible.conversation.displayName.takeIf(String::isNotBlank) ?: "New conversation"
+                if (!query.matchesTitle(title)) continue
+                selected += Selected(eligible, position)
+                if (selected.size > query.limit) break@discovery
             }
+        }
+        val observations = mutableMapOf<Conversation.Id, SessionObservation>()
+        val rows = buildJsonArray {
+            for ((eligible, position) in selected.take(query.limit)) {
+                // Read Runtime only for authorized, returned rows; one observation per conversation.
+                val id = eligible.conversation.id
+                val observed = observations[id] ?: sessionObservation(id).also { observations[id] = it }
+                val storedTitle = eligible.conversation.displayName
+                add(buildJsonObject {
+                    put("conversation_id", id.value)
+                    put("thread_id", eligible.conversation.currentThread.value)
+                    put("title", storedTitle.takeIf(String::isNotBlank) ?: "New conversation")
+                    put("stored_title", storedTitle)
+                    put("title_is_fallback", storedTitle.isBlank())
+                    put("agent_id", eligible.agent.id.value)
+                    put("agent_name", eligible.agent.name)
+                    put("is_open_tab", id in openTabs)
+                    put("last_message_at", position.lastMessageAt?.toString())
+                    put("runtime", AgentSessionRuntimeProjection.project(eligible.endpoint, actor,
+                        observed.scheduling, observed.requests, observed.readAt, details))
+                })
+            }
+        }
+        return buildJsonObject {
+            put("sessions", rows)
+            put("next_cursor", if (selected.size > query.limit) selected[query.limit - 1].position.cursor(cursorScope) else null)
         }
     }
 

@@ -71,6 +71,45 @@ The local validation does not claim control over Jina's DNS or redirect handling
 Brave query/count/page limits follow its
 [API contract](https://api-dashboard.search.brave.com/api-reference/web/search/get).
 
+## Agent session discovery
+
+`grz_agent_sessions` lists eligible agent sessions, not live client windows. Its
+`open_only` default is **true** and uses the authenticated user's Server-owned
+saved conversation-tab layout. Set it to false to inspect closed conversations,
+including an explicit `conversation_id`. Existing same-project, participant,
+agent-tool-policy and current-thread checks remain in force.
+
+The result is a page: `{"sessions":[...],"next_cursor":null}`. Each session retains
+its existing identity and Runtime fields and adds `is_open_tab` and
+`last_message_at`. The latter is the creation timestamp of the last message by
+position in the current thread, irrespective of author, or null for an empty
+thread. It is not conversation `updatedAt`, a heartbeat or a Runtime transition.
+A batched metadata query reads timestamps without loading message bodies.
+
+Optional `query` searches the displayed conversation title (including the unnamed
+title fallback), not agent names or message content. `query_mode` is `contains`
+by default or `regex`; both are case-insensitive. Regex uses RE2/J, searches within
+the title, and supports explicit `^`/`$` anchors. Unsupported features such as
+backreferences/lookaround fail explicitly; there is no fallback regex engine.
+Queries are limited to 512 characters.
+
+`last_message_at` accepts independently optional strict ISO-8601 `gt` and `lt`
+bounds. Either bound, both bounds, `{}`, or omission is valid. A nonempty range
+excludes empty threads; when both bounds are present, `gt` must precede `lt`.
+All filters are applied before the page limit. Rows sort by last-message time
+newest first (null last), then conversation ID and agent ID ascending.
+
+`limit` defaults to 50 and is bounded to 1..200. Continue with `next_cursor` and
+unchanged selectors/filters; the page size may change. Cursors are opaque query-
+and caller-scoped positions, not authorization grants or frozen snapshots.
+Permissions are rechecked, and concurrent history/tab changes can move rows
+between pages. Runtime facts are read only for the returned eligible rows.
+
+This replaces the old bare-array response and first-200-conversations cutoff.
+The normal immutable tool-contract registry assigns the changed schema/descriptor
+its own revision. Discover the advertised versioned tool name rather than
+reusing a cached old schema or introducing a legacy alias.
+
 ## Verification
 
 Run focused policy, discovery, skill, memory-tool, request-mapper, gateway codec,

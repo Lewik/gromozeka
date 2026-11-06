@@ -73,7 +73,7 @@ class AgentSessionsClaudeCodeSmokeTest {
                     assertEquals(tool.definition.name, listCall.call.name)
                     assertTrue(listCall.call.input.jsonObject.isEmpty())
                     val listText = fixture.execute(listCall)
-                    val row = Json.parseToJsonElement(listText).jsonArray.single().jsonObject
+                    val row = Json.parseToJsonElement(listText).jsonObject.getValue("sessions").jsonArray.single().jsonObject
                     assertEquals(fixture.b.conversationId.value, row.getValue("conversation_id").jsonPrimitive.content)
                     assertEquals("New conversation", row.getValue("title").jsonPrimitive.content)
                     assertTrue(row.getValue("title_is_fallback").jsonPrimitive.boolean)
@@ -94,7 +94,7 @@ class AgentSessionsClaudeCodeSmokeTest {
                         put("details", true)
                     }, detailCall.call.input)
                     val detailText = fixture.execute(detailCall)
-                    val runtimeView = Json.parseToJsonElement(detailText).jsonArray.single().jsonObject.getValue("runtime").jsonObject
+                    val runtimeView = Json.parseToJsonElement(detailText).jsonObject.getValue("sessions").jsonArray.single().jsonObject.getValue("runtime").jsonObject
                     assertEquals("PAUSED", runtimeView.getValue("foreground_state").jsonPrimitive.content)
                     assertEquals("best_effort", runtimeView.getValue("consistency").jsonPrimitive.content)
                     assertEquals(before.lastEventSequence, runtimeView.getValue("last_event_sequence").jsonPrimitive.long)
@@ -136,7 +136,9 @@ class AgentSessionsClaudeCodeSmokeTest {
         val sync = Mockito.mock(ConversationRuntimeStateSyncService::class.java)
         val repository = SessionsSmokeRepository()
         private val agentAccess = ConversationAgentAccessService(conversations, identities, access, agents)
-        val service = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, history)
+        private val tabLayouts = Mockito.mock(UserConversationTabLayoutService::class.java)
+        private val messageHistory = Mockito.mock(ConversationHistoryRepository::class.java)
+        val service = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory, history)
         val nativeTool = AgentCollaborationToolContributor(service).callbacks.single { it.definition.name == "grz_agent_sessions" }
         private val contracts = SessionsSmokeContracts()
         private val workers = Mockito.mock(ConversationRuntimeWorkerRegistry::class.java)
@@ -157,6 +159,8 @@ class AgentSessionsClaudeCodeSmokeTest {
             runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("different-runtime-${endpoint.agentId.value}")),
             type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
         suspend fun setup() {
+            Mockito.`when`(tabLayouts.snapshot(actor.id)).thenReturn(ConversationTabLayout(listOf(b.conversationId)))
+            Mockito.`when`(messageHistory.latestMessageTimes(setOf(b.threadId))).thenReturn(mapOf(b.threadId to now))
             Mockito.`when`(identities.findUserById(actor.id)).thenReturn(actor)
             for (endpoint in listOf(a, b)) {
                 Mockito.`when`(conversations.findById(endpoint.conversationId)).thenReturn(conversation(endpoint))
