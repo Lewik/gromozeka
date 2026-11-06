@@ -88,6 +88,11 @@ fun GromozekaMarkdown(content: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
+internal fun GromozekaMarkdown(state: State.Success, modifier: Modifier = Modifier) {
+    GromozekaMarkdownContent(state, state.content, modifier = modifier)
+}
+
+@Composable
 fun GromozekaMarkdownNode(state: State.Success, node: ASTNode, modifier: Modifier = Modifier) {
     GromozekaMarkdownContent(state, state.content, node, modifier)
 }

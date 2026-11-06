@@ -84,6 +84,15 @@ internal data class MessageListEntry(
 internal sealed interface MessageSegment {
     val key: String
 
+    data class MarkdownContent(
+        val kind: MarkdownKind,
+        val contentIndex: Int,
+        val state: State,
+        val text: String,
+    ) : MessageSegment {
+        override val key: String = "$contentIndex:markdown"
+    }
+
     data class MarkdownBlock(
         val kind: MarkdownKind,
         val contentIndex: Int,
@@ -297,6 +306,12 @@ private fun rememberMarkdownSegments(
         return listOf(MessageSegment.CollapsedMarkdown(kind, contentIndex, text))
     }
 
+    // Selection cannot span independent lazy items. Keep a user-facing text body together;
+    // expanded activity details retain block-level virtualization for long tool/reasoning output.
+    if (kind != MarkdownKind.DETAIL) {
+        return listOf(MessageSegment.MarkdownContent(kind, contentIndex, parsedState, text))
+    }
+
     if (parsedState is State.Success) {
         val blocks = parsedState.node.visibleMarkdownBlocks(parsedState.content)
         return blocks.mapIndexed { nodeIndex, node ->
@@ -505,6 +520,23 @@ private fun MessageSegmentContent(
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (val segment = entry.segment) {
+        is MessageSegment.MarkdownContent -> MarkdownSegmentLayout(
+            messageId = entry.message.id,
+            kind = segment.kind,
+            contentIndex = segment.contentIndex,
+            isFirstInContent = true,
+            isLastInContent = true,
+            onToggleContentItemCollapse = onToggleContentItemCollapse,
+            onManualContentResize = onManualContentResize,
+        ) {
+            val parsed = segment.state
+            if (parsed is State.Success) {
+                GromozekaMarkdown(state = parsed, modifier = Modifier.fillMaxWidth())
+            } else {
+                Text(text = segment.text)
+            }
+        }
+
         is MessageSegment.MarkdownBlock -> MarkdownSegmentLayout(
             messageId = entry.message.id,
             kind = segment.kind,
