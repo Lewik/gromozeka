@@ -624,6 +624,48 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun updatesAddedAndRemovedToolsAndSkillsOnResume() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            catalogToolResponse("catalog_a_original_unit", "skill-original-unit"),
+            catalogToolResponse("catalog_b_added_unit", "skill-added-unit"),
+            catalogToolResponse("catalog_a_original_unit", "skill-original-unit"),
+        )
+        verifyCatalogChanges(runtime(executor), "unit")
+        assertEquals(3, executor.commands.size)
+        val expectedActions = listOf(
+            listOf("catalog_a_original_unit"),
+            listOf("catalog_a_original_unit", "catalog_b_added_unit"),
+            listOf("catalog_a_original_unit"),
+        )
+        val expectedSkills = listOf(
+            listOf("skill-original-unit"),
+            listOf("skill-original-unit", "skill-added-unit"),
+            listOf("skill-original-unit"),
+        )
+        executor.commands.forEachIndexed { index, command ->
+            val schema = Json.parseToJsonElement(command.systemPrompt.substringAfter("<json_schema>\n").substringBefore("\n</json_schema>")).jsonObject
+            val actionSchema = schema.getValue("properties").jsonObject.getValue("response").jsonObject
+                .getValue("properties").jsonObject.getValue("content").jsonObject
+                .getValue("items").jsonObject.getValue("anyOf").jsonArray.first().jsonObject
+                .getValue("properties").jsonObject.getValue("action_name").jsonObject
+            assertEquals(expectedActions[index], actionSchema.getValue("enum").jsonArray.map { it.jsonPrimitive.content })
+            val skillCatalog = Json.parseToJsonElement(command.systemPrompt.substringAfter("<agent_skills>").substringBefore("</agent_skills>")).jsonObject
+            assertEquals(expectedSkills[index], skillCatalog.getValue("available_skills").jsonArray.map { it.jsonObject.getValue("name").jsonPrimitive.content })
+        }
+    }
+
+    @Test
+    fun realClaudeCodeRefreshesAddedAndRemovedCatalogEntriesWhenEnabled() = runBlocking {
+        if (!realClaudeCodeEnabled()) return@runBlocking
+        val executor = ProcessClaudeCodeCliExecutor(realClaudeExecutable())
+        try {
+            withTimeout(180_000) {
+                verifyCatalogChanges(runtime(executor), java.util.UUID.randomUUID().toString().replace("-", ""))
+            }
+        } finally { executor.shutdown() }
+    }
+
+    @Test
     fun realClaudeCodeReturnsStructuredFinalAnswerWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
@@ -1815,6 +1857,78 @@ class ClaudeCodeCliRuntimeTest {
         assertEquals(AiStepOutcome.COMPLETE, response.outcome)
         assertTrue(response.toolCalls.isEmpty())
     }
+
+    private suspend fun verifyCatalogChanges(runtime: ClaudeCodeCliRuntime, suffix: String) {
+        val original = catalogProbeTool("catalog_a_original_$suffix")
+        val added = catalogProbeTool("catalog_b_added_$suffix")
+        val originalSkill = "skill-original-$suffix"
+        val addedSkill = "skill-added-$suffix"
+        val stages = listOf(
+            listOf(original) to listOf(originalSkill),
+            listOf(original, added) to listOf(originalSkill, addedSkill),
+            listOf(original) to listOf(originalSkill),
+        )
+        val history = mutableListOf<Conversation.Message>()
+        var firstSessionId: Any? = null
+        for ((index, stage) in stages.withIndex()) {
+            val (tools, skills) = stage
+            val catalog = jsonObject("available_skills" to JsonArray(skills.map { jsonObject("name" to JsonPrimitive(it)) }))
+            history += userMessage("Request exactly one external action: the last action listed in the current external_actions catalog. Set its skill argument to the last skill name in the current agent_skills catalog. Do not add commentary.")
+            val response = runtime.call(request(
+                messages = history.toList(),
+                tools = tools,
+                options = AiRuntimeOptions(
+                    assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    toolChoice = AiToolChoice.RequiredAny,
+                    toolContext = testToolContext("catalog-refresh-$suffix"),
+                ),
+            ).copy(systemPrompts = listOf(
+                "You are a precise test assistant. Use the current system catalogs, not catalog entries from earlier messages.",
+                "<agent_skills>$catalog</agent_skills>",
+            )))
+            assertFalse(response.providerMetadata["claudeCodeCleanRetry"] == true, "A fresh-session retry must not hide a stale resumed catalog")
+            assertEquals(1, response.toolCalls.size)
+            val call = response.toolCalls.single()
+            assertEquals(tools.last().definition.name, call.call.name)
+            assertEquals(skills.last(), call.call.input.jsonObject.getValue("skill").jsonPrimitive.content)
+            if (index == 0) {
+                firstSessionId = requireNotNull(response.providerMetadata["sessionId"])
+            } else {
+                assertEquals(true, response.providerMetadata["resumed"])
+                assertEquals(firstSessionId, response.providerMetadata["sessionId"])
+            }
+            history += assistantMessage("").copy(content = response.messages.single().content)
+            history += userMessage("").copy(content = listOf(Conversation.Message.ContentItem.ToolResult(
+                toolUseId = call.id,
+                toolName = call.call.name,
+                result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("Synthetic result; no external action was executed.")),
+            )))
+        }
+    }
+
+    private fun catalogProbeTool(name: String): AiToolCallback = object : AiToolCallback {
+        override val definition = AiToolDefinition(
+            name = name,
+            description = "Synthetic catalog test action. Pass the current assigned skill name.",
+            inputSchema = """{"type":"object","additionalProperties":false,"properties":{"skill":{"type":"string"}},"required":["skill"]}""",
+        )
+        override val metadata = com.gromozeka.domain.tool.AiToolMetadata(
+            executionScope = com.gromozeka.domain.tool.AiToolExecutionScope.SERVER,
+        )
+        override fun call(toolInput: String, context: com.gromozeka.domain.tool.ToolExecutionContext?): String =
+            error("Catalog tests must not execute external actions")
+    }
+
+    private fun catalogToolResponse(action: String, skill: String): ClaudeCodeCliResponse = response(
+        structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("tool_calls"),
+            "content" to JsonArray(listOf(jsonObject(
+                "kind" to JsonPrimitive("tool_call"),
+                "action_name" to JsonPrimitive(action),
+                "arguments" to jsonObject("skill" to JsonPrimitive(skill)),
+            ))),
+        ),
+    )
 
     private fun runtime(
         executor: ClaudeCodeCliExecutor,

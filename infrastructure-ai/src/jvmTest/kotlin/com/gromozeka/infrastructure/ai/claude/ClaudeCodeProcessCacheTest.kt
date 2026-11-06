@@ -146,6 +146,21 @@ class ClaudeCodeProcessCacheTest {
     }
 
     @Test
+    fun freshAndResumedProcessesUseTheCurrentSystemPrompt() = runBlocking {
+        val executor = ProcessClaudeCodeCliExecutor()
+        try {
+            for (sessionId in listOf(null, "existing-session")) {
+                val args = executor.buildArgs(command(cacheKey = "conversation", resumeSessionId = sessionId), "/tmp/system.md")
+                val flagIndex = args.indexOf("--system-prompt-snapshot")
+                assertTrue(flagIndex >= 0, "Claude Code must not retain the first system prompt across model steps")
+                assertEquals("off", args[flagIndex + 1])
+                assertEquals(1, args.count { it == "--system-prompt-snapshot" })
+                assertEquals("/tmp/system.md", args[args.indexOf("--system-prompt-file") + 1])
+            }
+        } finally { executor.shutdown() }
+    }
+
+    @Test
     fun diagnosticCommandOmitsJsonSchemaContents() {
         val schema = """{"type":"object","secret":"do-not-log"}"""
 

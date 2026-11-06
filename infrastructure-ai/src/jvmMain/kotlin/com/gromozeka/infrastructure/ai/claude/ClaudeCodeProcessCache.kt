@@ -1321,6 +1321,9 @@ private object ClaudeCodeProcessArguments {
             if (System.getenv("GROMOZEKA_CLAUDE_CODE_TRACE_PARTIALS") == "true") {
                 add("--include-partial-messages")
             }
+            // Gromozeka refreshes catalogs and the response schema per step; --resume must not reuse their initial snapshot.
+            add("--system-prompt-snapshot")
+            add("off")
             add("--system-prompt-file")
             add(systemPromptFile)
             add("--model")
