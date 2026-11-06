@@ -29,7 +29,7 @@ data class ExportAgentSkillToDirectoryRequest(
 }
 
 data class ImportAgentSkillFromDirectoryRequest(
-    @property:ToolParameter(description = "Skill package directory on the selected Worker.")
+    @property:ToolParameter(description = "Skill package directory on the selected Worker. Its final path component must exactly match the name field in the root SKILL.md YAML frontmatter.")
     val directory_path: String,
     @property:ToolParameter(
         description = "Current content hash when updating. Omit only when creating a new Skill.",
@@ -72,6 +72,8 @@ interface ImportAgentSkillFromDirectoryTool : Tool<ImportAgentSkillFromDirectory
 
     override val description: String
         get() = "Create or replace a complete Skill package from a Worker directory. " +
+            "The directory name must exactly match the name field in SKILL.md YAML frontmatter. " +
+            "For temporary work, create a correctly named child directory, such as /tmp/build-123/my-skill for name: my-skill. " +
             "Updates replace every package file; symbolic links are rejected."
 
     override val requestType: Class<ImportAgentSkillFromDirectoryRequest>

@@ -3,6 +3,9 @@ package com.gromozeka.infrastructure.ai.config
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import com.gromozeka.domain.tool.filesystem.GetCommandTaskRequest
+import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.skills.ImportAgentSkillFromDirectoryRequest
+import com.gromozeka.domain.tool.skills.ImportAgentSkillFromDirectoryTool
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_INITIAL_YIELD_MILLIS
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_TASK_WAIT_MILLIS
 import kotlin.test.Test
@@ -12,6 +15,19 @@ import kotlin.test.assertTrue
 class JsonSchemaGeneratorTest {
     private val objectMapper = jacksonObjectMapper().findAndRegisterModules()
     private val generator = JsonSchemaGenerator(objectMapper)
+
+    @Test
+    fun `skill directory naming requirement is visible before import`() {
+        val schema = objectMapper.readTree(generator.schemaFor(ImportAgentSkillFromDirectoryRequest::class))
+        val directoryDescription = schema.path("properties").path("directory_path").path("description").textValue()
+        assertTrue(directoryDescription.contains("final path component must exactly match the name field"))
+        assertTrue(directoryDescription.contains("SKILL.md YAML frontmatter"))
+        val tool = object : ImportAgentSkillFromDirectoryTool {
+            override fun execute(request: ImportAgentSkillFromDirectoryRequest, context: ToolExecutionContext?): Map<String, Any> = error("Not invoked")
+        }
+        assertTrue(tool.description.contains("directory name must exactly match the name field"))
+        assertTrue(tool.description.contains("SKILL.md YAML frontmatter"))
+    }
 
     @Test
     fun `command secret environment is an optional string map`() {
