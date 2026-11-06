@@ -145,7 +145,7 @@ internal class OpenAiSdkMessageMapper(
 
         val messages = request.projectedMessages().flatMap(::toMessageParams)
         require(messages.isNotEmpty()) { "OpenAI SDK request must contain at least one message" }
-        builder.messages(messages)
+        messages.forEach(builder::addMessage)
 
         applyTools(builder, request.tools, request.options.toolChoice)
         applyReasoning(builder, request.options)
