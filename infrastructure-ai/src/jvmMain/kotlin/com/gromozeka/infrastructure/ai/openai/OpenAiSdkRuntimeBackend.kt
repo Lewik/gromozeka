@@ -56,6 +56,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Service
 import kotlin.jvm.optionals.getOrNull
 
@@ -128,6 +129,9 @@ internal class OpenAiSdkMessageMapper(
     private val json = Json { ignoreUnknownKeys = true }
 
     fun toCreateParams(modelName: String, request: AiRuntimeRequest): ChatCompletionCreateParams {
+        require(this.modelName == null || this.modelName == modelName) {
+            "Bound OpenAI message mapper cannot change its target model"
+        }
         val builder = ChatCompletionCreateParams.builder()
             .model(modelName)
             .maxCompletionTokens((request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS).toLong())
@@ -143,7 +147,7 @@ internal class OpenAiSdkMessageMapper(
             }
         }
 
-        val messages = request.projectedMessages().flatMap(::toMessageParams)
+        val messages = request.projectedMessages().flatMap { toMessageParams(it, modelName) }
         require(messages.isNotEmpty()) { "OpenAI SDK request must contain at least one message" }
         messages.forEach(builder::addMessage)
 
@@ -168,6 +172,7 @@ internal class OpenAiSdkMessageMapper(
                 providerMetadata = mapOf("provider" to connectionKind.name, "model" to completion.model()),
             )
         val message = choice.message()
+        val rawMessage = json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(message)).jsonObject
         val outcome = when (choice.finishReason().asString()) {
             "stop" -> when {
                 message.refusal().isPresent -> AiStepOutcome.REFUSED
@@ -180,9 +185,7 @@ internal class OpenAiSdkMessageMapper(
             else -> AiStepOutcome.FAILED
         }
         val content = buildList {
-            message._additionalProperties()["reasoning_content"]?.asString()?.getOrNull()?.let {
-                add(Conversation.Message.ContentItem.Thinking(it))
-            }
+            addAll(thinkingContent(rawMessage))
             message.content().getOrNull()?.trim()?.takeIf { it.isNotBlank() }?.let { text ->
                 add(if (outcome != AiStepOutcome.COMPLETE) Conversation.Message.ContentItem.AssistantMessage(
                     structured = AssistantResponseParser.parseProgress(text, assistantResponseFormat),
@@ -208,7 +211,7 @@ internal class OpenAiSdkMessageMapper(
                         "reportedModel" to completion.model(),
                         "completionId" to completion.id(),
                         "connectionId" to connectionId,
-                        "openaiCompatibleMessage" to json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(message)),
+                        "openaiCompatibleMessage" to rawMessage,
                     ),
                 )
             )
@@ -230,14 +233,56 @@ internal class OpenAiSdkMessageMapper(
         )
     }
 
-    private fun toMessageParams(message: Conversation.Message): List<ChatCompletionMessageParam> =
+    private fun thinkingContent(message: JsonObject): List<Conversation.Message.ContentItem.Thinking> {
+        val aggregate = message.thinkingString("reasoning_content")
+        val rawBlocks = message["thinking_blocks"]
+        if (rawBlocks == null || rawBlocks == JsonNull) {
+            return aggregate?.let { listOf(Conversation.Message.ContentItem.Thinking(it)) }.orEmpty()
+        }
+        require(rawBlocks is JsonArray) { "OpenAI-compatible thinking_blocks must be an array" }
+        if (rawBlocks.isEmpty()) {
+            return aggregate?.let { listOf(Conversation.Message.ContentItem.Thinking(it)) }.orEmpty()
+        }
+        val structured = rawBlocks.map { block ->
+            require(block is JsonObject) { "OpenAI-compatible thinking block must be an object" }
+            when (block.thinkingString("type")) {
+                "thinking" -> Conversation.Message.ContentItem.Thinking(
+                    thinking = requireNotNull(block.thinkingString("thinking")) { "Thinking block must contain thinking text" },
+                    signature = block.thinkingString("signature"),
+                )
+                "redacted_thinking" -> Conversation.Message.ContentItem.Thinking(
+                    thinking = "",
+                    signature = requireNotNull(block.thinkingString("data")) { "Redacted thinking block must contain data" },
+                    kind = Conversation.Message.ContentItem.Thinking.Kind.REDACTED,
+                )
+                else -> throw IllegalArgumentException("Unsupported OpenAI-compatible thinking block type")
+            }
+        }
+        // Aggregate text can duplicate the blocks, or be the only readable summary of signed-empty blocks.
+        // Replay uses the untouched raw message, not this display projection.
+        return buildList {
+            if (!aggregate.isNullOrBlank() && structured.all { it.thinking.isBlank() }) {
+                add(Conversation.Message.ContentItem.Thinking(aggregate))
+            }
+            addAll(structured)
+        }
+    }
+
+    private fun JsonObject.thinkingString(name: String): String? {
+        val value = this[name] ?: return null
+        if (value == JsonNull) return null
+        require(value is JsonPrimitive && value.isString) { "OpenAI-compatible reasoning field '$name' must be a string" }
+        return value.content
+    }
+
+    private fun toMessageParams(message: Conversation.Message, targetModelName: String): List<ChatCompletionMessageParam> =
         buildList {
             when (message.role) {
                 Conversation.Message.Role.USER -> userMessageParam(message)?.let {
                     add(ChatCompletionMessageParam.ofUser(it))
                 }
 
-                Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message)?.let(::add)
+                Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, targetModelName)?.let(::add)
                 Conversation.Message.Role.SYSTEM -> systemText(message).takeIf { it.isNotBlank() }?.let { text ->
                     if (connectionKind == AiConnection.Kind.OPENAI_API) {
                         add(ChatCompletionMessageParam.ofDeveloper(developerMessageParam(text)))
@@ -320,14 +365,15 @@ internal class OpenAiSdkMessageMapper(
             .content(text)
             .build()
 
-    private fun toAssistantMessageParam(message: Conversation.Message): ChatCompletionMessageParam? {
+    private fun toAssistantMessageParam(message: Conversation.Message, targetModelName: String): ChatCompletionMessageParam? {
         val metadata = message.providerMetadata
         val raw = metadata["openaiCompatibleMessage"] as? JsonObject
-        if (raw != null && metadata["provider"]?.toString()?.trim('"') == connectionKind.name &&
-            metadata["connectionId"]?.toString()?.trim('"') == connectionId &&
-            metadata["model"]?.toString()?.trim('"') == modelName
+        if (raw != null && !connectionId.isNullOrBlank() &&
+            metadata["provider"]?.jsonPrimitive?.contentOrNull == connectionKind.name &&
+            metadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
+            metadata["model"]?.jsonPrimitive?.contentOrNull == targetModelName
         ) {
-            val replay = JsonObject(raw.filterKeys { it in setOf("role", "content", "tool_calls", "reasoning_content", "refusal") })
+            val replay = JsonObject(raw.filterKeys { it in setOf("role", "content", "tool_calls", "reasoning_content", "thinking_blocks", "refusal") })
             return ChatCompletionMessageParam.ofAssistant(com.openai.core.jsonMapper().readValue(
                 replay.toString(), com.openai.models.chat.completions.ChatCompletionAssistantMessageParam::class.java,
             ))

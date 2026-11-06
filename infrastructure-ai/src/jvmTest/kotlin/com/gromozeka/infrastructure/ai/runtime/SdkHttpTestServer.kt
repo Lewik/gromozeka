@@ -7,12 +7,17 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-internal class SdkHttpTestServer(responseBody: String) : AutoCloseable {
+internal class SdkHttpTestServer(vararg responseBodies: String) : AutoCloseable {
     private val recorded = ConcurrentLinkedQueue<RecordedRequest>()
     private val executor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "sdk-http-test-server").apply { isDaemon = true }
     }
-    private val responseBytes = responseBody.toByteArray(Charsets.UTF_8)
+    private val responses = ConcurrentLinkedQueue(responseBodies.map { it.toByteArray(Charsets.UTF_8) })
+
+    init {
+        require(responseBodies.isNotEmpty()) { "HTTP test server requires at least one response" }
+    }
+
     private val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
         executor = this@SdkHttpTestServer.executor
         createContext("/") { exchange ->
@@ -25,6 +30,7 @@ internal class SdkHttpTestServer(responseBody: String) : AutoCloseable {
                     },
                     body = exchange.requestBody.use { it.readBytes().toString(Charsets.UTF_8) },
                 )
+                val responseBytes = checkNotNull(responses.poll()) { "Unexpected extra HTTP request in test" }
                 exchange.responseHeaders.set("Content-Type", "application/json")
                 exchange.sendResponseHeaders(200, responseBytes.size.toLong())
                 exchange.responseBody.use { it.write(responseBytes) }
