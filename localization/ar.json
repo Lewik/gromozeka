@@ -2194,6 +2194,16 @@
     "notifications.markUnread": "تحديد كغير مقروء",
     "notifications.openConversation": "فتح المحادثة",
     "notifications.delete": "حذف",
-    "notifications.loadMore": "تحميل المزيد"
+    "notifications.loadMore": "تحميل المزيد",
+    "ai.spec.behavior": "قواعد الطلبات",
+    "ai.spec.behavior_help": "قواعد صريحة لمسار النموذج هذا. لا تختار واجهة API ولا تُستنتج من معرّف النموذج.",
+    "ai.spec.chat_token_limit": "حقل حد الرموز في Chat Completions",
+    "ai.spec.omit_token_limit": "عدم إرسال حد للرموز",
+    "ai.spec.chat_reasoning_encoding": "حقول الاستدلال في Chat Completions",
+    "ai.spec.default_reasoning_mode": "وضع الاستدلال عند عدم تحديده",
+    "ai.spec.minimum_tool_effort": "الحد الأدنى لجهد الاستدلال للأدوات",
+    "ai.spec.maximum_disabled_effort": "أقصى جهد عند تعطيل thinking",
+    "ai.spec.forced_tool_choice": "السماح بفرض اختيار الأداة",
+    "ai.spec.anthropic_prefix_drop": "إسقاط thinking من Anthropic ذي البادئة غير المتوافقة (تجريبي)"
   }
 }

@@ -34,7 +34,7 @@ internal class RoutingAiRuntimeProvider(
 
         return AiInputValidatingRuntime(
             delegate = ModelDefaultAiRuntime(
-                delegate = backend.createRuntime(runtime.connection, runtime.modelConfiguration, workspaceRootPath),
+                delegate = backend.createRuntime(runtime, workspaceRootPath),
                 defaults = runtime.modelConfiguration.defaultParameters,
             ),
             runtime = runtime,

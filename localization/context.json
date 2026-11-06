@@ -15747,5 +15747,75 @@
     ],
     "description": "User-owned notification inbox: loadMore. Independent of the currently open conversation. No technical exception text.",
     "args": []
+  },
+  "ai.spec.behavior": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Heading for explicit request compatibility rules stored in an AI model spec, copied together with the spec to a gateway route.",
+    "args": []
+  },
+  "ai.spec.behavior_help": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "These rules configure request fields for the API already selected by the connection; never guess rules from a model ID.",
+    "args": []
+  },
+  "ai.spec.chat_token_limit": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Select the output-token-limit field of the Chat Completions request; this does not change the connection protocol.",
+    "args": []
+  },
+  "ai.spec.omit_token_limit": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Explicit option to omit both max_tokens and max_completion_tokens from Chat Completions requests.",
+    "args": []
+  },
+  "ai.spec.chat_reasoning_encoding": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Select the reasoning parameter encoding within Chat Completions: reasoning_effort or Anthropic thinking/output_config. Not an API selector.",
+    "args": []
+  },
+  "ai.spec.default_reasoning_mode": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Model-specific reasoning mode used only when a call/model configuration does not explicitly specify a mode.",
+    "args": []
+  },
+  "ai.spec.minimum_tool_effort": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Optional minimum reasoning effort when tools are available. Insufficient or disabled reasoning is an error, never silently increased.",
+    "args": []
+  },
+  "ai.spec.maximum_disabled_effort": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Optional highest allowed effort while thinking is explicitly disabled. Anthropic effort also affects visible output.",
+    "args": []
+  },
+  "ai.spec.forced_tool_choice": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Whether this model route accepts forced tool choice (any or a named tool). Disabling still permits auto and none.",
+    "args": []
+  },
+  "ai.spec.anthropic_prefix_drop": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Opt into Anthropic beta controls dropping thinking bound to an incompatible history prefix. Does not discard arbitrary history or switch models.",
+    "args": []
   }
 }

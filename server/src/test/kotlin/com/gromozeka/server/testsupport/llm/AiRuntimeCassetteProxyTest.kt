@@ -1,5 +1,6 @@
 package com.gromozeka.server.testsupport.llm
 
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.AgentDefinition
@@ -738,8 +739,7 @@ class AiRuntimeCassetteProxyTest {
         override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
 
         override fun createRuntime(
-            connection: AiConnection,
-            modelConfiguration: AiModelConfiguration,
+            runtime: ResolvedAiRuntime,
             projectPath: String?,
         ): AiRuntime = object : AiRuntime {
             override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
@@ -763,8 +763,7 @@ class AiRuntimeCassetteProxyTest {
         override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
 
         override fun createRuntime(
-            connection: AiConnection,
-            modelConfiguration: AiModelConfiguration,
+            runtime: ResolvedAiRuntime,
             projectPath: String?,
         ): AiRuntime = object : AiRuntime {
             override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
@@ -797,8 +796,7 @@ class AiRuntimeCassetteProxyTest {
         override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
 
         override fun createRuntime(
-            connection: AiConnection,
-            modelConfiguration: AiModelConfiguration,
+            runtime: ResolvedAiRuntime,
             projectPath: String?,
         ): AiRuntime = object : AiRuntime {
             override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
@@ -813,8 +811,7 @@ class AiRuntimeCassetteProxyTest {
         override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
 
         override fun createRuntime(
-            connection: AiConnection,
-            modelConfiguration: AiModelConfiguration,
+            runtime: ResolvedAiRuntime,
             projectPath: String?,
         ): AiRuntime = object : AiRuntime {
             override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()

@@ -8,9 +8,10 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 /**
  * Static knowledge about a provider model.
  *
- * A model spec describes what the model itself can do and which limits are safe
- * to assume. User-facing [AiModelConfiguration] values only decide how a known
- * provider model is connected and tuned.
+ * A model spec describes the capabilities, safe limits and explicit request rules
+ * of a provider model route. Copy and adjust it for an exact gateway model ID;
+ * model names do not select request behavior. [AiModelConfiguration] decides how
+ * that route is connected and tuned.
  */
 @Serializable
 data class AiModelSpec(
@@ -19,6 +20,7 @@ data class AiModelSpec(
     val capabilities: Set<AiModelCapability>,
     val limits: Limits = Limits(),
     val reasoning: AiReasoningCapabilities? = null,
+    val behavior: AiModelBehavior = AiModelBehavior(),
 ) {
     init {
         require(id.isNotBlank()) { "AI model id must not be blank" }
@@ -31,6 +33,17 @@ data class AiModelSpec(
         }
         require(reasoning == null || AiModelCapability.TEXT_GENERATION in capabilities) {
             "AI reasoning capabilities are valid only for text generation models"
+        }
+        require(behavior == AiModelBehavior() || AiModelCapability.TEXT_GENERATION in capabilities) {
+            "AI model request behavior is valid only for text generation models"
+        }
+        require(behavior.defaultReasoningMode == null || reasoning?.modes.isNullOrEmpty() ||
+            behavior.defaultReasoningMode in reasoning.modes) {
+            "Default reasoning mode must be supported by the model spec"
+        }
+        require(behavior.minimumToolReasoningEffort == null || reasoning?.efforts.isNullOrEmpty() ||
+            reasoning.efforts.any { it >= behavior.minimumToolReasoningEffort }) {
+            "Minimum tool reasoning effort must be reachable by the model spec"
         }
         require(
             capabilities.intersect(AiModelCapability.INPUT_CAPABILITIES).isEmpty() ||

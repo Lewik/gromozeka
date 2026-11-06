@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.service.AiRuntime
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -34,10 +35,11 @@ class OpenAiSubscriptionRuntimeBackend(
     ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true)
 
     override fun createRuntime(
-        connection: AiConnection,
-        modelConfiguration: AiModelConfiguration,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
     ): AiRuntime {
+        val connection = runtime.connection
+        val modelConfiguration = runtime.modelConfiguration
         val subscription = connection as? AiConnection.OpenAiSubscription
             ?: error("OpenAI subscription runtime requires an OpenAI subscription connection")
         return Runtime(

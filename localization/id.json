@@ -2009,6 +2009,16 @@
     "notifications.markUnread": "Tandai belum dibaca",
     "notifications.openConversation": "Buka percakapan",
     "notifications.delete": "Hapus",
-    "notifications.loadMore": "Muat lebih banyak"
+    "notifications.loadMore": "Muat lebih banyak",
+    "ai.spec.behavior": "Aturan permintaan",
+    "ai.spec.behavior_help": "Aturan eksplisit untuk rute model ini. Aturan ini tidak memilih API dan tidak disimpulkan dari ID model.",
+    "ai.spec.chat_token_limit": "Kolom batas token Chat Completions",
+    "ai.spec.omit_token_limit": "Jangan kirim batas token",
+    "ai.spec.chat_reasoning_encoding": "Kolom penalaran Chat Completions",
+    "ai.spec.default_reasoning_mode": "Mode penalaran jika tidak ditentukan",
+    "ai.spec.minimum_tool_effort": "Upaya penalaran minimum untuk alat",
+    "ai.spec.maximum_disabled_effort": "Upaya maksimum saat thinking dinonaktifkan",
+    "ai.spec.forced_tool_choice": "Izinkan pemilihan alat secara paksa",
+    "ai.spec.anthropic_prefix_drop": "Buang thinking Anthropic dengan awalan yang tidak kompatibel (beta)"
   }
 }

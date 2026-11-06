@@ -45,6 +45,36 @@ import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
     @Test
+    fun `Worker call codec retains all explicit model behavior fields`() = runBlocking {
+        val fixture = TestHandler()
+        val spec = AiModelSpec("test-model", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
+            AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000)),
+            behavior = com.gromozeka.domain.model.ai.AiModelBehavior(
+                chatCompletionsTokenLimit = com.gromozeka.domain.model.ai.AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS,
+                chatCompletionsReasoning = com.gromozeka.domain.model.ai.AiModelBehavior.ChatCompletionsReasoning.ANTHROPIC_THINKING,
+                defaultReasoningMode = com.gromozeka.domain.model.ai.AiReasoningMode.ADAPTIVE,
+                minimumToolReasoningEffort = com.gromozeka.domain.model.ai.AiReasoningEffort.LOW,
+                maximumDisabledReasoningEffort = com.gromozeka.domain.model.ai.AiReasoningEffort.HIGH,
+                supportsForcedToolChoice = false,
+                anthropicThinkingPrefixDrop = true,
+            ))
+        val expected = fixture.runtime.copy(modelSpec = spec)
+        var called = false
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                assertEquals(expected, runtime)
+                assertEquals(fixture.runtimeRequest, request)
+                called = true
+                return fixture.runtimeResponse
+            }
+        }
+        val response = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeCallRequest(expected, null, fixture.runtimeRequest), handler)
+        kotlin.test.assertTrue(called)
+        assertEquals(fixture.runtimeResponse, AiRequestResponseGatewayCodec.decodeCallResponse(response))
+    }
+
+    @Test
     fun `codec preserves resolved configuration for every finite AI operation`() = runBlocking {
         val handler = TestHandler()
 

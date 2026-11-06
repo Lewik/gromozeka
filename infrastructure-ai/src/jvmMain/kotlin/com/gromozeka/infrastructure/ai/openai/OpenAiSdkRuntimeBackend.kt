@@ -1,14 +1,18 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.anthropic.AnthropicThinkingParameters
+import com.gromozeka.domain.model.ai.AiReasoningMode
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiModelBehavior
+import com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiResponseFormat
-import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
@@ -22,7 +26,6 @@ import com.openai.client.OpenAIClient
 import com.openai.core.JsonValue
 import com.openai.models.FunctionDefinition
 import com.openai.models.FunctionParameters
-import com.openai.models.ReasoningEffort
 import com.openai.models.ResponseFormatJsonSchema
 import com.openai.models.chat.completions.ChatCompletion
 import com.openai.models.chat.completions.ChatCompletionDeveloperMessageParam
@@ -68,10 +71,11 @@ internal class OpenAiSdkRuntimeBackend(
         connectionKind == AiConnection.Kind.OPENAI_API || connectionKind == AiConnection.Kind.OPENAI_COMPATIBLE
 
     override fun createRuntime(
-        connection: AiConnection,
-        modelConfiguration: AiModelConfiguration,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?
     ): AiRuntime {
+        val connection = runtime.connection
+        val modelConfiguration = runtime.modelConfiguration
         return when (connection) {
             is AiConnection.OpenAiApi -> OpenAiResponsesSdkRuntime(
                 connectionId = connection.id.value,
@@ -79,13 +83,14 @@ internal class OpenAiSdkRuntimeBackend(
                 modelName = modelConfiguration.providerModelId,
                 webSearchEnabled = connection.webSearchEnabled,
                 client = clientFactory.createClient(connection),
+                generation = ModelGenerationPolicy(runtime.modelSpec),
             )
 
             is AiConnection.OpenAiCompatible -> OpenAiSdkRuntime(
                 connectionKind = connection.kind,
                 modelName = modelConfiguration.providerModelId,
                 client = clientFactory.createClient(connection),
-                messageMapper = OpenAiSdkMessageMapper(connection.kind, connection.id.value, modelConfiguration.providerModelId),
+                messageMapper = OpenAiSdkMessageMapper(connection.kind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec)),
             )
 
             else -> error("OpenAI SDK runtime does not support connection ${connection.kind}")
@@ -125,6 +130,7 @@ internal class OpenAiSdkMessageMapper(
     private val connectionKind: AiConnection.Kind,
     private val connectionId: String? = null,
     private val modelName: String? = null,
+    private val generation: ModelGenerationPolicy = ModelGenerationPolicy(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -132,9 +138,14 @@ internal class OpenAiSdkMessageMapper(
         require(this.modelName == null || this.modelName == modelName) {
             "Bound OpenAI message mapper cannot change its target model"
         }
-        val builder = ChatCompletionCreateParams.builder()
-            .model(modelName)
-            .maxCompletionTokens((request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS).toLong())
+        val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty())
+        val builder = ChatCompletionCreateParams.builder().model(modelName)
+        val maxOutputTokens = request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS
+        when (generation.behavior.chatCompletionsTokenLimit) {
+            AiModelBehavior.ChatCompletionsTokenLimit.MAX_COMPLETION_TOKENS -> builder.maxCompletionTokens(maxOutputTokens.toLong())
+            AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS -> builder.maxTokens(maxOutputTokens.toLong())
+            AiModelBehavior.ChatCompletionsTokenLimit.OMIT -> Unit
+        }
 
         val systemPrompt = request.systemPrompts
             .filter { it.isNotBlank() }
@@ -152,7 +163,7 @@ internal class OpenAiSdkMessageMapper(
         messages.forEach(builder::addMessage)
 
         applyTools(builder, request.tools, request.options.toolChoice)
-        applyReasoning(builder, request.options)
+        applyReasoning(builder, reasoning, maxOutputTokens)
         applyResponseFormat(builder, request.options.responseFormat)
 
         return builder.build()
@@ -571,10 +582,32 @@ internal class OpenAiSdkMessageMapper(
 
     private fun applyReasoning(
         builder: ChatCompletionCreateParams.Builder,
-        options: AiRuntimeOptions,
+        reasoning: AiReasoningConfig?,
+        maxOutputTokens: Int,
     ) {
-        options.reasoning?.effort?.let { effort ->
-            builder.reasoningEffort(effort.toOpenAiReasoningEffort())
+        when (generation.behavior.chatCompletionsReasoning) {
+            AiModelBehavior.ChatCompletionsReasoning.REASONING_EFFORT -> {
+                require(reasoning?.mode == AiReasoningMode.DISABLED || reasoning?.display == null) {
+                    "Chat Completions effort encoding does not support reasoning display control"
+                }
+                reasoning?.openAiEffort()?.let(builder::reasoningEffort)
+            }
+            AiModelBehavior.ChatCompletionsReasoning.ANTHROPIC_THINKING -> {
+                require(reasoning?.mode != AiReasoningMode.TOKEN_BUDGET ||
+                    generation.behavior.chatCompletionsTokenLimit != AiModelBehavior.ChatCompletionsTokenLimit.OMIT) {
+                    "Anthropic thinking token budget requires an output token limit"
+                }
+                AnthropicThinkingParameters.create(reasoning, generation.behavior, maxOutputTokens)?.let { thinking ->
+                    val value = com.openai.core.jsonMapper().readValue(com.anthropic.core.jsonMapper().writeValueAsString(thinking), Any::class.java)
+                    builder.putAdditionalBodyProperty("thinking", JsonValue.from(value))
+                }
+                reasoning?.effort?.let {
+                    builder.putAdditionalBodyProperty("output_config", JsonValue.from(mapOf("effort" to it.name.lowercase())))
+                }
+                if (generation.behavior.anthropicThinkingPrefixDrop) {
+                    builder.putAdditionalHeader("anthropic-beta", AnthropicThinkingParameters.PREFIX_DROP_BETA)
+                }
+            }
         }
     }
 
@@ -634,15 +667,6 @@ internal class OpenAiSdkMessageMapper(
             structured = Conversation.Message.StructuredText(fullText = text),
             state = Conversation.Message.BlockState.COMPLETE,
         )
-
-    private fun AiReasoningEffort.toOpenAiReasoningEffort(): ReasoningEffort =
-        when (this) {
-            AiReasoningEffort.LOW -> ReasoningEffort.LOW
-            AiReasoningEffort.MEDIUM -> ReasoningEffort.MEDIUM
-            AiReasoningEffort.HIGH -> ReasoningEffort.HIGH
-            AiReasoningEffort.XHIGH,
-            AiReasoningEffort.MAX -> ReasoningEffort.XHIGH
-        }
 
     private fun CompletionUsage.toAiUsage(): AiUsage {
         val cachedTokens = promptTokensDetails().getOrNull()?.cachedTokens()?.getOrNull() ?: 0L

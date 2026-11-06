@@ -2046,6 +2046,16 @@
     "notifications.markUnread": "Mark as unread",
     "notifications.openConversation": "Open conversation",
     "notifications.delete": "Delete",
-    "notifications.loadMore": "Load more"
+    "notifications.loadMore": "Load more",
+    "ai.spec.behavior": "Request behavior",
+    "ai.spec.behavior_help": "Explicit rules for this model route. They do not select an API and are not inferred from the model ID.",
+    "ai.spec.chat_token_limit": "Chat Completions token limit field",
+    "ai.spec.omit_token_limit": "Do not send a token limit",
+    "ai.spec.chat_reasoning_encoding": "Chat Completions reasoning fields",
+    "ai.spec.default_reasoning_mode": "Default reasoning mode when unspecified",
+    "ai.spec.minimum_tool_effort": "Minimum reasoning effort for tools",
+    "ai.spec.maximum_disabled_effort": "Maximum effort with thinking disabled",
+    "ai.spec.forced_tool_choice": "Allow forced tool choice",
+    "ai.spec.anthropic_prefix_drop": "Drop prefix-incompatible Anthropic thinking (beta)"
   }
 }

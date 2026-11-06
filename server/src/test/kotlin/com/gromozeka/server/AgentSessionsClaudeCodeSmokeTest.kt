@@ -52,7 +52,12 @@ class AgentSessionsClaudeCodeSmokeTest {
                     executablePath = System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude", maxCachedProcesses = 1,
                     executionTarget = AiExecutionTarget.Worker("synthetic-sessions-worker"))
                 val model = AiModelConfiguration(AiModelConfiguration.Id("sessions-smoke-haiku"), connection.id, "haiku", "Haiku smoke")
-                val runtime = context.getBean(AiRuntimeBackend::class.java).createRuntime(connection, model, root.toString())
+                val runtime = context.getBean(AiRuntimeBackend::class.java).createRuntime(
+                    com.gromozeka.domain.service.ResolvedAiRuntime(connection, model, AiModelSpec(
+                        id = "haiku", provider = connection.kind.provider,
+                        capabilities = setOf(AiModelCapability.TEXT_GENERATION),
+                        limits = AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(200_000)),
+                    )), root.toString())
                 suspend fun ask(request: AiRuntimeRequest): AiRuntimeResponse {
                     val conversation = Conversation.Id(request.options.toolContext.getValue(TOOL_CONTEXT_CONVERSATION_ID) as String)
                     assertEquals(fixture.a.conversationId, conversation, "Only the inspector may invoke a model")

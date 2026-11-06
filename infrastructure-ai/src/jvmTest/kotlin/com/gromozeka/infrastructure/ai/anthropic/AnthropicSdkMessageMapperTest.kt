@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.ai.anthropic
 
+import com.gromozeka.domain.model.ai.AiModelBehavior
+import com.gromozeka.domain.model.ai.AiReasoningCapabilities
+import com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiStepOutcome
 import kotlinx.serialization.json.JsonElement
@@ -152,7 +155,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun opus55UsesSummarizedAdaptiveThinkingAndSupportsMutableConversationPrefixes() {
-        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
         val params = mapper.toCreateParams("claude-opus-5-5", requestWithJsonSchema())
         val thinking = params.thinking().orElseThrow().asAdaptive()
         assertEquals("summarized", thinking.display().orElseThrow().asString())
@@ -166,7 +169,7 @@ class AnthropicSdkMessageMapperTest {
     @Test
     fun opus55SupportsAllEffortsAndExplicitOmittedDisplay() {
         for (effort in AiReasoningEffort.entries) {
-            val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API).toCreateParams(
+            val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true)).toCreateParams(
                 "claude-opus-5-5", requestWithoutJsonSchema(AiReasoningConfig(
                     mode = AiReasoningMode.ADAPTIVE, effort = effort, display = AiReasoningDisplay.OMITTED)))
             assertEquals(effort.name.lowercase(), params.outputConfig().orElseThrow().effort().orElseThrow().asString())
@@ -182,16 +185,16 @@ class AnthropicSdkMessageMapperTest {
             AiReasoningConfig(budgetTokens = 1024),
         )) {
             val error = assertFailsWith<IllegalArgumentException> {
-                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
                     .toCreateParams("claude-opus-5-5", requestWithoutJsonSchema(reasoning))
             }
-            assertTrue(error.message.orEmpty().contains("requires adaptive thinking"))
+            assertTrue(error.message.orEmpty().contains(if (reasoning.mode == null) "Reasoning token budget requires TOKEN_BUDGET mode" else "does not support reasoning mode"))
         }
     }
 
     @Test
     fun opus55AcceptsAutoOrNoneButRejectsForcedToolChoice() {
-        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
         for (choice in listOf(AiToolChoice.Auto, AiToolChoice.None)) {
             mapper.toCreateParams("claude-opus-5-5", requestWithoutJsonSchema().copy(options = AiRuntimeOptions(toolChoice = choice)))
         }
@@ -220,7 +223,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun opus5AcceptsAdaptiveThinkingAtMaximumEffort() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
             .toCreateParams(
                 "claude-opus-5",
                 requestWithoutJsonSchema(
@@ -238,7 +241,7 @@ class AnthropicSdkMessageMapperTest {
     @Test
     fun opus5RejectsManualThinkingBudget() {
         val error = assertFailsWith<IllegalArgumentException> {
-            AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+            AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
                 .toCreateParams(
                     "claude-opus-5",
                     requestWithoutJsonSchema(
@@ -250,14 +253,14 @@ class AnthropicSdkMessageMapperTest {
                 )
         }
 
-        assertTrue("does not support manual thinking token budgets" in error.message.orEmpty())
+        assertTrue("does not support reasoning mode TOKEN_BUDGET" in error.message.orEmpty())
     }
 
     @Test
     fun opus5RejectsDisabledThinkingAtExtendedEfforts() {
         listOf(AiReasoningEffort.XHIGH, AiReasoningEffort.MAX).forEach { effort ->
             val error = assertFailsWith<IllegalArgumentException> {
-                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
                     .toCreateParams(
                         "claude-opus-5",
                         requestWithoutJsonSchema(
@@ -337,6 +340,18 @@ class AnthropicSdkMessageMapperTest {
                 )
             )
         )
+
+    private fun adaptivePolicy(required: Boolean) = ModelGenerationPolicy(
+        behavior = AiModelBehavior(
+            defaultReasoningMode = if (required) AiReasoningMode.ADAPTIVE else null,
+            maximumDisabledReasoningEffort = if (required) null else AiReasoningEffort.HIGH,
+            supportsForcedToolChoice = !required,
+            anthropicThinkingPrefixDrop = required,
+        ),
+        reasoningCapabilities = AiReasoningCapabilities(
+            modes = if (required) setOf(AiReasoningMode.ADAPTIVE) else setOf(AiReasoningMode.DISABLED, AiReasoningMode.ADAPTIVE),
+        ),
+    )
 
     private fun requestWithoutJsonSchema(reasoning: AiReasoningConfig? = null): AiRuntimeRequest =
         AiRuntimeRequest(

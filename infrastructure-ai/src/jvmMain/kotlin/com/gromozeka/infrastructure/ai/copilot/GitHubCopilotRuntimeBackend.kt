@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.copilot
 
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.github.copilot.generated.AssistantReasoningEvent
 import com.github.copilot.generated.SessionEvent
 
@@ -80,10 +81,11 @@ internal class GitHubCopilotRuntimeBackend(
     ): AiRuntimeCapabilities = AiRuntimeCapabilities()
 
     override fun createRuntime(
-        connection: AiConnection,
-        modelConfiguration: AiModelConfiguration,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
     ): AiRuntime {
+        val connection = runtime.connection
+        val modelConfiguration = runtime.modelConfiguration
         require(connection is AiConnection.GitHubCopilot) {
             "GitHub Copilot runtime requires github_copilot connection, got ${connection::class.simpleName}"
         }

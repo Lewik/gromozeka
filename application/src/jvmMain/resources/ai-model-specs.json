@@ -14,6 +14,13 @@
       "modes": ["ADAPTIVE"],
       "efforts": ["LOW", "MEDIUM", "HIGH", "XHIGH", "MAX"],
       "displays": ["SUMMARIZED", "OMITTED"]
+    },
+    "behavior": {
+      "chatCompletionsTokenLimit": "MAX_TOKENS",
+      "chatCompletionsReasoning": "ANTHROPIC_THINKING",
+      "defaultReasoningMode": "ADAPTIVE",
+      "supportsForcedToolChoice": false,
+      "anthropicThinkingPrefixDrop": true
     }
   },
   {
@@ -31,6 +38,11 @@
       "modes": ["DISABLED", "ADAPTIVE"],
       "efforts": ["LOW", "MEDIUM", "HIGH", "XHIGH", "MAX"],
       "displays": ["SUMMARIZED", "OMITTED"]
+    },
+    "behavior": {
+      "chatCompletionsTokenLimit": "MAX_TOKENS",
+      "chatCompletionsReasoning": "ANTHROPIC_THINKING",
+      "maximumDisabledReasoningEffort": "HIGH"
     }
   },
   {

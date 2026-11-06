@@ -2083,6 +2083,16 @@
     "notifications.markUnread": "סימון כלא נקרא",
     "notifications.openConversation": "פתיחת שיחה",
     "notifications.delete": "מחיקה",
-    "notifications.loadMore": "טעינת עוד"
+    "notifications.loadMore": "טעינת עוד",
+    "ai.spec.behavior": "כללי בקשות",
+    "ai.spec.behavior_help": "כללים מפורשים לנתיב המודל. הם אינם בוחרים API ואינם נגזרים ממזהה המודל.",
+    "ai.spec.chat_token_limit": "שדה מגבלת טוקנים ב-Chat Completions",
+    "ai.spec.omit_token_limit": "לא לשלוח מגבלת טוקנים",
+    "ai.spec.chat_reasoning_encoding": "שדות reasoning ב-Chat Completions",
+    "ai.spec.default_reasoning_mode": "מצב reasoning כשלא צוין במפורש",
+    "ai.spec.minimum_tool_effort": "מאמץ reasoning מזערי לכלים",
+    "ai.spec.maximum_disabled_effort": "מאמץ מרבי כאשר thinking כבוי",
+    "ai.spec.forced_tool_choice": "לאפשר בחירה כפויה של כלי",
+    "ai.spec.anthropic_prefix_drop": "השמטת thinking של Anthropic עם קידומת לא תואמת (בטא)"
   }
 }

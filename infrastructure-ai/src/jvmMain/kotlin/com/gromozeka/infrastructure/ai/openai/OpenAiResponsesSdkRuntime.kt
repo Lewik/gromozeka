@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.domain.model.ai.AiReasoningMode
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
@@ -7,9 +10,7 @@ import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
-import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiResponseFormat
-import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
@@ -23,7 +24,6 @@ import com.openai.core.JsonValue
 import com.openai.core.jsonMapper
 import com.openai.models.Reasoning
 import com.openai.models.ResponsesModel
-import com.openai.models.ReasoningEffort as OpenAiReasoningEffort
 import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.Response
@@ -75,10 +75,12 @@ internal class OpenAiResponsesSdkRuntime(
     private val modelName: String,
     private val webSearchEnabled: Boolean,
     private val client: OpenAIClient,
+    generation: ModelGenerationPolicy = ModelGenerationPolicy(),
     private val messageMapper: OpenAiResponsesMessageMapper = OpenAiResponsesMessageMapper(
         connectionId = connectionId,
         modelConfigurationId = modelConfigurationId,
         modelName = modelName,
+        generation = generation,
     ),
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
@@ -105,6 +107,7 @@ internal class OpenAiResponsesMessageMapper(
     private val connectionId: String,
     private val modelConfigurationId: String,
     private val modelName: String,
+    private val generation: ModelGenerationPolicy = ModelGenerationPolicy(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -133,9 +136,11 @@ internal class OpenAiResponsesMessageMapper(
             ?.takeIf(String::isNotBlank)
             ?.let(builder::promptCacheKey)
 
-        applyTools(builder, request.tools, request.options.toolChoice, webSearchEnabled &&
-            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.isAllowed(request.options.toolAccess))
-        applyReasoning(builder, request.options)
+        val nativeWebSearch = webSearchEnabled &&
+            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.isAllowed(request.options.toolAccess)
+        val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty() || nativeWebSearch)
+        applyTools(builder, request.tools, request.options.toolChoice, nativeWebSearch)
+        applyReasoning(builder, reasoning)
         applyResponseFormat(builder, request.options.responseFormat)
         return builder.build()
     }
@@ -469,13 +474,14 @@ internal class OpenAiResponsesMessageMapper(
             .build()
     }
 
-    private fun applyReasoning(builder: ResponseCreateParams.Builder, options: AiRuntimeOptions) {
-        val config = options.reasoning ?: return
+    private fun applyReasoning(builder: ResponseCreateParams.Builder, config: AiReasoningConfig?) {
+        if (config == null) return
+        val effort = config.openAiEffort()
+        val summary = config.mode != AiReasoningMode.DISABLED && config.display != null && config.display != AiReasoningDisplay.OMITTED
+        if (effort == null && !summary) return
         val reasoning = Reasoning.builder()
-        config.effort?.let { reasoning.effort(it.toOpenAiReasoningEffort()) }
-        if (config.display != null && config.display != AiReasoningDisplay.OMITTED) {
-            reasoning.summary(Reasoning.Summary.AUTO)
-        }
+        effort?.let(reasoning::effort)
+        if (summary) reasoning.summary(Reasoning.Summary.AUTO)
         builder.reasoning(reasoning.build())
     }
 
@@ -559,14 +565,6 @@ internal class OpenAiResponsesMessageMapper(
             thinkingTokens = reasoningTokens.toIntClamped(),
             cacheReadTokens = cachedTokens.toIntClamped(),
         )
-    }
-
-    private fun AiReasoningEffort.toOpenAiReasoningEffort(): OpenAiReasoningEffort = when (this) {
-        AiReasoningEffort.LOW -> OpenAiReasoningEffort.LOW
-        AiReasoningEffort.MEDIUM -> OpenAiReasoningEffort.MEDIUM
-        AiReasoningEffort.HIGH -> OpenAiReasoningEffort.HIGH
-        AiReasoningEffort.XHIGH,
-        AiReasoningEffort.MAX -> OpenAiReasoningEffort.XHIGH
     }
 
     private fun JsonObject.toOpenAiProperties(): Map<String, JsonValue> =

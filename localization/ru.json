@@ -2120,6 +2120,16 @@
     "notifications.markUnread": "Отметить непрочитанным",
     "notifications.openConversation": "Открыть диалог",
     "notifications.delete": "Удалить",
-    "notifications.loadMore": "Загрузить ещё"
+    "notifications.loadMore": "Загрузить ещё",
+    "ai.spec.behavior": "Правила запросов",
+    "ai.spec.behavior_help": "Явные правила маршрута модели. Они не выбирают API и не определяются по имени модели.",
+    "ai.spec.chat_token_limit": "Поле лимита токенов Chat Completions",
+    "ai.spec.omit_token_limit": "Не отправлять лимит токенов",
+    "ai.spec.chat_reasoning_encoding": "Поля reasoning в Chat Completions",
+    "ai.spec.default_reasoning_mode": "Режим reasoning, если не задан явно",
+    "ai.spec.minimum_tool_effort": "Минимальный effort для инструментов",
+    "ai.spec.maximum_disabled_effort": "Максимальный effort при выключенном thinking",
+    "ai.spec.forced_tool_choice": "Разрешить принудительный выбор инструмента",
+    "ai.spec.anthropic_prefix_drop": "Отбрасывать Anthropic thinking с несовместимым префиксом (бета)"
   }
 }

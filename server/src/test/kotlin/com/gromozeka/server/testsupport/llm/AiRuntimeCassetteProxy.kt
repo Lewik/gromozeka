@@ -71,7 +71,7 @@ internal class CassetteAiRuntimeProvider(
         val modelConfiguration = resolvedRuntime.modelConfiguration
         val backend = backends.firstOrNull { it.supports(connection.kind) }
             ?: error("No AI runtime backend registered for connection kind ${connection.kind}")
-        val backendRuntime = backend.createRuntime(connection, modelConfiguration, projectPath)
+        val backendRuntime = backend.createRuntime(resolvedRuntime, projectPath)
         val runtime = if (settings.mode == AiRuntimeCassetteMode.OFF) {
             backendRuntime
         } else {

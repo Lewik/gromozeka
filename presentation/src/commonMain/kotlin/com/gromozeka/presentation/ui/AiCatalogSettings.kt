@@ -61,6 +61,7 @@ import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiModelBehavior
 import com.gromozeka.domain.model.ai.AiReasoningCapabilities
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
@@ -1761,6 +1762,7 @@ private fun ModelSpecDialog(
     var embeddingInput by remember {
         mutableStateOf(existing?.limits?.embeddings?.maxInputTokens?.toString().orEmpty())
     }
+    var behavior by remember { mutableStateOf(existing?.behavior ?: AiModelBehavior()) }
     var reasoningModes by remember { mutableStateOf(existing?.reasoning?.modes.orEmpty()) }
     var reasoningEfforts by remember { mutableStateOf(existing?.reasoning?.efforts.orEmpty()) }
     var reasoningDisplays by remember { mutableStateOf(existing?.reasoning?.displays.orEmpty()) }
@@ -1851,6 +1853,7 @@ private fun ModelSpecDialog(
                     EnumSetEditor(translation.text("ai.spec.reasoning_display"), reasoningDisplays, AiReasoningDisplay.entries, { it.aiLabel(translation) }) {
                         reasoningDisplays = it
                     }
+                    ModelBehaviorEditor(behavior) { behavior = it }
                 }
                 if (AiModelCapability.EMBEDDINGS in capabilities) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1919,6 +1922,7 @@ private fun ModelSpecDialog(
                         capabilities = capabilities,
                         limits = AiModelSpec.Limits(textLimits, embeddingLimits),
                         reasoning = reasoning,
+                        behavior = if (textLimits != null) behavior else AiModelBehavior(),
                     )
                 }.onSuccess(onSave).onFailure { error = it.message }
             }) {
@@ -1927,6 +1931,50 @@ private fun ModelSpecDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("ai.action.cancel")) } },
     )
+}
+
+@Composable
+private fun ModelBehaviorEditor(behavior: AiModelBehavior, onChange: (AiModelBehavior) -> Unit) {
+    val translation = LocalTranslation.current
+    HorizontalDivider()
+    Text(translation.text("ai.spec.behavior"), style = MaterialTheme.typography.titleSmall)
+    Text(translation.text("ai.spec.behavior_help"), style = MaterialTheme.typography.bodySmall)
+    LabeledDropdown(
+        label = translation.text("ai.spec.chat_token_limit"),
+        value = behavior.chatCompletionsTokenLimit,
+        options = AiModelBehavior.ChatCompletionsTokenLimit.entries,
+        optionLabel = { if (it == AiModelBehavior.ChatCompletionsTokenLimit.OMIT) translation.text("ai.spec.omit_token_limit") else it.name.lowercase() },
+        onSelect = { onChange(behavior.copy(chatCompletionsTokenLimit = it)) },
+    )
+    LabeledDropdown(
+        label = translation.text("ai.spec.chat_reasoning_encoding"),
+        value = behavior.chatCompletionsReasoning,
+        options = AiModelBehavior.ChatCompletionsReasoning.entries,
+        optionLabel = { if (it == AiModelBehavior.ChatCompletionsReasoning.REASONING_EFFORT) "reasoning_effort" else "thinking / output_config" },
+        onSelect = { onChange(behavior.copy(chatCompletionsReasoning = it)) },
+    )
+    NullableEnumDropdown(
+        translation.text("ai.spec.default_reasoning_mode"), behavior.defaultReasoningMode, AiReasoningMode.entries,
+        { it.aiLabel(translation) }, { onChange(behavior.copy(defaultReasoningMode = it)) },
+    )
+    NullableEnumDropdown(
+        translation.text("ai.spec.minimum_tool_effort"), behavior.minimumToolReasoningEffort, AiReasoningEffort.entries,
+        { it.aiLabel(translation) }, { onChange(behavior.copy(minimumToolReasoningEffort = it)) },
+    )
+    NullableEnumDropdown(
+        translation.text("ai.spec.maximum_disabled_effort"), behavior.maximumDisabledReasoningEffort, AiReasoningEffort.entries,
+        { it.aiLabel(translation) }, { onChange(behavior.copy(maximumDisabledReasoningEffort = it)) },
+    )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = behavior.supportsForcedToolChoice, onCheckedChange = { onChange(behavior.copy(supportsForcedToolChoice = it)) })
+        Spacer(Modifier.width(8.dp))
+        Text(translation.text("ai.spec.forced_tool_choice"))
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = behavior.anthropicThinkingPrefixDrop, onCheckedChange = { onChange(behavior.copy(anthropicThinkingPrefixDrop = it)) })
+        Spacer(Modifier.width(8.dp))
+        Text(translation.text("ai.spec.anthropic_prefix_drop"))
+    }
 }
 
 @Composable

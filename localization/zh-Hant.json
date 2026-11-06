@@ -2009,6 +2009,16 @@
     "notifications.markUnread": "標為未讀",
     "notifications.openConversation": "開啟對話",
     "notifications.delete": "刪除",
-    "notifications.loadMore": "載入更多"
+    "notifications.loadMore": "載入更多",
+    "ai.spec.behavior": "請求規則",
+    "ai.spec.behavior_help": "此模型路由的明確規則。不用於選擇 API，也不根據模型 ID 推斷。",
+    "ai.spec.chat_token_limit": "Chat Completions 權杖上限欄位",
+    "ai.spec.omit_token_limit": "不傳送權杖上限",
+    "ai.spec.chat_reasoning_encoding": "Chat Completions 推理欄位",
+    "ai.spec.default_reasoning_mode": "未指定時的推理模式",
+    "ai.spec.minimum_tool_effort": "工具所需的最低推理強度",
+    "ai.spec.maximum_disabled_effort": "停用 thinking 時的最高強度",
+    "ai.spec.forced_tool_choice": "允許強制選擇工具",
+    "ai.spec.anthropic_prefix_drop": "捨棄前綴不相容的 Anthropic thinking（測試版）"
   }
 }

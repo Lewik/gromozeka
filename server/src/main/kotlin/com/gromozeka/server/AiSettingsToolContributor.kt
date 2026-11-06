@@ -132,7 +132,7 @@ internal class AiSettingsToolContributor(
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_model_spec_upsert",
-            description = "Create or replace static capability and limit metadata for one provider model.",
+            description = "Create or replace capabilities, limits and explicit request behavior for one exact model route. Behavior is not inferred from the model ID; preserve it when copying a spec to a gateway ID.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "modelSpec",
                 description = "Serialized AiModelSpec object.",

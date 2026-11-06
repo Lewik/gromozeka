@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.anthropic
 
+import com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.anthropic.bedrock.backends.BedrockBackend
 import com.anthropic.backends.Backend
 import com.anthropic.client.AnthropicClient
@@ -21,9 +23,6 @@ import com.anthropic.models.messages.OutputConfig
 import com.anthropic.models.messages.TextBlockParam
 import com.anthropic.models.messages.ThinkingBlockParam
 import com.anthropic.models.messages.RedactedThinkingBlockParam
-import com.anthropic.models.messages.ThinkingConfigAdaptive
-import com.anthropic.models.messages.ThinkingConfigDisabled
-import com.anthropic.models.messages.ThinkingConfigEnabled
 import com.anthropic.models.messages.Tool
 import com.anthropic.models.messages.ToolChoiceAny
 import com.anthropic.models.messages.ToolChoiceNone
@@ -34,10 +33,6 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiReasoningConfig
-import com.gromozeka.domain.model.ai.AiReasoningDisplay
-import com.gromozeka.domain.model.ai.AiReasoningEffort
-import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiResponseFormat
@@ -84,10 +79,11 @@ internal class AnthropicSdkRuntimeBackend(
         connectionKind == AiConnection.Kind.ANTHROPIC_API || connectionKind == AiConnection.Kind.ANTHROPIC_BEDROCK
 
     override fun createRuntime(
-        connection: AiConnection,
-        modelConfiguration: AiModelConfiguration,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?
     ): AiRuntime {
+        val connection = runtime.connection
+        val modelConfiguration = runtime.modelConfiguration
         val connectionKind = connection.kind
         val client = when (connectionKind) {
             AiConnection.Kind.ANTHROPIC_API -> createDirectAnthropicClient(connection)
@@ -99,7 +95,7 @@ internal class AnthropicSdkRuntimeBackend(
             connectionKind,
             modelConfiguration.providerModelId,
             client,
-            AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId)
+            AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec))
         )
     }
 
@@ -223,11 +219,12 @@ internal class AnthropicSdkMessageMapper(
     private val connectionKind: AiConnection.Kind,
     private val connectionId: String? = null,
     private val requestedModelName: String? = null,
+    private val generation: ModelGenerationPolicy = ModelGenerationPolicy(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun toCreateParams(modelName: String, request: AiRuntimeRequest): MessageCreateParams {
-        validateModelOptions(modelName, request.options)
+        val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty())
 
         val builder = MessageCreateParams.builder()
             .model(modelName)
@@ -260,38 +257,14 @@ internal class AnthropicSdkMessageMapper(
         }
 
         applyTools(builder, request.tools, request.options.toolChoice)
-        applyThinking(builder, modelName, request.options.reasoning)
-        applyOutputConfig(builder, request.options)
+        AnthropicThinkingParameters.create(reasoning, generation.behavior, request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS)
+            ?.let(builder::thinking)
+        if (generation.behavior.anthropicThinkingPrefixDrop) {
+            builder.putAdditionalHeader("anthropic-beta", AnthropicThinkingParameters.PREFIX_DROP_BETA)
+        }
+        applyOutputConfig(builder, request.options.copy(reasoning = reasoning))
 
         return builder.build()
-    }
-
-    private fun validateModelOptions(
-        modelName: String,
-        options: AiRuntimeOptions,
-    ) {
-        if (modelName == CLAUDE_OPUS_5_5) {
-            require(options.reasoning?.mode !in setOf(AiReasoningMode.DISABLED, AiReasoningMode.TOKEN_BUDGET) &&
-                options.reasoning?.budgetTokens == null) {
-                "Claude Opus 5.5 requires adaptive thinking; use effort instead of disabling thinking or setting a token budget"
-            }
-            require(options.toolChoice == AiToolChoice.Auto || options.toolChoice == AiToolChoice.None) {
-                "Claude Opus 5.5 does not support forced tool choice; use auto or none"
-            }
-            return
-        }
-        if (modelName != CLAUDE_OPUS_5) return
-
-        val reasoning = options.reasoning ?: return
-        require(reasoning.mode != AiReasoningMode.TOKEN_BUDGET) {
-            "Claude Opus 5 does not support manual thinking token budgets; use adaptive thinking and effort"
-        }
-        require(
-            reasoning.mode != AiReasoningMode.DISABLED ||
-                reasoning.effort !in setOf(AiReasoningEffort.XHIGH, AiReasoningEffort.MAX)
-        ) {
-            "Claude Opus 5 cannot combine disabled thinking with xhigh or maximum effort"
-        }
     }
 
     fun toRuntimeResponse(
@@ -620,40 +593,6 @@ internal class AnthropicSdkMessageMapper(
         )
     }
 
-    private fun applyThinking(
-        builder: MessageCreateParams.Builder,
-        modelName: String,
-        reasoning: AiReasoningConfig?,
-    ) {
-        if (modelName == CLAUDE_OPUS_5_5) {
-            // History compaction/edits and dynamic prompts intentionally change the prefix.
-            // Let Anthropic discard only invalidated thinking rather than reject those turns.
-            builder.putAdditionalHeader("anthropic-beta", "thinking-binding-controls-2026-08-01")
-            builder.thinking(
-                ThinkingConfigAdaptive.builder()
-                    .display(adaptiveDisplay(reasoning?.display))
-                    .putAdditionalProperty("block_binding", JsonValue.from(mapOf("prefix_mismatch_behavior" to "drop_block")))
-                    .build()
-            )
-            return
-        }
-        when (reasoning?.mode) {
-            null -> Unit
-            AiReasoningMode.ADAPTIVE -> builder.thinking(
-                ThinkingConfigAdaptive.builder()
-                    .display(adaptiveDisplay(reasoning.display))
-                    .build()
-            )
-            AiReasoningMode.TOKEN_BUDGET -> builder.thinking(
-                ThinkingConfigEnabled.builder()
-                    .budgetTokens((reasoning.budgetTokens ?: DEFAULT_THINKING_BUDGET_TOKENS).toLong())
-                    .display(enabledDisplay(reasoning.display))
-                    .build()
-            )
-            AiReasoningMode.DISABLED -> builder.thinking(ThinkingConfigDisabled.builder().build())
-        }
-    }
-
     private fun applyOutputConfig(
         builder: MessageCreateParams.Builder,
         options: AiRuntimeOptions,
@@ -690,22 +629,6 @@ internal class AnthropicSdkMessageMapper(
 
     private fun supportsNativeStructuredOutput(): Boolean =
         connectionKind == AiConnection.Kind.ANTHROPIC_API
-
-    private fun adaptiveDisplay(display: AiReasoningDisplay?): ThinkingConfigAdaptive.Display =
-        when (display) {
-            AiReasoningDisplay.OMITTED -> ThinkingConfigAdaptive.Display.OMITTED
-            AiReasoningDisplay.FULL,
-            AiReasoningDisplay.SUMMARIZED,
-            null -> ThinkingConfigAdaptive.Display.SUMMARIZED
-        }
-
-    private fun enabledDisplay(display: AiReasoningDisplay?): ThinkingConfigEnabled.Display =
-        when (display) {
-            AiReasoningDisplay.OMITTED -> ThinkingConfigEnabled.Display.OMITTED
-            AiReasoningDisplay.FULL,
-            AiReasoningDisplay.SUMMARIZED,
-            null -> ThinkingConfigEnabled.Display.SUMMARIZED
-        }
 
     private fun toContentItems(
         block: com.anthropic.models.messages.ContentBlock,
@@ -817,10 +740,7 @@ internal class AnthropicSdkMessageMapper(
         coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
     companion object {
-        private const val CLAUDE_OPUS_5 = "claude-opus-5"
-        private const val CLAUDE_OPUS_5_5 = "claude-opus-5-5"
         private const val DEFAULT_MAX_TOKENS = 8192
-        private const val DEFAULT_THINKING_BUDGET_TOKENS = 16_000
         private val ANTHROPIC_TEXT_DOCUMENT_TYPES = setOf(
             "application/json",
             "application/xml",

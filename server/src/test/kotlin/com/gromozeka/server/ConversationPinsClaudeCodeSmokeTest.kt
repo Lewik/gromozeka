@@ -36,7 +36,12 @@ class ConversationPinsClaudeCodeSmokeTest {
                     executablePath = System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude", maxCachedProcesses = 1,
                     executionTarget = AiExecutionTarget.Worker("synthetic-pin-worker"))
                 val model = AiModelConfiguration(AiModelConfiguration.Id("pin-smoke-haiku"), connection.id, "haiku", "Haiku smoke")
-                val runtime = context.getBean(AiRuntimeBackend::class.java).createRuntime(connection, model, root.toString())
+                val runtime = context.getBean(AiRuntimeBackend::class.java).createRuntime(
+                    com.gromozeka.domain.service.ResolvedAiRuntime(connection, model, AiModelSpec(
+                        id = "haiku", provider = connection.kind.provider,
+                        capabilities = setOf(AiModelCapability.TEXT_GENERATION),
+                        limits = AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(200_000)),
+                    )), root.toString())
                 val messages = mutableListOf<Conversation.Message>()
                 val calls = mutableMapOf<Operation, Conversation.Message.ContentItem.ToolCall>()
                 val modelCalls = mutableMapOf<Conversation.Id, Int>()

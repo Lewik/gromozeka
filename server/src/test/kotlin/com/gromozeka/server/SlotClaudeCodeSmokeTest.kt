@@ -40,7 +40,12 @@ class SlotClaudeCodeSmokeTest {
                     executablePath = System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude", maxCachedProcesses = 1,
                     executionTarget = AiExecutionTarget.Worker(fixture.worker.id.value))
                 val model = AiModelConfiguration(AiModelConfiguration.Id("slot-smoke-haiku"), connection.id, "haiku", "Haiku smoke")
-                val runtime = context.getBean(AiRuntimeBackend::class.java).createRuntime(connection, model, root.toString())
+                val runtime = context.getBean(AiRuntimeBackend::class.java).createRuntime(
+                    com.gromozeka.domain.service.ResolvedAiRuntime(connection, model, AiModelSpec(
+                        id = "haiku", provider = connection.kind.provider,
+                        capabilities = setOf(AiModelCapability.TEXT_GENERATION),
+                        limits = AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(200_000)),
+                    )), root.toString())
                 suspend fun ask(request: AiRuntimeRequest): AiRuntimeResponse {
                     // Force an independent CLI invocation: it must not remember hidden discovery/history.
                     // This production path adds --no-session-persistence and closes its own child process.

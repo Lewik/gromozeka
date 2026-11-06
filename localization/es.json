@@ -2083,6 +2083,16 @@
     "notifications.markUnread": "Marcar como no leída",
     "notifications.openConversation": "Abrir conversación",
     "notifications.delete": "Eliminar",
-    "notifications.loadMore": "Cargar más"
+    "notifications.loadMore": "Cargar más",
+    "ai.spec.behavior": "Reglas de solicitud",
+    "ai.spec.behavior_help": "Reglas explícitas de esta ruta del modelo. No seleccionan una API ni se deducen del ID del modelo.",
+    "ai.spec.chat_token_limit": "Campo de límite de tokens de Chat Completions",
+    "ai.spec.omit_token_limit": "No enviar un límite de tokens",
+    "ai.spec.chat_reasoning_encoding": "Campos de razonamiento de Chat Completions",
+    "ai.spec.default_reasoning_mode": "Modo de razonamiento si no se especifica",
+    "ai.spec.minimum_tool_effort": "Esfuerzo mínimo de razonamiento para herramientas",
+    "ai.spec.maximum_disabled_effort": "Esfuerzo máximo con thinking desactivado",
+    "ai.spec.forced_tool_choice": "Permitir la selección forzada de herramientas",
+    "ai.spec.anthropic_prefix_drop": "Descartar thinking de Anthropic con prefijo incompatible (beta)"
   }
 }

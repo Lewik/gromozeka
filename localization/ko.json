@@ -2009,6 +2009,16 @@
     "notifications.markUnread": "읽지 않음으로 표시",
     "notifications.openConversation": "대화 열기",
     "notifications.delete": "삭제",
-    "notifications.loadMore": "더 불러오기"
+    "notifications.loadMore": "더 불러오기",
+    "ai.spec.behavior": "요청 규칙",
+    "ai.spec.behavior_help": "이 모델 경로에 대한 명시적 규칙입니다. API를 선택하거나 모델 ID로부터 추론하지 않습니다.",
+    "ai.spec.chat_token_limit": "Chat Completions 토큰 한도 필드",
+    "ai.spec.omit_token_limit": "토큰 한도를 보내지 않음",
+    "ai.spec.chat_reasoning_encoding": "Chat Completions 추론 필드",
+    "ai.spec.default_reasoning_mode": "지정하지 않았을 때의 추론 모드",
+    "ai.spec.minimum_tool_effort": "도구에 필요한 최소 추론 강도",
+    "ai.spec.maximum_disabled_effort": "thinking이 꺼졌을 때의 최대 강도",
+    "ai.spec.forced_tool_choice": "도구 선택 강제 허용",
+    "ai.spec.anthropic_prefix_drop": "접두사가 호환되지 않는 Anthropic thinking 삭제(베타)"
   }
 }

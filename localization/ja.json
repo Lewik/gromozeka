@@ -2009,6 +2009,16 @@
     "notifications.markUnread": "未読にする",
     "notifications.openConversation": "会話を開く",
     "notifications.delete": "削除",
-    "notifications.loadMore": "さらに読み込む"
+    "notifications.loadMore": "さらに読み込む",
+    "ai.spec.behavior": "リクエスト規則",
+    "ai.spec.behavior_help": "このモデルルートに明示的に設定する規則です。APIの選択は行わず、モデルIDから推測もしません。",
+    "ai.spec.chat_token_limit": "Chat Completionsのトークン上限フィールド",
+    "ai.spec.omit_token_limit": "トークン上限を送信しない",
+    "ai.spec.chat_reasoning_encoding": "Chat Completionsの推論フィールド",
+    "ai.spec.default_reasoning_mode": "未指定時の推論モード",
+    "ai.spec.minimum_tool_effort": "ツールに必要な最小推論労力",
+    "ai.spec.maximum_disabled_effort": "thinking無効時の最大労力",
+    "ai.spec.forced_tool_choice": "ツール選択の強制を許可",
+    "ai.spec.anthropic_prefix_drop": "プレフィックスが一致しないAnthropic thinkingを破棄（ベータ）"
   }
 }

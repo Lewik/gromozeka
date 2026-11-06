@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.ai.AiAssistantMessage
@@ -68,10 +69,11 @@ internal class ClaudeCodeCliRuntimeBackend(
     ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true, providerManagedAutoCompaction = true)
 
     override fun createRuntime(
-        connection: AiConnection,
-        modelConfiguration: AiModelConfiguration,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?
     ): AiRuntime {
+        val connection = runtime.connection
+        val modelConfiguration = runtime.modelConfiguration
         require(connection is AiConnection.ClaudeCode) {
             "Claude Code runtime requires claude_code connection, got ${connection::class.simpleName}"
         }
