@@ -252,8 +252,11 @@ private suspend fun LazyListState.scrollToLatest(itemCount: Int) {
     if (layoutInfo.visibleItemsInfo.none { it.index == latestIndex }) {
         scrollToItem(latestIndex)
     }
-    if (canScrollForward) {
-        scrollBy(Int.MAX_VALUE.toFloat())
+    val layout = layoutInfo
+    val latestItem = layout.visibleItemsInfo.firstOrNull { it.index == latestIndex } ?: return
+    val remaining = latestItem.offset.toLong() + latestItem.size + layout.afterContentPadding - layout.viewportEndOffset
+    if (remaining > 0) {
+        scrollBy(remaining.toFloat())
     }
 }
 
