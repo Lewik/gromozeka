@@ -1,5 +1,22 @@
 package com.gromozeka.presentation.ui.session
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.asAwtTransferable
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.v2.runDesktopComposeUiTest
+import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.StringSelection
+import kotlinx.coroutines.flow.flowOf
+import kotlin.test.assertTrue
+import kotlin.test.assertNull
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -26,6 +43,158 @@ import kotlin.time.Instant
 
 class ConversationRuntimePanelUiTest {
     private val translation = EnglishTranslation()
+
+    @Test
+    fun runtimeTextCanBeCopiedAndAgentTabsStillAcceptMouseClicks() = runDesktopComposeUiTest(width = 1100, height = 900) {
+        val fixture = Fixture()
+        val clipboard = MemoryClipboard()
+        setContent {
+            CompositionLocalProvider(LocalClipboard provides clipboard) {
+                Box(Modifier.fillMaxSize().testTag("selection-host")) { fixture.Panel(null) }
+            }
+        }
+        selectText(onNodeWithText("Model A", useUnmergedTree = true))
+        copySelection()
+        runOnIdle { assertEquals("Model A", clipboard.text) }
+        onNodeWithTag(UiTestTag.RuntimeAgentTab("beta").value).performMouseInput { click(center) }
+        onNodeWithText("Model B", useUnmergedTree = true).assertExists()
+        selectText(onNodeWithText("Model B", useUnmergedTree = true))
+        copySelection()
+        runOnIdle { assertEquals("Model B", clipboard.text) }
+    }
+
+    @Test
+    fun visualSelectionSpansParagraphsWithoutBreakingFieldsMenusAndActions() = runDesktopComposeUiTest(width = 1100, height = 900) {
+        val fixture = Fixture()
+        val visual = selectableVisual(fixture.conversationId)
+        val draft = VisualFormDraft(visual)
+        val service = SelectionVisualService()
+        val clipboard = MemoryClipboard()
+        setContent {
+            CompositionLocalProvider(LocalClipboard provides clipboard) {
+                Box(Modifier.fillMaxSize().testTag("selection-host")) {
+                    fixture.Panel(null, visuals = listOf(visual), selectedVisualId = visual.id,
+                        visualContent = { VisualContent(it, draft, service) })
+                }
+            }
+        }
+        selectText(onNodeWithTag("visual-element-first", useUnmergedTree = true), onNodeWithTag("visual-element-second", useUnmergedTree = true))
+        copySelection()
+        runOnIdle {
+            val copied = clipboard.text.orEmpty()
+            assertTrue(copied.contains("First paragraph") && copied.contains("Second paragraph"), copied)
+            assertTrue(copied.indexOf("First") < copied.indexOf("Second"))
+            assertTrue(service.actions.isEmpty())
+            assertNull(draft.error)
+        }
+        onNodeWithTag("visual-select-form.choice").performMouseInput { click(center) }
+        onNodeWithText("Two").performMouseInput { click(center) }
+        runOnIdle { assertEquals("two", draft.form.getValue("choice").jsonPrimitive.content) }
+        val input = onNode(hasContentDescription("form.query") and hasSetTextAction())
+        onNodeWithTag("visual-element-query-label", useUnmergedTree = true).performMouseInput { click(center) }
+        input.assertIsFocused()
+        input.performMouseInput { click(center) }
+        input.performKeyInput {
+            keyDown(copyModifier()); pressKey(Key.A); keyUp(copyModifier())
+            keyDown(copyModifier()); pressKey(Key.C); keyUp(copyModifier())
+        }
+        runOnIdle { assertEquals("editable input", clipboard.text) }
+        onNodeWithTag("visual-element-submit").performMouseInput { click(center) }
+        runOnIdle {
+            assertEquals(1, service.actions.size)
+            assertNull(draft.error)
+        }
+    }
+
+    @Test
+    fun visualSelectionKeepsScrollBoundsAndHandlesLiveContentChanges() = runDesktopComposeUiTest(width = 1100, height = 700) {
+        val fixture = Fixture()
+        val visual = mutableStateOf(selectableVisual(fixture.conversationId, long = true))
+        val draft = VisualFormDraft(visual.value)
+        val service = SelectionVisualService()
+        val clipboard = MemoryClipboard()
+        setContent {
+            CompositionLocalProvider(LocalClipboard provides clipboard) {
+                Box(Modifier.fillMaxSize().testTag("selection-host")) {
+                    fixture.Panel(null, visuals = listOf(visual.value), selectedVisualId = visual.value.id,
+                        visualContent = { VisualContent(it, draft, service) })
+                }
+            }
+        }
+        val last = onNodeWithTag("visual-element-row29", useUnmergedTree = true)
+        last.performScrollTo().assertIsDisplayed()
+        selectText(last)
+        copySelection()
+        runOnIdle {
+            assertEquals("Trailing row 29", clipboard.text)
+            visual.value = visual.value.copy(documentRevision = 2, revision = 2,
+                document = visual.value.document.replace("Trailing row 29", "Updated row"))
+        }
+        onNodeWithText("Updated row", useUnmergedTree = true).assertIsDisplayed()
+        selectText(onNodeWithTag("visual-element-row29", useUnmergedTree = true))
+        copySelection()
+        runOnIdle { assertEquals("Updated row", clipboard.text) }
+    }
+
+    private fun ComposeUiTest.selectText(first: SemanticsNodeInteraction, last: SemanticsNodeInteraction = first) {
+        val host = onNodeWithTag("selection-host")
+        val root = host.fetchSemanticsNode().boundsInRoot
+        val a = first.fetchSemanticsNode().boundsInRoot
+        val b = last.fetchSemanticsNode().boundsInRoot
+        host.performMouseInput {
+            moveTo(Offset(a.left - root.left + 1f, a.center.y - root.top))
+            press()
+            moveTo(Offset(b.right - root.left - 1f, b.center.y - root.top))
+            release()
+        }
+    }
+
+    private fun ComposeUiTest.copySelection() {
+        onNodeWithTag("selection-host").performKeyInput {
+            keyDown(copyModifier()); pressKey(Key.C); keyUp(copyModifier())
+        }
+    }
+
+    private fun copyModifier() = if (System.getProperty("os.name").contains("Mac", ignoreCase = true)) Key.MetaLeft else Key.CtrlLeft
+
+    private class MemoryClipboard : Clipboard {
+        private var entry: ClipEntry? = null
+        override val nativeClipboard = java.awt.datatransfer.Clipboard("selection-test")
+        val text: String? get() = entry?.asAwtTransferable?.getTransferData(DataFlavor.stringFlavor) as? String
+        override suspend fun getClipEntry() = entry
+        override suspend fun setClipEntry(clipEntry: ClipEntry?) {
+            entry = clipEntry
+            nativeClipboard.setContents(clipEntry?.asAwtTransferable ?: StringSelection(""), null)
+        }
+    }
+
+    private fun selectableVisual(conversationId: Conversation.Id, long: Boolean = false): Visual {
+        val tail = if (long) (0..29).joinToString("") { "<p id=\"row$it\">Trailing row $it</p>" } else ""
+        val document = """<html><head><title>Selection</title><state-schema><![CDATA[
+            {"type":"object","properties":{"form":{"type":"object"},"data":{"type":"object"}},"required":["form","data"]}
+            ]]></state-schema></head><body>
+            <p id="first">First paragraph</p><p id="second">Second paragraph</p>
+            <label id="query-label" for="query">Query label</label><input id="query" name="form.query"/>
+            <select id="choice" name="form.choice"><option value="one">One</option><option value="two">Two</option></select>
+            <button id="submit">Submit action</button>$tail
+            </body></html>"""
+        return Visual("selection", conversationId, User.Id("viewer"), document = document, title = "Selection",
+            state = Json.parseToJsonElement("""{"form":{"query":"editable input","choice":"one"},"data":{}}""").jsonObject,
+            createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0))
+    }
+
+    private class SelectionVisualService : VisualService {
+        val actions = mutableListOf<VisualAction>()
+        override fun observe(conversationId: Conversation.Id) = flowOf(emptyList<Visual>())
+        override suspend fun list(conversationId: Conversation.Id) = emptyList<Visual>()
+        override suspend fun create(conversationId: Conversation.Id, request: VisualCreate): Visual = error("Not used")
+        override suspend fun update(conversationId: Conversation.Id, visualId: String, request: VisualUpdate): Visual = error("Not used")
+        override suspend fun close(conversationId: Conversation.Id, visualId: String) = Unit
+        override suspend fun act(conversationId: Conversation.Id, action: VisualAction): VisualActionResult {
+            actions += action
+            return VisualActionResult(action.eventId, accepted = true)
+        }
+    }
 
     @Test
     fun configurationSurvivesActiveTaskGapsAndIdle() = runComposeUiTest {

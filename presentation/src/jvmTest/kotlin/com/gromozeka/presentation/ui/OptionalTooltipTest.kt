@@ -1,6 +1,8 @@
 package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.SelectionState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +46,31 @@ class OptionalTooltipTest {
         onNodeWithTag("anchor").performMouseInput { exit() }
         mainClock.advanceTimeBy(500)
         onAllNodes(isPopup(), useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun popupTextIsNotRegisteredInItsAnchorsSelectionContainer() = runComposeUiTest {
+        val selection = SelectionState()
+        mainClock.autoAdvance = false
+        setContent {
+            MaterialTheme {
+                SelectionContainer(selection) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        OptionalTooltip("Foreign popup text") { Text("Selectable anchor", Modifier.testTag("anchor")) }
+                    }
+                }
+            }
+        }
+        onNodeWithTag("anchor", useUnmergedTree = true).performMouseInput { enter(center) }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText("Foreign popup text", useUnmergedTree = true).assertExists()
+        runOnIdle {
+            assertEquals(listOf("Selectable anchor"), selection.getSelectableTexts().map { it.text })
+            selection.selectAll()
+            assertEquals(listOf("Selectable anchor"), selection.selectedTexts.map { it.text })
+        }
+        onNodeWithTag("anchor", useUnmergedTree = true).performMouseInput { exit() }
+        mainClock.advanceTimeBy(500)
     }
 
     @Test

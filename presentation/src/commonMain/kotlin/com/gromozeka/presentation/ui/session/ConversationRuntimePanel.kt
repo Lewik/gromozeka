@@ -10,6 +10,8 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.verticalScroll
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
@@ -179,116 +181,120 @@ fun ConversationRuntimePanel(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Column(Modifier.padding(horizontal = GromozekaTheme.spacing.contentPadding)
-                    .padding(top = GromozekaTheme.spacing.contentPadding)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = selectedVisual?.title ?: translation.title,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        CompactIconButton(
-                            // Dismiss this client's panel; only the tab action closes a shared Visual.
-                            onClick = onClose,
-                            icon = Icons.Default.Close,
-                            contentDescription = translation.closePanelDescription,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                        )
-                    }
-
-                    if (visuals.isNotEmpty()) {
-                        SecondaryScrollableTabRow(
-                            selectedTabIndex = if (selectedVisual == null) 0 else visuals.indexOf(selectedVisual) + 1,
-                            edgePadding = 0.dp,
-                            modifier = Modifier.fillMaxWidth().testTag("visual-tabs"),
+            SelectionContainer(Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Column(Modifier.padding(horizontal = GromozekaTheme.spacing.contentPadding)
+                        .padding(top = GromozekaTheme.spacing.contentPadding)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Tab(selected = selectedVisual == null, onClick = { onSelectVisual(null) },
-                                text = { Text(translation.title, maxLines = 1) }, modifier = Modifier.testTag("visual-tab-runtime"))
-                            visuals.forEach { visual ->
-                                VisualTab(visual.id, visual.title,
-                                    selected = visual.id == selectedVisualId,
-                                    dirty = visual.id in dirtyVisualIds,
-                                    highlighted = visual.id in highlightedVisualIds,
-                                    onSelect = { onSelectVisual(visual.id) },
-                                    onClose = { onCloseVisual(visual) },
-                                    onClearHighlight = { onClearVisualHighlights(visual.id) },
-                                )
+                            Text(
+                                text = selectedVisual?.title ?: translation.title,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            CompactIconButton(
+                                // Dismiss this client's panel; only the tab action closes a shared Visual.
+                                onClick = onClose,
+                                icon = Icons.Default.Close,
+                                contentDescription = translation.closePanelDescription,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                ),
+                            )
+                        }
+
+                        if (visuals.isNotEmpty()) {
+                            DisableSelection {
+                                SecondaryScrollableTabRow(
+                                    selectedTabIndex = if (selectedVisual == null) 0 else visuals.indexOf(selectedVisual) + 1,
+                                    edgePadding = 0.dp,
+                                    modifier = Modifier.fillMaxWidth().testTag("visual-tabs"),
+                                ) {
+                                    Tab(selected = selectedVisual == null, onClick = { onSelectVisual(null) },
+                                        text = { Text(translation.title, maxLines = 1) }, modifier = Modifier.testTag("visual-tab-runtime"))
+                                    visuals.forEach { visual ->
+                                        VisualTab(visual.id, visual.title,
+                                            selected = visual.id == selectedVisualId,
+                                            dirty = visual.id in dirtyVisualIds,
+                                            highlighted = visual.id in highlightedVisualIds,
+                                            onSelect = { onSelectVisual(visual.id) },
+                                            onClose = { onCloseVisual(visual) },
+                                            onClearHighlight = { onClearVisualHighlights(visual.id) },
+                                        )
+                                    }
+                                }
                             }
                         }
+                        visualLoadError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                     }
-                    visualLoadError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                }
-                if (selectedVisual != null) {
-                    Box(Modifier.weight(1f).fillMaxWidth()) { visualContent(selectedVisual) }
-                } else {
-                    Column(Modifier.weight(1f).fillMaxWidth()
-                        .padding(horizontal = GromozekaTheme.spacing.contentPadding)
-                        .padding(bottom = GromozekaTheme.spacing.contentPadding)) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            replyRoutingContent()
-                            RuntimeAgentSection(
-                                conversationId = conversationId,
-                                participantAgentIds = participantAgentIds,
-                                participantsLoaded = participants != null,
-                                agentDefinitions = agentDefinitions,
-                                agentLoadFailed = agentLoadFailed,
-                                selectedAgentId = selectedAgentId,
-                                onSelectAgent = { tabSelection.select(conversationId, it) },
-                                aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
-                                tokenStats = tokenStats,
-                                runtimeSnapshot = visibleRuntime,
-                            )
-                            // Thread usage and provider-account quotas are not owned by the selected tab.
-                            key(conversationId) {
-                                RuntimeUsageCard(
-                                    isVisible = isVisible,
-                                    agents = connectedAgents,
+                    if (selectedVisual != null) {
+                        Box(Modifier.weight(1f).fillMaxWidth()) { visualContent(selectedVisual) }
+                    } else {
+                        Column(Modifier.weight(1f).fillMaxWidth()
+                            .padding(horizontal = GromozekaTheme.spacing.contentPadding)
+                            .padding(bottom = GromozekaTheme.spacing.contentPadding)) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                DisableSelection { replyRoutingContent() }
+                                RuntimeAgentSection(
+                                    conversationId = conversationId,
+                                    participantAgentIds = participantAgentIds,
+                                    participantsLoaded = participants != null,
+                                    agentDefinitions = agentDefinitions,
+                                    agentLoadFailed = agentLoadFailed,
+                                    selectedAgentId = selectedAgentId,
+                                    onSelectAgent = { tabSelection.select(conversationId, it) },
                                     aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
                                     tokenStats = tokenStats,
-                                    quotaService = aiSubscriptionQuotaService,
+                                    runtimeSnapshot = visibleRuntime,
                                 )
-                                TokenStatisticsTable(
-                                    tokenStats = tokenStats,
-                                    modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeTokenStatistics.value),
-                                )
+                                // Thread usage and provider-account quotas are not owned by the selected tab.
+                                key(conversationId) {
+                                    RuntimeUsageCard(
+                                        isVisible = isVisible,
+                                        agents = connectedAgents,
+                                        aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
+                                        tokenStats = tokenStats,
+                                        quotaService = aiSubscriptionQuotaService,
+                                    )
+                                    TokenStatisticsTable(
+                                        tokenStats = tokenStats,
+                                        modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeTokenStatistics.value),
+                                    )
+                                }
                             }
+
+                            // Memory activity UI is hidden while the memory subsystem is being redesigned.
+                            RuntimeTasksSection(
+                                runtimeSnapshot = visibleRuntime,
+                                onCancelCommandTask = onCancelCommandTask,
+                                onCancelCommandMonitor = onCancelCommandMonitor,
+                                inspectionRequest = inspectionRequest?.takeIf { isVisible && it.conversationId == conversationId },
+                            )
+
+                            PendingMessagesSection(
+                                isWaitingForResponse = isWaitingForResponse,
+                                pendingMessages = pendingMessages,
+                                onSendInCurrentTurn = onSendInCurrentTurn,
+                                onEdit = onEditPendingMessage,
+                                onCancel = onCancelPendingMessage,
+                            )
                         }
-
-                        // Memory activity UI is hidden while the memory subsystem is being redesigned.
-                        RuntimeTasksSection(
-                            runtimeSnapshot = visibleRuntime,
-                            onCancelCommandTask = onCancelCommandTask,
-                            onCancelCommandMonitor = onCancelCommandMonitor,
-                            inspectionRequest = inspectionRequest?.takeIf { isVisible && it.conversationId == conversationId },
-                        )
-
-                        PendingMessagesSection(
-                            isWaitingForResponse = isWaitingForResponse,
-                            pendingMessages = pendingMessages,
-                            onSendInCurrentTurn = onSendInCurrentTurn,
-                            onEdit = onEditPendingMessage,
-                            onCancel = onCancelPendingMessage,
-                        )
                     }
+
+
                 }
-
-
             }
         }
     }
@@ -316,24 +322,26 @@ private fun RuntimeAgentSection(
         Text(localization.text("session.runtime.noConnectedAgents"))
         return
     }
-    SecondaryScrollableTabRow(
-        selectedTabIndex = participantAgentIds.indexOf(selectedAgentId),
-        edgePadding = 0.dp,
-        modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeAgentTabs.value),
-    ) {
-        participantAgentIds.forEach { id ->
-            Tab(
-                selected = id == selectedAgentId,
-                onClick = { onSelectAgent(id) },
-                text = {
-                    Text(
-                        agentDefinitions?.firstOrNull { it.id == id }?.name ?: id.value,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                modifier = Modifier.testTag(UiTestTag.RuntimeAgentTab(id.value).value),
-            )
+    DisableSelection {
+        SecondaryScrollableTabRow(
+            selectedTabIndex = participantAgentIds.indexOf(selectedAgentId),
+            edgePadding = 0.dp,
+            modifier = Modifier.fillMaxWidth().testTag(UiTestTag.RuntimeAgentTabs.value),
+        ) {
+            participantAgentIds.forEach { id ->
+                Tab(
+                    selected = id == selectedAgentId,
+                    onClick = { onSelectAgent(id) },
+                    text = {
+                        Text(
+                            agentDefinitions?.firstOrNull { it.id == id }?.name ?: id.value,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    modifier = Modifier.testTag(UiTestTag.RuntimeAgentTab(id.value).value),
+                )
+            }
         }
     }
     if (agentLoadFailed) {
@@ -580,25 +588,27 @@ private fun RuntimeUsageCard(
 
             if (backgroundPolicies.isNotEmpty()) {
                 HorizontalDivider()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showPolicies = !showPolicies },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        translation.backgroundQuotaPolicyLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    Icon(
-                        if (showPolicies) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (showPolicies) {
-                            translation.collapseDescription
-                        } else {
-                            translation.expandDescription
-                        },
-                    )
+                DisableSelection {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showPolicies = !showPolicies },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            translation.backgroundQuotaPolicyLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Icon(
+                            if (showPolicies) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (showPolicies) {
+                                translation.collapseDescription
+                            } else {
+                                translation.expandDescription
+                            },
+                        )
+                    }
                 }
                 if (showPolicies) {
                     backgroundPolicies.forEach { (connection, policy) ->
@@ -918,7 +928,7 @@ private fun RuntimeTasksSection(
                                 )
                             }
                             TextButton(onClick = { onCancelCommandTask(commandTask.id) }) {
-                                Text(translation.killButton)
+                                DisableSelection { Text(translation.killButton) }
                             }
                         }
                     }
@@ -963,17 +973,19 @@ private fun RuntimeTasksSection(
                                     )
                                 }
                             }
-                            TextButton(
-                                onClick = { onCancelCommandMonitor(monitor.id) },
-                                enabled = monitor.cancellationRequestedAt == null,
-                            ) {
-                                Text(
-                                    if (monitor.cancellationRequestedAt == null) {
-                                        appTranslation.cancelButton
-                                    } else {
-                                        translation.cancellingStatus
-                                    }
-                                )
+                            DisableSelection {
+                                TextButton(
+                                    onClick = { onCancelCommandMonitor(monitor.id) },
+                                    enabled = monitor.cancellationRequestedAt == null,
+                                ) {
+                                    Text(
+                                        if (monitor.cancellationRequestedAt == null) {
+                                            appTranslation.cancelButton
+                                        } else {
+                                            translation.cancellingStatus
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1099,21 +1111,23 @@ private fun PendingMessageGroup(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (
-                    isWaitingForResponse &&
-                    message.steeringAgentId != null &&
-                    message.placement == QueuedMessagePlacement.END_OF_TURN
-                ) {
-                    TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
-                        Text(translation.runtime.currentTurnLabel)
+            DisableSelection {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (
+                        isWaitingForResponse &&
+                        message.steeringAgentId != null &&
+                        message.placement == QueuedMessagePlacement.END_OF_TURN
+                    ) {
+                        TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
+                            Text(translation.runtime.currentTurnLabel)
+                        }
                     }
-                }
-                if (message.editable) TextButton(onClick = { onEdit(message.id) }) {
-                    Text(translation.runtime.editButton)
-                }
-                TextButton(onClick = { onCancel(message.id) }) {
-                    Text(translation.cancelButton)
+                    if (message.editable) TextButton(onClick = { onEdit(message.id) }) {
+                        Text(translation.runtime.editButton)
+                    }
+                    TextButton(onClick = { onCancel(message.id) }) {
+                        Text(translation.cancelButton)
+                    }
                 }
             }
             HorizontalDivider()

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -202,20 +203,24 @@ private fun VisualNodeBody(node: VisualRenderNode, context: RenderContext, shape
             }
             "br" -> Spacer(tagged.height(0.dp))
             "hr" -> HorizontalDivider(tagged)
-            "button" -> CompactButton(
-                onClick = { context.onAction(node.string("id")!!) },
-                enabled = context.interactive && !context.sending && !node.bool("disabled"),
-                modifier = tagged,
-                shape = shape,
-                colors = CompactButtonDefaults.tonalColors(),
-                elevation = null,
-            ) { VisualAnnotatedText(inlineText(node, context), context.onClearHighlights, color = context.color(node)) }
-            "input", "textarea", "select" -> VisualDirtyBadge(
-                dirty = context.isFieldDirty(requireNotNull(node.string("name"))),
-                badgeTag = "visual-field-dirty-${node.string("id") ?: node.key}",
-                modifier = modifier.testTag("visual-field-container-${node.string("id") ?: node.key}"),
-            ) {
-                VisualFieldContent(node, context, Modifier.testTag("visual-element-${node.string("id") ?: node.key}"), shape)
+            "button" -> DisableSelection {
+                CompactButton(
+                    onClick = { context.onAction(node.string("id")!!) },
+                    enabled = context.interactive && !context.sending && !node.bool("disabled"),
+                    modifier = tagged,
+                    shape = shape,
+                    colors = CompactButtonDefaults.tonalColors(),
+                    elevation = null,
+                ) { VisualAnnotatedText(inlineText(node, context), context.onClearHighlights, color = context.color(node)) }
+            }
+            "input", "textarea", "select" -> DisableSelection {
+                VisualDirtyBadge(
+                    dirty = context.isFieldDirty(requireNotNull(node.string("name"))),
+                    badgeTag = "visual-field-dirty-${node.string("id") ?: node.key}",
+                    modifier = modifier.testTag("visual-field-container-${node.string("id") ?: node.key}"),
+                ) {
+                    VisualFieldContent(node, context, Modifier.testTag("visual-element-${node.string("id") ?: node.key}"), shape)
+                }
             }
             "ul", "ol" -> Column(tagged.fillMaxWidth()) {
                 val start = node.number("start")?.toInt() ?: 1

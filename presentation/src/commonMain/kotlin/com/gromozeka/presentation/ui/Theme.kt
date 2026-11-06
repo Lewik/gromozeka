@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CornerBasedShape
@@ -151,22 +152,25 @@ fun OptionalTooltip(
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
         tooltip = {
-            Surface(
-                modifier = Modifier.wrapContentSize(),
-                shape = MaterialTheme.shapes.extraSmall,
-                color = MaterialTheme.colorScheme.inverseSurface,
-                tonalElevation = 4.dp
-            ) {
-                Box(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            // Popup content has another layout root; it must not inherit the anchor's selection registrar.
+            DisableSelection {
+                Surface(
+                    modifier = Modifier.wrapContentSize(),
+                    shape = MaterialTheme.shapes.extraSmall,
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    tonalElevation = 4.dp
                 ) {
-                    Text(
-                        text = tooltip,
-                        fontFamily = if (monospace) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default,
-                        softWrap = !noWrap,
-                        color = MaterialTheme.colorScheme.inverseOnSurface,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Box(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = tooltip,
+                            fontFamily = if (monospace) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default,
+                            softWrap = !noWrap,
+                            color = MaterialTheme.colorScheme.inverseOnSurface,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         },
