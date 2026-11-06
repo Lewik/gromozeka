@@ -46,6 +46,7 @@ data class VisualHandlerSpec(
     val workspaceMountId: WorkspaceMount.Id,
     val command: String,
     val workingDirectory: String? = null,
+    val secretEnv: Map<String, String> = emptyMap(),
 )
 
 @Serializable

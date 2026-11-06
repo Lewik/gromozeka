@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.VisualApplicationService
+import com.gromozeka.application.service.CommandSecretEnvironment
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
@@ -28,6 +29,7 @@ class GatewayVisualCommandRuntime(
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
 
     override suspend fun prepare(actor: User, conversation: Conversation, spec: VisualHandlerSpec): VisualHandler {
+        CommandSecretEnvironment.secretNames(spec.command, spec.secretEnv)
         require(spec.command.isNotBlank() && spec.command.encodeToByteArray().size <= 65_536) { "Handler command must contain 1..65536 bytes" }
         val workspace = workspaces.resolveExecution(spec.workspaceMountId)
         require(workspace.project.id == conversation.projectId) { "Handler mount must belong to the conversation project" }
@@ -56,21 +58,15 @@ class GatewayVisualCommandRuntime(
             put(TOOL_CONTEXT_WORKSPACE_ROOT_PATH, workspace.mount.rootPath)
             put(TOOL_CONTEXT_WORKER_ID, handler.worker.workerId.value)
             put(TOOL_CONTEXT_VISUAL_ID, visual.id)
-            put(TOOL_CONTEXT_ORIGINAL_COMMAND, handler.spec.command)
             visual.agentDefinitionId?.let { put(TOOL_CONTEXT_AGENT_DEFINITION_ID, it.value) }
         }
-        val names = NamedSecret.namesInText(handler.spec.command)
+        val names = CommandSecretEnvironment.secretNames(handler.spec.command, handler.spec.secretEnv).values.toSet()
         val values = if (names.isEmpty()) emptyMap() else secrets.resolve(actor.id, names)
-        val prepared = com.gromozeka.application.service.SecretArgumentSubstitutor().prepare(
-            com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME,
-            buildJsonObject { put("command", handler.spec.command) }.toString(), values,
-            isWindows = workers.find(handler.worker.workerId)?.environmentProfile?.operatingSystem?.family == WorkerOperatingSystem.Family.WINDOWS,
-        )
-        val command = json.parseToJsonElement(prepared.arguments).jsonObject.getValue("command").jsonPrimitive.content
+        val environment = CommandSecretEnvironment.resolve(handler.spec.command, handler.spec.secretEnv, values)
         return requireNotNull(execute(actor, conversation.projectId, VisualWorkerCommand(
             VisualWorkerCommand.Operation.START, visual.id, visual.conversationId, handler.generation,
-            handler.worker, workspace = workspace, spec = handler.spec.copy(command = command), toolContext = context,
-            secretEnvironment = prepared.secretEnvironment,
+            handler.worker, workspace = workspace, spec = handler.spec, toolContext = context,
+            secretEnvironment = environment,
         )).task) { "Worker did not return a managed handler task" }
     }
 

@@ -46,10 +46,6 @@ data class NamedSecret(
             ?.removePrefix(REFERENCE_PREFIX)
             ?.takeIf(NAME_PATTERN::matches)
 
-        fun namesInText(value: String): Set<String> = REFERENCE_PATTERN
-            .findAll(value)
-            .map { it.groupValues[1] }
-            .toSet()
     }
 }
 

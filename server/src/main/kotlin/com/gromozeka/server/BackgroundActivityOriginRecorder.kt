@@ -103,7 +103,7 @@ class BackgroundActivityOriginRecorder(
             command.workspace?.mount?.id == launch.mountId) { "Visual launch does not match its request" }
         validateContext(launch, record, command.toolContext)
         require(command.toolContext[TOOL_CONTEXT_VISUAL_ID] == launch.visualId && record.slotOrigin == launch.slotOrigin &&
-            (command.toolContext[TOOL_CONTEXT_ORIGINAL_COMMAND] ?: command.spec?.command) == launch.command) {
+            command.spec?.command == launch.command) {
             "Visual launch changed its command or origin"
         }
     }

@@ -1384,13 +1384,28 @@ the Server checks current user/AI status, conversation membership and project
 write permission. An older activity without trusted provenance still delivers
 its output, but cannot start an anonymous or guessed-user continuation.
 
-Public command metadata preserves the original `secret://name` references.
-Substituted shell text and its generated environment are execution-only; copying
-a displayed command must generate fresh variables, never reuse a past process's
-environment names. Visual handler launches follow the same rule. The public
-command preservation runs on the Worker, so update Workers to obtain that fix.
-The ownership registry is Server-private and does not change the Worker protocol.
-Explicit secret revelation remains a separate, confirmed, one-request operation.
+Managed commands accept `secret_env`, a map of environment variable names to
+exact `secret://name` references, for example `{"GH_TOKEN":"secret://github-pat"}`.
+Multiple variables and repeated references to the same secret are supported.
+The authenticated Server resolves references; the Worker injects values directly
+into the process environment. Command text remains unchanged. Resolved values
+are never added to tool arguments or public command metadata. Visual handlers
+use the same contract through `handler.secret_env`; their saved spec contains
+references only, resolved afresh for each explicit launch.
+
+Inline secret references in command/filter text are rejected with migration
+guidance. This intentionally replaces the old generated-variable substitution;
+update callers and existing handler specs to supply `secret_env`. Deploy matching
+Server, Worker and Client builds together. Tool contract revisions follow the
+normal descriptor/schema registry; do not retain an unsafe legacy alias.
+
+The consumer must read its environment directly (for example `gh` reads
+`GH_TOKEN`), or use its supported stdin/credential-helper input. Expanding a
+variable into a child program's arguments still exposes the value in process
+listings and audit/EDR logs. Environment injection is not isolation from code
+that can read the environment, and does not redact command output. Do not print
+credentials or enable shell tracing. Explicit secret revelation remains a
+separate, confirmed, one-request operation.
 
 ## CI and Release Workflow
 

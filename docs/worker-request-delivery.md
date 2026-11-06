@@ -119,12 +119,13 @@ the shell wrapper without changing `PATH`. The wrapper is POSIX `sh`/Bash, not W
 cmd/PowerShell; Python and the shared path are also available on Windows.
 
 Authentication is **explicit**, not inherited from Worker Gateway enrollment. Set
-`GRZ_MCP_URL` to the Server HTTPS `/mcp` endpoint and `GRZ_MCP_TOKEN` to an existing
-`mcp:control` PAT, preferably using the existing named-secret substitution:
+`GRZ_MCP_URL` to the Server HTTPS `/mcp` endpoint. When submitting the command, pass
+`"secret_env":{"GRZ_MCP_TOKEN":"secret://my-mcp-pat"}` alongside `command` to inject
+an existing `mcp:control` PAT. The SDK reads the token directly from the environment;
+do not expand it into shell arguments. The command itself can be:
 
 ```sh
 export GRZ_MCP_URL=https://your-server.example/mcp
-export GRZ_MCP_TOKEN=secret://my-mcp-pat
 python3 - <<'PY'
 from grz import Client
 with Client.from_env() as client:
@@ -135,8 +136,9 @@ with Client.from_env() as client:
 PY
 ```
 
-`secret://…` substitution applies when the command is submitted to Gromozeka, not when
-running an arbitrary terminal script. Never put a token in a saved script, command argument,
+`secret_env` is a Gromozeka tool argument, not shell syntax. Inline `secret://…` references
+in command text are rejected. When running outside Gromozeka, provision the environment
+through your existing secret manager. Never put a token in a saved script, command argument,
 log, or checked-in environment file. No PAT is minted automatically; its existing scope,
 lifetime and user authority are unchanged. This is the normal full-host command environment,
 **not a sandbox or a way to constrain a PAT's authority**. Do not provide credentials to

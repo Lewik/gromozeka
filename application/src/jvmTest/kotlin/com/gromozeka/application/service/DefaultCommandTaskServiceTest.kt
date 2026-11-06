@@ -268,19 +268,17 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
-    fun `only execution receives substituted command and secret environment`() = runBlocking {
+    fun `only execution receives secret environment and command remains unchanged`() = runBlocking {
         withService { service, runner, coordinator, directory ->
-            val original = "curl secret://github-pat"
-            val prepared = SecretArgumentSubstitutor(environmentNameGenerator = { "GROMOZEKA_SECRET_TEST" },
-                inheritedEnvironmentNames = { emptySet() }).prepare("grz_execute_command",
-                """{"command":"curl secret://github-pat"}""", mapOf("github-pat" to "private-test-token"), isWindows = false)
+            val original = "gh api user"
+            val prepared = SecretArgumentSubstitutor().prepare("grz_execute_command",
+                """{"command":"gh api user","secret_env":{"GH_TOKEN":"secret://github-pat"}}""", mapOf("github-pat" to "private-test-token"))
             val command = kotlinx.serialization.json.Json.parseToJsonElement(prepared.arguments)
                 .let { it as kotlinx.serialization.json.JsonObject }.getValue("command")
                 .let { it as kotlinx.serialization.json.JsonPrimitive }.content
             runner.onStart = { it.complete(0) }
             val result = service.start(ExecuteCommandRequest(command, yield_time_ms = 2_000),
-                context(directory).withValue(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND, prepared.originalCommand)
-                    .withValue(com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT, prepared.secretEnvironment))
+                context(directory).withValue(com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT, prepared.secretEnvironment))
             assertEquals(command, runner.lastSpec.command)
             assertEquals(prepared.secretEnvironment, runner.lastSpec.environment - "GRZ_MCP_CONTEXT")
             assertFalse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT").contains("private-test-token"))

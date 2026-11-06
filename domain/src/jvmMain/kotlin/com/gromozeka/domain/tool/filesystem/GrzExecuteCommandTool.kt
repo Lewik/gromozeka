@@ -39,6 +39,10 @@ data class ExecuteCommandRequest(
         description = "Allow the command to outlive the Worker process. Keep false unless it must continue across Worker restarts.",
     )
     val survive_worker_restart: Boolean = false,
+    @property:ToolParameter(
+        description = "Named secrets to inject into this command's environment: variable name -> exact secret://name reference. Multiple variables are supported. The program must read them directly, not expand them into command-line arguments.",
+    )
+    val secret_env: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -179,9 +183,10 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, List<AiToolResult>
             Inside a Gromozeka conversation, a WORKING task automatically reports its terminal result later; do not poll merely to discover completion.
             Use grz_get_command_task only when intermediate output is needed. External MCP callers without conversation delivery must poll explicitly.
             Use grz_cancel_command_task to terminate the process tree.
-            To use a durable secret without exposing it to the model, place its exact secret://name reference directly in the command. Gromozeka replaces every occurrence with a collision-free, randomly named environment variable immediately before process start. On macOS/Linux, do not put secret references inside single-quoted shell text because variables do not expand there.
+            Pass named secrets through secret_env, for example {"GH_TOKEN":"secret://github-pat"}; multiple variables are supported. Values are injected directly into this command's process environment, never into its command text. References inside command are rejected.
+            Let the target program read the environment itself (for example gh reads GH_TOKEN, Python uses os.environ, PowerShell uses ${'$'}env:NAME), or use its supported stdin/credential-helper input. Expanding ${'$'}NAME or %NAME% into a child program's arguments exposes the secret in process listings and audit/EDR logs. Do not print secrets, enable shell tracing, or pass them via options such as curl -u or sshpass -p. Environment injection is not isolation from code that can read the environment.
             Do not create unmanaged background processes with '&' on macOS/Linux or 'start' without '/WAIT' on Windows. Full merged stdout/stderr is saved to output_file.
-            Commands receive GRZ_SDK_HOME with shared grz.py/grz.sh (no per-script install). Python 3.9+: import grz; POSIX shell: . "${'$'}GRZ_SDK_HOME/grz.sh". Set GRZ_MCP_URL and GRZ_MCP_TOKEN explicitly to call HTTP MCP; credentials are not provisioned automatically. Use an existing secret:// reference rather than exposing a token. GRZ_MCP_CONTEXT contains routing defaults, not permissions. Discover exact tool names; SDK calls are never automatically retried. See the module docstrings for Client/list_tools/describe_tool/call.
+            Commands receive GRZ_SDK_HOME with shared grz.py/grz.sh (no per-script install). Python 3.9+: import grz; POSIX shell: . "${'$'}GRZ_SDK_HOME/grz.sh". Set GRZ_MCP_URL and GRZ_MCP_TOKEN explicitly to call HTTP MCP; credentials are not provisioned automatically. Supply GRZ_MCP_TOKEN through secret_env using an existing named-secret reference. GRZ_MCP_CONTEXT contains routing defaults, not permissions. Discover exact tool names; SDK calls are never automatically retried. See the module docstrings for Client/list_tools/describe_tool/call.
             Use with caution - has full system access.
             
             Common use cases:

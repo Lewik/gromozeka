@@ -15,6 +15,7 @@ import kotlin.time.Instant
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
+import java.util.concurrent.TimeUnit
 import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
 import kotlin.test.Test
@@ -253,6 +254,47 @@ class LocalCommandProcessRunnerTest {
             assertTrue(process.waitFor(5_000))
             assertEquals(0, process.exitCode())
             assertEquals("actual-token", File(process.outputFile).readText())
+        }
+    }
+
+    @Test
+    fun `environment secrets reach the consumer without entering process command lines`() {
+        withTemporaryGromozekaHome { home ->
+            val readyFile = File(home, "secret-consumer-ready")
+            val java = File(System.getProperty("java.home"), if (isWindows) "bin/java.exe" else "bin/java")
+            val values = mapOf("TEST_TOKEN_A" to "fixture-a ' \" % & ${'$'}var\nשלום", "TEST_TOKEN_B" to "fixture-b-with-spaces")
+            val process = runner.start(CommandProcessSpec(
+                executionId = "secret-env-consumer",
+                command = "\"${java.absolutePath}\" ${CommandSecretEnvironmentTestProcess::class.java.name}",
+                workingDirectory = home.absolutePath,
+                environment = values + mapOf("CLASSPATH" to System.getProperty("java.class.path"),
+                    "GROMOZEKA_TEST_READY_FILE" to readyFile.absolutePath),
+            ))
+            val snapshot = awaitCommandFixtureValue("Secret consumer", if (isWindows) 30_000 else 10_000,
+                ensureRunning = { check(process.isAlive()) { "Secret consumer exited before readiness" } },
+            ) { readyFile.readLines().takeIf { it.size == 3 && it[0].toLongOrNull() != null } }
+            assertEquals(values.values.map(::secretProbeHash), snapshot.drop(1))
+            val root = ProcessHandle.of(process.processId).orElseThrow()
+            val ids = root.descendants().use { children -> children.map { it.pid() }.toList() }.toSet() + root.pid() + snapshot[0].toLong()
+            for (id in ids) {
+                val arguments = if (isWindows) listOf("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                    "Get-CimInstance Win32_Process -Filter 'ProcessId=$id' | Select-Object -ExpandProperty CommandLine")
+                else listOf("ps", "-ww", "-p", id.toString(), "-o", "command=")
+                val inspection = ProcessBuilder(arguments).redirectErrorStream(true).start()
+                try {
+                    assertTrue(inspection.waitFor(10, TimeUnit.SECONDS))
+                    val commandLine = inspection.inputStream.bufferedReader().readText()
+                    assertEquals(0, inspection.exitValue())
+                    assertTrue(commandLine.isNotBlank(), "Expected a command line for fixture process $id")
+                    values.values.forEach { value -> assertFalse(commandLine.contains(value), "Secret entered process argv") }
+                } finally {
+                    if (inspection.isAlive) { inspection.destroyForcibly(); inspection.waitFor() }
+                }
+            }
+            process.closeInput()
+            assertTrue(process.waitFor(5_000))
+            assertEquals(0, process.exitCode())
+            assertEquals("", File(process.outputFile).readText())
         }
     }
 
@@ -1101,6 +1143,22 @@ internal object CommandInputEchoTestProcess {
             System.out.write(buffer, 0, count)
             System.out.flush()
         }
+    }
+}
+
+private fun secretProbeHash(value: String): String = java.security.MessageDigest.getInstance("SHA-256")
+    .digest(value.encodeToByteArray()).joinToString("") { "%02x".format(it.toInt() and 0xff) }
+
+internal object CommandSecretEnvironmentTestProcess {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val readyFile = File(requireNotNull(System.getenv("GROMOZEKA_TEST_READY_FILE")))
+        val snapshot = listOf(ProcessHandle.current().pid().toString()) +
+            listOf("TEST_TOKEN_A", "TEST_TOKEN_B").map { secretProbeHash(requireNotNull(System.getenv(it))) }
+        val temporary = File("${readyFile.absolutePath}.tmp")
+        temporary.writeText(snapshot.joinToString("\n"))
+        check(temporary.renameTo(readyFile))
+        System.`in`.read()
     }
 }
 

@@ -42,7 +42,8 @@ class NamedSecretApplicationServiceTest {
             call = Conversation.Message.ContentItem.ToolCall.Data(
                 name = GRZ_EXECUTE_COMMAND_TOOL_NAME,
                 input = JsonObject(
-                    mapOf("command" to JsonPrimitive("curl -H \"token: secret://github-pat\""))
+                    mapOf("command" to JsonPrimitive("gh api user"),
+                        "secret_env" to JsonObject(mapOf("GH_TOKEN" to JsonPrimitive("secret://github-pat"))))
                 ),
             ),
         )
@@ -51,7 +52,7 @@ class NamedSecretApplicationServiceTest {
 
         assertEquals(mapOf("github-pat" to "actual-token"), resolved.getValue("call"))
         assertEquals(
-            "curl -H \"token: secret://github-pat\"",
+            "gh api user",
             call.call.input.jsonObject.getValue("command").jsonPrimitive.content,
         )
     }

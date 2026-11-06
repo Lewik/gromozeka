@@ -30,7 +30,10 @@ class BackgroundActivityOriginRecorderTest {
     fun `initial admission preserves creating user before final response and through continuation`(): Unit = runBlocking {
         val f = fixture()
         val task = command("command")
-        val call = call("create", "grz_execute_command", buildJsonObject { put("command", "curl secret://token") })
+        val call = call("create", "grz_execute_command", buildJsonObject {
+            put("command", "gh api user")
+            put("secret_env", buildJsonObject { put("GH_TOKEN", "secret://token") })
+        })
         val requestId = f.register(alice, call, task)
         assertFailsWith<WorkerRequestPendingException> { f.requests.await(requestId, 1) }
         val batch = f.completions.prepareBatch(conversation.id)

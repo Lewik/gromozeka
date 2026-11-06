@@ -156,7 +156,7 @@ class DefaultCommandTaskService(
                     launchReference = launchReference,
                     agentDefinitionId = context.agentDefinitionIdOrNull(),
                     visualId = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID),
-                    command = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_ORIGINAL_COMMAND) ?: request.command,
+                    command = request.command,
                     workingDirectory = workingDirectory,
                     processLifetime = processLifetime,
                     status = CommandTask.Status.WORKING,
@@ -1046,6 +1046,7 @@ class DefaultCommandTaskService(
     }
 
     private fun validateRequest(request: ExecuteCommandRequest) {
+        require(request.secret_env.isEmpty()) { "secret_env must be resolved by the tool runtime before command execution" }
         require(request.command.isNotBlank()) { "command must not be blank" }
         require(request.yield_time_ms in 0..MAX_COMMAND_INITIAL_YIELD_MILLIS) {
             "yield_time_ms must be between 0 and $MAX_COMMAND_INITIAL_YIELD_MILLIS"

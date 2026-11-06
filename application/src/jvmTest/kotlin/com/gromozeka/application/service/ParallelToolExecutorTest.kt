@@ -150,14 +150,15 @@ class ParallelToolExecutorTest {
     }
 
     @Test
-    fun `command secret is delivered through generated environment`() = runBlocking {
+    fun `command secret is delivered through explicitly named environment`() = runBlocking {
         val tool = CommandCapturingTestTool()
         val executor = executor(tool)
         val toolCall = Conversation.Message.ContentItem.ToolCall(
             id = Conversation.Message.ContentItem.ToolCall.Id("call-command"),
             call = Conversation.Message.ContentItem.ToolCall.Data(
                 name = GRZ_EXECUTE_COMMAND_TOOL_NAME,
-                input = JsonObject(mapOf("command" to JsonPrimitive("echo secret://github-pat"))),
+                input = JsonObject(mapOf("command" to JsonPrimitive("gh api user"),
+                    "secret_env" to JsonObject(mapOf("GH_TOKEN" to JsonPrimitive("secret://github-pat"))))),
             ),
         )
 
@@ -174,7 +175,7 @@ class ParallelToolExecutorTest {
 
         assertFalse(tool.receivedInput.orEmpty().contains("secret://github-pat"))
         assertFalse(tool.receivedInput.orEmpty().contains("actual-token"))
-        assertEquals(listOf("actual-token"), tool.receivedEnvironment.values.toList())
+        assertEquals(mapOf("GH_TOKEN" to "actual-token"), tool.receivedEnvironment)
         assertTrue(toolCall.call.input.toString().contains("secret://github-pat"))
     }
 

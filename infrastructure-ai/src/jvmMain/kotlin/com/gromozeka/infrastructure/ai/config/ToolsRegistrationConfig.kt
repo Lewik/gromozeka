@@ -183,7 +183,15 @@ internal class JsonSchemaGenerator(
                     ?: mapOf("type" to "object")
                 mapOf<String, Any>("type" to "array", "items" to itemSchema)
             }
-            classifier == Map::class -> mapOf<String, Any>("type" to "object")
+            classifier == Map::class -> {
+                val valueType = type.arguments.getOrNull(1)?.type
+                val valueSchema = when {
+                    valueType == null || valueType.jvmErasure == Any::class -> emptyMap<String, Any>()
+                    valueType.isMarkedNullable -> mapOf("anyOf" to listOf(schemaForType(valueType, seen), mapOf("type" to "null")))
+                    else -> schemaForType(valueType, seen)
+                }
+                mapOf("type" to "object", "additionalProperties" to valueSchema)
+            }
             classifier.isData -> objectSchema(classifier, seen)
             else -> mapOf<String, Any>("type" to "object")
         }

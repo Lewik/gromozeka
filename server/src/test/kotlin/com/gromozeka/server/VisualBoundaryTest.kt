@@ -55,6 +55,43 @@ class VisualBoundaryTest {
         Mockito.verify(service).create(user, conversation.id, VisualCreate(document, state), AgentDefinition.Id("agent"))
     }
 
+    @Test fun `handler accepts named secret environment without resolving values into public data`() = runBlocking<Unit> {
+        val spec = VisualHandlerSpec(WorkspaceMount.Id("mount"), "python3 handler.py",
+            secretEnv = mapOf("VISUAL_TOKEN" to "secret://api-token"))
+        val request = VisualCreate(document, state, spec)
+        Mockito.`when`(service.create(user, conversation.id, request, AgentDefinition.Id("agent"))).thenReturn(visual)
+        val input = buildJsonObject {
+            put("action", "create"); put("document", document); put("state", state)
+            put("handler", buildJsonObject {
+                put("workspace_mount_id", "mount"); put("command", spec.command)
+                put("secret_env", buildJsonObject { put("VISUAL_TOKEN", "secret://api-token") })
+            })
+        }
+        assertTrue(result(tool.call(input.toString(), context)).getValue("success").jsonPrimitive.boolean)
+        Mockito.verify(service).create(user, conversation.id, request, AgentDefinition.Id("agent"))
+        val handlerSchema = result(VisualToolContributor.SCHEMA).getValue("properties").jsonObject
+            .getValue("handler").jsonObject.getValue("properties").jsonObject
+        assertEquals("object", handlerSchema.getValue("secret_env").jsonObject.getValue("type").jsonPrimitive.content)
+    }
+
+    @Test fun `handler rejects inline and malformed secret inputs before saving`() {
+        for (handler in listOf(
+            """{"workspace_mount_id":"mount","command":"curl secret://api-token"}""",
+            """{"workspace_mount_id":"mount","command":"python3 handler.py","secret_env":null}""",
+            """{"workspace_mount_id":"mount","command":"python3 handler.py","secret_env":{"TOKEN":123}}""",
+            """{"workspace_mount_id":"mount","command":"python3 handler.py","secret_env":{"TOKEN":"private-test-value"}}""",
+        )) {
+            val input = buildJsonObject {
+                put("action", "create"); put("document", document); put("state", state)
+                put("handler", Json.parseToJsonElement(handler))
+            }
+            val response = result(tool.call(input.toString(), context))
+            assertFalse(response.getValue("success").jsonPrimitive.boolean)
+            assertFalse(response.toString().contains("private-test-value"))
+        }
+        Mockito.verifyNoInteractions(service)
+    }
+
     @Test fun `tool distinguishes absent handler from explicit detach`() = runBlocking<Unit> {
         val sections = buildJsonObject { put("data", buildJsonObject { put("count", 2) }) }
         Mockito.`when`(service.update(user, conversation.id, visual.id, VisualUpdate(state = sections))).thenReturn(visual)
