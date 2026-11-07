@@ -152,35 +152,56 @@ class ConversationRuntimeDispatcherTest {
 
     @Test
     fun `plain message post creates a non-AI runtime task`() = runBlocking {
-        val harness = dispatcherHarness(
-            runner = ControllableTaskRunner { task ->
-                if (task.payload is ConversationRuntimeTask.Payload.PostMessage) {
-                    ConversationRuntimeTaskOutcome.CompleteWithoutNotification
-                } else {
-                    ConversationRuntimeTaskOutcome.CompleteTurn
+        val stored = InMemoryConversationRuntimeCoordinator()
+        val beforeCompletionRecorded = CompletableDeferred<Unit>()
+        val allowCompletionRecorded = CompletableDeferred<Unit>()
+        val coordinator = object : ConversationRuntimeCoordinator by stored {
+            override suspend fun recordEvent(event: ConversationRuntimeEvent): com.gromozeka.domain.service.ConversationRuntimeEventLogEntry {
+                if (event is ConversationRuntimeEvent.ExecutionCompleted) {
+                    beforeCompletionRecorded.complete(Unit)
+                    allowCompletionRecorded.await()
                 }
-            },
-        )
+                return stored.recordEvent(event)
+            }
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val eventBus = InMemoryConversationRuntimeEventBus()
+        val dispatcher = ConversationRuntimeDispatcher(coordinator, eventBus,
+            testConversationRuntimeStateSyncService(coordinator), acceptingArtifactReferenceValidator)
+        val runner = ControllableTaskRunner { task ->
+            if (task.payload is ConversationRuntimeTask.Payload.PostMessage) {
+                ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+            } else {
+                ConversationRuntimeTaskOutcome.CompleteTurn
+            }
+        }
+        val executor = runtimeExecutor(coordinator, eventBus, runner,
+            serverExecutorDescriptor("plain-message-completion", setOf(ConversationRuntimeCapability.CONVERSATION_TURN)), scope)
         try {
-            val message = userMessage("plain-message")
-
-            assertTrue(harness.dispatcher.postMessage(conversationId, message))
-            val task = harness.runner.awaitStarted()
-
+            executor.start()
+            assertTrue(dispatcher.postMessage(conversationId, userMessage("plain-message")))
+            val task = runner.awaitStarted()
             assertTrue(task.payload is ConversationRuntimeTask.Payload.PostMessage)
-            assertEquals(
-                setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
-                task.requirements.capabilities,
-            )
-            harness.runner.releaseCurrentTask()
-            waitUntil { harness.coordinator.find(conversationId) == null }
-            val completed = harness.coordinator.listEventLogEntries(conversationId, null, 100)
+            assertEquals(setOf(ConversationRuntimeCapability.CONVERSATION_TURN), task.requirements.capabilities)
+            runner.releaseCurrentTask()
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { beforeCompletionRecorded.await() }
+            assertNull(stored.find(conversationId))
+            assertTrue(stored.listEventLogEntries(conversationId, null, 100)
+                .none { it.event is ConversationRuntimeEvent.ExecutionCompleted })
+            allowCompletionRecorded.complete(Unit)
+            waitUntil {
+                stored.listEventLogEntries(conversationId, null, 100)
+                    .any { it.event is ConversationRuntimeEvent.ExecutionCompleted }
+            }
+            val completed = stored.listEventLogEntries(conversationId, null, 100)
                 .map { it.event }
                 .filterIsInstance<ConversationRuntimeEvent.ExecutionCompleted>()
                 .single()
             assertFalse(completed.shouldNotifyUser)
         } finally {
-            harness.close()
+            allowCompletionRecorded.complete(Unit)
+            executor.stop()
+            scope.cancel()
         }
     }
 
@@ -1379,7 +1400,7 @@ class ConversationRuntimeDispatcherTest {
     }
 
     private fun runtimeExecutor(
-        coordinator: InMemoryConversationRuntimeCoordinator,
+        coordinator: ConversationRuntimeCoordinator,
         eventBus: InMemoryConversationRuntimeEventBus,
         runner: ConversationRuntimeTaskRunner,
         descriptor: ConversationRuntimeExecutorDescriptor,
