@@ -19,13 +19,41 @@ import kotlin.test.assertTrue
 
 class AiCatalogRemoteBoundaryTest {
     @Test
+    fun `remote catalog preserves HTTP settings and file metadata without reading executor files`() {
+        val seed = RuntimeCatalogTemplateApplicationService().createSeed().aiCatalog
+        val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
+            authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
+            caBundlePath = "/worker-only/ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
+            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"))
+        val reference = SecretRef.File("/worker-only/token")
+        val catalog = seed.copy(connections = seed.connections.map {
+            if (it is AiConnection.OpenAiApi) it.copy(baseUrl = "https://gateway.example/api/llm", apiKey = reference,
+                httpSettings = settings, executionTarget = com.gromozeka.domain.model.ai.AiExecutionTarget.Worker("exact-worker")) else it
+        })
+        val envelope = GromozekaServerEnvelope(id = "catalog-file", payload = AiCatalogResponse(RemoteAiCatalogSnapshot.from(AiCatalogSnapshot(catalog, 9))))
+        for (decoded in listOf(RemoteProtocolCodec.decodeServerText(RemoteProtocolCodec.encodeServerText(envelope)),
+            RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope)))) {
+            val snapshot = (decoded.payload as AiCatalogResponse).snapshot
+            val connection = snapshot.catalog.connections.filterIsInstance<AiConnection.OpenAiApi>().single()
+            kotlin.test.assertEquals(reference, connection.apiKey)
+            kotlin.test.assertEquals(settings, connection.httpSettings)
+            val state = snapshot.secretStates.single { it.slot == AiCatalogSecretSlot.ConnectionApiKey(connection.id) }
+            kotlin.test.assertEquals(AiCatalogSecretState.Source.FILE, state.source)
+            kotlin.test.assertEquals(reference.path, state.filePath)
+            assertNull(state.environmentVariableName)
+        }
+    }
+
+    @Test
     fun `remote AI catalog preserves secret state without serializing its value`() {
         val secretValue = "inline-secret-never-return"
         val seedCatalog = RuntimeCatalogTemplateApplicationService().createSeed().aiCatalog
         val catalog = seedCatalog.copy(
             connections = seedCatalog.connections.map { connection ->
                 if (connection is AiConnection.OpenAiApi) {
-                    connection.copy(apiKey = SecretRef.Inline(secretValue))
+                    connection.copy(apiKey = SecretRef.Inline(secretValue), baseUrl = "https://gateway.example/api/llm",
+                        httpSettings = com.gromozeka.domain.model.ai.AiHttpSettings(authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
+                            extraHeaders = mapOf("User-Agent" to "Catalog-fixture")))
                 } else {
                     connection
                 }

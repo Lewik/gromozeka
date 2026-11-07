@@ -2056,6 +2056,21 @@
     "ai.spec.minimum_tool_effort": "Minimum reasoning effort for tools",
     "ai.spec.maximum_disabled_effort": "Maximum effort with thinking disabled",
     "ai.spec.forced_tool_choice": "Allow forced tool choice",
-    "ai.spec.anthropic_prefix_drop": "Drop prefix-incompatible Anthropic thinking (beta)"
+    "ai.spec.anthropic_prefix_drop": "Drop prefix-incompatible Anthropic thinking (beta)",
+    "ai.secret.source.file": "File on executor",
+    "ai.secret.file_path": "Absolute token file path",
+    "ai.secret.file_status": "Secret file: {path}",
+    "ai.secret.source_value_required": "Enter a value for the selected secret source.",
+    "ai.http.title": "HTTP and authentication",
+    "ai.http.executor_hint": "Files, environment variables and network settings belong to the selected Server/Worker. The token file is read before each AI call.",
+    "ai.http.authentication": "Authentication header",
+    "ai.http.provider_auth": "API default (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "Additional CA bundle (absolute path)",
+    "ai.http.proxy": "HTTP proxy URL (optional)",
+    "ai.http.no_proxy": "noProxy (comma-separated)",
+    "ai.http.no_proxy_hint": "Hosts, .domain suffixes and optional ports; * bypasses all proxies. No CIDR. Empty proxy uses executor system settings.",
+    "ai.http.headers": "Extra headers (JSON)",
+    "ai.http.headers_hint": "Non-secret string values only. Authorization comes from the token source; User-Agent may be overridden.",
+    "ai.http.headers_invalid": "Headers must be a JSON object with string values."
   }
 }

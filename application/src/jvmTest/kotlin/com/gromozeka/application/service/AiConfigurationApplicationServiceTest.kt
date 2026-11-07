@@ -29,6 +29,36 @@ class AiConfigurationApplicationServiceTest {
     private val seed = RuntimeCatalogTemplateApplicationService().createSeed()
 
     @Test
+    fun `HTTP settings survive file-secret mutation redacted edits and reload without resolving executor paths`() = runBlocking {
+        val repository = TestAiCatalogRepository(seed.aiCatalog, revision = 7)
+        val service = service(repository)
+        service.initialize()
+        val original = assertIs<AiConnection.OpenAiApi>(service.snapshot.catalog.connections.single { it.id.value == "openai-api" })
+        val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
+            authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
+            caBundlePath = "/worker-only/ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
+            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"))
+        val configured = original.copy(baseUrl = "https://gateway.example/api/llm", httpSettings = settings,
+            apiKey = null, executionTarget = com.gromozeka.domain.model.ai.AiExecutionTarget.Worker("exact-worker"))
+        val source = SecretRef.File("/worker-only/token")
+        val updated = service.replaceCatalog(service.snapshot.catalog.copy(connections = service.snapshot.catalog.connections.map {
+            if (it.id == original.id) configured else it
+        }), expectedRevision = 7, secretMutations = listOf(AiCatalogSecretMutation.Set(AiCatalogSecretSlot.ConnectionApiKey(original.id), source)))
+        assertEquals(configured.copy(apiKey = source), updated.catalog.connections.single { it.id == original.id })
+        assertEquals(8, updated.revision)
+        service.upsertConnection(configured.copy(displayName = "Renamed"), expectedRevision = 8, preserveExistingSecret = true)
+        val reloaded = service.reload()
+        val saved = assertIs<AiConnection.OpenAiApi>(reloaded.catalog.connections.single { it.id == original.id })
+        assertEquals(settings, saved.httpSettings)
+        assertEquals(source, saved.apiKey)
+        val public = reloaded.redactInlineSecrets()
+        val state = public.secretStates.single { it.slot == AiCatalogSecretSlot.ConnectionApiKey(original.id) }
+        assertEquals(com.gromozeka.domain.model.ai.AiCatalogSecretState.Source.FILE, state.source)
+        assertEquals(source.path, state.filePath)
+        assertEquals(9, public.revision)
+    }
+
+    @Test
     fun `connection upsert preserves configured secret and enforces catalog revision`() = runBlocking {
         val repository = TestAiCatalogRepository(seed.aiCatalog, revision = 7)
         val service = service(repository)

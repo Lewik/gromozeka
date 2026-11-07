@@ -45,6 +45,34 @@ import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
     @Test
+    fun `Worker request preserves executor HTTP settings and selected secret source without resolving files or env`() = runBlocking {
+        val fixture = TestHandler()
+        val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
+            authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
+            caBundlePath = "C:\\worker\\ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
+            extraHeaders = mapOf("User-Agent" to "Worker-fixture", "x-tfy-strict-openai" to "false"))
+        for (source in listOf(com.gromozeka.domain.model.SecretRef.Inline("synthetic-worker-token"),
+            com.gromozeka.domain.model.SecretRef.EnvironmentVariable("WORKER_TOKEN"),
+            com.gromozeka.domain.model.SecretRef.File("C:\\worker\\token.txt"))) {
+            val connection = (fixture.runtime.connection as AiConnection.OpenAiApi).copy(
+                baseUrl = "https://gateway.example/api/llm", apiKey = source, httpSettings = settings,
+                executionTarget = AiExecutionTarget.Worker("exact-worker"))
+            val expected = fixture.runtime.copy(connection = connection)
+            var called = false
+            val handler = object : AiRequestResponseExecutionHandler by fixture {
+                override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                    assertEquals(expected, runtime)
+                    assertEquals(null, workspaceRootPath)
+                    called = true
+                    return fixture.runtimeResponse
+                }
+            }
+            AiRequestResponseGatewayCodec.execute(AiRequestResponseGatewayCodec.encodeCallRequest(expected, null, fixture.runtimeRequest), handler)
+            kotlin.test.assertTrue(called)
+        }
+    }
+
+    @Test
     fun `Worker call codec retains all explicit model behavior fields`() = runBlocking {
         val fixture = TestHandler()
         val spec = AiModelSpec("test-model", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),

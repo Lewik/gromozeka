@@ -37,7 +37,7 @@ internal class RemoteSettingsService(
     override fun resolveSecret(secretRef: SecretRef?): String? = when (secretRef) {
         null -> null
         is SecretRef.Inline -> secretRef.value
-        is SecretRef.EnvironmentVariable -> null
+        is SecretRef.EnvironmentVariable, is SecretRef.File -> null
     }
 
     suspend fun refreshFromServer(): Settings =

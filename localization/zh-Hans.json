@@ -2019,6 +2019,21 @@
     "ai.spec.minimum_tool_effort": "工具所需的最低推理强度",
     "ai.spec.maximum_disabled_effort": "禁用 thinking 时的最高强度",
     "ai.spec.forced_tool_choice": "允许强制选择工具",
-    "ai.spec.anthropic_prefix_drop": "丢弃前缀不兼容的 Anthropic thinking（测试版）"
+    "ai.spec.anthropic_prefix_drop": "丢弃前缀不兼容的 Anthropic thinking（测试版）",
+    "ai.secret.source.file": "执行端文件",
+    "ai.secret.file_path": "令牌文件的绝对路径",
+    "ai.secret.file_status": "密钥文件：{path}",
+    "ai.secret.source_value_required": "请输入所选密钥来源的值。",
+    "ai.http.title": "HTTP 与身份验证",
+    "ai.http.executor_hint": "文件、环境变量和网络设置属于所选 Server/Worker。每次 AI 调用前都会读取令牌文件。",
+    "ai.http.authentication": "身份验证标头",
+    "ai.http.provider_auth": "API 默认值（OpenAI Bearer / Anthropic x-api-key）",
+    "ai.http.ca_bundle": "附加 CA 证书包（绝对路径）",
+    "ai.http.proxy": "HTTP 代理 URL（可选）",
+    "ai.http.no_proxy": "noProxy（逗号分隔）",
+    "ai.http.no_proxy_hint": "支持主机、.domain 后缀和可选端口；* 绕过所有代理。不支持 CIDR。代理留空时使用执行端系统设置。",
+    "ai.http.headers": "附加标头（JSON）",
+    "ai.http.headers_hint": "仅限非机密字符串值。Authorization 来自令牌来源；可覆盖 User-Agent。",
+    "ai.http.headers_invalid": "标头必须是值为字符串的 JSON 对象。"
   }
 }

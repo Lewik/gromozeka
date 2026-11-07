@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.safeHttpFailure
+import com.openai.errors.OpenAIException
 import com.gromozeka.infrastructure.ai.anthropic.AnthropicThinkingParameters
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -82,14 +84,14 @@ internal class OpenAiSdkRuntimeBackend(
                 modelConfigurationId = modelConfiguration.id.value,
                 modelName = modelConfiguration.providerModelId,
                 webSearchEnabled = connection.webSearchEnabled,
-                client = clientFactory.createClient(connection),
+                clientFactory = { clientFactory.createClient(connection) },
                 generation = ModelGenerationPolicy(runtime.modelSpec),
             )
 
             is AiConnection.OpenAiCompatible -> OpenAiSdkRuntime(
                 connectionKind = connection.kind,
                 modelName = modelConfiguration.providerModelId,
-                client = clientFactory.createClient(connection),
+                clientFactory = { clientFactory.createClient(connection) },
                 messageMapper = OpenAiSdkMessageMapper(connection.kind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec)),
             )
 
@@ -101,7 +103,7 @@ internal class OpenAiSdkRuntimeBackend(
 private class OpenAiSdkRuntime(
     private val connectionKind: AiConnection.Kind,
     private val modelName: String,
-    private val client: OpenAIClient,
+    private val clientFactory: () -> OpenAIClient,
     private val messageMapper: OpenAiSdkMessageMapper,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
@@ -115,7 +117,12 @@ private class OpenAiSdkRuntime(
         }
 
         val response = withContext(Dispatchers.IO) {
-            client.chat().completions().create(params)
+            try {
+                val client = clientFactory()
+                AutoCloseable { client.close() }.use { client.chat().completions().create(params) }
+            } catch (error: OpenAIException) {
+                throw error.safeHttpFailure()
+            }
         }
 
         return messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)

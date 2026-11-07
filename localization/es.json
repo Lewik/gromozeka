@@ -2093,6 +2093,21 @@
     "ai.spec.minimum_tool_effort": "Esfuerzo mínimo de razonamiento para herramientas",
     "ai.spec.maximum_disabled_effort": "Esfuerzo máximo con thinking desactivado",
     "ai.spec.forced_tool_choice": "Permitir la selección forzada de herramientas",
-    "ai.spec.anthropic_prefix_drop": "Descartar thinking de Anthropic con prefijo incompatible (beta)"
+    "ai.spec.anthropic_prefix_drop": "Descartar thinking de Anthropic con prefijo incompatible (beta)",
+    "ai.secret.source.file": "Archivo en el ejecutor",
+    "ai.secret.file_path": "Ruta absoluta del archivo de token",
+    "ai.secret.file_status": "Archivo de secreto: {path}",
+    "ai.secret.source_value_required": "Introduce un valor para la fuente del secreto seleccionada.",
+    "ai.http.title": "HTTP y autenticación",
+    "ai.http.executor_hint": "Los archivos, las variables de entorno y la red pertenecen al Server/Worker seleccionado. El archivo de token se lee antes de cada llamada de IA.",
+    "ai.http.authentication": "Cabecera de autenticación",
+    "ai.http.provider_auth": "Predeterminado de la API (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "Paquete CA adicional (ruta absoluta)",
+    "ai.http.proxy": "URL del proxy HTTP (opcional)",
+    "ai.http.no_proxy": "noProxy (separado por comas)",
+    "ai.http.no_proxy_hint": "Hosts, sufijos .domain y puertos opcionales; * omite todos los proxies. Sin CIDR. Un proxy vacío usa la configuración del sistema del ejecutor.",
+    "ai.http.headers": "Cabeceras adicionales (JSON)",
+    "ai.http.headers_hint": "Solo cadenas no secretas. Authorization se genera desde la fuente del token; User-Agent se puede sustituir.",
+    "ai.http.headers_invalid": "Las cabeceras deben ser un objeto JSON con valores de cadena."
   }
 }

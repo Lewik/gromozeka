@@ -2019,6 +2019,21 @@
     "ai.spec.minimum_tool_effort": "도구에 필요한 최소 추론 강도",
     "ai.spec.maximum_disabled_effort": "thinking이 꺼졌을 때의 최대 강도",
     "ai.spec.forced_tool_choice": "도구 선택 강제 허용",
-    "ai.spec.anthropic_prefix_drop": "접두사가 호환되지 않는 Anthropic thinking 삭제(베타)"
+    "ai.spec.anthropic_prefix_drop": "접두사가 호환되지 않는 Anthropic thinking 삭제(베타)",
+    "ai.secret.source.file": "실행 머신의 파일",
+    "ai.secret.file_path": "토큰 파일의 절대 경로",
+    "ai.secret.file_status": "비밀 파일: {path}",
+    "ai.secret.source_value_required": "선택한 비밀 소스의 값을 입력하세요.",
+    "ai.http.title": "HTTP 및 인증",
+    "ai.http.executor_hint": "파일, 환경 변수, 네트워크 설정은 선택한 Server/Worker에 속합니다. 토큰 파일은 AI 호출 전에 매번 읽습니다.",
+    "ai.http.authentication": "인증 헤더",
+    "ai.http.provider_auth": "API 기본값(OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "추가 CA 번들(절대 경로)",
+    "ai.http.proxy": "HTTP 프록시 URL(선택 사항)",
+    "ai.http.no_proxy": "noProxy(쉼표로 구분)",
+    "ai.http.no_proxy_hint": "호스트, .domain 접미사, 선택적 포트. *는 모든 프록시를 우회합니다. CIDR 미지원. 프록시를 비우면 실행 머신의 시스템 설정을 사용합니다.",
+    "ai.http.headers": "추가 헤더(JSON)",
+    "ai.http.headers_hint": "비밀이 아닌 문자열 값만 입력하세요. Authorization은 토큰 소스에서 생성되며 User-Agent는 재정의할 수 있습니다.",
+    "ai.http.headers_invalid": "헤더는 문자열 값을 가진 JSON 객체여야 합니다."
   }
 }

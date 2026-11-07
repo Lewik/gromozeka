@@ -60,6 +60,7 @@ class SettingsService(
         null -> null
         is SecretRef.Inline -> secretRef.value
         is SecretRef.EnvironmentVariable -> System.getenv(secretRef.name)?.takeIf { it.isNotBlank() }
+        is SecretRef.File -> readSecretFile(secretRef.path)
     }
 
     @PostConstruct

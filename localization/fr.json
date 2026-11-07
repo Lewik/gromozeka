@@ -2093,6 +2093,21 @@
     "ai.spec.minimum_tool_effort": "Effort de raisonnement minimal pour les outils",
     "ai.spec.maximum_disabled_effort": "Effort maximal avec thinking désactivé",
     "ai.spec.forced_tool_choice": "Autoriser le choix forcé d’un outil",
-    "ai.spec.anthropic_prefix_drop": "Écarter le thinking Anthropic au préfixe incompatible (bêta)"
+    "ai.spec.anthropic_prefix_drop": "Écarter le thinking Anthropic au préfixe incompatible (bêta)",
+    "ai.secret.source.file": "Fichier sur l’exécuteur",
+    "ai.secret.file_path": "Chemin absolu du fichier de jeton",
+    "ai.secret.file_status": "Fichier de secret : {path}",
+    "ai.secret.source_value_required": "Saisissez une valeur pour la source de secret choisie.",
+    "ai.http.title": "HTTP et authentification",
+    "ai.http.executor_hint": "Les fichiers, variables d’environnement et réglages réseau appartiennent au Server/Worker sélectionné. Le fichier de jeton est lu avant chaque appel IA.",
+    "ai.http.authentication": "En-tête d’authentification",
+    "ai.http.provider_auth": "Valeur par défaut de l’API (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "Ensemble CA supplémentaire (chemin absolu)",
+    "ai.http.proxy": "URL du proxy HTTP (facultatif)",
+    "ai.http.no_proxy": "noProxy (séparé par des virgules)",
+    "ai.http.no_proxy_hint": "Hôtes, suffixes .domain et ports facultatifs ; * contourne tous les proxys. Pas de CIDR. Un proxy vide utilise les réglages système de l’exécuteur.",
+    "ai.http.headers": "En-têtes supplémentaires (JSON)",
+    "ai.http.headers_hint": "Uniquement des chaînes non secrètes. Authorization provient de la source du jeton ; User-Agent peut être remplacé.",
+    "ai.http.headers_invalid": "Les en-têtes doivent être un objet JSON avec des valeurs de type chaîne."
   }
 }

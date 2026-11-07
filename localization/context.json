@@ -15817,5 +15817,113 @@
     ],
     "description": "Opt into Anthropic beta controls dropping thinking bound to an incompatible history prefix. Does not discard arbitrary history or switch models.",
     "args": []
+  },
+  "ai.secret.source.file": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Secret source option: a plaintext UTF-8 token file read on the selected Server or Worker, not the UI client.",
+    "args": []
+  },
+  "ai.secret.file_path": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Label for the absolute path to the selected token file on the execution target.",
+    "args": []
+  },
+  "ai.secret.file_status": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Non-secret status for a file-backed secret. The argument is the file path, never the file contents.",
+    "args": [
+      "path"
+    ]
+  },
+  "ai.secret.source_value_required": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Validation when switching secret sources without supplying the selected source value. No implicit source fallback is performed.",
+    "args": []
+  },
+  "ai.http.title": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Heading for HTTP transport and credential-header settings of an AI connection.",
+    "args": []
+  },
+  "ai.http.executor_hint": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Clarify executor ownership of filesystem, environment and network settings; token files are reread before logical AI calls.",
+    "args": []
+  },
+  "ai.http.authentication": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Choice of authentication header, not a choice of inference protocol or model provider.",
+    "args": []
+  },
+  "ai.http.provider_auth": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Use each existing API adapter's native auth: Bearer for OpenAI APIs, x-api-key for Anthropic Messages.",
+    "args": []
+  },
+  "ai.http.ca_bundle": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Optional additional trust roots on the executor. They supplement system roots; TLS and hostname checking remain enabled.",
+    "args": []
+  },
+  "ai.http.proxy": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "HTTP proxy endpoint URL. Proxy userinfo credentials and HTTPS-to-proxy transport are not supported by this setting.",
+    "args": []
+  },
+  "ai.http.no_proxy": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Comma-separated host rules exempting the configured inference endpoint from proxy use.",
+    "args": []
+  },
+  "ai.http.no_proxy_hint": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Supported noProxy syntax and explicit all-proxy bypass. An unspecified proxy retains executor JVM/system proxy selection, not UI settings.",
+    "args": []
+  },
+  "ai.http.headers": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "JSON object of static additional HTTP headers with string values.",
+    "args": []
+  },
+  "ai.http.headers_hint": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Do not enter secrets in headers. Authorization and API-key headers are reserved; User-Agent can be customized.",
+    "args": []
+  },
+  "ai.http.headers_invalid": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Safe validation message for malformed header JSON or non-string values; never echo supplied values.",
+    "args": []
   }
 }

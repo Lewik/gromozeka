@@ -2204,6 +2204,21 @@
     "ai.spec.minimum_tool_effort": "الحد الأدنى لجهد الاستدلال للأدوات",
     "ai.spec.maximum_disabled_effort": "أقصى جهد عند تعطيل thinking",
     "ai.spec.forced_tool_choice": "السماح بفرض اختيار الأداة",
-    "ai.spec.anthropic_prefix_drop": "إسقاط thinking من Anthropic ذي البادئة غير المتوافقة (تجريبي)"
+    "ai.spec.anthropic_prefix_drop": "إسقاط thinking من Anthropic ذي البادئة غير المتوافقة (تجريبي)",
+    "ai.secret.source.file": "ملف على جهاز التنفيذ",
+    "ai.secret.file_path": "المسار المطلق لملف الرمز",
+    "ai.secret.file_status": "ملف السر: {path}",
+    "ai.secret.source_value_required": "أدخل قيمة لمصدر السر المحدد.",
+    "ai.http.title": "HTTP والمصادقة",
+    "ai.http.executor_hint": "الملفات ومتغيرات البيئة وإعدادات الشبكة تخص Server/Worker المحدد. يُقرأ ملف الرمز قبل كل استدعاء AI.",
+    "ai.http.authentication": "ترويسة المصادقة",
+    "ai.http.provider_auth": "الإعداد الافتراضي لواجهة API (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "حزمة CA إضافية (مسار مطلق)",
+    "ai.http.proxy": "عنوان URL لوكيل HTTP (اختياري)",
+    "ai.http.no_proxy": "noProxy (مفصول بفواصل)",
+    "ai.http.no_proxy_hint": "مضيفون ولواحق .domain ومنافذ اختيارية؛ يتجاوز * جميع الوكلاء. لا يدعم CIDR. يستخدم الوكيل الفارغ إعدادات نظام جهاز التنفيذ.",
+    "ai.http.headers": "ترويسات إضافية (JSON)",
+    "ai.http.headers_hint": "قيم نصية غير سرية فقط. تُنشأ Authorization من مصدر الرمز؛ ويمكن تجاوز User-Agent.",
+    "ai.http.headers_invalid": "يجب أن تكون الترويسات كائن JSON بقيم نصية."
   }
 }

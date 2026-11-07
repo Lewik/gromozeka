@@ -3,6 +3,8 @@ package com.gromozeka.infrastructure.ai.openai
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
+import com.openai.core.LogLevel
 import com.openai.client.OpenAIClient
 import com.openai.client.okhttp.OpenAIOkHttpClient
 import org.springframework.stereotype.Component
@@ -16,30 +18,27 @@ class OpenAiSdkClientFactory(
             "OpenAI SDK client requires OpenAI API-compatible connection, got ${connection.kind}"
         }
 
+        val settings = SdkHttpSupport.settings(connection)
+        val baseUrl = resolveBaseUrl(connection)
+        val token = resolveApiKey(connection)
+        val tls = SdkHttpSupport.tls(settings)
         return OpenAIOkHttpClient.builder()
-            .apiKey(resolveApiKey(connection))
+            .apiKey(token)
+            .baseUrl(baseUrl)
+            .logLevel(LogLevel.OFF)
+            .proxy(SdkHttpSupport.proxy(settings, baseUrl))
             .apply {
-                (connection as? AiConnection.HttpAiConnection)
-                    ?.baseUrl
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let(::baseUrl)
+                tls?.let { sslSocketFactory(it.socketFactory); trustManager(it.trustManager) }
+                SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) }
             }
             .build()
     }
 
     fun resolveApiKey(connection: AiConnection): String =
-        settingsProvider.resolveSecret((connection as? AiConnection.ApiKeyAiConnection)?.apiKey)
-            ?.takeIf { it.isNotBlank() }
-            ?: System.getenv("OPENAI_API_KEY")?.takeIf { it.isNotBlank() }
-            ?: error("OpenAI API key is not configured for connection ${connection.id.value}")
+        SdkHttpSupport.token(connection, settingsProvider, "OPENAI_API_KEY")
 
     fun resolveBaseUrl(connection: AiConnection): String =
-        (connection as? AiConnection.HttpAiConnection)
-            ?.baseUrl
-            ?.trim()
-            ?.removeSuffix("/")
-            ?.takeIf { it.isNotBlank() }
-            ?: DEFAULT_OPENAI_BASE_URL
+        SdkHttpSupport.baseUrl(connection, DEFAULT_OPENAI_BASE_URL)
 
     private companion object {
         const val DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"

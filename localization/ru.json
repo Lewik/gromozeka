@@ -2130,6 +2130,21 @@
     "ai.spec.minimum_tool_effort": "Минимальный effort для инструментов",
     "ai.spec.maximum_disabled_effort": "Максимальный effort при выключенном thinking",
     "ai.spec.forced_tool_choice": "Разрешить принудительный выбор инструмента",
-    "ai.spec.anthropic_prefix_drop": "Отбрасывать Anthropic thinking с несовместимым префиксом (бета)"
+    "ai.spec.anthropic_prefix_drop": "Отбрасывать Anthropic thinking с несовместимым префиксом (бета)",
+    "ai.secret.source.file": "Файл на исполнителе",
+    "ai.secret.file_path": "Абсолютный путь к файлу токена",
+    "ai.secret.file_status": "Файл секрета: {path}",
+    "ai.secret.source_value_required": "Укажи значение для выбранного источника секрета.",
+    "ai.http.title": "HTTP и авторизация",
+    "ai.http.executor_hint": "Файлы, env и сетевые настройки относятся к выбранному Server/Worker. Файл токена читается перед каждым AI-вызовом.",
+    "ai.http.authentication": "Заголовок авторизации",
+    "ai.http.provider_auth": "По API (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "Дополнительный CA bundle (абсолютный путь)",
+    "ai.http.proxy": "URL HTTP-прокси (необязательно)",
+    "ai.http.no_proxy": "noProxy (через запятую)",
+    "ai.http.no_proxy_hint": "Хосты, суффиксы .domain и порты; * отключает все прокси. Без CIDR. Пустой proxy использует системные настройки исполнителя.",
+    "ai.http.headers": "Дополнительные заголовки (JSON)",
+    "ai.http.headers_hint": "Только несекретные строковые значения. Authorization формируется из источника токена; User-Agent можно переопределить.",
+    "ai.http.headers_invalid": "Заголовки должны быть JSON-объектом со строковыми значениями."
   }
 }

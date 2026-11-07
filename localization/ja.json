@@ -2019,6 +2019,21 @@
     "ai.spec.minimum_tool_effort": "ツールに必要な最小推論労力",
     "ai.spec.maximum_disabled_effort": "thinking無効時の最大労力",
     "ai.spec.forced_tool_choice": "ツール選択の強制を許可",
-    "ai.spec.anthropic_prefix_drop": "プレフィックスが一致しないAnthropic thinkingを破棄（ベータ）"
+    "ai.spec.anthropic_prefix_drop": "プレフィックスが一致しないAnthropic thinkingを破棄（ベータ）",
+    "ai.secret.source.file": "実行マシン上のファイル",
+    "ai.secret.file_path": "トークンファイルの絶対パス",
+    "ai.secret.file_status": "シークレットファイル: {path}",
+    "ai.secret.source_value_required": "選択したシークレット取得元の値を入力してください。",
+    "ai.http.title": "HTTPと認証",
+    "ai.http.executor_hint": "ファイル、環境変数、ネットワーク設定は選択したServer/Workerのものです。トークンファイルはAI呼び出しのたびに読み込まれます。",
+    "ai.http.authentication": "認証ヘッダー",
+    "ai.http.provider_auth": "APIの既定値（OpenAI Bearer / Anthropic x-api-key）",
+    "ai.http.ca_bundle": "追加CAバンドル（絶対パス）",
+    "ai.http.proxy": "HTTPプロキシURL（任意）",
+    "ai.http.no_proxy": "noProxy（カンマ区切り）",
+    "ai.http.no_proxy_hint": "ホスト、.domainサフィックス、任意のポートを指定。*は全プロキシを回避します。CIDR非対応。プロキシが空の場合は実行マシンのシステム設定を使用します。",
+    "ai.http.headers": "追加ヘッダー（JSON）",
+    "ai.http.headers_hint": "シークレットではない文字列のみ。Authorizationはトークン取得元から生成されます。User-Agentは上書き可能です。",
+    "ai.http.headers_invalid": "ヘッダーは値が文字列のJSONオブジェクトで指定してください。"
   }
 }

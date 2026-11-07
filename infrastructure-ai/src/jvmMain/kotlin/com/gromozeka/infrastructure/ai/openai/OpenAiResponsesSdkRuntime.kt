@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.safeHttpFailure
+import com.openai.errors.OpenAIException
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy
@@ -74,7 +76,7 @@ internal class OpenAiResponsesSdkRuntime(
     private val modelConfigurationId: String,
     private val modelName: String,
     private val webSearchEnabled: Boolean,
-    private val client: OpenAIClient,
+    private val clientFactory: () -> OpenAIClient,
     generation: ModelGenerationPolicy = ModelGenerationPolicy(),
     private val messageMapper: OpenAiResponsesMessageMapper = OpenAiResponsesMessageMapper(
         connectionId = connectionId,
@@ -93,7 +95,12 @@ internal class OpenAiResponsesSdkRuntime(
                 "responseFormat=${request.options.responseFormat.logName()}"
         }
         val response = withContext(Dispatchers.IO) {
-            client.responses().create(params)
+            try {
+                val client = clientFactory()
+                AutoCloseable { client.close() }.use { client.responses().create(params) }
+            } catch (error: OpenAIException) {
+                throw error.safeHttpFailure()
+            }
         }
         return messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
     }

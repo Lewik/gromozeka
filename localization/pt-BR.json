@@ -2093,6 +2093,21 @@
     "ai.spec.minimum_tool_effort": "Esforço mínimo de raciocínio para ferramentas",
     "ai.spec.maximum_disabled_effort": "Esforço máximo com thinking desativado",
     "ai.spec.forced_tool_choice": "Permitir escolha forçada de ferramenta",
-    "ai.spec.anthropic_prefix_drop": "Descartar thinking do Anthropic com prefixo incompatível (beta)"
+    "ai.spec.anthropic_prefix_drop": "Descartar thinking do Anthropic com prefixo incompatível (beta)",
+    "ai.secret.source.file": "Arquivo no executor",
+    "ai.secret.file_path": "Caminho absoluto do arquivo de token",
+    "ai.secret.file_status": "Arquivo de segredo: {path}",
+    "ai.secret.source_value_required": "Informe um valor para a origem de segredo selecionada.",
+    "ai.http.title": "HTTP e autenticação",
+    "ai.http.executor_hint": "Arquivos, variáveis de ambiente e rede pertencem ao Server/Worker selecionado. O arquivo de token é lido antes de cada chamada de IA.",
+    "ai.http.authentication": "Cabeçalho de autenticação",
+    "ai.http.provider_auth": "Padrão da API (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "Pacote CA adicional (caminho absoluto)",
+    "ai.http.proxy": "URL do proxy HTTP (opcional)",
+    "ai.http.no_proxy": "noProxy (separado por vírgulas)",
+    "ai.http.no_proxy_hint": "Hosts, sufixos .domain e portas opcionais; * ignora todos os proxies. Sem CIDR. Proxy vazio usa as configurações do sistema do executor.",
+    "ai.http.headers": "Cabeçalhos adicionais (JSON)",
+    "ai.http.headers_hint": "Somente strings não secretas. Authorization vem da origem do token; User-Agent pode ser substituído.",
+    "ai.http.headers_invalid": "Os cabeçalhos devem ser um objeto JSON com valores de string."
   }
 }

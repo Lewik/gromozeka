@@ -15,7 +15,11 @@ import kotlin.test.assertEquals
 class WorkerGatewayProtocolTest {
     @Test
     fun `Worker welcome catalog retains explicit model behavior in strict CBOR`() {
-        val connection = AiConnection.OpenAiApi(AiConnection.Id("synthetic"), "Synthetic")
+        val connection = AiConnection.OpenAiApi(AiConnection.Id("synthetic"), "Synthetic",
+            baseUrl = "https://gateway.example/api/llm", apiKey = com.gromozeka.domain.model.SecretRef.File("/worker/token"),
+            httpSettings = AiHttpSettings(authentication = AiHttpSettings.Authentication.BEARER, caBundlePath = "/worker/ca.pem",
+                proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"), extraHeaders = mapOf("User-Agent" to "Synthetic")),
+            executionTarget = AiExecutionTarget.Worker("exact-worker"))
         val model = AiModelConfiguration(AiModelConfiguration.Id("synthetic"), connection.id, "synthetic-model", "Synthetic")
         val spec = AiModelSpec("synthetic-model", AiProvider.OPENAI, AiModelCapability.entries.toSet(),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000), AiModelSpec.Limits.Embeddings(dimensions = 2)),

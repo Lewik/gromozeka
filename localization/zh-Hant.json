@@ -2019,6 +2019,21 @@
     "ai.spec.minimum_tool_effort": "工具所需的最低推理強度",
     "ai.spec.maximum_disabled_effort": "停用 thinking 時的最高強度",
     "ai.spec.forced_tool_choice": "允許強制選擇工具",
-    "ai.spec.anthropic_prefix_drop": "捨棄前綴不相容的 Anthropic thinking（測試版）"
+    "ai.spec.anthropic_prefix_drop": "捨棄前綴不相容的 Anthropic thinking（測試版）",
+    "ai.secret.source.file": "執行端檔案",
+    "ai.secret.file_path": "權杖檔案的絕對路徑",
+    "ai.secret.file_status": "密鑰檔案：{path}",
+    "ai.secret.source_value_required": "請輸入所選密鑰來源的值。",
+    "ai.http.title": "HTTP 與身分驗證",
+    "ai.http.executor_hint": "檔案、環境變數與網路設定屬於所選 Server/Worker。每次 AI 呼叫前都會讀取權杖檔案。",
+    "ai.http.authentication": "身分驗證標頭",
+    "ai.http.provider_auth": "API 預設值（OpenAI Bearer / Anthropic x-api-key）",
+    "ai.http.ca_bundle": "附加 CA 憑證組合（絕對路徑）",
+    "ai.http.proxy": "HTTP 代理 URL（選填）",
+    "ai.http.no_proxy": "noProxy（以逗號分隔）",
+    "ai.http.no_proxy_hint": "支援主機、.domain 後綴與選填連接埠；* 略過所有代理。不支援 CIDR。代理留空時使用執行端系統設定。",
+    "ai.http.headers": "附加標頭（JSON）",
+    "ai.http.headers_hint": "僅限非機密字串值。Authorization 來自權杖來源；可覆寫 User-Agent。",
+    "ai.http.headers_invalid": "標頭必須是值為字串的 JSON 物件。"
   }
 }

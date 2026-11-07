@@ -2093,6 +2093,21 @@
     "ai.spec.minimum_tool_effort": "מאמץ reasoning מזערי לכלים",
     "ai.spec.maximum_disabled_effort": "מאמץ מרבי כאשר thinking כבוי",
     "ai.spec.forced_tool_choice": "לאפשר בחירה כפויה של כלי",
-    "ai.spec.anthropic_prefix_drop": "השמטת thinking של Anthropic עם קידומת לא תואמת (בטא)"
+    "ai.spec.anthropic_prefix_drop": "השמטת thinking של Anthropic עם קידומת לא תואמת (בטא)",
+    "ai.secret.source.file": "קובץ במכונת הביצוע",
+    "ai.secret.file_path": "נתיב מוחלט לקובץ האסימון",
+    "ai.secret.file_status": "קובץ סוד: {path}",
+    "ai.secret.source_value_required": "יש להזין ערך למקור הסוד שנבחר.",
+    "ai.http.title": "HTTP ואימות",
+    "ai.http.executor_hint": "קבצים, משתני סביבה והגדרות רשת שייכים ל-Server/Worker שנבחר. קובץ האסימון נקרא לפני כל קריאת AI.",
+    "ai.http.authentication": "כותרת אימות",
+    "ai.http.provider_auth": "ברירת מחדל של API (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "אוסף CA נוסף (נתיב מוחלט)",
+    "ai.http.proxy": "כתובת שרת proxy מסוג HTTP (אופציונלי)",
+    "ai.http.no_proxy": "noProxy (מופרד בפסיקים)",
+    "ai.http.no_proxy_hint": "מארחים, סיומות .domain ויציאות אופציונליות; * עוקף את כל שרתי ה-proxy. ללא CIDR. proxy ריק משתמש בהגדרות המערכת במכונת הביצוע.",
+    "ai.http.headers": "כותרות נוספות (JSON)",
+    "ai.http.headers_hint": "ערכי מחרוזת שאינם סודיים בלבד. Authorization נוצר ממקור האסימון; ניתן להחליף את User-Agent.",
+    "ai.http.headers_invalid": "הכותרות חייבות להיות אובייקט JSON עם ערכי מחרוזת."
   }
 }

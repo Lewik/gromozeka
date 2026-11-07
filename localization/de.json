@@ -2056,6 +2056,21 @@
     "ai.spec.minimum_tool_effort": "Mindestaufwand für Reasoning mit Tools",
     "ai.spec.maximum_disabled_effort": "Maximaler Aufwand bei deaktiviertem Thinking",
     "ai.spec.forced_tool_choice": "Erzwungene Tool-Auswahl erlauben",
-    "ai.spec.anthropic_prefix_drop": "Anthropic-Thinking mit inkompatiblem Präfix verwerfen (Beta)"
+    "ai.spec.anthropic_prefix_drop": "Anthropic-Thinking mit inkompatiblem Präfix verwerfen (Beta)",
+    "ai.secret.source.file": "Datei auf dem Ausführungsrechner",
+    "ai.secret.file_path": "Absoluter Pfad zur Tokendatei",
+    "ai.secret.file_status": "Secret-Datei: {path}",
+    "ai.secret.source_value_required": "Gib einen Wert für die ausgewählte Secret-Quelle ein.",
+    "ai.http.title": "HTTP und Authentifizierung",
+    "ai.http.executor_hint": "Dateien, Umgebungsvariablen und Netzwerkeinstellungen gehören zum ausgewählten Server/Worker. Die Tokendatei wird vor jedem KI-Aufruf gelesen.",
+    "ai.http.authentication": "Authentifizierungsheader",
+    "ai.http.provider_auth": "API-Standard (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "Zusätzliches CA-Bundle (absoluter Pfad)",
+    "ai.http.proxy": "HTTP-Proxy-URL (optional)",
+    "ai.http.no_proxy": "noProxy (kommagetrennt)",
+    "ai.http.no_proxy_hint": "Hosts, .domain-Suffixe und optionale Ports; * umgeht alle Proxys. Kein CIDR. Ein leerer Proxy verwendet die Systemeinstellungen des Ausführungsrechners.",
+    "ai.http.headers": "Zusätzliche Header (JSON)",
+    "ai.http.headers_hint": "Nur nicht geheime Zeichenfolgen. Authorization stammt aus der Tokenquelle; User-Agent kann überschrieben werden.",
+    "ai.http.headers_invalid": "Header müssen ein JSON-Objekt mit Zeichenfolgenwerten sein."
   }
 }

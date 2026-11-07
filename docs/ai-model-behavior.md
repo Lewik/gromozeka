@@ -71,10 +71,11 @@ New installations receive the same settings from the seed catalog. There is no
 runtime model-name fallback.
 
 The complete resolved spec now reaches the SDK backend on Server and Worker.
-Worker Gateway protocol 17 requires a coordinated Server/Worker upgrade because
-its strict catalog/request codecs include the new serialized field. The ordinary
-UI protocol remains unchanged. Do not edit the catalog using an older client
-that cannot preserve the new settings.
+Model behavior was introduced in Worker Gateway protocol 17. Its strict
+catalog/request codecs require matching Server and Worker versions. The newer
+HTTP settings and file secret kind also require updated UI clients; see
+[AI SDK HTTP connections](ai-http-settings.md) for the current upgrade boundary.
+Do not edit the catalog using an older client that cannot preserve these settings.
 
 ## References
 

@@ -13,6 +13,8 @@ sealed interface SecretRef {
         init {
             require(value.isNotBlank()) { "Inline secret must not be blank" }
         }
+
+        override fun toString(): String = "Inline(<redacted>)"
     }
 
     @Serializable
@@ -22,4 +24,15 @@ sealed interface SecretRef {
             require(name.isNotBlank()) { "Secret environment variable name must not be blank" }
         }
     }
+
+    @Serializable
+    @SerialName("file")
+    data class File(val path: String) : SecretRef {
+        init {
+            require(path.isNotBlank() && path.none { it == '\u0000' || it == '\r' || it == '\n' }) {
+                "Secret file path must be nonblank and contain no line breaks"
+            }
+        }
+    }
+
 }

@@ -2189,6 +2189,7 @@ private fun ConfiguredSecretControls(
             removing -> translation.text("settingsUi.theConfiguredAPIKeyWillBeRemoved")
             state.source == AiCatalogSecretState.Source.INLINE ->
                 translation.text("settingsUi.anAPIKeyIsStoredOnTheServer")
+            state.source == AiCatalogSecretState.Source.FILE -> translation.text("ai.secret.file_status", "path" to state.filePath)
             else -> translation.text("settingsUi.environmentVariable", "name" to state.environmentVariableName)
         },
         style = MaterialTheme.typography.bodySmall,
@@ -2862,6 +2863,7 @@ private fun SecretRef?.secretText(): String =
     when (this) {
         is SecretRef.Inline -> value
         is SecretRef.EnvironmentVariable -> name
+        is SecretRef.File -> path
         null -> ""
     }
 

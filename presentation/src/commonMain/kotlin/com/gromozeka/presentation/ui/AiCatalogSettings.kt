@@ -57,6 +57,10 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiHttpSettings
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -866,6 +870,12 @@ private fun ConnectionDialog(
     var baseUrl by remember {
         mutableStateOf((existing as? AiConnection.HttpAiConnection)?.baseUrl.orEmpty())
     }
+    val initialHttp = (existing as? AiConnection.ConfigurableHttpAiConnection)?.httpSettings ?: AiHttpSettings()
+    var httpAuthentication by remember { mutableStateOf(initialHttp.authentication) }
+    var caBundlePath by remember { mutableStateOf(initialHttp.caBundlePath.orEmpty()) }
+    var proxyUrl by remember { mutableStateOf(initialHttp.proxyUrl.orEmpty()) }
+    var noProxy by remember { mutableStateOf(initialHttp.noProxy.joinToString(", ")) }
+    var extraHeaders by remember { mutableStateOf(JsonObject(initialHttp.extraHeaders.mapValues { JsonPrimitive(it.value) }).toString()) }
     var executablePath by remember {
         mutableStateOf((existing as? AiConnection.ClaudeCode)?.executablePath ?: "claude")
     }
@@ -925,24 +935,19 @@ private fun ConnectionDialog(
         mutableStateOf((existing as? AiConnection.AwsAiConnection)?.awsProfile.orEmpty())
     }
     val existingSecret = (existing as? AiConnection.ApiKeyAiConnection)?.apiKey
-    var secretMode by remember {
-        mutableStateOf(
-            if (
-                existingSecret is SecretRef.Inline ||
-                existingSecretState?.source == AiCatalogSecretState.Source.INLINE
-            ) {
-                "Inline"
-            } else {
-                "Environment"
-            }
-        )
+    val originalSecretMode = when {
+        existingSecret is SecretRef.File || existingSecretState?.source == AiCatalogSecretState.Source.FILE -> "File"
+        existingSecret is SecretRef.Inline || existingSecretState?.source == AiCatalogSecretState.Source.INLINE -> "Inline"
+        else -> "Environment"
     }
+    var secretMode by remember { mutableStateOf(originalSecretMode) }
     val secretValueState = remember {
         TextFieldState(
             when (existingSecret) {
                 is SecretRef.EnvironmentVariable -> existingSecret.name
                 is SecretRef.Inline -> existingSecret.value
-                null -> ""
+                is SecretRef.File -> existingSecret.path
+                null -> existingSecretState?.filePath.orEmpty()
             }
         )
     }
@@ -1071,11 +1076,16 @@ private fun ConnectionDialog(
                     LabeledDropdown(
                         label = translation.text("ai.secret.source"),
                         value = secretMode,
-                        options = listOf("Environment", "Inline"),
+                        options = listOf("Environment", "Inline", "File"),
                         optionLabel = {
-                            translation.text(if (it == "Inline") "ai.secret.source.inline" else "ai.secret.source.environment")
+                            translation.text(when (it) {
+                                "Inline" -> "ai.secret.source.inline"
+                                "File" -> "ai.secret.source.file"
+                                else -> "ai.secret.source.environment"
+                            })
                         },
                         onSelect = {
+                            if (secretMode != it) secretValueState.clearText()
                             secretMode = it
                             removeConfiguredSecret = false
                         },
@@ -1089,12 +1099,12 @@ private fun ConnectionDialog(
                     } else {
                         OutlinedTextField(
                             state = secretValueState,
-                            label = { Text(translation.text("ai.secret.environment_variable")) },
+                            label = { Text(translation.text(if (secretMode == "File") "ai.secret.file_path" else "ai.secret.environment_variable")) },
                             lineLimits = TextFieldLineLimits.SingleLine,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                    if (existingSecretState?.source == AiCatalogSecretState.Source.INLINE) {
+                    if (existingSecretState?.source == AiCatalogSecretState.Source.INLINE && secretMode == "Inline") {
                         Text(
                             text = if (removeConfiguredSecret) {
                                 translation.text("ai.secret.key_will_be_removed")
@@ -1127,6 +1137,27 @@ private fun ConnectionDialog(
                             )
                         }
                     }
+                }
+                if (kind in configurableHttpConnectionKinds) {
+                    HorizontalDivider()
+                    Text(translation.text("ai.http.title"), style = MaterialTheme.typography.titleSmall)
+                    Text(translation.text("ai.http.executor_hint"), style = MaterialTheme.typography.bodySmall)
+                    LabeledDropdown(
+                        label = translation.text("ai.http.authentication"), value = httpAuthentication,
+                        options = AiHttpSettings.Authentication.entries,
+                        optionLabel = { if (it == AiHttpSettings.Authentication.BEARER) "Bearer" else translation.text("ai.http.provider_auth") },
+                        onSelect = { httpAuthentication = it },
+                    )
+                    OutlinedTextField(value = caBundlePath, onValueChange = { caBundlePath = it },
+                        label = { Text(translation.text("ai.http.ca_bundle")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = proxyUrl, onValueChange = { proxyUrl = it },
+                        label = { Text(translation.text("ai.http.proxy")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = noProxy, onValueChange = { noProxy = it },
+                        label = { Text(translation.text("ai.http.no_proxy")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Text(translation.text("ai.http.no_proxy_hint"), style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(value = extraHeaders, onValueChange = { extraHeaders = it },
+                        label = { Text(translation.text("ai.http.headers")) }, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
+                    Text(translation.text("ai.http.headers_hint"), style = MaterialTheme.typography.bodySmall)
                 }
                 if (kind == AiConnection.Kind.ANTHROPIC_BEDROCK) {
                     OutlinedTextField(
@@ -1302,6 +1333,17 @@ private fun ConnectionDialog(
             Button(
                 onClick = {
                     runCatching {
+                        require(kind !in apiKeyConnectionKinds || removeConfiguredSecret || secretValue.isNotBlank() ||
+                            (secretMode == originalSecretMode && secretMode != "File")) {
+                            translation.text("ai.secret.source_value_required")
+                        }
+                        val httpSettings = if (kind in configurableHttpConnectionKinds) AiHttpSettings(
+                            authentication = httpAuthentication,
+                            caBundlePath = caBundlePath.trim().ifBlank { null },
+                            proxyUrl = proxyUrl.trim().ifBlank { null },
+                            noProxy = noProxy.split(',').map(String::trim).filter(String::isNotEmpty),
+                            extraHeaders = parseAiExtraHeaders(extraHeaders, translation),
+                        ) else AiHttpSettings()
                         val connection = createConnection(
                             translation = translation,
                             kind = kind,
@@ -1328,6 +1370,7 @@ private fun ConnectionDialog(
                             awsRegion = awsRegion,
                             awsProfile = awsProfile,
                             executionTarget = executionTarget,
+                            httpSettings = httpSettings,
                         )
                         val slot = AiCatalogSecretSlot.ConnectionApiKey(connection.id)
                         val secretMutation = when {
@@ -1377,11 +1420,17 @@ private fun createConnection(
     awsRegion: String,
     awsProfile: String,
     executionTarget: AiExecutionTarget,
+    httpSettings: AiHttpSettings,
 ): AiConnection {
     val connectionId = AiConnection.Id(id.trim())
     val displayName = name.trim()
     val secret = secretValue.trim().ifBlank { null }?.let {
-        if (secretMode == "Inline") SecretRef.Inline(it) else SecretRef.EnvironmentVariable(it)
+        when (secretMode) {
+            "Inline" -> SecretRef.Inline(it)
+            "Environment" -> SecretRef.EnvironmentVariable(it)
+            "File" -> SecretRef.File(it)
+            else -> error("Unknown secret source")
+        }
     }
     val quotaPacing = AiSubscriptionQuotaPacingPolicy(
         enabled = quotaPacingEnabled,
@@ -1401,6 +1450,7 @@ private fun createConnection(
             apiKey = secret,
             webSearchEnabled = webSearchEnabled,
             executionTarget = executionTarget,
+            httpSettings = httpSettings,
         )
         AiConnection.Kind.OPENAI_SUBSCRIPTION -> AiConnection.OpenAiSubscription(
             id = connectionId,
@@ -1431,6 +1481,7 @@ private fun createConnection(
             baseUrl = baseUrl.trim(),
             apiKey = secret,
             executionTarget = executionTarget,
+            httpSettings = httpSettings,
         )
         AiConnection.Kind.ANTHROPIC_API -> AiConnection.AnthropicApi(
             id = connectionId,
@@ -1439,6 +1490,7 @@ private fun createConnection(
             baseUrl = baseUrl.trim().ifBlank { null },
             apiKey = secret,
             executionTarget = executionTarget,
+            httpSettings = httpSettings,
         )
         AiConnection.Kind.ANTHROPIC_BEDROCK -> AiConnection.AnthropicBedrock(
             id = connectionId,
@@ -2106,6 +2158,19 @@ private fun AiConnection.openAiWebSearchBadge(translation: Translation): List<St
         is AiConnection.OpenAiSubscription -> listOf(if (webSearchEnabled) translation.text("ai.badge.web_search_on") else translation.text("ai.badge.web_search_off"))
         else -> emptyList()
     }
+
+private val configurableHttpConnectionKinds = setOf(AiConnection.Kind.OPENAI_API, AiConnection.Kind.OPENAI_COMPATIBLE, AiConnection.Kind.ANTHROPIC_API)
+
+private fun parseAiExtraHeaders(value: String, translation: Translation): Map<String, String> {
+    if (value.isBlank()) return emptyMap()
+    val parsed = try { Json.parseToJsonElement(value) } catch (_: IllegalArgumentException) {
+        throw IllegalArgumentException(translation.text("ai.http.headers_invalid"))
+    }
+    require(parsed is JsonObject && parsed.values.all { it is JsonPrimitive && it.isString }) {
+        translation.text("ai.http.headers_invalid")
+    }
+    return parsed.mapValues { (_, v) -> (v as JsonPrimitive).content }
+}
 
 private val httpConnectionKinds = setOf(
     AiConnection.Kind.OPENAI_API,

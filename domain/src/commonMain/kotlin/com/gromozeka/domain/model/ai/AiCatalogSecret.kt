@@ -28,11 +28,13 @@ data class AiCatalogSecretState(
     val slot: AiCatalogSecretSlot,
     val source: Source,
     val environmentVariableName: String? = null,
+    val filePath: String? = null,
 ) {
     init {
         require(
-            (source == Source.INLINE && environmentVariableName == null) ||
-                (source == Source.ENVIRONMENT_VARIABLE && !environmentVariableName.isNullOrBlank())
+            (source == Source.INLINE && environmentVariableName == null && filePath == null) ||
+                (source == Source.ENVIRONMENT_VARIABLE && !environmentVariableName.isNullOrBlank() && filePath == null) ||
+                (source == Source.FILE && environmentVariableName == null && !filePath.isNullOrBlank())
         ) {
             "AI catalog secret state must describe its source without exposing an inline value"
         }
@@ -42,6 +44,7 @@ data class AiCatalogSecretState(
     enum class Source {
         INLINE,
         ENVIRONMENT_VARIABLE,
+        FILE,
     }
 }
 
@@ -131,5 +134,10 @@ private fun SecretRef.toState(slot: AiCatalogSecretSlot): AiCatalogSecretState =
             slot = slot,
             source = AiCatalogSecretState.Source.ENVIRONMENT_VARIABLE,
             environmentVariableName = name,
+        )
+        is SecretRef.File -> AiCatalogSecretState(
+            slot = slot,
+            source = AiCatalogSecretState.Source.FILE,
+            filePath = path,
         )
     }

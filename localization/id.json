@@ -2019,6 +2019,21 @@
     "ai.spec.minimum_tool_effort": "Upaya penalaran minimum untuk alat",
     "ai.spec.maximum_disabled_effort": "Upaya maksimum saat thinking dinonaktifkan",
     "ai.spec.forced_tool_choice": "Izinkan pemilihan alat secara paksa",
-    "ai.spec.anthropic_prefix_drop": "Buang thinking Anthropic dengan awalan yang tidak kompatibel (beta)"
+    "ai.spec.anthropic_prefix_drop": "Buang thinking Anthropic dengan awalan yang tidak kompatibel (beta)",
+    "ai.secret.source.file": "File pada pelaksana",
+    "ai.secret.file_path": "Jalur absolut file token",
+    "ai.secret.file_status": "File rahasia: {path}",
+    "ai.secret.source_value_required": "Masukkan nilai untuk sumber rahasia yang dipilih.",
+    "ai.http.title": "HTTP dan autentikasi",
+    "ai.http.executor_hint": "File, variabel lingkungan, dan pengaturan jaringan berada pada Server/Worker yang dipilih. File token dibaca sebelum setiap panggilan AI.",
+    "ai.http.authentication": "Header autentikasi",
+    "ai.http.provider_auth": "Default API (OpenAI Bearer / Anthropic x-api-key)",
+    "ai.http.ca_bundle": "Bundel CA tambahan (jalur absolut)",
+    "ai.http.proxy": "URL proxy HTTP (opsional)",
+    "ai.http.no_proxy": "noProxy (dipisahkan koma)",
+    "ai.http.no_proxy_hint": "Host, akhiran .domain, dan port opsional; * melewati semua proxy. Tanpa CIDR. Proxy kosong menggunakan pengaturan sistem pelaksana.",
+    "ai.http.headers": "Header tambahan (JSON)",
+    "ai.http.headers_hint": "Hanya nilai string yang bukan rahasia. Authorization berasal dari sumber token; User-Agent dapat ditimpa.",
+    "ai.http.headers_invalid": "Header harus berupa objek JSON dengan nilai string."
   }
 }

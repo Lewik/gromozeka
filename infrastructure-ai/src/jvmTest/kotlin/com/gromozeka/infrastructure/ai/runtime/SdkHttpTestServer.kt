@@ -1,24 +1,33 @@
 package com.gromozeka.infrastructure.ai.runtime
 
 import com.sun.net.httpserver.HttpServer
+import com.sun.net.httpserver.HttpsConfigurator
+import com.sun.net.httpserver.HttpsServer
 import java.net.InetSocketAddress
 import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
 
-internal class SdkHttpTestServer(vararg responseBodies: String) : AutoCloseable {
+internal class SdkHttpTestServer(responseBodies: List<Reply>, sslContext: SSLContext? = null) : AutoCloseable {
+    constructor(vararg responseBodies: String) : this(responseBodies.map { Reply(it) })
+
+    data class Reply(val body: String, val status: Int = 200, val headers: Map<String, String> = emptyMap())
+
     private val recorded = ConcurrentLinkedQueue<RecordedRequest>()
     private val executor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "sdk-http-test-server").apply { isDaemon = true }
     }
-    private val responses = ConcurrentLinkedQueue(responseBodies.map { it.toByteArray(Charsets.UTF_8) })
+    private val responses = ConcurrentLinkedQueue(responseBodies)
+    private val scheme = if (sslContext == null) "http" else "https"
 
     init {
         require(responseBodies.isNotEmpty()) { "HTTP test server requires at least one response" }
     }
 
-    private val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
+    private val server = (if (sslContext == null) HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        else HttpsServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply { httpsConfigurator = HttpsConfigurator(sslContext) }).apply {
         executor = this@SdkHttpTestServer.executor
         createContext("/") { exchange ->
             try {
@@ -30,10 +39,12 @@ internal class SdkHttpTestServer(vararg responseBodies: String) : AutoCloseable 
                     },
                     body = exchange.requestBody.use { it.readBytes().toString(Charsets.UTF_8) },
                 )
-                val responseBytes = checkNotNull(responses.poll()) { "Unexpected extra HTTP request in test" }
+                val reply = checkNotNull(responses.poll()) { "Unexpected extra HTTP request in test" }
+                val bytes = reply.body.toByteArray(Charsets.UTF_8)
                 exchange.responseHeaders.set("Content-Type", "application/json")
-                exchange.sendResponseHeaders(200, responseBytes.size.toLong())
-                exchange.responseBody.use { it.write(responseBytes) }
+                reply.headers.forEach { (name, value) -> exchange.responseHeaders.set(name, value) }
+                exchange.sendResponseHeaders(reply.status, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
             } finally {
                 exchange.close()
             }
@@ -41,7 +52,7 @@ internal class SdkHttpTestServer(vararg responseBodies: String) : AutoCloseable 
         start()
     }
 
-    val origin: String get() = "http://127.0.0.1:${server.address.port}"
+    val origin: String get() = "$scheme://127.0.0.1:${server.address.port}"
     val requests: List<RecordedRequest> get() = recorded.toList()
 
     override fun close() {

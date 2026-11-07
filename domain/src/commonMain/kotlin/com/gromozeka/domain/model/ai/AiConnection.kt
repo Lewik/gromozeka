@@ -142,11 +142,13 @@ sealed interface AiConnection {
         override val apiKey: SecretRef? = null,
         val webSearchEnabled: Boolean = true,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
-    ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
+        override val httpSettings: AiHttpSettings = AiHttpSettings(),
+    ) : AiConnection, ConfigurableHttpAiConnection {
         override val kind = Kind.OPENAI_API
 
         init {
             validateDisplayName(displayName)
+            AiHttpSettings.validateBaseUrl(baseUrl)
             validateOptionalBaseUrl(baseUrl)
         }
     }
@@ -160,11 +162,13 @@ sealed interface AiConnection {
         override val baseUrl: String,
         override val apiKey: SecretRef? = null,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
-    ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
+        override val httpSettings: AiHttpSettings = AiHttpSettings(),
+    ) : AiConnection, ConfigurableHttpAiConnection {
         override val kind = Kind.OPENAI_COMPATIBLE
 
         init {
             validateDisplayName(displayName)
+            AiHttpSettings.validateBaseUrl(baseUrl)
             require(baseUrl.isNotBlank()) { "OpenAI-compatible base URL must not be blank" }
         }
     }
@@ -178,11 +182,13 @@ sealed interface AiConnection {
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
-    ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
+        override val httpSettings: AiHttpSettings = AiHttpSettings(),
+    ) : AiConnection, ConfigurableHttpAiConnection {
         override val kind = Kind.ANTHROPIC_API
 
         init {
             validateDisplayName(displayName)
+            AiHttpSettings.validateBaseUrl(baseUrl)
             validateOptionalBaseUrl(baseUrl)
         }
     }
@@ -280,6 +286,10 @@ sealed interface AiConnection {
 
     interface ApiKeyAiConnection {
         val apiKey: SecretRef?
+    }
+
+    interface ConfigurableHttpAiConnection : HttpAiConnection, ApiKeyAiConnection {
+        val httpSettings: AiHttpSettings
     }
 
     interface AwsAiConnection {
