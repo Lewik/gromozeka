@@ -230,6 +230,10 @@ class SpeechExecutionRoutingTest {
     }
 
     private class RecordingRemoteClient : AiRequestResponseExecutionClient {
+        override suspend fun listModels(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
+            connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant,
+            actorUserId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")
+
         val synthesisResponse = AiSpeechSynthesisResponse(
             audioData = byteArrayOf(1, 2, 3),
             mediaType = "audio/wav",

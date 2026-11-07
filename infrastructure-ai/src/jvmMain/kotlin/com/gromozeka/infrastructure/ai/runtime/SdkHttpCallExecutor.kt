@@ -39,9 +39,11 @@ internal class SdkInferenceClient<C>(val client: C, val transport: SdkHttpTransp
 internal class SdkHttpCallExecutor<C>(
     private val connection: AiConnection,
     private val timeoutSeconds: Int?,
+    private val maxAttempts: Int = SdkHttpSupport.settings(connection).maxAttempts,
     private val clientFactory: (deadlineNanos: Long) -> SdkInferenceClient<C>,
 ) {
     private val settings = SdkHttpSupport.settings(connection)
+    init { require(maxAttempts in 1..5) { "Invalid AI HTTP attempt limit" } }
 
     fun withDeadline(options: AiRuntimeOptions): AiRuntimeOptions = options.copy(
         executionDeadline = AiHttpCallBudget.deadline(timeoutSeconds, options.executionDeadline, Clock.System.now()))
@@ -78,7 +80,7 @@ internal class SdkHttpCallExecutor<C>(
                                     val failure = classify(error, session.transport)
                                     if (failure.kind != AiCallFailure.Kind.RATE_LIMITED ||
                                         failure.outcome != AiCallFailure.Outcome.REJECTED ||
-                                        requireNotNull(failure.attempts) >= settings.maxAttempts) throw AiCallException(failure)
+                                        requireNotNull(failure.attempts) >= maxAttempts) throw AiCallException(failure)
                                     val backoff = retryDelayMillis(requireNotNull(failure.attempts), failure.retryAfterMillis)
                                     val leftMillis = (end - System.nanoTime()) / 1_000_000
                                     // Retry-After is a lower bound, not a value to clamp to an earlier retry.
@@ -144,6 +146,7 @@ private fun classify(error: Throwable, transport: SdkHttpTransport): AiCallFailu
     val status = attempt.status
     val causes = generateSequence(unwrap(error)) { it.cause }.take(16).toList()
     val kind = when {
+        causes.any { it is HttpFollowUpPreventedException } -> AiCallFailure.Kind.HTTP_ERROR
         status == 401 && attempt.bodyComplete -> AiCallFailure.Kind.AUTHENTICATION
         status == 403 && attempt.bodyComplete -> AiCallFailure.Kind.ACCESS_DENIED
         status == 429 && attempt.bodyComplete -> AiCallFailure.Kind.RATE_LIMITED

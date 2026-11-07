@@ -1,5 +1,7 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.ai.AiConnectionModels
+import com.gromozeka.domain.model.ai.requireGatewayModelListing
 import com.gromozeka.domain.model.ai.AiCallException
 import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.model.ai.AiConnection
@@ -50,6 +52,20 @@ class GatewayAiRequestResponseExecutionClient(
 
     init {
         require(timeoutMillis > 0) { "AI request-response timeout must be positive" }
+    }
+
+    override suspend fun listModels(target: ConversationRuntimeWorkerIdentity, connection: AiConnection,
+        deadline: Instant, actorUserId: com.gromozeka.domain.model.User.Id): AiConnectionModels {
+        connection.requireGatewayModelListing()
+        require((connection.executionTarget as? com.gromozeka.domain.model.ai.AiExecutionTarget.Worker)?.workerId == target.workerId.value) {
+            "Model-list transport target does not match the connection"
+        }
+        val (id, payload) = executeCall(target, AiRequestResponseGatewayCodec.encodeModelsRequest(connection, deadline), deadline, actorUserId)
+        return try { AiRequestResponseGatewayCodec.decodeModelsResponse(payload) }
+        catch (error: AiCallException) { throw AiCallException(error.failure.copy(workerRequestId = id)) }
+        catch (error: CancellationException) { throw error }
+        catch (_: Exception) { throw AiCallException(AiCallFailure(AiCallFailure.Kind.WORKER_FAILURE,
+            AiCallFailure.Outcome.UNKNOWN, null, workerRequestId = id)) }
     }
 
     override suspend fun call(
@@ -139,7 +155,8 @@ class GatewayAiRequestResponseExecutionClient(
         execute(target, AiRequestResponseGatewayCodec.encodeSubscriptionQuotaRequest(request))
             .let(AiRequestResponseGatewayCodec::decodeSubscriptionQuotaResponse)
 
-    private suspend fun executeCall(target: ConversationRuntimeWorkerIdentity, payload: ByteArray, deadline: Instant): Pair<String, ByteArray> {
+    private suspend fun executeCall(target: ConversationRuntimeWorkerIdentity, payload: ByteArray, deadline: Instant,
+        actorUserId: com.gromozeka.domain.model.User.Id? = null): Pair<String, ByteArray> {
         val remaining = (deadline - Clock.System.now()).inWholeMilliseconds
         if (remaining <= 0) throw AiCallException(AiCallFailure(AiCallFailure.Kind.DEADLINE_EXCEEDED,
             AiCallFailure.Outcome.NOT_STARTED, 0))
@@ -151,7 +168,7 @@ class GatewayAiRequestResponseExecutionClient(
                 withContext(NonCancellable) {
                     requestId = requests.submit(target.workerId, WorkerGatewayOperation.AI_REQUEST_RESPONSE, payload,
                         WorkerRequestPolicy(deliveryTtlMillis = minOf(30_000, remaining),
-                            executionTimeoutMillis = remaining, waitTimeoutMillis = remaining))
+                            executionTimeoutMillis = remaining, waitTimeoutMillis = remaining), actorUserId = actorUserId)
                 }
                 val id = requireNotNull(requestId)
                 val response = requests.await(id, remaining)

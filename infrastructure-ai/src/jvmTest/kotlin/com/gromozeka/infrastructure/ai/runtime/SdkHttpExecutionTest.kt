@@ -347,7 +347,8 @@ internal class StalledServer(partialBody: Boolean, drop: Boolean = false, status
                     line()
                     val headers = generateSequence { line().takeIf(String::isNotEmpty) }.map { it.split(':', limit = 2) }
                         .associate { it[0].lowercase() to it[1].trim() }
-                    val length = requireNotNull(headers["content-length"]).toInt()
+                    check(headers["transfer-encoding"] == null)
+                    val length = headers["content-length"]?.toInt() ?: 0
                     check(input.readNBytes(length).size == length)
                     requests.incrementAndGet()
                     if (partialBody) {

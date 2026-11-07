@@ -288,6 +288,9 @@ class WorkerGatewayClientTest {
 }
 
 private object UnusedAiRequestResponseHandler : AiRequestResponseExecutionHandler {
+        override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant):
+            com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")
+
     override suspend fun call(
         runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,

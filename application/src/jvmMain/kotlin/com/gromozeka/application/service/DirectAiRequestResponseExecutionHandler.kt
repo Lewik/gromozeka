@@ -31,7 +31,11 @@ class DirectAiRequestResponseExecutionHandler(
     private val speechToTextProvider: DirectAiSpeechToTextProvider,
     private val textToSpeechProvider: DirectAiTextToSpeechProvider,
     private val subscriptionQuotaProviders: List<DirectAiSubscriptionQuotaProvider>,
+    private val connectionModelsExecutor: com.gromozeka.domain.service.AiConnectionModelsExecutor,
 ) : AiRequestResponseExecutionHandler {
+    override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant) =
+        connectionModelsExecutor.listModels(connection, deadline)
+
     override suspend fun call(
         runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,

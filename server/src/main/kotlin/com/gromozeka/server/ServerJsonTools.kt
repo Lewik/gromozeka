@@ -6,6 +6,8 @@ import com.gromozeka.domain.tool.AiToolContextRequirements
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.ai.AiCallException
+import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.service.ProjectAccessDeniedException
 import com.gromozeka.domain.service.UserDirectoryService
 import com.gromozeka.domain.tool.AiToolAccessPolicy
@@ -123,7 +125,7 @@ internal class ServerJsonToolFactory(private val users: UserDirectoryService) {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                if (error !is ServerToolException && error !is IllegalArgumentException && error !is IllegalStateException) {
+                if (error !is ServerToolException && error !is AiCallException && error !is IllegalArgumentException && error !is IllegalStateException) {
                     log.warn(error) { "Server tool failed unexpectedly: name=${definition.name}" }
                 }
                 error.toServerToolFailure()
@@ -140,6 +142,7 @@ internal class ServerJsonToolFactory(private val users: UserDirectoryService) {
 private fun Throwable.toServerToolFailure(): JsonObject {
     val (code, safeMessage) = when (this) {
         is ServerToolException -> code to message
+        is AiCallException -> "ai_call_failed" to message.orEmpty()
         is ProjectAccessDeniedException -> "forbidden" to message.orEmpty()
         is IllegalArgumentException -> "invalid_argument" to (message ?: "Invalid argument")
         is IllegalStateException -> "invalid_state" to (message ?: "Invalid state")
@@ -150,6 +153,9 @@ private fun Throwable.toServerToolFailure(): JsonObject {
         put("error", buildJsonObject {
             put("code", code)
             put("message", safeMessage)
+            if (this@toServerToolFailure is AiCallException) {
+                put("aiFailure", serverToolJson.encodeToJsonElement(AiCallFailure.serializer(), failure))
+            }
         })
     }
 }

@@ -45,6 +45,50 @@ import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
     @Test
+    fun `model discovery is connection scoped and rejects wrong executor or disabled connection`() = runBlocking<Unit> {
+        val fixture = TestHandler()
+        val worker = com.gromozeka.domain.service.ConversationRuntimeWorkerId("models-worker")
+        val connection = (fixture.runtime.connection as AiConnection.OpenAiApi).copy(enabled = true,
+            baseUrl = "https://gateway.example/api/llm", apiKey = com.gromozeka.domain.model.SecretRef.File("/executor/token"),
+            executionTarget = AiExecutionTarget.Worker(worker.value))
+        val deadline = Instant.parse("2026-11-07T10:00:00Z")
+        val expected = com.gromozeka.domain.model.ai.AiConnectionModels(listOf(com.gromozeka.domain.model.ai.AiModelCandidate("account/model")), deadline)
+        var calls = 0
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun listModels(selected: AiConnection, actualDeadline: Instant): com.gromozeka.domain.model.ai.AiConnectionModels {
+                assertEquals(connection, selected); assertEquals(deadline, actualDeadline); calls++; return expected
+            }
+        }
+        val encoded = AiRequestResponseGatewayCodec.encodeModelsRequest(connection, deadline)
+        kotlin.test.assertFalse(encoded.decodeToString().contains("modelSpec"))
+        kotlin.test.assertFalse(encoded.decodeToString().contains("modelConfiguration"))
+        assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.execute(encoded, handler) }
+        assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.execute(encoded, handler, com.gromozeka.domain.service.ConversationRuntimeWorkerId("other")) }
+        val disabled = encoded.decodeToString().replace("\"enabled\":true", "\"enabled\":false").encodeToByteArray()
+        assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.execute(disabled, handler, worker) }
+        assertEquals(0, calls)
+        val result = AiRequestResponseGatewayCodec.execute(encoded, handler, worker)
+        assertEquals(expected, AiRequestResponseGatewayCodec.decodeModelsResponse(result))
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `model discovery typed failure survives wire encoding without inference`() = runBlocking<Unit> {
+        val fixture = TestHandler()
+        val connection = (fixture.runtime.connection as AiConnection.OpenAiApi).copy(enabled = true,
+            baseUrl = "https://gateway.example/api/llm", executionTarget = AiExecutionTarget.Worker("worker"))
+        val failure = com.gromozeka.domain.model.ai.AiCallFailure(com.gromozeka.domain.model.ai.AiCallFailure.Kind.ACCESS_DENIED,
+            com.gromozeka.domain.model.ai.AiCallFailure.Outcome.REJECTED, 1, 403)
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun listModels(connection: AiConnection, deadline: Instant): com.gromozeka.domain.model.ai.AiConnectionModels =
+                throw com.gromozeka.domain.model.ai.AiCallException(failure)
+        }
+        val result = AiRequestResponseGatewayCodec.execute(AiRequestResponseGatewayCodec.encodeModelsRequest(connection, Instant.parse("2026-11-07T10:00:00Z")),
+            handler, com.gromozeka.domain.service.ConversationRuntimeWorkerId("worker"))
+        assertEquals(failure, assertFailsWith<com.gromozeka.domain.model.ai.AiCallException> { AiRequestResponseGatewayCodec.decodeModelsResponse(result) }.failure)
+    }
+
+    @Test
     fun `typed failures and a single deadline survive call and context query wire round trips without private exceptions`() = runBlocking {
         val fixture = TestHandler()
         val deadline = Instant.parse("2026-11-07T02:00:00Z")
@@ -357,6 +401,9 @@ class AiRequestResponseGatewayCodecTest {
     ))
 
     private class TestHandler : AiRequestResponseExecutionHandler {
+        override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant):
+            com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")
+
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("model-config"))
         val modelSpec = AiModelSpec(
             id = "test-model",

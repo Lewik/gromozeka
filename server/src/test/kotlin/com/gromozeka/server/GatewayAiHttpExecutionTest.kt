@@ -24,6 +24,45 @@ class GatewayAiHttpExecutionTest {
     private fun requests(repository: WorkerRequestRepository) = WorkerRequestService(repository, WorkerRequestAuthorization {})
 
     @Test
+    fun `model-list gateway records the actor and exact connection without resolving a model`() = runBlocking<Unit> {
+        val actor = com.gromozeka.domain.model.User.Id("inspection-owner")
+        val repository = TestWorkerRequestRepository()
+        val requests = WorkerRequestService(repository, WorkerRequestAuthorization { assertEquals(actor, it.actorUserId) })
+        val gateway = GatewayAiRequestResponseExecutionClient(requests, 5000)
+        val session = WorkerGatewaySession(identity)
+        val delivery = launch { requests.deliver(session) }
+        val deadline = Clock.System.now() + 3000.milliseconds
+        val expected = AiConnectionModels(listOf(AiModelCandidate("route/without-model-spec")), Clock.System.now())
+        val worker = launch {
+            val envelope = withTimeout(3000) { session.outgoingMessages().receive() } as WorkerGatewayMessage.Request
+            assertFalse(envelope.payload.decodeToString().contains("modelSpec"))
+            val response = AiRequestResponseGatewayCodec.execute(envelope.payload, object : UnusedHandler() {
+                override suspend fun listModels(selected: AiConnection, actualDeadline: kotlin.time.Instant): AiConnectionModels {
+                    assertEquals(connection, selected); assertEquals(deadline, actualDeadline); return expected
+                }
+            }, workerId)
+            requests.accept(workerId, WorkerGatewayMessage.Response(envelope.id, WorkerGatewayMessage.Response.Status.SUCCEEDED, response))
+        }
+        try {
+            assertEquals(expected, gateway.listModels(identity, connection, deadline, actor))
+            assertEquals(actor, repository.records.values.single().actorUserId)
+            assertEquals(1, repository.records.size)
+        } finally { worker.cancelAndJoin(); delivery.cancelAndJoin() }
+    }
+
+    @Test
+    fun `model-list gateway rejects mismatched disabled and expired requests before submission`() = runBlocking<Unit> {
+        val repository = TestWorkerRequestRepository()
+        val gateway = GatewayAiRequestResponseExecutionClient(requests(repository), 5000)
+        val actor = com.gromozeka.domain.model.User.Id("inspection-owner")
+        val deadline = Clock.System.now() + 1000.milliseconds
+        assertFailsWith<IllegalArgumentException> { gateway.listModels(identity, connection.copy(enabled = false), deadline, actor) }
+        assertFailsWith<IllegalArgumentException> { gateway.listModels(identity, connection.copy(executionTarget = AiExecutionTarget.Worker("other")), deadline, actor) }
+        assertFailsWith<AiCallException> { gateway.listModels(identity, connection, Clock.System.now() - 1.milliseconds, actor) }
+        assertTrue(repository.records.isEmpty())
+    }
+
+    @Test
     fun `gateway retains typed failure and absolute deadline with one durable request`(): Unit = runBlocking {
         val repository = TestWorkerRequestRepository()
         val requests = requests(repository)
@@ -155,6 +194,9 @@ class GatewayAiHttpExecutionTest {
     }
 
     private open class UnusedHandler : AiRequestResponseExecutionHandler {
+        override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant):
+            com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")
+
         override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse = error("Unused")
         override suspend fun embed(runtime: ResolvedAiRuntime, request: AiEmbeddingRequest): AiEmbeddingResponse = error("Unused")
         override suspend fun transcribe(runtime: ResolvedAiRuntime?, localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?, request: AiSpeechTranscriptionRequest): String = error("Unused")

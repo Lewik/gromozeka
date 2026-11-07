@@ -265,7 +265,7 @@ class WorkerGatewayOperationHandler(
                 }
 
                 WorkerGatewayOperation.AI_REQUEST_RESPONSE ->
-                    AiRequestResponseGatewayCodec.execute(request.payload, aiRequestResponseHandler)
+                    AiRequestResponseGatewayCodec.execute(request.payload, aiRequestResponseHandler, identity.workerId)
 
                 WorkerGatewayOperation.AUDIO_CAPTURE ->
                     WorkerAudioCaptureGatewayCodec.execute(request.payload, identity, workerAudioCaptureHandler)

@@ -98,7 +98,14 @@ interface AiSubscriptionQuotaProvider {
     suspend fun read(request: AiSubscriptionQuotaRequest): AiSubscriptionQuotaSnapshot
 }
 
+fun interface AiConnectionModelsExecutor {
+    suspend fun listModels(connection: AiConnection, deadline: kotlin.time.Instant): com.gromozeka.domain.model.ai.AiConnectionModels
+}
+
 interface AiRequestResponseExecutionClient {
+    suspend fun listModels(target: ConversationRuntimeWorkerIdentity, connection: AiConnection, deadline: kotlin.time.Instant,
+        actorUserId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ai.AiConnectionModels
+
     suspend fun call(
         target: ConversationRuntimeWorkerIdentity,
         runtime: ResolvedAiRuntime,
@@ -132,6 +139,8 @@ interface AiRequestResponseExecutionClient {
 }
 
 interface AiRequestResponseExecutionHandler {
+    suspend fun listModels(connection: AiConnection, deadline: kotlin.time.Instant): com.gromozeka.domain.model.ai.AiConnectionModels
+
     suspend fun call(
         runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,

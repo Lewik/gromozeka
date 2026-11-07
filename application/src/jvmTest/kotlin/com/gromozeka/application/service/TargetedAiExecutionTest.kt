@@ -328,6 +328,7 @@ class TargetedAiExecutionTest {
             speechToTextProvider = speechToTextProvider,
             textToSpeechProvider = textToSpeechProvider,
             subscriptionQuotaProviders = emptyList(),
+            connectionModelsExecutor = com.gromozeka.domain.service.AiConnectionModelsExecutor { _, _ -> error("Unused model listing") },
         )
         val embeddingRequest = AiEmbeddingRequest(selection, listOf("one"))
         val transcriptionRequest = AiSpeechTranscriptionRequest(
@@ -511,6 +512,10 @@ class TargetedAiExecutionTest {
     private class RecordingRemoteClient(
         val callResponse: AiRuntimeResponse = AiRuntimeResponse(messages = emptyList(), finishReason = "remote"),
     ) : AiRequestResponseExecutionClient {
+        override suspend fun listModels(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
+            connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant,
+            actorUserId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")
+
         val embeddingResponse = AiEmbeddingResponse(
             modelId = "remote-embedding-model",
             dimensions = 2,

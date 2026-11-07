@@ -28,7 +28,17 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
     private val responses = mutableSetOf<NativeResponse>()
     private var current = Attempt()
     private var count = 0
+    private class ExchangeGuard { val exchanges = java.util.concurrent.atomic.AtomicInteger() }
     private val client = OkHttpClient.Builder()
+        .addNetworkInterceptor { chain ->
+            val guard = requireNotNull(chain.request().tag(ExchangeGuard::class.java))
+            // OkHttp can repeat a bodyless GET after 503 + Retry-After: 0 even with connection retries off.
+            if (guard.exchanges.incrementAndGet() != 1) throw HttpFollowUpPreventedException()
+            chain.proceed(chain.request()).also { response ->
+                synchronized(lock) { current = current.copy(status = response.code,
+                    retryAfterMillis = parseRetryAfter(response.header("Retry-After"))) }
+            }
+        }
         .retryOnConnectionFailure(false)
         .followRedirects(false)
         .followSslRedirects(false)
@@ -56,7 +66,7 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
                 return future
             }
             check(!current.started) { "SDK attempted more than one HTTP exchange in a controlled attempt" }
-            val call = client.newCall(request)
+            val call = client.newCall(request.newBuilder().tag(ExchangeGuard::class.java, ExchangeGuard()).build())
             call.timeout().timeout((deadlineNanos - System.nanoTime()).coerceAtLeast(1), TimeUnit.NANOSECONDS)
             calls.add(call)
             current = Attempt(started = true)
@@ -122,6 +132,8 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
         client.connectionPool.evictAll()
     }
 }
+
+internal class HttpFollowUpPreventedException : IOException("Automatic HTTP follow-up was prevented")
 
 internal fun parseRetryAfter(value: String?, now: Instant = Instant.now()): Long? {
     if (value == null) return null

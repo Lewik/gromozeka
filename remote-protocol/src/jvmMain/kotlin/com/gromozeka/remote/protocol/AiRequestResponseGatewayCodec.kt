@@ -1,5 +1,7 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.ai.AiConnectionModels
+import com.gromozeka.domain.model.ai.requireGatewayModelListing
 import com.gromozeka.domain.model.ai.AiCallException
 import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.model.ai.AiStepOutcome
@@ -55,6 +57,19 @@ object AiRequestResponseGatewayCodec {
         encodeDefaults = true
         ignoreUnknownKeys = false
     }
+
+    fun encodeModelsRequest(connection: AiConnection, deadline: kotlin.time.Instant): ByteArray {
+        connection.requireGatewayModelListing()
+        require(connection.executionTarget is com.gromozeka.domain.model.ai.AiExecutionTarget.Worker) { "Model-list RPC requires a Worker-targeted connection" }
+        return encodeOperation(AiRequestResponseOperation.Models(connection, deadline))
+    }
+
+    fun decodeModelsResponse(payload: ByteArray): AiConnectionModels =
+        when (val decoded = json.decodeFromString(AiRequestResponsePayload.serializer(), payload.decodeToString())) {
+            is AiRequestResponsePayload.Models -> decoded.result
+            is AiRequestResponsePayload.CallFailure -> throw AiCallException(decoded.failure)
+            else -> error("Worker Gateway AI response payload type mismatch: expected model list")
+        }
 
     fun encodeCallRequest(
         runtime: ResolvedAiRuntime,
@@ -130,8 +145,18 @@ object AiRequestResponseGatewayCodec {
     suspend fun execute(
         payload: ByteArray,
         handler: AiRequestResponseExecutionHandler,
+        executingWorkerId: com.gromozeka.domain.service.ConversationRuntimeWorkerId? = null,
     ): ByteArray {
         val result = when (val operation = decodeOperation(payload)) {
+            is AiRequestResponseOperation.Models -> {
+                val target = operation.connection.executionTarget as? com.gromozeka.domain.model.ai.AiExecutionTarget.Worker
+                require(executingWorkerId != null && target?.workerId == executingWorkerId.value) {
+                    "Model-list request targets another executor"
+                }
+                operation.connection.requireGatewayModelListing()
+                try { AiRequestResponsePayload.Models(handler.listModels(operation.connection, operation.deadline)) }
+                catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
+            }
             is AiRequestResponseOperation.Call -> {
                 require(operation.request.options.usagePurpose != AI_CONTEXT_QUERY_PURPOSE) {
                     "Isolated context query requires its versioned wire operation"
@@ -202,6 +227,10 @@ object AiRequestResponseGatewayCodec {
 @JsonClassDiscriminator("operationKind")
 private sealed interface AiRequestResponseOperation {
     @Serializable
+    @SerialName("connection_models")
+    data class Models(val connection: AiConnection, val deadline: kotlin.time.Instant) : AiRequestResponseOperation
+
+    @Serializable
     @SerialName("call")
     data class Call(
         val runtime: ResolvedAiRuntime,
@@ -249,6 +278,10 @@ private sealed interface AiRequestResponseOperation {
 @Serializable
 @JsonClassDiscriminator("payloadKind")
 private sealed interface AiRequestResponsePayload {
+    @Serializable
+    @SerialName("connection_models")
+    data class Models(val result: AiConnectionModels) : AiRequestResponsePayload
+
     @Serializable
     @SerialName("call_failure")
     data class CallFailure(val failure: AiCallFailure) : AiRequestResponsePayload

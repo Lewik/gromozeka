@@ -18,9 +18,28 @@ import kotlin.time.Duration.Companion.seconds
 /** Real executor + JSON/CBOR codecs + SDK/HTTP, not a separately started Worker or gateway socket. */
 class SdkWorkerExecutionTest {
     @Test
+    fun `model-list Worker operation executes one GET and replays its saved result`() = runBlocking<Unit> {
+        SdkHttpTestServer("""{"object":"list","data":[{"id":"exact-account/model"}]}""").use { server ->
+            val fixture = Fixture(server.origin, modelListing = true)
+            try {
+                fixture.executor.initialize()
+                fixture.executor.accept(fixture.envelope())
+                val response = withTimeout(3000) { fixture.responses.receive() }
+                assertEquals(WorkerGatewayMessage.Response.Status.SUCCEEDED, response.status)
+                assertEquals("exact-account/model", AiRequestResponseGatewayCodec.decodeModelsResponse(requireNotNull(response.payload)).models.single().id)
+                assertEquals("GET", server.requests.single().method)
+                assertEquals("/models", server.requests.single().target)
+                fixture.executor.accept(fixture.envelope())
+                assertEquals(response, fixture.responses.receive())
+                assertEquals(1, server.requests.size)
+            } finally { fixture.close() }
+        }
+    }
+
+    @Test
     fun `cancellation delivered by Worker envelope closes SDK body socket and replay never repeats HTTP`() = runBlocking {
-        StalledServer(true).use { server ->
-            val fixture = Fixture(server.origin)
+        for (listing in listOf(false, true)) StalledServer(true).use { server ->
+            val fixture = Fixture(server.origin, modelListing = listing)
             try {
                 fixture.executor.initialize()
                 fixture.executor.accept(fixture.envelope())
@@ -94,7 +113,7 @@ class SdkWorkerExecutionTest {
         override suspend fun save(receipt: WorkerRequestReceipt) { receipts[receipt.id] = receipt }
         override suspend fun delete(id: String) { receipts.remove(id) }
     }
-    private class Fixture(url: String, logicalSeconds: Int = 5) {
+    private class Fixture(url: String, logicalSeconds: Int = 5, modelListing: Boolean = false) {
         val journal = Journal()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val responses = Channel<WorkerGatewayMessage.Response>(Channel.UNLIMITED)
@@ -110,9 +129,13 @@ class SdkWorkerExecutionTest {
             Conversation.Message.Id("message"), Conversation.Id("conversation"), role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage("Hello")), createdAt = started)),
             options = AiRuntimeOptions(maxOutputTokens = 128, executionDeadline = started + logicalSeconds.seconds))
-        private val payload = AiRequestResponseGatewayCodec.encodeCallRequest(runtime, null, request)
+        private val payload = if (modelListing) AiRequestResponseGatewayCodec.encodeModelsRequest(connection, started + logicalSeconds.seconds)
+            else AiRequestResponseGatewayCodec.encodeCallRequest(runtime, null, request)
         private val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources()))))
         private val handler = object : AiRequestResponseExecutionHandler {
+        override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant):
+            com.gromozeka.domain.model.ai.AiConnectionModels = SdkConnectionModelsExecutor(Sources()).listModels(connection, deadline)
+
             override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse =
                 provider.getRuntime(runtime, workspaceRootPath).call(request)
             override suspend fun embed(runtime: ResolvedAiRuntime, request: AiEmbeddingRequest): AiEmbeddingResponse = error("Unused")
@@ -122,7 +145,7 @@ class SdkWorkerExecutionTest {
         }
         val executor = WorkerRequestExecutor(journal, scope, WorkerRequestHandler { envelope ->
             WorkerGatewayMessage.Response(envelope.id, WorkerGatewayMessage.Response.Status.SUCCEEDED,
-                AiRequestResponseGatewayCodec.execute(envelope.payload, handler))
+                AiRequestResponseGatewayCodec.execute(envelope.payload, handler, ConversationRuntimeWorkerId("fixture-worker")))
         }, { response -> responses.send(WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(response)) as WorkerGatewayMessage.Response) })
         fun envelope(cancel: Boolean = false): WorkerGatewayMessage.Request = WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(
             WorkerGatewayMessage.Request("http-request", WorkerGatewayOperation.AI_REQUEST_RESPONSE, payload,

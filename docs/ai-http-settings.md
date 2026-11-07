@@ -123,13 +123,14 @@ resolved while saving, serializing or displaying the catalog. They are resolved
 on the chosen Server or exact Worker during execution. The UI displays only
 source metadata such as the environment variable name or file path.
 
-Worker Gateway protocol 19 carries the HTTP execution settings, logical deadline
-and typed AI failures (protocol 18 introduced HTTP settings and the file secret kind). Upgrade Server, Worker **and UI clients** together. Older clients cannot
+Worker Gateway protocol 20 adds connection-scoped model listing on the exact Worker.
+Protocol 19 introduced HTTP execution settings, logical deadlines and typed AI
+failures; protocol 18 introduced HTTP settings and the file secret kind. Upgrade Server, Worker **and UI clients** together. Older clients cannot
 preserve the new fields or decode the new secret kind; mixed-version editing is
 not supported.
 
 This applies to the three finite inference APIs, not embeddings/audio, subscription
-backends, Bedrock execution, or a new streaming contract. Discovery, health and
+backends, Bedrock execution, or a new streaming contract. Explicit model discovery is described below. Health endpoints and
 target-installation acceptance remain separate. Memory orchestration has not
 been changed; its legacy retry wrapper is outside this execution contract and
 must not be assumed to honor typed terminal failures if it is enabled later.
@@ -205,6 +206,70 @@ Worker executor with JSON/CBOR codecs and receipt replay, and the Server durable
 request path with an in-memory repository. This does not claim a separately
 running Worker/gateway socket, a live UI, or a real TrueFoundry installation.
 
+## Explicit gateway model discovery
+
+`grz_ai_connection_models` is a Server-owner, read-only Control tool. Its only
+argument is `connectionId`, an exact saved connection ID. It refreshes the catalog,
+captures that connection and revision, and performs an explicit `GET <baseUrl>/models`
+on the connection's configured Server or exact Worker. There is no temporary model
+configuration or invented model spec involved. The listing never creates or edits
+catalog entries, changes assignments, or starts a model generation.
+
+The operation deliberately targets the OpenAI-compatible models endpoint described
+by TrueFoundry, irrespective of whether inference uses Chat Completions, Responses
+or Messages. The connection must be enabled, use one of these three SDK HTTP types,
+and have an explicit base URL. Disabled/unsupported connections and absent explicit
+URLs fail before credential resolution or network access. No alternative endpoint
+is probed after an error. Native provider-specific models endpoints such as
+Anthropic `/v1/models`, health/version probes, pagination, automatic import and
+background synchronization are not added by this feature. Use manual configuration
+when that endpoint is unavailable.
+
+The request uses the selected token source/authentication mode, extra headers,
+CA trust and proxy policy from the connection. It shares the connection's concurrency
+gate and has one 30-second overall deadline, including Worker delivery and queueing.
+It sends one GET attempt: no application retries, including 429, and no redirects.
+An additional native exchange guard prevents OkHttp's automatic bodyless-GET
+follow-up for a 503 with `Retry-After: 0`; inference's one-shot POST-body protection
+alone would not cover this case. Failed requests retain safe typed error details
+under the tool's `error.aiFailure`, rather than appearing as successful empty lists.
+Cancellation marks the same Worker request and closes active HTTP; it never resubmits
+that action. Worker requests retain the authenticated caller for access revalidation.
+
+The response must be an OpenAI-compatible `{ "object": "list", "data": [...] }`.
+Candidate fields are `id` and optional `object`, `created`, `owned_by`; unknown
+fields are not converted into capabilities, limits, reasoning settings or defaults.
+IDs are preserved verbatim, including the provider-account prefix. Empty lists are
+valid, not authentication errors. Malformed entries, duplicate IDs, pagination with
+more pages, bodies above 4 MiB, or lists above 10,000 entries fail as a whole instead
+of returning a silently incomplete list.
+
+Results include the captured catalog revision, selected execution target and
+measurement time. They are observations of that specific request, not persisted
+catalog state. Successful listing does not prove that credentials were required,
+that a particular model can run, or that tools/reasoning/media work. No `/health`
+response is treated as authentication proof. The tool explicitly returns
+`inferenceChecked: false` and `catalogChanged: false`.
+
+### Manual configuration workflow
+
+1. Save an enabled connection with its exact inference prefix, credential source,
+   HTTP settings and execution target.
+2. Invoke `grz_ai_connection_models` with that connection's ID. This is an explicit
+   operation, not a side effect of saving or opening settings.
+3. Select an exact returned model ID. Read its actual capabilities, limits and
+   supported request behavior from the model/installation documentation or verify
+   them separately. The model name alone is not evidence for those settings.
+4. Use the existing model-spec editor or `grz_ai_model_spec_upsert`, then the model
+   configuration editor or `grz_ai_model_configuration_upsert`. Use the connection's
+   existing catalog provider identity and the exact gateway ID; copy a known spec
+   only after checking that its behavior applies to that route. Respect catalog
+   revisions and preserve manual settings. Listing does not overwrite any of them.
+
+This stage adds the Control tool, not a separate discovery UI. Existing manual
+catalog editors are unchanged. Tests use local HTTP/TLS and an in-process production
+Worker executor with codecs; they are not acceptance of the work TrueFoundry deployment.
+
 ## Sources
 
 - [TrueFoundry authentication](https://www.truefoundry.com/docs/ai-gateway/authentication)
@@ -212,3 +277,5 @@ running Worker/gateway socket, a live UI, or a real TrueFoundry installation.
 - [TrueFoundry metadata and headers](https://www.truefoundry.com/docs/ai-gateway/request-headers)
 - [HTTP Retry-After semantics (RFC 9110)](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.3)
 - [HTTP 429 (RFC 6585)](https://www.rfc-editor.org/rfc/rfc6585.html#section-4)
+
+- [TrueFoundry model listing contract](https://www.truefoundry.com/docs/api-reference/models/list-available-models)
