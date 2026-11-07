@@ -45,7 +45,13 @@ internal interface ServerSocketConnection {
     suspend fun close(code: Int = 1000, reason: String = "")
 }
 
-internal const val MAX_WEBSOCKET_MESSAGE_BYTES = 16 * 1024 * 1024
+internal const val DEFAULT_WEBSOCKET_MESSAGE_BYTES = 16 * 1024 * 1024
+
+private fun ServerSocketMessage.exceedsLimit(maxBinaryMessageBytes: Int): Boolean =
+    byteSize > when (this) {
+        is ServerSocketMessage.Text -> DEFAULT_WEBSOCKET_MESSAGE_BYTES
+        is ServerSocketMessage.Binary -> maxBinaryMessageBytes
+    }
 
 /**
  * Servlet callbacks never block waiting for a coroutine consumer. Incoming messages
@@ -56,6 +62,7 @@ internal const val MAX_WEBSOCKET_MESSAGE_BYTES = 16 * 1024 * 1024
 internal class SpringSocketConnection(
     private val session: WebSocketSession,
     private val sendTimeoutMillis: Long = 30_000,
+    private val maxBinaryMessageBytes: Int = DEFAULT_WEBSOCKET_MESSAGE_BYTES,
 ) : ServerSocketConnection {
     private val log = KLoggers.logger(this)
     private val closed = AtomicBoolean()
@@ -65,17 +72,18 @@ internal class SpringSocketConnection(
 
     init {
         require(sendTimeoutMillis > 0)
+        require(maxBinaryMessageBytes > 0)
     }
 
     fun accept(message: ServerSocketMessage): Boolean {
-        if (closed.get() || message.byteSize > MAX_WEBSOCKET_MESSAGE_BYTES) return false
+        if (closed.get() || message.exceedsLimit(maxBinaryMessageBytes)) return false
         return incoming.trySend(message).isSuccess
     }
 
     override suspend fun receive(): ServerSocketMessage? = incoming.receiveCatching().getOrNull()
 
     override suspend fun send(message: ServerSocketMessage) {
-        require(message.byteSize <= MAX_WEBSOCKET_MESSAGE_BYTES) { "WebSocket message is too large" }
+        require(!message.exceedsLimit(maxBinaryMessageBytes)) { "WebSocket message is too large" }
         sendMutex.withLock {
             check(!closed.get() && session.isOpen) { "WebSocket connection is closed" }
             try {
@@ -132,6 +140,7 @@ internal class SpringSocketConnection(
 
 /** One supervised coroutine per accepted connection; lifecycle ends with the Spring bean. */
 internal class CoroutineWebSocketHandler(
+    private val maxBinaryMessageBytes: Int = DEFAULT_WEBSOCKET_MESSAGE_BYTES,
     private val serve: suspend (ServerSocketConnection, Map<String, Any>) -> Unit,
 ) : AbstractWebSocketHandler(), DisposableBean {
     private val log = KLoggers.logger(this)
@@ -139,8 +148,16 @@ internal class CoroutineWebSocketHandler(
     private val scope = CoroutineScope(lifecycle + Dispatchers.Default)
     private val connections = ConcurrentHashMap<String, Connection>()
 
+    init {
+        require(maxBinaryMessageBytes > 0)
+    }
+
     override fun afterConnectionEstablished(session: WebSocketSession) {
-        val socket = SpringSocketConnection(session)
+        // Tomcat applies per-session limits before reading the next message. Keep container defaults
+        // small: raising them allocates larger receive buffers for every connection, including UI.
+        session.binaryMessageSizeLimit = maxBinaryMessageBytes
+        session.textMessageSizeLimit = DEFAULT_WEBSOCKET_MESSAGE_BYTES
+        val socket = SpringSocketConnection(session, maxBinaryMessageBytes = maxBinaryMessageBytes)
         lateinit var connection: Connection
         val job = scope.launch(start = CoroutineStart.LAZY) {
             var closeCode = 1000
@@ -167,7 +184,7 @@ internal class CoroutineWebSocketHandler(
 
     override fun handleBinaryMessage(session: WebSocketSession, message: BinaryMessage) {
         val buffer = message.payload.asReadOnlyBuffer()
-        if (buffer.remaining() > MAX_WEBSOCKET_MESSAGE_BYTES) {
+        if (buffer.remaining() > maxBinaryMessageBytes) {
             reject(session, 1009, "WebSocket message is too large")
             return
         }
@@ -176,7 +193,7 @@ internal class CoroutineWebSocketHandler(
     }
 
     private fun accept(session: WebSocketSession, message: ServerSocketMessage) {
-        if (message.byteSize > MAX_WEBSOCKET_MESSAGE_BYTES) {
+        if (message.exceedsLimit(maxBinaryMessageBytes)) {
             reject(session, 1009, "WebSocket message is too large")
             return
         }

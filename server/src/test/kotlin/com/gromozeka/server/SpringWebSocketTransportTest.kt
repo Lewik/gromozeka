@@ -1,5 +1,6 @@
 package com.gromozeka.server
 
+import com.gromozeka.remote.protocol.MAX_WORKER_GATEWAY_MESSAGE_BYTES
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
@@ -14,8 +15,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.any
+import org.mockito.Mockito.anyString
+import org.mockito.Mockito.RETURNS_SELF
 import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.slf4j.LoggerFactory
 import org.springframework.web.socket.BinaryMessage
@@ -23,6 +27,9 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketMessage
 import org.springframework.web.socket.WebSocketSession
+import org.springframework.web.socket.WebSocketHandler
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistration
 import java.io.IOException
 import java.net.URI
 import java.util.concurrent.CopyOnWriteArrayList
@@ -95,7 +102,7 @@ class SpringWebSocketTransportTest {
     fun `oversized incoming and outgoing messages are rejected`() = runBlocking<Unit> {
         val fixture = SocketFixture()
         val connection = SpringSocketConnection(fixture.session)
-        val oversized = ServerSocketMessage.Binary(ByteArray(MAX_WEBSOCKET_MESSAGE_BYTES + 1))
+        val oversized = ServerSocketMessage.Binary(ByteArray(DEFAULT_WEBSOCKET_MESSAGE_BYTES + 1))
         assertFalse(connection.accept(oversized))
         assertFailsWith<IllegalArgumentException> { connection.send(oversized) }
         assertTrue(fixture.sent.isEmpty())
@@ -228,6 +235,102 @@ class SpringWebSocketTransportTest {
         val reason = checkNotNull(fixture.closed.await().reason)
         assertEquals("🙂".repeat(30), reason)
         assertTrue(reason.encodeToByteArray().size <= 123)
+    }
+
+    @Test
+    fun `worker binary budget accepts exactly 128 MiB and rejects one byte more in both directions`() = runBlocking<Unit> {
+        assertEquals(128 * 1024 * 1024, MAX_WORKER_GATEWAY_MESSAGE_BYTES)
+        val fixture = SocketFixture()
+        val connection = SpringSocketConnection(fixture.session, maxBinaryMessageBytes = MAX_WORKER_GATEWAY_MESSAGE_BYTES)
+        val boundary = ServerSocketMessage.Binary(ByteArray(MAX_WORKER_GATEWAY_MESSAGE_BYTES))
+        assertTrue(connection.accept(boundary))
+        assertSame(boundary, connection.receive())
+        connection.send(boundary)
+        assertEquals(MAX_WORKER_GATEWAY_MESSAGE_BYTES, fixture.sent.single().payloadLength)
+        val oversized = ServerSocketMessage.Binary(ByteArray(MAX_WORKER_GATEWAY_MESSAGE_BYTES + 1))
+        assertFalse(connection.accept(oversized))
+        assertFailsWith<IllegalArgumentException> { connection.send(oversized) }
+        assertEquals(1, fixture.sent.size)
+        connection.close()
+    }
+
+    @Test
+    fun `worker binary increase does not raise the UTF8 text budget`() = runBlocking<Unit> {
+        val fixture = SocketFixture()
+        val connection = SpringSocketConnection(fixture.session, maxBinaryMessageBytes = MAX_WORKER_GATEWAY_MESSAGE_BYTES)
+        val oversizedText = ServerSocketMessage.Text("é".repeat(DEFAULT_WEBSOCKET_MESSAGE_BYTES / 2 + 1))
+        assertTrue(oversizedText.text.length < DEFAULT_WEBSOCKET_MESSAGE_BYTES)
+        assertFalse(connection.accept(oversizedText))
+        assertFailsWith<IllegalArgumentException> { connection.send(oversizedText) }
+        assertTrue(fixture.sent.isEmpty())
+        connection.close()
+    }
+
+    @Test
+    fun `handler configures session before receiving and keeps UI and worker binary budgets separate`() = runBlocking<Unit> {
+        val bytes = ByteArray(DEFAULT_WEBSOCKET_MESSAGE_BYTES + 1).also { it[0] = 7; it[it.lastIndex] = 9 }
+        for (limit in listOf(DEFAULT_WEBSOCKET_MESSAGE_BYTES, MAX_WORKER_GATEWAY_MESSAGE_BYTES)) {
+            val fixture = SocketFixture()
+            val received = CompletableDeferred<Unit>()
+            val handler = CoroutineWebSocketHandler(maxBinaryMessageBytes = limit) { connection, _ ->
+                val message = checkNotNull(connection.receive()) as ServerSocketMessage.Binary
+                assertContentEquals(bytes, message.bytes)
+                connection.send(message)
+                received.complete(Unit)
+            }
+            try {
+                handler.afterConnectionEstablished(fixture.session)
+                verify(fixture.session).setBinaryMessageSizeLimit(limit)
+                verify(fixture.session).setTextMessageSizeLimit(DEFAULT_WEBSOCKET_MESSAGE_BYTES)
+                handler.handleMessage(fixture.session, BinaryMessage(bytes))
+                val status = withTimeout(5_000) { fixture.closed.await() }
+                if (limit == DEFAULT_WEBSOCKET_MESSAGE_BYTES) {
+                    assertEquals(1009, status.code)
+                    assertFalse(received.isCompleted)
+                    assertTrue(fixture.sent.isEmpty())
+                } else {
+                    assertEquals(1000, status.code)
+                    withTimeout(5_000) { received.await() }
+                    assertEquals(bytes.size, fixture.sent.single().payloadLength)
+                }
+            } finally { handler.destroy() }
+        }
+    }
+
+    @Test
+    fun `production routes apply distinct binary limits`() {
+        val handlers = mutableMapOf<String, WebSocketHandler>()
+        val registry = mock(WebSocketHandlerRegistry::class.java)
+        val registration = mock(WebSocketHandlerRegistration::class.java, RETURNS_SELF)
+        doAnswer { invocation ->
+            handlers[invocation.getArgument<String>(1)] = invocation.getArgument(0)
+            registration
+        }.`when`(registry).addHandler(any(WebSocketHandler::class.java), anyString())
+        val configuration = GromozekaWebSocketConfiguration(mock(GromozekaRemoteServer::class.java), mock(WorkerGatewayService::class.java))
+        try {
+            configuration.registerWebSocketHandlers(registry)
+            assertEquals(setOf("/ws", "/worker/ws"), handlers.keys)
+            for ((path, expected) in listOf("/ws" to DEFAULT_WEBSOCKET_MESSAGE_BYTES, "/worker/ws" to MAX_WORKER_GATEWAY_MESSAGE_BYTES)) {
+                val fixture = SocketFixture()
+                `when`(fixture.session.attributes).thenReturn(mutableMapOf(
+                    AUTHENTICATED_REMOTE_SESSION to mock(AuthenticatedRemoteSession::class.java),
+                    AUTHENTICATED_WORKER_GATEWAY to mock(AuthenticatedWorkerGateway::class.java),
+                ))
+                handlers.getValue(path).afterConnectionEstablished(fixture.session)
+                verify(fixture.session).setBinaryMessageSizeLimit(expected)
+                verify(fixture.session).setTextMessageSizeLimit(DEFAULT_WEBSOCKET_MESSAGE_BYTES)
+            }
+        } finally { configuration.destroy() }
+    }
+
+    @Test
+    fun `invalid binary budgets fail before opening a connection`() {
+        assertFailsWith<IllegalArgumentException> {
+            SpringSocketConnection(SocketFixture().session, maxBinaryMessageBytes = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            CoroutineWebSocketHandler(maxBinaryMessageBytes = -1) { _, _ -> }
+        }
     }
 
     private class SocketLogs(type: Class<*>) : AutoCloseable {

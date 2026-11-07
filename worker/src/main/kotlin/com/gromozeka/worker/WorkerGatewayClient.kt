@@ -13,6 +13,7 @@ import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
 import com.gromozeka.domain.service.WorkerAudioCaptureHandler
 import com.gromozeka.domain.service.WorkerWorkspaceTextFileHandler
+import com.gromozeka.remote.protocol.MAX_WORKER_GATEWAY_MESSAGE_BYTES
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WorkerAudioCaptureGatewayCodec
@@ -101,7 +102,7 @@ class WorkerGatewayClient(
                 }
             }
         install(WebSockets) {
-            maxFrameSize = MAX_WORKER_GATEWAY_FRAME_BYTES
+            maxFrameSize = MAX_WORKER_GATEWAY_MESSAGE_BYTES.toLong()
         }
     }
     private val lifecycleLock = Any()
@@ -369,7 +370,5 @@ internal fun workerGatewayWebSocketUrl(serverUrl: String): String {
         null,
     ).toString()
 }
-
-private const val MAX_WORKER_GATEWAY_FRAME_BYTES = 128L * 1024 * 1024
 
 private val workerGatewayLocalHosts = setOf("localhost", "127.0.0.1", "::1", "0:0:0:0:0:0:0:1")

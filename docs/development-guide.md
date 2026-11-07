@@ -46,6 +46,16 @@ and shared Worker runtime retain Ktor Client and the common Kotlin serialization
 protocol. Moving the JVM Server does not move Spring dependencies into KMP clients
 or replace coroutine-based application services with Spring AI orchestration.
 
+Worker Gateway binary WebSocket messages have a 128 MiB transport limit on both
+Server and JVM Worker. Client `/ws` messages and text messages retain the 16 MiB
+limit. Servlet container defaults stay at 16 MiB; only `/worker/ws` raises its
+per-session binary receive limit, avoiding larger default buffers for UI sockets.
+The limit applies to the complete encoded message, including fragmented messages,
+not to the raw AI request. The separate 64 MiB Worker request payload limit is
+unchanged; CBOR envelope expansion can still make a payload too large for the
+transport. Queue-wide memory/backpressure and cache-backed payload fetching remain
+separate work. The wire format and Worker protocol version are unchanged.
+
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
 secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy
 header rewriting is disabled. HTTP authentication resolves existing opaque user

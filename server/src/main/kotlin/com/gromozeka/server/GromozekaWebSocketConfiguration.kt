@@ -1,5 +1,7 @@
 package com.gromozeka.server
 
+import com.gromozeka.remote.protocol.MAX_WORKER_GATEWAY_MESSAGE_BYTES
+
 import org.springframework.beans.factory.DisposableBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.boot.web.server.WebServerFactoryCustomizer
@@ -27,7 +29,9 @@ internal class GromozekaWebSocketConfiguration(
     private val remoteHandler = CoroutineWebSocketHandler { connection, attributes ->
         remote.handle(connection, checkNotNull(attributes[AUTHENTICATED_REMOTE_SESSION] as? AuthenticatedRemoteSession))
     }
-    private val gatewayHandler = CoroutineWebSocketHandler { connection, attributes ->
+    private val gatewayHandler = CoroutineWebSocketHandler(
+        maxBinaryMessageBytes = MAX_WORKER_GATEWAY_MESSAGE_BYTES,
+    ) { connection, attributes ->
         gateway.handle(connection, checkNotNull(attributes[AUTHENTICATED_WORKER_GATEWAY] as? AuthenticatedWorkerGateway))
     }
 
@@ -42,8 +46,8 @@ internal class GromozekaWebSocketConfiguration(
 
     @Bean
     fun servletWebSocketContainer() = ServletServerContainerFactoryBean().apply {
-        maxTextMessageBufferSize = MAX_WEBSOCKET_MESSAGE_BYTES
-        maxBinaryMessageBufferSize = MAX_WEBSOCKET_MESSAGE_BYTES
+        maxTextMessageBufferSize = DEFAULT_WEBSOCKET_MESSAGE_BYTES
+        maxBinaryMessageBufferSize = DEFAULT_WEBSOCKET_MESSAGE_BYTES
         asyncSendTimeout = 30_000L
     }
 
