@@ -1,6 +1,10 @@
 package com.gromozeka.presentation.services
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
@@ -10,11 +14,16 @@ import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
 import javax.sound.sampled.FloatControl
+import javax.sound.sampled.LineEvent
+import javax.sound.sampled.LineListener
 import javax.sound.sampled.SourceDataLine
 import kotlin.math.log10
 
-class DesktopClientAudioPlayer : ClientAudioPlayer {
+class DesktopClientAudioPlayer(
+    private val clipFactory: () -> Clip = AudioSystem::getClip,
+) : ClientAudioPlayer {
     private companion object {
+        const val CLIP_COMPLETION_GRACE_MS = 5_000L
         const val PCM_START_PREBUFFER_MS = 500
         const val PCM_LINE_BUFFER_MS = 1_000
     }
@@ -116,12 +125,26 @@ class DesktopClientAudioPlayer : ClientAudioPlayer {
         runCatching { clip?.close() }
     }
 
-    private fun playWav(data: ByteArray, volume: Float) {
-        val clip = AudioSystem.getClip()
+    private suspend fun playWav(data: ByteArray, volume: Float) {
+        val clip = clipFactory()
+        val completed = CompletableDeferred<Unit>()
+        val listener = LineListener { event ->
+            when (event.type) {
+                LineEvent.Type.STOP -> completed.complete(Unit)
+                LineEvent.Type.CLOSE -> {
+                    if (synchronized(lock) { activeClip === clip }) {
+                        completed.completeExceptionally(IllegalStateException("Audio clip closed before playback completed"))
+                    } else {
+                        completed.complete(Unit)
+                    }
+                }
+            }
+        }
         synchronized(lock) {
             activeClip = clip
         }
         try {
+            clip.addLineListener(listener)
             AudioSystem.getAudioInputStream(ByteArrayInputStream(data)).use { stream ->
                 clip.open(stream)
             }
@@ -133,11 +156,23 @@ class DesktopClientAudioPlayer : ClientAudioPlayer {
                     (20.0 * log10(volume.toDouble())).toFloat().coerceIn(gain.minimum, gain.maximum)
                 }
             }
-            clip.start()
-            while (clip.isRunning) {
-                Thread.sleep(10)
+            currentCoroutineContext().ensureActive()
+            val timeoutMillis = synchronized(lock) {
+                if (activeClip !== clip) return
+                if (clip.frameLength == 0) return
+                val durationMicros = clip.microsecondLength
+                check(durationMicros >= 0) { "Audio clip has no known duration" }
+                clip.start()
+                durationMicros / 1_000 + CLIP_COMPLETION_GRACE_MS
             }
+            // Clip.start() can return before isRunning becomes true. STOP is the completion boundary.
+            val finished = withTimeoutOrNull(timeoutMillis) {
+                completed.await()
+                true
+            }
+            check(finished == true) { "Audio clip did not finish within its playback deadline" }
         } finally {
+            clip.removeLineListener(listener)
             synchronized(lock) {
                 if (activeClip === clip) {
                     activeClip = null
