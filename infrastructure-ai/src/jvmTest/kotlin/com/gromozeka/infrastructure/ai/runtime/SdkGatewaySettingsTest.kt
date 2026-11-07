@@ -59,9 +59,12 @@ class SdkGatewaySettingsTest {
             SdkHttpTestServer(api.reply()).use { server ->
                 for (ref in listOf(null, SecretRef.EnvironmentVariable("EXPLICIT_MISSING"))) {
                     val sources = Sources()
-                    val failure = assertFailsWith<IllegalArgumentException> {
+                    val failure = assertFailsWith<AiCallException> {
                         runtime(api.connection(server.origin + "/api/llm", ref), sources).call(request())
                     }
+                    assertEquals(AiCallFailure.Kind.CONFIGURATION, failure.failure.kind)
+                    assertEquals(AiCallFailure.Outcome.NOT_STARTED, failure.failure.outcome)
+                    assertEquals(0, failure.failure.attempts)
                     assertFalse(failure.toString().contains("ambient-native-secret"))
                     assertEquals<List<SecretRef?>>(if (ref == null) emptyList() else listOf(ref), sources.reads)
                     assertTrue(server.requests.isEmpty())
@@ -104,10 +107,10 @@ class SdkGatewaySettingsTest {
             val reply = SdkHttpTestServer.Reply("""{"error":{"type":"auth_error","message":"$TOKEN private-route-marker","code":"bad_token"}}""", status,
                 mapOf("x-tfy-resolved-model" to "private-route-marker", "x-tfy-applied-configurations" to "private-config-marker"))
             SdkHttpTestServer(listOf(reply)).use { server ->
-                val error = assertFailsWith<AiHttpRequestException> {
+                val error = assertFailsWith<AiCallException> {
                     runtime(api.connection(server.origin + "/api/llm", SecretRef.Inline(TOKEN))).call(request())
                 }
-                assertEquals(status, error.statusCode)
+                assertEquals(status, error.failure.httpStatus)
                 assertContains(error.message.orEmpty(), if (status == 401) "authentication" else "denied access")
                 assertNull(error.cause)
                 assertTrue(error.suppressed.isEmpty())
@@ -158,11 +161,11 @@ class SdkGatewaySettingsTest {
                 SdkHttpTestServer(listOf(SdkHttpTestServer.Reply(api.reply())), identity.context).use { endpoint ->
                     val url = endpoint.origin + "/api/llm"
                     assertEquals(AiStepOutcome.COMPLETE, runtime(api.connection(url, SecretRef.Inline(TOKEN), tlsSettings)).call(request()).outcome)
-                    val untrusted = assertFailsWith<AiHttpRequestException> {
+                    val untrusted = assertFailsWith<AiCallException> {
                         runtime(api.connection(url, SecretRef.Inline(TOKEN), tlsSettings.copy(caBundlePath = null))).call(request())
                     }
                     assertContains(untrusted.message.orEmpty(), "TLS")
-                    val wrongHost = assertFailsWith<AiHttpRequestException> {
+                    val wrongHost = assertFailsWith<AiCallException> {
                         runtime(api.connection(url.replace("127.0.0.1", "localhost"), SecretRef.Inline(TOKEN), tlsSettings)).call(request())
                     }
                     assertContains(wrongHost.message.orEmpty(), "TLS")

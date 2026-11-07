@@ -45,12 +45,51 @@ import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
     @Test
+    fun `typed failures and a single deadline survive call and context query wire round trips without private exceptions`() = runBlocking {
+        val fixture = TestHandler()
+        val deadline = Instant.parse("2026-11-07T02:00:00Z")
+        for (query in listOf(false, true)) for (kind in com.gromozeka.domain.model.ai.AiCallFailure.Kind.entries) {
+            val failure = com.gromozeka.domain.model.ai.AiCallFailure(kind,
+                com.gromozeka.domain.model.ai.AiCallFailure.Outcome.UNKNOWN, 2, 429, 1000)
+            val request = fixture.runtimeRequest.copy(options = fixture.runtimeRequest.options.copy(
+                executionDeadline = deadline, usagePurpose = if (query) AI_CONTEXT_QUERY_PURPOSE else null,
+                toolChoice = AiToolChoice.None, toolAccess = ToolAccessPolicy.AllowOnly()))
+            val handler = object : AiRequestResponseExecutionHandler by fixture {
+                override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                    assertEquals(deadline, request.options.executionDeadline)
+                    throw com.gromozeka.domain.model.ai.AiCallException(failure).apply {
+                        addSuppressed(IllegalStateException("synthetic-private-token-and-route"))
+                    }
+                }
+            }
+            val bytes = AiRequestResponseGatewayCodec.execute(AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request), handler)
+            kotlin.test.assertFalse(bytes.decodeToString().contains("synthetic-private-token-and-route"))
+            val error = assertFailsWith<com.gromozeka.domain.model.ai.AiCallException> { AiRequestResponseGatewayCodec.decodeCallResponse(bytes) }
+            assertEquals(failure, error.failure)
+            kotlin.test.assertNull(error.cause)
+            kotlin.test.assertTrue(error.suppressed.isEmpty())
+        }
+    }
+
+    @Test
+    fun `cancellation is not encoded as a successful Worker result`(): Unit = runBlocking {
+        val fixture = TestHandler()
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse =
+                throw kotlinx.coroutines.CancellationException("cancelled")
+        }
+        assertFailsWith<kotlinx.coroutines.CancellationException> {
+            AiRequestResponseGatewayCodec.execute(AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, fixture.runtimeRequest), handler)
+        }
+    }
+
+    @Test
     fun `Worker request preserves executor HTTP settings and selected secret source without resolving files or env`() = runBlocking {
         val fixture = TestHandler()
         val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
             authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
             caBundlePath = "C:\\worker\\ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
-            extraHeaders = mapOf("User-Agent" to "Worker-fixture", "x-tfy-strict-openai" to "false"))
+            extraHeaders = mapOf("User-Agent" to "Worker-fixture", "x-tfy-strict-openai" to "false"), maxConcurrentCalls = 7, maxAttempts = 4)
         for (source in listOf(com.gromozeka.domain.model.SecretRef.Inline("synthetic-worker-token"),
             com.gromozeka.domain.model.SecretRef.EnvironmentVariable("WORKER_TOKEN"),
             com.gromozeka.domain.model.SecretRef.File("C:\\worker\\token.txt"))) {

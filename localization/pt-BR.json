@@ -2108,6 +2108,9 @@
     "ai.http.no_proxy_hint": "Hosts, sufixos .domain e portas opcionais; * ignora todos os proxies. Sem CIDR. Proxy vazio usa as configurações do sistema do executor.",
     "ai.http.headers": "Cabeçalhos adicionais (JSON)",
     "ai.http.headers_hint": "Somente strings não secretas. Authorization vem da origem do token; User-Agent pode ser substituído.",
-    "ai.http.headers_invalid": "Os cabeçalhos devem ser um objeto JSON com valores de string."
+    "ai.http.headers_invalid": "Os cabeçalhos devem ser um objeto JSON com valores de string.",
+    "ai.http.concurrency": "Chamadas simultâneas por conexão",
+    "ai.http.max_attempts": "Máximo de tentativas HTTP",
+    "ai.http.execution_hint": "Somente rejeições HTTP 429 recebidas por completo permitem nova tentativa. Um único limite de tempo inclui a fila, as esperas e HTTP."
   }
 }

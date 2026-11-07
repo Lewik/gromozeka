@@ -2108,6 +2108,9 @@
     "ai.http.no_proxy_hint": "מארחים, סיומות .domain ויציאות אופציונליות; * עוקף את כל שרתי ה-proxy. ללא CIDR. proxy ריק משתמש בהגדרות המערכת במכונת הביצוע.",
     "ai.http.headers": "כותרות נוספות (JSON)",
     "ai.http.headers_hint": "ערכי מחרוזת שאינם סודיים בלבד. Authorization נוצר ממקור האסימון; ניתן להחליף את User-Agent.",
-    "ai.http.headers_invalid": "הכותרות חייבות להיות אובייקט JSON עם ערכי מחרוזת."
+    "ai.http.headers_invalid": "הכותרות חייבות להיות אובייקט JSON עם ערכי מחרוזת.",
+    "ai.http.concurrency": "קריאות מקבילות לכל חיבור",
+    "ai.http.max_attempts": "מספר ניסיונות HTTP מרבי",
+    "ai.http.execution_hint": "רק דחיות HTTP 429 שהתקבלו במלואן מאפשרות ניסיון חוזר. מגבלת זמן אחת כוללת המתנה בתור, השהיות ו-HTTP."
   }
 }

@@ -1,7 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai
 
-import com.gromozeka.infrastructure.ai.runtime.safeHttpFailure
-import com.openai.errors.OpenAIException
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
 import com.gromozeka.infrastructure.ai.anthropic.AnthropicThinkingParameters
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -46,10 +45,8 @@ import com.openai.models.chat.completions.ChatCompletionToolChoiceOption
 import com.openai.models.chat.completions.ChatCompletionUserMessageParam
 import com.openai.models.completions.CompletionUsage
 import klog.KLoggers
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -78,20 +75,23 @@ internal class OpenAiSdkRuntimeBackend(
     ): AiRuntime {
         val connection = runtime.connection
         val modelConfiguration = runtime.modelConfiguration
+        val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds) { end ->
+            clientFactory.createInferenceClient(connection, end)
+        }
         return when (connection) {
             is AiConnection.OpenAiApi -> OpenAiResponsesSdkRuntime(
                 connectionId = connection.id.value,
                 modelConfigurationId = modelConfiguration.id.value,
                 modelName = modelConfiguration.providerModelId,
                 webSearchEnabled = connection.webSearchEnabled,
-                clientFactory = { clientFactory.createClient(connection) },
+                executor = executor,
                 generation = ModelGenerationPolicy(runtime.modelSpec),
             )
 
             is AiConnection.OpenAiCompatible -> OpenAiSdkRuntime(
                 connectionKind = connection.kind,
                 modelName = modelConfiguration.providerModelId,
-                clientFactory = { clientFactory.createClient(connection) },
+                executor = executor,
                 messageMapper = OpenAiSdkMessageMapper(connection.kind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec)),
             )
 
@@ -103,12 +103,13 @@ internal class OpenAiSdkRuntimeBackend(
 private class OpenAiSdkRuntime(
     private val connectionKind: AiConnection.Kind,
     private val modelName: String,
-    private val clientFactory: () -> OpenAIClient,
+    private val executor: SdkHttpCallExecutor<OpenAIClient>,
     private val messageMapper: OpenAiSdkMessageMapper,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+        val options = executor.withDeadline(request.options)
         val params = messageMapper.toCreateParams(modelName, request)
         log.info {
             "Calling OpenAI SDK runtime: connectionKind=$connectionKind model=$modelName " +
@@ -116,16 +117,12 @@ private class OpenAiSdkRuntime(
                 "responseFormat=${request.options.responseFormat.logName()}"
         }
 
-        val response = withContext(Dispatchers.IO) {
-            try {
-                val client = clientFactory()
-                AutoCloseable { client.close() }.use { client.chat().completions().create(params) }
-            } catch (error: OpenAIException) {
-                throw error.safeHttpFailure()
-            }
+        val response = executor.call(options) { client, remaining ->
+            client.async().chat().completions().create(params, com.openai.core.RequestOptions.builder().timeout(remaining).build())
+                .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat) }
         }
 
-        return messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
+        return response
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {

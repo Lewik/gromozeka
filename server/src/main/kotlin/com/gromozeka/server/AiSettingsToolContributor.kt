@@ -86,7 +86,7 @@ internal class AiSettingsToolContributor(
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_connection_upsert",
-            description = "Create or replace one AI connection using the latest AI catalog revision. Missing API keys preserve the existing secret by default. SDK connections support httpSettings for Bearer/native auth, additional CA, proxy/noProxy and non-secret static headers. Token env/file sources and CA paths belong to the selected execution target; Authorization must not be supplied in extraHeaders.",
+            description = "Create or replace one AI connection using the latest AI catalog revision. Missing API keys preserve the existing secret by default. SDK connections support httpSettings for Bearer/native auth, additional CA, proxy/noProxy, non-secret static headers, maxConcurrentCalls (1-64, default 4) and maxAttempts (1-5, default 3 including the first attempt; only complete HTTP 429 rejections may retry). Token env/file sources and CA paths belong to the selected execution target; Authorization must not be supplied in extraHeaders.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "connection",
                 description = "Serialized AiConnection object with connectionKind discriminator.",

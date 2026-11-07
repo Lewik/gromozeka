@@ -20,6 +20,8 @@ Example for Anthropic Messages through a gateway:
     "caBundlePath": "/etc/gromozeka/company-ca.pem",
     "proxyUrl": "http://proxy.example.com:8080",
     "noProxy": ["localhost", ".internal.example"],
+    "maxConcurrentCalls": 4,
+    "maxAttempts": 3,
     "extraHeaders": {
       "User-Agent": "Gromozeka",
       "X-TFY-METADATA": "{\"application\":\"gromozeka\"}"
@@ -68,7 +70,7 @@ alternate-auth-token discovery is performed.
 
 A new owned SDK client is created and closed for each logical inference call.
 The selected file is reread before that call, even when the runtime object is
-reused; that token stays fixed during the call's current SDK retries. This trades
+reused; that token stays fixed across the call's controlled HTTP attempts. This trades
 cross-call connection-pool reuse for straightforward credential rotation and
 resource ownership. Catalog secret edits are picked up when the next runtime
 context resolves the updated catalog; no application restart is needed. Updating
@@ -97,8 +99,8 @@ denial. Neither triggers an automatic login or token refresh.
   hostnames/IP literals, `.domain` suffixes (including the domain itself),
   optionally with ports, or `*` to force direct access. IPv6 literals can be
   bracketed. CIDR and embedded wildcards are rejected. Matching does not use DNS
-  lookups or substring matching. These settings do not introduce URL redirects;
-  other SDK transport defaults remain unchanged.
+  lookups or substring matching. Inference redirects and transport-level automatic
+  retries are disabled; a redirect is an error, not a new route.
 - `extraHeaders` is a JSON object of non-secret string values. Names must be
   unique ignoring case; line breaks and non-ASCII header values are rejected.
   Escape Unicode inside JSON-valued headers. `User-Agent` overrides the SDK
@@ -121,19 +123,92 @@ resolved while saving, serializing or displaying the catalog. They are resolved
 on the chosen Server or exact Worker during execution. The UI displays only
 source metadata such as the environment variable name or file path.
 
-Worker Gateway protocol 18 carries the new connection fields and file secret
-kind. Upgrade Server, Worker **and UI clients** together. Older clients cannot
+Worker Gateway protocol 19 carries the HTTP execution settings, logical deadline
+and typed AI failures (protocol 18 introduced HTTP settings and the file secret kind). Upgrade Server, Worker **and UI clients** together. Older clients cannot
 preserve the new fields or decode the new secret kind; mixed-version editing is
 not supported.
 
-This is configuration support for the three finite inference APIs, not an
-embeddings/audio integration or a new streaming contract. Cancellation,
-connection-wide concurrency, unified retry budgets and typed error propagation
-through Worker transport remain separate work. SDK retry policies are unchanged
-here. Discovery, health and target-installation acceptance are also separate.
+This applies to the three finite inference APIs, not embeddings/audio, subscription
+backends, Bedrock execution, or a new streaming contract. Discovery, health and
+target-installation acceptance remain separate. Memory orchestration has not
+been changed; its legacy retry wrapper is outside this execution contract and
+must not be assumed to honor typed terminal failures if it is enabled later.
+
+## Execution budget, concurrency and cancellation
+
+- `maxConcurrentCalls`: 1–64, default 4. All model configurations and runtime
+  instances on the same connection/executor share a process-local gate. Different
+  connections/executors are independent, even if they use the same gateway URL.
+  This is not a distributed account quota or tokens-per-minute limiter.
+- The permit covers client/credential setup, every HTTP attempt and retry delay.
+  Cancellation or deadline expiry while queued starts no HTTP and releases no
+  other call's permit. The gate is not replaced on a catalog edit: in-flight
+  calls retain their snapshot, new calls use the newly resolved limit and see
+  existing active calls. Lowering a limit does not cancel existing work; old
+  runtime snapshots do not acquire new configuration automatically.
+- `defaultParameters.timeoutSeconds` on the model configuration now controls
+  this logical call: 1–86400 seconds, default 600. Parameter preparation, queueing,
+  credential/CA loading, backoff and HTTP consume the same deadline. A shorter
+  caller deadline or Server AI gateway timeout wins. The deadline travels in the
+  Worker AI request instead of restarting on delivery. Clock synchronization is
+  required, as it already is for Worker delivery deadlines. Local elapsed-time
+  accounting uses a monotonic clock.
+- Blocking local file/CA setup is not forcibly interrupted; cancellation/expiry
+  is checked before allowing any subsequent HTTP start. This is not a guarantee
+  that an unresponsive filesystem operation returns promptly.
+- The adapter uses the existing SDK serializers/protocol implementations over an
+  owned OkHttp transport. Cancellation controls native calls through response
+  parsing, including a socket stalled after headers; cancelling an outer SDK
+  future alone is insufficient. Connections are closed with their per-call client.
+- Server cancellation durably marks the same Worker request, without resubmitting
+  the action. An offline Worker cannot receive cancellation immediately; the
+  propagated deadline remains an independent local limit. Closing an HTTP socket
+  does not prove that gateway/upstream inference or billing stopped.
+
+## Conservative retries and typed failures
+
+`maxAttempts` is 1–5, default 3, **including the first HTTP attempt**. Set it to 1
+to disable application retries. SDK retries, connection-failure retries and
+redirect following are disabled for these inference calls, so attempt limits do
+not multiply across those layers. A gateway's internal provider retries/fallbacks
+are outside this HTTP counter and need separate gateway policy.
+
+Only a completely received HTTP 429 rejection can be retried. There is no retry
+for 401/403, 408/409, 5xx, TLS/network errors, incomplete bodies, malformed model
+responses or successful responses with an incomplete model outcome. These can
+be partial/unknown outcomes; no route/model change or automatic token refresh is
+attempted. Receiving headers alone is not enough to retry a truncated 429 body.
+
+`Retry-After` accepts seconds or an HTTP date and is a lower bound. An additional
+0–250 ms jitter is bounded; without a valid header, exponential backoff starts
+at 250 ms and is capped at 4 seconds. A delay that will not fit the remaining
+budget ends the call instead of retrying earlier than requested. Cancellation
+during backoff never starts another attempt.
+
+`AiCallFailure` carries a safe kind, outcome (`NOT_STARTED`, `REJECTED`, `UNKNOWN`),
+HTTP status, observed attempt count and parsed delay where known. Unknown Worker
+outcomes use an unknown count, not a fabricated zero. An available Worker request
+id permits inspection of that same action. SDK bodies, headers, exception causes
+and suppressed exceptions do not cross the boundary. `AiCallException` is a
+**terminal logical-call failure**: callers must not wrap it in another automatic
+retry loop or infer retryability by matching message text.
+
+A semantic AI failure is a typed payload inside a successfully transported Worker
+response. Request-journal replay returns the saved failure, not another model
+call. Worker cancellation, loss of result retention, execution failure and Server
+wait expiry remain explicit failures/unknown outcomes, never reasons to submit a
+replacement request. Known SDK output parsing is included in this safe boundary;
+internal request/model-contract validation still fails before HTTP.
+
+Tests cover real localhost HTTP/TLS and stalled sockets, SDKs, the production
+Worker executor with JSON/CBOR codecs and receipt replay, and the Server durable
+request path with an in-memory repository. This does not claim a separately
+running Worker/gateway socket, a live UI, or a real TrueFoundry installation.
 
 ## Sources
 
 - [TrueFoundry authentication](https://www.truefoundry.com/docs/ai-gateway/authentication)
 - [TrueFoundry native SDK support](https://www.truefoundry.com/docs/ai-gateway/native-sdk-support)
 - [TrueFoundry metadata and headers](https://www.truefoundry.com/docs/ai-gateway/request-headers)
+- [HTTP Retry-After semantics (RFC 9110)](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.3)
+- [HTTP 429 (RFC 6585)](https://www.rfc-editor.org/rfc/rfc6585.html#section-4)

@@ -2034,6 +2034,9 @@
     "ai.http.no_proxy_hint": "支持主机、.domain 后缀和可选端口；* 绕过所有代理。不支持 CIDR。代理留空时使用执行端系统设置。",
     "ai.http.headers": "附加标头（JSON）",
     "ai.http.headers_hint": "仅限非机密字符串值。Authorization 来自令牌来源；可覆盖 User-Agent。",
-    "ai.http.headers_invalid": "标头必须是值为字符串的 JSON 对象。"
+    "ai.http.headers_invalid": "标头必须是值为字符串的 JSON 对象。",
+    "ai.http.concurrency": "每个连接的并发调用数",
+    "ai.http.max_attempts": "HTTP 最大尝试次数",
+    "ai.http.execution_hint": "仅重试完整收到的 HTTP 429 拒绝响应。统一超时包含排队、重试等待和 HTTP 请求。"
   }
 }

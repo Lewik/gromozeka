@@ -2219,6 +2219,9 @@
     "ai.http.no_proxy_hint": "مضيفون ولواحق .domain ومنافذ اختيارية؛ يتجاوز * جميع الوكلاء. لا يدعم CIDR. يستخدم الوكيل الفارغ إعدادات نظام جهاز التنفيذ.",
     "ai.http.headers": "ترويسات إضافية (JSON)",
     "ai.http.headers_hint": "قيم نصية غير سرية فقط. تُنشأ Authorization من مصدر الرمز؛ ويمكن تجاوز User-Agent.",
-    "ai.http.headers_invalid": "يجب أن تكون الترويسات كائن JSON بقيم نصية."
+    "ai.http.headers_invalid": "يجب أن تكون الترويسات كائن JSON بقيم نصية.",
+    "ai.http.concurrency": "المكالمات المتزامنة لكل اتصال",
+    "ai.http.max_attempts": "الحد الأقصى لمحاولات HTTP",
+    "ai.http.execution_hint": "تُعاد المحاولة فقط عند استلام رفض HTTP 429 بالكامل. تشمل مهلة واحدة الانتظار في الصف وفترات الانتظار بين المحاولات وHTTP."
   }
 }

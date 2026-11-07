@@ -2071,6 +2071,9 @@
     "ai.http.no_proxy_hint": "Hosts, .domain suffixes and optional ports; * bypasses all proxies. No CIDR. Empty proxy uses executor system settings.",
     "ai.http.headers": "Extra headers (JSON)",
     "ai.http.headers_hint": "Non-secret string values only. Authorization comes from the token source; User-Agent may be overridden.",
-    "ai.http.headers_invalid": "Headers must be a JSON object with string values."
+    "ai.http.headers_invalid": "Headers must be a JSON object with string values.",
+    "ai.http.concurrency": "Concurrent calls per connection",
+    "ai.http.max_attempts": "Maximum HTTP attempts",
+    "ai.http.execution_hint": "Only complete HTTP 429 rejections are retried. One timeout covers queueing, retry delays and HTTP."
   }
 }

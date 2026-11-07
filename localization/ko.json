@@ -2034,6 +2034,9 @@
     "ai.http.no_proxy_hint": "호스트, .domain 접미사, 선택적 포트. *는 모든 프록시를 우회합니다. CIDR 미지원. 프록시를 비우면 실행 머신의 시스템 설정을 사용합니다.",
     "ai.http.headers": "추가 헤더(JSON)",
     "ai.http.headers_hint": "비밀이 아닌 문자열 값만 입력하세요. Authorization은 토큰 소스에서 생성되며 User-Agent는 재정의할 수 있습니다.",
-    "ai.http.headers_invalid": "헤더는 문자열 값을 가진 JSON 객체여야 합니다."
+    "ai.http.headers_invalid": "헤더는 문자열 값을 가진 JSON 객체여야 합니다.",
+    "ai.http.concurrency": "연결당 동시 호출 수",
+    "ai.http.max_attempts": "최대 HTTP 시도 횟수",
+    "ai.http.execution_hint": "완전히 수신한 HTTP 429 거부 응답만 재시도합니다. 하나의 제한 시간에 대기열, 재시도 대기 및 HTTP가 포함됩니다."
   }
 }

@@ -2108,6 +2108,9 @@
     "ai.http.no_proxy_hint": "Hôtes, suffixes .domain et ports facultatifs ; * contourne tous les proxys. Pas de CIDR. Un proxy vide utilise les réglages système de l’exécuteur.",
     "ai.http.headers": "En-têtes supplémentaires (JSON)",
     "ai.http.headers_hint": "Uniquement des chaînes non secrètes. Authorization provient de la source du jeton ; User-Agent peut être remplacé.",
-    "ai.http.headers_invalid": "Les en-têtes doivent être un objet JSON avec des valeurs de type chaîne."
+    "ai.http.headers_invalid": "Les en-têtes doivent être un objet JSON avec des valeurs de type chaîne.",
+    "ai.http.concurrency": "Appels simultanés par connexion",
+    "ai.http.max_attempts": "Nombre maximal de tentatives HTTP",
+    "ai.http.execution_hint": "Seuls les refus HTTP 429 reçus intégralement sont retentés. Un délai unique couvre la file, les attentes et HTTP."
   }
 }

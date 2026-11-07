@@ -2,14 +2,9 @@ package com.gromozeka.infrastructure.ai.runtime
 
 import com.anthropic.errors.AnthropicException
 import com.anthropic.errors.AnthropicServiceException
-import com.openai.errors.OpenAIException
-import com.openai.errors.OpenAIServiceException
 
 /** SDK exceptions can contain response bodies and private gateway headers; never retain them as causes. */
 internal class AiHttpRequestException(val statusCode: Int?, message: String) : RuntimeException(message)
-
-internal fun OpenAIException.safeHttpFailure(): AiHttpRequestException =
-    safeHttpFailure((this as? OpenAIServiceException)?.statusCode(), this)
 
 internal fun AnthropicException.safeHttpFailure(): AiHttpRequestException =
     safeHttpFailure((this as? AnthropicServiceException)?.statusCode(), this)

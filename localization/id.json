@@ -2034,6 +2034,9 @@
     "ai.http.no_proxy_hint": "Host, akhiran .domain, dan port opsional; * melewati semua proxy. Tanpa CIDR. Proxy kosong menggunakan pengaturan sistem pelaksana.",
     "ai.http.headers": "Header tambahan (JSON)",
     "ai.http.headers_hint": "Hanya nilai string yang bukan rahasia. Authorization berasal dari sumber token; User-Agent dapat ditimpa.",
-    "ai.http.headers_invalid": "Header harus berupa objek JSON dengan nilai string."
+    "ai.http.headers_invalid": "Header harus berupa objek JSON dengan nilai string.",
+    "ai.http.concurrency": "Panggilan bersamaan per koneksi",
+    "ai.http.max_attempts": "Jumlah maksimum percobaan HTTP",
+    "ai.http.execution_hint": "Hanya penolakan HTTP 429 yang diterima lengkap yang dicoba ulang. Satu batas waktu mencakup antrean, jeda percobaan ulang, dan HTTP."
   }
 }

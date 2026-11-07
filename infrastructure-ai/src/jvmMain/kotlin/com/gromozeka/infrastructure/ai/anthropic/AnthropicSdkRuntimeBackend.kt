@@ -1,6 +1,10 @@
 package com.gromozeka.infrastructure.ai.anthropic
 
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
+import com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpTransport
+import com.gromozeka.infrastructure.ai.runtime.AnthropicControlledHttpClient
 import com.gromozeka.infrastructure.ai.runtime.safeHttpFailure
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import com.anthropic.errors.AnthropicException
@@ -90,39 +94,61 @@ internal class AnthropicSdkRuntimeBackend(
         val connection = runtime.connection
         val modelConfiguration = runtime.modelConfiguration
         val connectionKind = connection.kind
-        val clientFactory: () -> AnthropicClient = when (connectionKind) {
-            AiConnection.Kind.ANTHROPIC_API -> { { createDirectAnthropicClient(connection) } }
-            AiConnection.Kind.ANTHROPIC_BEDROCK -> { { createBedrockAnthropicClient(connection) } }
+        val messageMapper = AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec))
+        val execute: suspend (AiRuntimeRequest) -> AiRuntimeResponse = when (connectionKind) {
+            AiConnection.Kind.ANTHROPIC_API -> {
+                val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds) { end ->
+                    createDirectAnthropicClient(connection, end)
+                }
+                val call: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { request ->
+                    val options = executor.withDeadline(request.options)
+                    val params = messageMapper.toCreateParams(modelConfiguration.providerModelId, request)
+                    executor.call(options) { client, remaining ->
+                        client.async().messages().create(params, com.anthropic.core.RequestOptions.builder().timeout(remaining).build())
+                            .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat) }
+                    }
+                }
+                call
+            }
+            AiConnection.Kind.ANTHROPIC_BEDROCK -> { request ->
+                val params = messageMapper.toCreateParams(modelConfiguration.providerModelId, request)
+                withContext(Dispatchers.IO) {
+                    try {
+                        val client = createBedrockAnthropicClient(connection)
+                        AutoCloseable { client.close() }.use { messageMapper.toRuntimeResponse(client.messages().create(params), request.options.assistantResponseFormat) }
+                    } catch (error: AnthropicException) { throw error.safeHttpFailure() }
+                }
+            }
             else -> error("Anthropic SDK runtime does not support connection kind $connectionKind")
         }
 
         return AnthropicSdkRuntime(
             connectionKind,
             modelConfiguration.providerModelId,
-            clientFactory,
-            AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec))
+            execute
         )
     }
 
-    internal fun createDirectAnthropicClient(connection: AiConnection): AnthropicClient {
+    private fun createDirectAnthropicClient(connection: AiConnection, deadlineNanos: Long): SdkInferenceClient<AnthropicClient> {
         val settings = SdkHttpSupport.settings(connection)
         val baseUrl = SdkHttpSupport.baseUrl(connection, "https://api.anthropic.com")
         val token = SdkHttpSupport.token(connection, settingsProvider, "ANTHROPIC_API_KEY")
-        val tls = SdkHttpSupport.tls(settings)
-        return AnthropicOkHttpClient.builder()
-            .maxRetries(0)
-            .logLevel(LogLevel.OFF)
-            .baseUrl(baseUrl)
-            .proxy(SdkHttpSupport.proxy(settings, baseUrl))
-            .apply {
+        val transport = SdkHttpTransport(settings, baseUrl, deadlineNanos)
+        try {
+            val backend = com.anthropic.backends.AnthropicBackend.builder().baseUrl(baseUrl).apply {
                 when (settings.authentication) {
                     AiHttpSettings.Authentication.PROVIDER_DEFAULT -> apiKey(token)
                     AiHttpSettings.Authentication.BEARER -> authToken(token)
                 }
-                tls?.let { sslSocketFactory(it.socketFactory); trustManager(it.trustManager) }
-                SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) }
-            }
-            .build()
+            }.build()
+            val http = AnthropicControlledHttpClient(transport, backend)
+            val options = com.anthropic.core.ClientOptions.builder().httpClient(http).baseUrl(baseUrl)
+                .maxRetries(0).logLevel(LogLevel.OFF)
+                .apply { SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) } }
+            backend.applyCredentials(http, options)
+            val client = com.anthropic.client.AnthropicClientImpl(options.build())
+            return SdkInferenceClient(client, transport) { client.close() }
+        } catch (error: Exception) { transport.close(); throw error }
     }
 
     private fun createBedrockAnthropicClient(connection: AiConnection): AnthropicClient {
@@ -192,29 +218,18 @@ private class BaseUrlOverrideBackend(
 private class AnthropicSdkRuntime(
     private val connectionKind: AiConnection.Kind,
     private val modelName: String,
-    private val clientFactory: () -> AnthropicClient,
-    private val messageMapper: AnthropicSdkMessageMapper,
+    private val execute: suspend (AiRuntimeRequest) -> AiRuntimeResponse,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
-        val params = messageMapper.toCreateParams(modelName, request)
         log.info {
             "Calling Anthropic SDK runtime: connectionKind=$connectionKind model=$modelName " +
                 "messages=${request.messages.size} tools=${request.tools.size} " +
                 "responseFormat=${request.options.responseFormat.logName()}"
         }
 
-        val response = withContext(Dispatchers.IO) {
-            try {
-                val client = clientFactory()
-                AutoCloseable { client.close() }.use { client.messages().create(params) }
-            } catch (error: AnthropicException) {
-                throw error.safeHttpFailure()
-            }
-        }
-
-        val mapped = messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
+        val mapped = execute(request)
         val transformations = mapped.providerMetadata["inputTransformations"] as? JsonArray
         if (!transformations.isNullOrEmpty()) {
             log.info { "Anthropic transformed thinking blocks: model=$modelName transformations=$transformations" }

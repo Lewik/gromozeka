@@ -2034,6 +2034,9 @@
     "ai.http.no_proxy_hint": "支援主機、.domain 後綴與選填連接埠；* 略過所有代理。不支援 CIDR。代理留空時使用執行端系統設定。",
     "ai.http.headers": "附加標頭（JSON）",
     "ai.http.headers_hint": "僅限非機密字串值。Authorization 來自權杖來源；可覆寫 User-Agent。",
-    "ai.http.headers_invalid": "標頭必須是值為字串的 JSON 物件。"
+    "ai.http.headers_invalid": "標頭必須是值為字串的 JSON 物件。",
+    "ai.http.concurrency": "每個連線的並行呼叫數",
+    "ai.http.max_attempts": "HTTP 嘗試次數上限",
+    "ai.http.execution_hint": "僅重試完整收到的 HTTP 429 拒絕回應。統一逾時包含排隊、重試等待與 HTTP 請求。"
   }
 }

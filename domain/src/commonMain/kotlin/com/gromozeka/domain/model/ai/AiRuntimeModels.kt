@@ -41,6 +41,7 @@ data class AiRuntimeOptions(
     val toolContext: Map<String, Any?> = emptyMap(),
     val usagePurpose: String? = null,
     val toolAccess: ToolAccessPolicy = ToolAccessPolicy.DenyListed(),
+    val executionDeadline: kotlin.time.Instant? = null,
 ) {
     init {
         require(maxOutputTokens == null || maxOutputTokens > 0) { "AI runtime max output tokens must be positive" }

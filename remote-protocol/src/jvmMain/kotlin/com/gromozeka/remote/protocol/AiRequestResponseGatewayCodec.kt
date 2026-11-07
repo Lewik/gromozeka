@@ -1,5 +1,7 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.ai.AiCallException
+import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE
 
@@ -69,7 +71,11 @@ object AiRequestResponseGatewayCodec {
     }
 
     fun decodeCallResponse(payload: ByteArray): AiRuntimeResponse =
-        decodePayload<AiRequestResponsePayload.Call>(payload).response.toRuntime()
+        when (val decoded = json.decodeFromString(AiRequestResponsePayload.serializer(), payload.decodeToString())) {
+            is AiRequestResponsePayload.Call -> decoded.response.toRuntime()
+            is AiRequestResponsePayload.CallFailure -> throw AiCallException(decoded.failure)
+            else -> error("Worker Gateway AI response payload type mismatch: expected call result")
+        }
 
     fun encodeEmbeddingRequest(
         runtime: ResolvedAiRuntime,
@@ -130,13 +136,12 @@ object AiRequestResponseGatewayCodec {
                 require(operation.request.options.usagePurpose != AI_CONTEXT_QUERY_PURPOSE) {
                     "Isolated context query requires its versioned wire operation"
                 }
-                AiRequestResponsePayload.Call(handler.call(operation.runtime, operation.workspaceRootPath,
-                    operation.request.toRuntime()).toWire())
+                executeCall(handler, operation.runtime, operation.workspaceRootPath, operation.request.toRuntime())
             }
             is AiRequestResponseOperation.ContextQuery -> {
                 val request = operation.request.toRuntime()
                 requireContextQueryContract(operation.workspaceRootPath, request)
-                AiRequestResponsePayload.Call(handler.call(operation.runtime, operation.workspaceRootPath, request).toWire())
+                executeCall(handler, operation.runtime, operation.workspaceRootPath, request)
             }
 
             is AiRequestResponseOperation.Embed -> AiRequestResponsePayload.Embed(
@@ -167,6 +172,11 @@ object AiRequestResponseGatewayCodec {
         }
         return json.encodeToString(AiRequestResponsePayload.serializer(), result).encodeToByteArray()
     }
+
+    private suspend fun executeCall(handler: AiRequestResponseExecutionHandler, runtime: ResolvedAiRuntime,
+        workspaceRootPath: String?, request: AiRuntimeRequest): AiRequestResponsePayload =
+        try { AiRequestResponsePayload.Call(handler.call(runtime, workspaceRootPath, request).toWire()) }
+        catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
 
     private fun requireContextQueryContract(workspaceRootPath: String?, request: AiRuntimeRequest) {
         require(workspaceRootPath == null && request.options.usagePurpose == AI_CONTEXT_QUERY_PURPOSE &&
@@ -240,6 +250,10 @@ private sealed interface AiRequestResponseOperation {
 @JsonClassDiscriminator("payloadKind")
 private sealed interface AiRequestResponsePayload {
     @Serializable
+    @SerialName("call_failure")
+    data class CallFailure(val failure: AiCallFailure) : AiRequestResponsePayload
+
+    @Serializable
     @SerialName("call")
     data class Call(val response: AiRuntimeResponseWire) : AiRequestResponsePayload
 
@@ -281,6 +295,7 @@ private data class AiRuntimeOptionsWire(
     val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     val toolContext: JsonObject,
     val usagePurpose: String? = null,
+    val executionDeadline: kotlin.time.Instant? = null,
 )
 
 @Serializable
@@ -402,6 +417,7 @@ private fun AiRuntimeOptions.toWire(): AiRuntimeOptionsWire =
         assistantResponseFormat = assistantResponseFormat,
         toolContext = toolContext.toJsonObject(),
         usagePurpose = usagePurpose,
+        executionDeadline = executionDeadline,
     )
 
 private fun AiRuntimeOptionsWire.toRuntime(): AiRuntimeOptions =
@@ -415,6 +431,7 @@ private fun AiRuntimeOptionsWire.toRuntime(): AiRuntimeOptions =
         assistantResponseFormat = assistantResponseFormat,
         toolContext = toolContext.mapValues { (_, value) -> value.toRuntimeValue() },
         usagePurpose = usagePurpose,
+        executionDeadline = executionDeadline,
     )
 
 private fun AiToolChoice.toWire(): ToolChoiceWire =

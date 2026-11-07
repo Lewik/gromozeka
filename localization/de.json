@@ -2071,6 +2071,9 @@
     "ai.http.no_proxy_hint": "Hosts, .domain-Suffixe und optionale Ports; * umgeht alle Proxys. Kein CIDR. Ein leerer Proxy verwendet die Systemeinstellungen des Ausführungsrechners.",
     "ai.http.headers": "Zusätzliche Header (JSON)",
     "ai.http.headers_hint": "Nur nicht geheime Zeichenfolgen. Authorization stammt aus der Tokenquelle; User-Agent kann überschrieben werden.",
-    "ai.http.headers_invalid": "Header müssen ein JSON-Objekt mit Zeichenfolgenwerten sein."
+    "ai.http.headers_invalid": "Header müssen ein JSON-Objekt mit Zeichenfolgenwerten sein.",
+    "ai.http.concurrency": "Gleichzeitige Aufrufe pro Verbindung",
+    "ai.http.max_attempts": "Maximale HTTP-Versuche",
+    "ai.http.execution_hint": "Nur vollständig empfangene HTTP-429-Ablehnungen werden wiederholt. Ein gemeinsames Zeitlimit umfasst Warteschlange, Wiederholungspausen und HTTP."
   }
 }

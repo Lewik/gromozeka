@@ -24,7 +24,7 @@ class AiCatalogRemoteBoundaryTest {
         val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
             authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
             caBundlePath = "/worker-only/ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
-            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"))
+            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"), maxConcurrentCalls = 7, maxAttempts = 4)
         val reference = SecretRef.File("/worker-only/token")
         val catalog = seed.copy(connections = seed.connections.map {
             if (it is AiConnection.OpenAiApi) it.copy(baseUrl = "https://gateway.example/api/llm", apiKey = reference,
@@ -53,7 +53,7 @@ class AiCatalogRemoteBoundaryTest {
                 if (connection is AiConnection.OpenAiApi) {
                     connection.copy(apiKey = SecretRef.Inline(secretValue), baseUrl = "https://gateway.example/api/llm",
                         httpSettings = com.gromozeka.domain.model.ai.AiHttpSettings(authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
-                            extraHeaders = mapOf("User-Agent" to "Catalog-fixture")))
+                            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"), maxConcurrentCalls = 7, maxAttempts = 4))
                 } else {
                     connection
                 }

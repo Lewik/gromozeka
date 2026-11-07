@@ -18,6 +18,7 @@ kotlin {
                 implementation(project(":domain"))  // Transitively provides :shared
 
                 implementation(libs.openai.java)
+                implementation(libs.okhttp)
                 implementation(libs.anthropic.java)
                 implementation(libs.anthropic.java.bedrock)
                 implementation(libs.copilot.sdk.java)
@@ -65,6 +66,7 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(project(":worker-runtime"))
             }
         }
     }

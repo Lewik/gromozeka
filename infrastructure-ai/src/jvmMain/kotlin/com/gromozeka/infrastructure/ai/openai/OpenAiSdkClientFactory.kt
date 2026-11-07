@@ -34,6 +34,22 @@ class OpenAiSdkClientFactory(
             .build()
     }
 
+    internal fun createInferenceClient(connection: AiConnection, deadlineNanos: Long): com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient<OpenAIClient> {
+        val settings = SdkHttpSupport.settings(connection)
+        val baseUrl = resolveBaseUrl(connection)
+        val token = resolveApiKey(connection)
+        val transport = com.gromozeka.infrastructure.ai.runtime.SdkHttpTransport(settings, baseUrl, deadlineNanos)
+        try {
+            val options = com.openai.core.ClientOptions.builder()
+                .httpClient(com.gromozeka.infrastructure.ai.runtime.OpenAiControlledHttpClient(transport))
+                .apiKey(token).baseUrl(baseUrl).maxRetries(0).logLevel(LogLevel.OFF)
+                .apply { SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) } }
+                .build()
+            val client = com.openai.client.OpenAIClientImpl(options)
+            return com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient(client, transport) { client.close() }
+        } catch (error: Exception) { transport.close(); throw error }
+    }
+
     fun resolveApiKey(connection: AiConnection): String =
         SdkHttpSupport.token(connection, settingsProvider, "OPENAI_API_KEY")
 

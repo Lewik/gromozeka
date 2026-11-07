@@ -1,5 +1,21 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.ai.AiCallException
+import com.gromozeka.domain.model.ai.AiCallFailure
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiHttpCallBudget
+import com.gromozeka.remote.protocol.WorkerGatewayMessage
+import com.gromozeka.domain.service.WorkerRequestPolicy
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlin.time.Clock
+import kotlin.time.Instant
+import kotlin.time.Duration.Companion.milliseconds
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
@@ -46,8 +62,14 @@ class GatewayAiRequestResponseExecutionClient(
             ?.takeIf { it.matches(Regex("[a-zA-Z0-9-]{1,80}")) }
             ?: uuid7().toString()
         val startedAt = System.nanoTime()
+        val now = Clock.System.now()
+        val deadline = if (runtime.connection is AiConnection.ConfigurableHttpAiConnection)
+            minOf(AiHttpCallBudget.deadline(runtime.modelConfiguration.defaultParameters.timeoutSeconds,
+                request.options.executionDeadline, now), now + timeout.toMillis().milliseconds)
+        else null
         val tracedRequest = request.copy(options = request.options.copy(
             toolContext = request.options.toolContext + ("aiCallDiagnosticId" to diagnosticId),
+            executionDeadline = deadline ?: request.options.executionDeadline,
         ))
         val payload = AiRequestResponseGatewayCodec.encodeCallRequest(runtime, workspaceRootPath, tracedRequest)
         log.debug {
@@ -56,12 +78,21 @@ class GatewayAiRequestResponseExecutionClient(
                 "elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000}"
         }
         return try {
-            val response = execute(target, payload, diagnosticId)
+            val (workerRequestId, response) = if (deadline == null) null to execute(target, payload, diagnosticId)
+                else executeCall(target, payload, deadline)
             log.debug {
                 "AI_GATEWAY_TRACE call=$diagnosticId phase=response_received bytes=${response.size} " +
                     "elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000}"
             }
-            AiRequestResponseGatewayCodec.decodeCallResponse(response)
+            try { AiRequestResponseGatewayCodec.decodeCallResponse(response) }
+            catch (error: AiCallException) {
+                throw AiCallException(error.failure.copy(workerRequestId = workerRequestId ?: error.failure.workerRequestId))
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) {
+                if (deadline == null) throw error
+                throw AiCallException(AiCallFailure(AiCallFailure.Kind.WORKER_FAILURE,
+                    AiCallFailure.Outcome.UNKNOWN, null, workerRequestId = workerRequestId))
+            }
         } finally {
             log.debug {
                 "AI_GATEWAY_TRACE call=$diagnosticId phase=finished elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000}"
@@ -107,6 +138,46 @@ class GatewayAiRequestResponseExecutionClient(
     ): AiSubscriptionQuotaSnapshot =
         execute(target, AiRequestResponseGatewayCodec.encodeSubscriptionQuotaRequest(request))
             .let(AiRequestResponseGatewayCodec::decodeSubscriptionQuotaResponse)
+
+    private suspend fun executeCall(target: ConversationRuntimeWorkerIdentity, payload: ByteArray, deadline: Instant): Pair<String, ByteArray> {
+        val remaining = (deadline - Clock.System.now()).inWholeMilliseconds
+        if (remaining <= 0) throw AiCallException(AiCallFailure(AiCallFailure.Kind.DEADLINE_EXCEEDED,
+            AiCallFailure.Outcome.NOT_STARTED, 0))
+        var requestId: String? = null
+        try {
+            return withTimeout(remaining) {
+                currentCoroutineContext().ensureActive()
+                // Keep the id even if cancellation races with the durable insert returning.
+                withContext(NonCancellable) {
+                    requestId = requests.submit(target.workerId, WorkerGatewayOperation.AI_REQUEST_RESPONSE, payload,
+                        WorkerRequestPolicy(deliveryTtlMillis = minOf(30_000, remaining),
+                            executionTimeoutMillis = remaining, waitTimeoutMillis = remaining))
+                }
+                val id = requireNotNull(requestId)
+                val response = requests.await(id, remaining)
+                if (response.status != WorkerGatewayMessage.Response.Status.SUCCEEDED) {
+                    val neverStarted = response.errorCode == "EXPIRED"
+                    throw AiCallException(AiCallFailure(AiCallFailure.Kind.WORKER_FAILURE,
+                        if (neverStarted) AiCallFailure.Outcome.NOT_STARTED else AiCallFailure.Outcome.UNKNOWN,
+                        if (neverStarted) 0 else null, workerRequestId = id))
+                }
+                id to requireNotNull(response.payload)
+            }
+        } catch (error: CancellationException) {
+            requestId?.let { id -> withContext(NonCancellable) { requests.cancel(id) } }
+            currentCoroutineContext().ensureActive()
+            if (error !is TimeoutCancellationException) throw error
+            throw AiCallException(AiCallFailure(AiCallFailure.Kind.DEADLINE_EXCEEDED,
+                AiCallFailure.Outcome.UNKNOWN, null, workerRequestId = requestId))
+        } catch (error: WorkerRequestPendingException) {
+            withContext(NonCancellable) { requests.cancel(error.requestId) }
+            throw AiCallException(AiCallFailure(AiCallFailure.Kind.DEADLINE_EXCEEDED,
+                AiCallFailure.Outcome.UNKNOWN, null, workerRequestId = error.requestId))
+        } catch (error: WorkerRequestResultUnavailableException) {
+            throw AiCallException(AiCallFailure(AiCallFailure.Kind.WORKER_FAILURE,
+                AiCallFailure.Outcome.UNKNOWN, null, workerRequestId = error.requestId))
+        }
+    }
 
     private suspend fun execute(
         target: ConversationRuntimeWorkerIdentity,

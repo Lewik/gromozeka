@@ -2034,6 +2034,9 @@
     "ai.http.no_proxy_hint": "ホスト、.domainサフィックス、任意のポートを指定。*は全プロキシを回避します。CIDR非対応。プロキシが空の場合は実行マシンのシステム設定を使用します。",
     "ai.http.headers": "追加ヘッダー（JSON）",
     "ai.http.headers_hint": "シークレットではない文字列のみ。Authorizationはトークン取得元から生成されます。User-Agentは上書き可能です。",
-    "ai.http.headers_invalid": "ヘッダーは値が文字列のJSONオブジェクトで指定してください。"
+    "ai.http.headers_invalid": "ヘッダーは値が文字列のJSONオブジェクトで指定してください。",
+    "ai.http.concurrency": "接続ごとの同時呼び出し数",
+    "ai.http.max_attempts": "HTTP 試行回数の上限",
+    "ai.http.execution_hint": "完全に受信した HTTP 429 の拒否応答のみ再試行します。単一のタイムアウトにキュー待機、再試行待機、HTTP を含みます。"
   }
 }

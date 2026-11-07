@@ -37,7 +37,7 @@ class AiConfigurationApplicationServiceTest {
         val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
             authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
             caBundlePath = "/worker-only/ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
-            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"))
+            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"), maxConcurrentCalls = 7, maxAttempts = 4)
         val configured = original.copy(baseUrl = "https://gateway.example/api/llm", httpSettings = settings,
             apiKey = null, executionTarget = com.gromozeka.domain.model.ai.AiExecutionTarget.Worker("exact-worker"))
         val source = SecretRef.File("/worker-only/token")

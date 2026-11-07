@@ -15925,5 +15925,26 @@
     ],
     "description": "Safe validation message for malformed header JSON or non-string values; never echo supplied values.",
     "args": []
+  },
+  "ai.http.concurrency": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Executor-local concurrency shared by all models on one connection; integer from 1 to 64.",
+    "args": []
+  },
+  "ai.http.max_attempts": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Total HTTP attempts including the first attempt, from 1 to 5. Only complete rate-limit rejections may be retried.",
+    "args": []
+  },
+  "ai.http.execution_hint": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Explains that HTTP 429 rejection retries share one logical deadline with queueing and all network activity.",
+    "args": []
   }
 }

@@ -872,6 +872,8 @@ private fun ConnectionDialog(
     }
     val initialHttp = (existing as? AiConnection.ConfigurableHttpAiConnection)?.httpSettings ?: AiHttpSettings()
     var httpAuthentication by remember { mutableStateOf(initialHttp.authentication) }
+    var maxConcurrentCalls by remember { mutableStateOf(initialHttp.maxConcurrentCalls) }
+    var maxAttempts by remember { mutableStateOf(initialHttp.maxAttempts) }
     var caBundlePath by remember { mutableStateOf(initialHttp.caBundlePath.orEmpty()) }
     var proxyUrl by remember { mutableStateOf(initialHttp.proxyUrl.orEmpty()) }
     var noProxy by remember { mutableStateOf(initialHttp.noProxy.joinToString(", ")) }
@@ -1158,6 +1160,11 @@ private fun ConnectionDialog(
                     OutlinedTextField(value = extraHeaders, onValueChange = { extraHeaders = it },
                         label = { Text(translation.text("ai.http.headers")) }, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
                     Text(translation.text("ai.http.headers_hint"), style = MaterialTheme.typography.bodySmall)
+                    LabeledDropdown(label = translation.text("ai.http.concurrency"), value = maxConcurrentCalls,
+                        options = (1..64).toList(), optionLabel = { it.toString() }, onSelect = { maxConcurrentCalls = it })
+                    LabeledDropdown(label = translation.text("ai.http.max_attempts"), value = maxAttempts,
+                        options = (1..5).toList(), optionLabel = { it.toString() }, onSelect = { maxAttempts = it })
+                    Text(translation.text("ai.http.execution_hint"), style = MaterialTheme.typography.bodySmall)
                 }
                 if (kind == AiConnection.Kind.ANTHROPIC_BEDROCK) {
                     OutlinedTextField(
@@ -1343,6 +1350,8 @@ private fun ConnectionDialog(
                             proxyUrl = proxyUrl.trim().ifBlank { null },
                             noProxy = noProxy.split(',').map(String::trim).filter(String::isNotEmpty),
                             extraHeaders = parseAiExtraHeaders(extraHeaders, translation),
+                            maxConcurrentCalls = maxConcurrentCalls,
+                            maxAttempts = maxAttempts,
                         ) else AiHttpSettings()
                         val connection = createConnection(
                             translation = translation,
