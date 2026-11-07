@@ -13,7 +13,7 @@ import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
 import com.gromozeka.presentation.services.WindowStateService
-import com.gromozeka.presentation.services.TurnCompletionNotificationSink
+import com.gromozeka.presentation.services.DesktopTurnCompletionNotificationSink
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
 import com.gromozeka.domain.model.KeyboardShortcutAction
@@ -64,9 +64,7 @@ internal suspend fun startRemotePresentation(
                 desktopNotificationService.show("user-notification-${notification.id.value}", notification.title, notification.message)
             },
             turnCompletionNotificationSinkFactory = { currentTranslation ->
-                TurnCompletionNotificationSink {
-                    desktopNotificationService.show("turn-completed", "Gromozeka", currentTranslation().text("native.turnCompleted"))
-                }
+                DesktopTurnCompletionNotificationSink(desktopNotificationService, currentTranslation)
             },
             httpClient = httpClient,
         )

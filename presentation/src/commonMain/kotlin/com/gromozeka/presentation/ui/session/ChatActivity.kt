@@ -33,7 +33,7 @@ internal sealed interface ChatActivity {
                 else -> ActivityState.COMPLETE
             }
         override val kind: ActivityKind = ActivityKind.Tool(call.call.name)
-        override val canExpand: Boolean get() = result != null
+        override val canExpand: Boolean get() = true
     }
 
     data class Reasoning(val block: Conversation.Message.ContentItem.Thinking) : ChatActivity {

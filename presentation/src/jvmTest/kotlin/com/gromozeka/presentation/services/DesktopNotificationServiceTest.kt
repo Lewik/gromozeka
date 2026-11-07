@@ -7,6 +7,24 @@ import kotlin.test.assertSame
 
 class DesktopNotificationServiceTest {
     @Test
+    fun `turn completion uses the conversation title and localized status without an application prefix`() {
+        val published = mutableListOf<DesktopNotification>()
+        val notifications = WindowsDesktopNotificationService(DesktopNotificationPublisher(published::add))
+        var translation: com.gromozeka.presentation.services.translation.data.Translation =
+            com.gromozeka.presentation.services.translation.data.EnglishTranslation()
+        val sink = DesktopTurnCompletionNotificationSink(notifications) { translation }
+
+        sink.showTurnCompleted("Gromozeka — release checks \"quoted\"")
+        translation = com.gromozeka.presentation.services.translation.data.RussianTranslation()
+        sink.showTurnCompleted("Архитектор")
+
+        assertEquals(listOf(
+            DesktopNotification("turn-completed", "Gromozeka — release checks \"quoted\"", "Turn completed"),
+            DesktopNotification("turn-completed", "Архитектор", translation.text("native.turnCompleted")),
+        ), published)
+    }
+
+    @Test
     fun `selects macOS notification service`() {
         val service = defaultDesktopNotificationService(
             windowsFallbackPublisher = DesktopNotificationPublisher {},

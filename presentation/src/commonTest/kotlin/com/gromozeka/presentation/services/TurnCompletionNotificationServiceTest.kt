@@ -16,11 +16,11 @@ class TurnCompletionNotificationServiceTest {
         var notificationCount = 0
         val service = TurnCompletionNotificationService(settingsService) { notificationCount += 1 }
 
-        service.notifyTurnCompleted()
+        service.notifyTurnCompleted("Release checks")
         service.reportWindowFocus(false)
-        service.notifyTurnCompleted()
+        service.notifyTurnCompleted("Release checks")
         service.reportWindowFocus(true)
-        service.notifyTurnCompleted()
+        service.notifyTurnCompleted("Release checks")
 
         assertEquals(1, notificationCount)
     }
@@ -32,9 +32,9 @@ class TurnCompletionNotificationServiceTest {
         val service = TurnCompletionNotificationService(settingsService) { notificationCount += 1 }
         service.reportWindowFocus(false)
 
-        service.notifyTurnCompleted()
+        service.notifyTurnCompleted("Release checks")
         settingsService.saveSettings(desktopSettings(notificationsEnabled = true))
-        service.notifyTurnCompleted()
+        service.notifyTurnCompleted("Release checks")
 
         assertEquals(1, notificationCount)
     }
@@ -48,9 +48,21 @@ class TurnCompletionNotificationServiceTest {
         val service = TurnCompletionNotificationService(settingsService) { notificationCount += 1 }
         service.reportWindowFocus(false)
 
-        service.notifyTurnCompleted()
+        service.notifyTurnCompleted("Release checks")
 
         assertEquals(0, notificationCount)
+    }
+
+    @Test
+    fun forwardsTheCompletedConversationsTitle() {
+        val titles = mutableListOf<String>()
+        val service = TurnCompletionNotificationService(TestSettingsService(desktopSettings(true)), titles::add)
+        service.reportWindowFocus(false)
+
+        service.notifyTurnCompleted("Release checks")
+        service.notifyTurnCompleted("Architect")
+
+        assertEquals(listOf("Release checks", "Architect"), titles)
     }
 
     private fun desktopSettings(notificationsEnabled: Boolean) = Settings(

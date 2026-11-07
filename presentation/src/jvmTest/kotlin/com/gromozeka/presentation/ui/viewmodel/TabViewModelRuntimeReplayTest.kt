@@ -416,6 +416,7 @@ class TabViewModelRuntimeReplayTest {
         return TabViewModel(
             conversationId = conversationId,
             projectId = projectId,
+            conversationTitle = { "Test conversation" },
             currentUserAuthor = Conversation.Message.Author.User(User.Id("user-1"), "User"),
             agentService = stub { methodName ->
                 when {

@@ -28,15 +28,15 @@ internal class DesktopQuickTextActionExecutor(
             var actionName = actionId.value
             val notificationId = "quick-text-action:${actionId.value}"
             log.info("Quick text action started: actionId=${actionId.value}")
-            notificationService.show(notificationId, "Gromozeka", currentTranslation().executingStatus)
             try {
                 actionName = actionName(actionId)
+                notificationService.show(notificationId, actionName, currentTranslation().executingStatus)
                 val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                 val inputText = withContext(Dispatchers.IO) {
                     clipboard.readText()
                 }
                 if (inputText.isNullOrBlank()) {
-                    notificationService.show(notificationId, "Gromozeka", currentTranslation().text("quickText.noInput", "action" to actionName))
+                    notificationService.show(notificationId, actionName, currentTranslation().text("quickText.noInput", "action" to actionName))
                     log.info("Quick text action skipped: clipboard has no text")
                     return
                 }
@@ -46,12 +46,12 @@ internal class DesktopQuickTextActionExecutor(
                     clipboard.writeText(result.text)
                 }
                 log.info("Quick text action complete: actionId=${actionId.value}")
-                notificationService.show(notificationId, "Gromozeka", currentTranslation().text("native.copiedToClipboard", "action" to actionName))
+                notificationService.show(notificationId, actionName, currentTranslation().text("native.copiedToClipboard", "action" to actionName))
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
                 uiFeedbackController.notifyError()
-                notificationService.show(notificationId, "Gromozeka", currentTranslation().text("quickText.failed", "action" to actionName, "error" to error.userFacingMessage()))
+                notificationService.show(notificationId, actionName, currentTranslation().text("quickText.failed", "action" to actionName, "error" to error.userFacingMessage()))
                 log.warn(error) { "Quick text action failed: ${error.message}" }
             }
         }

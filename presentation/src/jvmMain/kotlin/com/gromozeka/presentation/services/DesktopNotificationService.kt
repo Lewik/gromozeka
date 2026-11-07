@@ -1,9 +1,19 @@
 package com.gromozeka.presentation.services
 
 import klog.KLoggers
+import com.gromozeka.presentation.services.translation.data.Translation
 
 internal interface DesktopNotificationService {
     fun show(replacementId: String, title: String, message: String)
+}
+
+internal class DesktopTurnCompletionNotificationSink(
+    private val notifications: DesktopNotificationService,
+    private val currentTranslation: () -> Translation,
+) : TurnCompletionNotificationSink {
+    override fun showTurnCompleted(conversationTitle: String) {
+        notifications.show("turn-completed", conversationTitle, currentTranslation().text("native.turnCompleted"))
+    }
 }
 
 internal fun interface DesktopNotificationPublisher {

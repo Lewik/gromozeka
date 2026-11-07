@@ -26,6 +26,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -47,6 +48,71 @@ import kotlin.test.assertTrue
 class ActivityRenderingTest {
     private val textOrIcon = SemanticsMatcher.keyIsDefined(SemanticsProperties.Text) or
         SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentDescription)
+
+    @Test
+    fun activeToolsShowArgumentsAndPartialResultsWithoutDuplicateWaitStatus() {
+        for (width in listOf(390, 960)) {
+            runDesktopComposeUiTest(width = width, height = 700) {
+                val translation = com.gromozeka.presentation.services.translation.data.EnglishTranslation()
+                val call = activityTestCall("execute").copy(call = Conversation.Message.ContentItem.ToolCall.Data(
+                    "grz_execute_command__v4", kotlinx.serialization.json.buildJsonObject {
+                        put("command", kotlinx.serialization.json.JsonPrimitive("echo first"))
+                    },
+                ))
+                val other = activityTestCall("other").copy(call = Conversation.Message.ContentItem.ToolCall.Data(
+                    "grz_read_file__v4", kotlinx.serialization.json.buildJsonObject {
+                        put("file_path", kotlinx.serialization.json.JsonPrimitive("second.txt"))
+                    },
+                ))
+                val message = activityTestMessage("running", call, other)
+                val results = mutableStateOf(emptyMap<String, Conversation.Message.ContentItem.ToolResult>())
+                setContent {
+                    CompositionLocalProvider(com.gromozeka.presentation.ui.LocalTranslation provides translation) {
+                        ActivityTimelineFixture(listOf(message), results.value)
+                    }
+                }
+                onNodeWithText("grz_execute_command__v4: echo first").assertIsDisplayed()
+                onNodeWithText("grz_read_file__v4: second.txt").assertIsDisplayed()
+                onNodeWithText(toolDisplayName(call.call.name, translation.runtime) + ": echo first").assertDoesNotExist()
+                onNodeWithContentDescription(translation.text("runtime.runningTaskLabel")).assertDoesNotExist()
+                val parameters = translation.text("chat.tool.command", "command" to "echo first")
+                onNodeWithText(parameters).assertDoesNotExist()
+                onNodeWithTag(UiTestTag.ActivityItem("running:0:content").value).performClick()
+                onNodeWithText(parameters).assertIsDisplayed()
+                val partial = Conversation.Message.ContentItem.ToolResult(call.id, call.call.name,
+                    listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("Partial output")),
+                    state = Conversation.Message.BlockState.STREAMING)
+                runOnIdle { results.value = mapOf(call.id.value to partial) }
+                onNodeWithText("Partial output").assertIsDisplayed()
+                onNodeWithText("grz_execute_command__v4: echo first").assertIsDisplayed()
+                onNodeWithContentDescription(translation.text("runtime.runningTaskLabel")).assertDoesNotExist()
+                runOnIdle { results.value = mapOf(call.id.value to partial.copy(state = Conversation.Message.BlockState.COMPLETE, isError = true)) }
+                onNodeWithText("Partial output").assertIsDisplayed()
+                onNodeWithContentDescription(translation.text("runtime.failedTaskLabel")).assertIsDisplayed()
+                onNodeWithText(toolDisplayName(call.call.name, translation.runtime) + ": echo first").assertIsDisplayed()
+            }
+        }
+    }
+
+    @Test
+    fun interruptedToolWithoutResultKeepsItsArgumentsAndStopIndicator() = runDesktopComposeUiTest {
+        val translation = com.gromozeka.presentation.services.translation.data.EnglishTranslation()
+        val call = activityTestCall("interrupted").copy(state = Conversation.Message.BlockState.INTERRUPTED)
+        setContent { ActivityTimelineFixture(listOf(activityTestMessage("interrupted", call)), emptyMap()) }
+        onNodeWithContentDescription(translation.text("chat.activity.interrupted")).assertIsDisplayed()
+        onNodeWithTag(UiTestTag.ActivityItem("interrupted:0:content").value).performClick()
+        onNodeWithText(translation.text("chat.tool.fileParameter", "path" to "")).assertIsDisplayed()
+    }
+
+    @Test
+    fun reasoningStillShowsItsRunningIndicator() = runDesktopComposeUiTest {
+        val translation = com.gromozeka.presentation.services.translation.data.EnglishTranslation()
+        setContent {
+            ActivityTimelineFixture(listOf(activityTestMessage("thinking",
+                Conversation.Message.ContentItem.Thinking("", state = Conversation.Message.BlockState.STREAMING))))
+        }
+        onNodeWithContentDescription(translation.text("runtime.runningTaskLabel")).assertIsDisplayed()
+    }
 
     @Test
     fun toolHeadersUseThemeColorsInsteadOfInheritedColor() {

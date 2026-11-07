@@ -5,11 +5,11 @@ import com.gromozeka.domain.service.SettingsService
 import kotlinx.coroutines.flow.MutableStateFlow
 
 fun interface TurnCompletionNotificationSink {
-    fun showTurnCompleted()
+    fun showTurnCompleted(conversationTitle: String)
 }
 
 object NoOpTurnCompletionNotificationSink : TurnCompletionNotificationSink {
-    override fun showTurnCompleted() = Unit
+    override fun showTurnCompleted(conversationTitle: String) = Unit
 }
 
 class TurnCompletionNotificationService(
@@ -22,9 +22,9 @@ class TurnCompletionNotificationService(
         windowFocused.value = focused
     }
 
-    fun notifyTurnCompleted() {
+    fun notifyTurnCompleted(conversationTitle: String) {
         val desktopSettings = settingsService.userDeviceSettings as? UserDeviceSettings.Desktop ?: return
         if (!desktopSettings.turnCompletionNotificationsEnabled || windowFocused.value) return
-        sink.showTurnCompleted()
+        sink.showTurnCompleted(conversationTitle)
     }
 }

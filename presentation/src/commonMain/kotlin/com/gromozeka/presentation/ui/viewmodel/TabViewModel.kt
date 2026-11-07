@@ -79,6 +79,7 @@ class TabViewModel(
     private val tokenStatsService: ConversationTokenStatsService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
+    private val conversationTitle: () -> String,
     val messageDeliveryMode: StateFlow<com.gromozeka.domain.model.UserMessageDeliveryMode> = MutableStateFlow(com.gromozeka.domain.model.UserMessageDeliveryMode.STEER),
 ) {
     private val log = KLoggers.logger(this)
@@ -476,7 +477,7 @@ class TabViewModel(
             is ConversationRuntimeEvent.ExecutionCompleted -> {
                 finishRuntimeExecution()
                 if (runtimeReplayCompleted && event.shouldNotifyUser) {
-                    turnCompletionNotificationService.notifyTurnCompleted()
+                    turnCompletionNotificationService.notifyTurnCompleted(conversationTitle())
                 }
             }
             is ConversationRuntimeEvent.ExecutionFailed -> {

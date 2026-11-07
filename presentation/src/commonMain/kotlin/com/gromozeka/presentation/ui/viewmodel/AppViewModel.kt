@@ -16,6 +16,7 @@ import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
 import com.gromozeka.presentation.services.TurnCompletionNotificationService
 import com.gromozeka.presentation.ui.state.UIState
+import com.gromozeka.presentation.ui.effectiveDisplayName
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -383,6 +384,7 @@ open class AppViewModel(
         tokenStatsService = tokenStatsService,
         messageInputClientPlatform = messageInputClientPlatform,
         turnCompletionNotificationService = turnCompletionNotificationService,
+        conversationTitle = { _conversations.value.getValue(conversation.id).effectiveDisplayName(currentTranslation()) },
         messageDeliveryMode = messageDeliveryMode,
     )
 

@@ -77,9 +77,9 @@ internal fun ActivityHeader(
     modifier: Modifier = Modifier,
 ) {
     val translation = LocalTranslation.current
-    // Determine status icon based on toolResult (no icon on success)
+    // The composer already shows tool progress; retain reasoning and terminal problem indicators.
     val statusIcon = when (state) {
-        ActivityState.RUNNING -> Icons.Default.Schedule
+        ActivityState.RUNNING -> if (kind is ActivityKind.Tool) null else Icons.Default.Schedule
         ActivityState.FAILED -> Icons.Default.Error
         ActivityState.INTERRUPTED -> Icons.Default.Stop
         ActivityState.COMPLETE -> null
