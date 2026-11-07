@@ -265,7 +265,7 @@ class DistributedAiToolRoutingTest {
                 input = buildJsonObject {
                     putJsonObject(AI_TOOL_INVOCATION_CONTEXT_FIELD) {
                         put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
-                        put("delivery_ttl_seconds", 600)
+                        put("delivery_ttl_seconds", 300)
                         put("execution_timeout_seconds", 15)
                         put("wait_timeout_seconds", 1)
                     }
@@ -290,7 +290,7 @@ class DistributedAiToolRoutingTest {
         )
         assertEquals(ConversationRuntimeWorkerId("worker-b"), target.workerId)
         assertEquals(null, target.workspaceMountId)
-        assertEquals(com.gromozeka.domain.service.WorkerRequestPolicy(600_000, 15_000, 1_000), target.requestPolicy)
+        assertEquals(com.gromozeka.domain.service.WorkerRequestPolicy(300_000, 15_000, 1_000), target.requestPolicy)
         val schema = Json.parseToJsonElement(
             catalog.tools.single().definition.inputSchema
         ).jsonObject
@@ -313,13 +313,21 @@ class DistributedAiToolRoutingTest {
     @Test
     fun `request timing policy rejects invalid values and supports maximum TTL without explicit wait`() {
         val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
-        val valid = metadata.parseInvocationInput(Json.parseToJsonElement("""{"_grz":{"worker_id":"worker-a","delivery_ttl_seconds":604800}}"""))
+        val valid = metadata.parseInvocationInput(Json.parseToJsonElement("""{"_grz":{"worker_id":"worker-a","delivery_ttl_seconds":300}}"""))
             .executionTarget!!.requestPolicy!!
-        assertEquals(604_800_000L, valid.deliveryTtlMillis)
-        assertEquals(604_800_000L, valid.waitTimeoutMillis)
+        assertEquals(300_000L, valid.deliveryTtlMillis)
+        assertEquals(1_800_000L, valid.executionTimeoutMillis)
+        assertEquals(2_100_000L, valid.waitTimeoutMillis)
+        val independentMaximums = metadata.parseInvocationInput(Json.parseToJsonElement(
+            """{"_grz":{"worker_id":"worker-a","execution_timeout_seconds":86400,"wait_timeout_seconds":604800}}"""
+        )).executionTarget!!.requestPolicy!!
+        assertEquals(30_000L, independentMaximums.deliveryTtlMillis)
+        assertEquals(86_400_000L, independentMaximums.executionTimeoutMillis)
+        assertEquals(604_800_000L, independentMaximums.waitTimeoutMillis)
         for ((field, value) in listOf(
-            "delivery_ttl_seconds" to "0", "delivery_ttl_seconds" to "-1", "delivery_ttl_seconds" to "604801",
-            "execution_timeout_seconds" to "86401", "wait_timeout_seconds" to "1.5",
+            "delivery_ttl_seconds" to "0", "delivery_ttl_seconds" to "-1", "delivery_ttl_seconds" to "301",
+            "delivery_ttl_seconds" to "604800", "execution_timeout_seconds" to "86401",
+            "wait_timeout_seconds" to "604801", "wait_timeout_seconds" to "1.5",
             "wait_timeout_seconds" to "\"5\"", "wait_timeout_seconds" to "9223372036854775807",
         )) {
             kotlin.test.assertFailsWith<IllegalArgumentException>("$field=$value") {

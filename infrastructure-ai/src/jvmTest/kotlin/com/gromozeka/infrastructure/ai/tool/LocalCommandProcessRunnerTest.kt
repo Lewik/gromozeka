@@ -16,6 +16,12 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
 import kotlin.test.Test
@@ -276,25 +282,36 @@ class LocalCommandProcessRunnerTest {
             assertEquals(values.values.map(::secretProbeHash), snapshot.drop(1))
             val root = ProcessHandle.of(process.processId).orElseThrow()
             val ids = root.descendants().use { children -> children.map { it.pid() }.toList() }.toSet() + root.pid() + snapshot[0].toLong()
-            for (id in ids) {
-                val arguments = if (isWindows) listOf("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-                    "Get-CimInstance Win32_Process -Filter 'ProcessId=$id' | Select-Object -ExpandProperty CommandLine")
-                else listOf("ps", "-ww", "-p", id.toString(), "-o", "command=")
-                val inspection = ProcessBuilder(arguments).redirectErrorStream(true).start()
-                try {
-                    assertTrue(inspection.waitFor(10, TimeUnit.SECONDS))
-                    val commandLine = inspection.inputStream.bufferedReader().readText()
-                    assertEquals(0, inspection.exitValue())
-                    assertTrue(commandLine.isNotBlank(), "Expected a command line for fixture process $id")
-                    values.values.forEach { value -> assertFalse(commandLine.contains(value), "Secret entered process argv") }
-                } finally {
-                    if (inspection.isAlive) { inspection.destroyForcibly(); inspection.waitFor() }
-                }
+            val commandLines = inspectProcessCommandLines(ids, home)
+            assertEquals(ids, commandLines.keys, "Every fixture process must be inspected")
+            for ((id, commandLine) in commandLines) {
+                assertTrue(commandLine.isNotBlank(), "Expected a command line for fixture process $id")
+                values.values.forEach { value -> assertFalse(commandLine.contains(value), "Secret entered process argv") }
+                assertFalse(commandLine.contains("fixture-a"), "Secret marker entered process argv")
+                assertFalse(commandLine.contains("fixture-b-with-spaces"), "Secret marker entered process argv")
             }
             process.closeInput()
             assertTrue(process.waitFor(5_000))
             assertEquals(0, process.exitCode())
             assertEquals("", File(process.outputFile).readText())
+        }
+    }
+
+    @Test
+    fun `process inspection captures large Unicode output without waiting on an undrained pipe`() {
+        withTemporaryGromozekaHome { home ->
+            val size = 128 * 1024
+            assertEquals("x".repeat(size) + "שלום\n", readInspectionOutput(inspectionFixture(size), home))
+        }
+    }
+
+    @Test
+    fun `process inspection rejects oversized output and failed probes without partial success`() {
+        withTemporaryGromozekaHome { home ->
+            val oversized = assertFailsWith<AssertionError> { readInspectionOutput(inspectionFixture(1024 * 1024 + 1), home) }
+            assertContains(oversized.message.orEmpty(), "Process inspection output exceeds 1 MiB")
+            val failed = assertFailsWith<AssertionError> { readInspectionOutput(inspectionFixture(1, 3), home) }
+            assertContains(failed.message.orEmpty(), "Process inspection failed")
         }
     }
 
@@ -999,6 +1016,62 @@ class LocalCommandProcessRunnerTest {
         assertIs<WindowsLocalCommandHost>(currentLocalCommandHost("Windows 11"))
     }
 
+    private fun inspectProcessCommandLines(ids: Set<Long>, home: File): Map<Long, String> {
+        require(ids.isNotEmpty() && ids.all { it > 0 })
+        if (!isWindows) return ids.associateWith { id ->
+            readInspectionOutput(ProcessBuilder("ps", "-ww", "-p", id.toString(), "-o", "command="), home)
+        }
+        val filter = ids.sorted().joinToString(" OR ") { "ProcessId=$it" }
+        // One CIM snapshot avoids starting PowerShell and its provider separately for each process.
+        val script = """
+            ${'$'}ErrorActionPreference = 'Stop'
+            [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(${'$'}false)
+            ${'$'}rows = @(Get-CimInstance Win32_Process -Filter '$filter' | Select-Object ProcessId,CommandLine)
+            ConvertTo-Json -InputObject ${'$'}rows -Compress
+        """.trimIndent()
+        val output = readInspectionOutput(ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script), home)
+        val rows = Json.parseToJsonElement(output).jsonArray
+        val commandLines = rows.associate { row ->
+            val fields = row.jsonObject
+            val id = fields.getValue("ProcessId").jsonPrimitive.long
+            val commandLine = fields.getValue("CommandLine").jsonPrimitive
+            assertTrue(commandLine.isString, "Expected a command line for fixture process $id")
+            id to requireNotNull(commandLine.contentOrNull)
+        }
+        assertEquals(rows.size, commandLines.size, "Process inspection returned duplicate PIDs")
+        return commandLines
+    }
+
+    private fun readInspectionOutput(builder: ProcessBuilder, home: File): String {
+        val output = File.createTempFile("process-inspection-", ".log", home)
+        var inspection: Process? = null
+        try {
+            // Waiting before draining a stdout pipe can deadlock, even for a read-only diagnostic.
+            val process = builder.redirectErrorStream(true).redirectOutput(output).start()
+            inspection = process
+            process.outputStream.close()
+            assertTrue(process.waitFor(10, TimeUnit.SECONDS),
+                "Process inspection timed out after 10 seconds; captured bytes=${output.length()}")
+            assertEquals(0, process.exitValue(), "Process inspection failed; captured bytes=${output.length()}")
+            val bytes = output.inputStream().use { it.readNBytes(1024 * 1024 + 1) }
+            assertTrue(bytes.size <= 1024 * 1024, "Process inspection output exceeds 1 MiB")
+            return bytes.decodeToString(throwOnInvalidSequence = true)
+        } finally {
+            inspection?.let { process ->
+                if (process.isAlive) {
+                    process.destroyForcibly()
+                    assertTrue(process.waitFor(5, TimeUnit.SECONDS), "Cannot stop process inspection")
+                }
+            }
+            Files.deleteIfExists(output.toPath())
+        }
+    }
+
+    private fun inspectionFixture(size: Int, exitCode: Int = 0): ProcessBuilder = ProcessBuilder(
+        File(System.getProperty("java.home"), if (isWindows) "bin/java.exe" else "bin/java").absolutePath,
+        CommandInspectionOutputTestProcess::class.java.name, size.toString(), exitCode.toString(),
+    ).apply { environment()["CLASSPATH"] = System.getProperty("java.class.path") }
+
     private fun waitUntil(timeoutMillis: Long, condition: () -> Boolean) {
         val deadline = System.nanoTime() + timeoutMillis * 1_000_000
         while (!condition() && System.nanoTime() < deadline) {
@@ -1130,6 +1203,16 @@ private fun windowsProcessTreeCommand(childPidFile: File): String {
         "Set-Content -NoNewline -LiteralPath '$escapedPath.tmp' -Value ${'$'}child.Id; " +
         "Move-Item -LiteralPath '$escapedPath.tmp' -Destination '$escapedPath'; " +
         "Wait-Process -Id ${'$'}child.Id\""
+}
+
+internal object CommandInspectionOutputTestProcess {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        System.out.write(("x".repeat(args[0].toInt()) + "שלום\n").encodeToByteArray())
+        System.out.flush()
+        check(System.`in`.read() == -1) { "Process inspection must close stdin" }
+        kotlin.system.exitProcess(args[1].toInt())
+    }
 }
 
 internal object CommandInputEchoTestProcess {
