@@ -36,7 +36,7 @@ class BackgroundActivityOriginRecorderTest {
         })
         val requestId = f.register(alice, call, task)
         assertFailsWith<WorkerRequestPendingException> { f.requests.await(requestId, 1) }
-        val batch = f.completions.prepareBatch(conversation.id)
+        val batch = f.completions.prepareBatch(conversation.id, "command-task:${task.id.value}")
         assertEquals(alice, batch.actorUserId)
         val restarted = WorkerRequestService(f.requestsRepository, WorkerRequestAuthorization {})
         restarted.accept(worker, response(requestId, call, task.id.value))
@@ -67,22 +67,45 @@ class BackgroundActivityOriginRecorderTest {
             conversation.id, monitor.id, 0, 5, BinaryContent.fromText("event"), false, now, true)))
         assertNull(f.requestsRepository.find(requestId)?.response)
 
-        val first = f.completions.prepareBatch(conversation.id)
+        val first = f.completions.prepareBatch(conversation.id, "command-task:${task.id.value}")
         assertEquals(alice, first.actorUserId)
         assertEquals(listOf(task.id), first.commandTasks.map { it.id })
         assertTrue(first.monitorDeliveries.isEmpty())
         f.completions.markDelivered(first, now)
-        val second = f.completions.prepareBatch(conversation.id)
+        val second = f.completions.prepareBatch(conversation.id, "command-monitor-event:event")
         assertEquals(bob, second.actorUserId)
         assertEquals(listOf(monitor.id), second.monitorDeliveries.map { it.monitor.id })
         assertEquals(bob, assertIs<ConversationRuntimeTaskOutcome.Continue>(runBackground(f, second)).nextTask.actorUserId)
     }
 
     @Test
+    fun `queued monitor source is not replaced by an older activity of another creator`(): Unit = runBlocking {
+        val f = fixture()
+        val task = command("older-command")
+        val create = call("create", "grz_execute_command", buildJsonObject { put("command", "echo output") })
+        f.requests.accept(worker, response(f.register(alice, create, task), create, task.id.value))
+        val observe = call("observe", "grz_monitor_command", buildJsonObject { put("task_id", task.id.value); put("filter_command", "cat") })
+        val requestId = f.submit(bob, observe)
+        val monitor = monitor(task.id).copy(launchReference = BackgroundActivityLaunchReference(requestId, observe.id.value))
+        f.recorder.admit(monitor)
+        val event = CommandMonitorEvent(CommandMonitorEvent.Id("queued-event"), conversation.id, monitor.id,
+            0, 5, BinaryContent.fromText("event"), false, Instant.fromEpochSeconds(2), true)
+        f.coordinator.synchronizeCommandMonitor(monitor, listOf(event))
+
+        val batch = f.completions.prepareBatch(conversation.id, "command-monitor-event:${event.id.value}")
+        val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(runBackground(f, batch))
+
+        assertEquals(bob, outcome.nextTask.actorUserId)
+        assertTrue(batch.commandTasks.isEmpty())
+        assertNull(f.coordinator.findCommandTask(conversation.id, task.id)?.completionNotificationDeliveredAt)
+        assertNotNull(f.coordinator.findCommandMonitorEvents(conversation.id, monitor.id).single().deliveredAt)
+    }
+
+    @Test
     fun `missing provenance never borrows a participant or resumes anonymously`(): Unit = runBlocking {
         val f = fixture()
         f.coordinator.upsertCommandTask(command("legacy"))
-        val batch = f.completions.prepareBatch(conversation.id)
+        val batch = f.completions.prepareBatch(conversation.id, "command-task:legacy")
         assertNull(batch.actorUserId)
         assertFalse(f.completions.canContinue(batch, conversation))
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(runBackground(f, batch))
@@ -95,7 +118,7 @@ class BackgroundActivityOriginRecorderTest {
         val create = call("create", "grz_execute_command", buildJsonObject { put("command", "echo output") })
         f.requests.accept(worker, response(f.register(alice, create, task), create, task.id.value))
         f.allowed = false
-        val batch = f.completions.prepareBatch(conversation.id)
+        val batch = f.completions.prepareBatch(conversation.id, "command-task:${task.id.value}")
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(runBackground(f, batch))
         assertNotNull(f.coordinator.findCommandTask(conversation.id, task.id)?.completionNotificationDeliveredAt)
     }
@@ -157,7 +180,7 @@ class BackgroundActivityOriginRecorderTest {
         val task = requireNotNull(f.coordinator.findCommandTask(conversation.id, CommandTask.Id("command")))
         f.requestsRepository.records.remove(id)
         f.recorder.admit(task)
-        assertEquals(alice, f.completions.prepareBatch(conversation.id).actorUserId)
+        assertEquals(alice, f.completions.prepareBatch(conversation.id, "command-task:${task.id.value}").actorUserId)
         val late = f.submit(bob, create)
         f.requests.accept(worker, response(late, create, "late"))
         assertFailsWith<IllegalArgumentException> {
@@ -205,8 +228,13 @@ class BackgroundActivityOriginRecorderTest {
     }
 
     private suspend fun runBackground(f: Fixture, batch: BackgroundActivityCompletionApplicationService.Batch): ConversationRuntimeTaskOutcome {
+        val sourceKey = batch.commandTasks.firstOrNull()?.let { "command-task:${it.id.value}" }
+            ?: batch.monitorDeliveries.first().let { delivery ->
+                delivery.events.firstOrNull()?.let { "command-monitor-event:${it.id.value}" }
+                    ?: "command-monitor-terminal:${delivery.monitor.id.value}:${delivery.monitor.completedAt}"
+            }
         val task = ConversationRuntimeTask(ConversationRuntimeTask.Id("background"), conversation.id,
-            payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion("event"),
+            payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(sourceKey),
             placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "background",
             requirements = ConversationRuntimeTaskRequirements(capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN), target = ConversationRuntimeTaskTarget.Server),
             createdAt = now)

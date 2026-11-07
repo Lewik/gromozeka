@@ -68,7 +68,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
             listOf(monitorEvent(externalMonitor, "external", 0, deliveryRequested = false)),
         )
 
-        val batch = service.prepareBatch(conversationId)
+        val batch = service.prepareBatch(conversationId, command.notificationSourceKey())
 
         assertEquals(listOf(command.id), batch.commandTasks.map { it.id })
         assertEquals(
@@ -110,7 +110,8 @@ class BackgroundActivityCompletionApplicationServiceTest {
                 .single()
                 .deliveredAt,
         )
-        val nextAgentBatch = service.prepareBatch(conversationId)
+        val nextAgentBatch = service.prepareBatch(conversationId,
+            coordinator.findCommandMonitorEvents(conversationId, workingMonitor.id).single().notificationSourceKey())
         assertEquals(agentDefinitionId, batch.agentDefinitionId)
         assertEquals(AgentDefinition.Id("agent-2"), nextAgentBatch.agentDefinitionId)
         val queuedMonitorResult = assertIs<ContentItem.ToolResult>(
@@ -124,7 +125,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
         assertTrue(monitorResult.contains("\"output_is_untrusted\":true"))
 
         service.markDelivered(nextAgentBatch, Instant.fromEpochMilliseconds(6_000))
-        assertTrue(service.prepareBatch(conversationId).isEmpty)
+        assertTrue(service.prepareBatch(conversationId, command.notificationSourceKey()).isEmpty)
     }
 
     @Test
@@ -154,7 +155,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
             events,
         )
 
-        val first = service.prepareBatch(conversationId)
+        val first = service.prepareBatch(conversationId, events.first().notificationSourceKey())
         val delivery = first.monitorDeliveries.single()
 
         assertTrue(delivery.events.size < events.size)
@@ -162,7 +163,8 @@ class BackgroundActivityCompletionApplicationServiceTest {
         assertEquals(events.size - delivery.events.size, delivery.remainingEventCount)
         service.markDelivered(first, Instant.fromEpochMilliseconds(2_000))
 
-        val second = service.prepareBatch(conversationId)
+        val second = service.prepareBatch(conversationId,
+            coordinator.findCommandMonitorEvents(conversationId, monitor.id).first { it.deliveredAt == null }.notificationSourceKey())
         assertTrue(second.monitorDeliveries.single().events.isNotEmpty())
         assertNotEquals(
             first.messages.first().id,
@@ -185,11 +187,134 @@ class BackgroundActivityCompletionApplicationServiceTest {
             )
         }
 
-        val first = service.prepareBatch(conversationId)
+        val first = service.prepareBatch(conversationId, "command-task:command-0")
 
         assertEquals(16, first.commandTasks.size)
         service.markDelivered(first, Instant.fromEpochMilliseconds(100))
-        assertEquals(4, service.prepareBatch(conversationId).commandTasks.size)
+        assertEquals(4, service.prepareBatch(conversationId, "command-task:command-16").commandTasks.size)
+    }
+
+    @Test
+    fun `source command is included ahead of older candidates and the batch limit`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val service = completionService(coordinator)
+        repeat(20) { index ->
+            coordinator.upsertCommandTask(terminalCommand("older-$index", agentDefinitionId, "old", Instant.fromEpochMilliseconds(index.toLong())))
+        }
+        val source = terminalCommand("source", agentDefinitionId, "source", Instant.fromEpochMilliseconds(100))
+        coordinator.upsertCommandTask(source)
+
+        val batch = service.prepareBatch(conversationId, source.notificationSourceKey())
+
+        assertEquals(16, batch.commandTasks.size)
+        assertEquals(source.id, batch.commandTasks.first().id)
+        service.markDelivered(batch, Instant.fromEpochMilliseconds(200))
+        assertTrue(coordinator.findCommandTask(conversationId, source.id)?.completionNotificationDeliveredAt != null)
+        assertEquals(5, coordinator.findCommandTasks(conversationId).count { it.completionNotificationDeliveredAt == null })
+    }
+
+    @Test
+    fun `monitor source outside the first event budget is delivered without consuming older pending events`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val service = completionService(coordinator)
+        val monitor = commandMonitor("monitor", CommandMonitor.Status.WORKING, Instant.fromEpochMilliseconds(1_000), agentDefinitionId)
+        val events = List(40) { index -> monitorEvent(monitor, "$index:" + "x".repeat(1_020), index * 1_024L, true) }
+        coordinator.synchronizeCommandMonitor(monitor.copy(outputBytes = events.last().outputEndByte,
+            eventOutputCursor = events.last().outputEndByte, eventCount = events.size.toLong()), events)
+        val source = events[35]
+
+        val batch = service.prepareBatch(conversationId, source.notificationSourceKey())
+
+        assertTrue(source in batch.monitorDeliveries.single().events)
+        assertTrue(batch.monitorDeliveries.single().events.sumOf { it.content.bytes().size } <= 16 * 1024)
+        service.markDelivered(batch, Instant.fromEpochMilliseconds(2_000))
+        val retained = coordinator.findCommandMonitorEvents(conversationId, monitor.id)
+        assertTrue(retained.single { it.id == source.id }.deliveredAt != null)
+        assertEquals(null, retained.first().deliveredAt)
+        assertTrue(service.prepareBatch(conversationId, events.first().notificationSourceKey()).monitorDeliveries.single().events.isNotEmpty())
+    }
+
+    @Test
+    fun `failed source command is excluded from later batches and is not marked delivered`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val service = completionService(coordinator)
+        val failed = terminalCommand("failed", agentDefinitionId, "keep failed output", Instant.fromEpochMilliseconds(1_000))
+        val next = terminalCommand("next", agentDefinitionId, "next", Instant.fromEpochMilliseconds(2_000))
+        coordinator.upsertCommandTask(failed)
+        coordinator.upsertCommandTask(next)
+        recordFailedDelivery(coordinator, failed.notificationSourceKey())
+
+        val batch = service.prepareBatch(conversationId, next.notificationSourceKey())
+
+        assertEquals(listOf(next.id), batch.commandTasks.map { it.id })
+        assertTrue(service.prepareBatch(conversationId, failed.notificationSourceKey()).isEmpty)
+        service.markDelivered(batch, Instant.fromEpochMilliseconds(3_000))
+        assertEquals(failed, coordinator.findCommandTask(conversationId, failed.id))
+    }
+
+    @Test
+    fun `failed monitor event does not suppress later events of that monitor`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val service = completionService(coordinator)
+        val monitor = commandMonitor("monitor", CommandMonitor.Status.WORKING, Instant.fromEpochMilliseconds(1_000), agentDefinitionId)
+        val failed = monitorEvent(monitor, "failed", 0, true)
+        val next = monitorEvent(monitor, "next", failed.outputEndByte, true)
+        coordinator.synchronizeCommandMonitor(monitor.copy(outputBytes = next.outputEndByte,
+            eventOutputCursor = next.outputEndByte, eventCount = 2), listOf(failed, next))
+        recordFailedDelivery(coordinator, failed.notificationSourceKey())
+
+        val batch = service.prepareBatch(conversationId, next.notificationSourceKey())
+
+        assertEquals(listOf(next.id), batch.monitorDeliveries.single().events.map { it.id })
+        assertEquals(0, batch.monitorDeliveries.single().remainingEventCount)
+        service.markDelivered(batch, Instant.fromEpochMilliseconds(2_000))
+        assertEquals(failed, coordinator.findCommandMonitorEvents(conversationId, monitor.id).single { it.id == failed.id })
+    }
+
+    @Test
+    fun `failed monitor terminal notification is excluded while its undelivered events remain available`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val service = completionService(coordinator)
+        val monitor = commandMonitor("monitor", CommandMonitor.Status.COMPLETED, Instant.fromEpochMilliseconds(1_000), agentDefinitionId)
+        val event = monitorEvent(monitor, "event", 0, true)
+        coordinator.synchronizeCommandMonitor(monitor.copy(outputBytes = event.outputEndByte,
+            eventOutputCursor = event.outputEndByte, eventCount = 1), listOf(event))
+        recordFailedDelivery(coordinator, monitor.notificationSourceKey())
+
+        val batch = service.prepareBatch(conversationId, event.notificationSourceKey())
+
+        assertFalse(batch.monitorDeliveries.single().terminalNotificationIncluded)
+        assertTrue(service.prepareBatch(conversationId, monitor.notificationSourceKey()).isEmpty)
+        service.markDelivered(batch, Instant.fromEpochMilliseconds(2_000))
+        assertEquals(null, coordinator.findCommandMonitor(conversationId, monitor.id)?.terminalNotificationDeliveredAt)
+        assertTrue(coordinator.findCommandMonitorEvents(conversationId, monitor.id).single().deliveredAt != null)
+    }
+
+    @Test
+    fun `already delivered source does not consume a different pending source`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val service = completionService(coordinator)
+        val first = terminalCommand("first", agentDefinitionId, "first", Instant.fromEpochMilliseconds(1_000))
+        coordinator.upsertCommandTask(first)
+        service.markDelivered(service.prepareBatch(conversationId, first.notificationSourceKey()), Instant.fromEpochMilliseconds(2_000))
+        val next = terminalCommand("next", agentDefinitionId, "next", Instant.fromEpochMilliseconds(3_000))
+        coordinator.upsertCommandTask(next)
+
+        assertTrue(service.prepareBatch(conversationId, first.notificationSourceKey()).isEmpty)
+        assertEquals(listOf(next.id), service.prepareBatch(conversationId, next.notificationSourceKey()).commandTasks.map { it.id })
+    }
+
+    private suspend fun recordFailedDelivery(coordinator: ConversationRuntimeCoordinator, sourceKey: String) {
+        val task = backgroundCompletionRuntimeTask("failed-delivery").copy(
+            payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(sourceKey),
+        )
+        val executor = com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity.Server(
+            com.gromozeka.domain.service.ConversationRuntimeServerSessionId("test-server")
+        )
+        assertTrue(coordinator.submit(task))
+        assertEquals(task, coordinator.claimDeliveredTask(conversationId, task.id, executor, task.requirements.capabilities, emptySet()))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, task.id, executor, kotlin.time.Clock.System.now()))
+        requireNotNull(coordinator.markActiveTaskInDoubt(conversationId, task.id, executor, "Synthetic delivery failure", "IllegalStateException"))
     }
 
     @Test

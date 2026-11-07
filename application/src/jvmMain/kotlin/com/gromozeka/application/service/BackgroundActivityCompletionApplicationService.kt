@@ -32,10 +32,12 @@ class BackgroundActivityCompletionApplicationService(
 ) {
     suspend fun prepareBatch(
         conversationId: Conversation.Id,
+        sourceKey: String,
     ): Batch {
+        val failedSources = runtimeCoordinator.schedulingSnapshot(conversationId).failedBackgroundActivitySourceKeys()
         val commandCandidates = runtimeCoordinator.findCommandTasks(conversationId)
             .asSequence()
-            .filter { it.requiresCompletionNotification() }
+            .filter { it.hasPendingNotification(failedSources) }
             .map { task ->
                 DeliveryCandidate.Command(
                     task = task,
@@ -47,12 +49,14 @@ class BackgroundActivityCompletionApplicationService(
             .filter { it.agentDefinitionId != null }
         val pendingEvents = runtimeCoordinator.findCommandMonitorEvents(conversationId)
             .asSequence()
-            .filter { it.deliveryRequested && it.deliveredAt == null }
+            .filter { it.hasPendingNotification(failedSources) }
             .groupBy(CommandMonitorEvent::monitorId)
         val monitorCandidates = monitors.asSequence().mapNotNull { monitor ->
             val allEvents = pendingEvents[monitor.id].orEmpty().sortedBy { it.occurredAt }
-            val selectedEvents = allEvents.takeWithinNotificationBudget()
-            val includeTerminal = monitor.requiresTerminalNotification()
+            val sourceEventIndex = allEvents.indexOfFirst { it.notificationSourceKey() == sourceKey }
+            val selectedEvents = (if (sourceEventIndex >= 0) allEvents.drop(sourceEventIndex) else allEvents)
+                .takeWithinNotificationBudget()
+            val includeTerminal = monitor.hasPendingNotification(failedSources)
             if (selectedEvents.isEmpty() && !includeTerminal) {
                 null
             } else {
@@ -88,13 +92,17 @@ class BackgroundActivityCompletionApplicationService(
                         is DeliveryCandidate.Monitor -> origin.workerId == candidate.delivery.monitor.workerId && origin.workspaceMountId == candidate.delivery.monitor.workspaceMountId
                     }
             }?.actorUserId
-        val selectedAgentId = sortedCandidates.firstOrNull()?.agentDefinitionId
-        val selectedActor = sortedCandidates.firstOrNull()?.let(::actor)
-        val selectedCandidates = selectedAgentId?.let { agentId ->
-            sortedCandidates.asSequence()
-                .filter { it.agentDefinitionId == agentId && actor(it) == selectedActor }
-                .selectBatch()
-        }.orEmpty()
+        val source = sortedCandidates.singleOrNull { candidate ->
+            when (candidate) {
+                is DeliveryCandidate.Command -> candidate.task.notificationSourceKey() == sourceKey
+                is DeliveryCandidate.Monitor -> candidate.delivery.events.any { it.notificationSourceKey() == sourceKey } ||
+                    (candidate.delivery.terminalNotificationIncluded && candidate.delivery.monitor.notificationSourceKey() == sourceKey)
+            }
+        } ?: return Batch(emptyList(), emptyList(), emptyList())
+        val selectedActor = actor(source)
+        val selectedCandidates = (sequenceOf(source) + sortedCandidates.asSequence().filter { candidate ->
+            candidate !== source && candidate.agentDefinitionId == source.agentDefinitionId && actor(candidate) == selectedActor
+        }).selectBatch()
         val commandTasks = selectedCandidates
             .filterIsInstance<DeliveryCandidate.Command>()
             .map(DeliveryCandidate.Command::task)
@@ -401,17 +409,6 @@ class BackgroundActivityCompletionApplicationService(
         }
         return selected
     }
-
-    private fun CommandTask.requiresCompletionNotification(): Boolean =
-        isTerminal &&
-            agentDefinitionId != null &&
-            completionNotificationRequestedAt != null &&
-            completionNotificationDeliveredAt == null
-
-    private fun CommandMonitor.requiresTerminalNotification(): Boolean =
-        isTerminal &&
-            terminalNotificationRequestedAt != null &&
-            terminalNotificationDeliveredAt == null
 
     private fun stableIdentifierSlug(value: String): String =
         MessageDigest.getInstance("SHA-256")

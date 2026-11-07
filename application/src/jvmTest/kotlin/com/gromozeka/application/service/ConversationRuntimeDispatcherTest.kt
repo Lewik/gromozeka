@@ -74,6 +74,83 @@ class ConversationRuntimeDispatcherTest {
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
+    fun `background completion and failure drain existing overflow without another worker event`() = runBlocking {
+        for (failFirst in listOf(false, true)) {
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val coordinator = InMemoryConversationRuntimeCoordinator()
+            val eventBus = InMemoryConversationRuntimeEventBus()
+            val dispatcher = ConversationRuntimeDispatcher(coordinator, eventBus,
+                testConversationRuntimeStateSyncService(coordinator), acceptingArtifactReferenceValidator)
+            val lifecycle = BackgroundActivityLifecycleApplicationService(
+                object : com.gromozeka.domain.service.CommandTaskLifecycleEventStream {
+                    override val events = kotlinx.coroutines.flow.emptyFlow<com.gromozeka.domain.service.CommandTaskLifecycleEvent>()
+                },
+                object : com.gromozeka.domain.service.CommandMonitorLifecycleEventStream {
+                    override val events = kotlinx.coroutines.flow.emptyFlow<com.gromozeka.domain.service.CommandMonitorLifecycleEvent>()
+                }, coordinator, dispatcher, scope,
+            )
+            val completions = BackgroundActivityCompletionApplicationService(coordinator,
+                object : com.gromozeka.domain.repository.BackgroundActivityOriginRepository {
+                    override suspend fun bindWhileRequestPending(origin: com.gromozeka.domain.repository.BackgroundActivityOrigin,
+                        at: kotlin.time.Instant) = error("No command launches in this notification test")
+                    override suspend fun find(conversationId: Conversation.Id,
+                        keys: Set<com.gromozeka.domain.repository.BackgroundActivityOrigin.Key>) =
+                        emptyMap<com.gromozeka.domain.repository.BackgroundActivityOrigin.Key, com.gromozeka.domain.repository.BackgroundActivityOrigin>()
+                }, BackgroundActivityContinuationPolicy { _, _ -> false })
+            val attempts = java.util.concurrent.CopyOnWriteArrayList<String>()
+            repeat(20) { index ->
+                val at = kotlin.time.Instant.fromEpochMilliseconds(index.toLong())
+                coordinator.upsertCommandTask(CommandTask(
+                    CommandTask.Id("command-$index"), conversationId, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
+                    agentDefinitionId, command = "not executed", workingDirectory = "/tmp", status = CommandTask.Status.COMPLETED,
+                    processId = 1, processStartedAt = at, outputFile = "/tmp/not-opened", outputBytes = 0, exitCode = 0,
+                    createdAt = at, updatedAt = at, completedAt = at, completionNotificationRequestedAt = at,
+                ))
+            }
+            val runner = object : ConversationRuntimeTaskRunner {
+                override suspend fun runRuntimeTask(task: ConversationRuntimeTask, executor: ConversationRuntimeExecutorIdentity,
+                    emitMessage: suspend (Conversation.Message) -> Unit): ConversationRuntimeTaskOutcome {
+                    when (val payload = task.payload) {
+                        is ConversationRuntimeTask.Payload.BackgroundActivityCompletion -> {
+                            attempts += payload.sourceKey
+                            if (failFirst && payload.sourceKey == "command-task:command-0") {
+                                error("Synthetic notification failure")
+                            }
+                            val batch = completions.prepareBatch(conversationId, payload.sourceKey)
+                            assertFalse(batch.isEmpty)
+                            completions.markDelivered(batch, Clock.System.now())
+                        }
+                        is ConversationRuntimeTask.Payload.ExecutionIncident -> Unit
+                        else -> error("Unexpected runtime task: ${task.payload}")
+                    }
+                    return ConversationRuntimeTaskOutcome.CompleteTurn
+                }
+            }
+            val executor = runtimeExecutor(coordinator, eventBus, runner,
+                serverExecutorDescriptor("delivery-drain-$failFirst", setOf(ConversationRuntimeCapability.CONVERSATION_TURN)),
+                scope, backgroundActivityLifecycle = lifecycle)
+            try {
+                lifecycle.start()
+                executor.start()
+                waitUntil {
+                    coordinator.findCommandTasks(conversationId).count { it.completionNotificationDeliveredAt != null } ==
+                        (if (failFirst) 19 else 20) && coordinator.find(conversationId) == null
+                }
+                assertEquals(if (failFirst) 3 else 2, attempts.size)
+                assertEquals(1, attempts.count { it == "command-task:command-0" })
+                assertEquals(if (failFirst) 1 else 0, coordinator.schedulingSnapshot(conversationId).incidents.size)
+                if (failFirst) assertNull(coordinator.findCommandTask(conversationId, CommandTask.Id("command-0"))?.completionNotificationDeliveredAt)
+                lifecycle.reconcileAll()
+                delay(400)
+                assertEquals(if (failFirst) 3 else 2, attempts.size)
+            } finally {
+                executor.stop()
+                scope.cancel()
+            }
+        }
+    }
+
+    @Test
     fun `plain message post creates a non-AI runtime task`() = runBlocking {
         val harness = dispatcherHarness(
             runner = ControllableTaskRunner { task ->
@@ -1309,6 +1386,7 @@ class ConversationRuntimeDispatcherTest {
         scope: CoroutineScope,
         workspaceMounts: Map<WorkspaceMount.Id, Workspace.Id> = emptyMap(),
         aiConfigurationService: AiConfigurationService = TestAiConfigurationService(),
+        backgroundActivityLifecycle: BackgroundActivityLifecycleApplicationService? = null,
     ): TestRuntimeExecutor {
         val workspaceWorkerId = when (val identity = descriptor.identity) {
             is ConversationRuntimeExecutorIdentity.Server -> "server"
@@ -1324,6 +1402,7 @@ class ConversationRuntimeDispatcherTest {
                 taskRunnerProvider = objectProvider(runner),
                 descriptor = descriptor,
                 parentScope = scope,
+                backgroundActivityLifecycleProvider = backgroundActivityLifecycle?.let { objectProvider(it) },
             ),
             identity = descriptor.identity,
         )

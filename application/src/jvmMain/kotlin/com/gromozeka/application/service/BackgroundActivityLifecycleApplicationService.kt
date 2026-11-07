@@ -2,7 +2,6 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
-import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorLifecycleEventStream
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEventStream
@@ -62,7 +61,7 @@ class BackgroundActivityLifecycleApplicationService(
     internal suspend fun reconcileAll() {
         inventoryLog.debug { "event=command_inventory_request scope=global operation=tasks_and_monitors reason=server_startup_reconciliation" }
         val commandTasks = runtimeCoordinator.findCommandTasks()
-            .filter { it.requiresCompletionNotification() }
+            .filter { it.hasPendingNotification(emptySet()) }
         val monitors = runtimeCoordinator.findCommandMonitors()
             .filter { it.agentDefinitionId != null }
         val conversationIds = buildSet {
@@ -71,6 +70,12 @@ class BackgroundActivityLifecycleApplicationService(
         }
         conversationIds.forEach { conversationId ->
             submitPendingNotification(conversationId, commandTasks, monitors)
+        }
+    }
+
+    internal fun deliveryFinished(conversationId: Conversation.Id) {
+        check(changedConversations.trySend(conversationId).isSuccess) {
+            "Background activity reconciliation queue is closed"
         }
     }
 
@@ -146,54 +151,44 @@ class BackgroundActivityLifecycleApplicationService(
         commandTasks: List<CommandTask>,
         monitors: List<CommandMonitor>,
     ) {
+        val failedSources = runtimeCoordinator.schedulingSnapshot(conversationId).failedBackgroundActivitySourceKeys()
         val conversationMonitors = monitors
             .filter { it.conversationId == conversationId && it.agentDefinitionId != null }
         val monitorIds = conversationMonitors.mapTo(mutableSetOf()) { it.id }
         val pendingEvents = runtimeCoordinator.findCommandMonitorEvents(conversationId)
             .filter {
-                it.monitorId in monitorIds &&
-                    it.deliveryRequested &&
-                    it.deliveredAt == null
+                it.monitorId in monitorIds && it.hasPendingNotification(failedSources)
             }
         val source = buildList {
             commandTasks.asSequence()
                 .filter { it.conversationId == conversationId }
-                .filter { it.requiresCompletionNotification() }
+                .filter { it.hasPendingNotification(failedSources) }
                 .mapTo(this) {
                     PendingSource(
-                        key = "command-task:${it.id.value}",
+                        key = it.notificationSourceKey(),
                         occurredAt = it.completedAt ?: it.updatedAt,
                     )
                 }
             pendingEvents.mapTo(this) {
                 PendingSource(
-                    key = "command-monitor-event:${it.id.value}",
+                    key = it.notificationSourceKey(),
                     occurredAt = it.occurredAt,
                 )
             }
             conversationMonitors.asSequence()
-                .filter { it.requiresTerminalNotification() }
+                .filter { it.hasPendingNotification(failedSources) }
                 .mapTo(this) {
                     PendingSource(
-                        key = "command-monitor-terminal:${it.id.value}:${it.completedAt}",
+                        key = it.notificationSourceKey(),
                         occurredAt = it.completedAt ?: it.updatedAt,
                     )
                 }
         }.minWithOrNull(compareBy(PendingSource::occurredAt, PendingSource::key))
             ?: return
-        runtimeDispatcher.submitBackgroundActivityCompletion(conversationId, source.key)
+        if (!runtimeDispatcher.submitBackgroundActivityCompletion(conversationId, source.key)) {
+            log.debug { "Background activity delivery not admitted: conversation=${conversationId.value} source=${source.key}" }
+        }
     }
-
-    private fun CommandTask.requiresCompletionNotification(): Boolean =
-        isTerminal &&
-            agentDefinitionId != null &&
-            completionNotificationRequestedAt != null &&
-            completionNotificationDeliveredAt == null
-
-    private fun CommandMonitor.requiresTerminalNotification(): Boolean =
-        isTerminal &&
-            terminalNotificationRequestedAt != null &&
-            terminalNotificationDeliveredAt == null
 
     private data class PendingSource(
         val key: String,

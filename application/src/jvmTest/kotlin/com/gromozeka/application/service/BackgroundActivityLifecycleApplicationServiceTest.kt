@@ -98,6 +98,43 @@ class BackgroundActivityLifecycleApplicationServiceTest {
     }
 
     @Test
+    fun `failed delivery does not block a new monitor after reconciliation restart`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val command = terminalCommand("failed-command", Instant.fromEpochMilliseconds(1_000))
+        try {
+            coordinator.upsertCommandTask(command)
+            service(scope, coordinator, TestCommandTaskLifecycleEventBus(), TestCommandMonitorLifecycleEventBus())
+                .reconcileAll()
+            val failedTask = coordinator.listPending(conversationId).single()
+            val executor = com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity.Server(
+                com.gromozeka.domain.service.ConversationRuntimeServerSessionId("failed-delivery-server")
+            )
+            assertEquals(failedTask, coordinator.claimDeliveredTask(
+                conversationId, failedTask.id, executor, failedTask.requirements.capabilities, emptySet(),
+            ))
+            assertTrue(coordinator.markActiveTaskStarted(conversationId, failedTask.id, executor, kotlin.time.Clock.System.now()))
+            val incident = requireNotNull(coordinator.markActiveTaskInDoubt(
+                conversationId, failedTask.id, executor, "Synthetic notification delivery failure", "IllegalStateException",
+            ))
+            val monitor = commandMonitor("new-monitor", agentDefinitionId, Instant.fromEpochMilliseconds(2_000))
+            val event = monitorEvent(monitor, deliveryRequested = true)
+            coordinator.synchronizeCommandMonitor(monitor, listOf(event))
+
+            service(scope, coordinator, TestCommandTaskLifecycleEventBus(), TestCommandMonitorLifecycleEventBus())
+                .reconcileAll()
+
+            assertEquals(incident, coordinator.findTaskIncident(conversationId, failedTask.id))
+            assertEquals(null, coordinator.findCommandTask(conversationId, command.id)?.completionNotificationDeliveredAt)
+            val pending = coordinator.listPending(conversationId)
+                .mapNotNull { it.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion }
+            assertEquals(listOf("command-monitor-event:${event.id.value}"), pending.map { it.sourceKey })
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
     fun `external monitor events do not schedule conversation delivery`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val coordinator = InMemoryConversationRuntimeCoordinator()

@@ -49,6 +49,7 @@ class ConversationRuntimeExecutor(
     descriptor: ConversationRuntimeExecutorDescriptor,
     @Qualifier("applicationScope") private val parentScope: CoroutineScope,
     private val taskGuardProvider: ObjectProvider<ConversationRuntimeTaskGuard>? = null,
+    private val backgroundActivityLifecycleProvider: ObjectProvider<BackgroundActivityLifecycleApplicationService>? = null,
 ) : SmartLifecycle {
     private val log = KLoggers.logger(this)
     private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
@@ -317,6 +318,7 @@ class ConversationRuntimeExecutor(
                         "conversation=${task.conversationId.value} task=${task.id.value} executor=$executor"
                 )
             }
+            notifyBackgroundDeliveryFinished(task)
             if (outcome is ConversationRuntimeTaskOutcome.HistoryChanged) {
                 publishRuntimeEvent(
                     ConversationRuntimeEvent.HistoryChanged(
@@ -366,6 +368,12 @@ class ConversationRuntimeExecutor(
             )
         } finally {
             activeExecutions.remove(task.conversationId, activeExecution)
+        }
+    }
+
+    private fun notifyBackgroundDeliveryFinished(task: ConversationRuntimeTask) {
+        if (task.payload is ConversationRuntimeTask.Payload.BackgroundActivityCompletion) {
+            backgroundActivityLifecycleProvider?.getIfAvailable()?.deliveryFinished(task.conversationId)
         }
     }
 
@@ -446,6 +454,7 @@ class ConversationRuntimeExecutor(
             message = message,
             errorType = errorType,
         ) ?: return
+        notifyBackgroundDeliveryFinished(incident.task)
         publishRuntimeSnapshot(item.conversationId)
         publishRuntimeEvent(
             ConversationRuntimeEvent.ExecutionFailed(
@@ -468,6 +477,7 @@ class ConversationRuntimeExecutor(
             message = message,
             errorType = errorType,
         ) ?: return
+        notifyBackgroundDeliveryFinished(incident.task)
         publishRuntimeSnapshot(task.conversationId)
         publishRuntimeEvent(
             ConversationRuntimeEvent.ExecutionFailed(
@@ -490,6 +500,7 @@ class ConversationRuntimeExecutor(
             message = message,
             errorType = errorType,
         ) ?: return
+        notifyBackgroundDeliveryFinished(incident.task)
         publishRuntimeSnapshot(task.conversationId)
         publishRuntimeEvent(
             ConversationRuntimeEvent.ExecutionFailed(

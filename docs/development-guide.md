@@ -1384,6 +1384,13 @@ the Server checks current user/AI status, conversation membership and project
 write permission. An older activity without trusted provenance still delivers
 its output, but cannot start an anonymous or guessed-user continuation.
 
+A queued background delivery remains anchored to its source even if older
+notifications arrive before execution. A failed delivery source is excluded from
+automatic scheduling and batching using its retained Runtime incident; its output
+is not deleted or marked delivered. Other notifications continue after completion
+or failure, including bounded-batch overflow without another Worker event. This
+neither retries the failed delivery nor re-executes the command or monitor.
+
 Managed commands accept `secret_env`, a map of environment variable names to
 exact `secret://name` references, for example `{"GH_TOKEN":"secret://github-pat"}`.
 Multiple variables and repeated references to the same secret are supported.

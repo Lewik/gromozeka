@@ -1034,7 +1034,7 @@ class ConversationEngineService(
     private suspend fun runBackgroundActivityCompletionStep(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
-        _payload: ConversationRuntimeTask.Payload.BackgroundActivityCompletion,
+        payload: ConversationRuntimeTask.Payload.BackgroundActivityCompletion,
         emitMessage: suspend (Conversation.Message) -> Unit,
     ): ConversationRuntimeTaskOutcome {
         val conversationId = task.conversationId
@@ -1044,6 +1044,7 @@ class ConversationEngineService(
 
         val batch = backgroundActivityCompletionApplicationService.prepareBatch(
             conversationId = conversationId,
+            sourceKey = payload.sourceKey,
         )
         if (batch.isEmpty) return ConversationRuntimeTaskOutcome.CompleteTurn
 

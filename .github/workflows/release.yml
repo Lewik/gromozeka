@@ -150,6 +150,7 @@ jobs:
           --tests '*NamedSecretApplicationServiceTest'
           --tests '*BackgroundActivityCompletionApplicationServiceTest'
           --tests '*BackgroundActivityLifecycleApplicationServiceTest'
+          --tests '*ConversationRuntimeDispatcherTest'
           --tests '*VisualSecretArgumentsTest'
           --tests '*Slot*'
           --tests '*ConversationPin*Test'
