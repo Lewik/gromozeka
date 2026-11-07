@@ -325,7 +325,10 @@ class PostgresMcpOAuthProtocolTest {
             assertEquals("74", old.info().current().version.toString())
             val flyway = Flyway.configure().dataSource(source).locations("classpath:db/migration/postgres").schemas(schema).defaultSchema(schema).load()
             flyway.migrate()
-            assertEquals("75", flyway.info().current().version.toString())
+            flyway.validate()
+            val migrations = flyway.info()
+            assertTrue(migrations.applied().any { it.version?.toString() == "75" }, "OAuth migration must be applied")
+            assertTrue(migrations.pending().isEmpty(), "All available migrations must be applied")
             block(OAuthDatabase(source, flyway))
         } finally { JdbcTemplate(admin).execute("DROP SCHEMA $schema CASCADE") }
     }
