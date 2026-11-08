@@ -30,6 +30,25 @@ class BackgroundActivityCompletionApplicationServiceTest {
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
+    fun `synthetic pairs have stable nine-character IDs without changing command or message identity`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val service = completionService(coordinator)
+        val command = terminalCommand("01a1ba26-6a4a-76dd-ad3d-b3bd9206f451", agentDefinitionId, "done", Instant.fromEpochMilliseconds(1000))
+        coordinator.upsertCommandTask(command)
+        val first = service.prepareBatch(conversationId, command.notificationSourceKey())
+        val repeated = service.prepareBatch(conversationId, command.notificationSourceKey())
+        assertEquals(first.messages, repeated.messages)
+        val call = assertIs<ContentItem.ToolCall>(first.messages[0].content.single())
+        val result = assertIs<ContentItem.ToolResult>(first.messages[1].content.single())
+        assertTrue(Regex("[A-Za-z0-9]{9}").matches(call.id.value))
+        assertEquals(call.id, result.toolUseId)
+        assertEquals("${command.id.value}:command:completion:call", first.messages[0].id.value)
+        assertEquals("${command.id.value}:command:completion:result", first.messages[1].id.value)
+        assertTrue(call.call.input.toString().contains(command.id.value))
+        assertTrue(first.messages[0].providerMetadata.toString().contains(command.id.value))
+    }
+
+    @Test
     fun `batch coalesces commands monitor events and terminal monitors`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val service = completionService(coordinator)
@@ -170,6 +189,15 @@ class BackgroundActivityCompletionApplicationServiceTest {
             first.messages.first().id,
             second.messages.first().id,
         )
+        val firstCall = assertIs<ContentItem.ToolCall>(first.messages.first().content.single())
+        val secondCall = assertIs<ContentItem.ToolCall>(second.messages.first().content.single())
+        assertNotEquals(firstCall.id, secondCall.id)
+        for (batch in listOf(first, second)) {
+            val call = assertIs<ContentItem.ToolCall>(batch.messages.first().content.single())
+            val result = assertIs<ContentItem.ToolResult>(batch.messages.last().content.single())
+            assertTrue(Regex("[A-Za-z0-9]{9}").matches(call.id.value))
+            assertEquals(call.id, result.toolUseId)
+        }
     }
 
     @Test

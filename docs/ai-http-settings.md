@@ -81,6 +81,25 @@ explicit handoff when changing providers.
 
 Contract: [OpenAI Responses compaction](https://developers.openai.com/api/docs/guides/compaction).
 
+## Synthetic tool-call IDs
+
+Memory, command-completion and monitor-notification pairs use deterministic nine-character
+`[A-Za-z0-9]` IDs. SHA-256 of the full stable notification key is reduced to nine
+base62 digits; monitor delivery keys include the event batch and terminal marker.
+The same ID is used for the call and its result, including redelivery.
+
+Message IDs, command/monitor IDs, lookup arguments and provider-generated tool-call
+IDs are unchanged. Existing stored notifications retain their original IDs. The
+shared model-history projection normalizes only those legacy synthetic pairs for
+Responses, Chat Completions and Messages; it does not rewrite the database. A
+collision in the outgoing context is an explicit error, never a merged pair.
+Native CLI raw-history/session handling is unchanged.
+
+If a notification was interrupted after its call was stored before the upgrade,
+replay reuses that stored ID for the missing result. Both become the same short ID
+in the API view. Local regressions capture actual SDK HTTP payloads for all three
+protocols; support for a particular gateway/model still depends on its contract.
+
 ## Authentication and rotation
 
 `apiKey` remains the single credential slot, also when it contains a gateway

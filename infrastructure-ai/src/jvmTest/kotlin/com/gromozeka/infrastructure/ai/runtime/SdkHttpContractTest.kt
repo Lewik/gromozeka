@@ -141,6 +141,67 @@ class SdkHttpContractTest {
         }
     }
 
+    @Test
+    fun syntheticCallIdsArePortableAcrossResponsesChatAndMessagesWithoutChangingModelIds() {
+        val legacy = "cmd_" + "a".repeat(64) + "_status"
+        val short = com.gromozeka.domain.model.syntheticToolCallId(legacy).value
+        val realId = "call_provider_generated_original_id"
+        for (syntheticId in listOf(legacy, short)) {
+            val original = request().messages.first()
+            fun pair(prefix: String, id: String, synthetic: Boolean): List<Conversation.Message> {
+                val call = original.copy(id = Conversation.Message.Id("$prefix-call"), role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(Conversation.Message.ContentItem.ToolCall(Conversation.Message.ContentItem.ToolCall.Id(id),
+                        Conversation.Message.ContentItem.ToolCall.Data("lookup", JsonObject(emptyMap())))),
+                    providerMetadata = if (synthetic) JsonObject(mapOf("synthetic" to JsonPrimitive(true),
+                        "syntheticKind" to JsonPrimitive("command_task_completion"))) else JsonObject(emptyMap()))
+                return listOf(call, call.copy(id = Conversation.Message.Id("$prefix-result"), role = Conversation.Message.Role.USER,
+                    content = listOf(Conversation.Message.ContentItem.ToolResult(Conversation.Message.ContentItem.ToolCall.Id(id), "lookup",
+                        listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done"))))))
+            }
+            val input = request().copy(messages = listOf(original) + pair("synthetic", syntheticId, true) + pair("model", realId, false),
+                options = request().options.copy(toolContext = mapOf("threadId" to "branch")))
+            SdkHttpTestServer(chatResponse(), responsesResponse(), anthropicResponse()).use { server ->
+                val openai = OpenAIOkHttpClient.builder().baseUrl("${server.origin}/api/llm").apiKey(TEST_TOKEN)
+                    .proxy(Proxy.NO_PROXY).maxRetries(0).timeout(Duration.ofSeconds(5)).build()
+                try {
+                    openai.chat().completions().create(OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_COMPATIBLE, "http-test", MODEL).toCreateParams(MODEL, input))
+                    openai.responses().create(OpenAiResponsesMessageMapper("http-test", "http-test-config", MODEL).toCreateParams(MODEL, false, input))
+                } finally { openai.close() }
+                val anthropic = AnthropicOkHttpClient.builder().baseUrl("${server.origin}/api/llm").apiKey(TEST_TOKEN)
+                    .proxy(Proxy.NO_PROXY).maxRetries(0).timeout(Duration.ofSeconds(5)).build()
+                try { anthropic.messages().create(AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, "http-test", MODEL).toCreateParams(MODEL, input)) }
+                finally { anthropic.close() }
+                assertEquals(3, server.requests.size)
+                for (recorded in server.requests) {
+                    val calls = mutableListOf<String>()
+                    val results = mutableListOf<String>()
+                    fun collect(value: JsonElement) {
+                        when (value) {
+                            is JsonArray -> value.forEach(::collect)
+                            is JsonObject -> {
+                                val type = (value["type"] as? JsonPrimitive)?.content
+                                when {
+                                    type == "function_call" -> calls += value.getValue("call_id").jsonPrimitive.content
+                                    type == "function_call_output" -> results += value.getValue("call_id").jsonPrimitive.content
+                                    type == "tool_use" || type == "function" && "id" in value -> calls += value.getValue("id").jsonPrimitive.content
+                                    type == "tool_result" -> results += value.getValue("tool_use_id").jsonPrimitive.content
+                                    value["role"] == JsonPrimitive("tool") -> results += value.getValue("tool_call_id").jsonPrimitive.content
+                                }
+                                value.values.forEach(::collect)
+                            }
+                            else -> Unit
+                        }
+                    }
+                    collect(Json.parseToJsonElement(recorded.body))
+                    assertEquals(listOf(short, realId), calls, recorded.target)
+                    assertEquals(calls, results, recorded.target)
+                    assertTrue(Regex("[A-Za-z0-9]{9}").matches(calls.first()))
+                }
+                assertEquals(syntheticId, (input.messages[1].content.single() as Conversation.Message.ContentItem.ToolCall).id.value)
+            }
+        }
+    }
+
     private fun assertSingleRequest(
         server: SdkHttpTestServer,
         target: String,

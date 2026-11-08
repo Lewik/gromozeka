@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.syntheticToolCallId
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.User
@@ -185,7 +186,7 @@ class BackgroundActivityCompletionApplicationService(
     )
 
     private fun buildSyntheticCommandPair(task: CommandTask): List<Conversation.Message> {
-        val toolCallId = ContentItem.ToolCall.Id("cmd_${stableIdentifierSlug(task.id.value)}_status")
+        val toolCallId = syntheticToolCallId("cmd_${stableIdentifierSlug(task.id.value)}_status")
         val createdAt = task.completedAt ?: task.updatedAt
         val metadata = buildJsonObject {
             put("synthetic", true)
@@ -268,7 +269,7 @@ class BackgroundActivityCompletionApplicationService(
             if (delivery.terminalNotificationIncluded) append(":terminal")
         }
         val stableDeliveryKey = stableIdentifierSlug(deliveryKey)
-        val toolCallId = ContentItem.ToolCall.Id(
+        val toolCallId = syntheticToolCallId(
             "monitor_${stableIdentifierSlug(monitor.id.value)}_${stableDeliveryKey}_status"
         )
         val createdAt = delivery.events.lastOrNull()?.occurredAt

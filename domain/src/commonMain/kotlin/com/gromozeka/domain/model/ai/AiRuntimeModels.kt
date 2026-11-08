@@ -3,6 +3,7 @@ package com.gromozeka.domain.model.ai
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.withoutProviderReplay
+import com.gromozeka.domain.model.withPortableSyntheticToolCallIds
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import com.gromozeka.domain.tool.AiToolCallback
@@ -147,7 +148,7 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
     val currentThread = options.toolContext["threadId"] as? String
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
-    val originalMessages = originalCollaborationMessages()
+    val originalMessages = originalCollaborationMessages().withPortableSyntheticToolCallIds()
     return ConversationContext(originalMessages).messagesForProvider(nativeProvider).map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
         if (currentThread != null && sourceThread != currentThread) {

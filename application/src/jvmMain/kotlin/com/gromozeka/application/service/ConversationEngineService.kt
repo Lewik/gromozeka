@@ -1052,16 +1052,21 @@ class ConversationEngineService(
         )
         if (batch.isEmpty) return ConversationRuntimeTaskOutcome.CompleteTurn
 
+        val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
         batch.messages.forEach { syntheticMessage ->
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
-                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>()
+                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
+                    result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
+                }
                 val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
                 val iterator = persisted.iterator()
                 val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
                     if (it is ContentItem.ToolResult) iterator.next() else it
                 })
                 if (addRuntimeMessageIfMissing(conversationId, storedMessage)) emitMessage(storedMessage)
+            } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
+                replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
             }
         }
 
@@ -1780,7 +1785,21 @@ class ConversationEngineService(
         }
     }
 
-    private fun buildSyntheticMemoryToolPair(
+    private suspend fun reuseStoredSyntheticCallId(
+        conversationId: Conversation.Id,
+        callMessageId: Conversation.Message.Id,
+        generatedId: ContentItem.ToolCall.Id,
+    ): ContentItem.ToolCall.Id {
+        // A restart across the ID-format change may leave only the old call persisted.
+        val existing = conversationHistory.findMessage(conversationId, callMessageId) ?: return generatedId
+        val storedId = existing.content.filterIsInstance<ContentItem.ToolCall>().single().id
+        check(storedId == generatedId || com.gromozeka.domain.model.syntheticToolCallId(storedId.value) == generatedId) {
+            "Replayed synthetic notification has a different tool call identity"
+        }
+        return storedId
+    }
+
+    private suspend fun buildSyntheticMemoryToolPair(
         conversationId: Conversation.Id,
         targetMessage: Conversation.Message,
         toolName: String,
@@ -1798,7 +1817,7 @@ class ConversationEngineService(
             syntheticPhase = syntheticPhase,
         )
 
-    private fun buildSyntheticMemoryToolPair(
+    private suspend fun buildSyntheticMemoryToolPair(
         conversationId: Conversation.Id,
         syntheticTargetId: String,
         targetMetadataName: String,
@@ -1809,12 +1828,13 @@ class ConversationEngineService(
     ): List<Conversation.Message> {
         val phaseIdSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else ":$syntheticPhase"
         val phaseToolCallSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else "_${stableIdentifierSlug(syntheticPhase)}"
-        val toolCallId = ContentItem.ToolCall.Id(
+        val callMessageId = Conversation.Message.Id("$syntheticTargetId:memory:$toolName$phaseIdSuffix:call")
+        val toolCallId = reuseStoredSyntheticCallId(conversationId, callMessageId, com.gromozeka.domain.model.syntheticToolCallId(
             "mem_${stableIdentifierSlug(syntheticTargetId)}_${stableIdentifierSlug(toolName)}$phaseToolCallSuffix"
-        )
+        ))
         val createdAt = Clock.System.now()
         val toolCallMessage = Conversation.Message(
-            id = Conversation.Message.Id("$syntheticTargetId:memory:$toolName$phaseIdSuffix:call"),
+            id = callMessageId,
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
             content = listOf(

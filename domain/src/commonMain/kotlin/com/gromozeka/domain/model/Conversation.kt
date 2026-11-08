@@ -326,7 +326,7 @@ data class Conversation(
                 override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem() {
                 /**
-                 * Unique tool call identifier (UUIDv7).
+                 * Pairing identifier shared by a call and its result, provider-generated or synthetic.
                  */
                 @Serializable
                 @JvmInline

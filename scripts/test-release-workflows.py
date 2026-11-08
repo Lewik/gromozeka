@@ -236,6 +236,12 @@ class WorkflowContracts(unittest.TestCase):
         for check in ("*OpenAiResponsesSdkRuntimeTest", "*OpenAiResponsesCompactionTest"):
             self.assertIn(check, verification)
 
+    def test_synthetic_call_ids_are_checked_in_generation_replay_and_sdk_payloads(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*SyntheticToolCallIdsTest", "*BackgroundActivityCompletionApplicationServiceTest",
+                      "*ConversationEngineDeliveryTest", "*SdkHttpContractTest"):
+            self.assertIn(check, verification)
+
     def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
         upload = next(step for step in JOBS["verify-runtime"]["steps"]
                       if step.get("with", {}).get("name") == "verify-runtime-diagnostics")

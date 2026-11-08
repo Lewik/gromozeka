@@ -70,6 +70,36 @@ class OpenAiSubscriptionIncrementalReplayTest {
         }
     }
 
+    @Test
+    fun `legacy synthetic pairs keep equal short IDs and a stable incremental prefix`() {
+        for (lite in listOf(false, true)) {
+            val s = Scenario(lite, null)
+            val oldId = ContentItem.ToolCall.Id("cmd_legacy_long_identifier_status")
+            val metadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "command_task_completion") }
+            val call = Conversation.Message(Conversation.Message.Id("background-call"), conversationId,
+                role = Conversation.Message.Role.ASSISTANT, createdAt = now, providerMetadata = metadata,
+                content = listOf(ContentItem.ToolCall(oldId, ContentItem.ToolCall.Data("synthetic_tool", JsonObject(emptyMap())))))
+            val result = call.copy(id = Conversation.Message.Id("background-result"), role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.ToolResult(oldId, "synthetic_tool", listOf(ContentItem.ToolResult.Data.Text("done")))))
+            val request = s.next.copy(messages = s.next.messages + call + result)
+            val plan = s.plan(request)
+            assertEquals(OpenAiSubscriptionRequestMode.INCREMENTAL, plan.mode)
+            val pairIds = plan.request.input.takeLast(2).map { it.getValue("call_id").jsonPrimitive.content }
+            assertEquals(1, pairIds.toSet().size)
+            assertTrue(Regex("[A-Za-z0-9]{9}").matches(pairIds.first()))
+            val prior = s.transport(request)
+            val state = OpenAiSubscriptionIncrementalState()
+            state.record(mapper.buildTransportSignature(prior), "response-with-background", prior.input)
+            val next = s.transport(request.copy(messages = request.messages + call.copy(
+                id = Conversation.Message.Id("next-user"), role = Conversation.Message.Role.USER,
+                providerMetadata = JsonObject(emptyMap()), content = listOf(ContentItem.UserMessage("Continue")))))
+            val continuation = state.plan(next, mapper.buildTransportSignature(next))
+            assertEquals(OpenAiSubscriptionRequestMode.INCREMENTAL, continuation.mode)
+            assertEquals(1, continuation.request.input.size)
+            assertEquals("message", continuation.request.input.single()["type"]?.jsonPrimitive?.content)
+        }
+    }
+
     private fun assertToolContinuation(s: Scenario, namespace: JsonElement?) {
         val nextTransport = s.transport(s.next)
         assertEquals(s.expected, nextTransport.input.take(s.expected.size))
