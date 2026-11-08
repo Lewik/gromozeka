@@ -282,6 +282,26 @@ class ConversationEngineDeliveryTest {
         assertFalse(f.messages.any { message -> message.content.any { it is ContentItem.UserMessage && "PIN_" in it.text } })
     }
 
+    @Test fun `model preparation loads checkpoint context rather than the archive`() = runBlocking {
+        val f = Fixture(); f.allowFullHistoryLoad = false
+        val root = f.messages.single()
+        val archive = (0 until 100).map { root.copy(id = Conversation.Message.Id("old-$it")) }
+        val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )))
+        f.messages.clear(); f.messages += archive + checkpoint + root
+        val original = f.messages.toList()
+        val task = f.begin()
+        f.engine.runRuntimeTask(task, executor) {}
+        assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION"), f.contextReads)
+        val request = f.requests.single()
+        assertEquals(3, request.messages.size)
+        assertEquals(listOf(checkpoint.id, root.id), request.projectedMessages("OPENAI_SUBSCRIPTION").map { it.id })
+        assertEquals(original, f.messages.take(original.size))
+    }
+
     @Test fun `point append and replay never load the archive`() = runBlocking {
         val f = Fixture(); f.allowFullHistoryLoad = false
         val task = input("new-message")
@@ -388,6 +408,18 @@ class ConversationEngineDeliveryTest {
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
+        val contextReads = mutableListOf<String?>()
+        private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
+            check(it.method.name.substringBefore('-') == "getContextMessagesByThread")
+            assertEquals(conversation.currentThread.value, it.arguments[0])
+            val provider = it.arguments[1] as String?
+            contextReads += provider
+            val selected = selectModelHistoryMessageIds(
+                messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
+                messages.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
+            )
+            messages.filter { message -> message.id in selected }
+        }
         var historyMessageReads = 0
         private val history = ConversationHistoryReadService(
             responding<com.gromozeka.domain.repository.ConversationRepository> { conversation },
@@ -437,7 +469,7 @@ class ConversationEngineDeliveryTest {
             agentDomainService = responding { invocation ->
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
             }, agentPromptAssemblyService = responding { emptyList<String>() },
-            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history,
+            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
             conversationMessageAppender = appender, historyMutationExecutor = mock(), memoryApplicationService = mock(), memoryToolApplicationService = mock(),
             backgroundActivityCompletionApplicationService = mock(), memoryMessageRoutingApplicationService = mock(),
             toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { UserProfile() },

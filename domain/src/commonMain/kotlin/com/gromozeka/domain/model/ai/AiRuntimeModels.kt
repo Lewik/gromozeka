@@ -9,9 +9,8 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import com.gromozeka.domain.model.COLLABORATION_ORIGINAL_CONTENT
+import com.gromozeka.domain.model.originalCollaborationMessage
 
 const val AI_PROVIDER_MANAGED_TOOL_METADATA_KEY = "providerManagedTool"
 
@@ -160,9 +159,5 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
 }
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */
-fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> = messages.map { message ->
-    val original = message.providerMetadata[COLLABORATION_ORIGINAL_CONTENT]
-    if (original != null && message.role == Conversation.Message.Role.ASSISTANT && message.author is Conversation.Message.Author.Agent) {
-        message.copy(content = Json.decodeFromJsonElement<List<Conversation.Message.ContentItem>>(original))
-    } else message
-}
+fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> =
+    messages.map(Conversation.Message::originalCollaborationMessage)

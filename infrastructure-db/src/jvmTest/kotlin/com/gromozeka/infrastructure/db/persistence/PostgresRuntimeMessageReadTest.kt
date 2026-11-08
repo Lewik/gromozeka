@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.UserIdentity
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.flywaydb.core.Flyway
@@ -45,7 +46,7 @@ class PostgresRuntimeMessageReadTest {
             f.save(f.message("old-only"), old, 1)
             f.save(f.message("foreign-only").copy(conversationId = otherConversation.id), otherConversation.currentThread, 0)
             f.save(f.message("malformed"), current, 1)
-            f.sql("UPDATE messages SET message_json = 'INVALID_ARCHIVE_JSON' WHERE id = 'malformed'")
+            f.sql("""UPDATE messages SET message_json = jsonb_set(message_json::jsonb, '{content}', '[{"type":"INVALID_CONTENT"}]'::jsonb)::text WHERE id = 'malformed'""")
             val expected = target.copy(author = Conversation.Message.Author.User(f.owner.id, "Current name"))
             val read = f.measure { assertEquals(expected, f.history.message(current, target.id)?.message) }
             assertEquals(1, read.bodies)
@@ -84,6 +85,86 @@ class PostgresRuntimeMessageReadTest {
             assertEquals(1, membership.rows)
             assertEquals(0, membership.bodies)
             assertEquals(1, membership.queries.size)
+        }
+    }
+
+    @Test
+    fun `context metadata backfills and follows canonical writes without rewriting payloads`() = runBlocking {
+        withFixture(target = "80") { f ->
+            val summary = f.message("summary").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )))
+            val messages = listOf(
+                f.message("normal").copy(instructions = listOf(Conversation.Message.Instruction.UserInstruction("mode", "Mode", "Value"))),
+                f.message("synthetic").copy(providerMetadata = buildJsonObject { put("synthetic", true) }),
+                f.message("synthetic-string").copy(providerMetadata = buildJsonObject { put("synthetic", "true") }),
+                f.message("agent-source").copy(instructions = listOf(Conversation.Message.Instruction.Source.Agent("peer"))),
+                f.message("binary").copy(content = listOf(ContentItem.UserMessage("escaped\u0000payload"))),
+                f.message("visual").copy(content = listOf(ContentItem.VisualInteraction("v", "Title", 1, "e", "b", "Button",
+                    buildJsonObject { put("form", buildJsonObject {}); put("data", buildJsonObject {}) }))),
+                summary,
+                f.message("corrected").copy(role = Conversation.Message.Role.ASSISTANT,
+                    author = Conversation.Message.Author.Agent(com.gromozeka.domain.model.AgentDefinition.Id("agent"), "Agent"),
+                    providerMetadata = buildJsonObject { put(com.gromozeka.domain.model.COLLABORATION_ORIGINAL_CONTENT, Json.encodeToJsonElement(summary.content)) }),
+                f.message("usage").copy(role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("answer"))),
+                    providerMetadata = buildJsonObject {
+                        put("provider", "OPENAI_SUBSCRIPTION"); put("connectionId", "connection"); put("model", "model")
+                        put("openaiSubscriptionContextTokens", 1000); put("openaiSubscriptionContextEstimate", 900)
+                    }),
+            )
+            messages.forEachIndexed { index, message -> f.insertRaw(message, index) }
+            f.migrate()
+            messages.forEach { message ->
+                assertEquals(message, ExposedMessageRepository(Json).findById(message.id))
+                if (message.id.value == "binary") assertNull(f.metadata(message.id))
+                else assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(message), f.metadata(message.id))
+            }
+            val selected = f.links.getContextMessagesByThread(f.conversation.currentThread, null)
+            assertTrue(selected.any { it == messages.single { message -> message.id.value == "binary" } })
+            val replacement = messages[0].copy(providerMetadata = buildJsonObject { put("synthetic", true) }, instructions = emptyList())
+            f.source.connection.use { connection ->
+                connection.prepareStatement("UPDATE messages SET message_json = ? WHERE id = ?").use {
+                    it.setString(1, Json.encodeToString(replacement)); it.setString(2, replacement.id.value); it.executeUpdate()
+                }
+            }
+            assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(replacement), f.metadata(replacement.id))
+            assertFailsWith<java.sql.SQLException> { f.sql("UPDATE messages SET context_metadata_json = '{}' WHERE id = 'normal'") }
+        }
+    }
+
+    @Test
+    fun `context reads preserve branch membership and recover foreign opaque checkpoints`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val source = f.message("source")
+            val checkpoint = f.message("checkpoint").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(buildJsonObject { put("encrypted_content", "opaque") }),
+                ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                providerScope = ContentItem.ContextCompactionResult.ProviderScope("OPENAI_SUBSCRIPTION"),
+            )))
+            val tail = f.message("tail")
+            listOf(source, checkpoint, tail).forEachIndexed { index, message -> f.save(message, thread, index) }
+            val archive = f.links.getMessagesByThread(thread)
+            for (provider in listOf(null, "OPENAI_SUBSCRIPTION", "CLAUDE_CODE")) {
+                val selected = f.links.getContextMessagesByThread(thread, provider)
+                assertEquals(com.gromozeka.domain.model.ConversationContext(archive).messagesForProvider(provider),
+                    com.gromozeka.domain.model.ConversationContext(selected).messagesForProvider(provider))
+            }
+            val fork = Conversation.Thread.Id("fork")
+            ExposedThreadRepository().save(Conversation.Thread(fork, f.conversation.id, originalThread = thread, createdAt = f.now, updatedAt = f.now))
+            f.links.add(fork, source.id, 0); f.links.add(fork, tail.id, 1)
+            assertEquals(listOf(source, tail), f.links.getContextMessagesByThread(fork, null))
+            val bad = checkpoint.copy(id = Conversation.Message.Id("foreign-source"), content = listOf(
+                (checkpoint.content.single() as ContentItem.ContextCompactionResult).copy(
+                    coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                    sourceMessageIds = listOf(checkpoint.id),
+                )))
+            f.save(bad, fork, 2)
+            val observation = f.measure { assertFailsWith<IllegalStateException> { f.links.getContextMessagesByThread(fork, null) } }
+            assertEquals(1, observation.bodies)
         }
     }
 
@@ -131,6 +212,15 @@ class PostgresRuntimeMessageReadTest {
                 val exists = sample("point_exists") { assertNotNull(f.history.position(thread, summary.id)) }
                 val oldMaximum = sample("all_links_max") { assertEquals(count - 1, f.links.getByThread(thread).maxOfOrNull { it.position }) }
                 val maximum = sample("sql_max") { assertEquals(count - 1, f.links.getMaxPosition(thread)) }
+                val fullContext = sample("full_history_context") {
+                    assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(f.links.getMessagesByThread(thread)).messagesForProvider(null))
+                }
+                val sparseContext = sample("sparse_context") {
+                    val selected = f.links.getContextMessagesByThread(thread, null)
+                    assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(selected).messagesForProvider(null))
+                }
+                assertEquals(count.toLong(), fullContext.bodies)
+                assertEquals(3, sparseContext.bodies)
                 assertEquals(count.toLong(), oldFind.bodies); assertEquals(count.toLong(), oldExists.bodies)
                 assertEquals(1, find.bodies); assertEquals(0, exists.bodies)
                 assertEquals(count.toLong(), oldMaximum.rows); assertEquals(1, maximum.rows)
@@ -144,7 +234,7 @@ class PostgresRuntimeMessageReadTest {
         }
     }
 
-    private suspend fun withFixture(test: suspend (Fixture) -> Unit) {
+    private suspend fun withFixture(target: String? = null, test: suspend (Fixture) -> Unit) {
         assumeTrue("Requires explicit isolated PostgreSQL configuration", System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
         val schema = "runtime_reads_${UUID.randomUUID().toString().replace("-", "")}"
         val source = PGSimpleDataSource().apply {
@@ -154,8 +244,10 @@ class PostgresRuntimeMessageReadTest {
             currentSchema = "$schema,public"
         }
         try {
-            Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
-                .locations("classpath:db/migration/postgres").load().migrate()
+            val migration = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres")
+            target?.let(migration::target)
+            migration.load().migrate()
             val observed = ObservedDataSource(source)
             Database.connect(observed)
             val f = Fixture(source, observed)
@@ -186,6 +278,28 @@ class PostgresRuntimeMessageReadTest {
             links.add(thread, message.id, position)
         }
         fun sql(sql: String) { source.connection.use { it.createStatement().use { it.execute(sql) } } }
+        fun migrate() {
+            val schema = requireNotNull(source.currentSchema).substringBefore(',')
+            Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres").load().migrate()
+        }
+        fun insertRaw(message: Conversation.Message, position: Int) {
+            source.connection.use { connection ->
+                connection.prepareStatement("INSERT INTO messages(id, conversation_id, original_ids_json, role, created_at, search_text, message_json) VALUES (?, ?, '[]', ?, now(), '', ?)").use {
+                    it.setString(1, message.id.value); it.setString(2, message.conversationId.value)
+                    it.setString(3, message.role.name); it.setString(4, Json.encodeToString(message)); it.executeUpdate()
+                }
+                connection.prepareStatement("INSERT INTO thread_messages(thread_id, message_id, position) VALUES (?, ?, ?)").use {
+                    it.setString(1, conversation.currentThread.value); it.setString(2, message.id.value); it.setInt(3, position); it.executeUpdate()
+                }
+            }
+        }
+        fun metadata(id: Conversation.Message.Id): com.gromozeka.domain.model.MessageContextMetadata? = source.connection.use { connection ->
+            connection.prepareStatement("SELECT context_metadata_json FROM messages WHERE id = ?").use {
+                it.setString(1, id.value)
+                it.executeQuery().use { rows -> check(rows.next()); rows.getString(1)?.let { value -> Json.decodeFromString(value) } }
+            }
+        }
         suspend fun measure(operation: suspend () -> Unit): ReadMeasurement {
             observed.reset()
             val start = System.nanoTime()

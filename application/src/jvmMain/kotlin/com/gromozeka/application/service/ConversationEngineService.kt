@@ -22,6 +22,9 @@ import com.gromozeka.application.service.memory.forMemoryPipeline
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.nativeCompactionProvider
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -98,6 +101,7 @@ class ConversationEngineService(
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
     private val conversationService: ConversationDomainService,
     private val conversationHistory: ConversationHistoryReadService,
+    private val contextHistory: ThreadMessageRepository,
     private val conversationMessageAppender: ConversationRuntimeMessageAppender,
     private val historyMutationExecutor: ConversationRuntimeHistoryMutationExecutor,
     private val memoryApplicationService: MemoryApplicationService,
@@ -335,7 +339,10 @@ class ConversationEngineService(
                 payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId))
         }
 
-        val currentMessages = conversationService.loadCurrentMessages(conversationId)
+        // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
+        val currentMessages = if (conversation.externalChannel == null && context.connectionKind !in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.GITHUB_COPILOT)) {
+            contextHistory.getContextMessagesByThread(conversation.currentThread, context.connectionKind.nativeCompactionProvider())
+        } else conversationService.loadCurrentMessages(conversationId)
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
                 messages = pendingSecretRevealService.consume(
@@ -1139,6 +1146,7 @@ class ConversationEngineService(
         val runtime: AiRuntime,
         val modelSpec: AiModelSpec,
         val provider: AiProvider,
+        val connectionKind: AiConnection.Kind,
         val modelName: String,
         val toolCatalog: DistributedAiToolCatalogSnapshot,
         val memoryPipelineTools: List<AiToolCallback>,
@@ -1236,6 +1244,7 @@ class ConversationEngineService(
             runtime = runtime,
             modelSpec = resolvedRuntime.modelSpec,
             provider = provider,
+            connectionKind = resolvedRuntime.connection.kind,
             modelName = modelName,
             toolCatalog = toolCatalog,
             memoryPipelineTools = memoryPipelineTools,

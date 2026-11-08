@@ -216,7 +216,8 @@ class WorkflowContracts(unittest.TestCase):
     def test_runtime_point_reads_are_verified_without_enabling_the_large_benchmark(self):
         verification = scripts(JOBS["verify-runtime"])
         for check in ("*PostgresRuntimeMessageReadTest", "*ConversationHistoryReadServiceTest",
-                      "*ConversationRuntimeAppendTest", "*ConversationEngineDeliveryTest"):
+                      "*ConversationRuntimeAppendTest", "*ConversationEngineDeliveryTest",
+                      "*ConversationContextTest", "*SparseConversationHistoryTest", "*SparseModelPreparationTest"):
             self.assertIn(check, verification)
         postgres = next(step for step in JOBS["verify-runtime"]["steps"]
                         if "*PostgresRuntimeMessageReadTest" in step.get("run", ""))

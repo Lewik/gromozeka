@@ -149,6 +149,8 @@ jobs:
           :remote-protocol:jvmTest
           :worker-runtime:jvmTest
           :domain:jvmTest --tests '*ConversationPinTest'
+          --tests '*ConversationContextTest'
+          --tests '*SparseConversationHistoryTest'
           :application:jvmTest
           --tests '*SecretArgumentSubstitutorTest'
           --tests '*NamedSecretApplicationServiceTest'
@@ -165,6 +167,7 @@ jobs:
           --tests '*ConversationEngineDeliveryTest'
           --tests '*ConversationHistoryReadServiceTest'
           --tests '*ConversationRuntimeAppendTest'
+          --tests '*SparseModelPreparationTest'
           --tests '*AgentResponseReviewServiceTest'
           --tests '*MessageSquashServiceTest'
           --tests '*AgentSessionRuntimeProjectionTest'

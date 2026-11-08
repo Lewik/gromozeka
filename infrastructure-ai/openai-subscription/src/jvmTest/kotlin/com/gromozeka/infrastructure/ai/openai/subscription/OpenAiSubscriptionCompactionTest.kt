@@ -181,6 +181,38 @@ class OpenAiSubscriptionCompactionTest {
         }
     }
 
+    @Test
+    fun `sparse history retains measured usage hidden by a selective summary`() {
+        Fixture().use { fixture ->
+            val measured = user("measured", "").copy(role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("answer"))),
+                providerMetadata = buildJsonObject {
+                    put("provider", "OPENAI_SUBSCRIPTION"); put("connectionId", "connection"); put("model", profile.slug)
+                    put(OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY, 9000)
+                    put(OpenAiSubscriptionCompaction.CONTEXT_ESTIMATE_KEY, 100)
+                })
+            val invalid = measured.copy(id = Conversation.Message.Id("invalid"), providerMetadata = JsonObject(
+                measured.providerMetadata + (OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY to JsonPrimitive("unknown"))))
+            val summary = user("summary", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(
+                ContentItem.ContextCompactionResult(ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
+                    ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    sourceMessageIds = listOf(measured.id, invalid.id),
+                    coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+            val history = listOf(user("old", "old"), measured, invalid, summary, user("new", "new"))
+            val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(
+                history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
+                history.filter { com.gromozeka.domain.model.MessageContextMetadata.from(it).hasCompaction }, "OPENAI_SUBSCRIPTION")
+            val sparse = history.filter { it.id in selected }
+            val request = AiRuntimeRequest(emptyList(), history)
+            val mapped = fixture.mapper.toRequest(request, profile, "conversation", connectionId = "connection")
+            assertEquals(mapped, fixture.mapper.toRequest(request.copy(messages = sparse), profile, "conversation", connectionId = "connection"))
+            val before = fixture.compaction.estimateContextTokens(history, mapped, "connection")
+            assertTrue(before >= 9000)
+            assertEquals(before, fixture.compaction.estimateContextTokens(sparse, mapped, "connection"))
+            assertTrue(fixture.requests.isEmpty())
+        }
+    }
+
     private fun request() = AiRuntimeRequest(
         systemPrompts = listOf("Preserve the user's task."),
         messages = listOf(user("old", "Long previous work. ".repeat(2000)), user("new", "Continue the implementation.")),

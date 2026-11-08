@@ -446,6 +446,7 @@ internal object Messages : Table("messages") {
     val createdAt = timestamp("created_at")
     val searchText = text("search_text")
     val messageJson = text("message_json")
+    val contextMetadataJson = text("context_metadata_json").nullable().databaseGenerated()
 
     override val primaryKey = PrimaryKey(id)
 }

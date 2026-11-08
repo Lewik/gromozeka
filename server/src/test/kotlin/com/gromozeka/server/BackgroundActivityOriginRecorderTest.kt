@@ -252,7 +252,7 @@ class BackgroundActivityOriginRecorderTest {
         }
         val engine = ConversationEngineService(
             aiRuntimeProvider = mock(), aiToolProvider = mock(), agentDomainService = mock(), agentPromptAssemblyService = mock(),
-            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history,
+            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = mock(),
             conversationMessageAppender = mock(), historyMutationExecutor = mock(), memoryApplicationService = mock(),
             memoryToolApplicationService = mock(), backgroundActivityCompletionApplicationService = f.completions,
             memoryMessageRoutingApplicationService = mock(), toolCallSequenceFixerService = mock(), settingsProvider = mock(),

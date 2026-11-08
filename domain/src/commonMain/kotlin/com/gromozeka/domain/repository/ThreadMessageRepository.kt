@@ -102,6 +102,13 @@ interface ThreadMessageRepository {
     suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message>
 
     /**
+     * Sufficient sparse raw history for the normal agent-model path, selected before body reads.
+     * Preserves checkpoints, provider recovery sources and pre-projection enrichment anchors.
+     * Not a timeline/archive read or a replacement for an external channel's raw history filter.
+     */
+    suspend fun getContextMessagesByThread(threadId: Conversation.Thread.Id, nativeProvider: String?): List<Conversation.Message>
+
+    /**
      * Deletes all links for thread (CASCADE on thread deletion).
      *
      * Called automatically when thread is deleted.
