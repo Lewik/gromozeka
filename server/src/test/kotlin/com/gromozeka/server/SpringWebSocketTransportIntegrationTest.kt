@@ -1,6 +1,9 @@
 package com.gromozeka.server
 
 import com.gromozeka.remote.protocol.MAX_WORKER_GATEWAY_MESSAGE_BYTES
+import com.gromozeka.remote.protocol.WorkerGatewayCodec
+import com.gromozeka.remote.protocol.WorkerGatewayMessage
+import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import jakarta.websocket.server.ServerContainer
 import jakarta.websocket.server.ServerEndpointConfig
 import org.apache.catalina.servlets.DefaultServlet
@@ -24,6 +27,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class SpringWebSocketTransportIntegrationTest {
     @TempDir
@@ -61,7 +65,10 @@ class SpringWebSocketTransportIntegrationTest {
                 container.addEndpoint(endpoint)
             }
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build().use { client ->
-                val bytes = ByteArray(32 * 1024 * 1024 + 123) { (it % 251).toByte() }
+                val payload = ByteArray(32 * 1024 * 1024 + 123) { (it % 251).toByte() }
+                val bytes = WorkerGatewayCodec.encode(WorkerGatewayMessage.Request(
+                    "binary-network", WorkerGatewayOperation.ARTIFACT_CONTENT, payload))
+                assertTrue(bytes.size <= payload.size + 512)
                 val worker = RecordingListener()
                 val workerSocket = client.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(5))
                     .buildAsync(URI("ws://127.0.0.1:${tomcat.connector.localPort}/worker/ws"), worker)

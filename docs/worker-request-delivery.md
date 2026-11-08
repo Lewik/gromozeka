@@ -29,6 +29,25 @@ uses the common snapshot journal with its Keystore/atomic-file adapter and an
 [explicit foreground-service lifecycle](android-worker-gateway.md).
 There is no new Worker session domain or desired-state reconciler.
 
+## Protocol 21 cutover
+
+Protocol 21 uses CBOR byte strings for opaque request/response payloads. One codec
+serves the wire, persisted Server envelopes and Worker receipt fingerprints; old
+numeric-array packets are not recognized. Update Server and all Workers together.
+
+Before upgrading, stop accepting work and stop the old Server and Workers. The
+one-time V80 migration clears `worker_requests`, including pending requests and
+retained responses. Outstanding calls cannot recover their results after this
+cutover. This does not undo already performed effects or authorize resubmission.
+Do not automatically rerun uncertain actions.
+
+JVM Workers start a fresh `worker-requests-v2/<worker-id-hash>` journal; Android
+starts `worker-requests-v2-<stream-id-hash>.enc`. Previous receipt journals are not
+read or migrated and may be removed while the old Workers are stopped. Worker
+identity/enrollment, command records, artifacts and conversation history are not
+reset. This is a one-time coordinated format change, not normal restart behavior;
+subsequent restarts retain and replay the current journal as usual.
+
 ## Tool invocation context
 
 Tool declarations separate execution scope, context data requirements and access policy.

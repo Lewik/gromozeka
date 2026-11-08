@@ -200,6 +200,19 @@ class WorkflowContracts(unittest.TestCase):
         # This is the job's disposable container, never a deployment's credentials or live CLI opt-in.
         self.assertNotIn("CONVERSATION_PINS_CLAUDE_SMOKE", str(JOBS["verify-runtime"]))
 
+    def test_gateway_byte_string_cutover_is_in_the_release_verification_set(self):
+        steps = JOBS["verify-runtime"]["steps"]
+        verification = scripts(JOBS["verify-runtime"])
+        for check in (":remote-protocol:jvmTest", ":worker-runtime:jvmTest", "*SdkWorkerExecutionTest"):
+            self.assertIn(check, verification)
+        postgres = next(step for step in steps
+                        if "*WorkerRequestByteStringMigrationTest" in step.get("run", ""))
+        self.assertEqual("true", postgres["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
+        upload = next(step for step in steps
+                      if step.get("with", {}).get("name") == "verify-runtime-diagnostics")
+        for module in ("remote-protocol", "worker-runtime"):
+            self.assertIn(f"{module}/build/test-results/", upload["with"]["path"])
+
     def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
         upload = next(step for step in JOBS["verify-runtime"]["steps"]
                       if step.get("with", {}).get("name") == "verify-runtime-diagnostics")

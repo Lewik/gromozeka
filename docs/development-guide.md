@@ -52,9 +52,11 @@ limit. Servlet container defaults stay at 16 MiB; only `/worker/ws` raises its
 per-session binary receive limit, avoiding larger default buffers for UI sockets.
 The limit applies to the complete encoded message, including fragmented messages,
 not to the raw AI request. The separate 64 MiB Worker request payload limit is
-unchanged; CBOR envelope expansion can still make a payload too large for the
-transport. Queue-wide memory/backpressure and cache-backed payload fetching remain
-separate work. The wire format and Worker protocol version are unchanged.
+unchanged. Worker Gateway protocol 21 encodes opaque request/response payloads as
+CBOR byte strings rather than numeric arrays, removing their per-byte expansion.
+The same codec is used for transport and persisted Server envelopes; there is no
+old-format reader. Server and all Workers require a [coordinated update](worker-request-delivery.md#protocol-21-cutover).
+Queue-wide memory/backpressure and cache-backed payload fetching remain separate work.
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
 secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy

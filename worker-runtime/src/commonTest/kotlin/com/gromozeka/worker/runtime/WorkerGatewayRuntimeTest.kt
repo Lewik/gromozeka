@@ -19,6 +19,7 @@ import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
+import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -41,6 +42,21 @@ import kotlin.time.Instant
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class WorkerGatewayRuntimeTest {
+    @Test
+    fun `previous protocol welcome is rejected before ready`() = runTest {
+        val connection = TestConnection()
+        val runtime = runtime(connection)
+        val job = launch { runtime.run() }
+        try {
+            assertEquals(WORKER_GATEWAY_PROTOCOL_VERSION,
+                assertIs<WorkerGatewayMessage.Hello>(connection.sent.receive()).protocolVersion)
+            connection.received.send(welcome.copy(protocolVersion = WORKER_GATEWAY_PROTOCOL_VERSION - 1))
+            runCurrent()
+            assertTrue(connection.closed)
+            assertTrue(connection.sent.tryReceive().isFailure)
+        } finally { job.cancelAndJoin() }
+    }
+
     @Test
     fun `registration heartbeat and request response use the common runtime`() = runTest {
         val connection = TestConnection()

@@ -6,6 +6,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.worker.runtime.WorkerRequestReceipt
+import com.gromozeka.shared.utils.sha256
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito
 import java.nio.file.Files
@@ -17,6 +18,24 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 class JvmWorkerRequestJournalTest {
+    @Test
+    fun `new journal generation does not read previous RPC receipts`() = runBlocking {
+        val directory = Files.createTempDirectory("worker-journal-generation-test-")
+        val settings = Mockito.mock(SettingsProvider::class.java)
+        Mockito.`when`(settings.homeDirectory).thenReturn(directory.toString())
+        val identity = ConversationRuntimeWorkerIdentity(ConversationRuntimeWorkerId("test"), ConversationRuntimeWorkerSessionId("new"))
+        val oldDirectory = directory.resolve("worker-requests").resolve(identity.workerId.value.sha256())
+        Files.createDirectories(oldDirectory)
+        Files.write(oldDirectory.resolve("discarded.receipt"), byteArrayOf(1))
+        try {
+            val journal = JvmWorkerRequestJournal(settings, identity)
+            try { assertEquals(emptyList(), journal.load()) }
+            finally { journal.close() }
+        } finally {
+            Files.walk(directory).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        }
+    }
+
     @Test
     fun `receipt is encrypted atomic recoverable and exclusively owned`() = runBlocking {
         val directory = Files.createTempDirectory("worker-journal-test-")

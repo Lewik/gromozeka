@@ -29,7 +29,7 @@ class JvmWorkerRequestJournal(
     settings: SettingsProvider,
     identity: ConversationRuntimeWorkerIdentity,
 ) : WorkerRequestJournal {
-    private val directory = Path.of(settings.homeDirectory, "worker-requests", identity.workerId.value.sha256())
+    private val directory = Path.of(settings.homeDirectory, "worker-requests-v2", identity.workerId.value.sha256())
     private val random = SecureRandom()
     private val json = Json { encodeDefaults = true }
     private val lockChannel: FileChannel

@@ -177,7 +177,7 @@ enum class WorkerGatewayOperation {
     ARTIFACT_CONTENT,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 20
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 21
 const val MAX_WORKER_GATEWAY_MESSAGE_BYTES = 128 * 1024 * 1024
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -185,6 +185,7 @@ object WorkerGatewayCodec {
     private val cbor = Cbor {
         encodeDefaults = true
         ignoreUnknownKeys = false
+        alwaysUseByteString = true
     }
 
     fun encode(message: WorkerGatewayMessage): ByteArray =

@@ -9,7 +9,7 @@ import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption
 
 internal class AndroidWorkerRequestJournal(context: Context, streamId: String) : AutoCloseable {
-    private val file = AndroidWorkerEncryptedFile(File(context.noBackupFilesDir, "worker-requests-${streamId.sha256()}.enc").toPath())
+    private val file = AndroidWorkerEncryptedFile(File(context.noBackupFilesDir, "worker-requests-v2-${streamId.sha256()}.enc").toPath())
     private val lockChannel = FileChannel.open(file.path.resolveSibling("${file.path.fileName}.lock"),
         StandardOpenOption.CREATE, StandardOpenOption.WRITE)
     private val lock = try {

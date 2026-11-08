@@ -132,6 +132,7 @@ jobs:
           --tests '*PostgresConversationPinRepositoryTest'
           --tests '*PostgresWorkerRequestRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
+          --tests '*WorkerRequestByteStringMigrationTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           --console=plain
       - name: Verify Server and Worker
@@ -144,6 +145,8 @@ jobs:
           ./gradlew
           :server:test
           :worker:test
+          :remote-protocol:jvmTest
+          :worker-runtime:jvmTest
           :domain:jvmTest --tests '*ConversationPinTest'
           :application:jvmTest
           --tests '*SecretArgumentSubstitutorTest'
@@ -166,6 +169,7 @@ jobs:
           :infrastructure-ai:jvmTest
           --tests '*ClaudeCodeCliRuntimeTest.conversationPin*'
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'
+          --tests '*SdkWorkerExecutionTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 
@@ -179,6 +183,8 @@ jobs:
             infrastructure-db/build/reports/tests/
             server/build/test-results/
             worker/build/test-results/
+            remote-protocol/build/test-results/
+            worker-runtime/build/test-results/
             application/build/test-results/
             domain/build/test-results/
             infrastructure-ai/build/test-results/
