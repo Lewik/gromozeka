@@ -134,6 +134,7 @@ internal fun ConversationNavigationTabs(
                                 selected = selectedTabIndex == index + 4,
                                 showTabsAtBottom = showTabsAtBottom,
                                 onClick = { onTabSelect(index) },
+                                tooltip = header.title,
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                                     .onTabHover({ onTabHover(index) }, onTabHoverExit)
                                     .testTag(UiTestTag.SessionTab(index).value),
@@ -177,6 +178,7 @@ private fun ConversationTabPicker(
             selected = current != null,
             showTabsAtBottom = showTabsAtBottom,
             onClick = { expanded = true },
+            tooltip = current?.title,
             modifier = Modifier.fillMaxSize().testTag("conversation-tab-picker"),
         ) {
             ConversationActivitySlot(current, Modifier.size(20.dp), unread = headers.any { it.isUnread },
@@ -195,8 +197,10 @@ private fun ConversationTabPicker(
             headers.forEachIndexed { index, header ->
                 DropdownMenuItem(
                     text = {
-                        Text(header.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            fontWeight = if (header == current) FontWeight.SemiBold else FontWeight.Normal)
+                        OptionalTooltip(header.title) {
+                            Text(header.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                fontWeight = if (header == current) FontWeight.SemiBold else FontWeight.Normal)
+                        }
                     },
                     onClick = { expanded = false; onTabSelect(index) },
                     leadingIcon = { ConversationActivitySlot(header, Modifier.size(20.dp)) },
@@ -233,6 +237,7 @@ private fun NavigationTab(
     showTabsAtBottom: Boolean,
     onClick: () -> Unit,
     modifier: Modifier,
+    tooltip: String? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     val indicator = MaterialTheme.colorScheme.primary
@@ -249,7 +254,9 @@ private fun NavigationTab(
             }
         },
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically, content = content)
+        OptionalTooltip(tooltip) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically, content = content)
+        }
     }
 }

@@ -153,6 +153,57 @@ class ConversationNavigationTabsTest {
     }
 
     @Test
+    fun fullConversationTitleAppearsOnHoverWithoutChangingTabGeometryOrActions() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val title = "Conversation with a long shared prefix and an important distinguishing ending ".repeat(3)
+        val header = alpha.copy(title = title, isUnread = true, loadingTone = LoadingIndicatorTone.BACKGROUND)
+        val selected = mutableListOf<Int?>()
+        val renamed = mutableListOf<ConversationTabHeader>()
+        setContent { Navigation(listOf(header, beta), hovered = 0, width = 650,
+            onSelect = selected::add, onRename = renamed::add) }
+        val tab = onNodeWithTag(UiTestTag.SessionTab(0).value)
+        val bounds = tab.fetchSemanticsNode().boundsInRoot
+        val popupTitle = hasText(title) and hasAnyAncestor(isPopup())
+        onNode(popupTitle, useUnmergedTree = true).assertDoesNotExist()
+        tab.performMouseInput { enter(center) }
+        mainClock.advanceTimeBy(1_000)
+        onNode(popupTitle, useUnmergedTree = true).assertIsDisplayed()
+        assertEquals(bounds, tab.fetchSemanticsNode().boundsInRoot)
+        tab.performMouseInput { click(center) }
+        runOnIdle { assertEquals(listOf<Int?>(0), selected) }
+        onNodeWithTag(UiTestTag.SessionTabRename(0).value, useUnmergedTree = true).performClick()
+        runOnIdle { assertEquals(listOf(header), renamed) }
+        tab.performMouseInput { exit() }
+        mainClock.advanceTimeBy(500)
+        onNode(popupTitle, useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun compactPickerAndMenuExposeFullConversationTitles() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val firstTitle = "A long current conversation title ".repeat(6)
+        val otherTitle = "Another long conversation title ".repeat(6)
+        val renamed = mutableListOf<ConversationTabHeader>()
+        val other = beta.copy(title = otherTitle)
+        setContent { Navigation(listOf(alpha.copy(title = firstTitle), other), width = 393, onRename = renamed::add) }
+        val picker = onNodeWithTag("conversation-tab-picker")
+        picker.performMouseInput { enter(center) }
+        mainClock.advanceTimeBy(1_000)
+        onNode(hasText(firstTitle) and hasAnyAncestor(isPopup()), useUnmergedTree = true).assertIsDisplayed()
+        picker.performMouseInput { exit() }
+        mainClock.advanceTimeBy(500)
+        picker.performClick()
+        mainClock.advanceTimeBy(300)
+        onNodeWithTag(UiTestTag.SessionTab(1).value).assertIsDisplayed()
+        onNode(hasText(otherTitle) and hasAnyAncestor(hasTestTag(UiTestTag.SessionTab(1).value)),
+            useUnmergedTree = true).performMouseInput { enter(center) }
+        mainClock.advanceTimeBy(1_000)
+        onAllNodesWithText(otherTitle, useUnmergedTree = true).assertCountEquals(2)
+        onNodeWithTag(UiTestTag.SessionTabRename(1).value, useUnmergedTree = true).performClick()
+        runOnIdle { assertEquals(listOf(other), renamed) }
+    }
+
+    @Test
     fun startupLogoIsLargeAndCentered() = runComposeUiTest {
         setContent { MaterialTheme { Box(Modifier.size(400.dp, 300.dp)) { ClientStartupLoadingScreen() } } }
         onNodeWithTag("client-startup-logo").assertWidthIsEqualTo(80.dp).assertHeightIsEqualTo(80.dp)
