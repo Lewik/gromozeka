@@ -223,6 +223,13 @@ class WorkflowContracts(unittest.TestCase):
         self.assertEqual("true", postgres["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
         self.assertNotIn("GROMOZEKA_HISTORY_BENCHMARK", str(JOBS["verify-runtime"]))
 
+    def test_subscription_incremental_replay_is_verified_without_live_model_calls(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in (":infrastructure-ai:openai-subscription:jvmTest", "*OpenAiSubscriptionIncrementalReplayTest",
+                      "*OpenAiSubscriptionResponsesClientTest", "*OpenAiSubscriptionCompactionTest", "*OpenAiSubscriptionWebSearchTest"):
+            self.assertIn(check, verification)
+        self.assertNotIn("GROMOZEKA_OPENAI_SUBSCRIPTION_REAL", str(JOBS["verify-runtime"]))
+
     def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
         upload = next(step for step in JOBS["verify-runtime"]["steps"]
                       if step.get("with", {}).get("name") == "verify-runtime-diagnostics")

@@ -103,12 +103,13 @@ class OpenAiSubscriptionCompaction(
         parsed: OpenAiSubscriptionParsedResponse,
         response: AiRuntimeResponse,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        modelProfile: OpenAiSubscriptionModelProfile,
     ): AiRuntimeResponse {
         val usage = response.usage ?: return response
         if (parsed.outputItems.any { it["type"] in listOf(JsonPrimitive("compaction"), JsonPrimitive("compaction_summary")) }) {
             return response
         }
-        val output = requestMapper.toReplayItems(parsed.outputItems, assistantResponseFormat)
+        val output = requestMapper.toReplayItems(parsed.outputItems, assistantResponseFormat, modelProfile)
         return response.copy(providerMetadata = response.providerMetadata + mapOf(
             CONTEXT_TOKENS_KEY to usage.totalTokens.toLong(),
             CONTEXT_ESTIMATE_KEY to estimateRequestTokens(requestBody.copy(input = requestBody.input + output)),

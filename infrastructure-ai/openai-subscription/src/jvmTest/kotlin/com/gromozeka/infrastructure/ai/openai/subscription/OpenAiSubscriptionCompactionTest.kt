@@ -175,7 +175,7 @@ class OpenAiSubscriptionCompactionTest {
             )
             val response = fixture.responseMapper.toRuntimeResponse(parsed.outputItems, parsed.completed,
                 "conversation", "connection", "configuration", profile.slug, AiModelConfiguration.AssistantResponseFormat.TEXT)
-            val recorded = fixture.compaction.recordContextUsage(mapped, parsed, response, AiModelConfiguration.AssistantResponseFormat.TEXT)
+            val recorded = fixture.compaction.recordContextUsage(mapped, parsed, response, AiModelConfiguration.AssistantResponseFormat.TEXT, profile)
             assertEquals(1100L, recorded.providerMetadata[OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY])
             assertTrue(fixture.compaction.estimateContextTokens(persisted(recorded), mapped, "connection") >= 1100)
         }

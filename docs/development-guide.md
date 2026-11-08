@@ -201,6 +201,17 @@ The main dogfood chat path is `OPEN_AI_SUBSCRIPTION`, implemented by
 for other providers, embeddings, and auxiliary integrations. Provider quirks
 belong behind those infrastructure boundaries rather than in domain workflows.
 
+Subscription WebSocket continuation compares canonical input items, not independently
+formatted copies of function calls. The default function namespace is explicit
+`functions` for Responses Lite and omitted for ordinary subscription Responses;
+provider output replay and persisted history use the same model-profile-aware
+normalization. Explicit `web` namespaces and opaque reasoning are preserved.
+Changes to tools, instructions, history, reasoning or compaction still require a
+full request when the strict prefix/transport signature changes. Mismatch logs
+report only allowlisted top-level field/type labels, positions and item counts,
+never argument values, text, arbitrary provider keys or signed payloads. This does
+not add incremental transport to the separate public SDK/gateway adapters.
+
 Each finite model step returns an explicit `AiStepOutcome`: completion, external
 tool requests, provider continuation, truncation, refusal, or failure. The Server
 persists completed assistant blocks before executing tools. Provider continuation

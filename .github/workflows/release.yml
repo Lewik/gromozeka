@@ -173,6 +173,13 @@ jobs:
           --tests '*ClaudeCodeCliRuntimeTest.conversationPin*'
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'
           --tests '*SdkWorkerExecutionTest'
+          :infrastructure-ai:openai-subscription:jvmTest
+          --tests '*OpenAiSubscriptionIncrementalReplayTest'
+          --tests '*OpenAiSubscriptionRequestMapperTest'
+          --tests '*OpenAiSubscriptionResponseMapperTest'
+          --tests '*OpenAiSubscriptionResponsesClientTest'
+          --tests '*OpenAiSubscriptionCompactionTest'
+          --tests '*OpenAiSubscriptionWebSearchTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 

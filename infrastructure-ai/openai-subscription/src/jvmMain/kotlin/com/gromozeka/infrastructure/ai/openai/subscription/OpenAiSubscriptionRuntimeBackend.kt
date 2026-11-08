@@ -123,7 +123,7 @@ private class Runtime(
                 modelName = modelName,
                 assistantResponseFormat = request.options.assistantResponseFormat,
             )
-            compaction.recordContextUsage(requestBody, parsed, response, request.options.assistantResponseFormat)
+            compaction.recordContextUsage(requestBody, parsed, response, request.options.assistantResponseFormat, modelProfile)
         } catch (error: OpenAiSubscriptionUnauthorizedException) {
             if (!retryOnUnauthorized) throw error
 

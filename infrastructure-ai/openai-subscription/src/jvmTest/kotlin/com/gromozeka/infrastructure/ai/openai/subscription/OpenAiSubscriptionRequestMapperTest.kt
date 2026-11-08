@@ -93,7 +93,7 @@ class OpenAiSubscriptionRequestMapperTest {
         )))
         val matching = mapper.toRequest(request, modelProfile("gpt-5"), "test", connectionId = "connection")
         assertEquals(listOf(raw), matching.input)
-        assertEquals(listOf(raw), mapper.toReplayItems(listOf(raw), AiModelConfiguration.AssistantResponseFormat.TEXT))
+        assertEquals(listOf(raw), mapper.toReplayItems(listOf(raw), AiModelConfiguration.AssistantResponseFormat.TEXT, modelProfile("gpt-5")))
         val foreign = mapper.toRequest(request, modelProfile("gpt-5"), "test", connectionId = "other")
         assertTrue(foreign.input.isEmpty())
     }
@@ -600,6 +600,7 @@ class OpenAiSubscriptionRequestMapperTest {
         val responseReplayItem = mapper.toReplayItems(
             outputItems = listOf(rawOutputItem),
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
+            modelProfile = modelProfile("gpt-5.6-luna"),
         ).single()
 
         assertEquals(persistedReplayItem, responseReplayItem)
@@ -643,6 +644,7 @@ class OpenAiSubscriptionRequestMapperTest {
         val responseReplayItem = mapper.toReplayItems(
             outputItems = listOf(rawOutputItem),
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+            modelProfile = modelProfile("gpt-5.5"),
         ).single()
 
         assertEquals(persistedReplayItem, responseReplayItem)

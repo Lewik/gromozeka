@@ -74,11 +74,8 @@ class OpenAiSubscriptionRequestMapper {
                     message.providerMetadata["model"]?.jsonPrimitive?.contentOrNull == modelProfile.slug &&
                     message.providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId,
             )
-        }.map { item ->
-            if (modelProfile.useResponsesLite && item["type"] == JsonPrimitive("function_call") && item["namespace"] == null) {
-                JsonObject(item + ("namespace" to JsonPrimitive("functions")))
-            } else item
-        }.dropOrphanFunctionCallOutputs(conversationKey)
+        }.map { it.withCanonicalFunctionNamespace(modelProfile) }
+            .dropOrphanFunctionCallOutputs(conversationKey)
         val instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null }
         val reasoning = buildReasoning(request.options.reasoning, modelProfile)
         val requestPayload = OpenAiSubscriptionResponsesRequest(
@@ -174,9 +171,25 @@ class OpenAiSubscriptionRequestMapper {
     fun toReplayItems(
         outputItems: List<JsonObject>,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        modelProfile: OpenAiSubscriptionModelProfile,
     ): List<JsonObject> {
         return outputItems.flatMap { item ->
             normalizeReplayItem(item, assistantResponseFormat)
+        }.map { it.withCanonicalFunctionNamespace(modelProfile) }
+    }
+
+    private fun JsonObject.withCanonicalFunctionNamespace(modelProfile: OpenAiSubscriptionModelProfile): JsonObject {
+        if (this["type"] != JsonPrimitive("function_call")) return this
+        val namespace = this["namespace"]
+        if (namespace != null && namespace != JsonNull && namespace != JsonPrimitive("functions")) return this
+
+        // Runtime ToolCall omits the default namespace; Lite requires its explicit wire spelling.
+        // Apply the same representation to persisted history and expected response replay.
+        return when {
+            modelProfile.useResponsesLite -> if (namespace == JsonPrimitive("functions")) this
+                else JsonObject(this + ("namespace" to JsonPrimitive("functions")))
+            namespace != null -> JsonObject(this - "namespace")
+            else -> this
         }
     }
 
