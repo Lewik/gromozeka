@@ -73,6 +73,18 @@ class GrzCommandInputToolTest {
         assertEquals(1, service.calls)
     }
 
+    @Test
+    fun `ordinary input tool keeps its 64 KiB byte limit even for multibyte text`() {
+        val service = RecordingService()
+        val tool = GrzSendCommandInputToolImpl(service)
+        assertFailsWith<IllegalArgumentException> {
+            tool.execute(SendCommandInputRequest("task-1", "я".repeat(32_769)), context())
+        }
+        assertEquals(0, service.calls)
+        tool.execute(SendCommandInputRequest("task-1", "я".repeat(32_768)), context())
+        assertEquals(65_536, service.bytes.size)
+    }
+
     private fun context() = ToolExecutionContext(mapOf("conversationId" to "conversation-1"))
 
     private class RecordingService : CommandTaskService {

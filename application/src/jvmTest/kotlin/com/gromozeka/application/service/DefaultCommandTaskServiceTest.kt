@@ -416,6 +416,22 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
+    fun `owned visual handlers accept a full state event but still reject oversized input`() = runBlocking {
+        withService { service, runner, _, directory ->
+            val task = service.start(ExecuteCommandRequest("visual-reader", yield_time_ms = 0),
+                context(directory).withValue(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID, "visual")).task
+            val input = ByteArray(com.gromozeka.domain.visual.VisualLimits.INPUT_LINE_BYTES) { 'x'.code.toByte() }
+            val sent = service.sendInput(conversationId, task.id, input)
+            assertEquals(input.size, sent.writtenBytes)
+            assertContentEquals(input, runner.lastProcess.inputs.single())
+            assertFailsWith<IllegalArgumentException> {
+                service.sendInput(conversationId, task.id, ByteArray(input.size + 1))
+            }
+            assertEquals(1, runner.lastProcess.inputs.size)
+        }
+    }
+
+    @Test
     fun `input and EOF in one request are ordered`() = runBlocking {
         withService { service, runner, _, directory ->
             val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0), context(directory)).task

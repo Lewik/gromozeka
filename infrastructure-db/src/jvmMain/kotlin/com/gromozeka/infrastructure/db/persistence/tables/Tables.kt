@@ -445,6 +445,7 @@ internal object Messages : Table("messages") {
     val role = varchar("role", 50)
     val createdAt = timestamp("created_at")
     val searchText = text("search_text")
+    val messageText = text("message_text")
     val messageJson = text("message_json")
     val contextMetadataJson = text("context_metadata_json").nullable().databaseGenerated()
 

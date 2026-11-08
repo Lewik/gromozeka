@@ -55,6 +55,31 @@ class VisualWorkerRuntimeTest {
         withTimeout(3_000) { f.commands.cancelled.await() }
     }
 
+    @Test fun `large output records are batched within the shared budget without empty batches`() = fixture { f ->
+        val started = f.runtime.execute(f.request).task!!
+        val limit = com.gromozeka.domain.visual.VisualLimits.OUTPUT_LINE_BYTES
+        val line = "{\"data\":{\"text\":\"" + "x".repeat(limit - 100) + "\"}}"
+        val bytes = (line + "\n").repeat(5).encodeToByteArray()
+        val terminal = started.copy(status = CommandTask.Status.COMPLETED, exitCode = 0, outputBytes = bytes.size.toLong())
+        f.commands.output.send(CommandTaskOutput(terminal, BinaryContent.fromBytes(bytes), 0, bytes.size.toLong(), false))
+        var records = 0
+        var batches = 0
+        do {
+            val request = withTimeout(3_000) { f.outgoing.receive() } as WorkerGatewayMessage.Request
+            val output = Json.decodeFromString<VisualWorkerOutput>(request.payload.decodeToString())
+            assertTrue(output.records.isNotEmpty())
+            assertTrue(output.records.sumOf { it.json!!.encodeToByteArray().size } <= com.gromozeka.domain.visual.VisualLimits.OUTPUT_BATCH_BYTES)
+            assertTrue(output.records.all { it.json == line && it.error == null })
+            records += output.records.size
+            batches++
+            f.outbound.accept(WorkerGatewayMessage.Response(request.id, WorkerGatewayMessage.Response.Status.SUCCEEDED,
+                "{\"active\":${!output.finished}}".encodeToByteArray()))
+        } while (!output.finished)
+        assertEquals(5, records)
+        assertEquals(2, batches)
+        withTimeout(3_000) { f.commands.cancelled.await() }
+    }
+
     @Test fun `close cancels a reader waiting on server acknowledgement and its owned process`() = fixture { f ->
         val started = f.runtime.execute(f.request).task!!
         val text = "{\"data\":{\"count\":1}}\n"

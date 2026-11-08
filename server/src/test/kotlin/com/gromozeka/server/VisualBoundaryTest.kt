@@ -33,7 +33,8 @@ class VisualBoundaryTest {
 
     @Test fun `reference is authenticated and needs no conversation`() {
         val reference = tool.call("""{"action":"reference"}""", ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to user.id.value)))
-        assertContains(reference, "8 KiB")
+        assertContains(reference, "${VisualLimits.STATE_BYTES / 1024} KiB full state, ${VisualLimits.OUTPUT_LINE_BYTES / 1024} KiB output line")
+        assertContains(tool.definition.description, "at most ${VisualLimits.OUTPUT_LINE_BYTES} UTF-8 bytes per line")
         assertContains(reference, "form")
         assertEquals(AiToolExecutionScope.SERVER, tool.metadata.executionScope)
         assertFalse(tool.metadata.logInput)

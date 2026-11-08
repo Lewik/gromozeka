@@ -213,6 +213,15 @@ class WorkflowContracts(unittest.TestCase):
         for module in ("remote-protocol", "worker-runtime"):
             self.assertIn(f"{module}/build/test-results/", upload["with"]["path"])
 
+    def test_message_search_context_and_visual_limits_are_verified(self):
+        script = scripts(JOBS["verify-runtime"])
+        for name in ("PostgresConversationSearchRepositoryTest", "PostgresTokenUsageStatisticsRepositoryTest",
+                     "MessageSearchTextTest", "VisualApplicationServiceTest", "DefaultCommandTaskServiceTest"):
+            self.assertIn(f"--tests '*{name}'", script)
+        self.assertIn("--tests '*Visual*'", script)
+        self.assertIn(":server:test", script)
+        self.assertIn(":worker:test", script)
+
     def test_runtime_point_reads_are_verified_without_enabling_the_large_benchmark(self):
         verification = scripts(JOBS["verify-runtime"])
         for check in ("*PostgresRuntimeMessageReadTest", "*ConversationHistoryReadServiceTest",

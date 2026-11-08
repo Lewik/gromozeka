@@ -124,6 +124,8 @@ jobs:
         run: >
           ./gradlew :infrastructure-db:jvmTest
           --tests '*PostgresConversationSearchRepositoryTest'
+          --tests '*PostgresTokenUsageStatisticsRepositoryTest'
+          --tests '*MessageSearchTextTest'
           --tests '*PostgresConversationRuntimeCoordinatorTest'
           --tests '*PostgresConversationRuntimeWorkerRegistryTest'
           --tests '*PostgresAiToolContractRepositoryTest'
@@ -152,6 +154,7 @@ jobs:
           --tests '*ConversationContextTest'
           --tests '*SparseConversationHistoryTest'
           --tests '*SyntheticToolCallIdsTest'
+          --tests '*Visual*'
           :application:jvmTest
           --tests '*SecretArgumentSubstitutorTest'
           --tests '*NamedSecretApplicationServiceTest'
@@ -159,6 +162,8 @@ jobs:
           --tests '*BackgroundActivityLifecycleApplicationServiceTest'
           --tests '*ConversationRuntimeDispatcherTest'
           --tests '*VisualSecretArgumentsTest'
+          --tests '*VisualApplicationServiceTest'
+          --tests '*DefaultCommandTaskServiceTest'
           --tests '*Slot*'
           --tests '*ConversationPin*Test'
           --tests '*ConversationAgentAccessServiceTest'
