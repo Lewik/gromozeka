@@ -21,7 +21,8 @@ import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.presentation.services.VoiceTranscriptionActivity
 import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
-import com.gromozeka.presentation.ui.GromozekaTabLoadingIndicator
+import com.gromozeka.presentation.ui.GromozekaSimpleLoadingIndicator
+import com.gromozeka.presentation.ui.LoadingIndicatorTone
 import com.gromozeka.presentation.ui.GromozekaReadyIndicator
 import com.gromozeka.presentation.ui.GromozekaBulb
 import com.gromozeka.presentation.ui.LocalTranslation
@@ -107,6 +108,10 @@ internal fun ConversationActivityBar(
     val activities = executionActivities(runtime, generation, isWaiting, voice, tabId, translation, uploadingArtifacts, regeneratingSuggestions)
     val commands = runtime?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val monitors = runtime?.commandMonitors.orEmpty().activeForRuntimePanel()
+    val commandsTone = if (commands.any { commandLoadingTone(runtime, it) == LoadingIndicatorTone.FOREGROUND })
+        LoadingIndicatorTone.FOREGROUND else LoadingIndicatorTone.BACKGROUND
+    val monitorsTone = if (monitors.any { monitorLoadingTone(runtime, it) == LoadingIndicatorTone.FOREGROUND })
+        LoadingIndicatorTone.FOREGROUND else LoadingIndicatorTone.BACKGROUND
     val problems = runtime?.lastTurn?.problems.orEmpty()
     val timed = activities.any { it.startedAt != null && !it.failed }
     val now by produceState(Clock.System.now(), timed) {
@@ -165,14 +170,15 @@ internal fun ConversationActivityBar(
                 }
                 if (compact && commands.isNotEmpty() && monitors.isNotEmpty()) {
                     RuntimeActivityButton(Icons.Default.Terminal, commands.size + monitors.size, "$commandHint\n$monitorHint",
-                        "composer-background-activities", animated = true,
+                        "composer-background-activities", loadingTone = if (commandsTone == LoadingIndicatorTone.FOREGROUND || monitorsTone == LoadingIndicatorTone.FOREGROUND)
+                            LoadingIndicatorTone.FOREGROUND else LoadingIndicatorTone.BACKGROUND,
                         onClick = { onInspectRuntime(RuntimeInspectionSection.COMMANDS) })
                 } else {
                     if (commands.isNotEmpty()) RuntimeActivityButton(Icons.Default.Terminal, commands.size, commandHint,
-                        "composer-background-commands", animated = true,
+                        "composer-background-commands", loadingTone = commandsTone,
                         onClick = { onInspectRuntime(RuntimeInspectionSection.COMMANDS) })
                     if (monitors.isNotEmpty()) RuntimeActivityButton(Icons.Default.Visibility, monitors.size, monitorHint,
-                        "composer-background-monitors", animated = true,
+                        "composer-background-monitors", loadingTone = monitorsTone,
                         onClick = { onInspectRuntime(RuntimeInspectionSection.MONITORS) })
                 }
                 if (problems.isNotEmpty()) {
@@ -244,21 +250,22 @@ private fun RuntimeActivityButton(
     count: Int,
     hint: String,
     tag: String,
-    animated: Boolean = false,
+    loadingTone: LoadingIndicatorTone? = null,
     tint: Color = MaterialTheme.colorScheme.onSurface,
     onClick: () -> Unit,
 ) {
     val controls = GromozekaTheme.controls
+    val contentTint = if (loadingTone == LoadingIndicatorTone.BACKGROUND) MaterialTheme.colorScheme.onSurfaceVariant else tint
     OptionalTooltip(hint) {
         IconButton(onClick, Modifier.size(controls.minHeight).testTag(tag)) {
             BadgedBox(badge = {
-                if (count > 1) Badge(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = tint) {
+                if (count > 1) Badge(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = contentTint) {
                     Text(count.toString())
                 }
             }) {
                 Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) {
-                    if (animated) GromozekaTabLoadingIndicator(Modifier.size(30.dp))
-                    Icon(icon, hint, Modifier.size(controls.smallIconSize), tint = tint)
+                    loadingTone?.let { GromozekaSimpleLoadingIndicator(Modifier.size(30.dp), tone = it) }
+                    Icon(icon, hint, Modifier.size(controls.smallIconSize), tint = contentTint)
                 }
             }
         }

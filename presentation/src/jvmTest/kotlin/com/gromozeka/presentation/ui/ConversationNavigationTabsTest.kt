@@ -36,7 +36,7 @@ class ConversationNavigationTabsTest {
         val hover = mutableStateOf(-1)
         setContent { Navigation(headers.value, hovered = hover.value) }
         val before = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        runOnIdle { headers.value = listOf(alpha.copy(isLoading = true), beta); hover.value = 0 }
+        runOnIdle { headers.value = listOf(alpha.copy(loadingTone = LoadingIndicatorTone.FOREGROUND), beta); hover.value = 0 }
         val after = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertEquals(before, after)
         onNodeWithTag(UiTestTag.SessionTabRename(0).value, useUnmergedTree = true).assertExists()
@@ -62,7 +62,7 @@ class ConversationNavigationTabsTest {
     @Test
     fun allFiveWorkingTabsAnimateEvenWhenAUtilityTabIsSelected() = runComposeUiTest {
         mainClock.autoAdvance = false
-        val headers = (0..4).map { ConversationTabHeader(Conversation.Id("busy-$it"), "Task $it", isLoading = true) }
+        val headers = (0..4).map { ConversationTabHeader(Conversation.Id("busy-$it"), "Task $it", loadingTone = LoadingIndicatorTone.FOREGROUND) }
         setContent { Navigation(headers, selected = 0) }
         mainClock.advanceTimeBy(100)
         val before = headers.map { onNodeWithTag("conversation-activity-slot:${it.conversationId.value}", useUnmergedTree = true).captureToImage().toPixelMap() }
@@ -73,6 +73,83 @@ class ConversationNavigationTabsTest {
             assertTrue((0 until first.height).any { y -> (0 until first.width).any { x -> first[x, y] != after[x, y] } }, header.title)
             assertTrue((0 until after.height).none { y -> (0 until after.width).any { x -> after[x, y].blue > after[x, y].red + 0.2f } }, "No blue bulb base in tab headers")
         }
+    }
+
+    @Test
+    fun attentionStaysCenteredAcrossBothLoadingTonesAndCompletionWithoutMovingTheTitle() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val header = mutableStateOf(alpha)
+        setContent { Navigation(listOf(header.value)) }
+        val title = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val slot = onNodeWithTag("conversation-activity-slot:alpha", useUnmergedTree = true)
+        val bounds = slot.fetchSemanticsNode().boundsInRoot
+        assertEquals(8f, title.left - bounds.right, "Status and title must keep an eight-dp gap")
+        for (tone in listOf(LoadingIndicatorTone.FOREGROUND, LoadingIndicatorTone.BACKGROUND, null)) {
+            runOnIdle { header.value = alpha.copy(isUnread = true, loadingTone = tone) }
+            mainClock.advanceTimeByFrame()
+            val dot = onNodeWithTag(UiTestTag.ConversationUnread("alpha").value, useUnmergedTree = true)
+                .assertWidthIsEqualTo(6.dp).assertHeightIsEqualTo(6.dp).fetchSemanticsNode().boundsInRoot
+            assertEquals(bounds.center, dot.center)
+            assertEquals(title, onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot)
+        }
+        mainClock.advanceTimeBy(240)
+        onAllNodes(SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo))
+            .assertCountEquals(0)
+        val finished = slot.captureToImage().toPixelMap()
+        mainClock.advanceTimeBy(1_000)
+        val later = slot.captureToImage().toPixelMap()
+        for (y in 0 until finished.height) for (x in 0 until finished.width) {
+            assertEquals(finished[x, y], later[x, y], "Unread alone must not animate")
+        }
+        runOnIdle { header.value = alpha }
+        mainClock.advanceTimeByFrame()
+        onNodeWithTag(UiTestTag.ConversationUnread("alpha").value, useUnmergedTree = true).assertDoesNotExist()
+        assertEquals(bounds, slot.fetchSemanticsNode().boundsInRoot)
+        assertEquals(title, onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot)
+    }
+
+    @Test
+    fun ringGrowsAndShrinksUnderTheStationaryAttentionDot() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val header = mutableStateOf(alpha.copy(isUnread = true))
+        setContent { Navigation(listOf(header.value)) }
+        val slot = onNodeWithTag("conversation-activity-slot:alpha", useUnmergedTree = true)
+        val dot = onNodeWithTag(UiTestTag.ConversationUnread("alpha").value, useUnmergedTree = true)
+        val dotBounds = dot.fetchSemanticsNode().boundsInRoot
+        val titleBounds = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val idle = slot.captureToImage().toPixelMap()
+        fun assertStationaryDot() {
+            val frame = slot.captureToImage().toPixelMap()
+            for (dy in -1..1) for (dx in -1..1) {
+                val x = frame.width / 2 + dx
+                val y = frame.height / 2 + dy
+                assertEquals(idle[x, y], frame[x, y], "The ring must remain underneath the attention dot")
+            }
+            assertEquals(dotBounds, dot.fetchSemanticsNode().boundsInRoot)
+            assertEquals(titleBounds, onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot)
+        }
+        runOnIdle { header.value = header.value.copy(loadingTone = LoadingIndicatorTone.FOREGROUND) }
+        for (step in listOf(16L, 32L, 64L, 240L)) { mainClock.advanceTimeBy(step); assertStationaryDot() }
+        val visible = slot.captureToImage().toPixelMap()
+        assertTrue((0 until visible.height).any { y -> (0 until visible.width).any { x -> visible[x, y] != idle[x, y] } })
+        runOnIdle { header.value = header.value.copy(loadingTone = null) }
+        for (step in listOf(16L, 32L, 64L, 240L)) { mainClock.advanceTimeBy(step); assertStationaryDot() }
+        val hidden = slot.captureToImage().toPixelMap()
+        for (y in 0 until hidden.height) for (x in 0 until hidden.width) assertEquals(idle[x, y], hidden[x, y])
+    }
+
+    @Test
+    fun narrowPickerKeepsAggregateAttentionInsideSelectedActivitySlot() = runComposeUiTest {
+        setContent { Navigation(listOf(alpha.copy(loadingTone = LoadingIndicatorTone.BACKGROUND), beta), width = 393) }
+        val slot = onNodeWithTag("conversation-activity-slot:alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val attention = onNodeWithTag("conversation-picker-unread", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val title = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertEquals(8f, title.left - slot.right)
+        assertEquals(slot.center, attention.center)
+        onNodeWithTag("conversation-tab-picker").performClick()
+        val betaSlot = onNodeWithTag("conversation-activity-slot:beta", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val betaDot = onNodeWithTag(UiTestTag.ConversationUnread("beta").value, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertEquals(betaSlot.center, betaDot.center)
     }
 
     @Test

@@ -69,6 +69,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
 import com.gromozeka.presentation.ui.GromozekaLoadingIndicator
+import com.gromozeka.presentation.ui.GromozekaSimpleLoadingIndicator
 
 enum class RuntimeInspectionSection { COMMANDS, MONITORS, PROBLEMS }
 
@@ -908,11 +909,10 @@ private fun RuntimeTasksSection(
                 Column(Modifier.fillMaxWidth().bringIntoViewRequester(commandsRequester)) {
                     activeCommands.forEach { commandTask ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Terminal,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
+                            Box(Modifier.size(24.dp).testTag("command-activity:${commandTask.id.value}"), contentAlignment = Alignment.Center) {
+                                GromozekaSimpleLoadingIndicator(Modifier.size(24.dp), tone = commandLoadingTone(runtimeSnapshot, commandTask))
+                                Icon(Icons.Default.Terminal, null, Modifier.size(16.dp))
+                            }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -939,11 +939,10 @@ private fun RuntimeTasksSection(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.testTag(UiTestTag.CommandMonitorItem(monitor.id.value).value),
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Visibility,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
+                            Box(Modifier.size(24.dp).testTag("monitor-activity:${monitor.id.value}"), contentAlignment = Alignment.Center) {
+                                GromozekaSimpleLoadingIndicator(Modifier.size(24.dp), tone = monitorLoadingTone(runtimeSnapshot, monitor))
+                                Icon(Icons.Default.Visibility, null, Modifier.size(16.dp))
+                            }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
