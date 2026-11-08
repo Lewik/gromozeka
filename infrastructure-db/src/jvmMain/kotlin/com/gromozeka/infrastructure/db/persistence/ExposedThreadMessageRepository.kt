@@ -8,6 +8,8 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.jdbc.*
 import org.springframework.stereotype.Service
 
@@ -49,10 +51,17 @@ class ExposedThreadMessageRepository(
             }
     }
 
+    override suspend fun contains(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Boolean = dbQuery {
+        ThreadMessages.select(ThreadMessages.messageId)
+            .where { (ThreadMessages.threadId eq threadId.value) and (ThreadMessages.messageId eq messageId.value) }
+            .singleOrNull() != null
+    }
+
     override suspend fun getMaxPosition(threadId: Conversation.Thread.Id): Int? = dbQuery {
-        ThreadMessages.selectAll()
+        val maximum = ThreadMessages.position.max()
+        ThreadMessages.select(maximum)
             .where { ThreadMessages.threadId eq threadId.value }
-            .maxOfOrNull { it[ThreadMessages.position] }
+            .single()[maximum]
     }
 
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> = dbQuery {

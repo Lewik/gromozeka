@@ -213,6 +213,16 @@ class WorkflowContracts(unittest.TestCase):
         for module in ("remote-protocol", "worker-runtime"):
             self.assertIn(f"{module}/build/test-results/", upload["with"]["path"])
 
+    def test_runtime_point_reads_are_verified_without_enabling_the_large_benchmark(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*PostgresRuntimeMessageReadTest", "*ConversationHistoryReadServiceTest",
+                      "*ConversationRuntimeAppendTest", "*ConversationEngineDeliveryTest"):
+            self.assertIn(check, verification)
+        postgres = next(step for step in JOBS["verify-runtime"]["steps"]
+                        if "*PostgresRuntimeMessageReadTest" in step.get("run", ""))
+        self.assertEqual("true", postgres["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
+        self.assertNotIn("GROMOZEKA_HISTORY_BENCHMARK", str(JOBS["verify-runtime"]))
+
     def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
         upload = next(step for step in JOBS["verify-runtime"]["steps"]
                       if step.get("with", {}).get("name") == "verify-runtime-diagnostics")

@@ -703,6 +703,8 @@ private class InMemoryThreadMessageRepository(
     }
     override suspend fun getByThread(threadId: Conversation.Thread.Id): List<ThreadMessageLink> =
         links[threadId].orEmpty().sortedBy(ThreadMessageLink::position)
+    override suspend fun contains(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Boolean =
+        links[threadId].orEmpty().any { it.messageId == messageId }
     override suspend fun getMaxPosition(threadId: Conversation.Thread.Id): Int? =
         links[threadId]?.maxOfOrNull(ThreadMessageLink::position)
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> =

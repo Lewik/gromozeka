@@ -76,7 +76,15 @@ class ConversationHistoryReadService(
     }
 
     suspend fun message(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message =
-        requireNotNull(messages.message(currentThread(conversationId), messageId)) { "Message is not in the current conversation thread" }.message
+        requireNotNull(findMessage(conversationId, messageId)) { "Message is not in the current conversation thread" }
+
+    /** Full persisted message, not the timeline projection; absent outside the current thread. */
+    suspend fun findMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message? =
+        messages.message(currentThread(conversationId), messageId)?.message
+
+    /** Membership only: does not load or deserialize the message body. */
+    suspend fun containsMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Boolean =
+        messages.position(currentThread(conversationId), messageId) != null
 
     suspend fun eventCheckpoint(conversationId: Conversation.Id): Long = runtime.lastEventSequence(conversationId)
 

@@ -74,6 +74,9 @@ interface ThreadMessageRepository {
      */
     suspend fun getByThread(threadId: Conversation.Thread.Id): List<ThreadMessageLink>
 
+    /** Checks the exact thread/message link without loading message bodies or other links. */
+    suspend fun contains(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Boolean
+
     /**
      * Gets maximum position in thread (for append operations).
      *

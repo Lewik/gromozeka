@@ -133,6 +133,7 @@ jobs:
           --tests '*PostgresWorkerRequestRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
           --tests '*WorkerRequestByteStringMigrationTest'
+          --tests '*PostgresRuntimeMessageReadTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           --console=plain
       - name: Verify Server and Worker
@@ -162,6 +163,8 @@ jobs:
           --tests '*AgentContextQueryServiceTest'
           --tests '*ConversationContextSnapshotServiceTest'
           --tests '*ConversationEngineDeliveryTest'
+          --tests '*ConversationHistoryReadServiceTest'
+          --tests '*ConversationRuntimeAppendTest'
           --tests '*AgentResponseReviewServiceTest'
           --tests '*MessageSquashServiceTest'
           --tests '*AgentSessionRuntimeProjectionTest'

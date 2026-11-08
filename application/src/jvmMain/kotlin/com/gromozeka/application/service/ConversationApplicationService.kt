@@ -405,8 +405,7 @@ class ConversationApplicationService(
         saveMessageIfAbsent(message)
 
         val currentThread = threadRepo.findById(conversation.currentThread)!!
-        val existingLinks = threadMessageRepo.getByThread(currentThread.id)
-        if (existingLinks.any { it.messageId == message.id }) {
+        if (threadMessageRepo.contains(currentThread.id, message.id)) {
             log.debug("Message ${message.id} is already linked to thread ${currentThread.id}")
             return conversationRepo.findById(conversationId)
         }
@@ -416,7 +415,7 @@ class ConversationApplicationService(
         runCatching {
             threadMessageRepo.add(currentThread.id, message.id, position = lastPosition + 1)
         }.onFailure { error ->
-            val linkedAfterRace = threadMessageRepo.getByThread(currentThread.id).any { it.messageId == message.id }
+            val linkedAfterRace = threadMessageRepo.contains(currentThread.id, message.id)
             if (!linkedAfterRace) {
                 throw error
             }

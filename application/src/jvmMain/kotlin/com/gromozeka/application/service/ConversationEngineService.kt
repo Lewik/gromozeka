@@ -97,6 +97,7 @@ class ConversationEngineService(
     private val toolApprovalService: ToolApprovalService,
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
     private val conversationService: ConversationDomainService,
+    private val conversationHistory: ConversationHistoryReadService,
     private val conversationMessageAppender: ConversationRuntimeMessageAppender,
     private val historyMutationExecutor: ConversationRuntimeHistoryMutationExecutor,
     private val memoryApplicationService: MemoryApplicationService,
@@ -136,8 +137,7 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.AgentInvocation ->
                 runAgentInvocationStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.AgentResponse -> {
-                val userMessage = conversationService.loadCurrentMessages(task.conversationId)
-                    .firstOrNull { it.id == payload.rootUserMessageId }
+                val userMessage = conversationHistory.findMessage(task.conversationId, payload.rootUserMessageId)
                     ?: error("Agent response source message is no longer in the conversation")
                 runAgentInvocationStep(
                     task, executor,
@@ -755,8 +755,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
-        val toolResultMessage = conversationService.loadCurrentMessages(conversationId)
-            .firstOrNull { it.id == payload.toolResultMessageId }
+        val toolResultMessage = conversationHistory.findMessage(conversationId, payload.toolResultMessageId)
             ?: throw IllegalStateException(
                 "Tool result message not found: conversation=${conversationId.value} " +
                     "message=${payload.toolResultMessageId.value}"
@@ -908,9 +907,7 @@ class ConversationEngineService(
         return when (val sourcePayload = incident.task.payload) {
             is ConversationRuntimeTask.Payload.ToolExecution -> {
                 val toolResultMessageId = runtimeMessageId(incident.task.id, "result")
-                val existingToolResult = conversationService.loadCurrentMessages(conversationId)
-                    .firstOrNull { it.id == toolResultMessageId }
-                if (existingToolResult == null) {
+                if (!conversationHistory.containsMessage(conversationId, toolResultMessageId)) {
                     val resultText = executionIncidentResult(incident)
                     val toolResultMessage = Conversation.Message(
                         id = toolResultMessageId,
@@ -1050,7 +1047,7 @@ class ConversationEngineService(
 
         batch.messages.forEach { syntheticMessage ->
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (conversationService.loadCurrentMessages(conversationId).none { it.id == syntheticMessage.id }) {
+            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
                 val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>()
                 val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
                 val iterator = persisted.iterator()
@@ -1720,7 +1717,7 @@ class ConversationEngineService(
         conversationId: Conversation.Id,
         message: Conversation.Message,
     ): Boolean {
-        val existsInCurrentThread = conversationService.loadCurrentMessages(conversationId).any { it.id == message.id }
+        val existsInCurrentThread = conversationHistory.containsMessage(conversationId, message.id)
         if (existsInCurrentThread) {
             log.info {
                 "Runtime message side effect already applied: " +

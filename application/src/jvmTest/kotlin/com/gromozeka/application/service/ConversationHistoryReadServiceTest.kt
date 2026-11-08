@@ -69,6 +69,48 @@ class ConversationHistoryReadServiceTest {
         assertTrue(page.messages.any { it.position == 60 })
     }
 
+    @Test
+    fun pointReadsFollowCurrentThreadWithoutProjectingOrScanningHistory() = runBlocking {
+        val oldThread = Conversation.Thread.Id("old-thread")
+        var conversation: Conversation? = Conversation(conversationId, Project.Id("project"),
+            setOf(Conversation.Participant.User(com.gromozeka.domain.model.User.Id("user"))),
+            currentThread = threadId, createdAt = now, updatedAt = now)
+        val message = Conversation.Message(Conversation.Message.Id("target"), conversationId,
+            role = Conversation.Message.Role.ASSISTANT, content = listOf(
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("x".repeat(80_000)))),
+            providerMetadata = kotlinx.serialization.json.buildJsonObject {
+                put("replay", kotlinx.serialization.json.JsonPrimitive("synthetic-opaque-state"))
+            }, createdAt = now)
+        val calls = mutableListOf<String>()
+        val repository = stub<ConversationHistoryRepository> { method, args ->
+            val name = method.substringBefore('-')
+            calls += name
+            val matches = args[0] == threadId.value && args[1] == message.id.value
+            when (name) {
+                "message" -> if (matches) PositionedConversationMessage(0, message) else null
+                "position" -> if (matches) 0 else null
+                else -> error("Point reads must not scan history: $name")
+            }
+        }
+        val service = ConversationHistoryReadService(
+            stub<ConversationRepository> { method, _ -> check(method.startsWith("findById")); conversation },
+            repository, InMemoryConversationRuntimeCoordinator(),
+        )
+        assertTrue(service.containsMessage(conversationId, message.id))
+        assertEquals(listOf("position"), calls)
+        assertEquals(message, service.findMessage(conversationId, message.id))
+        assertEquals(message, service.message(conversationId, message.id))
+        conversation = conversation!!.copy(currentThread = oldThread)
+        assertFalse(service.containsMessage(conversationId, message.id))
+        kotlin.test.assertNull(service.findMessage(conversationId, message.id))
+        kotlin.test.assertFailsWith<IllegalArgumentException> { service.message(conversationId, message.id) }
+        conversation = null
+        val before = calls.size
+        kotlin.test.assertFailsWith<IllegalArgumentException> { service.findMessage(conversationId, message.id) }
+        kotlin.test.assertFailsWith<IllegalArgumentException> { service.containsMessage(conversationId, message.id) }
+        assertEquals(before, calls.size)
+    }
+
     private fun service(size: Int): ConversationHistoryReadService {
         val conversation = Conversation(
             id = conversationId, projectId = Project.Id("project"),

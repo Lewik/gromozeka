@@ -520,6 +520,24 @@ The UI snapshot reads its state and latest 200 traces from one consistent
 PostgreSQL snapshot; targeted Telegram and history lookups select event metadata
 or a single matching event.
 
+Runtime lookups by message ID and replay-existence checks read only the current
+thread's matching message or link. They must not load the full archive and filter
+it in application code. The point reader returns the complete persisted message,
+including provider metadata and current author projection, not the bounded UI
+preview. Append membership checks use the thread-message repository, and append
+positions use a database `MAX` aggregate. This does not change the separate full
+history load used to prepare model context or the compaction projection.
+
+`PostgresRuntimeMessageReadTest` checks thread isolation, bounded rows/body reads,
+full-message preservation and SQL aggregation against disposable PostgreSQL. Its
+normal long-history fixture contains 256 messages including a compaction result.
+For local measurements, `GROMOZEKA_HISTORY_BENCHMARK=true` expands it to 25,720
+synthetic messages (roughly 250 MiB of JSON); give `:infrastructure-db:jvmTest` a
+2 GiB heap via a local Gradle init script. It compares full-history and point reads
+on the same data, prints warmed median timings and asserts read counts rather than
+machine-dependent timing thresholds. It does not call a model or measure deployed
+turn latency.
+
 Run the storage and migration checks against the checkout's PostgreSQL slot:
 
 ```bash
