@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.config.ObjectPostProcessor
+import org.springframework.security.web.header.HeaderWriterFilter
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
@@ -44,6 +46,7 @@ internal class GromozekaHttpSecurityConfiguration {
             .requestCache { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .headers {
+                it.withObjectPostProcessor(EagerSecurityHeaders)
                 it.cacheControl { cache -> cache.disable() } // Resource controllers own cache policy.
                 it.addHeaderWriter(StaticHeadersWriter("Referrer-Policy", "no-referrer"))
                 it.addHeaderWriter(StaticHeadersWriter("Permissions-Policy",
@@ -122,5 +125,12 @@ internal class GromozekaRequestAuthenticationFilter(
 
     private companion object {
         val PUBLIC_API_PATHS = setOf("/api/distributions", "/api/worker-enrollments/consume")
+    }
+}
+
+/** Suspend controllers can write a response while the original servlet chain unwinds. */
+internal object EagerSecurityHeaders : ObjectPostProcessor<HeaderWriterFilter> {
+    override fun <O : HeaderWriterFilter> postProcess(filter: O): O = filter.apply {
+        setShouldWriteHeadersEagerly(true)
     }
 }

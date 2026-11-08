@@ -177,6 +177,7 @@ internal class McpOAuthConfiguration {
                 it.requestMatchers("/oauth/login", "/.well-known/**").permitAll()
                 it.anyRequest().authenticated()
             }
+            .headers { it.withObjectPostProcessor(EagerSecurityHeaders) }
             .formLogin { it.disable() }.httpBasic { it.disable() }.logout { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) }
             .securityContext { it.securityContextRepository(NullSecurityContextRepository()) }
