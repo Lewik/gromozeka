@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.anthropic
 
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpAnthropicClient
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
 import com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient
@@ -169,6 +170,7 @@ internal class AnthropicSdkRuntimeBackend(
         return AnthropicOkHttpClient.builder()
             .maxRetries(0)
             .backend(backend)
+            .addInterceptor { AiTrafficDumpAnthropicClient(it) }
             .build()
     }
 

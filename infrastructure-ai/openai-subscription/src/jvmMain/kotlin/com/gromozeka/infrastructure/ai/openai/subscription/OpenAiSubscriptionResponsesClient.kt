@@ -16,6 +16,7 @@ import kotlinx.serialization.json.jsonObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.net.URI
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -59,7 +60,7 @@ class OpenAiSubscriptionResponsesClient(
         encodeDefaults = true
         explicitNulls = false
     }
-    private val httpClient = HttpClient.newBuilder().build()
+    private val httpClient = AiTrafficDumpHttpClient(HttpClient.newBuilder().build(), "openai-subscription")
     private val responsesUrl = "${baseUrl.trimEnd('/')}/responses"
     private val websocketUrl = responsesUrl.toWebSocketUrl()
     private val webSocketSessions = ConcurrentHashMap<String, WebSocketSessionState>()
@@ -339,7 +340,7 @@ class OpenAiSubscriptionResponsesClient(
         private val log = KLoggers.logger(this)
         private val boundedResponseTimeoutMs = responseTimeoutMs.coerceAtLeast(1L)
         private val boundedTransportTimeoutMs = transportTimeoutMs.coerceAtLeast(1L)
-        private val httpClient = HttpClient.newBuilder().build()
+        private val httpClient = AiTrafficDumpHttpClient(HttpClient.newBuilder().build(), "openai-subscription")
         private val inboundEvents = LinkedBlockingQueue<WebSocketInboundEvent>()
         private val requestMutex = Mutex()
         private val open = AtomicBoolean(false)

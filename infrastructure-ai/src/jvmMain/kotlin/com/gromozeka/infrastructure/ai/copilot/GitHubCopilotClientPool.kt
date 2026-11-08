@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.copilot
 
+import com.gromozeka.infrastructure.ai.diagnostics.DangerousAiTrafficDump
 import com.github.copilot.CopilotClient
 import com.github.copilot.rpc.CopilotClientMode
 import com.github.copilot.rpc.CopilotClientOptions
@@ -59,6 +60,7 @@ internal class GitHubCopilotClientPool(
     }
 
     private fun startClient(key: ClientKey): CompletableFuture<GitHubCopilotClientHandle> {
+        DangerousAiTrafficDump.captureJavaLogger("com.github.copilot.JsonRpcClient", "github-copilot")
         Files.createDirectories(key.copilotHome)
         Files.createDirectories(key.workingDirectory)
         val client = CopilotClient(

@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
 import java.net.URI
 import java.net.URLEncoder
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -27,7 +28,7 @@ class OpenAiSubscriptionAuthService(
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json { ignoreUnknownKeys = true }
-    private val httpClient = HttpClient.newBuilder().build()
+    private val httpClient = AiTrafficDumpHttpClient(HttpClient.newBuilder().build(), "openai-subscription")
     private val refreshMutex = Mutex()
 
     fun getAuthorizationUrl(): OpenAiSubscriptionAuthorizationUrl {

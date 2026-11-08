@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpProcess
 import com.gromozeka.domain.model.Conversation
 
 import com.gromozeka.domain.model.ai.AiReasoningMode
@@ -605,7 +606,10 @@ private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
                     "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=process_started " +
                         "launchMs=${elapsedMillis(startedAt)} pid=${process.pid()} alive=${process.isAlive}"
                 }
-                StreamingClaudeCodeCliProcess(process, systemPromptFile, command.diagnosticId)
+                StreamingClaudeCodeCliProcess(
+                    AiTrafficDumpProcess.capture(process, "claude-code", args, command.systemPrompt),
+                    systemPromptFile, command.diagnosticId,
+                )
             } catch (exception: Throwable) {
                 log.error(exception) {
                     "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=process_launch_failed " +

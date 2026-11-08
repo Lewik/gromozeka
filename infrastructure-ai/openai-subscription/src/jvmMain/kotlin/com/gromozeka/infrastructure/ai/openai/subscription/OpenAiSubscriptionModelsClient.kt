@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.net.URLEncoder
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -26,7 +27,7 @@ class OpenAiSubscriptionModelsClient(
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json { ignoreUnknownKeys = true }
-    private val httpClient = HttpClient.newBuilder().build()
+    private val httpClient = AiTrafficDumpHttpClient(HttpClient.newBuilder().build(), "openai-subscription")
     private val cache = ConcurrentHashMap<String, CachedModels>()
     private val refreshLocks = ConcurrentHashMap<String, Any>()
 
