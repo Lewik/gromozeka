@@ -703,10 +703,20 @@ private class InMemoryThreadMessageRepository(
     }
     override suspend fun getByThread(threadId: Conversation.Thread.Id): List<ThreadMessageLink> =
         links[threadId].orEmpty().sortedBy(ThreadMessageLink::position)
+    override suspend fun contains(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Boolean =
+        links[threadId].orEmpty().any { it.messageId == messageId }
     override suspend fun getMaxPosition(threadId: Conversation.Thread.Id): Int? =
         links[threadId]?.maxOfOrNull(ThreadMessageLink::position)
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> =
         messages(threadId)
+    override suspend fun getContextMessagesByThread(threadId: Conversation.Thread.Id, nativeProvider: String?): List<Conversation.Message> {
+        val history = messages(threadId)
+        val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(
+            history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
+            history.filter { com.gromozeka.domain.model.MessageContextMetadata.from(it).hasCompaction }, nativeProvider,
+        )
+        return history.filter { it.id in selected }
+    }
     override suspend fun deleteByThread(threadId: Conversation.Thread.Id) {
         links.remove(threadId)
     }

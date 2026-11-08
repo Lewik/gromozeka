@@ -243,15 +243,16 @@ class BackgroundActivityOriginRecorderTest {
         Mockito.`when`(coordinator.confirmActiveTaskOwner(conversation.id, task.id, executor)).thenReturn(true)
         val conversations = mock<ConversationDomainService>()
         Mockito.`when`(conversations.findById(conversation.id)).thenReturn(conversation)
-        Mockito.`when`(conversations.loadCurrentMessages(conversation.id)).thenReturn(emptyList())
+        val history = mock<ConversationHistoryReadService>()
         val artifacts = mock<ConversationArtifactApplicationService>()
         batch.messages.forEach { message ->
+            Mockito.`when`(history.containsMessage(conversation.id, message.id)).thenReturn(false)
             val results = message.content.filterIsInstance<ContentItem.ToolResult>()
             Mockito.`when`(artifacts.persistAndCommitToolResults(conversation, batch.actorUserId, results)).thenReturn(results)
         }
         val engine = ConversationEngineService(
             aiRuntimeProvider = mock(), aiToolProvider = mock(), agentDomainService = mock(), agentPromptAssemblyService = mock(),
-            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations,
+            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = mock(),
             conversationMessageAppender = mock(), historyMutationExecutor = mock(), memoryApplicationService = mock(),
             memoryToolApplicationService = mock(), backgroundActivityCompletionApplicationService = f.completions,
             memoryMessageRoutingApplicationService = mock(), toolCallSequenceFixerService = mock(), settingsProvider = mock(),
@@ -262,7 +263,9 @@ class BackgroundActivityOriginRecorderTest {
             pendingSecretRevealService = mock(), suggestedRepliesGenerationService = mock(),
             conversationPins = mock(),
         )
-        return engine.runRuntimeTask(task, executor) {}
+        val outcome = engine.runRuntimeTask(task, executor) {}
+        Mockito.verify(conversations, Mockito.never()).loadCurrentMessages(conversation.id)
+        return outcome
     }
 
     private fun call(id: String, name: String, input: JsonObject) = ContentItem.ToolCall(

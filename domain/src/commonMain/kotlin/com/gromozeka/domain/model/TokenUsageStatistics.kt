@@ -93,12 +93,12 @@ data class TokenUsageStatistics(
      * @property totalCacheReadTokens sum of all cache read tokens (cost savings)
      * @property totalCacheCreationTokens sum of all cache creation tokens
      * @property totalThinkingTokens sum of all extended thinking tokens
-     * @property lastCallTokens token count from most recent API call (null if no calls yet)
+     * @property lastCallTokens token count from the most recent CONVERSATION call (null if none)
      * @property recentCalls list of recent statistics records for history display
-     * @property currentContextSize estimated current context window usage in tokens
-     * @property contextWindowTokens known context window for latest provider/model, if configured
-     * @property provider AI provider used in most recent call (null if no calls yet)
-     * @property modelId model used in most recent call (null if no calls yet)
+     * @property currentContextSize provider-reported context usage of the latest CONVERSATION call
+     * @property contextWindowTokens known context window for the latest CONVERSATION provider/model
+     * @property provider AI provider used in the latest CONVERSATION call (null if none)
+     * @property modelId model used in the latest CONVERSATION call (null if none)
      */
     @Serializable
     data class ThreadTotals(

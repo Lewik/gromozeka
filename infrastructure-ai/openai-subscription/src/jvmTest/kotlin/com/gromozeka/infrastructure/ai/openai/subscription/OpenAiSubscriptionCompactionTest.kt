@@ -175,9 +175,41 @@ class OpenAiSubscriptionCompactionTest {
             )
             val response = fixture.responseMapper.toRuntimeResponse(parsed.outputItems, parsed.completed,
                 "conversation", "connection", "configuration", profile.slug, AiModelConfiguration.AssistantResponseFormat.TEXT)
-            val recorded = fixture.compaction.recordContextUsage(mapped, parsed, response, AiModelConfiguration.AssistantResponseFormat.TEXT)
+            val recorded = fixture.compaction.recordContextUsage(mapped, parsed, response, AiModelConfiguration.AssistantResponseFormat.TEXT, profile)
             assertEquals(1100L, recorded.providerMetadata[OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY])
             assertTrue(fixture.compaction.estimateContextTokens(persisted(recorded), mapped, "connection") >= 1100)
+        }
+    }
+
+    @Test
+    fun `sparse history retains measured usage hidden by a selective summary`() {
+        Fixture().use { fixture ->
+            val measured = user("measured", "").copy(role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("answer"))),
+                providerMetadata = buildJsonObject {
+                    put("provider", "OPENAI_SUBSCRIPTION"); put("connectionId", "connection"); put("model", profile.slug)
+                    put(OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY, 9000)
+                    put(OpenAiSubscriptionCompaction.CONTEXT_ESTIMATE_KEY, 100)
+                })
+            val invalid = measured.copy(id = Conversation.Message.Id("invalid"), providerMetadata = JsonObject(
+                measured.providerMetadata + (OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY to JsonPrimitive("unknown"))))
+            val summary = user("summary", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(
+                ContentItem.ContextCompactionResult(ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
+                    ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    sourceMessageIds = listOf(measured.id, invalid.id),
+                    coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+            val history = listOf(user("old", "old"), measured, invalid, summary, user("new", "new"))
+            val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(
+                history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
+                history.filter { com.gromozeka.domain.model.MessageContextMetadata.from(it).hasCompaction }, "OPENAI_SUBSCRIPTION")
+            val sparse = history.filter { it.id in selected }
+            val request = AiRuntimeRequest(emptyList(), history)
+            val mapped = fixture.mapper.toRequest(request, profile, "conversation", connectionId = "connection")
+            assertEquals(mapped, fixture.mapper.toRequest(request.copy(messages = sparse), profile, "conversation", connectionId = "connection"))
+            val before = fixture.compaction.estimateContextTokens(history, mapped, "connection")
+            assertTrue(before >= 9000)
+            assertEquals(before, fixture.compaction.estimateContextTokens(sparse, mapped, "connection"))
+            assertTrue(fixture.requests.isEmpty())
         }
     }
 

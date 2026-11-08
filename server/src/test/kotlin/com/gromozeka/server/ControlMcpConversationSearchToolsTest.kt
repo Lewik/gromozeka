@@ -35,7 +35,7 @@ class ControlMcpConversationSearchToolsTest {
             cursor = "opaque-cursor",
         )
         val service = Mockito.mock(ConversationSearchApplicationService::class.java)
-        Mockito.`when`(service.search(context.user.id, request)).thenReturn(
+        Mockito.`when`(service.search(context.user.id, request, includeToolResults = false)).thenReturn(
             ConversationSearchPage(
                 hits = listOf(hit(project)),
                 nextCursor = "next-cursor",
@@ -63,7 +63,7 @@ class ControlMcpConversationSearchToolsTest {
         assertTrue(result.getValue("hasMore").jsonPrimitive.content.toBoolean())
         assertFalse(returnedHit.containsKey("content"))
         assertTrue(tool.definition.annotations?.readOnlyHint == true)
-        Mockito.verify(service).search(context.user.id, request)
+        Mockito.verify(service).search(context.user.id, request, includeToolResults = false)
     }
 
     private fun project(): Project {

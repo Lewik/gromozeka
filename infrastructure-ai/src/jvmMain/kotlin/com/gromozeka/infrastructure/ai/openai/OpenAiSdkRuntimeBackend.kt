@@ -15,6 +15,7 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -68,6 +69,13 @@ internal class OpenAiSdkRuntimeBackend(
 ) : AiRuntimeBackend {
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.OPENAI_API || connectionKind == AiConnection.Kind.OPENAI_COMPATIBLE
+
+    override fun capabilities(
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
+    ) = AiRuntimeCapabilities(
+        supportsAutoCompaction = connection.kind == AiConnection.Kind.OPENAI_API,
+    )
 
     override fun createRuntime(
         runtime: ResolvedAiRuntime,

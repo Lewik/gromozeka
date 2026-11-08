@@ -22,6 +22,7 @@ import com.gromozeka.domain.service.CommandTaskOutput
 import com.gromozeka.domain.service.CommandTaskService
 import com.gromozeka.domain.service.CommandTaskInputResult
 import com.gromozeka.domain.service.MAX_COMMAND_INPUT_BYTES
+import com.gromozeka.domain.visual.VisualLimits
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -379,14 +380,15 @@ class DefaultCommandTaskService(
         closeInput: Boolean,
     ): CommandTaskInputResult {
         require(bytes.isNotEmpty() || closeInput) { "Provide input bytes or request close_input" }
-        require(bytes.size <= MAX_COMMAND_INPUT_BYTES) { "Command input exceeds $MAX_COMMAND_INPUT_BYTES bytes" }
-        val input = bytes.copyOf()
         check(!closed.get()) { "Command task service is closed" }
         val stored = runtimeState.findCommandTask(conversationId, taskId)
             ?: error("Command task not found in this conversation: ${taskId.value}")
         check(stored.conversationId == conversationId && stored.workerId == workerId) {
             "Command task does not belong to this conversation and Worker"
         }
+        val inputLimit = if (stored.visualId != null) VisualLimits.INPUT_LINE_BYTES else MAX_COMMAND_INPUT_BYTES
+        require(bytes.size <= inputLimit) { "Command input exceeds $inputLimit bytes" }
+        val input = bytes.copyOf()
         check(!stored.isTerminal && stored.cancellationRequestedAt == null) {
             "Command task is finished or cancellation was requested"
         }

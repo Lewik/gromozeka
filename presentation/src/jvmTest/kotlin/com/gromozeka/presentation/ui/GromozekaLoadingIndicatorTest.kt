@@ -114,6 +114,36 @@ class GromozekaLoadingIndicatorTest {
     }
 
     @Test
+    fun backgroundToneMutesBothFullAndSimpleLoadersWithoutStoppingAnimation() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent {
+            androidx.compose.material3.MaterialTheme(colorScheme = androidx.compose.material3.lightColorScheme(onSurfaceVariant = Color.Gray)) {
+                androidx.compose.foundation.layout.Column(Modifier.background(Color(0xFF202020))) {
+                    GromozekaLoadingIndicator(Modifier.size(96.dp).testTag("full"), tone = LoadingIndicatorTone.BACKGROUND)
+                    GromozekaSimpleLoadingIndicator(Modifier.size(32.dp).testTag("simple"), tone = LoadingIndicatorTone.BACKGROUND)
+                }
+            }
+        }
+        mainClock.advanceTimeBy(100)
+        val before = listOf("full", "simple").associateWith { onNodeWithTag(it).captureToImage().toPixelMap() }
+        mainClock.advanceTimeBy(700)
+        for ((tag, first) in before) {
+            val after = onNodeWithTag(tag).captureToImage().toPixelMap()
+            var changed = 0
+            var visible = 0
+            for (y in 0 until after.height) for (x in 0 until after.width) {
+                val pixel = after[x, y]
+                assertTrue(kotlin.math.abs(pixel.red - pixel.green) < 0.02f && kotlin.math.abs(pixel.green - pixel.blue) < 0.02f,
+                    "$tag must not retain orange or blue parts in background mode")
+                if (pixel.red > 0.4f) visible++
+                if (first[x, y] != pixel) changed++
+            }
+            assertTrue(visible > 10, "$tag remains visible")
+            assertTrue(changed > 10, "$tag remains animated")
+        }
+    }
+
+    @Test
     fun standardAnimationMovesAndStaticModeDoesNot() = runComposeUiTest {
         mainClock.autoAdvance = false
         val animated = androidx.compose.runtime.mutableStateOf(true)

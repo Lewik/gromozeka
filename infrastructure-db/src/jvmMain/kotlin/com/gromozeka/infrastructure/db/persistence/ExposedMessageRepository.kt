@@ -38,6 +38,7 @@ class ExposedMessageRepository(
             it[role] = message.role.name
             it[createdAt] = message.createdAt
             it[searchText] = listOf(message.searchText(), artifactText).filter(String::isNotBlank).joinToString("\n")
+            it[messageText] = message.searchText(includeToolResults = false)
             it[messageJson] = json.encodeToString(message)
         }
         message
@@ -74,14 +75,14 @@ class ExposedMessageRepository(
     }
 }
 
-internal fun Conversation.Message.searchText(): String = content.mapNotNull { item ->
+internal fun Conversation.Message.searchText(includeToolResults: Boolean = true): String = content.mapNotNull { item ->
     when (item) {
         is Conversation.Message.ContentItem.UserMessage -> item.text
         is Conversation.Message.ContentItem.VisualInteraction -> "[Visual button action] ${item.caption()}"
         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
-        is Conversation.Message.ContentItem.ToolResult -> item.result
+        is Conversation.Message.ContentItem.ToolResult -> if (includeToolResults) item.result
             .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
-            .joinToString("\n") { it.content }
+            .joinToString("\n") { it.content } else null
         else -> null
     }
 }.joinToString("\n").safeToolOutputText().trim()

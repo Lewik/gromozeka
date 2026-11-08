@@ -178,6 +178,51 @@ class OpenAiSubscriptionResponsesClientTest {
     }
 
     @Test
+    fun reportsOnlyKnownMismatchFieldNamesWithoutValues() {
+        for (field in listOf("namespace", "call_id", "name", "arguments", "content", "tools", "encrypted_content")) {
+            val expected = buildJsonObject {
+                put("type", JsonPrimitive("function_call"))
+                put(field, JsonPrimitive("PRIVATE_EXPECTED_VALUE"))
+            }
+            val actual = JsonObject(expected + (field to JsonPrimitive("PRIVATE_ACTUAL_VALUE")))
+            val state = OpenAiSubscriptionIncrementalState()
+            state.record("shape", "response", listOf(expected))
+            val plan = state.plan(OpenAiSubscriptionResponsesRequest("model", listOf(actual)), "shape")
+            assertEquals(OpenAiSubscriptionRequestMode.FULL, plan.mode)
+            assertNull(plan.request.previousResponseId)
+            assertTrue(plan.reason.endsWith("field=$field"))
+            assertFalse(plan.reason.contains("PRIVATE"))
+        }
+    }
+
+    @Test
+    fun unknownProviderKeysAndTypesDoNotLeakThroughMismatchDiagnostics() {
+        val expected = buildJsonObject {
+            put("type", JsonPrimitive("PRIVATE_PROVIDER_TYPE"))
+            put("PRIVATE_PROVIDER_KEY", JsonPrimitive("PRIVATE_EXPECTED_VALUE"))
+        }
+        val variants = listOf(
+            JsonObject(expected + ("PRIVATE_PROVIDER_KEY" to JsonPrimitive("PRIVATE_ACTUAL_VALUE"))) to "other",
+            JsonObject(expected + ("type" to JsonPrimitive("PRIVATE_CHANGED_TYPE"))) to "type",
+        )
+        for ((actual, field) in variants) {
+            val state = OpenAiSubscriptionIncrementalState()
+            state.record("shape", "response", listOf(expected))
+            val plan = state.plan(OpenAiSubscriptionResponsesRequest("model", listOf(actual)), "shape")
+            assertEquals(OpenAiSubscriptionRequestMode.FULL, plan.mode)
+            assertTrue(plan.reason.endsWith("field=$field"))
+            assertTrue(plan.reason.contains("expectedType=unknown,actualType=unknown"))
+            assertFalse(plan.reason.contains("PRIVATE"))
+        }
+        val state = OpenAiSubscriptionIncrementalState()
+        state.record("shape", "response", listOf(expected))
+        val missing = state.plan(OpenAiSubscriptionResponsesRequest("model", emptyList()), "shape")
+        assertEquals(OpenAiSubscriptionRequestMode.FULL, missing.mode)
+        assertTrue(missing.reason.endsWith("field=item_presence"))
+        assertFalse(missing.reason.contains("PRIVATE"))
+    }
+
+    @Test
     fun sendsOnlyNewTransportItemsForStrictContinuation() {
         val prefix = buildJsonObject {
             put("type", JsonPrimitive("additional_tools"))

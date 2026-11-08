@@ -644,6 +644,7 @@
       "other": "{count} nouveaux messages"
     },
     "chat.input.attachFiles": "Joindre des fichiers",
+    "chat.input.pasteAttachments": "Coller des pièces jointes",
     "chat.input.hideKeyboard": "Masquer le clavier",
     "chat.input.insertLocation": "Insérer la position actuelle de l’appareil",
     "chat.input.insertLocationShort": "Insérer la position",

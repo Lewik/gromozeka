@@ -631,6 +631,7 @@
       "other": "{count} new messages"
     },
     "chat.input.attachFiles": "Attach files",
+    "chat.input.pasteAttachments": "Paste attachments",
     "chat.input.hideKeyboard": "Hide keyboard",
     "chat.input.insertLocation": "Insert current device location",
     "chat.input.insertLocationShort": "Insert location",

@@ -618,6 +618,7 @@
       "other": "{count} pesan baru"
     },
     "chat.input.attachFiles": "Lampirkan file",
+    "chat.input.pasteAttachments": "Tempel lampiran",
     "chat.input.hideKeyboard": "Sembunyikan keyboard",
     "chat.input.insertLocation": "Sisipkan lokasi perangkat saat ini",
     "chat.input.insertLocationShort": "Sisipkan lokasi",

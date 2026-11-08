@@ -46,6 +46,7 @@ import org.springframework.stereotype.Service
 @Service
 class ConversationToolExecutionTaskService(
     private val conversationService: ConversationDomainService,
+    private val conversationHistory: ConversationHistoryReadService,
     private val conversationMessageAppender: ConversationRuntimeMessageAppender,
     private val workspaceService: WorkspaceDomainService,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
@@ -73,10 +74,7 @@ class ConversationToolExecutionTaskService(
             "Tool execution task ${task.id.value} targets ${task.requirements.target} but is running on $executor"
         }
         val toolResultMessageId = runtimeMessageId(task.id, "result")
-        val existingToolResult = conversationService.loadCurrentMessages(conversationId)
-            .firstOrNull { it.id == toolResultMessageId }
-
-        if (existingToolResult == null) {
+        if (!conversationHistory.containsMessage(conversationId, toolResultMessageId)) {
             val modelToolNamesByCallId = payload.toolCalls.associate { it.id.value to it.call.name }
             val executionToolCalls = payload.toolCalls.withExecutionToolNames(
                 payload.executionToolNamesByCallId
@@ -422,7 +420,7 @@ class ConversationToolExecutionTaskService(
         conversationId: Conversation.Id,
         message: Conversation.Message,
     ): Boolean {
-        val existsInCurrentThread = conversationService.loadCurrentMessages(conversationId).any { it.id == message.id }
+        val existsInCurrentThread = conversationHistory.containsMessage(conversationId, message.id)
         if (existsInCurrentThread) {
             log.info {
                 "Runtime message side effect already applied: " +

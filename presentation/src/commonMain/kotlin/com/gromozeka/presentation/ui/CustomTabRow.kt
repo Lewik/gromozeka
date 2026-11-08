@@ -20,12 +20,13 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
+import com.gromozeka.presentation.ui.session.conversationLoadingTone
 
 internal data class ConversationTabHeader(
     val conversationId: Conversation.Id,
     val title: String,
     val displayName: String = title,
-    val isLoading: Boolean = false,
+    val loadingTone: LoadingIndicatorTone? = null,
     val isUnread: Boolean = false,
 )
 
@@ -47,12 +48,13 @@ fun CustomTabRow(
     val translation = LocalTranslation.current
     val headers = tabs.map { tab ->
         val isLoading by tab.isWaitingForResponse.collectAsState()
+        val runtime by tab.runtimeSnapshot.collectAsState()
         val conversation = conversations[tab.conversationId]
         ConversationTabHeader(
             conversationId = tab.conversationId,
             title = conversation?.effectiveDisplayName(translation) ?: translation.text("chat.navigation.conversationFallback"),
             displayName = conversation?.displayName.orEmpty(),
-            isLoading = isLoading,
+            loadingTone = conversationLoadingTone(runtime, isLoading),
             isUnread = tab.conversationId in unreadConversationIds,
         )
     }
@@ -132,20 +134,21 @@ internal fun ConversationNavigationTabs(
                                 selected = selectedTabIndex == index + 4,
                                 showTabsAtBottom = showTabsAtBottom,
                                 onClick = { onTabSelect(index) },
+                                tooltip = header.title,
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                                     .onTabHover({ onTabHover(index) }, onTabHoverExit)
                                     .testTag(UiTestTag.SessionTab(index).value),
                             ) {
+                                ConversationActivitySlot(header, Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
                                 Text(header.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                if (header.isUnread) ConversationUnreadBadge(header)
-                                // Both slots stay allocated: neither loading nor hover moves the title.
+                                // Both slots stay allocated: activity, attention and hover never move the title.
                                 Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
                                     if (hoveredTabIndex == index) IconButton(
                                         onClick = { onRename(header) },
                                         modifier = Modifier.size(20.dp).testTag(UiTestTag.SessionTabRename(index).value),
                                     ) { Icon(Icons.Default.Edit, translation.text("chat.navigation.renameTab"), Modifier.size(16.dp)) }
                                 }
-                                ConversationActivitySlot(header, Modifier.size(16.dp))
                             }
                         }
                     }
@@ -175,12 +178,14 @@ private fun ConversationTabPicker(
             selected = current != null,
             showTabsAtBottom = showTabsAtBottom,
             onClick = { expanded = true },
+            tooltip = current?.title,
             modifier = Modifier.fillMaxSize().testTag("conversation-tab-picker"),
         ) {
+            ConversationActivitySlot(current, Modifier.size(20.dp), unread = headers.any { it.isUnread },
+                unreadTag = "conversation-picker-unread")
+            Spacer(Modifier.width(8.dp))
             Text(current?.title ?: translation.text("chat.navigation.conversations"), Modifier.weight(1f),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (headers.any { it.isUnread }) Badge(Modifier.padding(horizontal = 4.dp).testTag("conversation-picker-unread"))
-            ConversationActivitySlot(current, Modifier.size(16.dp))
             Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
         }
         DropdownMenu(
@@ -192,21 +197,18 @@ private fun ConversationTabPicker(
             headers.forEachIndexed { index, header ->
                 DropdownMenuItem(
                     text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(header.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        OptionalTooltip(header.title) {
+                            Text(header.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 fontWeight = if (header == current) FontWeight.SemiBold else FontWeight.Normal)
-                            if (header.isUnread) ConversationUnreadBadge(header)
                         }
                     },
                     onClick = { expanded = false; onTabSelect(index) },
+                    leadingIcon = { ConversationActivitySlot(header, Modifier.size(20.dp)) },
                     trailingIcon = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ConversationActivitySlot(header, Modifier.size(16.dp))
-                            IconButton(
-                                onClick = { expanded = false; onRename(header) },
-                                modifier = Modifier.size(40.dp).testTag(UiTestTag.SessionTabRename(index).value),
-                            ) { Icon(Icons.Default.Edit, translation.text("chat.navigation.renameTab"), Modifier.size(18.dp)) }
-                        }
+                        IconButton(
+                            onClick = { expanded = false; onRename(header) },
+                            modifier = Modifier.size(40.dp).testTag(UiTestTag.SessionTabRename(index).value),
+                        ) { Icon(Icons.Default.Edit, translation.text("chat.navigation.renameTab"), Modifier.size(18.dp)) }
                     },
                     modifier = Modifier.testTag(UiTestTag.SessionTab(index).value)
                         .semantics { selected = header == current },
@@ -217,15 +219,16 @@ private fun ConversationTabPicker(
 }
 
 @Composable
-private fun ConversationActivitySlot(header: ConversationTabHeader?, modifier: Modifier) {
+private fun ConversationActivitySlot(
+    header: ConversationTabHeader?,
+    modifier: Modifier,
+    unread: Boolean = header?.isUnread == true,
+    unreadTag: String = UiTestTag.ConversationUnread(header?.conversationId?.value.orEmpty()).value,
+) {
     Box(modifier.testTag("conversation-activity-slot:${header?.conversationId?.value.orEmpty()}"), contentAlignment = Alignment.Center) {
-        if (header?.isLoading == true) GromozekaTabLoadingIndicator(Modifier.size(14.dp))
+        GromozekaSimpleLoadingIndicator(Modifier.size(14.dp), tone = header?.loadingTone)
+        if (unread) Badge(Modifier.size(6.dp).testTag(unreadTag))
     }
-}
-
-@Composable
-private fun ConversationUnreadBadge(header: ConversationTabHeader) {
-    Badge(Modifier.padding(horizontal = 4.dp).testTag(UiTestTag.ConversationUnread(header.conversationId.value).value))
 }
 
 @Composable
@@ -234,6 +237,7 @@ private fun NavigationTab(
     showTabsAtBottom: Boolean,
     onClick: () -> Unit,
     modifier: Modifier,
+    tooltip: String? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     val indicator = MaterialTheme.colorScheme.primary
@@ -250,7 +254,9 @@ private fun NavigationTab(
             }
         },
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically, content = content)
+        OptionalTooltip(tooltip) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically, content = content)
+        }
     }
 }

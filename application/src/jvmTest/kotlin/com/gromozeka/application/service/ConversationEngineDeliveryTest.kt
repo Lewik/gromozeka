@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.ai.*
+import com.gromozeka.domain.model.memory.MemoryRun
+import kotlinx.serialization.json.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import kotlinx.coroutines.*
@@ -282,6 +284,136 @@ class ConversationEngineDeliveryTest {
         assertFalse(f.messages.any { message -> message.content.any { it is ContentItem.UserMessage && "PIN_" in it.text } })
     }
 
+    @Test fun `model preparation loads checkpoint context rather than the archive`() = runBlocking {
+        val f = Fixture(); f.allowFullHistoryLoad = false
+        val root = f.messages.single()
+        val archive = (0 until 100).map { root.copy(id = Conversation.Message.Id("old-$it")) }
+        val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )))
+        f.messages.clear(); f.messages += archive + checkpoint + root
+        val original = f.messages.toList()
+        val task = f.begin()
+        f.engine.runRuntimeTask(task, executor) {}
+        assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION"), f.contextReads)
+        val request = f.requests.single()
+        assertEquals(3, request.messages.size)
+        assertEquals(listOf(checkpoint.id, root.id), request.projectedMessages("OPENAI_SUBSCRIPTION").map { it.id })
+        assertEquals(original, f.messages.take(original.size))
+    }
+
+    @Test fun `point append and replay never load the archive`() = runBlocking {
+        val f = Fixture(); f.allowFullHistoryLoad = false
+        val task = input("new-message")
+        assertTrue(f.coordinator.submit(task)); f.claim(task)
+        repeat(2) {
+            assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) { f.emitted += it })
+        }
+        assertEquals(1, f.messages.count { it.id.value == "new-message" })
+        assertEquals(listOf("new-message"), f.emitted.map { it.id.value })
+        assertTrue(f.requests.isEmpty())
+    }
+
+    @Test fun `point tool result processing never loads the archive or reapplies the result`() = runBlocking {
+        val f = Fixture(); f.allowFullHistoryLoad = false
+        val result = Conversation.Message(Conversation.Message.Id("tool-result"), conversation.id,
+            role = Conversation.Message.Role.USER, content = listOf(ContentItem.ToolResult(
+                ContentItem.ToolCall.Id("call"), "synthetic", listOf(ContentItem.ToolResult.Data.Text("result")))), createdAt = now)
+        f.messages += result
+        val running = f.begin()
+        val task = running.copy(id = ConversationRuntimeTask.Id("process-result"), parentTaskId = running.id,
+            payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
+                Conversation.Message.Id("root"), result.id, agentId, 1, returnDirect = false))
+        f.advance(running, task)
+        repeat(2) {
+            assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) { f.emitted += it })
+        }
+        assertEquals(1, f.messages.count { it.id == result.id })
+        assertTrue(f.emitted.isEmpty()); assertTrue(f.requests.isEmpty())
+    }
+
+    @Test fun `point tool execution replays the stored result without repeating effects or loading history`() = runBlocking {
+        val f = Fixture(); f.allowFullHistoryLoad = false
+        val running = f.begin()
+        val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("synthetic-call"),
+            ContentItem.ToolCall.Data("synthetic", kotlinx.serialization.json.JsonObject(emptyMap())))
+        val payload = ConversationRuntimeTask.Payload.ToolExecution(Conversation.Message.Id("root"), agentId, 1,
+            listOf(call), false, mapOf(call.id.value to ConversationRuntimeTaskTarget.Server))
+        val task = running.copy(id = ConversationRuntimeTask.Id("execute-tool"), parentTaskId = running.id, payload = payload)
+        f.advance(running, task)
+        repeat(2) {
+            val next = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.toolTasks.run(task, executor, payload) { f.emitted += it }).nextTask
+            assertEquals(Conversation.Message.Id("execute-tool:result"),
+                assertIs<ConversationRuntimeTask.Payload.ToolResultProcessing>(next.payload).toolResultMessageId)
+        }
+        assertEquals(1, f.toolEffects)
+        assertEquals(0, f.historyMessageReads)
+        assertEquals(1, f.messages.count { it.id.value == "execute-tool:result" })
+        assertEquals(listOf("execute-tool:result"), f.emitted.map { it.id.value })
+    }
+
+    @Test fun `point tool result processing fails when the result is absent from the current thread`() = runBlocking {
+        val f = Fixture(); f.allowFullHistoryLoad = false
+        val running = f.begin()
+        val task = running.copy(id = ConversationRuntimeTask.Id("missing-result"), parentTaskId = running.id,
+            payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
+                Conversation.Message.Id("root"), Conversation.Message.Id("not-in-current-thread"), agentId, 1, false))
+        f.advance(running, task)
+        val error = assertFailsWith<IllegalStateException> { f.engine.runRuntimeTask(task, executor) {} }
+        assertTrue(error.message.orEmpty().startsWith("Tool result message not found:"))
+        assertTrue(f.requests.isEmpty()); assertTrue(f.emitted.isEmpty())
+    }
+
+    @Test fun `background replay preserves an old call ID when only its call was stored before upgrade`() = runBlocking {
+        val f = Fixture(); f.allowFullHistoryLoad = false
+        val oldId = ContentItem.ToolCall.Id("cmd_legacy_long_identifier_status")
+        val shortId = syntheticToolCallId(oldId.value)
+        val call = f.messages.single().copy(id = Conversation.Message.Id("completion-call"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ToolCall(shortId, ContentItem.ToolCall.Data("grz_get_command_task", kotlinx.serialization.json.JsonObject(emptyMap())))))
+        val result = call.copy(id = Conversation.Message.Id("completion-result"), role = Conversation.Message.Role.USER,
+            content = listOf(ContentItem.ToolResult(shortId, "grz_get_command_task", listOf(ContentItem.ToolResult.Data.Text("done")))))
+        f.messages += call.copy(content = listOf((call.content.single() as ContentItem.ToolCall).copy(id = oldId)))
+        f.backgroundBatch = BackgroundActivityCompletionApplicationService.Batch(listOf(mock<CommandTask>()), emptyList(), listOf(call, result))
+        val task = input("background").copy(
+            payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion("command-task:legacy"))
+        assertTrue(f.coordinator.submit(task)); f.claim(task)
+        repeat(2) { assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {}) }
+        assertEquals(1, f.messages.count { it.id == call.id })
+        val stored = f.messages.single { it.id == result.id }.content.single() as ContentItem.ToolResult
+        assertEquals(oldId, stored.toolUseId)
+        assertEquals(1, f.messages.count { it.id == result.id })
+    }
+
+    @Test fun `synthetic memory pairs use short IDs and retain stored legacy IDs on replay`() = runBlocking {
+        for (withLegacyCall in listOf(false, true)) {
+            val f = Fixture(); f.allowFullHistoryLoad = false
+            val runId = MemoryRun.Id("memory-run")
+            val toolName = "memory_run_status"
+            val phase = "completed_async"
+            val legacyId = ContentItem.ToolCall.Id("mem_memoryrun_memoryrunstatus_completedasync")
+            val callMessageId = Conversation.Message.Id("${runId.value}:memory:$toolName:$phase:call")
+            if (withLegacyCall) f.messages += f.messages.single().copy(id = callMessageId,
+                role = Conversation.Message.Role.ASSISTANT,
+                providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "memory") },
+                content = listOf(ContentItem.ToolCall(legacyId, ContentItem.ToolCall.Data(toolName, JsonObject(emptyMap())))))
+            val task = input("memory-completed").copy(payload = ConversationRuntimeTask.Payload.MemoryRunCompletion(runId, agentId, toolName))
+            assertTrue(f.coordinator.submit(task)); f.claim(task)
+            repeat(2) { assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {}) }
+            val calls = f.messages.flatMap { it.content }.filterIsInstance<ContentItem.ToolCall>()
+            val results = f.messages.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>()
+            assertEquals(1, calls.size); assertEquals(1, results.size)
+            assertEquals(if (withLegacyCall) legacyId else syntheticToolCallId(legacyId.value), calls.single().id)
+            assertEquals(calls.single().id, results.single().toolUseId)
+            assertEquals(1, f.messages.count { it.id == callMessageId })
+            val projected = AiRuntimeRequest(emptyList(), f.messages).projectedMessages()
+            val projectedId = projected.flatMap { it.content }.filterIsInstance<ContentItem.ToolCall>().single().id
+            assertTrue(Regex("[A-Za-z0-9]{9}").matches(projectedId.value))
+            assertEquals(projectedId, projected.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>().single().toolUseId)
+        }
+    }
+
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val pins = ReadOnlyTestPins()
@@ -290,6 +422,16 @@ class ConversationEngineDeliveryTest {
         val requests = mutableListOf<AiRuntimeRequest>()
         var onCall: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { answer() }
         var onAppend: suspend (Conversation.Message) -> Unit = {}
+        var allowFullHistoryLoad = true
+        var backgroundBatch: BackgroundActivityCompletionApplicationService.Batch? = null
+        private val backgroundActivities = responding<BackgroundActivityCompletionApplicationService> {
+            when (it.method.name.substringBefore('-')) {
+                "prepareBatch" -> checkNotNull(backgroundBatch)
+                "hasPendingConversationWork", "canContinue" -> false
+                "markDelivered" -> Unit
+                else -> Mockito.RETURNS_DEFAULTS.answer(it)
+            }
+        }
         private val runtime = object : AiRuntime {
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse { requests += request; return onCall(request) }
             override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("No streaming")
@@ -305,10 +447,71 @@ class ConversationEngineDeliveryTest {
         private val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
         private val conversations = responding<ConversationDomainService> {
             when (it.method.name.substringBefore('-')) {
-                "findById" -> conversation; "getProject" -> project; "loadCurrentMessages" -> messages.toList()
+                "findById" -> conversation; "getProject" -> project
+                "loadCurrentMessages" -> {
+                    check(allowFullHistoryLoad) { "Point operation must not load the archive" }
+                    messages.toList()
+                }
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
+        private val appender = object : ConversationRuntimeMessageAppender {
+            override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation {
+                messages += message; onAppend(message); return conversation
+            }
+        }
+        private val artifacts = responding<ConversationArtifactApplicationService> {
+            when (it.method.name.substringBefore('-')) {
+                "materialize" -> it.arguments[1]
+                "persistAndCommitMessageToolResults", "persistAndCommitToolResults" -> it.arguments[2]
+                else -> Mockito.RETURNS_DEFAULTS.answer(it)
+            }
+        }
+        val contextReads = mutableListOf<String?>()
+        private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
+            check(it.method.name.substringBefore('-') == "getContextMessagesByThread")
+            assertEquals(conversation.currentThread.value, it.arguments[0])
+            val provider = it.arguments[1] as String?
+            contextReads += provider
+            val selected = selectModelHistoryMessageIds(
+                messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
+                messages.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
+            )
+            messages.filter { message -> message.id in selected }
+        }
+        var historyMessageReads = 0
+        private val history = ConversationHistoryReadService(
+            responding<com.gromozeka.domain.repository.ConversationRepository> { conversation },
+            responding<com.gromozeka.domain.repository.ConversationHistoryRepository> {
+                assertEquals(conversation.currentThread.value, it.arguments[0])
+                val index = messages.indexOfFirst { message -> message.id.value == it.arguments[1] }
+                when (it.method.name.substringBefore('-')) {
+                    "position" -> index.takeIf { position -> position >= 0 }
+                    "message" -> {
+                        historyMessageReads++
+                        index.takeIf { position -> position >= 0 }?.let { position ->
+                            com.gromozeka.domain.repository.PositionedConversationMessage(position, messages[position])
+                        }
+                    }
+                    else -> error("Unexpected history operation: ${it.method.name}")
+                }
+            }, coordinator,
+        )
+        var toolEffects = 0
+        val toolTasks = ConversationToolExecutionTaskService(
+            conversationService = conversations, conversationHistory = history, conversationMessageAppender = appender,
+            workspaceService = mock(), runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
+            parallelToolExecutor = responding {
+                check(it.method.name.substringBefore('-') == "executeParallel")
+                toolEffects++
+                @Suppress("UNCHECKED_CAST")
+                val calls = it.arguments[0] as List<ContentItem.ToolCall>
+                ToolExecutionResult(calls.map { call -> ContentItem.ToolResult(call.id, call.call.name,
+                    listOf(ContentItem.ToolResult.Data.Text("synthetic result"))) }, false)
+            },
+            workerAccessService = mock(), workerTargetResolver = mock(), workerToolExecutionClient = mock(),
+            artifactService = artifacts, toolSecretResolutionService = responding { emptyMap<String, String>() },
+        )
         var draft: AgentResponseDraft? = null
         val reviewRepository = responding<com.gromozeka.domain.repository.AgentCollaborationRepository> {
             if (it.method.name.startsWith("findDraft")) draft else Mockito.RETURNS_DEFAULTS.answer(it)
@@ -325,25 +528,17 @@ class ConversationEngineDeliveryTest {
             agentDomainService = responding { invocation ->
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
             }, agentPromptAssemblyService = responding { emptyList<String>() },
-            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations,
-            conversationMessageAppender = object : ConversationRuntimeMessageAppender {
-                override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation {
-                    messages += message; onAppend(message); return conversation
-                }
-            }, historyMutationExecutor = mock(), memoryApplicationService = mock(), memoryToolApplicationService = mock(),
-            backgroundActivityCompletionApplicationService = mock(), memoryMessageRoutingApplicationService = mock(),
+            toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
+            conversationMessageAppender = appender, historyMutationExecutor = mock(), memoryApplicationService = mock(), memoryToolApplicationService = responding {
+                if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)
+            },
+            backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),
             toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { UserProfile() },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
             aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(),
-            artifactService = responding {
-                when (it.method.name.substringBefore('-')) {
-                    "materialize" -> it.arguments[1]
-                    "persistAndCommitMessageToolResults" -> it.arguments[2]
-                    else -> Mockito.RETURNS_DEFAULTS.answer(it)
-                }
-            }, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
+            artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = PendingSecretRevealService(),
             suggestedRepliesGenerationService = mock(),
             conversationPins = ConversationPinnedPrompt(pins),

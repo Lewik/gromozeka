@@ -22,6 +22,9 @@ import com.gromozeka.application.service.memory.forMemoryPipeline
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.nativeCompactionProvider
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -97,6 +100,8 @@ class ConversationEngineService(
     private val toolApprovalService: ToolApprovalService,
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
     private val conversationService: ConversationDomainService,
+    private val conversationHistory: ConversationHistoryReadService,
+    private val contextHistory: ThreadMessageRepository,
     private val conversationMessageAppender: ConversationRuntimeMessageAppender,
     private val historyMutationExecutor: ConversationRuntimeHistoryMutationExecutor,
     private val memoryApplicationService: MemoryApplicationService,
@@ -136,8 +141,7 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.AgentInvocation ->
                 runAgentInvocationStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.AgentResponse -> {
-                val userMessage = conversationService.loadCurrentMessages(task.conversationId)
-                    .firstOrNull { it.id == payload.rootUserMessageId }
+                val userMessage = conversationHistory.findMessage(task.conversationId, payload.rootUserMessageId)
                     ?: error("Agent response source message is no longer in the conversation")
                 runAgentInvocationStep(
                     task, executor,
@@ -335,7 +339,10 @@ class ConversationEngineService(
                 payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId))
         }
 
-        val currentMessages = conversationService.loadCurrentMessages(conversationId)
+        // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
+        val currentMessages = if (conversation.externalChannel == null && context.connectionKind !in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.GITHUB_COPILOT)) {
+            contextHistory.getContextMessagesByThread(conversation.currentThread, context.connectionKind.nativeCompactionProvider())
+        } else conversationService.loadCurrentMessages(conversationId)
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
                 messages = pendingSecretRevealService.consume(
@@ -755,8 +762,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
-        val toolResultMessage = conversationService.loadCurrentMessages(conversationId)
-            .firstOrNull { it.id == payload.toolResultMessageId }
+        val toolResultMessage = conversationHistory.findMessage(conversationId, payload.toolResultMessageId)
             ?: throw IllegalStateException(
                 "Tool result message not found: conversation=${conversationId.value} " +
                     "message=${payload.toolResultMessageId.value}"
@@ -908,9 +914,7 @@ class ConversationEngineService(
         return when (val sourcePayload = incident.task.payload) {
             is ConversationRuntimeTask.Payload.ToolExecution -> {
                 val toolResultMessageId = runtimeMessageId(incident.task.id, "result")
-                val existingToolResult = conversationService.loadCurrentMessages(conversationId)
-                    .firstOrNull { it.id == toolResultMessageId }
-                if (existingToolResult == null) {
+                if (!conversationHistory.containsMessage(conversationId, toolResultMessageId)) {
                     val resultText = executionIncidentResult(incident)
                     val toolResultMessage = Conversation.Message(
                         id = toolResultMessageId,
@@ -1048,16 +1052,21 @@ class ConversationEngineService(
         )
         if (batch.isEmpty) return ConversationRuntimeTaskOutcome.CompleteTurn
 
+        val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
         batch.messages.forEach { syntheticMessage ->
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (conversationService.loadCurrentMessages(conversationId).none { it.id == syntheticMessage.id }) {
-                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>()
+            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
+                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
+                    result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
+                }
                 val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
                 val iterator = persisted.iterator()
                 val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
                     if (it is ContentItem.ToolResult) iterator.next() else it
                 })
                 if (addRuntimeMessageIfMissing(conversationId, storedMessage)) emitMessage(storedMessage)
+            } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
+                replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
             }
         }
 
@@ -1142,6 +1151,7 @@ class ConversationEngineService(
         val runtime: AiRuntime,
         val modelSpec: AiModelSpec,
         val provider: AiProvider,
+        val connectionKind: AiConnection.Kind,
         val modelName: String,
         val toolCatalog: DistributedAiToolCatalogSnapshot,
         val memoryPipelineTools: List<AiToolCallback>,
@@ -1239,6 +1249,7 @@ class ConversationEngineService(
             runtime = runtime,
             modelSpec = resolvedRuntime.modelSpec,
             provider = provider,
+            connectionKind = resolvedRuntime.connection.kind,
             modelName = modelName,
             toolCatalog = toolCatalog,
             memoryPipelineTools = memoryPipelineTools,
@@ -1720,7 +1731,7 @@ class ConversationEngineService(
         conversationId: Conversation.Id,
         message: Conversation.Message,
     ): Boolean {
-        val existsInCurrentThread = conversationService.loadCurrentMessages(conversationId).any { it.id == message.id }
+        val existsInCurrentThread = conversationHistory.containsMessage(conversationId, message.id)
         if (existsInCurrentThread) {
             log.info {
                 "Runtime message side effect already applied: " +
@@ -1774,7 +1785,21 @@ class ConversationEngineService(
         }
     }
 
-    private fun buildSyntheticMemoryToolPair(
+    private suspend fun reuseStoredSyntheticCallId(
+        conversationId: Conversation.Id,
+        callMessageId: Conversation.Message.Id,
+        generatedId: ContentItem.ToolCall.Id,
+    ): ContentItem.ToolCall.Id {
+        // A restart across the ID-format change may leave only the old call persisted.
+        val existing = conversationHistory.findMessage(conversationId, callMessageId) ?: return generatedId
+        val storedId = existing.content.filterIsInstance<ContentItem.ToolCall>().single().id
+        check(storedId == generatedId || com.gromozeka.domain.model.syntheticToolCallId(storedId.value) == generatedId) {
+            "Replayed synthetic notification has a different tool call identity"
+        }
+        return storedId
+    }
+
+    private suspend fun buildSyntheticMemoryToolPair(
         conversationId: Conversation.Id,
         targetMessage: Conversation.Message,
         toolName: String,
@@ -1792,7 +1817,7 @@ class ConversationEngineService(
             syntheticPhase = syntheticPhase,
         )
 
-    private fun buildSyntheticMemoryToolPair(
+    private suspend fun buildSyntheticMemoryToolPair(
         conversationId: Conversation.Id,
         syntheticTargetId: String,
         targetMetadataName: String,
@@ -1803,12 +1828,13 @@ class ConversationEngineService(
     ): List<Conversation.Message> {
         val phaseIdSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else ":$syntheticPhase"
         val phaseToolCallSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else "_${stableIdentifierSlug(syntheticPhase)}"
-        val toolCallId = ContentItem.ToolCall.Id(
+        val callMessageId = Conversation.Message.Id("$syntheticTargetId:memory:$toolName$phaseIdSuffix:call")
+        val toolCallId = reuseStoredSyntheticCallId(conversationId, callMessageId, com.gromozeka.domain.model.syntheticToolCallId(
             "mem_${stableIdentifierSlug(syntheticTargetId)}_${stableIdentifierSlug(toolName)}$phaseToolCallSuffix"
-        )
+        ))
         val createdAt = Clock.System.now()
         val toolCallMessage = Conversation.Message(
-            id = Conversation.Message.Id("$syntheticTargetId:memory:$toolName$phaseIdSuffix:call"),
+            id = callMessageId,
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
             content = listOf(

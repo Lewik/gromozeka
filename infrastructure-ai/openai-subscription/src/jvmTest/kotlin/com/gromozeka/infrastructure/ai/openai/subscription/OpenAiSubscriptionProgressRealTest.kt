@@ -112,7 +112,7 @@ class OpenAiSubscriptionProgressRealTest {
                 .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                 .any { fileMarker in it.structured.fullText }, "Compaction lost the tool result marker")
             println("Live compaction replay: model=$model iteration=$iteration inputTokens=${response.contextUsage?.inputTokens}")
-            persist(freshCompactor.recordContextUsage(replay, parsed, response, options.assistantResponseFormat))
+            persist(freshCompactor.recordContextUsage(replay, parsed, response, options.assistantResponseFormat, profile))
             history += message(conversationId, Conversation.Message.Role.USER, listOf(
                 Conversation.Message.ContentItem.UserMessage("Repeat the same project marker. Do not use tools.")
             ))

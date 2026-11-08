@@ -22,13 +22,14 @@ class VisualOutputFramerTest {
 
     @Test fun oversizedLineIsDiscardedUntilItsDelimiterAndReaderRecovers() {
         val framer = VisualOutputFramer()
-        assertTrue(framer.append(ByteArray(20_000) { 'x'.code.toByte() }).isEmpty())
+        val oversizedBytes = VisualLimits.OUTPUT_LINE_BYTES + 1
+        assertTrue(framer.append(ByteArray(oversizedBytes) { 'x'.code.toByte() }).isEmpty())
         val records = framer.append("\n{}\n".encodeToByteArray())
         assertEquals(2, records.size)
         assertNotNull(records[0].error)
-        assertEquals(20_001L, records[0].endByte)
+        assertEquals(oversizedBytes + 1L, records[0].endByte)
         assertEquals("{}", records[1].json)
-        assertEquals(20_004L, records[1].endByte)
+        assertEquals(oversizedBytes + 4L, records[1].endByte)
     }
 
     @Test fun exactLimitAllowsCrLfAndInvalidUtf8IsReported() {

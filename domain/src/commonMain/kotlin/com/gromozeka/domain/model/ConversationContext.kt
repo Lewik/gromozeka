@@ -3,17 +3,15 @@ package com.gromozeka.domain.model
 import com.gromozeka.domain.model.Conversation.Message
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /** Context is a projection of immutable history, not a replacement for that history. */
 class ConversationContext(
     private val history: List<Message>,
 ) {
     private val byId = history.associateBy(Message::id)
-    private val positions = history.mapIndexed { index, message -> message.id to index }.toMap()
-
-    init {
-        require(positions.size == history.size) { "Duplicate message IDs in conversation history" }
-    }
+    private val index = ConversationCompactionIndex(history.map(Message::compactionNode))
 
     /** Two passes: collect back to the latest full checkpoint, then remove covered nodes. */
     fun messages(): List<Message> = project(history)
@@ -35,7 +33,7 @@ class ConversationContext(
         val boundary = history.indexOfLast(Message::isFullContextCompaction)
         if (boundary < 0) return emptySet()
         val checkpoint = history[boundary]
-        return setOf(checkpoint.id) + coveredBy(checkpoint)
+        return setOf(checkpoint.id) + index.coveredBy(checkpoint.compactionNode())
     }
 
     /** Invalidated selective summaries disappear from a new branch; their retained sources reappear. */
@@ -58,54 +56,11 @@ class ConversationContext(
     }
 
     private fun project(input: List<Message>): List<Message> {
-        val reverseCandidates = mutableListOf<Message>()
-        for (message in input.asReversed()) {
-            reverseCandidates += message
-            if (message.isFullContextCompaction()) break
-        }
-        val candidateIds = reverseCandidates.mapTo(mutableSetOf(), Message::id)
-        val covered = reverseCandidates.flatMapTo(mutableSetOf()) { coveredBy(it, candidateIds) }
+        val selected = index.project(input.map(Message::compactionNode)).mapTo(mutableSetOf()) { it.id }
         val invalidatedReplay = input.flatMap { it.compactions() }
             .flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
-        return reverseCandidates.asReversed()
-            .filterNot { it.id in covered }
+        return input.filter { it.id in selected }
             .map { if (it.id in invalidatedReplay) it.withoutProviderReplay() else it }
-    }
-
-    private fun coveredBy(message: Message, relevantIds: Set<Message.Id>? = null): Set<Message.Id> {
-        val covered = mutableSetOf<Message.Id>()
-        val visited = mutableSetOf<Message.Id>()
-        val visiting = mutableSetOf<Message.Id>()
-        fun visit(current: Message) {
-            require(current.id !in visiting) { "Cyclic compaction sources at ${current.id.value}" }
-            if (!visited.add(current.id)) return
-            visiting += current.id
-            current.compactions().forEach { result ->
-                if (result.coversAllPrevious && relevantIds != null) {
-                    val boundary = positions[current.id]
-                    if (boundary != null) {
-                        covered += relevantIds.filter { id -> positions[id]?.let { it < boundary } == true }
-                        return@forEach
-                    }
-                }
-                val prefix = if (result.coversAllPrevious) {
-                    positions[current.id]?.let { history.take(it).map(Message::id) }.orEmpty()
-                } else emptyList()
-                (prefix + result.sourceMessageIds).distinct().forEach { sourceId ->
-                    require(sourceId != current.id) { "Compaction cannot cover itself: ${current.id.value}" }
-                    val sourcePosition = positions[sourceId]
-                    val currentPosition = positions[current.id]
-                    require(sourcePosition == null || currentPosition == null || sourcePosition < currentPosition) {
-                        "Compaction source must precede its result: ${sourceId.value}"
-                    }
-                    covered += sourceId
-                    byId[sourceId]?.let(::visit)
-                }
-            }
-            visiting -= current.id
-        }
-        visit(message)
-        return covered
     }
 
     private fun prepare(input: List<Message>, provider: String?, visiting: Set<Message.Id>): List<Message> =
@@ -117,14 +72,7 @@ class ConversationContext(
             if (incompatible.isEmpty()) return@flatMap listOf(message)
             require(message.id !in visiting) { "Cyclic opaque compaction sources at ${message.id.value}" }
             // There must be a real source for recovery. A provider label is not a summary.
-            val sourceIds = incompatible.flatMap { result ->
-                if (result.coversAllPrevious && positions[message.id]?.let { it > 0 } == true) {
-                    history.take(positions.getValue(message.id)).map(Message::id)
-                } else result.sourceMessageIds
-            }.distinct()
-            require(sourceIds.isNotEmpty()) {
-                "Cannot recover opaque compaction ${message.id.value}: original messages are unavailable"
-            }
+            val sourceIds = index.recoverySourceIds(message.id, incompatible)
             val sources = sourceIds.map { sourceId ->
                 byId[sourceId] ?: error("Missing compaction source message: ${sourceId.value}")
             }
@@ -147,3 +95,11 @@ fun Conversation.Message.withoutProviderReplay(): Conversation.Message = copy(
     content = content.filterNot { it is Conversation.Message.ContentItem.Thinking },
     providerMetadata = JsonObject(providerMetadata.filterKeys { it == "providerManagedTool" }),
 )
+
+/** Restore provider-generated content before context projection, never the human-facing correction. */
+fun Message.originalCollaborationMessage(): Message {
+    val original = providerMetadata[COLLABORATION_ORIGINAL_CONTENT]
+    return if (original != null && role == Message.Role.ASSISTANT && author is Message.Author.Agent) {
+        copy(content = Json.decodeFromJsonElement<List<Message.ContentItem>>(original))
+    } else this
+}

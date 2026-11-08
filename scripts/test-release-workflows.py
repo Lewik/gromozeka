@@ -71,6 +71,16 @@ class WorkflowContracts(unittest.TestCase):
     def test_ios_checks_cover_shared_native_regressions_and_both_apps(self):
         matrix = JOBS["verify-ios"]["strategy"]["matrix"]["include"]
         tasks = {task for target in matrix for task in target["tasks"].split()}
+        client_step = next(step for step in JOBS["verify-ios"]["steps"]
+                           if step.get("name") == "Verify booted iOS client tests")
+        self.assertEqual("${{ matrix.target == 'client-simulator' }}", client_step["if"])
+        self.assertIn("python3 scripts/run-ios-client-tests.py", client_step["run"])
+        self.assertIn("-Pgromozeka.version=${{ needs.metadata.outputs.version }}", client_step["run"])
+        runner = (ROOT / "scripts/run-ios-client-tests.py").read_text()
+        self.assertIn('":presentation:iosSimulatorArm64Test"', runner)
+        self.assertIn("standalone.set(false)", runner)
+        self.assertIn("scripts/test-ios-client-runner.py", scripts(JOBS["metadata"]))
+        tasks.add(":presentation:iosSimulatorArm64Test")
         required = {
             ":shared:iosSimulatorArm64Test",
             ":presentation:iosSimulatorArm64Test",
@@ -212,6 +222,44 @@ class WorkflowContracts(unittest.TestCase):
                       if step.get("with", {}).get("name") == "verify-runtime-diagnostics")
         for module in ("remote-protocol", "worker-runtime"):
             self.assertIn(f"{module}/build/test-results/", upload["with"]["path"])
+
+    def test_message_search_context_and_visual_limits_are_verified(self):
+        script = scripts(JOBS["verify-runtime"])
+        for name in ("PostgresConversationSearchRepositoryTest", "PostgresTokenUsageStatisticsRepositoryTest",
+                     "MessageSearchTextTest", "VisualApplicationServiceTest", "DefaultCommandTaskServiceTest"):
+            self.assertIn(f"--tests '*{name}'", script)
+        self.assertIn("--tests '*Visual*'", script)
+        self.assertIn(":server:test", script)
+        self.assertIn(":worker:test", script)
+
+    def test_runtime_point_reads_are_verified_without_enabling_the_large_benchmark(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*PostgresRuntimeMessageReadTest", "*ConversationHistoryReadServiceTest",
+                      "*ConversationRuntimeAppendTest", "*ConversationEngineDeliveryTest",
+                      "*ConversationContextTest", "*SparseConversationHistoryTest", "*SparseModelPreparationTest"):
+            self.assertIn(check, verification)
+        postgres = next(step for step in JOBS["verify-runtime"]["steps"]
+                        if "*PostgresRuntimeMessageReadTest" in step.get("run", ""))
+        self.assertEqual("true", postgres["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
+        self.assertNotIn("GROMOZEKA_HISTORY_BENCHMARK", str(JOBS["verify-runtime"]))
+
+    def test_subscription_incremental_replay_is_verified_without_live_model_calls(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in (":infrastructure-ai:openai-subscription:jvmTest", "*OpenAiSubscriptionIncrementalReplayTest",
+                      "*OpenAiSubscriptionResponsesClientTest", "*OpenAiSubscriptionCompactionTest", "*OpenAiSubscriptionWebSearchTest"):
+            self.assertIn(check, verification)
+        self.assertNotIn("GROMOZEKA_OPENAI_SUBSCRIPTION_REAL", str(JOBS["verify-runtime"]))
+
+    def test_responses_auto_compaction_is_verified_without_a_live_gateway(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*OpenAiResponsesSdkRuntimeTest", "*OpenAiResponsesCompactionTest"):
+            self.assertIn(check, verification)
+
+    def test_synthetic_call_ids_are_checked_in_generation_replay_and_sdk_payloads(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*SyntheticToolCallIdsTest", "*BackgroundActivityCompletionApplicationServiceTest",
+                      "*ConversationEngineDeliveryTest", "*SdkHttpContractTest"):
+            self.assertIn(check, verification)
 
     def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
         upload = next(step for step in JOBS["verify-runtime"]["steps"]

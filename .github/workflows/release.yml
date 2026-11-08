@@ -65,6 +65,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/ci-checks"
           "$RUNNER_TEMP/ci-checks/bin/pip" install --disable-pip-version-check -r scripts/requirements-ci.txt
           "$RUNNER_TEMP/ci-checks/bin/python" scripts/test-release-workflows.py
+          python3 scripts/test-ios-client-runner.py
       - id: release
         shell: bash
         env:
@@ -124,6 +125,8 @@ jobs:
         run: >
           ./gradlew :infrastructure-db:jvmTest
           --tests '*PostgresConversationSearchRepositoryTest'
+          --tests '*PostgresTokenUsageStatisticsRepositoryTest'
+          --tests '*MessageSearchTextTest'
           --tests '*PostgresConversationRuntimeCoordinatorTest'
           --tests '*PostgresConversationRuntimeWorkerRegistryTest'
           --tests '*PostgresAiToolContractRepositoryTest'
@@ -133,6 +136,7 @@ jobs:
           --tests '*PostgresWorkerRequestRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
           --tests '*WorkerRequestByteStringMigrationTest'
+          --tests '*PostgresRuntimeMessageReadTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           --console=plain
       - name: Verify Server and Worker
@@ -148,6 +152,10 @@ jobs:
           :remote-protocol:jvmTest
           :worker-runtime:jvmTest
           :domain:jvmTest --tests '*ConversationPinTest'
+          --tests '*ConversationContextTest'
+          --tests '*SparseConversationHistoryTest'
+          --tests '*SyntheticToolCallIdsTest'
+          --tests '*Visual*'
           :application:jvmTest
           --tests '*SecretArgumentSubstitutorTest'
           --tests '*NamedSecretApplicationServiceTest'
@@ -155,6 +163,8 @@ jobs:
           --tests '*BackgroundActivityLifecycleApplicationServiceTest'
           --tests '*ConversationRuntimeDispatcherTest'
           --tests '*VisualSecretArgumentsTest'
+          --tests '*VisualApplicationServiceTest'
+          --tests '*DefaultCommandTaskServiceTest'
           --tests '*Slot*'
           --tests '*ConversationPin*Test'
           --tests '*ConversationAgentAccessServiceTest'
@@ -162,6 +172,9 @@ jobs:
           --tests '*AgentContextQueryServiceTest'
           --tests '*ConversationContextSnapshotServiceTest'
           --tests '*ConversationEngineDeliveryTest'
+          --tests '*ConversationHistoryReadServiceTest'
+          --tests '*ConversationRuntimeAppendTest'
+          --tests '*SparseModelPreparationTest'
           --tests '*AgentResponseReviewServiceTest'
           --tests '*MessageSquashServiceTest'
           --tests '*AgentSessionRuntimeProjectionTest'
@@ -170,6 +183,16 @@ jobs:
           --tests '*ClaudeCodeCliRuntimeTest.conversationPin*'
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'
           --tests '*SdkWorkerExecutionTest'
+          --tests '*OpenAiResponsesSdkRuntimeTest'
+          --tests '*OpenAiResponsesCompactionTest'
+          --tests '*SdkHttpContractTest'
+          :infrastructure-ai:openai-subscription:jvmTest
+          --tests '*OpenAiSubscriptionIncrementalReplayTest'
+          --tests '*OpenAiSubscriptionRequestMapperTest'
+          --tests '*OpenAiSubscriptionResponseMapperTest'
+          --tests '*OpenAiSubscriptionResponsesClientTest'
+          --tests '*OpenAiSubscriptionCompactionTest'
+          --tests '*OpenAiSubscriptionWebSearchTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 
@@ -321,7 +344,7 @@ jobs:
             sdk: iphoneos
             app_bundle: Gromozeka.app
           - target: client-simulator
-            tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :presentation:iosSimulatorArm64Test :shared:iosSimulatorArm64Test"
+            tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :shared:iosSimulatorArm64Test"
             app_target: iosApp
             sdk: iphonesimulator
             app_bundle: Gromozeka.app
@@ -346,6 +369,12 @@ jobs:
         run: >
           ./gradlew
           ${{ matrix.tasks }}
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - name: Verify booted iOS client tests
+        if: ${{ matrix.target == 'client-simulator' }}
+        run: >
+          python3 scripts/run-ios-client-tests.py
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
       - name: Build unsigned iOS app ${{ matrix.target }}

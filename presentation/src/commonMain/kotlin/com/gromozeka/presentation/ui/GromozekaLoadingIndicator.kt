@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -14,6 +15,11 @@ import androidx.compose.foundation.progressSemantics
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -32,6 +38,14 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
+internal enum class LoadingIndicatorTone { FOREGROUND, BACKGROUND }
+
+@Composable
+internal fun loadingIndicatorColor(tone: LoadingIndicatorTone): Color = when (tone) {
+    LoadingIndicatorTone.FOREGROUND -> Color(0xFFFE8B17)
+    LoadingIndicatorTone.BACKGROUND -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
 @Composable
 internal fun ClientStartupLoadingScreen() {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -43,13 +57,18 @@ internal fun ClientStartupLoadingScreen() {
 
 /** The bulb stays still; only a transparent gap travels around its orange outline. */
 @Composable
-internal fun GromozekaLoadingIndicator(modifier: Modifier = Modifier, animated: Boolean = true) {
+internal fun GromozekaLoadingIndicator(
+    modifier: Modifier = Modifier,
+    animated: Boolean = true,
+    tone: LoadingIndicatorTone = LoadingIndicatorTone.FOREGROUND,
+) {
     val phase = if (animated) rememberGromozekaLoadingPhase() else null
 
     GromozekaBulb(
         modifier = modifier.size(28.dp).progressSemantics(),
         // Read the animation only while drawing, never during composition or layout.
         phase = { phase?.value },
+        tone = tone,
     )
 }
 
@@ -68,24 +87,52 @@ private fun rememberGromozekaLoadingPhase() =
         label = "Outline gap",
     )
 
-/** Lightweight header version: orange ring only, animated for every working conversation. */
+/**
+ * Simplified logo loader: the same moving gap, without the bulb base.
+ * A null tone shrinks it away before disposing its frame loop.
+ */
 @Composable
-internal fun GromozekaTabLoadingIndicator(modifier: Modifier = Modifier) {
+internal fun GromozekaSimpleLoadingIndicator(
+    modifier: Modifier = Modifier,
+    tone: LoadingIndicatorTone? = LoadingIndicatorTone.FOREGROUND,
+) {
+    val scale = remember { Animatable(0f) }
+    var retainedTone by remember { mutableStateOf(tone) }
+    if (tone != null) retainedTone = tone
+    val visible = tone != null
+    LaunchedEffect(visible) {
+        val target = if (visible) 1f else 0f
+        // Unlike Transition, Animatable keeps the tween when visibility reverses mid-flight.
+        if (scale.value != target) scale.animateTo(target, tween(180))
+        if (!visible) retainedTone = null
+    }
+    val drawingTone = retainedTone ?: return
+    val color = loadingIndicatorColor(drawingTone)
     val phase = rememberGromozekaLoadingPhase()
-    Spacer(modifier.size(14.dp).progressSemantics().graphicsLayer().drawWithCache {
+    Spacer(modifier.size(14.dp).progressSemantics().graphicsLayer {
+        scaleX = scale.value
+        scaleY = scale.value
+    }.drawWithCache {
         val stroke = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
         val diameter = size.minDimension - stroke.width
         val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
         val arcSize = Size(diameter, diameter)
         onDrawBehind {
-            drawArc(Color(0xFFFE8B17), startAngle = phase.value * 360f - 90f, sweepAngle = 302.4f,
+            drawArc(color, startAngle = phase.value * 360f - 90f, sweepAngle = 302.4f,
                 useCenter = false, topLeft = topLeft, size = arcSize, style = stroke)
         }
     })
 }
 
 @Composable
-internal fun GromozekaBulb(modifier: Modifier, phase: () -> Float?, ready: Boolean = false) {
+internal fun GromozekaBulb(
+    modifier: Modifier,
+    phase: () -> Float?,
+    ready: Boolean = false,
+    tone: LoadingIndicatorTone = LoadingIndicatorTone.FOREGROUND,
+) {
+    val outlineColor = loadingIndicatorColor(tone)
+    val baseColor = if (tone == LoadingIndicatorTone.BACKGROUND) outlineColor else Color(0xFF1266D0)
     Spacer(modifier.graphicsLayer().drawWithCache {
         val outline = PathParser().parsePathString(BulbOutline).toPath()
         val base = PathParser().parsePathString(BulbBase).toPath()
@@ -115,8 +162,8 @@ internal fun GromozekaBulb(modifier: Modifier, phase: () -> Float?, ready: Boole
                 translate(left, top)
                 scale(scale, scale, pivot = Offset.Zero)
             }) {
-                drawPath(outline, Color(0xFFFE8B17), style = outlineStroke)
-                drawPath(base, Color(0xFF1266D0), style = stroke)
+                drawPath(outline, outlineColor, style = outlineStroke)
+                drawPath(base, baseColor, style = stroke)
                 readyCheck?.let { drawPath(it, Color(0xFF43A047), style = stroke) }
             }
         }

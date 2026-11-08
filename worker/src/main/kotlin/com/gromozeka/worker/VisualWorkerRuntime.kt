@@ -6,6 +6,7 @@ import com.gromozeka.domain.service.ControlPlaneUnavailableException
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.tool.*
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.visual.VisualLimits
 import com.gromozeka.domain.visual.VisualOutputFramer
 import com.gromozeka.domain.visual.VisualOutputRecord
 import com.gromozeka.remote.protocol.*
@@ -175,7 +176,10 @@ class VisualWorkerRuntime(
         var bytes = 0
         for (record in records) {
             val size = record.json?.encodeToByteArray()?.size ?: 0
-            if (batch.size >= 128 || bytes + size > 32_768) { add(batch); batch = mutableListOf(); bytes = 0 }
+            require(size <= VisualLimits.OUTPUT_LINE_BYTES) { "Visual record exceeds its framing limit" }
+            if (batch.isNotEmpty() && (batch.size >= VisualLimits.OUTPUT_BATCH_RECORDS || bytes + size > VisualLimits.OUTPUT_BATCH_BYTES)) {
+                add(batch); batch = mutableListOf(); bytes = 0
+            }
             batch.add(record); bytes += size
         }
         if (batch.isNotEmpty()) add(batch)

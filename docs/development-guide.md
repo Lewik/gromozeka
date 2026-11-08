@@ -205,6 +205,17 @@ The main dogfood chat path is `OPEN_AI_SUBSCRIPTION`, implemented by
 for other providers, embeddings, and auxiliary integrations. Provider quirks
 belong behind those infrastructure boundaries rather than in domain workflows.
 
+Subscription WebSocket continuation compares canonical input items, not independently
+formatted copies of function calls. The default function namespace is explicit
+`functions` for Responses Lite and omitted for ordinary subscription Responses;
+provider output replay and persisted history use the same model-profile-aware
+normalization. Explicit `web` namespaces and opaque reasoning are preserved.
+Changes to tools, instructions, history, reasoning or compaction still require a
+full request when the strict prefix/transport signature changes. Mismatch logs
+report only allowlisted top-level field/type labels, positions and item counts,
+never argument values, text, arbitrary provider keys or signed payloads. This does
+not add incremental transport to the separate public SDK/gateway adapters.
+
 Each finite model step returns an explicit `AiStepOutcome`: completion, external
 tool requests, provider continuation, truncation, refusal, or failure. The Server
 persists completed assistant blocks before executing tools. Provider continuation
@@ -523,6 +534,44 @@ Ordinary scheduling and command inventory reads never load these journals.
 The UI snapshot reads its state and latest 200 traces from one consistent
 PostgreSQL snapshot; targeted Telegram and history lookups select event metadata
 or a single matching event.
+
+Runtime lookups by message ID and replay-existence checks read only the current
+thread's matching message or link. They must not load the full archive and filter
+it in application code. The point reader returns the complete persisted message,
+including provider metadata and current author projection, not the bounded UI
+preview. Append membership checks use the thread-message repository, and append
+positions use a database `MAX` aggregate.
+
+Normal API-backed agent turns also select message bodies before loading the archive.
+V81 adds generated, compact context metadata to each canonical message, backfilling
+existing rows once. A repeatable-read transaction loads ordered headers and checkpoints,
+uses the shared coverage/recovery index, then reads only selected bodies in bounded
+batches. Checkpoints and a small set of covered anchors preserve transitive coverage,
+provider replay invalidation, sticky winners, exact human-message time intervals,
+one-use secret placement and OpenAI context-usage observations. The final provider
+projection is unchanged; there is no last-N cutoff or mutable transcript cache.
+
+Native CLI sessions (Claude Code and Copilot), external-channel filtering, timeline
+reads, explicit history mutations and isolated snapshot assembly retain their existing
+raw-history contracts. They are not silently redirected to the sparse read. Switching
+away from an opaque checkpoint's owner can legitimately require the original archive;
+missing recovery sources remain an explicit error.
+
+PostgreSQL can reject escaped Unicode such as NUL while inspecting otherwise valid
+stored JSON. V81 represents only this `22P05` case as absent derived metadata; the
+reader derives exact metadata from that individual body using the existing Kotlin
+serializer. It never substitutes guessed metadata, rewrites payload strings or suppresses
+other SQL/JSON failures. Derived metadata cannot be edited independently of its message.
+
+`PostgresRuntimeMessageReadTest` checks thread isolation, bounded rows/body reads,
+full-message preservation and SQL aggregation against disposable PostgreSQL. Its
+normal long-history fixture contains 256 messages including a compaction result.
+For local measurements, `GROMOZEKA_HISTORY_BENCHMARK=true` expands it to 25,720
+synthetic messages (roughly 250 MiB of JSON); give `:infrastructure-db:jvmTest` a
+2 GiB heap via a local Gradle init script. It compares full-history and point reads
+on the same data, including full versus sparse context preparation, prints warmed
+median timings and asserts read counts rather than machine-dependent timing thresholds. It does not call a model or measure deployed
+turn latency.
 
 Run the storage and migration checks against the checkout's PostgreSQL slot:
 
@@ -1525,6 +1574,28 @@ Android application artifacts are owned by the launcher modules:
 ./gradlew :presentation-android:assemble -q
 ./gradlew :mobile-worker-android:assemble -q
 ```
+
+### Native iOS client tests
+
+Run client platform tests in a fully booted, disposable simulator:
+
+```bash
+python3 scripts/run-ios-client-tests.py -q
+```
+
+The wrapper selects an installed iOS/iPhone template, creates and boots its own
+simulator, runs the complete `:presentation:iosSimulatorArm64Test` suite with
+standalone mode disabled, then shuts down and deletes only that simulator. It
+preserves the test exit status. If cleanup fails, its owned-device receipt remains
+under `build/ios-platform-tests/` for explicit recovery.
+
+The default Kotlin/Native `simctl spawn --standalone` mode does not initialize
+LaunchServices' UTI conformance database: even `public.png` may report that it is
+not an image. Do not weaken attachment/type tests to accommodate that environment.
+The release workflow uses this wrapper for the client-simulator job. Shared and
+Worker tests that do not require these system services retain their existing run
+mode. Additional Gradle options, including `--tests`, may be passed to the wrapper;
+its device selector remains owned by the wrapper.
 
 ## Runtime SQL Administration
 

@@ -10,5 +10,6 @@ interface ConversationSearchRepository {
         request: ConversationSearchRequest,
         readableProjectIds: Set<Project.Id>,
         participantUserId: User.Id,
+        includeToolResults: Boolean = true,
     ): ConversationSearchPage
 }

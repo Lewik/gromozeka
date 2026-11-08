@@ -11,7 +11,6 @@ import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,22 +19,20 @@ import kotlinx.coroutines.flow.asSharedFlow
 data class AttachmentAcquisitionCapabilities(
     val filePicker: Boolean,
     val screenshot: Boolean,
+    val clipboardPaste: Boolean = false,
 )
 
-sealed interface AttachmentAcquisitionEvent {
-    data class Acquired(val uploads: List<ArtifactUpload>) : AttachmentAcquisitionEvent
-
-    data class Failed(val message: LocalizedText) : AttachmentAcquisitionEvent
-}
+typealias AttachmentAcquisition = suspend () -> List<ArtifactUpload>
 
 interface AttachmentAcquisitionController {
     val capabilities: AttachmentAcquisitionCapabilities
-    val externalEvents: Flow<AttachmentAcquisitionEvent>
-        get() = emptyFlow()
 
     suspend fun pickAttachments(): List<ArtifactUpload>
 
     suspend fun captureScreenshot(): ArtifactUpload?
+
+    /** Capture the offered items during the paste gesture; null leaves ordinary text paste untouched. */
+    fun prepareClipboardAttachments(): AttachmentAcquisition? = null
 
     fun close() = Unit
 }

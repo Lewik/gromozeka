@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlin.time.Instant
@@ -57,7 +58,8 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
             .map { it.toTokenUsageStatistics() }
 
         val lastCall = TokenUsageStatisticsTable.selectAll()
-            .where { TokenUsageStatisticsTable.threadId eq threadId.value }
+            .where { (TokenUsageStatisticsTable.threadId eq threadId.value) and
+                (TokenUsageStatisticsTable.runtimePurpose eq "CONVERSATION") }
             .orderBy(TokenUsageStatisticsTable.timestamp, SortOrder.DESC)
             .limit(1)
             .firstOrNull()

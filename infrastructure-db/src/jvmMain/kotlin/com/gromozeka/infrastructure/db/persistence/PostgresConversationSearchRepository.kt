@@ -28,11 +28,12 @@ class PostgresConversationSearchRepository(
         request: ConversationSearchRequest,
         readableProjectIds: Set<Project.Id>,
         participantUserId: User.Id,
+        includeToolResults: Boolean,
     ): ConversationSearchPage = withContext(Dispatchers.IO) {
         if (readableProjectIds.isEmpty()) return@withContext ConversationSearchPage(emptyList())
 
         dataSource.connection.use { connection ->
-            connection.search(request, readableProjectIds, participantUserId)
+            connection.search(request, readableProjectIds, participantUserId, includeToolResults)
         }
     }
 
@@ -40,9 +41,10 @@ class PostgresConversationSearchRepository(
         request: ConversationSearchRequest,
         readableProjectIds: Set<Project.Id>,
         participantUserId: User.Id,
+        includeToolResults: Boolean,
     ): ConversationSearchPage {
         val cursor = request.cursor?.let(SearchCursor::decode)
-        val sql = searchSql(request)
+        val sql = searchSql(request, includeToolResults)
         val rows = prepareStatement(sql).use { statement ->
             statement.bindSearch(request, readableProjectIds, participantUserId, cursor, this)
             statement.executeQuery().use { result ->
@@ -59,7 +61,8 @@ class PostgresConversationSearchRepository(
         )
     }
 
-    private fun searchSql(request: ConversationSearchRequest): String {
+    private fun searchSql(request: ConversationSearchRequest, includeToolResults: Boolean): String {
+        val textColumn = if (includeToolResults) "m.search_text" else "m.message_text"
         val messageThreadFilter = when (request.threadScope) {
             ConversationSearchRequest.ThreadScope.CURRENT -> "AND tm.thread_id = c.current_thread_id"
             ConversationSearchRequest.ThreadScope.ALL -> ""
@@ -183,8 +186,8 @@ class PostgresConversationSearchRepository(
                     m.id AS message_id,
                     m.role,
                     substring(
-                        m.search_text
-                        FROM greatest(position(lower(sp.query_text) in lower(m.search_text)) - 160, 1)
+                        $textColumn
+                        FROM greatest(position(lower(sp.query_text) in lower($textColumn)) - 160, 1)
                         FOR 420
                     ) AS excerpt
                 FROM messages m
@@ -211,7 +214,7 @@ class PostgresConversationSearchRepository(
                         AND access_participant.user_id = ?
                   )
                   AND m.role = ANY (?::text[])
-                  AND m.search_text ILIKE sp.pattern
+                  AND $textColumn ILIKE sp.pattern
                   $requestFilters
             )
             $metadataSql

@@ -57,13 +57,35 @@ class SdkWorkerExecutionTest {
     }
 
     @Test
-    fun `HTTP deadline is typed through Worker while execution receipt stays replayable`() = runBlocking {
-        StalledServer(true).use { server ->
-            val fixture = Fixture(server.origin, logicalSeconds = 1)
+    fun `expired HTTP deadline stays not-started through Worker receipt replay`() = runBlocking {
+        SdkHttpTestServer("{}").use { server ->
+            val fixture = Fixture(server.origin, logicalSeconds = -1)
             try {
                 fixture.executor.initialize()
                 fixture.executor.accept(fixture.envelope())
-                val response = withTimeout(4000) { fixture.responses.receive() }
+                val response = withTimeout(3000) { fixture.responses.receive() }
+                assertEquals(WorkerGatewayMessage.Response.Status.SUCCEEDED, response.status)
+                val error = assertFailsWith<AiCallException> { AiRequestResponseGatewayCodec.decodeCallResponse(requireNotNull(response.payload)) }
+                assertEquals(AiCallFailure.Kind.DEADLINE_EXCEEDED, error.failure.kind)
+                assertEquals(AiCallFailure.Outcome.NOT_STARTED, error.failure.outcome)
+                assertEquals(0, error.failure.attempts)
+                assertTrue(server.requests.isEmpty())
+                fixture.executor.accept(fixture.envelope())
+                assertEquals(response, withTimeout(1000) { fixture.responses.receive() })
+                assertTrue(server.requests.isEmpty())
+            } finally { fixture.close() }
+        }
+    }
+
+    @Test
+    fun `HTTP deadline is typed through Worker while execution receipt stays replayable`() = runBlocking {
+        StalledServer(true).use { server ->
+            val fixture = Fixture(server.origin, logicalSeconds = 5)
+            try {
+                fixture.executor.initialize()
+                fixture.executor.accept(fixture.envelope())
+                withContext(Dispatchers.IO) { assertTrue(server.started.await(5, TimeUnit.SECONDS), "HTTP must start before testing an in-flight deadline") }
+                val response = withTimeout(6000) { fixture.responses.receive() }
                 assertEquals(WorkerGatewayMessage.Response.Status.SUCCEEDED, response.status)
                 val error = assertFailsWith<AiCallException> { AiRequestResponseGatewayCodec.decodeCallResponse(requireNotNull(response.payload)) }
                 assertEquals(AiCallFailure.Kind.DEADLINE_EXCEEDED, error.failure.kind)

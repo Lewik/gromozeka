@@ -217,8 +217,8 @@ class VisualApplicationService(
         records: List<VisualOutputRecord>,
         finished: Boolean,
     ): Boolean {
-        require(records.size <= 256) { "Visual output batch is too large" }
-        require(records.sumOf { it.json?.encodeToByteArray()?.size ?: 0 } <= 65_536) { "Visual output batch exceeds 64 KiB" }
+        require(records.size <= VisualLimits.OUTPUT_BATCH_RECORDS) { "Visual output batch is too large" }
+        require(records.sumOf { it.json?.encodeToByteArray()?.size ?: 0 } <= VisualLimits.OUTPUT_BATCH_BYTES) { "Visual output batch exceeds ${VisualLimits.OUTPUT_BATCH_BYTES} bytes" }
         var changed = false
         val active = mutex(id).withLock {
             var visual = repository.find(conversationId, id) ?: return@withLock false

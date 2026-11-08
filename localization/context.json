@@ -4002,6 +4002,7 @@
       "count": 4
     }
   },
+  "chat.input.pasteAttachments": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"], "description": "Composer menu and text context menu action: paste image/file attachments from the clipboard, without sending the message or replacing ordinary text paste.", "args": []},
   "chat.input.attachFiles": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt:395",

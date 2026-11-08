@@ -110,8 +110,11 @@ interface VisualService {
 
 object VisualLimits {
     const val DOCUMENT_BYTES = 65_536
-    const val STATE_BYTES = 32_768
-    const val OUTPUT_LINE_BYTES = 8_192
+    const val STATE_BYTES = 262_144
+    const val OUTPUT_LINE_BYTES = STATE_BYTES
+    const val OUTPUT_BATCH_BYTES = 1_048_576
+    const val OUTPUT_BATCH_RECORDS = 256
+    const val INPUT_LINE_BYTES = STATE_BYTES + 4_096 // State plus bounded event and button identifiers.
     const val RENDER_NODES = 2_048
     const val DEPTH = 32
     const val PER_CONVERSATION = 8

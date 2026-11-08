@@ -16,6 +16,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import org.jetbrains.skia.Image
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 
 @OptIn(ExperimentalTestApi::class)
 internal fun runGromozekaUiTest(
@@ -57,6 +65,22 @@ internal fun ComposeUiTest.waitForTag(tag: UiTestTag, timeoutMillis: Long = 30_0
         onAllNodesWithTag(tag.value, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
     }
     onNodeWithTag(tag.value, useUnmergedTree = true).assertExists()
+}
+
+/** Network polling must not block the Compose test dispatcher that delivers client callbacks. */
+internal fun ComposeUiTest.waitUntilRemote(timeoutMillis: Long = 30_000, predicate: suspend () -> Boolean) {
+    val pollingScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    try {
+        val result = pollingScope.async {
+            withTimeout(timeoutMillis) {
+                while (!predicate()) delay(20)
+            }
+        }
+        waitUntil(timeoutMillis = timeoutMillis) { result.isCompleted }
+        runBlocking { result.await() }
+    } finally {
+        pollingScope.cancel()
+    }
 }
 
 internal fun ComposeUiTest.saveScreenshot(scenarioName: String) {

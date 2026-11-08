@@ -3,15 +3,15 @@ package com.gromozeka.domain.model.ai
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.withoutProviderReplay
+import com.gromozeka.domain.model.withPortableSyntheticToolCallIds
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import com.gromozeka.domain.model.COLLABORATION_ORIGINAL_CONTENT
+import com.gromozeka.domain.model.originalCollaborationMessage
 
 const val AI_PROVIDER_MANAGED_TOOL_METADATA_KEY = "providerManagedTool"
 
@@ -140,7 +140,7 @@ data class AiUsage(
 const val AI_REPLAY_THREAD_METADATA_KEY = "gromozekaReplayThreadId"
 
 fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
-    AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION -> name
+    AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION, AiConnection.Kind.OPENAI_API -> name
     else -> null
 }
 
@@ -148,7 +148,7 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
     val currentThread = options.toolContext["threadId"] as? String
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
-    val originalMessages = originalCollaborationMessages()
+    val originalMessages = originalCollaborationMessages().withPortableSyntheticToolCallIds()
     return ConversationContext(originalMessages).messagesForProvider(nativeProvider).map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
         if (currentThread != null && sourceThread != currentThread) {
@@ -160,9 +160,5 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
 }
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */
-fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> = messages.map { message ->
-    val original = message.providerMetadata[COLLABORATION_ORIGINAL_CONTENT]
-    if (original != null && message.role == Conversation.Message.Role.ASSISTANT && message.author is Conversation.Message.Author.Agent) {
-        message.copy(content = Json.decodeFromJsonElement<List<Conversation.Message.ContentItem>>(original))
-    } else message
-}
+fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> =
+    messages.map(Conversation.Message::originalCollaborationMessage)

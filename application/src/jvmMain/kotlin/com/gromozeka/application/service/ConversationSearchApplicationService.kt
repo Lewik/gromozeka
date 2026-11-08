@@ -15,6 +15,7 @@ class ConversationSearchApplicationService(
     suspend fun search(
         actorUserId: User.Id,
         request: ConversationSearchRequest,
+        includeToolResults: Boolean = true,
     ): ConversationSearchPage {
         val readableProjectIds = projectAccessService.findAll(actorUserId)
             .mapTo(linkedSetOf()) { it.id }
@@ -24,6 +25,7 @@ class ConversationSearchApplicationService(
             request = request.copy(query = request.query.trim()),
             readableProjectIds = readableProjectIds,
             participantUserId = actorUserId,
+            includeToolResults = includeToolResults,
         )
     }
 }

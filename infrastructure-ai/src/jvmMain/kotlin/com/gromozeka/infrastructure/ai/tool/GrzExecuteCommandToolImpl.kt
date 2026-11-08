@@ -76,10 +76,12 @@ class GrzSendCommandInputToolImpl(
         runBlocking {
             require(request.task_id.isNotBlank()) { "task_id must not be blank" }
             require(request.text.length <= MAX_COMMAND_INPUT_BYTES) { "Command input exceeds $MAX_COMMAND_INPUT_BYTES bytes" }
+            val bytes = request.text.encodeToByteArray(throwOnInvalidSequence = true)
+            require(bytes.size <= MAX_COMMAND_INPUT_BYTES) { "Command input exceeds $MAX_COMMAND_INPUT_BYTES bytes" }
             val result = commandTaskService.sendInput(
                 conversationId = context.requiredConversationId(),
                 taskId = CommandTask.Id(request.task_id),
-                bytes = request.text.encodeToByteArray(throwOnInvalidSequence = true),
+                bytes = bytes,
                 closeInput = request.close_input,
             )
             mapOf(

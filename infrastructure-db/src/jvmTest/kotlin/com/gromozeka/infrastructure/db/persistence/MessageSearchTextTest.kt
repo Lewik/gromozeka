@@ -46,5 +46,6 @@ class MessageSearchTextTest {
             "Visible user text\ntool\\u0000output\nVisible assistant text",
             message.searchText(),
         )
+        assertEquals("Visible user text\nVisible assistant text", message.searchText(includeToolResults = false))
     }
 }

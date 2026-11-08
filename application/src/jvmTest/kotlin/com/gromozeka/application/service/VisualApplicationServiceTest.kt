@@ -148,6 +148,52 @@ class VisualApplicationServiceTest {
         assertEquals(80L, updated.handler!!.outputCursor)
     }
 
+    @Test fun `large handler snapshots and button input retain complete state while oversized updates stay atomic`() = fixture { f ->
+        val visual = f.create(handler = true)
+        val handler = visual.handler!!
+        val largeData = buildJsonObject {
+            put("count", 15)
+            put("agents", JsonArray((1..15).map { agent -> buildJsonObject {
+                put("name", "Agent $agent")
+                put("task", "Long task description ".repeat(100))
+                put("queue", JsonArray((1..6).map { JsonPrimitive("https://example.invalid/$agent/" + "path/".repeat(80)) }))
+            } }))
+        }
+        val line = buildJsonObject { put("data", largeData) }.toString()
+        assertTrue(line.encodeToByteArray().size > 65_536)
+        val task = f.commands.tasks.getValue(visual.id).copy(outputBytes = 2_000_000)
+        f.service.acceptOutput(handler.worker, visual.id, f.conversation.id, handler.generation, task,
+            listOf(VisualOutputRecord(line.encodeToByteArray().size.toLong(), line)), false)
+        val saved = f.repository.find(f.conversation.id, visual.id)!!
+        assertEquals(largeData, saved.state.getValue("data"))
+        assertTrue(saved.diagnostics.isEmpty())
+        assertTrue(f.service.act(f.user, f.conversation.id, VisualAction("large-action", visual.id,
+            saved.documentRevision, "save", saved.state)).accepted)
+        val input = f.commands.inputs.single()
+        assertTrue(input.encodeToByteArray().size > 65_536)
+        assertTrue(input.encodeToByteArray().size <= VisualLimits.INPUT_LINE_BYTES)
+        assertEquals(saved.state, Json.parseToJsonElement(input).jsonObject.getValue("state"))
+        val oversized = buildJsonObject { put("data", buildJsonObject {
+            put("count", 16); put("text", "x".repeat(VisualLimits.OUTPUT_LINE_BYTES))
+        }) }.toString()
+        f.service.acceptOutput(handler.worker, visual.id, f.conversation.id, handler.generation, task,
+            listOf(VisualOutputRecord(1_000_000, oversized)), false)
+        val rejected = f.repository.find(f.conversation.id, visual.id)!!
+        assertEquals(saved.state, rejected.state)
+        assertEquals("handler-output", rejected.diagnostics.single().code)
+        val maxRecord = "x".repeat(VisualLimits.OUTPUT_LINE_BYTES)
+        val tooLargeBatch = List(5) { VisualOutputRecord(1_100_000L + it, maxRecord) }
+        val batchError = assertFailsWith<IllegalArgumentException> {
+            f.service.acceptOutput(handler.worker, visual.id, f.conversation.id, handler.generation, task, tooLargeBatch, false)
+        }
+        assertContains(batchError.message.orEmpty(), "batch exceeds")
+        assertEquals(rejected, f.repository.find(f.conversation.id, visual.id))
+        assertFailsWith<IllegalArgumentException> {
+            f.service.acceptOutput(handler.worker, visual.id, f.conversation.id, handler.generation, task,
+                List(VisualLimits.OUTPUT_BATCH_RECORDS + 1) { VisualOutputRecord(1_100_000L + it, "{}") }, false)
+        }
+    }
+
     @Test fun `replaced handler cannot overwrite the same visual and close cancels ownership`() = fixture { f ->
         val visual = f.create(handler = true)
         val old = visual.handler!!

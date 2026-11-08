@@ -64,6 +64,18 @@ class PostgresConversationSearchRepositoryTest {
             val search = PostgresConversationSearchRepository(source)
             val found = search.search(ConversationSearchRequest("searchable-after-preview", includeMetadataMatches = false), setOf(project.id), owner.id)
             assertEquals(listOf(message.id), found.hits.mapNotNull { it.messageId })
+            for (query in listOf("searchable-after-preview", "bounded preview")) {
+                assertTrue(search.search(ConversationSearchRequest(query, includeMetadataMatches = false,
+                    roles = setOf(Conversation.Message.Role.USER)), setOf(project.id), owner.id, includeToolResults = false).hits.isEmpty())
+            }
+            val mixed = message.copy(id = Conversation.Message.Id("mixed"), content =
+                listOf(Conversation.Message.ContentItem.UserMessage("Visible human phrase")) + message.content)
+            messages.save(mixed)
+            ExposedThreadMessageRepository(Json).add(conversation.currentThread, mixed.id, 1)
+            assertEquals(listOf(mixed.id), search.search(ConversationSearchRequest("Visible human phrase", includeMetadataMatches = false),
+                setOf(project.id), owner.id, includeToolResults = false).hits.mapNotNull { it.messageId })
+            assertTrue(search.search(ConversationSearchRequest("searchable-after-preview", includeMetadataMatches = false),
+                setOf(project.id), owner.id, includeToolResults = false).hits.isEmpty())
             assertEquals(message, messages.findById(message.id))
             assertTrue(search.search(ConversationSearchRequest("searchable-after-preview"), emptySet(), owner.id).hits.isEmpty())
         } finally {
@@ -190,6 +202,57 @@ class PostgresConversationSearchRepositoryTest {
                     statement.execute("DROP SCHEMA $schema CASCADE")
                 }
             }
+        }
+    }
+
+    @Test
+    fun `message-only migration backfills legacy mixed messages without indexing tool JSON or visual snapshots`() = runBlocking {
+        org.junit.Assume.assumeTrue(System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
+        val schema = "message_text_${UUID.randomUUID().toString().replace("-", "")}"
+        val source = dataSource("$schema,public")
+        source.connection.use { it.createStatement().use { s ->
+            s.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")
+            s.execute("CREATE SCHEMA $schema")
+        } }
+        try {
+            createBaselineSchema(source)
+            seed(source)
+            applySearchMigration(source)
+            val originals = mapOf(
+                "message-current" to """{"content":[{"type":"Message","text":"human-only\u0000needle"},{"type":"ToolResult","result":[{"content":"possibly_truncated"}]}]}""",
+                "message-literal" to """{"content":[{"type":"ToolResult","result":[{"content":"possibly_truncated"}]}]}""",
+                "message-similar" to """{"content":[{"type":"visual_interaction","visualTitle":"Панель","buttonLabel":"Запустить","snapshot":{"data":{"hidden":"possibly_truncated"}}}]}""",
+            )
+            source.connection.use { c ->
+                c.prepareStatement("UPDATE messages SET message_json = ?, search_text = 'possibly_truncated' WHERE id = ?").use { s ->
+                    originals.forEach { (id, json) -> s.setString(1, json); s.setString(2, id); s.executeUpdate() }
+                }
+            }
+            val migration = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres").baselineOnMigrate(true).baselineVersion("81").target("82").load()
+            assertEquals(1, migration.migrate().migrationsExecuted)
+            val repository = PostgresConversationSearchRepository(source)
+            val projects = setOf(Project.Id("project-1"))
+            val user = User.Id("user-1")
+            fun request(query: String) = ConversationSearchRequest(query, includeMetadataMatches = false)
+            assertTrue(repository.search(request("possibly_truncated"), projects, user, includeToolResults = false).hits.isEmpty())
+            assertEquals(3, repository.search(request("possibly_truncated"), projects, user).hits.size)
+            assertEquals(listOf("message-current"), repository.search(request("human-only"), projects, user,
+                includeToolResults = false).hits.map { it.messageId!!.value })
+            assertEquals(listOf("message-assistant"), repository.search(request("needle assistant"), projects, user,
+                includeToolResults = false).hits.map { it.messageId!!.value })
+            assertEquals(listOf("message-similar"), repository.search(request("Панель → Запустить"), projects, user,
+                includeToolResults = false).hits.map { it.messageId!!.value })
+            source.connection.use { c ->
+                c.createStatement().use { s -> s.executeQuery("SELECT id, message_json, message_text FROM messages").use { rows ->
+                    while (rows.next()) {
+                        originals[rows.getString(1)]?.let { assertEquals(it, rows.getString(2)) }
+                        if (rows.getString(1) == "message-current") assertEquals("human-only\\u0000needle", rows.getString(3))
+                    }
+                } }
+            }
+        } finally {
+            source.connection.use { it.createStatement().use { s -> s.execute("DROP SCHEMA $schema CASCADE") } }
         }
     }
 

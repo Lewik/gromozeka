@@ -72,7 +72,7 @@ class GatewayVisualCommandRuntime(
 
     override suspend fun sendInput(actor: User, visual: Visual, input: String) {
         val handler = requireNotNull(visual.handler)
-        require(input.encodeToByteArray().size <= MAX_COMMAND_INPUT_BYTES) { "Visual action exceeds command stdin limit" }
+        require(input.encodeToByteArray().size <= VisualLimits.INPUT_LINE_BYTES) { "Visual action exceeds ${VisualLimits.INPUT_LINE_BYTES} bytes" }
         val projectId = requireNotNull(conversations.findById(visual.conversationId)).projectId
         execute(actor, projectId, VisualWorkerCommand(
             VisualWorkerCommand.Operation.INPUT, visual.id, visual.conversationId, handler.generation,

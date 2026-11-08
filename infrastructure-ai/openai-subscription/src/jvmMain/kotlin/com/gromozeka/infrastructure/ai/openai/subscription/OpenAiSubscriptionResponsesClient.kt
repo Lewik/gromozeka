@@ -409,6 +409,7 @@ class OpenAiSubscriptionResponsesClient(
                     replayItems = requestMapper.toReplayItems(
                         outputItems = parsed.outputItems,
                         assistantResponseFormat = assistantResponseFormat,
+                        modelProfile = modelProfile,
                     ),
                 ),
             ) else incrementalState.clear()
@@ -750,14 +751,26 @@ internal class OpenAiSubscriptionIncrementalState {
     ): String {
         val mismatchIndex = expected.indices.firstOrNull { index -> index >= actual.size || expected[index] != actual[index] }
             ?: expected.size
-        val expectedType = expected.getOrNull(mismatchIndex)?.itemType() ?: "eof"
-        val actualType = actual.getOrNull(mismatchIndex)?.itemType() ?: "eof"
+        val expectedItem = expected.getOrNull(mismatchIndex)
+        val actualItem = actual.getOrNull(mismatchIndex)
+        val field = if (expectedItem == null || actualItem == null) "item_presence"
+            else DIAGNOSTIC_FIELDS.firstOrNull { expectedItem[it] != actualItem[it] } ?: "other"
+        val expectedType = expectedItem?.itemType() ?: "eof"
+        val actualType = actualItem?.itemType() ?: "eof"
         return "index=$mismatchIndex,expectedType=$expectedType,actualType=$actualType," +
-            "expectedSize=${expected.size},actualSize=${actual.size}"
+            "expectedSize=${expected.size},actualSize=${actual.size},field=$field"
     }
 
     private fun JsonObject.itemType(): String =
-        this["type"]?.jsonPrimitive?.contentOrNull ?: "unknown"
+        this["type"]?.jsonPrimitive?.contentOrNull?.takeIf { it in DIAGNOSTIC_TYPES } ?: "unknown"
+
+    private companion object {
+        // Never log arbitrary provider keys, item types, arguments, text or signed payloads.
+        val DIAGNOSTIC_FIELDS = listOf("type", "namespace", "call_id", "name", "arguments", "role", "phase",
+            "content", "tools", "id", "status", "summary", "encrypted_content")
+        val DIAGNOSTIC_TYPES = setOf("message", "function_call", "function_call_output", "reasoning",
+            "compaction", "compaction_summary", "compaction_trigger", "additional_tools", "web_search_call")
+    }
 }
 
 internal data class OpenAiSubscriptionRequestPlan(

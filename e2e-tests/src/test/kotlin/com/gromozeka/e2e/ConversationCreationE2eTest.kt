@@ -121,9 +121,8 @@ class ConversationCreationE2eTest {
                 waitForTag(UiTestTag.AgentAutoRespond(agents.first().id.value))
                 saveScreenshot("automatic-responder-checkbox")
                 onNodeWithTag(UiTestTag.AgentAutoRespond(agents.first().id.value).value).performClick()
-                waitUntil(timeoutMillis = 30_000) {
-                    runBlocking { components.conversationService.findById(conversation.id) }
-                        ?.autoRespondAgentIds?.isEmpty() == true
+                waitUntilRemote {
+                    components.conversationService.findById(conversation.id)?.autoRespondAgentIds?.isEmpty() == true
                 }
                 runBlocking {
                     val unchanged = components.conversationService.updateParticipants(conversation.id, conversation.participants)
@@ -136,8 +135,8 @@ class ConversationCreationE2eTest {
                 }
                 val tab = components.appViewModel.tabs.value.single { it.conversationId == conversation.id }
                 fun awaitMessages(users: Int, assistants: Int) {
-                    waitUntil(timeoutMillis = 30_000) {
-                        val messages = runBlocking { components.conversationService.loadCurrentMessages(conversation.id) }
+                    waitUntilRemote {
+                        val messages = components.conversationService.loadCurrentMessages(conversation.id)
                         messages.count { it.role == Conversation.Message.Role.USER } == users &&
                             messages.count { it.role == Conversation.Message.Role.ASSISTANT } == assistants &&
                             tab.runtimeSnapshot.value?.let { it.state == null && it.pendingTasks.isEmpty() } == true
@@ -199,8 +198,8 @@ class ConversationCreationE2eTest {
         val message = "Message prepared by Compose E2E"
         onNodeWithTag(UiTestTag.MessageInput.value).performTextInput(message)
         onNodeWithTag(UiTestTag.MessageInput.value).assertTextContains(message)
-        waitUntil(timeoutMillis = 30_000) {
-            runBlocking { client.components.conversationService.findByProject(project.id) }.isNotEmpty()
+        waitUntilRemote {
+            client.components.conversationService.findByProject(project.id).isNotEmpty()
         }
     }
 }

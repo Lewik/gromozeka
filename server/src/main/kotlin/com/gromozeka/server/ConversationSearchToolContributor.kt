@@ -85,6 +85,7 @@ internal class ConversationSearchToolContributor(
                 ?: ConversationSearchRequest.ThreadScope.CURRENT
             val page = conversationSearchService.search(
                 actorUserId = user.id,
+                includeToolResults = false,
                 request = ConversationSearchRequest(
                     query = input.requiredString("query"),
                     projectId = input.optionalString("projectId")?.let { Project.Id(it) },

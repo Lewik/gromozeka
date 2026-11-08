@@ -37,9 +37,9 @@ The first end-to-end slice is now implemented locally:
 - Draft garbage collection runs at Server startup and at a low-frequency interval. It removes expired draft records and content bytes that have no metadata record.
 - User messages contain canonical `Artifact.Reference` items. Tool binary results are persisted by Server and converted to canonical artifact references before entering conversation history.
 - The composer supports attachment-only messages, up to 10 files, 25 MB per file, and 50 MB total per message.
-- Web supports multiple file selection, clipboard image/file paste, file drop, and one-frame `getDisplayMedia()` capture.
-- JVM supports multiple file selection and drag/drop. macOS opens the OS screenshot selector; Windows and Linux use full-desktop capture when a graphical desktop is available.
-- Native iOS supports document selection and a screenshot-filtered Photos picker. Native Android supports document/image selection and intentionally does not advertise screenshot capture yet.
+- Web supports multiple file selection, composer-scoped clipboard image/file paste and file drop, and one-frame `getDisplayMedia()` capture. Clipboard formats and programmatic clipboard reads remain subject to browser capabilities and permissions.
+- JVM supports multiple file selection, image/file clipboard paste, and composer-scoped drag/drop. macOS opens the OS screenshot selector; Windows and Linux use full-desktop capture when a graphical desktop is available.
+- Native iOS supports document selection, a screenshot-filtered Photos picker, and item-provider paste/drop of images, binary files, and local file URLs. Native Android supports document/image selection and content/file-URI paste/drop, retaining drop permissions through acquisition; screenshot capture is not advertised.
 - Sent image attachments and image tool results render as lazy previews. Preview bytes are fetched from Server and held in a bounded client memory cache.
 - OpenAI Responses, OpenAI Chat, OpenAI subscription, Anthropic, and Claude Code provider paths materialize committed image/file artifacts instead of receiving local paths or placeholder strings.
 - `grz_capture_screenshot` is an exact-Worker inspection tool. It captures that Worker's complete visible desktop, bounds the long edge to 1024-4096 pixels, returns PNG bytes, and is advertised only when capture is available.
@@ -107,11 +107,34 @@ Large blobs should not live inline in PostgreSQL conversation rows. PostgreSQL s
 |---|---|---|---|
 | Desktop web | Native file input | `getDisplayMedia()`, user chooses tab/window/screen, capture one frame, stop stream immediately | Both |
 | iPhone/iPad PWA | System file/photo picker | Hide initially; web cannot reliably open only Screenshots or silently capture the device | File/photo picker and clipboard where exposed by Safari |
-| Native iOS | `PhotosPicker` and document picker | Open `PhotosPicker` filtered to screenshots; it selects an existing screenshot rather than capturing other apps | Native drop can follow later; picker is primary |
-| Native Android | Photo picker/document picker | Initially hide or open image picker with honest wording; native screen capture requires a separate consent flow | Picker first; platform drag/drop can follow |
+| Native iOS | `PhotosPicker` and document picker | Open `PhotosPicker` filtered to screenshots; it selects an existing screenshot rather than capturing other apps | Item-provider drop and explicit Paste attachments action; local file URLs preserve text-file identity |
+| Native Android | Photo picker/document picker | Initially hide or open image picker with honest wording; native screen capture requires a separate consent flow | Content/file-URI drop and paste; explicit Paste attachments action |
 | JVM macOS | Native file picker | OS capture selector for screen/window/region, then upload bytes | Both |
 | JVM Windows | Native file picker | Windows capture implementation, then upload bytes | Both |
 | JVM Linux | Native file picker | Capability-dependent: portal/Wayland/X11 capture; hide when unavailable | Both where supported |
+
+### Clipboard and drop targeting
+
+Paste shortcuts and drop targets belong to the message input, not the whole window.
+The composer action menu exposes **Paste attachments** on clients with a clipboard-read
+API; desktop text context menus expose it as well. On touch clients this action remains
+available even when the platform's ordinary text toolbar cannot receive rich content.
+The attachment adapter reads clipboard content only in response to a paste gesture.
+
+Acquisition captures the receiving draft before asynchronous file reads begin. Switching
+tabs while a read is pending does not redirect its files or error to the new conversation.
+Receiving content never sends a message. Existing draft text, upload validation, previews,
+and removal remain in the ordinary artifact flow. Native attachment batches stop reading
+when their count or aggregate byte limit is exceeded; web batches validate offered file
+sizes before `FileReader` starts.
+
+Ordinary text and web URLs remain text. On iOS, a suggested filename alone is not proof
+that a text representation is a file: text-file attachments need a local file-URL offer.
+Browser clipboard permission and available formats are not uniform across browsers;
+when the browser does not expose an attachment representation, use the existing picker.
+Android drop URI permissions are released when the owned acquisition job finishes or
+is cancelled. iOS item-provider temporary files are read inside the completion callback,
+before UIKit deletes them.
 
 ### Desktop browser details
 

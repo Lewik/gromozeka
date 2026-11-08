@@ -37,6 +37,69 @@ or duplicate `/v1` in the configured prefix. Credentials, query strings and
 fragments are not accepted in the base URL. Use HTTPS for non-local gateways.
 There is no error-driven URL, protocol or model fallback.
 
+## Responses auto-compaction
+
+The OpenAI Responses connection (`OPENAI_API`), including a gateway base URL,
+passes the model spec's configured auto-compaction threshold as
+`context_management: [{"type":"compaction","compact_threshold":...}]` on normal
+`POST /responses` calls. `store=false` remains enabled. This is native provider-side
+compaction, not incremental `previous_response_id` chaining, truncation, or a
+separate Gromozeka summarization model.
+
+Configure the existing model spec policy explicitly, for example this limits fragment:
+
+```json
+{
+  "textGeneration": {
+    "contextWindowTokens": 200000,
+    "autoCompaction": { "type": "percent", "value": 70 }
+  }
+}
+```
+
+An absolute threshold (`{"type":"absolute","tokens":140000}`) is also supported.
+`contextWindowTokens` alone does not enable compaction: an absent `autoCompaction`
+policy remains disabled. Leave space below the model's actual context limit for
+new tool output and generation. A single oversized input or a conversation that
+already exceeds that limit may still be rejected; no history is silently truncated.
+The exact provider/model route and gateway version must support this Responses
+parameter and compaction-item replay. Unsupported routes fail explicitly rather
+than retrying without compaction. Chat Completions is not enabled by this change.
+
+Encrypted output items are persisted as full context checkpoints in their original
+output order. Subsequent requests send the latest checkpoint and following turns,
+including tool call/result pairs, without resending the covered archive. Canonical
+source messages remain stored. Checkpoint-only output continues the agent loop;
+malformed or wrong-connection/model checkpoints are explicit errors. Billing usage
+is retained, but pre-compaction input usage is not presented as the retained-window
+size on that response. Update the Server or Worker that executes the AI calls.
+
+Regression coverage uses the real SDK and a local HTTP gateway fixture, JSON
+persistence/replay and sparse-history selection. It is not acceptance testing of
+a live TrueFoundry installation. Cross-provider migration is unchanged; use an
+explicit handoff when changing providers.
+
+Contract: [OpenAI Responses compaction](https://developers.openai.com/api/docs/guides/compaction).
+
+## Synthetic tool-call IDs
+
+Memory, command-completion and monitor-notification pairs use deterministic nine-character
+`[A-Za-z0-9]` IDs. SHA-256 of the full stable notification key is reduced to nine
+base62 digits; monitor delivery keys include the event batch and terminal marker.
+The same ID is used for the call and its result, including redelivery.
+
+Message IDs, command/monitor IDs, lookup arguments and provider-generated tool-call
+IDs are unchanged. Existing stored notifications retain their original IDs. The
+shared model-history projection normalizes only those legacy synthetic pairs for
+Responses, Chat Completions and Messages; it does not rewrite the database. A
+collision in the outgoing context is an explicit error, never a merged pair.
+Native CLI raw-history/session handling is unchanged.
+
+If a notification was interrupted after its call was stored before the upgrade,
+replay reuses that stored ID for the missing result. Both become the same short ID
+in the API view. Local regressions capture actual SDK HTTP payloads for all three
+protocols; support for a particular gateway/model still depends on its contract.
+
 ## Authentication and rotation
 
 `apiKey` remains the single credential slot, also when it contains a gateway
