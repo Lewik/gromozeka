@@ -74,6 +74,59 @@ class ConversationRuntimeDispatcherTest {
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
+    fun `incident continuation can start before failed-task persistence returns`() = runBlocking {
+        for (cancelled in listOf(false, true)) {
+            val stored = InMemoryConversationRuntimeCoordinator()
+            val transitionPersisted = CompletableDeferred<Unit>()
+            val releaseTransition = CompletableDeferred<Unit>()
+            val incidentStarted = CompletableDeferred<Unit>()
+            val coordinator = object : ConversationRuntimeCoordinator by stored {
+                override suspend fun markActiveTaskInDoubt(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                    executor: ConversationRuntimeExecutorIdentity, message: String, errorType: String?): ConversationRuntimeTaskIncident? {
+                    val incident = stored.markActiveTaskInDoubt(conversationId, taskId, executor, message, errorType)
+                    transitionPersisted.complete(Unit)
+                    releaseTransition.await()
+                    return incident
+                }
+            }
+            val attempts = java.util.concurrent.atomic.AtomicInteger()
+            val runner = object : ConversationRuntimeTaskRunner {
+                override suspend fun runRuntimeTask(task: ConversationRuntimeTask, executor: ConversationRuntimeExecutorIdentity,
+                    emitMessage: suspend (Conversation.Message) -> Unit): ConversationRuntimeTaskOutcome {
+                    if (task.payload is ConversationRuntimeTask.Payload.ExecutionIncident) {
+                        incidentStarted.complete(Unit)
+                        return ConversationRuntimeTaskOutcome.CompleteTurn
+                    }
+                    attempts.incrementAndGet()
+                    if (cancelled) throw kotlinx.coroutines.CancellationException("Synthetic task cancellation")
+                    error("Synthetic task failure")
+                }
+            }
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val executor = runtimeExecutor(coordinator, InMemoryConversationRuntimeEventBus(), runner,
+                serverExecutorDescriptor("incident-handoff-$cancelled", ConversationRuntimeCapability.entries.toSet()), scope)
+            val task = runtimeAgentInvocationTask(userMessage("incident-handoff"))
+            try {
+                executor.start()
+                assertTrue(coordinator.submit(task))
+                withTimeout(TEST_EVENT_TIMEOUT_MS) {
+                    transitionPersisted.await()
+                    incidentStarted.await()
+                }
+                assertFalse(releaseTransition.isCompleted)
+                assertEquals(1, attempts.get(), "A failed action must not be rerun")
+                assertEquals(task.id, stored.schedulingSnapshot(conversationId).incidents.single().task.id)
+                releaseTransition.complete(Unit)
+                waitUntil { stored.find(conversationId) == null }
+            } finally {
+                releaseTransition.complete(Unit)
+                executor.stop()
+                scope.cancel()
+            }
+        }
+    }
+
+    @Test
     fun `background completion and failure drain existing overflow without another worker event`() = runBlocking {
         for (failFirst in listOf(false, true)) {
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

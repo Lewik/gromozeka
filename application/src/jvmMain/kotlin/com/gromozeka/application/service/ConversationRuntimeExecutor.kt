@@ -340,6 +340,7 @@ class ConversationRuntimeExecutor(
                 )
             }
         } catch (error: CancellationException) {
+            activeExecutions.remove(task.conversationId, activeExecution)
             val interrupted = withContext(NonCancellable) {
                 val state = runtimeCoordinator.find(task.conversationId)
                 if (state?.activeTaskId == task.id &&
@@ -361,6 +362,8 @@ class ConversationRuntimeExecutor(
             }
             if (!interrupted) throw error
         } catch (error: Throwable) {
+            // Persisting failure can immediately signal a runnable incident continuation.
+            activeExecutions.remove(task.conversationId, activeExecution)
             recordClaimedTaskIncident(
                 task = task,
                 message = error.message ?: "Unknown conversation runtime error",
