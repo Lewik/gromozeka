@@ -231,6 +231,11 @@ class WorkflowContracts(unittest.TestCase):
             self.assertIn(check, verification)
         self.assertNotIn("GROMOZEKA_OPENAI_SUBSCRIPTION_REAL", str(JOBS["verify-runtime"]))
 
+    def test_responses_auto_compaction_is_verified_without_a_live_gateway(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*OpenAiResponsesSdkRuntimeTest", "*OpenAiResponsesCompactionTest"):
+            self.assertIn(check, verification)
+
     def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
         upload = next(step for step in JOBS["verify-runtime"]["steps"]
                       if step.get("with", {}).get("name") == "verify-runtime-diagnostics")

@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiAssistantMessage
@@ -82,6 +83,7 @@ internal class OpenAiResponsesSdkRuntime(
         generation = generation,
     ),
 ) : AiRuntime {
+    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(supportsAutoCompaction = true)
     private val log = KLoggers.logger(this)
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -117,7 +119,7 @@ internal class OpenAiResponsesMessageMapper(
         webSearchEnabled: Boolean,
         request: AiRuntimeRequest,
     ): ResponseCreateParams {
-        val input = request.projectedMessages().flatMap(::toInputItems)
+        val input = request.projectedMessages("OPENAI_API").flatMap(::toInputItems)
         require(input.isNotEmpty()) { "OpenAI Responses request must contain at least one input item" }
 
         val builder = ResponseCreateParams.builder()
@@ -127,6 +129,13 @@ internal class OpenAiResponsesMessageMapper(
             .parallelToolCalls(true)
             .store(false)
             .addInclude(ResponseIncludable.REASONING_ENCRYPTED_CONTENT)
+
+        request.options.autoCompactionThresholdTokens?.let { threshold ->
+            builder.addContextManagement(ResponseCreateParams.ContextManagement.builder()
+                .type("compaction")
+                .compactThreshold(threshold.toLong())
+                .build())
+        }
 
         request.systemPrompts
             .filter(String::isNotBlank)
@@ -158,6 +167,7 @@ internal class OpenAiResponsesMessageMapper(
             outputItems.any { it.isMessage() && it.asMessage().content().any { part -> part.isRefusal() } } -> AiStepOutcome.REFUSED
             outputItems.any { it.isFunctionCall() } -> AiStepOutcome.TOOL_CALLS
             outputItems.lastOrNull { it.isMessage() }?.asMessage()?.phase()?.getOrNull()?.asString() == "commentary" -> AiStepOutcome.CONTINUE
+            outputItems.any { it.isCompaction() } && outputItems.none { it.isMessage() } -> AiStepOutcome.CONTINUE
             else -> AiStepOutcome.COMPLETE
         }
         val messages = outputItems.mapNotNull { item ->
@@ -165,6 +175,7 @@ internal class OpenAiResponsesMessageMapper(
                 item.isMessage() -> item.asMessage().toAssistantMessage(assistantResponseFormat, outcome != AiStepOutcome.COMPLETE)
                 item.isFunctionCall() -> if (outcome == AiStepOutcome.TOOL_CALLS) item.asFunctionCall().toAssistantMessage() else null
                 item.isWebSearchCall() -> item.asWebSearchCall().toSearchActivity()
+                item.isCompaction() -> item.asCompaction().toCompactionMessage()
                 item.isReasoning() -> item.asReasoning().let { reasoning ->
                     val thinking = buildList {
                         reasoning.summary().map { it.text().trim() }.filter(String::isNotBlank).forEach(::add)
@@ -205,7 +216,9 @@ internal class OpenAiResponsesMessageMapper(
         return AiRuntimeResponse(
             messages = appendWebSources(messages, sourceUrls),
             usage = usage,
-            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
+            // Billed input tokens describe the pre-compaction request, not the retained window.
+            contextUsage = usage?.takeIf { outputItems.none { item -> item.isCompaction() } }
+                ?.let { AiContextUsage(it.totalInputTokens) },
             finishReason = response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
             outcome = outcome,
             providerMetadata = mapOf(
@@ -219,9 +232,29 @@ internal class OpenAiResponsesMessageMapper(
         )
     }
 
+    private fun com.openai.models.responses.ResponseCompactionItem.toCompactionMessage(): AiAssistantMessage {
+        check(id().isNotBlank() && encryptedContent().isNotBlank()) { "OpenAI Responses returned an invalid compaction checkpoint" }
+        val replayItem = json.parseToJsonElement(jsonMapper().writeValueAsString(this)).jsonObject
+        return AiAssistantMessage(listOf(ContextCompactionResult(
+            payload = ContextCompactionResult.Payload.OpaqueProviderState(JsonObject(mapOf("replay_item" to replayItem))),
+            origin = ContextCompactionResult.Origin.PROVIDER_AUTO,
+            strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+            coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            providerScope = ContextCompactionResult.ProviderScope(
+                provider = "OPENAI_API", connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId, modelName = modelName,
+            ),
+        )))
+    }
+
     private fun toInputItems(message: Conversation.Message): List<ResponseInputItem> = buildList {
+        val nativeCompactions = message.content.filterIsInstance<ContextCompactionResult>()
+            .mapNotNull { it.nativeInputItem() }
+        check(nativeCompactions.isEmpty() || message.role == Conversation.Message.Role.ASSISTANT) {
+            "OpenAI Responses compaction checkpoint must be an assistant message"
+        }
         val rawItems = message.providerMetadata["openaiOutputItems"] as? JsonArray
-        if (message.role == Conversation.Message.Role.ASSISTANT && rawItems != null &&
+        if (nativeCompactions.isEmpty() && message.role == Conversation.Message.Role.ASSISTANT && rawItems != null &&
             message.providerMetadata["provider"]?.jsonPrimitive?.contentOrNull == "OPENAI_API" &&
             message.providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
             message.providerMetadata["model"]?.jsonPrimitive?.contentOrNull == modelName
@@ -261,6 +294,7 @@ internal class OpenAiResponsesMessageMapper(
             }
 
             Conversation.Message.Role.ASSISTANT -> {
+                addAll(nativeCompactions)
                 addAll(message.toReasoningInputItems())
                 val text = message.content.mapNotNull { item ->
                     when (item) {
@@ -291,6 +325,20 @@ internal class OpenAiResponsesMessageMapper(
         message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
             .map(::functionCallOutputItem)
             .forEach(::add)
+    }
+
+    private fun ContextCompactionResult.nativeInputItem(): ResponseInputItem? {
+        val opaque = payload as? ContextCompactionResult.Payload.OpaqueProviderState ?: return null
+        val scope = providerScope
+        check(scope?.provider == "OPENAI_API" && scope.connectionId == connectionId && scope.modelName == modelName) {
+            "OpenAI Responses compaction checkpoint belongs to another provider, connection or model"
+        }
+        val item = opaque.state["replay_item"]?.jsonObject
+            ?: error("OpenAI Responses compaction checkpoint has no replay item")
+        check(item["type"] == JsonPrimitive("compaction") && !item["encrypted_content"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()) {
+            "OpenAI Responses compaction checkpoint has no encrypted state"
+        }
+        return jsonMapper().readValue(item.toString(), ResponseInputItem::class.java)
     }
 
     private fun easyMessage(role: EasyInputMessage.Role, text: String): ResponseInputItem =

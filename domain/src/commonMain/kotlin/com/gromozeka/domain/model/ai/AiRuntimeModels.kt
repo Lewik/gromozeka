@@ -139,7 +139,7 @@ data class AiUsage(
 const val AI_REPLAY_THREAD_METADATA_KEY = "gromozekaReplayThreadId"
 
 fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
-    AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION -> name
+    AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION, AiConnection.Kind.OPENAI_API -> name
     else -> null
 }
 

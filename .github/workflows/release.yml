@@ -176,6 +176,8 @@ jobs:
           --tests '*ClaudeCodeCliRuntimeTest.conversationPin*'
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'
           --tests '*SdkWorkerExecutionTest'
+          --tests '*OpenAiResponsesSdkRuntimeTest'
+          --tests '*OpenAiResponsesCompactionTest'
           :infrastructure-ai:openai-subscription:jvmTest
           --tests '*OpenAiSubscriptionIncrementalReplayTest'
           --tests '*OpenAiSubscriptionRequestMapperTest'
