@@ -6,7 +6,7 @@ import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
 import com.openai.core.LogLevel
 import com.openai.client.OpenAIClient
-import com.openai.client.okhttp.OpenAIOkHttpClient
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpOpenAiClient
 import org.springframework.stereotype.Component
 
 @Component
@@ -22,16 +22,18 @@ class OpenAiSdkClientFactory(
         val baseUrl = resolveBaseUrl(connection)
         val token = resolveApiKey(connection)
         val tls = SdkHttpSupport.tls(settings)
-        return OpenAIOkHttpClient.builder()
+        val http = com.openai.client.okhttp.OkHttpClient.builder()
+            .proxy(SdkHttpSupport.proxy(settings, baseUrl))
+            .apply { tls?.let { sslSocketFactory(it.socketFactory); trustManager(it.trustManager) } }
+            .build()
+        val options = com.openai.core.ClientOptions.builder()
             .apiKey(token)
             .baseUrl(baseUrl)
             .logLevel(LogLevel.OFF)
-            .proxy(SdkHttpSupport.proxy(settings, baseUrl))
-            .apply {
-                tls?.let { sslSocketFactory(it.socketFactory); trustManager(it.trustManager) }
-                SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) }
-            }
+            .httpClient(AiTrafficDumpOpenAiClient(http))
+            .apply { SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) } }
             .build()
+        return com.openai.client.OpenAIClientImpl(options)
     }
 
     internal fun createInferenceClient(connection: AiConnection, deadlineNanos: Long): com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient<OpenAIClient> {

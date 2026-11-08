@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaWindow
 import com.gromozeka.domain.service.DirectAiSubscriptionQuotaProvider
 import java.net.URI
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -36,7 +37,7 @@ class OpenAiSubscriptionQuotaProvider(
     @Value("\${gromozeka.ai.openai-subscription.usage-timeout-ms:15000}")
     timeoutMs: Long,
 ) : DirectAiSubscriptionQuotaProvider {
-    private val httpClient = HttpClient.newBuilder().build()
+    private val httpClient = AiTrafficDumpHttpClient(HttpClient.newBuilder().build(), "openai-subscription")
     private val timeout = Duration.ofMillis(timeoutMs)
 
     init {

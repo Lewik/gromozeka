@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.runtime
 
 import com.gromozeka.domain.model.ai.AiHttpSettings
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpInterceptor
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -30,6 +31,7 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
     private var count = 0
     private class ExchangeGuard { val exchanges = java.util.concurrent.atomic.AtomicInteger() }
     private val client = OkHttpClient.Builder()
+        .addNetworkInterceptor(AiTrafficDumpInterceptor("sdk"))
         .addNetworkInterceptor { chain ->
             val guard = requireNotNull(chain.request().tag(ExchangeGuard::class.java))
             // OkHttp can repeat a bodyless GET after 503 + Retry-After: 0 even with connection retries off.

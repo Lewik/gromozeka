@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaWindow
 import com.gromozeka.domain.service.DirectAiSubscriptionQuotaProvider
 import java.net.URI
+import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -33,7 +34,7 @@ import kotlin.time.Duration.Companion.hours
 @Service
 internal class ClaudeCodeSubscriptionQuotaProvider : DirectAiSubscriptionQuotaProvider {
     private val json = Json { ignoreUnknownKeys = true }
-    private val httpClient = HttpClient.newBuilder().build()
+    private val httpClient = AiTrafficDumpHttpClient(HttpClient.newBuilder().build(), "claude-code")
     private val versions = ConcurrentHashMap<String, String>()
 
     override fun supports(request: AiSubscriptionQuotaRequest): Boolean =

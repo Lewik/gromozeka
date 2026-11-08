@@ -60,6 +60,12 @@ class WorkflowContracts(unittest.TestCase):
         self.assertEqual("true", step["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
         self.assertEqual("jdbc:postgresql://localhost:5432/gromozeka", step["env"]["GROMOZEKA_POSTGRES_URL"])
 
+    def test_ai_traffic_diagnostics_regressions_run_without_enabling_live_dumps(self):
+        steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}
+        verification = steps["Verify Server and Worker"]
+        self.assertIn("--tests '*DangerousAiTrafficDumpTest'", verification["run"])
+        self.assertNotIn("GROMOZEKA_DANGEROUS_AI_TRAFFIC_DUMP", verification["env"])
+
     def test_safe_dispatch_defaults(self):
         inputs = RELEASE["on"]["workflow_dispatch"]["inputs"]
         for name, default in (("publish_release", "false"), ("deploy_aws", "false"), ("skip_android", "false"), ("skip_ios", "true")):

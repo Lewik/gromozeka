@@ -5,6 +5,10 @@ running Gromozeka instance. AI connections, model specifications, runtime
 assignments, Agents, and Prompts are managed by the central Server. Repository
 resources are import templates, not a second live configuration source.
 
+For temporary, unredacted provider protocol capture, see
+[Dangerous AI traffic dump](ai-traffic-dump.md). One opt-in flag covers all
+implemented AI providers on the process executing the calls.
+
 ## Current Architecture
 
 Gromozeka is a Kotlin Multiplatform application with Compose clients, a central
