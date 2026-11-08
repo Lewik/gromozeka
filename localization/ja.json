@@ -618,6 +618,7 @@
       "other": "新着メッセージ {count} 件"
     },
     "chat.input.attachFiles": "ファイルを添付",
+    "chat.input.pasteAttachments": "添付ファイルを貼り付け",
     "chat.input.hideKeyboard": "キーボードを隠す",
     "chat.input.insertLocation": "このデバイスの現在地を挿入",
     "chat.input.insertLocationShort": "位置情報を挿入",

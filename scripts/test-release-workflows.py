@@ -71,6 +71,16 @@ class WorkflowContracts(unittest.TestCase):
     def test_ios_checks_cover_shared_native_regressions_and_both_apps(self):
         matrix = JOBS["verify-ios"]["strategy"]["matrix"]["include"]
         tasks = {task for target in matrix for task in target["tasks"].split()}
+        client_step = next(step for step in JOBS["verify-ios"]["steps"]
+                           if step.get("name") == "Verify booted iOS client tests")
+        self.assertEqual("${{ matrix.target == 'client-simulator' }}", client_step["if"])
+        self.assertIn("python3 scripts/run-ios-client-tests.py", client_step["run"])
+        self.assertIn("-Pgromozeka.version=${{ needs.metadata.outputs.version }}", client_step["run"])
+        runner = (ROOT / "scripts/run-ios-client-tests.py").read_text()
+        self.assertIn('":presentation:iosSimulatorArm64Test"', runner)
+        self.assertIn("standalone.set(false)", runner)
+        self.assertIn("scripts/test-ios-client-runner.py", scripts(JOBS["metadata"]))
+        tasks.add(":presentation:iosSimulatorArm64Test")
         required = {
             ":shared:iosSimulatorArm64Test",
             ":presentation:iosSimulatorArm64Test",

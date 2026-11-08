@@ -65,6 +65,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/ci-checks"
           "$RUNNER_TEMP/ci-checks/bin/pip" install --disable-pip-version-check -r scripts/requirements-ci.txt
           "$RUNNER_TEMP/ci-checks/bin/python" scripts/test-release-workflows.py
+          python3 scripts/test-ios-client-runner.py
       - id: release
         shell: bash
         env:
@@ -343,7 +344,7 @@ jobs:
             sdk: iphoneos
             app_bundle: Gromozeka.app
           - target: client-simulator
-            tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :presentation:iosSimulatorArm64Test :shared:iosSimulatorArm64Test"
+            tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :shared:iosSimulatorArm64Test"
             app_target: iosApp
             sdk: iphonesimulator
             app_bundle: Gromozeka.app
@@ -368,6 +369,12 @@ jobs:
         run: >
           ./gradlew
           ${{ matrix.tasks }}
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - name: Verify booted iOS client tests
+        if: ${{ matrix.target == 'client-simulator' }}
+        run: >
+          python3 scripts/run-ios-client-tests.py
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
       - name: Build unsigned iOS app ${{ matrix.target }}

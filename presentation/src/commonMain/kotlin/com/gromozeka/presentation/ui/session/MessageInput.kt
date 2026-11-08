@@ -95,6 +95,7 @@ internal fun MessageInput(
     onPickAttachments: () -> Unit,
     onCaptureScreenshot: () -> Unit,
     onRemoveArtifact: (Artifact.Id) -> Unit,
+    attachmentReceiver: ComposerAttachmentReceiver? = null,
     onInsertCurrentLocation: (() -> Unit)? = null,
     enterKeyAction: EnterKeyAction = EnterKeyAction.NEW_LINE,
     editLastMessageShortcut: KeyboardShortcutBinding? = null,
@@ -298,6 +299,8 @@ internal fun MessageInput(
                         suggestedReplies = suggestedReplies,
                         suggestedRepliesRegenerating = suggestedRepliesRegenerating,
                         onPickAttachments = onPickAttachments,
+                        onPasteAttachments = attachmentReceiver?.takeIf { it.controller.capabilities.clipboardPaste }
+                            ?.let { receiver -> { receiver.paste() } },
                         onCaptureScreenshot = onCaptureScreenshot,
                         onRegenerateSuggestedReplies = onRegenerateSuggestedReplies,
                         onToggleLiveVoice = if (compactControls && showLiveControl && !liveActive) {
@@ -306,28 +309,31 @@ internal fun MessageInput(
                         onInsertCurrentLocation = onInsertCurrentLocation.takeIf { compactControls },
                         onHideKeyboard = hideKeyboard.takeIf { compactControls && clientPlatform.showSoftwareKeyboardControls },
                     )
-                    CompactTextField(
-                        value = textFieldValue,
-                        onValueChange = { value -> textFieldValue = value; onUserInputChange(value.text) },
-                        modifier = Modifier.weight(1f)
-                            .focusRequester(inputFocusRequester)
-                            .onFocusChanged { inputFocused = it.isFocused }
-                            .messageInputShortcuts(
-                                enterKeyAction = enterKeyAction,
-                                isComposing = { textFieldValue.composition != null },
-                                isEmpty = { textFieldValue.text.isEmpty() },
-                                editLastMessageShortcut = editLastMessageShortcut,
-                                onEditLastUserMessage = onEditLastUserMessage,
-                                onSubmit = submitInput,
-                            ).testTag(UiTestTag.MessageInput.value),
-                        placeholder = {
-                            Text(localization.text("chat.composer.placeholder"), style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        },
-                        maxLines = editorMaxLines,
-                        shape = RectangleShape,
-                        errorMessage = inputError,
-                    )
+                    ComposerAttachmentContextMenu(attachmentReceiver, localization.text("chat.input.pasteAttachments")) {
+                        CompactTextField(
+                            value = textFieldValue,
+                            onValueChange = { value -> textFieldValue = value; onUserInputChange(value.text) },
+                            modifier = Modifier.weight(1f)
+                                .composerAttachmentInput(attachmentReceiver, localization.text("chat.input.pasteAttachments"))
+                                .focusRequester(inputFocusRequester)
+                                .onFocusChanged { inputFocused = it.isFocused }
+                                .messageInputShortcuts(
+                                    enterKeyAction = enterKeyAction,
+                                    isComposing = { textFieldValue.composition != null },
+                                    isEmpty = { textFieldValue.text.isEmpty() },
+                                    editLastMessageShortcut = editLastMessageShortcut,
+                                    onEditLastUserMessage = onEditLastUserMessage,
+                                    onSubmit = submitInput,
+                                ).testTag(UiTestTag.MessageInput.value),
+                            placeholder = {
+                                Text(localization.text("chat.composer.placeholder"), style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            },
+                            maxLines = editorMaxLines,
+                            shape = RectangleShape,
+                            errorMessage = inputError,
+                        )
+                    }
                     Row(Modifier.testTag("composer-voice-controls"), verticalAlignment = Alignment.CenterVertically) {
                         val recording = pttState == PttState.RECORDING
                         // Joined styling does not change recording or interruption gestures.
@@ -441,8 +447,9 @@ internal fun ComposerActionsMenu(
     onToggleLiveVoice: (() -> Unit)? = null,
     onInsertCurrentLocation: (() -> Unit)? = null,
     onHideKeyboard: (() -> Unit)? = null,
+    onPasteAttachments: (() -> Unit)? = null,
 ) {
-    if (!canPickAttachments && !canCaptureScreenshot && suggestedReplies == null &&
+    if (!canPickAttachments && !canCaptureScreenshot && onPasteAttachments == null && suggestedReplies == null &&
         onToggleLiveVoice == null && onInsertCurrentLocation == null && onHideKeyboard == null) return
     val translation = LocalTranslation.current
     var expanded by remember { mutableStateOf(false) }
@@ -465,6 +472,15 @@ internal fun ComposerActionsMenu(
                 onClick = { expanded = false; onPickAttachments() },
                 modifier = Modifier.testTag("composer-attach-file"),
             )
+            onPasteAttachments?.let { paste ->
+                DropdownMenuItem(
+                    text = { Text(translation.text("chat.input.pasteAttachments")) },
+                    leadingIcon = { Icon(Icons.Default.AttachFile, null) },
+                    enabled = !artifactUploadInProgress,
+                    onClick = { expanded = false; paste() },
+                    modifier = Modifier.testTag("composer-paste-attachments"),
+                )
+            }
             if (canCaptureScreenshot) DropdownMenuItem(
                 text = { Text(translation.screenshotTooltip) },
                 leadingIcon = { Icon(Icons.Default.CameraAlt, null) },

@@ -644,6 +644,7 @@
       "other": "{count} הודעות חדשות"
     },
     "chat.input.attachFiles": "צירוף קבצים",
+    "chat.input.pasteAttachments": "הדבקת קבצים מצורפים",
     "chat.input.hideKeyboard": "הסתרת המקלדת",
     "chat.input.insertLocation": "הוספת המיקום הנוכחי של המכשיר",
     "chat.input.insertLocationShort": "הוספת מיקום",

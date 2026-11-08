@@ -683,6 +683,7 @@
       "other": "{count} رسالة جديدة"
     },
     "chat.input.attachFiles": "إرفاق ملفات",
+    "chat.input.pasteAttachments": "لصق المرفقات",
     "chat.input.hideKeyboard": "إخفاء لوحة المفاتيح",
     "chat.input.insertLocation": "إدراج الموقع الحالي للجهاز",
     "chat.input.insertLocationShort": "إدراج الموقع",

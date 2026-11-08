@@ -103,7 +103,10 @@ private fun GromozekaAndroidApp(
     microphonePermissionRequester.launchRequest = {
         microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
-    val attachmentController = remember { AndroidAttachmentAcquisitionController(context.contentResolver) }
+    val attachmentController = remember {
+        AndroidAttachmentAcquisitionController(context.contentResolver,
+            requireNotNull(context.getSystemService(android.content.ClipboardManager::class.java)))
+    }
     val attachmentPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->

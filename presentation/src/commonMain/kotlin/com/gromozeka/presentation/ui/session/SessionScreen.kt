@@ -142,6 +142,9 @@ fun SessionScreen(
     val uiState by viewModel.uiState.collectAsState()
     val runtimeSnapshot by viewModel.runtimeSnapshot.collectAsState()
     val activeGeneration by viewModel.activeGeneration.collectAsState()
+    val attachmentReceiver = remember(viewModel) {
+        ComposerAttachmentReceiver(viewModel.attachmentAcquisitionController, viewModel::acquireAndUploadAttachments)
+    }
     val tokenStats by viewModel.tokenStats.collectAsState()
     val executionPauseRequested by viewModel.executionPauseRequested.collectAsState()
     val messageFocusRequest by viewModel.messageFocusRequest.collectAsState()
@@ -763,6 +766,7 @@ fun SessionScreen(
                             composerArtifacts = uiState.composerArtifacts,
                             artifactUploadInProgress = uiState.composerArtifactUploadInProgress,
                             artifactError = uiState.composerArtifactError?.resolve(localization),
+                            attachmentReceiver = attachmentReceiver,
                             canPickAttachments = viewModel.attachmentCapabilities.filePicker,
                             canCaptureScreenshot = viewModel.attachmentCapabilities.screenshot,
                             onPickAttachments = viewModel::pickAttachments,

@@ -27,7 +27,6 @@ import com.gromozeka.presentation.services.ResourceSoundNotificationPlayer
 import com.gromozeka.presentation.services.RemoteTtsQueue
 import com.gromozeka.presentation.services.RollingClientLiveAudioStreamer
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
-import com.gromozeka.presentation.services.AttachmentAcquisitionEvent
 import com.gromozeka.presentation.services.NoOpAttachmentAcquisitionController
 import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.UIStateService
@@ -53,7 +52,6 @@ import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.QuickTextActionService
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 suspend fun createRemoteAppComponents(
@@ -142,18 +140,6 @@ suspend fun createRemoteAppComponents(
         messageInputClientPlatform = messageInputClientPlatform,
         turnCompletionNotificationService = turnCompletionNotificationService,
     )
-    val externalAttachmentJob = scope.launch {
-        attachmentAcquisitionController.externalEvents.collect { event ->
-            when (event) {
-                is AttachmentAcquisitionEvent.Acquired ->
-                    appViewModel.currentTab.value?.addAttachments(event.uploads)
-
-                is AttachmentAcquisitionEvent.Failed ->
-                    appViewModel.currentTab.value?.reportAttachmentError(event.message)
-            }
-        }
-    }
-
     val uiStateService = UIStateService(scope, remoteServices.conversationTabLayoutService, uiStateStore)
     uiStateService.initialize(appViewModel)
 
@@ -267,7 +253,6 @@ suspend fun createRemoteAppComponents(
         assistantAudioPresentationService = assistantAudioPresentationService,
         clientFeedbackService = clientFeedbackService,
         attachmentAcquisitionController = attachmentAcquisitionController,
-        externalAttachmentJob = externalAttachmentJob,
     )
 }
 
@@ -295,10 +280,8 @@ class RemoteAppComponents(
     private val assistantAudioPresentationService: AssistantAudioPresentationService,
     private val clientFeedbackService: ClientFeedbackService,
     private val attachmentAcquisitionController: AttachmentAcquisitionController,
-    private val externalAttachmentJob: Job,
 ) : AutoCloseable {
     override fun close() {
-        runCatching { externalAttachmentJob.cancel() }
         runCatching { attachmentAcquisitionController.close() }
         runCatching { components.uiStateService.forceSave() }
         runCatching { components.uiStateService.disableAutoSave() }

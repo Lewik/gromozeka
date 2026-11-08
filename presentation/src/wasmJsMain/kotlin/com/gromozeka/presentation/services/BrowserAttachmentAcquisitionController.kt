@@ -6,16 +6,8 @@ import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.presentation.services.translation.LocalizedText
 import com.gromozeka.presentation.services.translation.LocalizedTextException
 import com.gromozeka.presentation.services.translation.localizedText
+import com.gromozeka.presentation.services.translation.localizedPlural
 import kotlinx.coroutines.await
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -30,45 +22,30 @@ class BrowserAttachmentAcquisitionController : AttachmentAcquisitionController {
     override val capabilities = AttachmentAcquisitionCapabilities(
         filePicker = true,
         screenshot = browserDisplayCaptureSupported(),
+        clipboardPaste = browserClipboardReadSupported(),
     )
     private val json = Json { ignoreUnknownKeys = true }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val _externalEvents = MutableSharedFlow<AttachmentAcquisitionEvent>(extraBufferCapacity = 8)
-    override val externalEvents: Flow<AttachmentAcquisitionEvent> = _externalEvents.asSharedFlow()
+    private val fileReader = createBrowserAttachmentReader(
+        ArtifactLimits.MAX_FILE_BYTES,
+        ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE,
+        ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE.toDouble(),
+    )
 
-    init {
-        installBrowserExternalAttachmentBridge(ArtifactLimits.MAX_FILE_BYTES)
-        scope.launch {
-            while (isActive) {
-                val payload = awaitBrowserExternalAttachments().await()?.toString() ?: break
-                runCatching { json.decodeFromString<BrowserAttachmentPayload>(payload) }
-                    .onSuccess { external ->
-                        val error = external.error
-                        if (error != null) {
-                            _externalEvents.emit(AttachmentAcquisitionEvent.Failed(error.localizedText()))
-                        } else {
-                            _externalEvents.emit(
-                                AttachmentAcquisitionEvent.Acquired(
-                                    external.files.map(::toArtifactUpload),
-                                )
-                            )
-                        }
-                    }
-                    .onFailure { error ->
-                        _externalEvents.emit(
-                            AttachmentAcquisitionEvent.Failed(
-                                error.asAttachmentFailure(),
-                            )
-                        )
-                    }
-            }
-        }
+    override suspend fun pickAttachments(): List<ArtifactUpload> = uploadsFrom(pickBrowserAttachments(fileReader))
+
+    override fun prepareClipboardAttachments(): AttachmentAcquisition? {
+        if (!capabilities.clipboardPaste) return null
+        val pending = readBrowserClipboardAttachments(fileReader)
+        return { uploadsFrom(pending) }
     }
 
-    override suspend fun pickAttachments(): List<ArtifactUpload> {
-        val payload = json.decodeFromString<BrowserAttachmentPayload>(
-            pickBrowserAttachments(ArtifactLimits.MAX_FILE_BYTES).await().toString()
-        )
+    internal fun prepareExternalFiles(files: JsAny): AttachmentAcquisition {
+        val pending = readBrowserAttachmentFiles(fileReader, files)
+        return { uploadsFrom(pending) }
+    }
+
+    private suspend fun uploadsFrom(pending: Promise<JsAny?>): List<ArtifactUpload> {
+        val payload = json.decodeFromString<BrowserAttachmentPayload>(pending.await().toString())
         payload.error?.let { throw LocalizedTextException(it.localizedText()) }
         return payload.files.map(::toArtifactUpload)
     }
@@ -85,11 +62,6 @@ class BrowserAttachmentAcquisitionController : AttachmentAcquisitionController {
             content = Base64.Default.decode(dataUrl.substringAfter("base64,")),
             purpose = Artifact.Purpose.USER_SCREENSHOT,
         )
-    }
-
-    override fun close() {
-        uninstallBrowserExternalAttachmentBridge()
-        scope.cancel()
     }
 
     private fun toArtifactUpload(file: BrowserFile): ArtifactUpload =
@@ -145,6 +117,13 @@ private data class BrowserAttachmentFailure(
                 "file" to (fileName?.let(LocalizedText::Literal) ?: localizedText("chat.attachment.generic")),
                 "limit" to ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024),
             )
+            BrowserAttachmentFailureCode.FILES_LIMIT -> localizedPlural(
+                "client.attachment.tooMany", ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE.toLong(),
+            )
+            BrowserAttachmentFailureCode.TOTAL_SIZE_LIMIT -> localizedText(
+                "client.attachment.totalTooLarge",
+                "limit" to ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE / (1024 * 1024),
+            )
             BrowserAttachmentFailureCode.FILE_READ_FAILED -> localizedText(
                 "client.attachment.readFailed",
                 "file" to (fileName?.let(LocalizedText::Literal) ?: localizedText("chat.attachment.generic")),
@@ -160,6 +139,8 @@ private data class BrowserAttachmentFailure(
 @Serializable
 private enum class BrowserAttachmentFailureCode {
     FILE_TOO_LARGE,
+    FILES_LIMIT,
+    TOTAL_SIZE_LIMIT,
     FILE_READ_FAILED,
     ATTACHMENT_FAILED,
     SCREENSHOT_UNAVAILABLE,
@@ -168,7 +149,49 @@ private enum class BrowserAttachmentFailureCode {
 
 @JsFun(
     """
-    maxBytes => new Promise(resolve => {
+    (maxBytes, maxFiles, maxTotalBytes) => {
+        const readFile = file => new Promise((resolve, reject) => {
+            const fileName = file.name || ("pasted-" + Date.now());
+            if (file.size > maxBytes) {
+                reject({ code: "FILE_TOO_LARGE", fileName });
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => resolve({
+                name: fileName, type: file.type || "", dataUrl: String(reader.result || "")
+            });
+            reader.onerror = () => reject({
+                code: "FILE_READ_FAILED", fileName, diagnostic: reader.error?.message || null
+            });
+            reader.readAsDataURL(file);
+        });
+        return async fileList => {
+            const files = Array.from(fileList || []);
+            try {
+                if (files.length > maxFiles) throw { code: "FILES_LIMIT" };
+                if (files.reduce((sum, file) => sum + file.size, 0) > maxTotalBytes)
+                    throw { code: "TOTAL_SIZE_LIMIT" };
+                const results = [];
+                for (const file of files) results.push(await readFile(file));
+                return JSON.stringify({ files: results });
+            } catch (error) {
+                const known = ["FILE_TOO_LARGE", "FILES_LIMIT", "TOTAL_SIZE_LIMIT", "FILE_READ_FAILED"];
+                return JSON.stringify({ files: [], error: known.includes(error?.code) ? error : {
+                    code: "ATTACHMENT_FAILED", diagnostic: error instanceof Error ? error.message : String(error)
+                }});
+            }
+        };
+    }
+    """
+)
+private external fun createBrowserAttachmentReader(maxBytes: Int, maxFiles: Int, maxTotalBytes: Double): JsAny
+
+@JsFun("(reader, files) => reader(files)")
+private external fun readBrowserAttachmentFiles(reader: JsAny, files: JsAny): Promise<JsAny?>
+
+@JsFun(
+    """
+    reader => new Promise(resolve => {
         const input = document.createElement("input");
         input.type = "file";
         input.multiple = true;
@@ -180,160 +203,44 @@ private enum class BrowserAttachmentFailureCode {
             input.remove();
             resolve(value);
         };
-        const readFile = file => new Promise((readResolve, readReject) => {
-            if (file.size > maxBytes) {
-                readReject({ code: "FILE_TOO_LARGE", fileName: file.name });
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = () => readResolve({
-                name: file.name,
-                type: file.type || "",
-                dataUrl: String(reader.result || "")
-            });
-            reader.onerror = () => readReject({
-                code: "FILE_READ_FAILED", fileName: file.name, diagnostic: reader.error?.message || null
-            });
-            try {
-                reader.readAsDataURL(file);
-            } catch (error) {
-                readReject({
-                    code: "FILE_READ_FAILED", fileName: file.name,
-                    diagnostic: error instanceof Error ? error.message : String(error)
-                });
-            }
-        });
-        input.addEventListener("change", async () => {
-            try {
-                finish(JSON.stringify({ files: await Promise.all(Array.from(input.files || []).map(readFile)) }));
-            } catch (error) {
-                finish(JSON.stringify({
-                    error: error?.code === "FILE_TOO_LARGE" || error?.code === "FILE_READ_FAILED" ? error : {
-                        code: "ATTACHMENT_FAILED",
-                        diagnostic: error instanceof Error ? error.message : String(error)
-                    }
-                }));
-            }
-        }, { once: true });
+        input.addEventListener("change", async () => finish(await reader(input.files)), { once: true });
         input.addEventListener("cancel", () => finish(JSON.stringify({ files: [] })), { once: true });
         document.body.appendChild(input);
         input.click();
     })
     """
 )
-private external fun pickBrowserAttachments(maxBytes: Int): Promise<JsAny?>
+private external fun pickBrowserAttachments(reader: JsAny): Promise<JsAny?>
+
+@JsFun("() => !!(navigator.clipboard && navigator.clipboard.read)")
+private external fun browserClipboardReadSupported(): Boolean
 
 @JsFun(
     """
-    maxBytes => {
-        const key = "__gromozekaExternalAttachments";
-        if (globalThis[key]) return;
-
-        const state = { queue: [], waiter: null };
-        const readFile = file => new Promise((resolve, reject) => {
-            const fileName = file.name || ("pasted-" + Date.now());
-            if (file.size > maxBytes) {
-                reject({ code: "FILE_TOO_LARGE", fileName });
-                return;
+    async reader => {
+        try {
+            const items = await navigator.clipboard.read();
+            const files = [];
+            for (const item of items) {
+                const type = item.types.find(type => type.startsWith("image/")) ||
+                    item.types.find(type => !type.startsWith("text/"));
+                if (!type) continue;
+                const blob = await item.getType(type);
+                const extension = {"image/png":"png", "image/jpeg":"jpg", "image/gif":"gif",
+                    "image/webp":"webp", "image/heic":"heic", "application/pdf":"pdf"}[type] || "bin";
+                files.push(new File([blob], "clipboard-" + Date.now() + "-" + files.length + "." + extension,
+                    { type }));
             }
-            const reader = new FileReader();
-            reader.onload = () => resolve({
-                name: fileName,
-                type: file.type || "",
-                dataUrl: String(reader.result || "")
-            });
-            reader.onerror = () => reject({
-                code: "FILE_READ_FAILED", fileName, diagnostic: reader.error?.message || null
-            });
-            try {
-                reader.readAsDataURL(file);
-            } catch (error) {
-                reject({
-                    code: "FILE_READ_FAILED", fileName,
-                    diagnostic: error instanceof Error ? error.message : String(error)
-                });
-            }
-        });
-        const deliver = payload => {
-            if (state.waiter) {
-                const waiter = state.waiter;
-                state.waiter = null;
-                waiter(payload);
-            } else {
-                state.queue.push(payload);
-            }
-        };
-        const emitFiles = async fileList => {
-            const files = Array.from(fileList || []);
-            if (!files.length) return;
-            try {
-                deliver(JSON.stringify({ files: await Promise.all(files.map(readFile)) }));
-            } catch (error) {
-                deliver(JSON.stringify({
-                    error: error?.code === "FILE_TOO_LARGE" || error?.code === "FILE_READ_FAILED" ? error : {
-                        code: "ATTACHMENT_FAILED",
-                        diagnostic: error instanceof Error ? error.message : String(error)
-                    },
-                    files: []
-                }));
-            }
-        };
-        const containsFiles = dataTransfer =>
-            Array.from(dataTransfer?.types || []).includes("Files");
-
-        state.dragover = event => {
-            if (!containsFiles(event.dataTransfer)) return;
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "copy";
-        };
-        state.drop = event => {
-            if (!containsFiles(event.dataTransfer)) return;
-            event.preventDefault();
-            void emitFiles(event.dataTransfer.files);
-        };
-        state.paste = event => {
-            const files = event.clipboardData?.files;
-            if (!files?.length) return;
-            event.preventDefault();
-            void emitFiles(files);
-        };
-
-        document.addEventListener("dragover", state.dragover);
-        document.addEventListener("drop", state.drop);
-        document.addEventListener("paste", state.paste);
-        globalThis[key] = state;
+            return await reader(files);
+        } catch (error) {
+            return JSON.stringify({ files: [], error: {
+                code: "ATTACHMENT_FAILED", diagnostic: error instanceof Error ? error.message : String(error)
+            }});
+        }
     }
     """
 )
-private external fun installBrowserExternalAttachmentBridge(maxBytes: Int)
-
-@JsFun(
-    """
-    () => {
-        const state = globalThis.__gromozekaExternalAttachments;
-        if (!state) return Promise.resolve(null);
-        if (state.queue.length) return Promise.resolve(state.queue.shift());
-        return new Promise(resolve => { state.waiter = resolve; });
-    }
-    """
-)
-private external fun awaitBrowserExternalAttachments(): Promise<JsAny?>
-
-@JsFun(
-    """
-    () => {
-        const key = "__gromozekaExternalAttachments";
-        const state = globalThis[key];
-        if (!state) return;
-        document.removeEventListener("dragover", state.dragover);
-        document.removeEventListener("drop", state.drop);
-        document.removeEventListener("paste", state.paste);
-        state.waiter?.(null);
-        delete globalThis[key];
-    }
-    """
-)
-private external fun uninstallBrowserExternalAttachmentBridge()
+private external fun readBrowserClipboardAttachments(reader: JsAny): Promise<JsAny?>
 
 @JsFun(
     """

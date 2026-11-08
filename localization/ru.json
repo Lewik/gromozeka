@@ -657,6 +657,7 @@
       "other": "{count} нового сообщения"
     },
     "chat.input.attachFiles": "Прикрепить файлы",
+    "chat.input.pasteAttachments": "Вставить вложения",
     "chat.input.hideKeyboard": "Скрыть клавиатуру",
     "chat.input.insertLocation": "Вставить текущее местоположение устройства",
     "chat.input.insertLocationShort": "Вставить местоположение",

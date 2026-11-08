@@ -1,6 +1,8 @@
 package com.gromozeka.presentation.services
 
 import android.content.ContentResolver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.gromozeka.domain.model.Artifact
@@ -14,16 +16,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 class AndroidAttachmentAcquisitionController(
     private val contentResolver: ContentResolver,
+    private val clipboard: ClipboardManager,
 ) : AttachmentAcquisitionController {
     override val capabilities = AttachmentAcquisitionCapabilities(
         filePicker = true,
         screenshot = false,
+        clipboardPaste = true,
     )
 
     var launchFilePicker: (() -> Unit)? = null
@@ -45,11 +50,20 @@ class AndroidAttachmentAcquisitionController(
 
     override suspend fun captureScreenshot(): ArtifactUpload? = null
 
+    override fun prepareClipboardAttachments(): AttachmentAcquisition? = clipboard.primaryClip?.let(::prepareClipData)
+
+    internal fun prepareClipData(clip: ClipData): AttachmentAcquisition? {
+        val uris = (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri }
+            .filter { it.scheme == "content" || it.scheme == "file" }.distinct()
+        if (uris.isEmpty()) return null
+        return { withContext(Dispatchers.IO) { readAttachmentBatch(uris) { readUpload(it) } } }
+    }
+
     fun onDocumentsPicked(uris: List<Uri>) {
         val continuation = pendingPicker ?: return
         pendingPicker = null
         CoroutineScope(continuation.context).launch(Dispatchers.IO) {
-            runCatching { uris.map(::readUpload) }
+            runCatching { readAttachmentBatch(uris) { readUpload(it) } }
                 .onSuccess { uploads ->
                     if (continuation.isActive) continuation.resume(uploads)
                 }

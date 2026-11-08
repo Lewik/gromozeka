@@ -631,6 +631,7 @@
       "other": "{count} neue Nachrichten"
     },
     "chat.input.attachFiles": "Dateien anhängen",
+    "chat.input.pasteAttachments": "Anhänge einfügen",
     "chat.input.hideKeyboard": "Tastatur ausblenden",
     "chat.input.insertLocation": "Aktuellen Gerätestandort einfügen",
     "chat.input.insertLocationShort": "Standort einfügen",

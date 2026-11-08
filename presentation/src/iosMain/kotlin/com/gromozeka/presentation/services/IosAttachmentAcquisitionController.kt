@@ -16,18 +16,26 @@ import kotlin.time.Clock
 import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.NSURL
+import platform.Foundation.NSItemProvider
 import platform.PhotosUI.PHPickerConfiguration
 import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
 import platform.PhotosUI.PHPickerViewController
 import platform.PhotosUI.PHPickerViewControllerDelegateProtocol
 import platform.UIKit.UIApplication
+import platform.UIKit.UIPasteboard
 import platform.UIKit.UIDocumentPickerDelegateProtocol
 import platform.UIKit.UIDocumentPickerViewController
 import platform.UIKit.UIViewController
 import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
 import platform.UniformTypeIdentifiers.UTTypeData
+import platform.UniformTypeIdentifiers.UTType
+import platform.UniformTypeIdentifiers.UTTypeImage
+import platform.UniformTypeIdentifiers.UTTypeFileURL
+import platform.UniformTypeIdentifiers.UTTypeURL
+import platform.UniformTypeIdentifiers.UTTypeText
+import platform.UniformTypeIdentifiers.conformsToType
 import platform.darwin.NSObject
 import platform.posix.memcpy
 import platform.posix.SEEK_END
@@ -44,6 +52,7 @@ class IosAttachmentAcquisitionController : AttachmentAcquisitionController {
     override val capabilities = AttachmentAcquisitionCapabilities(
         filePicker = true,
         screenshot = true,
+        clipboardPaste = true,
     )
 
     private var documentDelegate: DocumentPickerDelegate? = null
@@ -97,6 +106,17 @@ class IosAttachmentAcquisitionController : AttachmentAcquisitionController {
             viewController.presentViewController(picker, animated = true, completion = null)
         }
 
+    override fun prepareClipboardAttachments(): AttachmentAcquisition? =
+        prepareProviders(UIPasteboard.generalPasteboard.itemProviders.filterIsInstance<NSItemProvider>())
+
+    internal fun canReceiveProvider(provider: NSItemProvider): Boolean = provider.attachmentType() != null
+
+    internal fun prepareProviders(providers: List<NSItemProvider>): AttachmentAcquisition? {
+        val accepted = providers.mapNotNull { provider -> provider.attachmentType()?.let { provider to it } }
+        if (accepted.isEmpty()) return null
+        return { readAttachmentBatch(accepted) { (provider, type) -> provider.readAttachment(type) } }
+    }
+
     override fun close() {
         documentDelegate?.cancel()
         screenshotDelegate?.cancel()
@@ -104,6 +124,74 @@ class IosAttachmentAcquisitionController : AttachmentAcquisitionController {
         screenshotDelegate = null
     }
 }
+
+private fun NSItemProvider.attachmentType(): String? {
+    if (hasItemConformingToTypeIdentifier(UTTypeFileURL.identifier)) return UTTypeFileURL.identifier
+    val types = registeredTypeIdentifiers.filterIsInstance<String>()
+    types.firstOrNull { UTType.typeWithIdentifier(it)?.conformsToType(UTTypeImage) == true }?.let { return it }
+    // A suggested filename is not proof that copied text represents a file.
+    return types.firstOrNull { identifier ->
+        val type = UTType.typeWithIdentifier(identifier)
+        type?.conformsToType(UTTypeData) == true &&
+            !type.conformsToType(UTTypeURL) && !type.conformsToType(UTTypeText)
+    }
+}
+
+private suspend fun NSItemProvider.readAttachment(typeIdentifier: String): ArtifactUpload =
+    suspendCancellableCoroutine { continuation ->
+        fun complete(result: Result<ArtifactUpload>) {
+            if (!continuation.isActive) return
+            result.onSuccess(continuation::resume).onFailure(continuation::resumeWithException)
+        }
+        if (typeIdentifier == UTTypeFileURL.identifier) {
+            loadItemForTypeIdentifier(typeIdentifier, null) { item, error ->
+                if (!continuation.isActive) return@loadItemForTypeIdentifier
+                complete(runCatching {
+                    if (error != null) throw providerReadFailure(suggestedName, error)
+                    val url = when (item) {
+                        is NSURL -> item
+                        is NSData -> NSURL.URLWithString(item.toByteArray("file URL").decodeToString(throwOnInvalidSequence = true))
+                        else -> null
+                    } ?: throw unreadableFile(suggestedName ?: "attachment")
+                    require(url.scheme == "file") { "Transferred URL is not a local file" }
+                    val scoped = url.startAccessingSecurityScopedResource()
+                    try {
+                        providerFileUpload(url, suggestedName, null)
+                    } finally {
+                        if (scoped) url.stopAccessingSecurityScopedResource()
+                    }
+                })
+            }
+        } else {
+            val progress = loadFileRepresentationForTypeIdentifier(typeIdentifier) { url, error ->
+                if (!continuation.isActive) return@loadFileRepresentationForTypeIdentifier
+                complete(runCatching {
+                    if (error != null) throw providerReadFailure(suggestedName, error)
+                    // NSItemProvider deletes this temporary file as soon as its callback returns.
+                    providerFileUpload(url ?: throw unreadableFile(suggestedName ?: "attachment"), suggestedName, typeIdentifier)
+                })
+            }
+            continuation.invokeOnCancellation { progress.cancel() }
+        }
+    }
+
+private fun providerFileUpload(url: NSURL, suggestedName: String?, typeIdentifier: String?): ArtifactUpload {
+    val type = typeIdentifier?.let(UTType::typeWithIdentifier)
+    val fileName = suggestedName?.takeIf(String::isNotBlank)
+        ?: url.lastPathComponent?.takeIf(String::isNotBlank)
+        ?: "attachment-${Clock.System.now().toEpochMilliseconds()}.${type?.preferredFilenameExtension ?: "bin"}"
+    val path = url.path ?: throw unreadableFile(fileName)
+    return ArtifactUpload(
+        fileName = fileName,
+        mediaType = type?.preferredMIMEType ?: fileName.fallbackMediaType(),
+        content = readFileBytes(path, fileName),
+        purpose = Artifact.Purpose.USER_ATTACHMENT,
+    )
+}
+
+private fun providerReadFailure(fileName: String?, error: NSError) = LocalizedTextException(attachmentFailureText(
+    localizedText("client.attachment.readFailed", "file" to (fileName ?: "attachment")), error.localizedDescription,
+))
 
 private class DocumentPickerDelegate(
     private val picker: UIDocumentPickerViewController,

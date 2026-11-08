@@ -618,6 +618,7 @@
       "other": "{count} 則新訊息"
     },
     "chat.input.attachFiles": "附加檔案",
+    "chat.input.pasteAttachments": "貼上附件",
     "chat.input.hideKeyboard": "隱藏鍵盤",
     "chat.input.insertLocation": "插入裝置目前位置",
     "chat.input.insertLocationShort": "插入位置",

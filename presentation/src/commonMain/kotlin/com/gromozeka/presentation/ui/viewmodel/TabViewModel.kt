@@ -74,7 +74,7 @@ class TabViewModel(
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
-    private val attachmentAcquisitionController: AttachmentAcquisitionController,
+    internal val attachmentAcquisitionController: AttachmentAcquisitionController,
     private val artifactTransferService: ArtifactTransferService,
     private val tokenStatsService: ConversationTokenStatsService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
@@ -1183,11 +1183,6 @@ class TabViewModel(
         }
     }
 
-    fun addAttachments(uploads: List<com.gromozeka.domain.model.ArtifactUpload>) {
-        if (uploads.isEmpty()) return
-        acquireAndUploadAttachments { uploads }
-    }
-
     fun removeComposerArtifact(id: com.gromozeka.domain.model.Artifact.Id) {
         val removedArtifact = _uiState.value.composerArtifacts.firstOrNull { it.id == id }
         _uiState.update { state ->
@@ -1234,14 +1229,10 @@ class TabViewModel(
         return content
     }
 
-    fun reportAttachmentError(message: LocalizedText) {
-        _uiState.update { it.copy(composerArtifactError = message) }
-    }
-
-    private fun acquireAndUploadAttachments(
+    internal fun acquireAndUploadAttachments(
         acquire: suspend () -> List<com.gromozeka.domain.model.ArtifactUpload>,
-    ) {
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+    ): Job {
+        return scope.launch(start = CoroutineStart.UNDISPATCHED) {
             artifactUploadMutex.withLock {
                 _uiState.update {
                     it.copy(

@@ -1571,6 +1571,28 @@ Android application artifacts are owned by the launcher modules:
 ./gradlew :mobile-worker-android:assemble -q
 ```
 
+### Native iOS client tests
+
+Run client platform tests in a fully booted, disposable simulator:
+
+```bash
+python3 scripts/run-ios-client-tests.py -q
+```
+
+The wrapper selects an installed iOS/iPhone template, creates and boots its own
+simulator, runs the complete `:presentation:iosSimulatorArm64Test` suite with
+standalone mode disabled, then shuts down and deletes only that simulator. It
+preserves the test exit status. If cleanup fails, its owned-device receipt remains
+under `build/ios-platform-tests/` for explicit recovery.
+
+The default Kotlin/Native `simctl spawn --standalone` mode does not initialize
+LaunchServices' UTI conformance database: even `public.png` may report that it is
+not an image. Do not weaken attachment/type tests to accommodate that environment.
+The release workflow uses this wrapper for the client-simulator job. Shared and
+Worker tests that do not require these system services retain their existing run
+mode. Additional Gradle options, including `--tests`, may be passed to the wrapper;
+its device selector remains owned by the wrapper.
+
 ## Runtime SQL Administration
 
 `grz_sql` is a permanent privileged Server/Control tool, not a read-only query

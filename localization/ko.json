@@ -618,6 +618,7 @@
       "other": "새 메시지 {count}개"
     },
     "chat.input.attachFiles": "파일 첨부",
+    "chat.input.pasteAttachments": "첨부 파일 붙여넣기",
     "chat.input.hideKeyboard": "키보드 숨기기",
     "chat.input.insertLocation": "현재 기기 위치 삽입",
     "chat.input.insertLocationShort": "위치 삽입",
