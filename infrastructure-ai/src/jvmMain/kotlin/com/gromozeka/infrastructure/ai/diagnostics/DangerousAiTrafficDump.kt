@@ -95,7 +95,7 @@ class AiTrafficRecording internal constructor(private val directory: Path) {
 
     @Synchronized
     fun bytes(channel: String, bytes: ByteArray, offset: Int = 0, length: Int = bytes.size) {
-        if (failed || length == 0) return
+        if (failed) return
         write {
             val position = offsets.getOrDefault(channel, 0L)
             append("$channel.bin", bytes, offset, length)
@@ -130,13 +130,22 @@ class AiTrafficRecording internal constructor(private val directory: Path) {
     fun failure(error: Throwable) = text("error", error.stackTraceToString())
 
     fun input(channel: String, source: InputStream): InputStream = object : FilterInputStream(source) {
-        override fun read(): Int = `in`.read().also { value ->
-            if (value >= 0) bytes(channel, byteArrayOf(value.toByte())) else event("$channel.eof")
+        override fun read(): Int = try {
+            `in`.read().also { value ->
+                if (value >= 0) bytes(channel, byteArrayOf(value.toByte())) else event("$channel.eof")
+            }
+        } catch (error: Exception) {
+            failure(error)
+            throw error
         }
-        override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int = try {
             `in`.read(buffer, offset, length).also { count ->
                 if (count > 0) bytes(channel, buffer, offset, count) else if (count < 0) event("$channel.eof")
             }
+        } catch (error: Exception) {
+            failure(error)
+            throw error
+        }
         override fun skip(count: Long): Long {
             var remaining = count.coerceAtLeast(0)
             val buffer = ByteArray(8192)

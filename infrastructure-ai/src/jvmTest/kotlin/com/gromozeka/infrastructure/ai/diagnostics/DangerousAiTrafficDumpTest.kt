@@ -3,6 +3,8 @@ package com.gromozeka.infrastructure.ai.diagnostics
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpTestServer
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -17,9 +19,16 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.Response
+import okhttp3.ResponseBody
+import okio.Buffer
 import okio.BufferedSink
+import okio.Source
+import okio.Timeout
+import okio.buffer
 import kotlin.test.*
 
 class DangerousAiTrafficDumpTest {
@@ -226,6 +235,96 @@ class DangerousAiTrafficDumpTest {
             assertTrue(pending.isCompletedExceptionally)
             assertFails { pending.join() }
         } finally { release.countDown(); server.stop(0); client.close() }
+    }
+
+    @Test
+    fun recordsBufferedResponseReadFailureWithoutChangingExceptionOrPartialBytes() = configured { directory ->
+        val trace = assertNotNull(DangerousAiTrafficDump.open("test", "sdk-http"))
+        val failure = IOException("synthetic-response-read-failure")
+        val source = object : ByteArrayInputStream("partial".toByteArray()) {
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                if (available() == 0) throw failure
+                return super.read(buffer, offset, length)
+            }
+        }
+        val actual = assertFailsWith<IOException> { trace.input("response", source).use { it.readBytes() } }
+        assertSame(failure, actual)
+        val recording = recordings(directory).single()
+        assertEquals("partial", Files.readString(recording.resolve("response.bin")))
+        assertContains(Files.readString(recording.resolve("error.bin")), failure.message!!)
+    }
+
+    @Test
+    fun recordsSingleByteResponseReadFailureWithoutChangingException() = configured { directory ->
+        val trace = assertNotNull(DangerousAiTrafficDump.open("test", "sdk-http"))
+        val failure = IOException("synthetic-single-byte-read-failure")
+        val source = object : InputStream() {
+            override fun read(): Int = throw failure
+        }
+        val actual = assertFailsWith<IOException> { trace.input("response", source).use { it.read() } }
+        assertSame(failure, actual)
+        assertContains(Files.readString(recordings(directory).single().resolve("error.bin")), failure.message!!)
+    }
+
+    @Test
+    fun recordsOkHttpResponseReadFailureAfterHeadersHaveReturned() = configured { directory ->
+        val failure = IOException("synthetic-response-read-failure")
+        val source = object : Source {
+            private var delivered = false
+            override fun read(sink: Buffer, byteCount: Long): Long {
+                if (delivered) throw failure
+                delivered = true
+                sink.writeUtf8("partial")
+                return 7L
+            }
+            override fun timeout() = Timeout.NONE
+            override fun close() = Unit
+        }.buffer()
+        val client = OkHttpClient.Builder()
+            .addInterceptor(AiTrafficDumpInterceptor("test"))
+            .addInterceptor { chain ->
+                Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
+                    .code(200).message("OK").body(object : ResponseBody() {
+                        override fun contentType() = null
+                        override fun contentLength() = -1L
+                        override fun source() = source
+                    }).build()
+            }.build()
+        try {
+            val actual = assertFailsWith<IOException> {
+                client.newCall(Request.Builder().url("http://127.0.0.1/synthetic-no-network").build())
+                    .execute().use { it.body!!.string() }
+            }
+            assertSame(failure, actual)
+            val recording = recordings(directory).single()
+            assertEquals("partial", Files.readString(recording.resolve("response.bin")))
+            assertContains(Files.readString(recording.resolve("error.bin")), failure.message!!)
+        } finally {
+            client.dispatcher.executorService.shutdownNow()
+            client.connectionPool.evictAll()
+        }
+    }
+
+    @Test
+    fun preservesEmptyWebSocketControlFrameBoundariesAndOffsets() = configured { directory ->
+        val trace = assertNotNull(DangerousAiTrafficDump.open("test", "websocket"))
+        val channels = listOf("send.ping", "receive.ping", "send.pong", "receive.pong")
+        channels.forEach { trace.bytes(it, ByteBuffer.allocate(0)) }
+        trace.bytes("send.ping", byteArrayOf(1, 2))
+        trace.bytes("send.ping", ByteBuffer.allocate(0))
+        val recording = recordings(directory).single()
+        val data = Files.readAllLines(recording.resolve("events.jsonl"))
+            .map { Json.parseToJsonElement(it).jsonObject }
+            .filter { it.getValue("event").jsonPrimitive.content == "data" }
+            .map { it.getValue("details").jsonObject }
+        assertEquals((channels + listOf("send.ping", "send.ping")).map { "$it.bin" },
+            data.map { it.getValue("file").jsonPrimitive.content })
+        assertEquals(listOf("0", "0", "0", "0", "2", "0"),
+            data.map { it.getValue("length").jsonPrimitive.content })
+        assertEquals(listOf("0", "0", "0", "0", "0", "2"),
+            data.map { it.getValue("offset").jsonPrimitive.content })
+        assertContentEquals(byteArrayOf(1, 2), Files.readAllBytes(recording.resolve("send.ping.bin")))
+        channels.drop(1).forEach { assertEquals(0L, Files.size(recording.resolve("$it.bin"))) }
     }
 
     private fun recordings(directory: Path): List<Path> = Files.list(directory.resolve("ai-traffic")).use { it.toList() }

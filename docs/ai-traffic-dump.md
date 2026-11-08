@@ -35,7 +35,8 @@ Windows uses the configured log directory's inherited access controls.
   recover individual messages. Fragment files preserve partial messages in
   UTF-16BE, including a stream that never finishes its final text message.
 - Other WebSocket channels preserve binary/control payloads and close/error
-  information. This is application-protocol capture, not a TLS packet capture;
+  information. Empty payloads retain a zero-length event and do not advance
+  the channel offset. This is application-protocol capture, not a TLS packet capture;
   JDK-managed successful WebSocket handshake response headers are unavailable.
 - `stdin.bin` / `stdout.bin` / `stderr.bin` and `system-prompt.bin`: Claude Code
   CLI protocol and launch input. Timestamps reflect when Gromozeka reads/writes
@@ -54,9 +55,11 @@ has no runtime backend yet.
 
 Raw HTTP bytes are recorded as they pass through the transport. Capturing does
 not pre-read a one-shot request body or buffer a complete streaming response.
-An I/O failure disables that recording and emits a warning without retrying or
-failing the AI request. Partial files remain available for diagnosis. The
-recorder never uploads data or writes payloads into ordinary application logs.
+Response-stream read failures are recorded alongside the partial response;
+the original exception is propagated unchanged. A dump-file I/O failure disables
+that recording and emits a warning without retrying or failing the AI request.
+Partial files remain available for diagnosis. The recorder never uploads data
+or writes payloads into ordinary application logs.
 
 After debugging, disable the flag, restart the process, and remove the specific
 recording directories when they are no longer needed.

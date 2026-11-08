@@ -34,13 +34,18 @@ internal class AiTrafficDumpInterceptor(private val provider: String) : Intercep
             val captured = object : ForwardingSource(responseBody.source()) {
                 override fun read(sink: Buffer, byteCount: Long): Long {
                     val offset = sink.size
-                    return super.read(sink, byteCount).also { count ->
-                        if (count > 0) {
-                            val copy = Buffer()
-                            sink.copyTo(copy, offset, count)
-                            trace.bytes("response", copy.readByteArray())
-                        } else if (count < 0) trace.event("response.complete")
+                    val count = try {
+                        super.read(sink, byteCount)
+                    } catch (error: Exception) {
+                        trace.failure(error)
+                        throw error
                     }
+                    if (count > 0) {
+                        val copy = Buffer()
+                        sink.copyTo(copy, offset, count)
+                        trace.bytes("response", copy.readByteArray())
+                    } else if (count < 0) trace.event("response.complete")
+                    return count
                 }
                 override fun close() { try { super.close() } finally { trace.event("response.closed") } }
             }.buffer()
