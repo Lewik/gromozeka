@@ -130,24 +130,27 @@ internal fun ConversationNavigationTabs(
                 } else {
                     headers.forEachIndexed { index, header ->
                         key(header.conversationId) {
-                            NavigationTab(
-                                selected = selectedTabIndex == index + 4,
-                                showTabsAtBottom = showTabsAtBottom,
-                                onClick = { onTabSelect(index) },
-                                tooltip = header.title,
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                                    .onTabHover({ onTabHover(index) }, onTabHoverExit)
-                                    .testTag(UiTestTag.SessionTab(index).value),
-                            ) {
-                                ConversationActivitySlot(header, Modifier.size(20.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(header.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                // Both slots stay allocated: activity, attention and hover never move the title.
-                                Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-                                    if (hoveredTabIndex == index) IconButton(
-                                        onClick = { onRename(header) },
-                                        modifier = Modifier.size(20.dp).testTag(UiTestTag.SessionTabRename(index).value),
-                                    ) { Icon(Icons.Default.Edit, translation.text("chat.navigation.renameTab"), Modifier.size(16.dp)) }
+                            // TooltipBox is a semantics boundary; keep it outside the selectable tab.
+                            Box(Modifier.weight(1f).fillMaxHeight()
+                                .onTabHover({ onTabHover(index) }, onTabHoverExit)) {
+                                OptionalTooltip(header.title) {
+                                    NavigationTab(
+                                        selected = selectedTabIndex == index + 4,
+                                        showTabsAtBottom = showTabsAtBottom,
+                                        onClick = { onTabSelect(index) },
+                                        modifier = Modifier.fillMaxSize().testTag(UiTestTag.SessionTab(index).value),
+                                    ) {
+                                        ConversationActivitySlot(header, Modifier.size(20.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(header.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        // Both slots stay allocated: activity, attention and hover never move the title.
+                                        Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                                            if (hoveredTabIndex == index) IconButton(
+                                                onClick = { onRename(header) },
+                                                modifier = Modifier.size(20.dp).testTag(UiTestTag.SessionTabRename(index).value),
+                                            ) { Icon(Icons.Default.Edit, translation.text("chat.navigation.renameTab"), Modifier.size(16.dp)) }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -174,19 +177,21 @@ private fun ConversationTabPicker(
     var expanded by remember { mutableStateOf(false) }
     val current = headers.getOrNull(selectedTabIndex - 4)
     Box(modifier) {
-        NavigationTab(
-            selected = current != null,
-            showTabsAtBottom = showTabsAtBottom,
-            onClick = { expanded = true },
-            tooltip = current?.title,
-            modifier = Modifier.fillMaxSize().testTag("conversation-tab-picker"),
-        ) {
-            ConversationActivitySlot(current, Modifier.size(20.dp), unread = headers.any { it.isUnread },
-                unreadTag = "conversation-picker-unread")
-            Spacer(Modifier.width(8.dp))
-            Text(current?.title ?: translation.text("chat.navigation.conversations"), Modifier.weight(1f),
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
+        // A focus-triggered picker tooltip would cover the open menu and intercept its hover.
+        OptionalTooltip(current?.title?.takeUnless { expanded }) {
+            NavigationTab(
+                selected = current != null,
+                showTabsAtBottom = showTabsAtBottom,
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxSize().testTag("conversation-tab-picker"),
+            ) {
+                ConversationActivitySlot(current, Modifier.size(20.dp), unread = headers.any { it.isUnread },
+                    unreadTag = "conversation-picker-unread")
+                Spacer(Modifier.width(8.dp))
+                Text(current?.title ?: translation.text("chat.navigation.conversations"), Modifier.weight(1f),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
         }
         DropdownMenu(
             expanded = expanded,
@@ -195,24 +200,24 @@ private fun ConversationTabPicker(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 1f),
         ) {
             headers.forEachIndexed { index, header ->
-                DropdownMenuItem(
-                    text = {
-                        OptionalTooltip(header.title) {
+                OptionalTooltip(header.title) {
+                    DropdownMenuItem(
+                        text = {
                             Text(header.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 fontWeight = if (header == current) FontWeight.SemiBold else FontWeight.Normal)
-                        }
-                    },
-                    onClick = { expanded = false; onTabSelect(index) },
-                    leadingIcon = { ConversationActivitySlot(header, Modifier.size(20.dp)) },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { expanded = false; onRename(header) },
-                            modifier = Modifier.size(40.dp).testTag(UiTestTag.SessionTabRename(index).value),
-                        ) { Icon(Icons.Default.Edit, translation.text("chat.navigation.renameTab"), Modifier.size(18.dp)) }
-                    },
-                    modifier = Modifier.testTag(UiTestTag.SessionTab(index).value)
-                        .semantics { selected = header == current },
-                )
+                        },
+                        onClick = { expanded = false; onTabSelect(index) },
+                        leadingIcon = { ConversationActivitySlot(header, Modifier.size(20.dp)) },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { expanded = false; onRename(header) },
+                                modifier = Modifier.size(40.dp).testTag(UiTestTag.SessionTabRename(index).value),
+                            ) { Icon(Icons.Default.Edit, translation.text("chat.navigation.renameTab"), Modifier.size(18.dp)) }
+                        },
+                        modifier = Modifier.testTag(UiTestTag.SessionTab(index).value)
+                            .semantics { selected = header == current },
+                    )
+                }
             }
         }
     }
@@ -237,7 +242,6 @@ private fun NavigationTab(
     showTabsAtBottom: Boolean,
     onClick: () -> Unit,
     modifier: Modifier,
-    tooltip: String? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     val indicator = MaterialTheme.colorScheme.primary
@@ -254,9 +258,7 @@ private fun NavigationTab(
             }
         },
     ) {
-        OptionalTooltip(tooltip) {
-            Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically, content = content)
-        }
+        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically, content = content)
     }
 }

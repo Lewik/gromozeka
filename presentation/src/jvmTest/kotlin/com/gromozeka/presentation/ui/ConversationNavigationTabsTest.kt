@@ -31,6 +31,18 @@ class ConversationNavigationTabsTest {
     }
 
     @Test
+    fun selectableConversationTabKeepsItsFullAccessibleTitleAfterRename() = runComposeUiTest {
+        val headers = mutableStateOf(listOf(alpha, beta))
+        setContent { Navigation(headers.value, hovered = 0) }
+        val tab = onNodeWithTag(UiTestTag.SessionTab(0).value)
+        tab.assertIsSelected().assertTextContains("Alpha")
+        val bounds = tab.fetchSemanticsNode().boundsInRoot
+        runOnIdle { headers.value = listOf(alpha.copy(title = "Renamed conversation"), beta) }
+        tab.assertIsSelected().assertTextContains("Renamed conversation")
+        assertEquals(bounds, tab.fetchSemanticsNode().boundsInRoot)
+    }
+
+    @Test
     fun loadingAndHoverDoNotMoveTheConversationTitle() = runComposeUiTest {
         val headers = mutableStateOf(listOf(alpha, beta))
         val hover = mutableStateOf(-1)
@@ -187,6 +199,7 @@ class ConversationNavigationTabsTest {
         val other = beta.copy(title = otherTitle)
         setContent { Navigation(listOf(alpha.copy(title = firstTitle), other), width = 393, onRename = renamed::add) }
         val picker = onNodeWithTag("conversation-tab-picker")
+        picker.assertTextContains(firstTitle)
         picker.performMouseInput { enter(center) }
         mainClock.advanceTimeBy(1_000)
         onNode(hasText(firstTitle) and hasAnyAncestor(isPopup()), useUnmergedTree = true).assertIsDisplayed()
@@ -194,9 +207,9 @@ class ConversationNavigationTabsTest {
         mainClock.advanceTimeBy(500)
         picker.performClick()
         mainClock.advanceTimeBy(300)
-        onNodeWithTag(UiTestTag.SessionTab(1).value).assertIsDisplayed()
-        onNode(hasText(otherTitle) and hasAnyAncestor(hasTestTag(UiTestTag.SessionTab(1).value)),
-            useUnmergedTree = true).performMouseInput { enter(center) }
+        onAllNodesWithText(firstTitle, useUnmergedTree = true).assertCountEquals(2)
+        onNodeWithTag(UiTestTag.SessionTab(1).value).assertIsDisplayed().assertTextContains(otherTitle)
+        onNodeWithTag(UiTestTag.SessionTab(1).value).performMouseInput { enter(center) }
         mainClock.advanceTimeBy(1_000)
         onAllNodesWithText(otherTitle, useUnmergedTree = true).assertCountEquals(2)
         onNodeWithTag(UiTestTag.SessionTabRename(1).value, useUnmergedTree = true).performClick()
