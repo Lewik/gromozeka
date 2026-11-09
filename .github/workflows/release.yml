@@ -327,7 +327,7 @@ jobs:
     if: ${{ !inputs.skip_ios }}
     needs: metadata
     runs-on: macos-latest
-    # Cold client framework + unsigned app verification can take over 50 minutes.
+    # Xcode owns Release framework linking; native test tasks must not pre-link it.
     timeout-minutes: 90
     # Bound both standalone native tasks and Xcode's embedded Gradle invocation.
     env:
@@ -340,22 +340,22 @@ jobs:
       matrix:
         include:
           - target: client-device
-            tasks: ":presentation:linkReleaseFrameworkIosArm64"
+            tasks: ""
             app_target: iosApp
             sdk: iphoneos
             app_bundle: Gromozeka.app
           - target: client-simulator
-            tasks: ":presentation:linkReleaseFrameworkIosSimulatorArm64 :shared:iosSimulatorArm64Test"
+            tasks: ":shared:iosSimulatorArm64Test"
             app_target: iosApp
             sdk: iphonesimulator
             app_bundle: Gromozeka.app
           - target: worker-device
-            tasks: ":mobile-worker:linkReleaseFrameworkIosArm64"
+            tasks: ""
             app_target: iosWorkerApp
             sdk: iphoneos
             app_bundle: GromozekaWorker.app
           - target: worker-simulator
-            tasks: ":mobile-worker:linkReleaseFrameworkIosSimulatorArm64 :mobile-worker:iosSimulatorArm64Test"
+            tasks: ":mobile-worker:iosSimulatorArm64Test"
             app_target: iosWorkerApp
             sdk: iphonesimulator
             app_bundle: GromozekaWorker.app
@@ -366,7 +366,8 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Verify iOS ${{ matrix.target }}
+      - name: Verify iOS native tests ${{ matrix.target }}
+        if: ${{ matrix.tasks != '' }}
         run: >
           ./gradlew
           ${{ matrix.tasks }}

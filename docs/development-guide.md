@@ -1496,9 +1496,13 @@ or GitHub Releases. iOS checks are skipped by default; opt in explicitly with
 JVM client verification still runs. Android remains enabled by default.
 With iOS enabled, the matrix verifies Release Kotlin frameworks and complete
 unsigned Swift client/Worker app bundles for device and simulator (arm64), plus
-shared/client/Worker simulator tests. The app builds disable signing and do not
-request provisioning, install apps or access a physical device; they are build
-checks, not signed iOS distributions. The iOS job bounds both direct Gradle and
+shared/client/Worker simulator tests. Release frameworks are linked by each
+Xcode target's `embedAndSignAppleFrameworkForXcode` phase; do not pre-link them
+in a separate Gradle stage, which caused duplicate native optimization in CI.
+The explicit Gradle stages run native tests, not another Release framework build.
+The app builds disable signing and do not request provisioning, install apps or
+access a physical device; they are build checks, not signed iOS distributions.
+The iOS job bounds both direct Gradle and
 Xcode's embedded Gradle invocation to one worker and a 4 GiB heap for native
 Release linking, without changing local project-wide Gradle settings.
 Windows service and Linux/Windows command-process checks run

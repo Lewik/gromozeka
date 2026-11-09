@@ -91,12 +91,28 @@ class WorkflowContracts(unittest.TestCase):
             ":shared:iosSimulatorArm64Test",
             ":presentation:iosSimulatorArm64Test",
             ":mobile-worker:iosSimulatorArm64Test",
-            ":presentation:linkReleaseFrameworkIosArm64",
-            ":presentation:linkReleaseFrameworkIosSimulatorArm64",
-            ":mobile-worker:linkReleaseFrameworkIosArm64",
-            ":mobile-worker:linkReleaseFrameworkIosSimulatorArm64",
         }
-        self.assertTrue(required.issubset(tasks), f"Missing iOS checks: {required - tasks}")
+        self.assertEqual(required, tasks)
+        native_step = next(step for step in JOBS["verify-ios"]["steps"]
+                           if step.get("name") == "Verify iOS native tests ${{ matrix.target }}")
+        self.assertEqual("${{ matrix.tasks != '' }}", native_step["if"])
+        self.assertIn("${{ matrix.tasks }}", native_step["run"])
+
+    def test_ios_frameworks_are_linked_once_through_the_xcode_embed_phase(self):
+        job = JOBS["verify-ios"]
+        expected_tests = {
+            "client-device": "",
+            "client-simulator": ":shared:iosSimulatorArm64Test",
+            "worker-device": "",
+            "worker-simulator": ":mobile-worker:iosSimulatorArm64Test",
+        }
+        self.assertEqual(expected_tests,
+                         {item["target"]: item["tasks"] for item in job["strategy"]["matrix"]["include"]})
+        self.assertNotIn("linkReleaseFramework", scripts(job))
+        project = (ROOT / "iosApp/iosApp.xcodeproj/project.pbxproj").read_text()
+        for module in ("presentation", "mobile-worker"):
+            self.assertEqual(1, project.count(f":{module}:embedAndSignAppleFrameworkForXcode"))
+        self.assertNotIn("SKIP_KOTLIN_BUILD", project)
 
     def test_ios_checks_compile_unsigned_swift_shells_for_both_sdks(self):
         job = JOBS["verify-ios"]
