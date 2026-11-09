@@ -24,7 +24,11 @@ import com.gromozeka.presentation.services.AttachmentAcquisition
 import com.gromozeka.presentation.services.AttachmentAcquisitionCapabilities
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
 import com.gromozeka.presentation.ui.CompactTextField
+import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
+import java.awt.datatransfer.Transferable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -58,19 +62,75 @@ class ComposerAttachmentInputTest {
         }
         val composer = onNodeWithTag("composer")
         composer.performClick().performTextInputSelection(TextRange(2))
-        composer.paste()
+        composer.assertIsFocused().paste()
+        // Compose reads Transferable text on Dispatchers.IO, outside UI idleness.
+        waitUntil(timeoutMillis = 5_000) { input.value.text == "drinsertaft" }
         runOnIdle {
             assertEquals("drinsertaft", input.value.text)
             assertEquals(TextRange(8), input.value.selection)
             assertTrue(received.isEmpty())
             controller.prepared = { listOf(upload("image.png")) }
         }
-        onNodeWithTag("outside").performClick().paste()
-        runOnIdle { assertEquals("insert", outside.value.text); assertTrue(received.isEmpty()) }
-        composer.performClick().paste()
+        onNodeWithTag("outside").performClick().assertIsFocused().paste()
+        waitUntil(timeoutMillis = 5_000) { outside.value.text == "insert" }
+        runOnIdle {
+            assertEquals("insert", outside.value.text)
+            assertTrue(received.isEmpty())
+            assertEquals(1, controller.preparations)
+        }
+        composer.performClick().assertIsFocused().paste()
         runOnIdle {
             assertEquals(listOf("image.png"), received.map { it.fileName })
             assertEquals("drinsertaft", input.value.text)
+        }
+    }
+
+    @Test
+    fun textPasteCanFinishAfterTheUiBecomesIdle() = runComposeUiTest {
+        val readStarted = CountDownLatch(1)
+        val releaseRead = CountDownLatch(1)
+        val text = StringSelection("insert")
+        val transferable = object : Transferable by text {
+            override fun getTransferData(flavor: DataFlavor): Any {
+                readStarted.countDown()
+                check(releaseRead.await(5, TimeUnit.SECONDS)) { "Test did not release the clipboard read" }
+                return text.getTransferData(flavor)
+            }
+        }
+        val clipboard = MemoryClipboard(ClipEntry(transferable))
+        val input = mutableStateOf(TextFieldValue("draft"))
+        val controller = TestController()
+        val received = mutableListOf<ArtifactUpload>()
+        setContent {
+            val scope = rememberCoroutineScope()
+            val receiver = remember { ComposerAttachmentReceiver(controller) { acquire ->
+                scope.launch(start = CoroutineStart.UNDISPATCHED) { received += acquire() }
+            } }
+            CompositionLocalProvider(LocalClipboard provides clipboard) {
+                MaterialTheme {
+                    CompactTextField(input.value, { input.value = it }, Modifier.width(300.dp)
+                        .composerAttachmentInput(receiver, "Paste attachments").testTag("composer"))
+                }
+            }
+        }
+        try {
+            val composer = onNodeWithTag("composer")
+            composer.performClick().performTextInputSelection(TextRange(5))
+            composer.assertIsFocused().paste()
+            assertTrue(readStarted.await(5, TimeUnit.SECONDS))
+            runOnIdle {
+                assertEquals("draft", input.value.text)
+                assertEquals(1, controller.preparations)
+                assertTrue(received.isEmpty())
+            }
+        } finally {
+            releaseRead.countDown()
+        }
+        waitUntil(timeoutMillis = 5_000) { input.value.text == "draftinsert" }
+        runOnIdle {
+            assertEquals("draftinsert", input.value.text)
+            assertEquals(TextRange(11), input.value.selection)
+            assertTrue(received.isEmpty())
         }
     }
 
@@ -154,8 +214,8 @@ class ComposerAttachmentInputTest {
         override suspend fun captureScreenshot(): ArtifactUpload? = null
     }
 
-    private class MemoryClipboard(text: String) : Clipboard {
-        private var entry: ClipEntry? = ClipEntry(StringSelection(text))
+    private class MemoryClipboard(private var entry: ClipEntry?) : Clipboard {
+        constructor(text: String) : this(ClipEntry(StringSelection(text)))
         override val nativeClipboard = java.awt.datatransfer.Clipboard("composer-input-test")
         override suspend fun getClipEntry(): ClipEntry? = entry
         override suspend fun setClipEntry(clipEntry: ClipEntry?) {
