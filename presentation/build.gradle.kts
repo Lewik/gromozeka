@@ -1,5 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackRule
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -18,6 +19,18 @@ val hostOperatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
 val windowsNotificationNativeSources = layout.projectDirectory.dir("src/jvmMain/native/windows-notifications")
 val windowsNotificationNativeBuild = layout.buildDirectory.dir("native/windows-notifications")
 val windowsNotificationResources = layout.buildDirectory.dir("generated/windows-notification-resources")
+
+abstract class SkikoImportBridgeRule @javax.inject.Inject constructor(name: String) : KotlinWebpackRule(name) {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val loaderFile: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val runtimeFile: RegularFileProperty
+
+    override fun loaders() = listOf(Loader(json(loaderFile.get().asFile.absolutePath)))
+}
 
 val configureWindowsNotificationNative by tasks.registering(Exec::class) {
     inputs.dir(windowsNotificationNativeSources)
@@ -95,8 +108,16 @@ kotlin {
     wasmJs {
         outputModuleName = "gromozeka"
         browser {
+            val skikoImportBridgeLoader = layout.projectDirectory.file("webpack/skiko-import-bridge.cjs")
+            val skikoImportBridgeRuntime = layout.projectDirectory.file("webpack/skiko-import-bridge-runtime.cjs")
             commonWebpackConfig {
                 outputFileName = "gromozeka.js"
+                rules.rule<SkikoImportBridgeRule>("skikoImportBridge") {
+                    enabled.set(true)
+                    test.set("/\\.import-object\\.mjs$/")
+                    loaderFile.set(skikoImportBridgeLoader)
+                    runtimeFile.set(skikoImportBridgeRuntime)
+                }
             }
         }
         binaries.executable()

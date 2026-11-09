@@ -371,6 +371,32 @@ never send smoke-test logins to a real Server. For route-based mocks, disable
 Service Workers in the test browser context (`serviceWorkers: 'block'`), otherwise
 requests can bypass interception. This does not validate the installed PWA lifecycle.
 
+### WebKit Wasm numeric argument workaround
+
+On iOS 27.2, WebKit can corrupt `f32`/`f64` arguments in a
+Wasm → strict JavaScript → Wasm call chain
+([WebKit 329421](https://bugs.webkit.org/show_bug.cgi?id=329421)).
+This can make Skiko reject a dashed path and then fail layout with invalid
+dimensions, leaving the web client blank. Both the released Compose version
+and a newer Compose/Skiko build reproduced the failure on a physical iPhone.
+
+The Webpack loader in `presentation/webpack/skiko-import-bridge.cjs` wraps only
+the Kotlin import object's Skiko functions. Its runtime must remain a separate,
+**non-strict CommonJS module**: converting it to an ES module or adding
+`"use strict"` restores the failing optimized call path. A strict wrapper with
+`try/catch` also failed after JIT warmup. Arguments, return values, exceptions,
+and non-function imports pass through unchanged; browser-wide WebAssembly APIs
+are not patched. Both helper files are Gradle inputs, and unexpected compiler
+import layouts fail the build instead of silently dropping the workaround.
+
+When changing or removing this bridge, verify the minified production bundle
+on a physical affected iPhone after repeated calls, as well as ordinary browser
+tests. The upstream-style numeric reproducer failed without the bridge and
+passed with it after 100,000 calls per path; the authenticated client also
+rendered and accepted input. Use HTTPS for device verification: iOS can disable
+JIT on plain HTTP, hiding this optimized-path regression. A future WebKit source
+fix alone does not prove that deployed iOS versions contain it.
+
 ## Interface Localization
 
 `localization/en.json` is the canonical interface catalog. Keep semantic context
