@@ -2073,8 +2073,17 @@
     "ai.http.headers": "Extra headers (JSON)",
     "ai.http.headers_hint": "Non-secret string values only. Authorization comes from the token source; User-Agent may be overridden.",
     "ai.http.headers_invalid": "Headers must be a JSON object with string values.",
-    "ai.http.concurrency": "Concurrent calls per connection",
     "ai.http.max_attempts": "Maximum HTTP attempts",
-    "ai.http.execution_hint": "Only complete HTTP 429 rejections are retried. One timeout covers queueing, retry delays and HTTP."
+    "ai.http.execution_hint": "Only complete HTTP 429 rejections are retried. One timeout covers queueing, retry delays and HTTP.",
+    "ai.catalog.section.concurrency": "AI concurrency groups",
+    "ai.concurrency.new": "New AI concurrency group",
+    "ai.concurrency.edit": "Edit AI concurrency group",
+    "ai.concurrency.group": "AI concurrency group",
+    "ai.concurrency.limit": "Maximum concurrent AI operations",
+    "ai.concurrency.unlimited": "Unlimited",
+    "ai.concurrency.in_use": "The default group or a group referenced by connections cannot be deleted.",
+    "ai.concurrency.description": "Connections in the same group share a concurrency limit across Server and Workers. New connections use default.",
+    "ai.concurrency.limit_value": "Concurrency limit: {limit}",
+    "ai.concurrency.duplicate": "An AI concurrency group with this ID already exists."
   }
 }

@@ -2036,8 +2036,17 @@
     "ai.http.headers": "附加標頭（JSON）",
     "ai.http.headers_hint": "僅限非機密字串值。Authorization 來自權杖來源；可覆寫 User-Agent。",
     "ai.http.headers_invalid": "標頭必須是值為字串的 JSON 物件。",
-    "ai.http.concurrency": "每個連線的並行呼叫數",
     "ai.http.max_attempts": "HTTP 嘗試次數上限",
-    "ai.http.execution_hint": "僅重試完整收到的 HTTP 429 拒絕回應。統一逾時包含排隊、重試等待與 HTTP 請求。"
+    "ai.http.execution_hint": "僅重試完整收到的 HTTP 429 拒絕回應。統一逾時包含排隊、重試等待與 HTTP 請求。",
+    "ai.catalog.section.concurrency": "AI 並行群組",
+    "ai.concurrency.new": "新增 AI 並行群組",
+    "ai.concurrency.edit": "編輯 AI 並行群組",
+    "ai.concurrency.group": "AI 並行群組",
+    "ai.concurrency.limit": "AI 作業同時執行數上限",
+    "ai.concurrency.unlimited": "不限制",
+    "ai.concurrency.in_use": "無法刪除 default 群組或被連線參照的群組。",
+    "ai.concurrency.description": "同一群組的連線在 Server 和 Workers 之間共用並行限制。新連線使用 default。",
+    "ai.concurrency.limit_value": "並行限制：{limit}",
+    "ai.concurrency.duplicate": "已存在使用此 ID 的 AI 並行群組。"
   }
 }

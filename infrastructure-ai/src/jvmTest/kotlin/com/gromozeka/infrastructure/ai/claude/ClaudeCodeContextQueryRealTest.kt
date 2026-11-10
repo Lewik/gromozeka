@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.repository.ClaudeCodeSessionStateRepository
@@ -15,7 +17,7 @@ class ClaudeCodeContextQueryRealTest {
     @Test fun isolatedToolFreeProtocol() = runBlocking<Unit> {
         assumeTrue("Opt-in live protocol smoke", System.getenv("GROMOZEKA_RUN_CONTEXT_QUERY_CLAUDE_SMOKE") == "true")
         val model = requireNotNull(System.getenv("GROMOZEKA_CONTEXT_QUERY_SMOKE_MODEL")) { "Explicit smoke model required" }
-        val process = ProcessClaudeCodeCliExecutor()
+        val process = ProcessClaudeCodeCliExecutor(TestAiAdmission())
         val commands = mutableListOf<ClaudeCodeCommand>()
         val executor = object : ClaudeCodeCliExecutor {
             override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {

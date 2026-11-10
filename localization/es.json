@@ -2110,8 +2110,17 @@
     "ai.http.headers": "Cabeceras adicionales (JSON)",
     "ai.http.headers_hint": "Solo cadenas no secretas. Authorization se genera desde la fuente del token; User-Agent se puede sustituir.",
     "ai.http.headers_invalid": "Las cabeceras deben ser un objeto JSON con valores de cadena.",
-    "ai.http.concurrency": "Llamadas simultáneas por conexión",
     "ai.http.max_attempts": "Máximo de intentos HTTP",
-    "ai.http.execution_hint": "Solo se reintentan rechazos HTTP 429 recibidos por completo. Un único tiempo límite incluye la cola, las esperas y HTTP."
+    "ai.http.execution_hint": "Solo se reintentan rechazos HTTP 429 recibidos por completo. Un único tiempo límite incluye la cola, las esperas y HTTP.",
+    "ai.catalog.section.concurrency": "Grupos de concurrencia de IA",
+    "ai.concurrency.new": "Nuevo grupo de concurrencia de IA",
+    "ai.concurrency.edit": "Editar grupo de concurrencia de IA",
+    "ai.concurrency.group": "Grupo de concurrencia de IA",
+    "ai.concurrency.limit": "Máximo de operaciones de IA simultáneas",
+    "ai.concurrency.unlimited": "Sin límite",
+    "ai.concurrency.in_use": "No se puede eliminar el grupo default ni un grupo utilizado por conexiones.",
+    "ai.concurrency.description": "Las conexiones del mismo grupo comparten un límite de concurrencia entre Server y Workers. Las conexiones nuevas usan default.",
+    "ai.concurrency.limit_value": "Límite de concurrencia: {limit}",
+    "ai.concurrency.duplicate": "Ya existe un grupo de concurrencia de IA con este ID."
   }
 }

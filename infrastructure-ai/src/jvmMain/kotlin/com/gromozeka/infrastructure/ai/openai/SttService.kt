@@ -185,6 +185,7 @@ class OpenAiSpeechTranscriptionExecutor(
     private val clientFactory: OpenAiSdkClientFactory,
     private val localWhisperTranscriptionService: LocalWhisperTranscriptionService,
     private val claudeCodeVoiceTranscriptionService: ClaudeCodeVoiceTranscriptionService,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : DirectAiSpeechToTextProvider {
     private val log = KLoggers.logger(this)
 
@@ -203,16 +204,18 @@ class OpenAiSpeechTranscriptionExecutor(
 
             when (request.engine) {
                 UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER ->
-                    localWhisperTranscriptionService.transcribe(
-                        audioData = request.audioData,
-                        language = requireNotNull(request.language) {
-                            "Local Whisper language is missing"
-                        },
-                        prompt = request.prompt,
-                        settings = requireNotNull(localWhisperSettings) {
-                            "Local Whisper execution settings are missing"
-                        },
-                    )
+                    admission.execute(com.gromozeka.domain.model.ai.AiAdmissionTarget.LocalInference, "SPEECH_TO_TEXT") {
+                        localWhisperTranscriptionService.transcribe(
+                            audioData = request.audioData,
+                            language = requireNotNull(request.language) {
+                                "Local Whisper language is missing"
+                            },
+                            prompt = request.prompt,
+                            settings = requireNotNull(localWhisperSettings) {
+                                "Local Whisper execution settings are missing"
+                            },
+                        )
+                    }
 
                 UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API ->
                     transcribeWithOpenAi(
@@ -223,12 +226,14 @@ class OpenAiSpeechTranscriptionExecutor(
                     )
 
                 UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE ->
-                    claudeCodeVoiceTranscriptionService.transcribeAudio(
-                        connection = requireNotNull(request.claudeCodeConnection),
-                        audioData = request.audioData,
-                        format = request.format,
-                        language = request.language,
-                    )
+                    admission.execute(requireNotNull(request.claudeCodeConnection), "SPEECH_TO_TEXT") {
+                        claudeCodeVoiceTranscriptionService.transcribeAudio(
+                            connection = requireNotNull(request.claudeCodeConnection),
+                            audioData = request.audioData,
+                            format = request.format,
+                            language = request.language,
+                        )
+                    }
             }
         }
 
@@ -255,11 +260,13 @@ class OpenAiSpeechTranscriptionExecutor(
         return true
     }
 
-    private fun transcribeWithOpenAi(
+    private suspend fun transcribeWithOpenAi(
         runtime: ResolvedAiRuntime,
         request: AiSpeechTranscriptionRequest,
     ): String {
-        val client = clientFactory.createClient(runtime.connection)
+        val executor = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor(
+            runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission,
+        ) { end -> clientFactory.createInferenceClient(runtime.connection, end) }
         val tempFile = File.createTempFile("gromozeka-stt", ".${request.format.fileExtension}")
 
         try {
@@ -276,7 +283,10 @@ class OpenAiSpeechTranscriptionExecutor(
                     request.prompt?.trim()?.takeIf { it.isNotBlank() }?.let(::prompt)
                 }
                 .build()
-            return client.audio().transcriptions().create(params).asTranscription().text()
+            return executor.call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "SPEECH_TO_TEXT")) { client, remaining ->
+                client.async().audio().transcriptions().create(params,
+                    com.openai.core.RequestOptions.builder().timeout(remaining).build()).thenApply { it.asTranscription().text() }
+            }
         } catch (error: Exception) {
             throw IllegalStateException("Speech-to-text request failed: ${error.message}", error)
         } finally {

@@ -103,6 +103,10 @@ class WorkerGatewaySession(
     fun close(cause: Throwable) { outgoing.close(cause) }
 }
 
+fun interface WorkerExecutionCompletionObserver {
+    suspend fun executionCompleted(identity: ConversationRuntimeWorkerIdentity, response: WorkerGatewayMessage.Response)
+}
+
 @Service
 class WorkerGatewayService(
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
@@ -112,6 +116,7 @@ class WorkerGatewayService(
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val authenticationService: WorkerGatewayAuthenticationService,
     private val requests: WorkerRequestService,
+    private val executionCompletionObservers: List<WorkerExecutionCompletionObserver> = emptyList(),
 ) {
     private val log = KLoggers.logger(this)
     private val serverRequestHandlersByOperation =
@@ -256,15 +261,15 @@ class WorkerGatewayService(
                                 // An authenticated late result may outlive Server retention. Acknowledge
                                 // it so the Worker can retire its journal entry without repeating the action.
                                 requests.accept(registration.identity.workerId, message)
+                                executionCompletionObservers.forEach { it.executionCompleted(registration.identity, message) }
                                 gatewaySession.send(WorkerGatewayMessage.ResponseAcknowledged(message.requestId))
                             }
 
                             is WorkerGatewayMessage.Request -> launch {
-                                workerRequestConcurrency.withPermit {
-                                    gatewaySession.send(
-                                        executeWorkerRequest(registration.identity, message)
-                                    )
-                                }
+                                suspend fun respond() = gatewaySession.send(executeWorkerRequest(registration.identity, message))
+                                // Waiting admissions must not occupy the RPC slots needed to release active grants.
+                                if (message.operation == WorkerGatewayOperation.AI_ADMISSION) respond()
+                                else workerRequestConcurrency.withPermit { respond() }
                             }
 
                             is WorkerGatewayMessage.CancelRequest ->

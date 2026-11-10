@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.Conversation.Message
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
@@ -22,7 +24,7 @@ class OpenAiResponsesCompactionTest {
 
     @Test
     fun `Responses advertises compaction through both capability and runtime routes but Chat does not`() {
-        val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources))))
+        val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
         val responses = resolved(connection("http://127.0.0.1:1/api/llm"))
         assertTrue(provider.capabilities(responses).supportsAutoCompaction)
         assertTrue(provider.getRuntime(responses, null).capabilities.supportsAutoCompaction)
@@ -121,7 +123,7 @@ class OpenAiResponsesCompactionTest {
     @Test
     fun `gateway HTTP request enables compaction and next tool turn sends the persisted checkpoint`() = runBlocking {
         SdkHttpTestServer(response(COMPACT, CALL), response(ANSWER)).use { server ->
-            val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources))))
+            val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
             val runtime = provider.getRuntime(resolved(connection("${server.origin}/api/llm")), null)
             val archive = (0 until 20).map { text("old-$it", "ARCHIVE_MARKER_$it") }
             val first = runtime.call(request(archive))

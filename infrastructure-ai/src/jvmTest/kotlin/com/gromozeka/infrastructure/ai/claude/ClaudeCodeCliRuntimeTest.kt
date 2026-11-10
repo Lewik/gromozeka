@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
 import com.gromozeka.domain.model.Conversation
@@ -393,7 +395,7 @@ class ClaudeCodeCliRuntimeTest {
                     display = AiReasoningDisplay.SUMMARIZED), toolContext = testToolContext())))
         val command = executor.commands.single()
         assertEquals(AiReasoningMode.ADAPTIVE, command.reasoningMode)
-        val args = ProcessClaudeCodeCliExecutor("claude").buildArgs(command, "/tmp/gromozeka-system.md")
+        val args = ProcessClaudeCodeCliExecutor(TestAiAdmission(), "claude").buildArgs(command, "/tmp/gromozeka-system.md")
         assertTrue(args.windowed(2).contains(listOf("--model", "claude-opus-5-5")))
         assertTrue(args.windowed(2).contains(listOf("--effort", "medium")))
     }
@@ -442,7 +444,7 @@ class ClaudeCodeCliRuntimeTest {
         val command = executor.commands.single()
         assertEquals(AiReasoningEffort.XHIGH, command.effort)
         assertEquals(AiReasoningMode.ADAPTIVE, command.reasoningMode)
-        val args = ProcessClaudeCodeCliExecutor("claude")
+        val args = ProcessClaudeCodeCliExecutor(TestAiAdmission(), "claude")
             .buildArgs(command, "/tmp/gromozeka-system.md")
         assertTrue(args.windowed(2).contains(listOf("--effort", "xhigh")))
         assertTrue(args.windowed(2).contains(listOf("--input-format", "stream-json")))
@@ -657,7 +659,7 @@ class ClaudeCodeCliRuntimeTest {
     @Test
     fun realClaudeCodeRefreshesAddedAndRemovedCatalogEntriesWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
-        val executor = ProcessClaudeCodeCliExecutor(realClaudeExecutable())
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable())
         try {
             withTimeout(180_000) {
                 verifyCatalogChanges(runtime(executor), java.util.UUID.randomUUID().toString().replace("-", ""))
@@ -669,7 +671,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodeReturnsStructuredFinalAnswerWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
-        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable()))
         val response = runtime.call(
             request(
                 messages = listOf(userMessage("Return exactly: OK")),
@@ -697,7 +699,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodePreservesOpus5ThinkingEnvelopeWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled() || realClaudeModel() != "claude-opus-5") return@runBlocking
 
-        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable()))
         val response = runtime.call(
             request(
                 messages = listOf(
@@ -734,7 +736,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodeReturnsWrapperToolCallWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
-        val executor = ProcessClaudeCodeCliExecutor(realClaudeExecutable())
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable())
         try {
             withTimeout(120_000L) {
                 val runtime = runtime(executor)
@@ -819,7 +821,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodePreservesQueuedUserBatchesWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
-        val executor = ProcessClaudeCodeCliExecutor(realClaudeExecutable())
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable())
         try {
             withTimeout(120_000L) {
                 val runtime = runtime(executor)
@@ -883,7 +885,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodeReturnsParallelWrapperToolCallsWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
-        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable()))
         val response = runtime.call(
             request(
                 messages = listOf(
@@ -914,7 +916,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodeReturnsWrapperFinalAnswerWithToolsInAutoModeWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
-        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable()))
         val response = runtime.call(
             request(
                 messages = listOf(userMessage("Do not use external actions. Return exactly: AUTO_FINAL_OK")),
@@ -934,7 +936,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodeResumesSessionAndReadsPromptCacheWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
-        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable()))
         val conversationId = "real-claude-session-cache-test-${Clock.System.now().toEpochMilliseconds()}"
         val referenceText = largeReferenceText(conversationId)
         val firstUser = userMessage(
@@ -991,7 +993,7 @@ class ClaudeCodeCliRuntimeTest {
     fun realClaudeCodePromptCacheContinuesAcrossMultipleResumedTurnsWhenEnabled() = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
 
-        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable()))
         val conversationId = "real-claude-multi-turn-cache-test-${Clock.System.now().toEpochMilliseconds()}"
         val firstUser = userMessage(
             "${largeReferenceText(conversationId)}\n\n" +
@@ -1275,7 +1277,7 @@ class ClaudeCodeCliRuntimeTest {
                 }
             }
         }
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         try {
             val result = runtime(executor).call(request(listOf(userMessage("Read README.md")), listOf(readFileTool())))
             assertEquals(1, result.toolCalls.size)
@@ -1540,7 +1542,7 @@ class ClaudeCodeCliRuntimeTest {
         assertEquals("""{"answer":"Привет"}""", result.messages.single().text())
         assertFalse(executor.commands.first().userPrompt.contains("tool_calls"))
         assertTrue(executor.commands.first().systemPrompt.contains(schema.toString()))
-        val processExecutor = ProcessClaudeCodeCliExecutor()
+        val processExecutor = ProcessClaudeCodeCliExecutor(TestAiAdmission())
         try {
             val args = processExecutor.buildArgs(executor.commands.first(), "/tmp/probe-system.md")
             assertFalse("--json-schema" in args)

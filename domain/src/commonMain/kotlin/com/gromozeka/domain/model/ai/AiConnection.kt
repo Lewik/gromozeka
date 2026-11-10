@@ -42,6 +42,7 @@ sealed interface AiConnection {
     val enabled: Boolean
     val kind: Kind
     val executionTarget: AiExecutionTarget
+    val concurrencyGroupId: AiConcurrencyGroup.Id
 
     @Serializable
     @JvmInline
@@ -80,6 +81,7 @@ sealed interface AiConnection {
         val webSearchEnabled: Boolean = true,
         override val quotaPacing: AiSubscriptionQuotaPacingPolicy = AiSubscriptionQuotaPacingPolicy(),
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, AiSubscriptionConnection {
         override val kind = Kind.OPENAI_SUBSCRIPTION
 
@@ -107,6 +109,7 @@ sealed interface AiConnection {
         val sessionIdleTimeoutSeconds: Int = DEFAULT_SESSION_IDLE_TIMEOUT_SECONDS,
         override val quotaPacing: AiSubscriptionQuotaPacingPolicy = AiSubscriptionQuotaPacingPolicy(),
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, AiSubscriptionConnection {
         override val kind = Kind.GITHUB_COPILOT
 
@@ -143,6 +146,7 @@ sealed interface AiConnection {
         val webSearchEnabled: Boolean = true,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
         override val httpSettings: AiHttpSettings = AiHttpSettings(),
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, ConfigurableHttpAiConnection {
         override val kind = Kind.OPENAI_API
 
@@ -163,6 +167,7 @@ sealed interface AiConnection {
         override val apiKey: SecretRef? = null,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
         override val httpSettings: AiHttpSettings = AiHttpSettings(),
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, ConfigurableHttpAiConnection {
         override val kind = Kind.OPENAI_COMPATIBLE
 
@@ -183,6 +188,7 @@ sealed interface AiConnection {
         override val apiKey: SecretRef? = null,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
         override val httpSettings: AiHttpSettings = AiHttpSettings(),
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, ConfigurableHttpAiConnection {
         override val kind = Kind.ANTHROPIC_API
 
@@ -203,6 +209,7 @@ sealed interface AiConnection {
         override val awsRegion: String? = null,
         override val awsProfile: String? = null,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, HttpAiConnection, AwsAiConnection {
         override val kind = Kind.ANTHROPIC_BEDROCK
 
@@ -226,6 +233,7 @@ sealed interface AiConnection {
         val voiceTranscriptionEnabled: Boolean = false,
         override val quotaPacing: AiSubscriptionQuotaPacingPolicy = AiSubscriptionQuotaPacingPolicy(),
         override val executionTarget: AiExecutionTarget,
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, AiSubscriptionConnection {
         override val kind = Kind.CLAUDE_CODE
 
@@ -254,6 +262,7 @@ sealed interface AiConnection {
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
         override val kind = Kind.GEMINI_API
 
@@ -271,6 +280,7 @@ sealed interface AiConnection {
         override val enabled: Boolean = true,
         override val baseUrl: String,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+        override val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     ) : AiConnection, HttpAiConnection {
         override val kind = Kind.OLLAMA
 
@@ -310,4 +320,16 @@ sealed interface AiConnection {
             require(value == null || value.isNotBlank()) { "AI connection AWS $name must not be blank" }
         }
     }
+}
+
+fun AiConnection.withConcurrencyGroupId(groupId: AiConcurrencyGroup.Id): AiConnection = when (this) {
+    is AiConnection.OpenAiSubscription -> copy(concurrencyGroupId = groupId)
+    is AiConnection.GitHubCopilot -> copy(concurrencyGroupId = groupId)
+    is AiConnection.OpenAiApi -> copy(concurrencyGroupId = groupId)
+    is AiConnection.OpenAiCompatible -> copy(concurrencyGroupId = groupId)
+    is AiConnection.AnthropicApi -> copy(concurrencyGroupId = groupId)
+    is AiConnection.AnthropicBedrock -> copy(concurrencyGroupId = groupId)
+    is AiConnection.ClaudeCode -> copy(concurrencyGroupId = groupId)
+    is AiConnection.GeminiApi -> copy(concurrencyGroupId = groupId)
+    is AiConnection.Ollama -> copy(concurrencyGroupId = groupId)
 }

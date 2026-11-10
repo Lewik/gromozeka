@@ -3,7 +3,7 @@ package com.gromozeka.infrastructure.ai.runtime
 import com.gromozeka.domain.model.ai.AiCallException
 import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.model.ai.AiConnection
-import com.gromozeka.domain.model.ai.AiExecutionTarget
+import com.gromozeka.domain.service.AiCallAdmission
 import com.gromozeka.domain.model.ai.AiHttpCallBudget
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import kotlinx.coroutines.CancellationException
@@ -12,18 +12,13 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import javax.net.ssl.SSLException
 import kotlin.coroutines.resume
@@ -40,9 +35,9 @@ internal class SdkHttpCallExecutor<C>(
     private val connection: AiConnection,
     private val timeoutSeconds: Int?,
     private val maxAttempts: Int = SdkHttpSupport.settings(connection).maxAttempts,
+    private val admission: AiCallAdmission,
     private val clientFactory: (deadlineNanos: Long) -> SdkInferenceClient<C>,
 ) {
-    private val settings = SdkHttpSupport.settings(connection)
     init { require(maxAttempts in 1..5) { "Invalid AI HTTP attempt limit" } }
 
     fun withDeadline(options: AiRuntimeOptions): AiRuntimeOptions = options.copy(
@@ -58,39 +53,44 @@ internal class SdkHttpCallExecutor<C>(
         val transportRef = AtomicReference<SdkHttpTransport?>()
         try {
             return withTimeout((remainingNanos / 1_000_000).coerceAtLeast(1)) {
-                SdkConnectionConcurrency.withPermit(connection, settings.maxConcurrentCalls) {
-                    withContext(Dispatchers.IO) {
-                        currentCoroutineContext().ensureActive()
-                        val session = try { clientFactory(end) } catch (error: CancellationException) { throw error }
-                        catch (_: Exception) { throw AiCallException(AiCallFailure(AiCallFailure.Kind.CONFIGURATION,
-                            AiCallFailure.Outcome.NOT_STARTED, 0)) }
-                        transportRef.set(session.transport)
-                        session.use {
-                            while (true) {
-                                currentCoroutineContext().ensureActive()
-                                val left = end - System.nanoTime()
-                                if (left <= 0) throw deadlineFailure(session.transport)
-                                session.transport.beginAttempt()
-                                try {
-                                    return@withContext await(session.transport) { action(session.client, Duration.ofNanos(left)) }
-                                } catch (error: CancellationException) { throw error }
-                                catch (error: Exception) {
+                withContext(Dispatchers.IO) {
+                    var session: SdkInferenceClient<C>? = null
+                    try {
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            try {
+                                return@withContext admission.execute(connection, options.usagePurpose ?: "INFERENCE", deadline) {
                                     currentCoroutineContext().ensureActive()
-                                    if (end - System.nanoTime() <= 0) throw deadlineFailure(session.transport)
-                                    val failure = classify(error, session.transport)
-                                    if (failure.kind != AiCallFailure.Kind.RATE_LIMITED ||
-                                        failure.outcome != AiCallFailure.Outcome.REJECTED ||
-                                        requireNotNull(failure.attempts) >= maxAttempts) throw AiCallException(failure)
-                                    val backoff = retryDelayMillis(requireNotNull(failure.attempts), failure.retryAfterMillis)
-                                    val leftMillis = (end - System.nanoTime()) / 1_000_000
-                                    // Retry-After is a lower bound, not a value to clamp to an earlier retry.
-                                    if (backoff >= leftMillis) throw AiCallException(failure)
-                                    delay(backoff)
+                                    val activeSession = session ?: try {
+                                        clientFactory(end).also { session = it; transportRef.set(it.transport) }
+                                    } catch (error: CancellationException) { throw error }
+                                    catch (_: Exception) { throw AiCallException(AiCallFailure(AiCallFailure.Kind.CONFIGURATION,
+                                        AiCallFailure.Outcome.NOT_STARTED, 0)) }
+                                    val left = end - System.nanoTime()
+                                    if (left <= 0) throw deadlineFailure(activeSession.transport)
+                                    activeSession.transport.beginAttempt()
+                                    await(activeSession.transport) { action(activeSession.client, Duration.ofNanos(left)) }
                                 }
+                            } catch (error: CancellationException) { throw error }
+                            catch (error: com.gromozeka.domain.service.AiAdmissionException) { throw error }
+                            catch (error: AiCallException) { throw error }
+                            catch (error: Exception) {
+                                currentCoroutineContext().ensureActive()
+                                val transport = requireNotNull(transportRef.get()) { "SDK failure has no transport attempt" }
+                                if (end - System.nanoTime() <= 0) throw deadlineFailure(transport)
+                                val failure = classify(error, transport)
+                                if (failure.kind != AiCallFailure.Kind.RATE_LIMITED ||
+                                    failure.outcome != AiCallFailure.Outcome.REJECTED ||
+                                    requireNotNull(failure.attempts) >= maxAttempts) throw AiCallException(failure)
+                                val backoff = retryDelayMillis(requireNotNull(failure.attempts), failure.retryAfterMillis)
+                                val leftMillis = (end - System.nanoTime()) / 1_000_000
+                                // Retry-After is a lower bound. Backoff holds no admission lease.
+                                if (backoff >= leftMillis) throw AiCallException(failure)
+                                delay(backoff)
                             }
-                            @Suppress("UNREACHABLE_CODE") error("AI call loop returned without a result")
                         }
-                    }
+                        @Suppress("UNREACHABLE_CODE") error("AI call loop returned without a result")
+                    } finally { session?.close() }
                 }
             }
         } catch (error: TimeoutCancellationException) {
@@ -162,33 +162,4 @@ private fun classify(error: Throwable, transport: SdkHttpTransport): AiCallFailu
         else -> AiCallFailure.Outcome.UNKNOWN
     }
     return AiCallFailure(kind, outcome, transport.attempts, status, attempt.retryAfterMillis)
-}
-
-/** One gate per connection on this executor, shared by all models and runtime instances. */
-private object SdkConnectionConcurrency {
-    private data class Key(val connectionId: AiConnection.Id, val executionTarget: AiExecutionTarget)
-    private val gates = ConcurrentHashMap<Key, Gate>()
-    suspend fun <T> withPermit(connection: AiConnection, limit: Int, block: suspend () -> T): T =
-        gates.computeIfAbsent(Key(connection.id, connection.executionTarget)) { Gate() }.withPermit(limit, block)
-
-    private class Gate {
-        private val mutex = Mutex()
-        private val revision = MutableStateFlow(0L)
-        private var active = 0
-        suspend fun <T> withPermit(limit: Int, block: suspend () -> T): T {
-            while (true) {
-                val waitFor = mutex.withLock {
-                    if (active < limit) { active++; null } else revision.value
-                }
-                if (waitFor == null) break
-                revision.first { it != waitFor }
-            }
-            try { return block() } finally {
-                // Non-suspending lock-free release is not safe; cancellation must not strand a permit.
-                withContext(kotlinx.coroutines.NonCancellable) {
-                    mutex.withLock { check(active > 0); active--; revision.value++ }
-                }
-            }
-        }
-    }
 }

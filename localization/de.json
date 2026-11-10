@@ -2073,8 +2073,17 @@
     "ai.http.headers": "Zusätzliche Header (JSON)",
     "ai.http.headers_hint": "Nur nicht geheime Zeichenfolgen. Authorization stammt aus der Tokenquelle; User-Agent kann überschrieben werden.",
     "ai.http.headers_invalid": "Header müssen ein JSON-Objekt mit Zeichenfolgenwerten sein.",
-    "ai.http.concurrency": "Gleichzeitige Aufrufe pro Verbindung",
     "ai.http.max_attempts": "Maximale HTTP-Versuche",
-    "ai.http.execution_hint": "Nur vollständig empfangene HTTP-429-Ablehnungen werden wiederholt. Ein gemeinsames Zeitlimit umfasst Warteschlange, Wiederholungspausen und HTTP."
+    "ai.http.execution_hint": "Nur vollständig empfangene HTTP-429-Ablehnungen werden wiederholt. Ein gemeinsames Zeitlimit umfasst Warteschlange, Wiederholungspausen und HTTP.",
+    "ai.catalog.section.concurrency": "KI-Parallelitätsgruppen",
+    "ai.concurrency.new": "Neue KI-Parallelitätsgruppe",
+    "ai.concurrency.edit": "KI-Parallelitätsgruppe bearbeiten",
+    "ai.concurrency.group": "KI-Parallelitätsgruppe",
+    "ai.concurrency.limit": "Maximale Anzahl gleichzeitiger KI-Vorgänge",
+    "ai.concurrency.unlimited": "Unbegrenzt",
+    "ai.concurrency.in_use": "Die Gruppe default und von Verbindungen verwendete Gruppen können nicht gelöscht werden.",
+    "ai.concurrency.description": "Verbindungen derselben Gruppe teilen sich ein Parallelitätslimit auf Server und Workers. Neue Verbindungen verwenden default.",
+    "ai.concurrency.limit_value": "Parallelitätslimit: {limit}",
+    "ai.concurrency.duplicate": "Eine KI-Parallelitätsgruppe mit dieser ID existiert bereits."
   }
 }

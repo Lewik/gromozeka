@@ -2036,8 +2036,17 @@
     "ai.http.headers": "추가 헤더(JSON)",
     "ai.http.headers_hint": "비밀이 아닌 문자열 값만 입력하세요. Authorization은 토큰 소스에서 생성되며 User-Agent는 재정의할 수 있습니다.",
     "ai.http.headers_invalid": "헤더는 문자열 값을 가진 JSON 객체여야 합니다.",
-    "ai.http.concurrency": "연결당 동시 호출 수",
     "ai.http.max_attempts": "최대 HTTP 시도 횟수",
-    "ai.http.execution_hint": "완전히 수신한 HTTP 429 거부 응답만 재시도합니다. 하나의 제한 시간에 대기열, 재시도 대기 및 HTTP가 포함됩니다."
+    "ai.http.execution_hint": "완전히 수신한 HTTP 429 거부 응답만 재시도합니다. 하나의 제한 시간에 대기열, 재시도 대기 및 HTTP가 포함됩니다.",
+    "ai.catalog.section.concurrency": "AI 동시 실행 그룹",
+    "ai.concurrency.new": "새 AI 동시 실행 그룹",
+    "ai.concurrency.edit": "AI 동시 실행 그룹 편집",
+    "ai.concurrency.group": "AI 동시 실행 그룹",
+    "ai.concurrency.limit": "동시에 실행할 수 있는 AI 작업 수",
+    "ai.concurrency.unlimited": "제한 없음",
+    "ai.concurrency.in_use": "default 그룹이나 연결에서 참조하는 그룹은 삭제할 수 없습니다.",
+    "ai.concurrency.description": "같은 그룹의 연결은 Server와 Workers 전체에서 동시 실행 제한을 공유합니다. 새 연결은 default를 사용합니다.",
+    "ai.concurrency.limit_value": "동시 실행 제한: {limit}",
+    "ai.concurrency.duplicate": "이 ID를 가진 AI 동시 실행 그룹이 이미 있습니다."
   }
 }

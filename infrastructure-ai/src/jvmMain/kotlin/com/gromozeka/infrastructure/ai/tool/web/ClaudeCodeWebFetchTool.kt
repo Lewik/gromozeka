@@ -20,7 +20,12 @@ internal class ClaudeCodeWebFetchTool(
         request: ClaudeCodeWebFetchRequest,
         context: ToolExecutionContext?,
     ): String =
-        runBlocking {
+        runBlocking(
+            (context?.cancellationSignal?.job ?: kotlin.coroutines.EmptyCoroutineContext) +
+                (context?.workerRequest?.let { com.gromozeka.domain.service.AiAdmissionWorkerContext(it.requestId) }
+                    ?: kotlin.coroutines.EmptyCoroutineContext)
+        ) {
+            context?.cancellationSignal?.throwIfCancellationRequested()
             client.execute(
                 tool = ClaudeCodeNativeTool.WEB_FETCH,
                 input = buildJsonObject {

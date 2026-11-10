@@ -133,7 +133,7 @@ class AiRequestResponseGatewayCodecTest {
         val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
             authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
             caBundlePath = "C:\\worker\\ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
-            extraHeaders = mapOf("User-Agent" to "Worker-fixture", "x-tfy-strict-openai" to "false"), maxConcurrentCalls = 7, maxAttempts = 4)
+            extraHeaders = mapOf("User-Agent" to "Worker-fixture", "x-tfy-strict-openai" to "false"), maxAttempts = 4)
         for (source in listOf(com.gromozeka.domain.model.SecretRef.Inline("synthetic-worker-token"),
             com.gromozeka.domain.model.SecretRef.EnvironmentVariable("WORKER_TOKEN"),
             com.gromozeka.domain.model.SecretRef.File("C:\\worker\\token.txt"))) {

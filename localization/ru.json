@@ -2147,8 +2147,17 @@
     "ai.http.headers": "Дополнительные заголовки (JSON)",
     "ai.http.headers_hint": "Только несекретные строковые значения. Authorization формируется из источника токена; User-Agent можно переопределить.",
     "ai.http.headers_invalid": "Заголовки должны быть JSON-объектом со строковыми значениями.",
-    "ai.http.concurrency": "Параллельные вызовы подключения",
     "ai.http.max_attempts": "Максимум HTTP-попыток",
-    "ai.http.execution_hint": "Повторяются только полностью полученные отказы HTTP 429. Один тайм-аут включает очередь, задержки повторов и HTTP."
+    "ai.http.execution_hint": "Повторяются только полностью полученные отказы HTTP 429. Один тайм-аут включает очередь, задержки повторов и HTTP.",
+    "ai.catalog.section.concurrency": "Группы параллелизма AI",
+    "ai.concurrency.new": "Новая группа параллелизма AI",
+    "ai.concurrency.edit": "Изменить группу параллелизма AI",
+    "ai.concurrency.group": "Группа параллелизма AI",
+    "ai.concurrency.limit": "Максимум параллельных AI-операций",
+    "ai.concurrency.unlimited": "Без ограничения",
+    "ai.concurrency.in_use": "Нельзя удалить группу default или группу, на которую ссылаются подключения.",
+    "ai.concurrency.description": "Подключения одной группы делят общий лимит параллелизма на Server и Workers. Новые подключения используют default.",
+    "ai.concurrency.limit_value": "Лимит параллелизма: {limit}",
+    "ai.concurrency.duplicate": "Группа параллелизма AI с таким ID уже существует."
   }
 }

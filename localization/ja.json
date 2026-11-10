@@ -2036,8 +2036,17 @@
     "ai.http.headers": "追加ヘッダー（JSON）",
     "ai.http.headers_hint": "シークレットではない文字列のみ。Authorizationはトークン取得元から生成されます。User-Agentは上書き可能です。",
     "ai.http.headers_invalid": "ヘッダーは値が文字列のJSONオブジェクトで指定してください。",
-    "ai.http.concurrency": "接続ごとの同時呼び出し数",
     "ai.http.max_attempts": "HTTP 試行回数の上限",
-    "ai.http.execution_hint": "完全に受信した HTTP 429 の拒否応答のみ再試行します。単一のタイムアウトにキュー待機、再試行待機、HTTP を含みます。"
+    "ai.http.execution_hint": "完全に受信した HTTP 429 の拒否応答のみ再試行します。単一のタイムアウトにキュー待機、再試行待機、HTTP を含みます。",
+    "ai.catalog.section.concurrency": "AI同時実行グループ",
+    "ai.concurrency.new": "AI同時実行グループを作成",
+    "ai.concurrency.edit": "AI同時実行グループを編集",
+    "ai.concurrency.group": "AI同時実行グループ",
+    "ai.concurrency.limit": "AI処理の最大同時実行数",
+    "ai.concurrency.unlimited": "制限なし",
+    "ai.concurrency.in_use": "defaultグループや接続から参照されているグループは削除できません。",
+    "ai.concurrency.description": "同じグループの接続は、ServerとWorkers全体で同時実行数の上限を共有します。新しい接続はdefaultを使用します。",
+    "ai.concurrency.limit_value": "同時実行数の上限: {limit}",
+    "ai.concurrency.duplicate": "このIDのAI同時実行グループはすでに存在します。"
   }
 }

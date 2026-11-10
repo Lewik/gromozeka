@@ -60,12 +60,14 @@ class OpenAiSubscriptionResponsesClientTest {
                 websocketResponseTimeoutMs = 5_000,
                 websocketTransportTimeoutMs = 1_000,
                 httpResponseTimeoutMs = 10_000,
+                admission = TestAiAdmission(),
             )
 
             val elapsed = measureTime {
                 assertFailsWith<kotlinx.coroutines.TimeoutCancellationException> {
                     withTimeout(2.seconds) {
                         client.create(
+                connectionId = "test-subscription",
                             session = OpenAiSubscriptionSession(
                                 accessToken = "access-token",
                                 refreshToken = "refresh-token",
@@ -137,6 +139,7 @@ class OpenAiSubscriptionResponsesClientTest {
                 websocketResponseTimeoutMs = 5_000,
                 websocketTransportTimeoutMs = 1_000,
                 httpResponseTimeoutMs = 5_000,
+                admission = TestAiAdmission(),
             )
             val logicalRequest = OpenAiSubscriptionResponsesRequest(
                 model = profile.slug,
@@ -148,6 +151,7 @@ class OpenAiSubscriptionResponsesClientTest {
             )
 
             val response = client.create(
+                connectionId = "test-subscription",
                 session = OpenAiSubscriptionSession(
                     accessToken = "access-token",
                     refreshToken = "refresh-token",

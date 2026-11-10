@@ -2,6 +2,7 @@ package com.gromozeka.worker
 
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.model.ai.AiAdmissionLease
 import com.gromozeka.shared.utils.sha256
 import com.gromozeka.worker.runtime.WorkerRequestJournal
 import com.gromozeka.worker.runtime.WorkerRequestReceipt
@@ -54,12 +55,7 @@ class JvmWorkerRequestJournal(
     override suspend fun load(): List<WorkerRequestReceipt> = withContext(Dispatchers.IO) {
         Files.list(directory).use { files ->
             files.filter { it.fileName.toString().endsWith(".receipt") }.map { path ->
-                val stored = Files.readAllBytes(path)
-                require(stored.size >= 29 && stored[0] == 1.toByte()) { "Invalid Worker receipt format" }
-                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, stored.copyOfRange(1, 13)))
-                cipher.updateAAD(path.fileName.toString().encodeToByteArray())
-                json.decodeFromString<WorkerRequestReceipt>(cipher.doFinal(stored.copyOfRange(13, stored.size)).decodeToString())
+                json.decodeFromString<WorkerRequestReceipt>(readEncrypted(path).decodeToString())
                     .also { require(path.fileName.toString() == "${it.id.sha256()}.receipt") }
             }.toList()
         }
@@ -67,16 +63,48 @@ class JvmWorkerRequestJournal(
 
     override suspend fun save(receipt: WorkerRequestReceipt): Unit = withContext(Dispatchers.IO) {
         val path = directory.resolve("${receipt.id.sha256()}.receipt")
-        val nonce = ByteArray(12).also(random::nextBytes)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, nonce))
-        cipher.updateAAD(path.fileName.toString().encodeToByteArray())
-        atomicWrite(path, byteArrayOf(1) + nonce + cipher.doFinal(json.encodeToString(receipt).encodeToByteArray()))
+        writeEncrypted(path, json.encodeToString(receipt).encodeToByteArray())
     }
 
     override suspend fun delete(id: String): Unit = withContext(Dispatchers.IO) {
         Files.deleteIfExists(directory.resolve("${id.sha256()}.receipt"))
         syncDirectory()
+    }
+
+    suspend fun loadAiAdmissions(): List<AiAdmissionLease> = withContext(Dispatchers.IO) {
+        Files.list(directory).use { files ->
+            files.filter { it.fileName.toString().endsWith(".admission") }.map { path ->
+                json.decodeFromString<AiAdmissionLease>(readEncrypted(path).decodeToString()).also {
+                    require(path.fileName.toString() == "${it.operation.id.sha256()}.admission")
+                }
+            }.toList()
+        }
+    }
+
+    suspend fun saveAiAdmission(lease: AiAdmissionLease): Unit = withContext(Dispatchers.IO) {
+        writeEncrypted(directory.resolve("${lease.operation.id.sha256()}.admission"), json.encodeToString(lease).encodeToByteArray())
+    }
+
+    suspend fun deleteAiAdmission(id: String): Unit = withContext(Dispatchers.IO) {
+        Files.deleteIfExists(directory.resolve("${id.sha256()}.admission"))
+        syncDirectory()
+    }
+
+    private fun readEncrypted(path: Path): ByteArray {
+        val stored = Files.readAllBytes(path)
+        require(stored.size >= 29 && stored[0] == 1.toByte()) { "Invalid Worker journal format" }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, stored.copyOfRange(1, 13)))
+        cipher.updateAAD(path.fileName.toString().encodeToByteArray())
+        return cipher.doFinal(stored.copyOfRange(13, stored.size))
+    }
+
+    private fun writeEncrypted(path: Path, bytes: ByteArray) {
+        val nonce = ByteArray(12).also(random::nextBytes)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, nonce))
+        cipher.updateAAD(path.fileName.toString().encodeToByteArray())
+        atomicWrite(path, byteArrayOf(1) + nonce + cipher.doFinal(bytes))
     }
 
     private fun atomicWrite(path: Path, bytes: ByteArray) {

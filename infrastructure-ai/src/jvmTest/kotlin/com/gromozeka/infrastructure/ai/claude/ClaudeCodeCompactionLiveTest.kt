@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.repository.ClaudeCodeSessionStateRepository
@@ -20,7 +22,7 @@ class ClaudeCodeCompactionLiveTest {
     @Test
     fun messageSquashHelperCompletesWithoutPersistingANativeSession() = runBlocking {
         org.junit.Assume.assumeTrue(System.getenv("GROMOZEKA_CLAUDE_COMPACTION_LIVE") == "true")
-        val process = ProcessClaudeCodeCliExecutor(System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude")
+        val process = ProcessClaudeCodeCliExecutor(TestAiAdmission(), System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude")
         val sessions = Sessions()
         val runtime = ClaudeCodeCliRuntime(
             executor = process,
@@ -72,7 +74,7 @@ class ClaudeCodeCompactionLiveTest {
             writeText("#!/bin/sh\nexport CLAUDE_CODE_AUTO_COMPACT_WINDOW=100000\nexport CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=5\nexec '" + executable.replace("'", "'\"'\"'") + "' \"\$@\"\n")
             check(setExecutable(true))
         } else null
-        val process = ProcessClaudeCodeCliExecutor(launcher?.absolutePath ?: executable)
+        val process = ProcessClaudeCodeCliExecutor(TestAiAdmission(), launcher?.absolutePath ?: executable)
         val sessions = Sessions()
         val commands = mutableListOf<ClaudeCodeCommand>()
         val executor = object : ClaudeCodeCliExecutor {

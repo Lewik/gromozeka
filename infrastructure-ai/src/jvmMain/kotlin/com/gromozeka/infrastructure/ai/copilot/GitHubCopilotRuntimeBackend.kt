@@ -63,6 +63,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 internal class GitHubCopilotRuntimeBackend(
     private val clientPool: GitHubCopilotClientPool,
     credentialRepositories: List<AiUserCredentialRepository>,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : AiRuntimeBackend {
     private val credentialRepository = credentialRepositories.singleOrNull()
 
@@ -94,6 +95,7 @@ internal class GitHubCopilotRuntimeBackend(
             modelConfiguration = modelConfiguration,
             clientPool = clientPool,
             credentialRepository = credentialRepository,
+            admission = admission,
         )
     }
 }
@@ -103,6 +105,7 @@ internal class GitHubCopilotRuntime(
     private val modelConfiguration: AiModelConfiguration,
     private val clientPool: GitHubCopilotClientPool,
     private val credentialRepository: AiUserCredentialRepository?,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
 ) : AiRuntime {
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -115,89 +118,91 @@ internal class GitHubCopilotRuntime(
         val toolPlan = buildToolPlan(request)
         val token = resolveToken(request)
         val handle = clientPool.acquire(connection)
-        val sessionId = "gromozeka-${UUID.randomUUID()}"
-        var session: CopilotSession? = null
-        var usageSubscription: Closeable? = null
-        var callFailure: Throwable? = null
+        return admission.execute(connection, request.options.usagePurpose ?: "INFERENCE", request.options.executionDeadline) admitted@ {
+            val sessionId = "gromozeka-${UUID.randomUUID()}"
+            var session: CopilotSession? = null
+            var usageSubscription: Closeable? = null
+            var callFailure: Throwable? = null
 
-        try {
-            val usageEvents = CopyOnWriteArrayList<AssistantUsageEvent.AssistantUsageEventData>()
-            val assistantEvents = CopyOnWriteArrayList<SessionEvent>()
-            session = handle.client.createSession(
-                buildSessionConfig(request, toolPlan, token, handle, sessionId)
-            ).awaitCancellable()
-            val usageListener = session.on(AssistantUsageEvent::class.java) { event ->
-                event.data?.let(usageEvents::add)
-            }
-            val messageListener = session.on(AssistantMessageEvent::class.java) { event ->
-                if (event.data?.parentToolCallId() == null) assistantEvents.add(event)
-            }
-            val reasoningListener = session.on(AssistantReasoningEvent::class.java) { event ->
-                assistantEvents.add(event)
-            }
-            usageSubscription = Closeable {
-                usageListener.close()
-                messageListener.close()
-                reasoningListener.close()
-            }
-            val mappedRequest = GitHubCopilotRequestMapper().map(request.messages)
-            val response = session.sendAndWait(
-                MessageOptions()
-                    .setPrompt(mappedRequest.prompt)
-                    .setAttachments(mappedRequest.attachments),
-                connection.requestTimeoutSeconds.toLong() * 1_000L,
-            ).awaitCancellable(onCancellation = { session.abort() })
-                ?: error("GitHub Copilot completed without an assistant message")
-            if (assistantEvents.filterIsInstance<AssistantMessageEvent>().none { it.data?.messageId() == response.data?.messageId() }) {
-                assistantEvents.add(response)
-            }
-            val completedMessages = assistantEvents.filterIsInstance<AssistantMessageEvent>()
-                .distinctBy { it.data?.messageId() to it.data?.chunkIndex() }
-            val reportedThinking = completedMessages.mapNotNull { it.data?.reasoningText() }.toSet()
-            val mapped = completedMessages.associateWith { it.toRuntimeResponse(request, toolPlan, emptyList(), sessionId) }
-            val messages = assistantEvents.flatMap { event ->
-                when (event) {
-                    is AssistantMessageEvent -> mapped[event]?.messages.orEmpty()
-                    is AssistantReasoningEvent -> event.data?.content()
-                        ?.takeUnless { it in reportedThinking }
-                        ?.let { listOf(AiAssistantMessage(listOf(Conversation.Message.ContentItem.Thinking(it)))) }.orEmpty()
-                    else -> emptyList()
+            try {
+                val usageEvents = CopyOnWriteArrayList<AssistantUsageEvent.AssistantUsageEventData>()
+                val assistantEvents = CopyOnWriteArrayList<SessionEvent>()
+                session = handle.client.createSession(
+                    buildSessionConfig(request, toolPlan, token, handle, sessionId)
+                ).awaitCancellable()
+                val usageListener = session.on(AssistantUsageEvent::class.java) { event ->
+                    event.data?.let(usageEvents::add)
                 }
-            }
-            val hasFinalAnswer = messages.any { it.metadata["terminalKind"] == "final_answer" }
-            val hasTools = messages.any { it.content.any { block -> block is Conversation.Message.ContentItem.ToolCall } }
-            require(!hasFinalAnswer || !hasTools) { "GitHub Copilot mixed a final answer with external tool calls" }
-            val finishReason = usageEvents.mapNotNull { it.finishReason() }.lastOrNull()
-            return AiRuntimeResponse(
-                messages = messages,
-                usage = usageEvents.toUsage(),
-                contextUsage = usageEvents.toContextUsage(),
-                finishReason = finishReason,
-                outcome = when {
-                    finishReason == "length" || finishReason == "max_tokens" -> AiStepOutcome.INCOMPLETE
-                    finishReason == "content_filter" || finishReason == "refusal" -> AiStepOutcome.REFUSED
-                    hasTools -> AiStepOutcome.TOOL_CALLS
-                    hasFinalAnswer -> AiStepOutcome.COMPLETE
-                    else -> AiStepOutcome.FAILED
-                },
-            )
-        } catch (error: Throwable) {
-            callFailure = error
-            if (error !is CancellationException) {
-                runCatching { clientPool.discardIfUnhealthy(connection, handle) }
-                    .exceptionOrNull()
-                    ?.let(error::addSuppressed)
-            }
-            throw error
-        } finally {
-            val cleanupFailure = withContext(NonCancellable) {
-                cleanupSession(handle, session, usageSubscription, sessionId)
-            }
-            if (cleanupFailure != null) {
-                if (callFailure == null) {
-                    throw cleanupFailure
+                val messageListener = session.on(AssistantMessageEvent::class.java) { event ->
+                    if (event.data?.parentToolCallId() == null) assistantEvents.add(event)
                 }
-                callFailure.addSuppressed(cleanupFailure)
+                val reasoningListener = session.on(AssistantReasoningEvent::class.java) { event ->
+                    assistantEvents.add(event)
+                }
+                usageSubscription = Closeable {
+                    usageListener.close()
+                    messageListener.close()
+                    reasoningListener.close()
+                }
+                val mappedRequest = GitHubCopilotRequestMapper().map(request.messages)
+                val response = session.sendAndWait(
+                    MessageOptions()
+                        .setPrompt(mappedRequest.prompt)
+                        .setAttachments(mappedRequest.attachments),
+                    connection.requestTimeoutSeconds.toLong() * 1_000L,
+                ).awaitCancellable(onCancellation = { session.abort() })
+                    ?: error("GitHub Copilot completed without an assistant message")
+                if (assistantEvents.filterIsInstance<AssistantMessageEvent>().none { it.data?.messageId() == response.data?.messageId() }) {
+                    assistantEvents.add(response)
+                }
+                val completedMessages = assistantEvents.filterIsInstance<AssistantMessageEvent>()
+                    .distinctBy { it.data?.messageId() to it.data?.chunkIndex() }
+                val reportedThinking = completedMessages.mapNotNull { it.data?.reasoningText() }.toSet()
+                val mapped = completedMessages.associateWith { it.toRuntimeResponse(request, toolPlan, emptyList(), sessionId) }
+                val messages = assistantEvents.flatMap { event ->
+                    when (event) {
+                        is AssistantMessageEvent -> mapped[event]?.messages.orEmpty()
+                        is AssistantReasoningEvent -> event.data?.content()
+                            ?.takeUnless { it in reportedThinking }
+                            ?.let { listOf(AiAssistantMessage(listOf(Conversation.Message.ContentItem.Thinking(it)))) }.orEmpty()
+                        else -> emptyList()
+                    }
+                }
+                val hasFinalAnswer = messages.any { it.metadata["terminalKind"] == "final_answer" }
+                val hasTools = messages.any { it.content.any { block -> block is Conversation.Message.ContentItem.ToolCall } }
+                require(!hasFinalAnswer || !hasTools) { "GitHub Copilot mixed a final answer with external tool calls" }
+                val finishReason = usageEvents.mapNotNull { it.finishReason() }.lastOrNull()
+                return@admitted AiRuntimeResponse(
+                    messages = messages,
+                    usage = usageEvents.toUsage(),
+                    contextUsage = usageEvents.toContextUsage(),
+                    finishReason = finishReason,
+                    outcome = when {
+                        finishReason == "length" || finishReason == "max_tokens" -> AiStepOutcome.INCOMPLETE
+                        finishReason == "content_filter" || finishReason == "refusal" -> AiStepOutcome.REFUSED
+                        hasTools -> AiStepOutcome.TOOL_CALLS
+                        hasFinalAnswer -> AiStepOutcome.COMPLETE
+                        else -> AiStepOutcome.FAILED
+                    },
+                )
+            } catch (error: Throwable) {
+                callFailure = error
+                if (error !is CancellationException) {
+                    runCatching { clientPool.discardIfUnhealthy(connection, handle) }
+                        .exceptionOrNull()
+                        ?.let(error::addSuppressed)
+                }
+                throw error
+            } finally {
+                val cleanupFailure = withContext(NonCancellable) {
+                    cleanupSession(handle, session, usageSubscription, sessionId)
+                }
+                if (cleanupFailure != null) {
+                    if (callFailure == null) {
+                        throw cleanupFailure
+                    }
+                    callFailure.addSuppressed(cleanupFailure)
+                }
             }
         }
     }

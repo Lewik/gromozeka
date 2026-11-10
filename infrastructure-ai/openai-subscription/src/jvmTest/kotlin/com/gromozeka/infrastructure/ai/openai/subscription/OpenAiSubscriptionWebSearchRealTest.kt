@@ -62,7 +62,7 @@ class OpenAiSubscriptionWebSearchRealTest {
             val pending = OpenAiSubscriptionWebSearch(transport).executePending(request, session, conversationKey, connectionId, model, true)
             val response = pending ?: run {
                 val body = mapper.toRequest(request, profile, conversationKey, true, connectionId)
-                val parsed = transport.create(session, conversationKey, body, profile, options.assistantResponseFormat)
+                val parsed = transport.create("test-subscription", session, conversationKey, body, profile, options.assistantResponseFormat)
                 responseMapper.toRuntimeResponse(parsed.outputItems, parsed.completed, conversationKey, connectionId,
                     "live-web-$model", model, options.assistantResponseFormat)
             }

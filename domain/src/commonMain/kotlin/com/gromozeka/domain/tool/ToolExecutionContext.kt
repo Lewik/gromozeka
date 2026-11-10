@@ -98,6 +98,7 @@ private fun ToolExecutionContext?.requiredString(key: String, label: String): St
         ?: error("$label is required in tool execution context")
 
 fun interface ToolCancellationSignal {
+    val job: kotlinx.coroutines.Job? get() = null
     fun throwIfCancellationRequested()
 
     companion object {

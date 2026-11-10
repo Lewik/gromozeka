@@ -15927,13 +15927,6 @@
     "description": "Safe validation message for malformed header JSON or non-string values; never echo supplied values.",
     "args": []
   },
-  "ai.http.concurrency": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
-    ],
-    "description": "Executor-local concurrency shared by all models on one connection; integer from 1 to 64.",
-    "args": []
-  },
   "ai.http.max_attempts": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
@@ -15947,5 +15940,15 @@
     ],
     "description": "Explains that HTTP 429 rejection retries share one logical deadline with queueing and all network activity.",
     "args": []
-  }
+  },
+  "ai.catalog.section.concurrency": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "AI settings tab for Server-wide concurrency groups, not model quota buckets.", "args": []},
+  "ai.concurrency.new": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Create a named AI concurrency group.", "args": []},
+  "ai.concurrency.edit": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Edit the name and capacity of an AI concurrency group.", "args": []},
+  "ai.concurrency.group": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Select the one concurrency group used by this connection.", "args": []},
+  "ai.concurrency.limit": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Maximum simultaneous admitted AI operations across all executors in this group.", "args": []},
+  "ai.concurrency.unlimited": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Explicit absence of a concurrency limit.", "args": []},
+  "ai.concurrency.in_use": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "The default group is permanent. A group referenced by connections cannot be deleted.", "args": []},
+  "ai.concurrency.description": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Explain shared Server-wide capacity and the explicit default group. Preserve identifiers Server, Workers, and default.", "args": []},
+  "ai.concurrency.limit_value": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Concurrency capacity shown on a group card; limit is a positive integer.", "args": ["limit"]},
+  "ai.concurrency.duplicate": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "A group with this stable ID already exists; creating a new group must not overwrite it.", "args": []}
 }

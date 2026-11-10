@@ -66,6 +66,7 @@ import kotlin.jvm.optionals.getOrNull
 @Service
 internal class OpenAiSdkRuntimeBackend(
     private val clientFactory: OpenAiSdkClientFactory,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : AiRuntimeBackend {
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.OPENAI_API || connectionKind == AiConnection.Kind.OPENAI_COMPATIBLE
@@ -83,7 +84,7 @@ internal class OpenAiSdkRuntimeBackend(
     ): AiRuntime {
         val connection = runtime.connection
         val modelConfiguration = runtime.modelConfiguration
-        val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds) { end ->
+        val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission) { end ->
             clientFactory.createInferenceClient(connection, end)
         }
         return when (connection) {

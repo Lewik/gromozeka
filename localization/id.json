@@ -2036,8 +2036,17 @@
     "ai.http.headers": "Header tambahan (JSON)",
     "ai.http.headers_hint": "Hanya nilai string yang bukan rahasia. Authorization berasal dari sumber token; User-Agent dapat ditimpa.",
     "ai.http.headers_invalid": "Header harus berupa objek JSON dengan nilai string.",
-    "ai.http.concurrency": "Panggilan bersamaan per koneksi",
     "ai.http.max_attempts": "Jumlah maksimum percobaan HTTP",
-    "ai.http.execution_hint": "Hanya penolakan HTTP 429 yang diterima lengkap yang dicoba ulang. Satu batas waktu mencakup antrean, jeda percobaan ulang, dan HTTP."
+    "ai.http.execution_hint": "Hanya penolakan HTTP 429 yang diterima lengkap yang dicoba ulang. Satu batas waktu mencakup antrean, jeda percobaan ulang, dan HTTP.",
+    "ai.catalog.section.concurrency": "Grup paralelisme AI",
+    "ai.concurrency.new": "Grup paralelisme AI baru",
+    "ai.concurrency.edit": "Edit grup paralelisme AI",
+    "ai.concurrency.group": "Grup paralelisme AI",
+    "ai.concurrency.limit": "Maksimum operasi AI bersamaan",
+    "ai.concurrency.unlimited": "Tanpa batas",
+    "ai.concurrency.in_use": "Grup default atau grup yang dirujuk oleh koneksi tidak dapat dihapus.",
+    "ai.concurrency.description": "Koneksi dalam grup yang sama berbagi batas paralelisme di Server dan Workers. Koneksi baru menggunakan default.",
+    "ai.concurrency.limit_value": "Batas paralelisme: {limit}",
+    "ai.concurrency.duplicate": "Grup paralelisme AI dengan ID ini sudah ada."
   }
 }

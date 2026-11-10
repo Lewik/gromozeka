@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.copilot
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
@@ -21,7 +23,7 @@ class GitHubCopilotContextQueryTest {
         val pool = GitHubCopilotClientPool(untouchedSettings)
         try {
             val runtime = GitHubCopilotRuntime(connection,
-                AiModelConfiguration(AiModelConfiguration.Id("model"), connection.id, "model", "Model"), pool, null)
+                AiModelConfiguration(AiModelConfiguration.Id("model"), connection.id, "model", "Model"), pool, null, admission = TestAiAdmission())
             val error = assertFailsWith<UnsupportedOperationException> {
                 runtime.call(AiRuntimeRequest(emptyList(), emptyList(), options = AiRuntimeOptions(
                     usagePurpose = AI_CONTEXT_QUERY_PURPOSE, toolChoice = AiToolChoice.None)))

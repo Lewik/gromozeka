@@ -278,9 +278,10 @@ class ParallelToolExecutor(
                 .withValue(TOOL_CONTEXT_TOOL_NAME, toolName)
                 .withValue("toolCallId", toolCall.id.value)
                 .withCancellationSignal(
-                    ToolCancellationSignal {
-                        if (parentJob?.isActive == false) {
-                            throw CancellationException("Tool execution cancelled: $toolName")
+                    object : ToolCancellationSignal {
+                        override val job = parentJob
+                        override fun throwIfCancellationRequested() {
+                            if (parentJob?.isActive == false) throw CancellationException("Tool execution cancelled: $toolName")
                         }
                     }
                 )

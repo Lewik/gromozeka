@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.copilot
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
@@ -54,7 +56,7 @@ class GitHubCopilotRuntimeRealTest {
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         )
         val clientPool = GitHubCopilotClientPool(TestSettingsProvider(home))
-        val runtime = GitHubCopilotRuntime(connection, model, clientPool, MissingCredentialRepository)
+        val runtime = GitHubCopilotRuntime(connection, model, clientPool, MissingCredentialRepository, admission = TestAiAdmission())
 
         try {
             val directResponse = runtime.call(

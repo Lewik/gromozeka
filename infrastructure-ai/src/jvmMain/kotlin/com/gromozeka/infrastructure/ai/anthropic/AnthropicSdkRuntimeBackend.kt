@@ -83,6 +83,7 @@ import java.util.Base64
 @Service
 internal class AnthropicSdkRuntimeBackend(
     private val settingsProvider: SettingsProvider,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : AiRuntimeBackend {
 
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
@@ -98,7 +99,7 @@ internal class AnthropicSdkRuntimeBackend(
         val messageMapper = AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec))
         val execute: suspend (AiRuntimeRequest) -> AiRuntimeResponse = when (connectionKind) {
             AiConnection.Kind.ANTHROPIC_API -> {
-                val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds) { end ->
+                val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission) { end ->
                     createDirectAnthropicClient(connection, end)
                 }
                 val call: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { request ->
@@ -113,11 +114,13 @@ internal class AnthropicSdkRuntimeBackend(
             }
             AiConnection.Kind.ANTHROPIC_BEDROCK -> { request ->
                 val params = messageMapper.toCreateParams(modelConfiguration.providerModelId, request)
-                withContext(Dispatchers.IO) {
-                    try {
-                        val client = createBedrockAnthropicClient(connection)
-                        AutoCloseable { client.close() }.use { messageMapper.toRuntimeResponse(client.messages().create(params), request.options.assistantResponseFormat) }
-                    } catch (error: AnthropicException) { throw error.safeHttpFailure() }
+                admission.execute(connection, request.options.usagePurpose ?: "INFERENCE", request.options.executionDeadline) {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val client = createBedrockAnthropicClient(connection)
+                            AutoCloseable { client.close() }.use { messageMapper.toRuntimeResponse(client.messages().create(params), request.options.assistantResponseFormat) }
+                        } catch (error: AnthropicException) { throw error.safeHttpFailure() }
+                    }
                 }
             }
             else -> error("Anthropic SDK runtime does not support connection kind $connectionKind")

@@ -2110,8 +2110,17 @@
     "ai.http.headers": "En-têtes supplémentaires (JSON)",
     "ai.http.headers_hint": "Uniquement des chaînes non secrètes. Authorization provient de la source du jeton ; User-Agent peut être remplacé.",
     "ai.http.headers_invalid": "Les en-têtes doivent être un objet JSON avec des valeurs de type chaîne.",
-    "ai.http.concurrency": "Appels simultanés par connexion",
     "ai.http.max_attempts": "Nombre maximal de tentatives HTTP",
-    "ai.http.execution_hint": "Seuls les refus HTTP 429 reçus intégralement sont retentés. Un délai unique couvre la file, les attentes et HTTP."
+    "ai.http.execution_hint": "Seuls les refus HTTP 429 reçus intégralement sont retentés. Un délai unique couvre la file, les attentes et HTTP.",
+    "ai.catalog.section.concurrency": "Groupes de parallélisme IA",
+    "ai.concurrency.new": "Nouveau groupe de parallélisme IA",
+    "ai.concurrency.edit": "Modifier le groupe de parallélisme IA",
+    "ai.concurrency.group": "Groupe de parallélisme IA",
+    "ai.concurrency.limit": "Nombre maximal d’opérations IA simultanées",
+    "ai.concurrency.unlimited": "Illimité",
+    "ai.concurrency.in_use": "Le groupe default et les groupes utilisés par des connexions ne peuvent pas être supprimés.",
+    "ai.concurrency.description": "Les connexions d’un même groupe partagent une limite de parallélisme entre Server et Workers. Les nouvelles connexions utilisent default.",
+    "ai.concurrency.limit_value": "Limite de parallélisme : {limit}",
+    "ai.concurrency.duplicate": "Un groupe de parallélisme IA avec cet ID existe déjà."
   }
 }

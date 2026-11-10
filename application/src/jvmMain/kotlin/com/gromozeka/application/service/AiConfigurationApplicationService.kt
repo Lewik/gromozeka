@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiConcurrencyGroup
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -82,6 +83,25 @@ class AiConfigurationApplicationService(
         if (repository.findRevision() != current.revision) {
             reload()
         }
+    }
+
+    override suspend fun upsertConcurrencyGroup(
+        group: AiConcurrencyGroup,
+        expectedRevision: Long,
+    ): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        catalog.copy(concurrencyGroups = catalog.concurrencyGroups.upsertBy(group, AiConcurrencyGroup::id))
+    }
+
+    override suspend fun deleteConcurrencyGroup(
+        groupId: AiConcurrencyGroup.Id,
+        expectedRevision: Long,
+    ): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        require(groupId != AiConcurrencyGroup.DEFAULT_ID) { "The default AI concurrency group cannot be deleted" }
+        require(catalog.concurrencyGroups.any { it.id == groupId }) { "AI concurrency group not found: ${groupId.value}" }
+        require(catalog.connections.none { it.concurrencyGroupId == groupId }) {
+            "AI concurrency group is referenced by a connection: ${groupId.value}"
+        }
+        catalog.copy(concurrencyGroups = catalog.concurrencyGroups.filterNot { it.id == groupId })
     }
 
     override suspend fun upsertConnection(

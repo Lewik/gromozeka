@@ -51,6 +51,7 @@ class OpenAiSubscriptionCompaction(
         log.info("OpenAI subscription compaction started: conversationKey=$conversationKey, " +
             "model=${modelProfile.slug}, estimatedTokens=$estimatedTokens, threshold=$threshold")
         val parsed = client.create(
+            connectionId = connectionId,
             session = session,
             conversationKey = conversationKey,
             requestBody = requestBody.copy(

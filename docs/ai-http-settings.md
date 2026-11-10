@@ -13,6 +13,7 @@ Example for Anthropic Messages through a gateway:
   "id": "gateway-messages",
   "displayName": "Gateway Messages",
   "enabled": true,
+  "concurrencyGroupId": "default",
   "baseUrl": "https://gateway.example.com/api/llm",
   "apiKey": { "secretType": "file", "path": "/etc/gromozeka/gateway-token" },
   "httpSettings": {
@@ -20,7 +21,6 @@ Example for Anthropic Messages through a gateway:
     "caBundlePath": "/etc/gromozeka/company-ca.pem",
     "proxyUrl": "http://proxy.example.com:8080",
     "noProxy": ["localhost", ".internal.example"],
-    "maxConcurrentCalls": 4,
     "maxAttempts": 3,
     "extraHeaders": {
       "User-Agent": "Gromozeka",
@@ -235,30 +235,33 @@ resolved while saving, serializing or displaying the catalog. They are resolved
 on the chosen Server or exact Worker during execution. The UI displays only
 source metadata such as the environment variable name or file path.
 
-Worker Gateway protocol 20 adds connection-scoped model listing on the exact Worker.
+Worker Gateway protocol 22 adds Server-owned AI admission callbacks and durable
+Worker leases. Protocol 20 added connection-scoped model listing on the exact Worker.
 Protocol 19 introduced HTTP execution settings, logical deadlines and typed AI
 failures; protocol 18 introduced HTTP settings and the file secret kind. Upgrade Server, Worker **and UI clients** together. Older clients cannot
 preserve the new fields or decode the new secret kind; mixed-version editing is
 not supported.
 
-This applies to the three finite inference APIs, not embeddings/audio, subscription
-backends, Bedrock execution, or a new streaming contract. Explicit model discovery is described below. Health endpoints and
+The HTTP connection-settings contract applies to the three finite inference APIs,
+not subscription backends or Bedrock. Shared admission additionally covers
+embeddings/audio and native adapters; it does not make their transports identical. Explicit model discovery is described below. Health endpoints and
 target-installation acceptance remain separate. Memory orchestration has not
 been changed; its legacy retry wrapper is outside this execution contract and
 must not be assumed to honor typed terminal failures if it is enabled later.
 
 ## Execution budget, concurrency and cancellation
 
-- `maxConcurrentCalls`: 1–64, default 4. All model configurations and runtime
-  instances on the same connection/executor share a process-local gate. Different
-  connections/executors are independent, even if they use the same gateway URL.
-  This is not a distributed account quota or tokens-per-minute limiter.
-- The permit covers client/credential setup, every HTTP attempt and retry delay.
-  Cancellation or deadline expiry while queued starts no HTTP and releases no
-  other call's permit. The gate is not replaced on a catalog edit: in-flight
-  calls retain their snapshot, new calls use the newly resolved limit and see
-  existing active calls. Lowering a limit does not cancel existing work; old
-  runtime snapshots do not acquire new configuration automatically.
+- Concurrency is controlled by [AI concurrency groups](ai-admission.md), not
+  `httpSettings`. Each connection names one `concurrencyGroupId`; all connections
+  initially share `default` (limit 4), across Server and Workers. A group limit
+  is 1–64 or explicit `null` for unlimited. There is no tokens-per-minute limiter.
+- Each HTTP attempt acquires admission separately. Client/credential setup for
+  the first attempt and full response consumption are inside admission; retry
+  backoff is outside it. The per-call client and credential snapshot remain the
+  same across attempts. Cancellation or expiry while queued starts no HTTP and
+  releases no other call's permit. A changed group limit affects waiting/new
+  attempts without cancelling active calls; moving a connection does not retag
+  already active leases.
 - `defaultParameters.timeoutSeconds` on the model configuration now controls
   this logical call: 1–86400 seconds, default 600. Parameter preparation, queueing,
   credential/CA loading, backoff and HTTP consume the same deadline. A shorter
@@ -338,8 +341,8 @@ background synchronization are not added by this feature. Use manual configurati
 when that endpoint is unavailable.
 
 The request uses the selected token source/authentication mode, extra headers,
-CA trust and proxy policy from the connection. It shares the connection's concurrency
-gate and has one 30-second overall deadline, including Worker delivery and queueing.
+CA trust and proxy policy from the connection. It uses the connection's Server-owned concurrency
+group and has one 30-second overall deadline, including Worker delivery and queueing.
 It sends one GET attempt: no application retries, including 429, and no redirects.
 An additional native exchange guard prevents OkHttp's automatic bodyless-GET
 follow-up for a 503 with `Retry-After: 0`; inference's one-shot POST-body protection

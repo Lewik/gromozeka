@@ -12,8 +12,18 @@ data class AiCatalog(
     val runtimeAssignments: List<AiRuntimeAssignment>,
     val defaultAgentId: AgentDefinition.Id,
     val webTools: AiWebToolConfiguration = AiWebToolConfiguration(),
+    val concurrencyGroups: List<AiConcurrencyGroup> = listOf(AiConcurrencyGroup.DEFAULT),
 ) {
     init {
+        require(concurrencyGroups.map { it.id }.distinct().size == concurrencyGroups.size) {
+            "AI concurrency group ids must be unique"
+        }
+        require(concurrencyGroups.any { it.id == AiConcurrencyGroup.DEFAULT_ID }) {
+            "The default AI concurrency group is required"
+        }
+        require(connections.all { connection -> concurrencyGroups.any { it.id == connection.concurrencyGroupId } }) {
+            "Every AI connection must reference an existing concurrency group"
+        }
         require(connections.map { it.id }.distinct().size == connections.size) {
             "AI connection ids must be unique"
         }

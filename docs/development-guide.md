@@ -61,6 +61,9 @@ CBOR byte strings rather than numeric arrays, removing their per-byte expansion.
 The same codec is used for transport and persisted Server envelopes; there is no
 old-format reader. Server and all Workers require a [coordinated update](worker-request-delivery.md#protocol-21-cutover).
 Queue-wide memory/backpressure and cache-backed payload fetching remain separate work.
+Protocol 22 additionally requires Server admission for AI operations on every
+executor. See [AI concurrency groups](ai-admission.md) for the coordination,
+recovery and upgrade contract. It retains protocol 21 byte-string encoding.
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
 secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy

@@ -268,7 +268,7 @@ class OpenAiSubscriptionCompactionTest {
         val mapper = OpenAiSubscriptionRequestMapper()
         val responseMapper = OpenAiSubscriptionResponseMapper()
         val client = OpenAiSubscriptionResponsesClient(responseMapper, mapper, "http://127.0.0.1:${server.address.port}",
-            "test", 1000, 5000, 1000, 5000)
+            "test", 1000, 5000, 1000, 5000, admission = TestAiAdmission())
         val compaction = OpenAiSubscriptionCompaction(client, mapper, responseMapper)
 
         suspend fun compact(request: AiRuntimeRequest, mapped: OpenAiSubscriptionResponsesRequest,

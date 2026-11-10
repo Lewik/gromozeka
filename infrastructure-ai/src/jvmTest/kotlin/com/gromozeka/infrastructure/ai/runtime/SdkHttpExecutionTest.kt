@@ -63,6 +63,31 @@ class SdkHttpExecutionTest {
     }
 
     @Test
+    fun `admission failure after a rejected attempt is not retried as the previous 429`() = runBlocking {
+        for (api in Api.entries) {
+            val attempts = AtomicInteger()
+            val completions = AtomicInteger()
+            val admission = object : AiCallAdmission() {
+                override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease {
+                    check(attempts.incrementAndGet() == 1) { "Synthetic admission failure" }
+                    return AiAdmissionLease(operation, AiConcurrencyGroup.DEFAULT_ID, Clock.System.now())
+                }
+                override suspend fun finish(lease: AiAdmissionLease, outcome: AiAdmissionOutcome) {
+                    completions.incrementAndGet()
+                }
+            }
+            SdkHttpTestServer(listOf(rate(), SdkHttpTestServer.Reply(api.reply()))).use { server ->
+                assertFailsWith<AiAdmissionException> {
+                    runtime(api.connection(server.origin), admission = admission).call(request())
+                }
+                assertEquals(2, attempts.get())
+                assertEquals(1, completions.get())
+                assertEquals(1, server.requests.size)
+            }
+        }
+    }
+
+    @Test
     fun `Retry-After seconds dates overflow and bounded jitter have deterministic lower bounds`() {
         val now = java.time.Instant.parse("2026-11-07T00:00:00Z")
         assertEquals(2000, parseRetryAfter("2", now))
@@ -174,10 +199,11 @@ class SdkHttpExecutionTest {
     }
 
     @Test
-    fun `all models and runtime instances share connection concurrency and release permits`() = runBlocking {
+    fun `all models and runtime instances use shared admission and release permits`() = runBlocking {
         ConcurrentServer(Api.CHAT.reply()).use { server ->
-            val connection = Api.CHAT.connection(server.origin, settings = settings().copy(maxConcurrentCalls = 2))
-            val jobs = List(4) { index -> async(Dispatchers.Default) { runtime(connection, modelId = "configuration-$index").call(request()) } }
+            val admission = TestAiAdmission(2)
+            val connection = Api.CHAT.connection(server.origin)
+            val jobs = List(4) { index -> async(Dispatchers.Default) { runtime(connection, modelId = "configuration-$index", admission = admission).call(request()) } }
             server.twoArrivals.awaitCancellable()
             delay(100)
             assertEquals(2, server.requests.get())
@@ -189,17 +215,18 @@ class SdkHttpExecutionTest {
     }
 
     @Test
-    fun `cancelled and expired queue waits do not launch or strand permits and other connections remain independent`() = runBlocking {
+    fun `cancelled and expired admission waits do not launch or strand permits`() = runBlocking {
         StalledServer(false).use { stalled ->
             val id = UUID.randomUUID().toString()
-            val connection = Api.CHAT.connection(stalled.origin, id, settings().copy(maxConcurrentCalls = 1))
-            val running = launch(Dispatchers.Default) { runtime(connection).call(request()) }
+            val admission = TestAiAdmission(1)
+            val connection = Api.CHAT.connection(stalled.origin, id)
+            val running = launch(Dispatchers.Default) { runtime(connection, admission = admission).call(request()) }
             stalled.started.awaitCancellable()
             try {
-                val error = assertFailsWith<AiCallException> { runtime(connection).call(request(150)) }
+                val error = assertFailsWith<AiCallException> { runtime(connection, admission = admission).call(request(150)) }
                 assertEquals(AiCallFailure.Outcome.NOT_STARTED, error.failure.outcome)
                 assertEquals(0, error.failure.attempts)
-                val queued = launch(Dispatchers.Default) { runtime(connection).call(request()) }
+                val queued = launch(Dispatchers.Default) { runtime(connection, admission = admission).call(request()) }
                 delay(100); queued.cancelAndJoin()
                 SdkHttpTestServer(Api.CHAT.reply()).use { independent ->
                     withTimeout(3000) { runtime(Api.CHAT.connection(independent.origin)).call(request()) }
@@ -208,25 +235,26 @@ class SdkHttpExecutionTest {
                 assertEquals(1, stalled.requests.get())
             } finally { running.cancelAndJoin() }
             SdkHttpTestServer(Api.CHAT.reply()).use { next ->
-                withTimeout(3000) { runtime(Api.CHAT.connection(next.origin, id, settings().copy(maxConcurrentCalls = 1))).call(request()) }
+                withTimeout(3000) { runtime(Api.CHAT.connection(next.origin, id), admission = admission).call(request()) }
                 assertEquals(1, next.requests.size)
             }
         }
     }
 
     @Test
-    fun `cancellation during retry wait releases the shared permit and never starts a late retry`() = runBlocking {
+    fun `retry wait releases admission before cancellation and never starts a late retry`() = runBlocking {
         SdkHttpTestServer(listOf(rate("2"), SdkHttpTestServer.Reply(Api.CHAT.reply()))).use { server ->
-            val connection = Api.CHAT.connection(server.origin, settings = settings().copy(maxConcurrentCalls = 1))
-            val first = launch(Dispatchers.Default) { runtime(connection).call(request()) }
+            val admission = TestAiAdmission(1)
+            val connection = Api.CHAT.connection(server.origin)
+            val first = launch(Dispatchers.Default) { runtime(connection, admission = admission).call(request()) }
             try {
                 withTimeout(3000) { while (server.requests.isEmpty()) delay(10) }
-                val second = async(Dispatchers.Default) { runtime(connection, modelId = "another-model").call(request()) }
+                val second = async(Dispatchers.Default) { runtime(connection, modelId = "another-model", admission = admission).call(request()) }
                 try {
-                    delay(150)
-                    assertEquals(1, server.requests.size, "Backoff still owns the connection permit")
-                    withTimeout(1000) { first.cancelAndJoin() }
                     assertEquals(AiStepOutcome.COMPLETE, withTimeout(3000) { second.await() }.outcome)
+                    assertTrue(first.isActive, "The first call must still be in its retry wait")
+                    assertEquals(2, server.requests.size)
+                    withTimeout(1000) { first.cancelAndJoin() }
                     delay(2200)
                     assertEquals(2, server.requests.size)
                 } finally { second.cancelAndJoin() }
@@ -239,7 +267,7 @@ class SdkHttpExecutionTest {
         SdkHttpTestServer(Api.CHAT.reply()).use { server ->
             val connection = Api.CHAT.connection(server.origin)
             val factory = OpenAiSdkClientFactory(Sources())
-            val executor = SdkHttpCallExecutor(connection, 5) { factory.createInferenceClient(connection, it) }
+            val executor = SdkHttpCallExecutor(connection, 5, admission = TestAiAdmission()) { factory.createInferenceClient(connection, it) }
             val preparing = CountDownLatch(1)
             val release = CountDownLatch(1)
             val params = com.gromozeka.infrastructure.ai.openai.OpenAiSdkMessageMapper(connection.kind, connection.id.value, MODEL)
@@ -286,9 +314,9 @@ class SdkHttpExecutionTest {
         Conversation.Message(Conversation.Message.Id("one"), Conversation.Id("synthetic"), role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage("Hello")), createdAt = Instant.fromEpochMilliseconds(0))),
         options = AiRuntimeOptions(maxOutputTokens = 128, executionDeadline = deadlineMillis?.let { Clock.System.now() + it.milliseconds }))
-    private fun runtime(connection: AiConnection, sources: Sources = Sources(), timeoutSeconds: Int? = null, modelId: String = "synthetic"): AiRuntime {
-        val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(sources)
-            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(sources))
+    private fun runtime(connection: AiConnection, sources: Sources = Sources(), timeoutSeconds: Int? = null, modelId: String = "synthetic", admission: AiCallAdmission = TestAiAdmission()): AiRuntime {
+        val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(sources, admission = admission)
+            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(sources), admission = admission)
         val model = AiModelConfiguration(AiModelConfiguration.Id(modelId), connection.id, MODEL, "Synthetic",
             defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = timeoutSeconds))
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),

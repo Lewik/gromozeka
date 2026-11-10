@@ -37,7 +37,7 @@ class AiConfigurationApplicationServiceTest {
         val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
             authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
             caBundlePath = "/worker-only/ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
-            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"), maxConcurrentCalls = 7, maxAttempts = 4)
+            extraHeaders = mapOf("User-Agent" to "Catalog-fixture"), maxAttempts = 4)
         val configured = original.copy(baseUrl = "https://gateway.example/api/llm", httpSettings = settings,
             apiKey = null, executionTarget = com.gromozeka.domain.model.ai.AiExecutionTarget.Worker("exact-worker"))
         val source = SecretRef.File("/worker-only/token")
@@ -218,6 +218,29 @@ class AiConfigurationApplicationServiceTest {
             ).apiKey
         )
         assertEquals(braveKey, removed.catalog.webTools.braveSearch.apiKey)
+    }
+
+    @Test
+    fun `concurrency groups use catalog revisions and cannot be deleted while referenced`() = runBlocking {
+        val repository = TestAiCatalogRepository(seed.aiCatalog, revision = 0)
+        val service = service(repository)
+        service.initialize()
+        val group = com.gromozeka.domain.model.ai.AiConcurrencyGroup(
+            com.gromozeka.domain.model.ai.AiConcurrencyGroup.Id("shared"), "Shared", 7)
+        val created = service.upsertConcurrencyGroup(group, 0)
+        assertEquals(group, created.catalog.concurrencyGroups.single { it.id == group.id })
+        val connection = assertIs<AiConnection.OpenAiApi>(created.catalog.connections.single { it.id.value == "openai-api" })
+        service.upsertConnection(connection.copy(concurrencyGroupId = group.id), 1)
+        assertFailsWith<IllegalArgumentException> { service.deleteConcurrencyGroup(group.id, 2) }
+        assertFailsWith<IllegalArgumentException> { service.upsertConcurrencyGroup(group.copy(maxConcurrentCalls = 2), 1) }
+        val changed = service.upsertConcurrencyGroup(group.copy(maxConcurrentCalls = null), 2)
+        assertNull(changed.catalog.concurrencyGroups.single { it.id == group.id }.maxConcurrentCalls)
+        assertEquals(changed, service.reload())
+        service.upsertConnection(connection, 3)
+        val deleted = service.deleteConcurrencyGroup(group.id, 4)
+        assertEquals(5, deleted.revision)
+        assertFailsWith<IllegalArgumentException> { service.deleteConcurrencyGroup(com.gromozeka.domain.model.ai.AiConcurrencyGroup.DEFAULT_ID, 5) }
+        assertEquals(5, service.snapshot.revision)
     }
 
     private fun service(

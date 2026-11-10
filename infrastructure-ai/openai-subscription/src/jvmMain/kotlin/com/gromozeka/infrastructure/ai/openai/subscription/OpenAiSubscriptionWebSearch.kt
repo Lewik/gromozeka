@@ -49,7 +49,7 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
             "Web search is disabled by the current connection or tool access policy."
         } else {
             try {
-                client.search(session, conversationKey, buildJsonObject {
+                client.search(connectionId, session, conversationKey, buildJsonObject {
                     put("id", conversationKey)
                     put("model", modelName)
                     put("commands", Json.parseOpenAiSubscriptionToolArguments(pending.getValue("arguments").jsonPrimitive.content))

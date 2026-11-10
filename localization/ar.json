@@ -2221,8 +2221,17 @@
     "ai.http.headers": "ترويسات إضافية (JSON)",
     "ai.http.headers_hint": "قيم نصية غير سرية فقط. تُنشأ Authorization من مصدر الرمز؛ ويمكن تجاوز User-Agent.",
     "ai.http.headers_invalid": "يجب أن تكون الترويسات كائن JSON بقيم نصية.",
-    "ai.http.concurrency": "المكالمات المتزامنة لكل اتصال",
     "ai.http.max_attempts": "الحد الأقصى لمحاولات HTTP",
-    "ai.http.execution_hint": "تُعاد المحاولة فقط عند استلام رفض HTTP 429 بالكامل. تشمل مهلة واحدة الانتظار في الصف وفترات الانتظار بين المحاولات وHTTP."
+    "ai.http.execution_hint": "تُعاد المحاولة فقط عند استلام رفض HTTP 429 بالكامل. تشمل مهلة واحدة الانتظار في الصف وفترات الانتظار بين المحاولات وHTTP.",
+    "ai.catalog.section.concurrency": "مجموعات توازي الذكاء الاصطناعي",
+    "ai.concurrency.new": "مجموعة توازي ذكاء اصطناعي جديدة",
+    "ai.concurrency.edit": "تعديل مجموعة توازي الذكاء الاصطناعي",
+    "ai.concurrency.group": "مجموعة توازي الذكاء الاصطناعي",
+    "ai.concurrency.limit": "الحد الأقصى لعمليات الذكاء الاصطناعي المتزامنة",
+    "ai.concurrency.unlimited": "بلا حد",
+    "ai.concurrency.in_use": "لا يمكن حذف مجموعة default أو مجموعة تشير إليها اتصالات.",
+    "ai.concurrency.description": "تتشارك اتصالات المجموعة نفسها حد التوازي عبر Server وWorkers. تستخدم الاتصالات الجديدة default.",
+    "ai.concurrency.limit_value": "حد التوازي: {limit}",
+    "ai.concurrency.duplicate": "توجد بالفعل مجموعة توازي ذكاء اصطناعي بهذا المعرّف."
   }
 }

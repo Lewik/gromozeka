@@ -2036,8 +2036,17 @@
     "ai.http.headers": "附加标头（JSON）",
     "ai.http.headers_hint": "仅限非机密字符串值。Authorization 来自令牌来源；可覆盖 User-Agent。",
     "ai.http.headers_invalid": "标头必须是值为字符串的 JSON 对象。",
-    "ai.http.concurrency": "每个连接的并发调用数",
     "ai.http.max_attempts": "HTTP 最大尝试次数",
-    "ai.http.execution_hint": "仅重试完整收到的 HTTP 429 拒绝响应。统一超时包含排队、重试等待和 HTTP 请求。"
+    "ai.http.execution_hint": "仅重试完整收到的 HTTP 429 拒绝响应。统一超时包含排队、重试等待和 HTTP 请求。",
+    "ai.catalog.section.concurrency": "AI 并发组",
+    "ai.concurrency.new": "新建 AI 并发组",
+    "ai.concurrency.edit": "编辑 AI 并发组",
+    "ai.concurrency.group": "AI 并发组",
+    "ai.concurrency.limit": "最大并发 AI 操作数",
+    "ai.concurrency.unlimited": "不限",
+    "ai.concurrency.in_use": "无法删除 default 组或被连接引用的组。",
+    "ai.concurrency.description": "同组连接在 Server 和 Workers 之间共享并发限制。新连接使用 default。",
+    "ai.concurrency.limit_value": "并发限制：{limit}",
+    "ai.concurrency.duplicate": "已存在使用此 ID 的 AI 并发组。"
   }
 }

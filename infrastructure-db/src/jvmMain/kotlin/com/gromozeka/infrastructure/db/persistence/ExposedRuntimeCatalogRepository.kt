@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.RuntimeCatalogSeed
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiConcurrencyGroup
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -13,6 +14,7 @@ import com.gromozeka.domain.repository.AiCatalogRepository
 import com.gromozeka.domain.repository.RuntimeCatalogBootstrapRepository
 import com.gromozeka.infrastructure.db.persistence.tables.Agents
 import com.gromozeka.infrastructure.db.persistence.tables.AiConnections
+import com.gromozeka.infrastructure.db.persistence.tables.AiConcurrencyGroups
 import com.gromozeka.infrastructure.db.persistence.tables.AiModelConfigurations
 import com.gromozeka.infrastructure.db.persistence.tables.AiModelSpecs
 import com.gromozeka.infrastructure.db.persistence.tables.AiRuntimeAssignments
@@ -127,6 +129,16 @@ class ExposedRuntimeCatalogRepository(
 
         var changed = false
 
+        val existingGroupIds = AiConcurrencyGroups.selectAll().mapTo(mutableSetOf()) { it[AiConcurrencyGroups.id] }
+        seed.aiCatalog.concurrencyGroups.filter { it.id.value !in existingGroupIds }.forEach { group ->
+            AiConcurrencyGroups.insert {
+                it[id] = group.id.value
+                it[displayName] = group.displayName
+                it[maxConcurrentCalls] = group.maxConcurrentCalls
+            }
+            changed = true
+        }
+
         val existingConnectionIds = AiConnections.selectAll()
             .mapTo(mutableSetOf()) { it[AiConnections.id] }
         seed.aiCatalog.connections
@@ -193,6 +205,10 @@ class ExposedRuntimeCatalogRepository(
             ?: return null
 
         val catalog = AiCatalog(
+            concurrencyGroups = AiConcurrencyGroups.selectAll().map { row ->
+                AiConcurrencyGroup(AiConcurrencyGroup.Id(row[AiConcurrencyGroups.id]),
+                    row[AiConcurrencyGroups.displayName], row[AiConcurrencyGroups.maxConcurrentCalls])
+            }.sortedBy { it.displayName.lowercase() },
             connections = AiConnections.selectAll()
                 .map { json.decodeFromString<AiConnection>(it[AiConnections.payloadJson]) }
                 .sortedBy { it.displayName.lowercase() },
@@ -217,6 +233,25 @@ class ExposedRuntimeCatalogRepository(
     }
 
     private fun replaceAiCatalogRows(catalog: AiCatalog) {
+        val existingGroupIds = AiConcurrencyGroups.selectAll().mapTo(mutableSetOf()) { it[AiConcurrencyGroups.id] }
+        val desiredGroupIds = catalog.concurrencyGroups.mapTo(mutableSetOf()) { it.id.value }
+        catalog.concurrencyGroups.forEach { group ->
+            if (group.id.value in existingGroupIds) {
+                AiConcurrencyGroups.update({ AiConcurrencyGroups.id eq group.id.value }) {
+                    it[displayName] = group.displayName
+                    it[maxConcurrentCalls] = group.maxConcurrentCalls
+                }
+            } else {
+                AiConcurrencyGroups.insert {
+                    it[id] = group.id.value
+                    it[displayName] = group.displayName
+                    it[maxConcurrentCalls] = group.maxConcurrentCalls
+                }
+            }
+        }
+        (existingGroupIds - desiredGroupIds).forEach { groupId ->
+            AiConcurrencyGroups.deleteWhere { AiConcurrencyGroups.id eq groupId }
+        }
         AiRuntimeAssignments.deleteAll()
         AiModelConfigurations.deleteAll()
         AiModelSpecs.deleteAll()

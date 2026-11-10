@@ -19,6 +19,8 @@ object WorkerAudioCaptureGatewayCodec {
     fun encodeRequest(request: WorkerAudioCaptureRequest): ByteArray =
         cbor.encodeToByteArray(request)
 
+    fun decodeRequest(payload: ByteArray): WorkerAudioCaptureRequest = cbor.decodeFromByteArray(payload)
+
     fun decodeResult(payload: ByteArray): WorkerAudioCaptureResult =
         cbor.decodeFromByteArray(payload)
 

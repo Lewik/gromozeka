@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SpeechAudioFormat
@@ -69,6 +71,7 @@ class SpeechExecutionRoutingTest {
                 clientFactory,
                 LocalWhisperTranscriptionService(settings),
                 ClaudeCodeVoiceTranscriptionService(),
+                admission = TestAiAdmission(),
             ),
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
@@ -79,7 +82,7 @@ class SpeechExecutionRoutingTest {
             audioController = NoOpAudioController,
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
-            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory),
+            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory, admission = TestAiAdmission()),
         )
 
         assertEquals(
@@ -124,6 +127,7 @@ class SpeechExecutionRoutingTest {
                 clientFactory,
                 LocalWhisperTranscriptionService(settings),
                 ClaudeCodeVoiceTranscriptionService(),
+                admission = TestAiAdmission(),
             ),
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
@@ -134,7 +138,7 @@ class SpeechExecutionRoutingTest {
             audioController = NoOpAudioController,
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
-            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory),
+            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory, admission = TestAiAdmission()),
         )
 
         val sttError = assertFailsWith<IllegalArgumentException> {

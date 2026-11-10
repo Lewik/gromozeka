@@ -145,7 +145,7 @@ class OpenAiSubscriptionWebSearchTest {
         val session = OpenAiSubscriptionSession("test-token", "unused", null, "test-account", Long.MAX_VALUE)
         val webCall = Json.parseToJsonElement("""{"type":"function_call","namespace":"web","name":"run","call_id":"web-call","arguments":"{\"search_query\":[{\"q\":\"Example\"}]}"}""").jsonObject
         fun client(baseUrl: String) = OpenAiSubscriptionResponsesClient(OpenAiSubscriptionResponseMapper(), OpenAiSubscriptionRequestMapper(),
-            baseUrl, "1.4.9", 30000, 120000, 30000, 120000)
+            baseUrl, "1.4.9", 30000, 120000, 30000, 120000, admission = TestAiAdmission())
         fun mapResponse(items: List<JsonObject>, mapper: OpenAiSubscriptionResponseMapper = OpenAiSubscriptionResponseMapper(), status: String = "completed") =
             mapper.toRuntimeResponse(items, OpenAiSubscriptionCompletedResponse("response", status), "conversation", connectionId,
                 "web-test-model", model, AiModelConfiguration.AssistantResponseFormat.TEXT)

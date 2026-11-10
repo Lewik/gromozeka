@@ -2110,8 +2110,17 @@
     "ai.http.headers": "Cabeçalhos adicionais (JSON)",
     "ai.http.headers_hint": "Somente strings não secretas. Authorization vem da origem do token; User-Agent pode ser substituído.",
     "ai.http.headers_invalid": "Os cabeçalhos devem ser um objeto JSON com valores de string.",
-    "ai.http.concurrency": "Chamadas simultâneas por conexão",
     "ai.http.max_attempts": "Máximo de tentativas HTTP",
-    "ai.http.execution_hint": "Somente rejeições HTTP 429 recebidas por completo permitem nova tentativa. Um único limite de tempo inclui a fila, as esperas e HTTP."
+    "ai.http.execution_hint": "Somente rejeições HTTP 429 recebidas por completo permitem nova tentativa. Um único limite de tempo inclui a fila, as esperas e HTTP.",
+    "ai.catalog.section.concurrency": "Grupos de paralelismo de IA",
+    "ai.concurrency.new": "Novo grupo de paralelismo de IA",
+    "ai.concurrency.edit": "Editar grupo de paralelismo de IA",
+    "ai.concurrency.group": "Grupo de paralelismo de IA",
+    "ai.concurrency.limit": "Máximo de operações de IA simultâneas",
+    "ai.concurrency.unlimited": "Sem limite",
+    "ai.concurrency.in_use": "Não é possível excluir o grupo default nem um grupo usado por conexões.",
+    "ai.concurrency.description": "Conexões do mesmo grupo compartilham um limite de paralelismo entre Server e Workers. Novas conexões usam default.",
+    "ai.concurrency.limit_value": "Limite de paralelismo: {limit}",
+    "ai.concurrency.duplicate": "Já existe um grupo de paralelismo de IA com este ID."
   }
 }

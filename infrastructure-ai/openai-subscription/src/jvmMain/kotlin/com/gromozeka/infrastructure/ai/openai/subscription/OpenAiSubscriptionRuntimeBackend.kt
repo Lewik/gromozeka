@@ -108,6 +108,7 @@ private class Runtime(
                 request, requestBody, modelProfile, session, conversationKey, connectionId, modelConfigurationId,
             )?.let { return@withContext it }
             val parsed = responsesClient.create(
+                connectionId = connectionId,
                 session = session,
                 conversationKey = conversationKey,
                 requestBody = requestBody,

@@ -21,6 +21,10 @@ import java.io.File
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
+import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -145,53 +149,59 @@ class TtsService(
 @Service
 class OpenAiSpeechSynthesisExecutor(
     private val clientFactory: OpenAiSdkClientFactory,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : DirectAiTextToSpeechProvider {
+    private fun executor(runtime: ResolvedAiRuntime) = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor(
+        runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission,
+    ) { end -> clientFactory.createInferenceClient(runtime.connection, end) }
+
     override suspend fun synthesize(
         runtime: ResolvedAiRuntime,
         request: AiSpeechSynthesisRequest,
-    ): AiSpeechSynthesisResponse =
-        withContext(Dispatchers.IO) {
-            val response = clientFactory.createClient(runtime.connection).audio().speech().create(
-                speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
-                    .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
-                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
-                    .build()
-            )
+    ): AiSpeechSynthesisResponse = executor(runtime).call(
+        com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "TEXT_TO_SPEECH"),
+    ) { client, remaining ->
+        client.async().audio().speech().create(
+            speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
+                .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
+                .streamFormat(SpeechCreateParams.StreamFormat.AUDIO).build(),
+            com.openai.core.RequestOptions.builder().timeout(remaining).build(),
+        ).thenApply { response ->
             val audioData = response.use { httpResponse ->
                 httpResponse.body().use { input ->
-                    ByteArrayOutputStream().use { output ->
-                        input.copyTo(output)
-                        output.toByteArray()
-                    }
+                    ByteArrayOutputStream().use { output -> input.copyTo(output); output.toByteArray() }
                 }
             }
-            AiSpeechSynthesisResponse(
-                audioData = audioData,
-                mediaType = "audio/wav",
-                fileExtension = "wav",
-            )
+            AiSpeechSynthesisResponse(audioData, "audio/wav", "wav")
         }
+    }
 
-    fun streamPcm(
-        runtime: ResolvedAiRuntime,
-        request: AiSpeechSynthesisRequest,
-    ): Flow<TtsAudioChunk> = flow {
-        val response = withContext(Dispatchers.IO) {
-            clientFactory.createClient(runtime.connection).audio().speech().create(
+    fun streamPcm(runtime: ResolvedAiRuntime, request: AiSpeechSynthesisRequest): Flow<TtsAudioChunk> = channelFlow {
+        executor(runtime).call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "TEXT_TO_SPEECH")) { client, remaining ->
+            client.async().audio().speech().create(
                 speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
                     .responseFormat(SpeechCreateParams.ResponseFormat.PCM)
-                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
-                    .build()
-            )
-        }
-        response.use { httpResponse ->
-            httpResponse.body().use { input ->
-                val buffer = ByteArray(16 * 1024)
-                while (true) {
-                    val read = withContext(Dispatchers.IO) { input.read(buffer) }
-                    if (read < 0) break
-                    if (read > 0) emit(TtsAudioChunk(buffer.copyOf(read)))
+                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO).build(),
+                com.openai.core.RequestOptions.builder().timeout(remaining).build(),
+            ).thenCompose { response ->
+                val finished = CompletableFuture<Unit>()
+                // The HTTP attempt remains active until its body is consumed or closed.
+                launch(start = CoroutineStart.UNDISPATCHED) {
+                    try {
+                        response.use { httpResponse ->
+                            httpResponse.body().use { input ->
+                                val buffer = ByteArray(16 * 1024)
+                                while (true) {
+                                    val read = withContext(Dispatchers.IO) { input.read(buffer) }
+                                    if (read < 0) break
+                                    if (read > 0) send(TtsAudioChunk(buffer.copyOf(read)))
+                                }
+                            }
+                        }
+                        finished.complete(Unit)
+                    } catch (error: Throwable) { finished.completeExceptionally(error) }
                 }
+                finished
             }
         }
     }

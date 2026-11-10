@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiConcurrencyGroup
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -57,6 +58,7 @@ internal class AiSettingsToolContributor(
                     Read current entities before changing references. Create Prompts and Skills before Agents that reference them.
                     Prompt and Skill imports accept exact inline content. Read client-local files with the caller's filesystem tools before invoking Control MCP; the Server does not guess which Worker's filesystem owns an arbitrary path.
                     AI catalog mutations require the latest expectedRevision. Read grz_ai_catalog_get again after a revision conflict.
+                    AI concurrency groups are Server-wide across execution targets. Each connection uses one concurrencyGroupId (default: default). Create or update groups with grz_ai_concurrency_group_upsert; null maxConcurrentCalls means unlimited. The default group cannot be deleted.
                     Web tool configuration is part of the central AI catalog and is shared by all Workers.
                     External MCP servers are assigned to one exact Worker. Create, update, refresh, and delete are explicit operations against its current live Worker session and are never retried automatically after execution starts.
                     External MCP environment and HTTP header values are never returned. Read configuredTransportValues for their names; update sends only add/replace values plus explicit removal lists.
@@ -85,8 +87,31 @@ internal class AiSettingsToolContributor(
             )
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
+            name = "grz_ai_concurrency_group_upsert",
+            description = "Create or replace a Server-wide AI concurrency group. Fields: id, displayName, maxConcurrentCalls (1-64, default 4; null means unlimited). Connections select one group by concurrencyGroupId; multiple connections and Workers share its capacity. Existing operations are not cancelled when lowering a limit.",
+            inputSchema = aiEntityMutationSchema("group", "Serialized AiConcurrencyGroup object."),
+            readOnly = false,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
+        ) { input ->
+            val group = input.decodeRequired("group", AiConcurrencyGroup.serializer())
+            val snapshot = aiCatalogManagementService.upsertConcurrencyGroup(group, input.requiredLong("expectedRevision"))
+            aiMutationResult(snapshot, "group", AiConcurrencyGroup.serializer(), snapshot.catalog.concurrencyGroups.single { it.id == group.id })
+        },
+        toolFactory.create(CONTROL_TOOL_SOURCE,
+            name = "grz_ai_concurrency_group_delete",
+            description = "Delete an unused AI concurrency group. The default group and groups referenced by connections or active admissions cannot be deleted.",
+            inputSchema = aiDeleteSchema("groupId", "AI concurrency group id."),
+            readOnly = false,
+            destructive = true,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
+        ) { input ->
+            val id = AiConcurrencyGroup.Id(input.requiredString("groupId"))
+            aiDeleteResult(aiCatalogManagementService.deleteConcurrencyGroup(id, input.requiredLong("expectedRevision")),
+                "ai_concurrency_group", id.value)
+        },
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_connection_upsert",
-            description = "Create or replace one AI connection using the latest AI catalog revision. Missing API keys preserve the existing secret by default. SDK connections support httpSettings for Bearer/native auth, additional CA, proxy/noProxy, non-secret static headers, maxConcurrentCalls (1-64, default 4) and maxAttempts (1-5, default 3 including the first attempt; only complete HTTP 429 rejections may retry). Token env/file sources and CA paths belong to the selected execution target; Authorization must not be supplied in extraHeaders.",
+            description = "Create or replace one AI connection using the latest AI catalog revision. concurrencyGroupId selects one Server-wide AI concurrency group and defaults to default. Missing API keys preserve the existing secret by default. SDK connections support httpSettings for Bearer/native auth, additional CA, proxy/noProxy, non-secret static headers and maxAttempts (1-5, default 3 including the first attempt; only complete HTTP 429 rejections may retry). Token env/file sources and CA paths belong to the selected execution target; Authorization must not be supplied in extraHeaders.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "connection",
                 description = "Serialized AiConnection object with connectionKind discriminator.",

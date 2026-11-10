@@ -165,6 +165,7 @@ sealed interface WorkerGatewayMessage {
 enum class WorkerGatewayOperation {
     WORKER_CONTROL,
     AI_REQUEST_RESPONSE,
+    AI_ADMISSION,
     AUDIO_CAPTURE,
     WORKSPACE_TEXT_FILE,
     TOOL_EXECUTION,
@@ -177,7 +178,7 @@ enum class WorkerGatewayOperation {
     ARTIFACT_CONTENT,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 21
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 22
 const val MAX_WORKER_GATEWAY_MESSAGE_BYTES = 128 * 1024 * 1024
 
 @OptIn(ExperimentalSerializationApi::class)

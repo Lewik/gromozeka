@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message
@@ -127,7 +129,7 @@ class TrueFoundryChatCompletionsTest {
             defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = 10))
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)))
-        return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources))))
+        return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
             .getRuntime(ResolvedAiRuntime(connection, configuration, spec), null)
     }
 

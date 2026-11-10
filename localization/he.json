@@ -2110,8 +2110,17 @@
     "ai.http.headers": "כותרות נוספות (JSON)",
     "ai.http.headers_hint": "ערכי מחרוזת שאינם סודיים בלבד. Authorization נוצר ממקור האסימון; ניתן להחליף את User-Agent.",
     "ai.http.headers_invalid": "הכותרות חייבות להיות אובייקט JSON עם ערכי מחרוזת.",
-    "ai.http.concurrency": "קריאות מקבילות לכל חיבור",
     "ai.http.max_attempts": "מספר ניסיונות HTTP מרבי",
-    "ai.http.execution_hint": "רק דחיות HTTP 429 שהתקבלו במלואן מאפשרות ניסיון חוזר. מגבלת זמן אחת כוללת המתנה בתור, השהיות ו-HTTP."
+    "ai.http.execution_hint": "רק דחיות HTTP 429 שהתקבלו במלואן מאפשרות ניסיון חוזר. מגבלת זמן אחת כוללת המתנה בתור, השהיות ו-HTTP.",
+    "ai.catalog.section.concurrency": "קבוצות מקביליות AI",
+    "ai.concurrency.new": "קבוצת מקביליות AI חדשה",
+    "ai.concurrency.edit": "עריכת קבוצת מקביליות AI",
+    "ai.concurrency.group": "קבוצת מקביליות AI",
+    "ai.concurrency.limit": "מספר מרבי של פעולות AI במקביל",
+    "ai.concurrency.unlimited": "ללא הגבלה",
+    "ai.concurrency.in_use": "לא ניתן למחוק את קבוצת default או קבוצה שחיבורים מפנים אליה.",
+    "ai.concurrency.description": "חיבורים באותה קבוצה חולקים מגבלת מקביליות ב-Server וב-Workers. חיבורים חדשים משתמשים ב-default.",
+    "ai.concurrency.limit_value": "מגבלת מקביליות: {limit}",
+    "ai.concurrency.duplicate": "כבר קיימת קבוצת מקביליות AI עם מזהה זה."
   }
 }
