@@ -171,6 +171,72 @@ class OpenAiThinkingReplayTest {
         }
     }
 
+    @Test
+    fun `OpenAI encrypted reasoning preserves raw blocks and only displays the readable summary`() {
+        val response = mapResponse(encryptedMessage)
+        val replay = outgoingAssistant(mapper, store(response))
+        assertEquals(encryptedMessage.getValue("thinking_blocks"), replay.getValue("thinking_blocks"))
+        assertEquals(encryptedMessage.getValue("reasoning_content"), replay.getValue("reasoning_content"))
+        assertEquals(encryptedMessage.getValue("tool_calls"), replay.getValue("tool_calls"))
+        val thinking = response.messages.single().content.filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+        assertEquals(listOf("Check the data.", "", ""), thinking.map { it.thinking })
+        assertEquals(listOf(null, "synthetic-encrypted-state-1", "synthetic-encrypted-state-2"), thinking.map { it.signature })
+        assertTrue(thinking.none { it.thinking.contains("synthetic-encrypted") })
+    }
+
+    @Test
+    fun `encrypted reasoning without summary answer or tools remains replayable`() {
+        val input = JsonObject(mapOf("role" to JsonPrimitive("assistant"),
+            "thinking_blocks" to encryptedMessage.getValue("thinking_blocks")))
+        val response = mapResponse(input, "length")
+        assertEquals(AiStepOutcome.INCOMPLETE, response.outcome)
+        val thinking = response.messages.single().content.map { it as Conversation.Message.ContentItem.Thinking }
+        assertEquals(listOf("", ""), thinking.map { it.thinking })
+        assertEquals(input.getValue("thinking_blocks"), outgoingAssistant(mapper, store(response)).getValue("thinking_blocks"))
+    }
+
+    @Test
+    fun `encrypted reasoning is not replayed across connection model provider or branch boundaries`() {
+        val stored = store(mapResponse(encryptedMessage))
+        val cases = listOf(
+            outgoingAssistant(OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_COMPATIBLE, "other", MODEL), stored),
+            outgoingAssistant(OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_COMPATIBLE, CONNECTION, "other"), stored, targetModel = "other"),
+            outgoingAssistant(OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_API, CONNECTION, MODEL), stored),
+            outgoingAssistant(mapper, stored, thread = "fork"),
+        )
+        for (replay in cases) {
+            assertFalse("thinking_blocks" in replay)
+            assertFalse("reasoning_content" in replay)
+            assertFalse(replay.toString().contains("synthetic-encrypted"))
+            assertEquals("I will use the tool.", replay.getValue("content").jsonPrimitive.content)
+            assertEquals("call-1", replay.getValue("tool_calls").jsonArray.single().jsonObject.getValue("id").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun `invalid encrypted reasoning fails explicitly without revealing its payload`() {
+        val valid = encryptedMessage.getValue("thinking_blocks").jsonArray.first().jsonObject
+        val invalid = listOf(
+            JsonObject(valid - "id"), JsonObject(valid - "encrypted_content"),
+            JsonObject(valid + ("type" to JsonPrimitive("unknown"))),
+        ) + listOf("id", "encrypted_content").flatMap { field ->
+            listOf(JsonNull, JsonPrimitive(42), JsonPrimitive(""), JsonPrimitive("  ")).map { value ->
+                JsonObject(valid + (field to value))
+            }
+        }
+        for (block in invalid) {
+            val error = assertFailsWith<IllegalArgumentException> {
+                mapResponse(JsonObject(encryptedMessage + ("thinking_blocks" to JsonArray(listOf(block)))))
+            }
+            assertFalse(error.stackTraceToString().contains("synthetic-encrypted"))
+        }
+    }
+
+    private val encryptedMessage: JsonObject get() = JsonObject(message + ("thinking_blocks" to Json.parseToJsonElement("""[
+        {"type":"reasoning","id":"rs-synthetic-1","encrypted_content":"synthetic-encrypted-state-1","vendor_extension":{"opaque":["unchanged",1]}},
+        {"type":"reasoning","id":"rs-synthetic-2","encrypted_content":"synthetic-encrypted-state-2"}
+    ]""")))
+
     private fun mapResponse(value: JsonObject = message, finishReason: String = "tool_calls"): AiRuntimeResponse =
         mapper.toRuntimeResponse(
             com.openai.core.jsonMapper().readValue(completion(value, finishReason), ChatCompletion::class.java),

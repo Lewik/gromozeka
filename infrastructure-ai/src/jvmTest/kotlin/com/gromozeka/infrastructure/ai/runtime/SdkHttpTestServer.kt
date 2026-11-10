@@ -10,7 +10,11 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 
-internal class SdkHttpTestServer(responseBodies: List<Reply>, sslContext: SSLContext? = null) : AutoCloseable {
+internal class SdkHttpTestServer(
+    responseBodies: List<Reply>,
+    sslContext: SSLContext? = null,
+    private val expectedTarget: String? = null,
+) : AutoCloseable {
     constructor(vararg responseBodies: String) : this(responseBodies.map { Reply(it) })
 
     data class Reply(val body: String, val status: Int = 200, val headers: Map<String, String> = emptyMap())
@@ -39,7 +43,9 @@ internal class SdkHttpTestServer(responseBodies: List<Reply>, sslContext: SSLCon
                     },
                     body = exchange.requestBody.use { it.readBytes().toString(Charsets.UTF_8) },
                 )
-                val reply = checkNotNull(responses.poll()) { "Unexpected extra HTTP request in test" }
+                val reply = if (expectedTarget != null && exchange.requestURI.toASCIIString() != expectedTarget) {
+                    Reply("""{"error":{"message":"Endpoint is disabled","type":"not_found_error"}}""", status = 404)
+                } else checkNotNull(responses.poll()) { "Unexpected extra HTTP request in test" }
                 val bytes = reply.body.toByteArray(Charsets.UTF_8)
                 exchange.responseHeaders.set("Content-Type", "application/json")
                 reply.headers.forEach { (name, value) -> exchange.responseHeaders.set(name, value) }

@@ -186,6 +186,9 @@ jobs:
           --tests '*OpenAiResponsesSdkRuntimeTest'
           --tests '*OpenAiResponsesCompactionTest'
           --tests '*SdkHttpContractTest'
+          --tests '*SdkHttpExecutionTest'
+          --tests '*OpenAiThinkingReplayTest'
+          --tests '*TrueFoundryChatCompletionsTest'
           --tests '*DangerousAiTrafficDumpTest'
           :infrastructure-ai:openai-subscription:jvmTest
           --tests '*OpenAiSubscriptionIncrementalReplayTest'

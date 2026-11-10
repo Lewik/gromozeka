@@ -278,6 +278,12 @@ internal class OpenAiSdkMessageMapper(
                     signature = requireNotNull(block.thinkingString("data")) { "Redacted thinking block must contain data" },
                     kind = Conversation.Message.ContentItem.Thinking.Kind.REDACTED,
                 )
+                "reasoning" -> {
+                    require(!block.thinkingString("id").isNullOrBlank()) { "OpenAI-compatible reasoning block must contain a nonblank id" }
+                    val encrypted = block.thinkingString("encrypted_content")
+                    require(!encrypted.isNullOrBlank()) { "OpenAI-compatible reasoning block must contain nonblank encrypted_content" }
+                    Conversation.Message.ContentItem.Thinking(thinking = "", signature = encrypted)
+                }
                 else -> throw IllegalArgumentException("Unsupported OpenAI-compatible thinking block type")
             }
         }

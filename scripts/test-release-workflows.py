@@ -66,6 +66,11 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn("--tests '*DangerousAiTrafficDumpTest'", verification["run"])
         self.assertNotIn("GROMOZEKA_DANGEROUS_AI_TRAFFIC_DUMP", verification["env"])
 
+    def test_chat_gateway_reasoning_and_execution_regressions_gate_publication(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*OpenAiThinkingReplayTest", "*TrueFoundryChatCompletionsTest", "*SdkHttpExecutionTest"):
+            self.assertIn(check, verification)
+
     def test_safe_dispatch_defaults(self):
         inputs = RELEASE["on"]["workflow_dispatch"]["inputs"]
         for name, default in (("publish_release", "false"), ("deploy_aws", "false"), ("skip_android", "false"), ("skip_ios", "true")):

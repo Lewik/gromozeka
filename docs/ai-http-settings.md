@@ -37,6 +37,55 @@ or duplicate `/v1` in the configured prefix. Credentials, query strings and
 fragments are not accepted in the base URL. Use HTTPS for non-local gateways.
 There is no error-driven URL, protocol or model fallback.
 
+## Chat Completions through TrueFoundry
+
+When the gateway only exposes `POST /chat/completions`, use an
+`OPENAI_COMPATIBLE` connection (`connectionKind: "openai_compatible"`), not
+`OPENAI_API`. The existing connection kind selects the adapter; changing only
+the base URL does not change the protocol. Keep the exact gateway inference
+prefix, credential source, executor, CA/proxy settings and required headers.
+Do not append `/chat/completions` to the base URL: the SDK adds that path.
+
+Register the exact gateway model ID with a `CUSTOM` model spec and bind its
+configuration to the Chat connection. Declare only the capabilities and limits
+known to work on that route. For OpenAI-style reasoning, use the existing
+`REASONING_EFFORT` encoding and leave reasoning `display` unset: Chat has no
+Responses summary-control parameter. Choose `MAX_COMPLETION_TOKENS`, `MAX_TOKENS`
+or `OMIT` explicitly for the route. Claude thinking through Chat retains its
+separate `ANTHROPIC_THINKING` encoding; neither is guessed from a model name.
+
+Chat replies can contain `reasoning_content` for display and `thinking_blocks`
+for continuation. In addition to `thinking`/`redacted_thinking` blocks, the
+adapter accepts OpenAI encrypted blocks with `type: "reasoning"`, a nonblank
+`id` and nonblank `encrypted_content`. The raw assistant message preserves
+these blocks, their order and additional nested fields through persistence and
+subsequent tool turns. Ciphertext is never rendered as reasoning text. An
+encrypted-only message is retained even without a readable summary. Missing or
+malformed replay fields fail explicitly instead of silently losing state.
+Native replay remains scoped to the same connection, model, provider and thread.
+
+There is no automatic fallback to `/responses`, and Gromozeka does not inject
+`x-tfy-openai-use-responses-api`. However, the gateway itself can serve OpenAI
+Chat reasoning through an upstream Responses call. Its routing and virtual-model
+backend affinity are separate from the client protocol; verify them on the target
+installation rather than assuming an external Chat endpoint removes every
+upstream Responses dependency.
+
+Responses encrypted compaction checkpoints are not Chat summaries. For a route
+change, prefer an explicit readable handoff and a fresh conversation instead of
+transplanting opaque history. Chat does not advertise Responses auto-compaction;
+starting fresh also does not add automatic compaction for future long conversations.
+This change does not add a separate summarization service or change stored history.
+
+`TrueFoundryChatCompletionsTest` exercises the production runtime and real SDK
+against a local Chat-only fixture (other paths return 404), including a complete
+429 rejection, encrypted reasoning/tool replay, JSON Schema, usage and safe
+malformed-response failures. `OpenAiThinkingReplayTest` covers JSON persistence,
+reasoning-only replies and replay scope boundaries. These are synthetic gateway
+contracts, not acceptance tests against an AMAT installation.
+
+Reference: [TrueFoundry Chat reasoning and multi-turn replay](https://www.truefoundry.com/docs/ai-gateway/chat-completions-advanced#reasoning-on-openai-azure-openai-and-microsoft-foundry).
+
 ## Responses auto-compaction
 
 The OpenAI Responses connection (`OPENAI_API`), including a gateway base URL,
