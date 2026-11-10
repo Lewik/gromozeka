@@ -24,8 +24,8 @@ internal class ConversationPinToolFixture {
     private val suffix = UUID.randomUUID().toString()
     val actor = User(User.Id("pin-user-$suffix"), displayName = "Synthetic pin user", status = User.Status.ACTIVE, createdAt = now, updatedAt = now)
     val project = Project(Project.Id("pin-project-$suffix"), "Synthetic pin test", createdAt = now, lastUsedAt = now)
-    val a = AgentEndpoint(Conversation.Id("pin-A-$suffix"), Conversation.Thread.Id("pin-A-thread-$suffix"), AgentDefinition.Id("pin-A-agent-$suffix"))
-    val b = AgentEndpoint(Conversation.Id("pin-B-$suffix"), Conversation.Thread.Id("pin-B-thread-$suffix"), AgentDefinition.Id("pin-B-agent-$suffix"))
+    val a = AgentContextRef(Conversation.Id("pin-A-$suffix"), Conversation.Thread.Id("pin-A-thread-$suffix"), AgentDefinition.Id("pin-A-agent-$suffix"))
+    val b = AgentContextRef(Conversation.Id("pin-B-$suffix"), Conversation.Thread.Id("pin-B-thread-$suffix"), AgentDefinition.Id("pin-B-agent-$suffix"))
     val otherAgent = AgentDefinition.Id("pin-other-$suffix")
     var activeUser: User? = actor
     var writeAllowed = true
@@ -49,7 +49,7 @@ internal class ConversationPinToolFixture {
     private lateinit var beforeA: ConversationRuntimeSnapshot
     private lateinit var beforeB: ConversationRuntimeSnapshot
 
-    private fun conversation(endpoint: AgentEndpoint) = Conversation(endpoint.conversationId, project.id,
+    private fun conversation(endpoint: AgentContextRef) = Conversation(endpoint.conversationId, project.id,
         setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)),
         currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
     fun definition(id: AgentDefinition.Id) = AgentDefinition(id, name = "Synthetic agent", prompts = emptyList(),

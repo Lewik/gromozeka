@@ -14,8 +14,8 @@ import kotlin.time.Instant
 class PostgresAgentCollaborationRepositoryTest {
     private val json = Json { encodeDefaults = true }
     private val now = Instant.fromEpochMilliseconds(1)
-    private val a = AgentEndpoint(Conversation.Id("a"), Conversation.Thread.Id("a-thread"), AgentDefinition.Id("agent"))
-    private val b = AgentEndpoint(Conversation.Id("b"), Conversation.Thread.Id("b-thread"), AgentDefinition.Id("agent"))
+    private val a = AgentContextRef(Conversation.Id("a"), Conversation.Thread.Id("a-thread"), AgentDefinition.Id("agent"))
+    private val b = AgentContextRef(Conversation.Id("b"), Conversation.Thread.Id("b-thread"), AgentDefinition.Id("agent"))
     private val r = AgentRequest("r", a, b, User.Id("user"), "synthetic task", now)
     private val delivery = AgentDelivery("r:input", "r", a, b, r.actorUserId, AgentDelivery.Kind.REQUEST, r.text, now)
     private val done = r.copy(revision = 1, state = AgentRequest.State.COMPLETED, result = "synthetic result")
@@ -38,6 +38,27 @@ class PostgresAgentCollaborationRepositoryTest {
         resumed.settleDelivery(delivery.copy(state = AgentDelivery.State.QUEUED))
         assertTrue(resumed.pendingDeliveries().isEmpty())
         assertFailsWith<IllegalArgumentException> { resumed.create(r.copy(text = "different request"), delivery) }
+    }
+    @Test fun `create retry across history versions preserves original provenance and does not duplicate delivery`() = database { source, repo ->
+        repo.create(r, delivery)
+        val newA = a.copy(threadId = Conversation.Thread.Id("a-v2"))
+        val newB = b.copy(threadId = Conversation.Thread.Id("b-v2"))
+        repo.create(r.copy(source = newA, target = newB), delivery.copy(source = newA, target = newB))
+        val resumed = PostgresAgentCollaborationRepository(source, json)
+        assertEquals(r, resumed.findRequest(r.id))
+        assertEquals(listOf(delivery), resumed.pendingDeliveries())
+        assertFailsWith<IllegalArgumentException> {
+            resumed.create(r.copy(target = newB.copy(agentId = AgentDefinition.Id("another-agent"))), delivery)
+        }
+        assertEquals(r, resumed.findRequest(r.id))
+    }
+    @Test fun `an informational id cannot be reused as a request after a history change`() = database { _, repo ->
+        val information = delivery.copy(requestId = null, kind = AgentDelivery.Kind.MESSAGE)
+        repo.create(null, information)
+        val next = b.copy(threadId = Conversation.Thread.Id("b-v2"))
+        assertFailsWith<IllegalArgumentException> { repo.create(r.copy(target = next), delivery.copy(target = next)) }
+        assertNull(repo.findRequest(r.id))
+        assertEquals(listOf(information), repo.pendingDeliveries())
     }
     @Test fun `pending outbox cursor handles timestamp ties and rows removed between pages`() = database { _, repo ->
         val timestamp = Instant.parse("2026-09-29T19:00:00.123456789Z")

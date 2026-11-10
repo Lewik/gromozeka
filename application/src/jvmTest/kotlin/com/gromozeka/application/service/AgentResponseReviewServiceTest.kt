@@ -15,8 +15,8 @@ import kotlin.time.Instant
 
 class AgentResponseReviewServiceTest {
     private val now = Instant.fromEpochMilliseconds(1)
-    private val a = AgentEndpoint(Conversation.Id("a"), Conversation.Thread.Id("a-thread"), AgentDefinition.Id("a-agent"))
-    private val b = AgentEndpoint(Conversation.Id("b"), Conversation.Thread.Id("b-thread"), AgentDefinition.Id("b-agent"))
+    private val a = AgentContextRef(Conversation.Id("a"), Conversation.Thread.Id("a-thread"), AgentDefinition.Id("a-agent"))
+    private val b = AgentContextRef(Conversation.Id("b"), Conversation.Thread.Id("b-thread"), AgentDefinition.Id("b-agent"))
     private val user = User.Id("user")
     private val incoming = AgentRequest("req-1", a, b, user, "Check this", now)
     private val text = ContentItem.AssistantMessage(Conversation.Message.StructuredText("Actual model answer", ttsText = "Wrong recipient", attentionRequested = true))
@@ -41,6 +41,29 @@ class AgentResponseReviewServiceTest {
             requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE, ConversationRuntimeCapability.MEMORY_PIPELINE), ConversationRuntimeTaskTarget.Server), createdAt = now)
         assertNull(reviewer.prepare(task, payload, conversation, emptyList(), listOf(message)))
         Mockito.verifyNoInteractions(collaboration, repository, coordinator, sync)
+    }
+
+    @Test fun `review carries old obligations into a new context without retagging their provenance`() = runBlocking {
+        val collaboration = mock<AgentCollaborationService>()
+        val repository = mock<AgentCollaborationRepository>()
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val reviewer = AgentResponseReviewService(collaboration, repository, coordinator, emptyConversationPinnedPrompt(), mock())
+        val next = b.copy(threadId = Conversation.Thread.Id("b-v2"))
+        val outgoing = incoming.copy(id = "outgoing", source = b, target = a)
+        Mockito.`when`(collaboration.context(next.address, user)).thenReturn(listOf(incoming, outgoing))
+        val conversation = Conversation(b.conversationId, Project.Id("project"), setOf(Conversation.Participant.User(user), Conversation.Participant.Agent(b.agentId)),
+            currentThread = next.threadId, createdAt = now, updatedAt = now)
+        val payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("root"), b.agentId, 1)
+        val task = ConversationRuntimeTask(ConversationRuntimeTask.Id("call"), conversation.id, actorUserId = user,
+            turnId = ConversationRuntimeTurnId("turn"), parentTaskId = ConversationRuntimeTask.Id("root"),
+            payload = payload, placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "call",
+            requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE, ConversationRuntimeCapability.MEMORY_PIPELINE), ConversationRuntimeTaskTarget.Server), createdAt = now)
+        val prepared = assertNotNull(reviewer.prepare(task, payload, conversation, emptyList(), listOf(message)))
+        assertEquals(next, prepared.endpoint)
+        assertEquals(listOf(incoming), prepared.incoming)
+        assertEquals(listOf(outgoing), prepared.outgoing)
+        assertEquals(listOf(outgoing.id), prepared.waitableIds)
+        Mockito.verify(repository).saveDraft(prepared)
     }
 
     @Test fun `finished peer result may suppress user output`() {

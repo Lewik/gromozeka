@@ -30,16 +30,16 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
         },
         tool("grz_agent_reply", "Complete an incoming request with its actual result or explicit inability/refusal. The runtime resolves the original requester; do not supply a destination. A normal user-facing response does not send this result. Completion is idempotent for the same result.", """{"request_id":{"type":"string"},"message":{"type":"string","minLength":1,"maxLength":32000}}""", listOf("request_id", "message")) { input, context ->
             val (source, actor) = collaboration.source(context)
-            collaboration.reply(source, actor, input.string("request_id"), input.string("message"))
+            collaboration.reply(source.address, actor, input.string("request_id"), input.string("message"))
             """{"status":"result_queued"}"""
         },
         tool("grz_agent_requests", "Inspect current session collaboration requests and results when explicitly needed. Results are pushed automatically; do not poll this tool to wait.", "{}", emptyList()) { _, context ->
             val (source, actor) = collaboration.source(context)
-            Json.encodeToString(collaboration.context(source, actor))
+            Json.encodeToString(collaboration.context(source.address, actor))
         },
         tool("grz_agent_request_cancel", "Cancel a collaboration request involving this session. Prevents a pending request from starting and prevents subsequent completion; does not undo effects or kill unrelated tools in the recipient session.", """{"request_id":{"type":"string"}}""", listOf("request_id")) { input, context ->
             val (source, actor) = collaboration.source(context)
-            collaboration.cancel(source, actor, input.string("request_id"))
+            collaboration.cancel(source.address, actor, input.string("request_id"))
             """{"status":"cancelled"}"""
         },
     )
@@ -129,7 +129,7 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
             Returns {sessions:[...],next_cursor:string|null}. Each row includes conversation/thread/agent IDs, titles, is_open_tab, last_message_at and compact stored Runtime facts. last_message_at is the createdAt of the last linked message by position in the current thread, regardless of author; null for an empty thread. Renames, heartbeats and Runtime state updates do not change it. No message bodies or previews are read or returned.
             Search titles with query and query_mode=contains (default) or regex (RE2 syntax); both are case-insensitive. Regex searches within a title; use ^/$ to anchor it. Unsupported syntax, including lookaround and backreferences, fails rather than falling back.
             last_message_at.gt and .lt are independent optional strict bounds; {} is no time filter. Filters apply before pagination. Rows are ordered by last_message_at descending (null last), then conversation_id and agent_id ascending. limit defaults to 50, maximum 200; use next_cursor with unchanged selectors/filters to continue. Concurrent history/tab/permission changes may change later pages; pagination is not a frozen snapshot.
-            agent_id requires conversation_id. details=true requires both IDs and adds up to 16 open request/wait references, never request text or results. Foreground state is conversation-wide; obligations are for the selected agent/current thread. IDLE means no scheduled foreground work, not a closed tab or no background work.
+            agent_id requires conversation_id. details=true requires both IDs and adds up to 16 open request/wait references, never request text or results. Foreground state is conversation-wide; obligations are for the selected agent in the conversation, across history versions. IDLE means no scheduled foreground work, not a closed tab or no background work.
             Runtime read_at is Server read time; stored facts may be stale and are not an atomic snapshot across sources. Null control_state/state_updated_at means no stored execution state. Read failures are tool errors, not fabricated empty state or IDLE. No command output, worker-health check or inferred stuck status. Use explicit inspection, not polling; peer results arrive automatically.
         """.trimIndent()
         const val TARGET_SCHEMA = """{"target_conversation_id":{"type":"string"},"target_agent_id":{"type":["string","null"]},"message":{"type":"string","minLength":1,"maxLength":32000}}"""

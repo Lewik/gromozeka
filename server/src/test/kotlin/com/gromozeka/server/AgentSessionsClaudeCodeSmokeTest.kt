@@ -130,8 +130,8 @@ class AgentSessionsClaudeCodeSmokeTest {
         private val suffix = UUID.randomUUID().toString()
         private val actor = User(User.Id("sessions-user-$suffix"), displayName = "Synthetic user", status = User.Status.ACTIVE, createdAt = now, updatedAt = now)
         private val project = Project(Project.Id("sessions-project-$suffix"), "Synthetic sessions", createdAt = now, lastUsedAt = now)
-        val a = AgentEndpoint(Conversation.Id("sessions-A-$suffix"), Conversation.Thread.Id("sessions-A-thread-$suffix"), AgentDefinition.Id("sessions-A-agent-$suffix"))
-        val b = AgentEndpoint(Conversation.Id("sessions-B-$suffix"), Conversation.Thread.Id("sessions-B-thread-$suffix"), AgentDefinition.Id("sessions-B-agent-$suffix"))
+        val a = AgentContextRef(Conversation.Id("sessions-A-$suffix"), Conversation.Thread.Id("sessions-A-thread-$suffix"), AgentDefinition.Id("sessions-A-agent-$suffix"))
+        val b = AgentContextRef(Conversation.Id("sessions-B-$suffix"), Conversation.Thread.Id("sessions-B-thread-$suffix"), AgentDefinition.Id("sessions-B-agent-$suffix"))
         val conversations = Mockito.mock(ConversationRepository::class.java)
         private val identities = Mockito.mock(IdentityRepository::class.java)
         private val access = Mockito.mock(ProjectAccessService::class.java)
@@ -157,10 +157,10 @@ class AgentSessionsClaudeCodeSmokeTest {
             private set
         val wait = AgentRequest("sessions-wait-$suffix", a, b, actor.id, "PRIVATE_REQUEST_SENTINEL", now,
             state = AgentRequest.State.WAITING_RESULT, waitFor = listOf("synthetic-command"))
-        private fun conversation(endpoint: AgentEndpoint) = Conversation(endpoint.conversationId, project.id,
+        private fun conversation(endpoint: AgentContextRef) = Conversation(endpoint.conversationId, project.id,
             setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)),
             currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
-        private fun definition(endpoint: AgentEndpoint) = AgentDefinition(endpoint.agentId, name = "Synthetic ${endpoint.agentId.value}", prompts = emptyList(),
+        private fun definition(endpoint: AgentContextRef) = AgentDefinition(endpoint.agentId, name = "Synthetic ${endpoint.agentId.value}", prompts = emptyList(),
             runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("different-runtime-${endpoint.agentId.value}")),
             type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
         suspend fun setup() {

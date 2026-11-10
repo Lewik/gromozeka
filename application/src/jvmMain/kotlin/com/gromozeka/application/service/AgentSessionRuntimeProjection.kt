@@ -11,7 +11,7 @@ internal object AgentSessionRuntimeProjection {
     const val DETAIL_LIMIT = 16
 
     fun project(
-        endpoint: AgentEndpoint,
+        endpoint: AgentAddress,
         actor: User.Id,
         scheduling: ConversationRuntimeSchedulingSnapshot,
         requests: List<AgentRequest>,
@@ -27,10 +27,10 @@ internal object AgentSessionRuntimeProjection {
             else -> "IDLE"
         }
         val open = requests.take(REQUEST_SCAN_LIMIT).filter {
-            it.actorUserId == actor && it.isOpen && (it.source == endpoint || it.target == endpoint)
+            it.actorUserId == actor && it.isOpen && (it.source.address == endpoint || it.target.address == endpoint)
         }
-        val incoming = open.filter { it.target == endpoint }
-        val outgoing = open.filter { it.source == endpoint }
+        val incoming = open.filter { it.target.address == endpoint }
+        val outgoing = open.filter { it.source.address == endpoint }
         return buildJsonObject {
             put("source", "stored_runtime")
             put("consistency", "best_effort")
@@ -46,7 +46,7 @@ internal object AgentSessionRuntimeProjection {
             put("active_insertion_count", scheduling.activeInsertions.size)
             put("last_event_sequence", scheduling.lastEventSequence)
             putJsonObject("agent_requests") {
-                put("scope", "selected_agent_current_thread")
+                put("scope", "selected_agent_conversation")
                 put("open_incoming", incoming.size)
                 put("open_outgoing", outgoing.size)
                 put("incoming_waiting_user", incoming.count { it.state == AgentRequest.State.WAITING_USER })
@@ -59,7 +59,7 @@ internal object AgentSessionRuntimeProjection {
                         open.take(DETAIL_LIMIT).forEach { request ->
                             add(buildJsonObject {
                                 put("request_id", request.id)
-                                put("direction", if (request.target == endpoint) "incoming" else "outgoing")
+                                put("direction", if (request.target.address == endpoint) "incoming" else "outgoing")
                                 put("state", request.state.name)
                                 put("updated_at", request.updatedAt.toString())
                                 putJsonArray("wait_for") { request.waitFor.take(DETAIL_LIMIT).forEach { add(JsonPrimitive(it)) } }

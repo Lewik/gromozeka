@@ -10,8 +10,8 @@ class AgentSessionRuntimeProjectionTest {
     private val old = Instant.fromEpochMilliseconds(1)
     private val readAt = Instant.parse("2026-10-11T20:00:00Z")
     private val actor = User.Id("user")
-    private val peer = AgentEndpoint(Conversation.Id("peer"), Conversation.Thread.Id("peer-thread"), AgentDefinition.Id("peer-agent"))
-    private val endpoint = AgentEndpoint(Conversation.Id("target"), Conversation.Thread.Id("target-thread"), AgentDefinition.Id("target-agent"))
+    private val peer = AgentContextRef(Conversation.Id("peer"), Conversation.Thread.Id("peer-thread"), AgentDefinition.Id("peer-agent"))
+    private val endpoint = AgentContextRef(Conversation.Id("target"), Conversation.Thread.Id("target-thread"), AgentDefinition.Id("target-agent"))
     private val empty = ConversationRuntimeSchedulingSnapshot(endpoint.conversationId)
     private val input = Conversation.Message(Conversation.Message.Id("input"), endpoint.conversationId,
         role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("PRIVATE_INPUT_SENTINEL")), createdAt = old)
@@ -22,7 +22,7 @@ class AgentSessionRuntimeProjectionTest {
         createdAt = old)
     private val incoming = AgentRequest("incoming", peer, endpoint, actor, "PRIVATE_REQUEST_SENTINEL", old)
     private fun view(s: ConversationRuntimeSchedulingSnapshot = empty, requests: List<AgentRequest> = emptyList(), details: Boolean = false) =
-        AgentSessionRuntimeProjection.project(endpoint, actor, s, requests, readAt, details)
+        AgentSessionRuntimeProjection.project(endpoint.address, actor, s, requests, readAt, details)
 
     @Test fun `empty scheduling has explicit missing control timestamps without inventing last activity`() {
         val v = view()
@@ -72,22 +72,24 @@ class AgentSessionRuntimeProjectionTest {
         assertEquals(0, gap.getValue("queued_task_count").jsonPrimitive.int)
     }
 
-    @Test fun `obligations are restricted to the authenticated actor selected agent and current thread`() {
+    @Test fun `obligations follow the authenticated actor and selected agent across history versions`() {
         val own = incoming.copy(state = AgentRequest.State.WAITING_RESULT, waitFor = listOf("known-command"))
         val rows = listOf(own, incoming.copy(id = "user-wait", state = AgentRequest.State.WAITING_USER),
-            incoming.copy(id = "outgoing", source = endpoint, target = peer),
+            incoming.copy(id = "outgoing", source = endpoint.copy(threadId = Conversation.Thread.Id("old-source")), target = peer),
             incoming.copy(id = "other-user", actorUserId = User.Id("other")),
             incoming.copy(id = "old-thread", target = endpoint.copy(threadId = Conversation.Thread.Id("old"))),
+            incoming.copy(id = "fork", target = endpoint.copy(conversationId = Conversation.Id("fork"))),
             incoming.copy(id = "other-agent", target = endpoint.copy(agentId = AgentDefinition.Id("other"))),
             incoming.copy(id = "completed", state = AgentRequest.State.COMPLETED, result = "PRIVATE_RESULT_SENTINEL"))
         val v = view(empty.copy(activeTask = task), rows, details = true)
         assertEquals("ACTIVE", v.getValue("foreground_state").jsonPrimitive.content)
         val requests = v.getValue("agent_requests").jsonObject
-        assertEquals(2, requests.getValue("open_incoming").jsonPrimitive.int)
+        assertEquals("selected_agent_conversation", requests.getValue("scope").jsonPrimitive.content)
+        assertEquals(3, requests.getValue("open_incoming").jsonPrimitive.int)
         assertEquals(1, requests.getValue("open_outgoing").jsonPrimitive.int)
         assertEquals(1, requests.getValue("incoming_waiting_user").jsonPrimitive.int)
         assertEquals(1, requests.getValue("incoming_waiting_result").jsonPrimitive.int)
-        assertEquals(setOf("incoming", "user-wait", "outgoing"), requests.getValue("requests").jsonArray.map { it.jsonObject.getValue("request_id").jsonPrimitive.content }.toSet())
+        assertEquals(setOf("incoming", "user-wait", "outgoing", "old-thread"), requests.getValue("requests").jsonArray.map { it.jsonObject.getValue("request_id").jsonPrimitive.content }.toSet())
         assertFalse(v.toString().contains("PRIVATE_"))
         assertFalse(v.toString().contains(peer.conversationId.value + "-thread"))
     }

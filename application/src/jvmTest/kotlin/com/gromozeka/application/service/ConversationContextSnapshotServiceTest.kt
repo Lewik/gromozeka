@@ -290,7 +290,7 @@ class ConversationContextSnapshotServiceTest {
         val conversation = Conversation(Conversation.Id("target"), project.id,
             setOf(Conversation.Participant.User(actor), Conversation.Participant.Agent(agent.id)),
             currentThread = Conversation.Thread.Id("pinned"), createdAt = now, updatedAt = now)
-        val target = AgentEndpoint(conversation.id, conversation.currentThread, agent.id)
+        val target = AgentContextRef(conversation.id, conversation.currentThread, agent.id)
         val user = Conversation.Message(Conversation.Message.Id("user"), conversation.id, role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage("history")), createdAt = now)
         val incompleteCall = user.copy(id = Conversation.Message.Id("pending"), role = Conversation.Message.Role.ASSISTANT,

@@ -65,11 +65,11 @@ class PostgresAgentCollaborationRepository(private val dataSource: DataSource, p
                 request.id, request.source.conversationId.value, request.target.conversationId.value, request.revision, request.state.name, json.encodeToString(request))
             val saved = c.rows("SELECT record_json::text FROM agent_requests WHERE id = ?", request.id).single()
             val old = json.decodeFromString<AgentRequest>(saved)
-            require(old.source == request.source && old.target == request.target && old.text == request.text && old.actorUserId == request.actorUserId) { "Idempotency key belongs to a different request" }
+            require(old.source.address == request.source.address && old.target.address == request.target.address && old.text == request.text && old.actorUserId == request.actorUserId) { "Idempotency key belongs to a different request" }
         }
         c.writeDeliveries(listOf(delivery))
         val old = json.decodeFromString<AgentDelivery>(c.rows("SELECT record_json::text FROM agent_deliveries WHERE id = ?", delivery.id).single())
-        require(old.source == delivery.source && old.target == delivery.target && old.text == delivery.text && old.actorUserId == delivery.actorUserId) { "Idempotency key belongs to a different delivery" }
+        require(old.source.address == delivery.source.address && old.target.address == delivery.target.address && old.text == delivery.text && old.actorUserId == delivery.actorUserId && old.kind == delivery.kind && old.requestId == delivery.requestId) { "Idempotency key belongs to a different delivery" }
     }
     override suspend fun pendingDeliveries(after: AgentCollaborationRepository.DeliveryCursor?): List<AgentDelivery> = transaction { c ->
         val select = "SELECT record_json::text FROM agent_deliveries WHERE state = 'PENDING'"

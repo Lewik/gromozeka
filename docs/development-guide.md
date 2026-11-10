@@ -748,7 +748,7 @@ visual pause, not the final confirmation or backend assertions. The fixture drop
 its own database schema and credentials; stop its separately managed Worker too.
 Never point this test at an existing account/schema or publish raw fixture logs.
 
-## Experimental Cross-Thread Collaboration
+## Experimental Cross-Conversation Collaboration
 
 Enable only on an isolated Server with `GROMOZEKA_COLLABORATION_ENABLED=true`.
 The default is off. Open two conversations in one project with identical tool
@@ -773,8 +773,17 @@ actual delivery in a durable outbox. A stale decision cannot commit over queued
 safe-point input. Failed or interrupted reviews retain their draft; they do not
 silently publish it or rerun the original model call.
 
-This first iteration deliberately rejects cross-project communication, mismatched
-tool access policies and history-branch changes. Telegram and other externally bound
+Delivery addresses are `AgentAddress(conversationId, agentId)`: requests, replies,
+waits, read-only inheritance and cycle detection survive history-version changes
+inside the same conversation. `AgentContextRef` retains the originally captured
+`threadId` in requests and outbox records as provenance; delivery never rewrites it.
+A new conversation does not inherit obligations, and another agent cannot complete
+them. Stop/cancellation still closes requests and prevents late completion. Source
+tool contexts and newly captured peer snapshots must be current when selected;
+response-review drafts remain bound to their exact history version at commit.
+
+This first iteration deliberately rejects cross-project communication and mismatched
+tool access policies. Telegram and other externally bound
 conversations keep their ordinary turn lifecycle: no collaboration prompt or response
 review, and collaboration tools are hidden from both the catalog and tool discovery.
 Direct collaboration calls from those channels remain rejected.
@@ -804,7 +813,7 @@ come from the same scheduling read. `IDLE` only means no observed scheduled fore
 work: background commands/monitors, slots and failures are not queried by this view.
 
 `agent_requests` describes open obligations for the authenticated user and selected
-agent/current thread: incoming/outgoing counts and incoming `WAITING_USER` /
+agent in the conversation, across history versions: incoming/outgoing counts and incoming `WAITING_USER` /
 `WAITING_RESULT` counts. These are independent of foreground activity; an open outgoing
 request does not imply that its sender is blocked. The existing repository read is
 bounded to 128 conversation requests; `possibly_truncated` makes that boundary explicit

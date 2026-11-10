@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.AgentEndpoint
+import com.gromozeka.domain.model.AgentContextRef
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -20,7 +20,7 @@ class ContextSnapshotUnavailableException(message: String, cause: Throwable? = n
  * No turn, queue admission, one-use secret, or replay-anchor mutation is performed to build it.
  */
 data class ConversationContextSnapshot(
-    val target: AgentEndpoint,
+    val target: AgentContextRef,
     val runtimeSelection: AiRuntimeSelection,
     val resolvedRuntime: com.gromozeka.domain.service.ResolvedAiRuntime,
     val request: AiRuntimeRequest,

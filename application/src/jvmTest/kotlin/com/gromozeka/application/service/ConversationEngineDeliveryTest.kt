@@ -222,7 +222,7 @@ class ConversationEngineDeliveryTest {
         val f = Fixture(enableReview = true); val model = f.begin()
         val stale = Conversation.Message(Conversation.Message.Id("stale"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Stale answer"))), createdAt = now)
-        f.draft = AgentResponseDraft("draft", AgentEndpoint(conversation.id, conversation.currentThread, agentId), user,
+        f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
             Conversation.Message.Id("root"), model.turnId.value, 1, listOf(stale), emptyList(), emptyList(), emptyList(), "", listOf("root"), now)
         val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
             payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))

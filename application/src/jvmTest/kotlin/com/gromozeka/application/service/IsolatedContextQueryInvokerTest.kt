@@ -82,7 +82,7 @@ class IsolatedContextQueryInvokerTest {
         private val resolved = ResolvedAiRuntime(connection, model, AiModelSpec("gpt-test", AiProvider.OPENAI,
             setOf(AiModelCapability.TEXT_GENERATION), AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(100_000))))
         val snapshot = ConversationContextSnapshot(
-            target = AgentEndpoint(Conversation.Id("target"), Conversation.Thread.Id("pinned"), AgentDefinition.Id("agent")),
+            target = AgentContextRef(Conversation.Id("target"), Conversation.Thread.Id("pinned"), AgentDefinition.Id("agent")),
             runtimeSelection = selection, resolvedRuntime = resolved,
             request = AiRuntimeRequest(listOf("base", "runtime", "skills", "slots", "visual"), listOf(
                 Conversation.Message(Conversation.Message.Id("u"), Conversation.Id("target"), role = Conversation.Message.Role.USER,

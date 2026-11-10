@@ -1,6 +1,6 @@
 package com.gromozeka.server
 
-import com.gromozeka.domain.model.AgentEndpoint
+import com.gromozeka.domain.model.AgentContextRef
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationPinLimits
@@ -161,7 +161,7 @@ internal object ConversationPinToolSupport {
     }
 
     /** Key material comes exclusively from the trusted execution endpoint, actor and call identity. */
-    fun creationKey(source: AgentEndpoint, actor: User.Id, toolCallId: String?): String {
+    fun creationKey(source: AgentContextRef, actor: User.Id, toolCallId: String?): String {
         if (toolCallId.isNullOrBlank()) throw IllegalStateException("Pin create requires a trusted tool-call identity (PIN_OPERATION_FAILED).")
         val fields = listOf(source.conversationId.value, source.threadId.value, source.agentId.value, actor.value, toolCallId)
         // This is trusted key preimage, not pin text/source validation. Never hash replacement bytes

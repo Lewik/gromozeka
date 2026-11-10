@@ -12,7 +12,7 @@ import kotlin.time.Instant
 
 class AgentSessionInspectionToolTest {
     private val collaboration = Mockito.mock(AgentCollaborationService::class.java)
-    private val source = AgentEndpoint(Conversation.Id("source"), Conversation.Thread.Id("thread"), AgentDefinition.Id("agent"))
+    private val source = AgentContextRef(Conversation.Id("source"), Conversation.Thread.Id("thread"), AgentDefinition.Id("agent"))
     private val actor = User.Id("user")
     private val context = ToolExecutionContext()
     private val contributor = AgentCollaborationToolContributor(collaboration)

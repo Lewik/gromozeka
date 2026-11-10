@@ -34,7 +34,7 @@ class ConversationContextSnapshotService(
     private val collaboration: AgentCollaborationService? = null,
 ) {
     suspend fun capture(
-        target: AgentEndpoint,
+        target: AgentContextRef,
         conversation: Conversation,
         agent: AgentDefinition,
         actor: User.Id,
@@ -123,7 +123,7 @@ class ConversationContextSnapshotService(
                 responseFormat = format,
                 includeSuggestedReplies = inlineSuggestions,
             ))
-            if (peerContext != null) add(peerContext.prompt(target, peerContext.context(target, actor)))
+            if (peerContext != null) add(peerContext.prompt(target.address, peerContext.context(target.address, actor)))
             selectedTools.unavailableToolsSystemPrompt()?.let(::add)
         }
         val root = prefix.lastOrNull { it.role == Conversation.Message.Role.USER }?.id

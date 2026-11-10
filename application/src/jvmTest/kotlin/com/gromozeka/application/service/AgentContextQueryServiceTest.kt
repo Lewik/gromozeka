@@ -50,7 +50,7 @@ class AgentContextQueryServiceTest {
     private class Fixture {
         val context = ToolExecutionContext()
         val actor = User.Id("user")
-        val source = AgentEndpoint(Conversation.Id("source"), Conversation.Thread.Id("source-thread"), AgentDefinition.Id("sender"))
+        val source = AgentContextRef(Conversation.Id("source"), Conversation.Thread.Id("source-thread"), AgentDefinition.Id("sender"))
         private val now = Instant.fromEpochMilliseconds(0)
         private val agent = AgentDefinition(AgentDefinition.Id("receiver"), name = "Receiver", prompts = emptyList(),
             runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model")), type = AgentDefinition.Type.Global,
@@ -58,7 +58,7 @@ class AgentContextQueryServiceTest {
         private val conversation = Conversation(Conversation.Id("target"), Project.Id("project"),
             setOf(Conversation.Participant.User(actor), Conversation.Participant.Agent(agent.id)),
             currentThread = Conversation.Thread.Id("target-thread"), createdAt = now, updatedAt = now)
-        val peer = AgentCollaborationService.EligibleTarget(AgentEndpoint(conversation.id, conversation.currentThread, agent.id), conversation, agent)
+        val peer = AgentCollaborationService.EligibleTarget(AgentContextRef(conversation.id, conversation.currentThread, agent.id), conversation, agent)
         val snapshot = Mockito.mock(ConversationContextSnapshot::class.java)
         val collaboration = Mockito.mock(AgentCollaborationService::class.java)
         val snapshots = Mockito.mock(ConversationContextSnapshotService::class.java)

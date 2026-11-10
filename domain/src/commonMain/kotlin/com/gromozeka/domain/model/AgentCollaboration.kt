@@ -3,19 +3,28 @@ package com.gromozeka.domain.model
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
-/** An agent definition is not an address: the conversation and exact history branch are required. */
+/** Stable routing identity, independent of the conversation's current history version. */
 @Serializable
-data class AgentEndpoint(
+data class AgentAddress(
+    val conversationId: Conversation.Id,
+    val agentId: AgentDefinition.Id,
+)
+
+/** Captured history provenance. Context validity is checked separately from delivery authorization. */
+@Serializable
+data class AgentContextRef(
     val conversationId: Conversation.Id,
     val threadId: Conversation.Thread.Id,
     val agentId: AgentDefinition.Id,
-)
+) {
+    val address: AgentAddress get() = AgentAddress(conversationId, agentId)
+}
 
 @Serializable
 data class AgentRequest(
     val id: String,
-    val source: AgentEndpoint,
-    val target: AgentEndpoint,
+    val source: AgentContextRef,
+    val target: AgentContextRef,
     val actorUserId: User.Id,
     val text: String,
     val createdAt: Instant,
@@ -35,8 +44,8 @@ data class AgentRequest(
 data class AgentDelivery(
     val id: String,
     val requestId: String?,
-    val source: AgentEndpoint,
-    val target: AgentEndpoint,
+    val source: AgentContextRef,
+    val target: AgentContextRef,
     val actorUserId: User.Id,
     val kind: Kind,
     val text: String,
@@ -69,7 +78,7 @@ data class AgentResponseDecision(
 @Serializable
 data class AgentResponseDraft(
     val id: String,
-    val endpoint: AgentEndpoint,
+    val endpoint: AgentContextRef,
     val actorUserId: User.Id,
     val rootMessageId: Conversation.Message.Id,
     val turnId: String,

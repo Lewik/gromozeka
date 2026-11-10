@@ -1,6 +1,6 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.AgentEndpoint
+import com.gromozeka.domain.model.AgentAddress
 import com.gromozeka.domain.model.AgentResponseDecision
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiStepOutcome
@@ -357,7 +357,7 @@ class ConversationEngineService(
         // External channels keep their existing turn lifecycle; collaboration is opt-out for the whole turn.
         val collaboration = collaboration.takeIf { conversation.externalChannel == null }
         val collaborationRequests = if (collaboration != null && task.actorUserId != null)
-            collaboration.context(AgentEndpoint(conversation.id, conversation.currentThread, payload.agentDefinitionId), requireNotNull(task.actorUserId)) else emptyList()
+            collaboration.context(AgentAddress(conversation.id, payload.agentDefinitionId), requireNotNull(task.actorUserId)) else emptyList()
         val toolSelection = aiToolRuntimeCatalogService.selectTools(
             agent = context.agent,
             catalog = context.toolCatalog,
@@ -368,7 +368,7 @@ class ConversationEngineService(
         var runtimeRequest = AiRuntimeRequest(
             systemPrompts = buildList {
                 addAll(context.runtimeSystemPrompts)
-                if (collaboration != null) add(collaboration.prompt(AgentEndpoint(conversation.id, conversation.currentThread, payload.agentDefinitionId), collaborationRequests))
+                if (collaboration != null) add(collaboration.prompt(AgentAddress(conversation.id, payload.agentDefinitionId), collaborationRequests))
                 toolSelection.unavailableToolsSystemPrompt()?.let(::add)
             },
             messages = runtimeMessages,
