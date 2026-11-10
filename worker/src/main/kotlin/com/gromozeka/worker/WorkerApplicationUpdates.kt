@@ -7,11 +7,13 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.CoroutineScope
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.SmartLifecycle
 import org.springframework.stereotype.Component
 import java.io.File
 
 @Component
+@ConditionalOnProperty(name = ["gromozeka.worker-gateway.enabled"], havingValue = "true")
 class WorkerApplicationUpdates(
     private val properties: WorkerGatewayProperties,
     private val gateway: WorkerGatewayClient,
