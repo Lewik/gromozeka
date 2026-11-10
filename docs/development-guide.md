@@ -37,6 +37,10 @@ Server, and standalone Workers.
 - `:presentation-android` packages the Android client application.
 - `:mobile-worker` contains the shared mobile Worker runtime.
 - `:mobile-worker-android` packages the Android mobile Worker application.
+- `:application-updates` shares authenticated update polling, verified downloads,
+  and native installation between desktop and Android clients and Workers. See
+  [Private application updates](application-updates.md) for the independent HTTP
+  protocol, package staging, and signing setup.
 
 Dependencies should point toward domain contracts where practical. Framework,
 storage, provider, and transport details stay in their infrastructure modules.

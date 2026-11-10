@@ -1,0 +1,21 @@
+<resources>
+    <string name="update_title">Обновления Громозеки</string>
+    <string name="update_cancel_pending">Отменить ожидающую подтверждения установку</string>
+    <string name="update_check">Проверить обновления</string>
+    <string name="update_download">Скачать обновление</string>
+    <string name="update_install">Установить обновление</string>
+    <string name="update_allow">Разрешить установку</string>
+    <string name="update_install_permission">Разреши Громозеке устанавливать обновления в настройках Android</string>
+    <string name="update_confirm">Нажми, чтобы подтвердить обновление</string>
+    <string name="update_failed">Не удалось установить обновление</string>
+    <string name="update_connect_first">Подключись к серверу для проверки обновлений</string>
+    <string name="update_automatic">Автоматические обновления</string>
+    <string name="update_available">Доступна версия: %1$s</string>
+    <string name="update_queued">В очереди</string>
+    <string name="update_waiting">Ожидает завершения работы</string>
+    <string name="update_downloading">Скачивается</string>
+    <string name="update_ready">Готово к установке</string>
+    <string name="update_installing">Устанавливается</string>
+    <string name="update_succeeded">Обновлено</string>
+    <string name="update_cancelled">Отменено</string>
+</resources>

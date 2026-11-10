@@ -500,6 +500,9 @@ private fun MainActivity.MobileWorkerApp(
                                 )
                             }
                         }
+                        TextButton(onClick = { startActivity(Intent(this@MobileWorkerApp, com.gromozeka.updates.AndroidUpdateActivity::class.java)) }) {
+                            Text(getString(com.gromozeka.updates.R.string.update_title))
+                        }
                         TextButton(onClick = { removeConfirmation = true }) { Text(t("disconnect")) }
                         if (removeConfirmation) AlertDialog(
                             onDismissRequest = { removeConfirmation = false },

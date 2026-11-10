@@ -46,11 +46,13 @@ internal class MobileWorkerGateway(
     beforeExecution: suspend () -> Unit,
     onState: (MobileWorkerGatewayState) -> Unit,
     onFailure: (Throwable, Long) -> Unit = { _, _ -> },
+    updateGate: com.gromozeka.worker.runtime.WorkerUpdateGate = com.gromozeka.worker.runtime.WorkerUpdateGate(),
 ) {
     private val workerId = ConversationRuntimeWorkerId(enrollment.workerId)
     private val identity = ConversationRuntimeWorkerIdentity(workerId, ConversationRuntimeWorkerSessionId(uuid7()))
     private val startedAt = Clock.System.now()
     private val capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION)
+    private val toolsHandler = WorkerToolRequestHandler(workerId, tools, beforeExecution)
     private val runtime = WorkerGatewayRuntime(
         transport = transport,
         journal = journal,
@@ -59,7 +61,8 @@ internal class MobileWorkerGateway(
                 version, startedAt, Clock.System.now())
         },
         outbound = WorkerGatewayOutbound(capabilities),
-        handler = WorkerToolRequestHandler(workerId, tools, beforeExecution),
+        handler = toolsHandler,
+        updateGate = updateGate,
         prepare = { welcome ->
             require(welcome.mcpServers.isEmpty()) { "This Worker does not support external MCP servers" }
             WorkerGatewayMessage.Ready(tools.map { it.descriptor })

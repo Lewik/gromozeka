@@ -1,5 +1,7 @@
 package com.gromozeka.client
 
+import io.ktor.client.request.header
+
 import com.gromozeka.domain.model.SpeechAvailabilityException
 
 import com.gromozeka.domain.model.Conversation
@@ -197,8 +199,13 @@ internal class GromozekaWsClient(
         return body
     }
 
-    internal suspend fun postServerResource(path: String): String {
-        val response = httpClient.post(serverResourceUrl(path))
+    internal suspend fun postServerResource(path: String, jsonBody: String? = null): String {
+        val response = httpClient.post(serverResourceUrl(path)) {
+            if (jsonBody != null) {
+                header(io.ktor.http.HttpHeaders.ContentType, "application/json")
+                setBody(jsonBody)
+            }
+        }
         val body = response.bodyAsText()
         check(response.status.isSuccess()) {
             "Server request failed with HTTP ${response.status.value}: $body"

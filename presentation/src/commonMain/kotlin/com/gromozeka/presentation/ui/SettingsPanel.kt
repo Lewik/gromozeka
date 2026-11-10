@@ -1535,6 +1535,7 @@ fun SettingsPanel(
 
 @Composable
 private fun DistributionSettings(distributionService: RemoteDistributionService) {
+    ApplicationUpdateSettings(distributionService)
     val translation = LocalTranslation.current
     var reloadKey by remember { mutableIntStateOf(0) }
     var loadState by remember { mutableStateOf<DistributionLoadState>(DistributionLoadState.Loading) }

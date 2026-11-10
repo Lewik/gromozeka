@@ -85,6 +85,7 @@ class WorkerGatewayClient(
     private val requestJournal: JvmWorkerRequestJournal,
     @Qualifier("applicationScope") private val scope: CoroutineScope,
 ) : SmartLifecycle {
+    val updateGate = com.gromozeka.worker.runtime.WorkerUpdateGate()
     private val log = KLoggers.logger(this)
     private val gatewayUrl: String
     private val startedAt = Clock.System.now()
@@ -182,7 +183,8 @@ class WorkerGatewayClient(
                 )
             },
             outbound = outbound,
-            handler = WorkerRequestHandler { operationHandler.execute(identity, it) },
+            handler = WorkerRequestHandler { request -> operationHandler.execute(identity, request) },
+            updateGate = updateGate,
             prepare = { welcome ->
                 aiConfigurationProvider.synchronize(welcome.aiCatalogSnapshot)
                 val refreshAvailable = mcpConfigurationService.synchronize(welcome.mcpServers)

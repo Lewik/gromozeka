@@ -131,6 +131,7 @@ class AndroidWorkerGatewayService : Service() {
                                 ).also { soundController = it }
                                 val alertTool = WorkerSoundTool(sound).also { soundTool = it }
                                 MobileWorkerGateway(
+                                    updateGate = AndroidWorkerApplicationUpdates.gate,
                                     enrollment = enrollment,
                                     transport = KtorWorkerGatewayTransport(client, enrollment.gatewayUrl, enrollment.credential,
                                         maxIncomingMessageBytes = 1024 * 1024),

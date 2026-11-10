@@ -28,6 +28,7 @@ class WorkerRequestExecutor(
     private val scope: CoroutineScope,
     private val handler: WorkerRequestHandler,
     private val publish: suspend (WorkerGatewayMessage.Response) -> Unit,
+    private val updateGate: WorkerUpdateGate = WorkerUpdateGate(),
 ) {
     private val mutex = Mutex()
     private val receipts = mutableMapOf<String, WorkerRequestReceipt>()
@@ -71,11 +72,18 @@ class WorkerRequestExecutor(
                     if (failure != null) {
                         save(receipt.copy(state = WorkerRequestReceipt.State.COMPLETED, response = failure))
                         failure
-                    } else {
+                    } else if (!updateGate.enter()) {
+                        val updating = failure(request.id, "WORKER_UPDATING", "Worker is updating; request was not executed")
+                        save(receipt.copy(state = WorkerRequestReceipt.State.COMPLETED, response = updating))
+                        updating
+                    } else try {
                         save(receipt)
                         val job = scope.launch(start = CoroutineStart.ATOMIC) { execute(request) }
                         jobs[request.id] = job
                         null
+                    } catch (error: Throwable) {
+                        withContext(NonCancellable) { updateGate.leave() }
+                        throw error
                     }
                 }
             }
@@ -130,7 +138,7 @@ class WorkerRequestExecutor(
                 save(receipts.getValue(request.id).copy(state = WorkerRequestReceipt.State.COMPLETED, response = response))
                 jobs.remove(request.id)
             }
-            publish(response)
+            try { publish(response) } finally { updateGate.leave() }
         }
     }
 

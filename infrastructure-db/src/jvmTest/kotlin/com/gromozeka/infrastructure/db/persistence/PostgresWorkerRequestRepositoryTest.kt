@@ -4,6 +4,13 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.service.StoredWorkerRequest
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Dispatchers
+import com.gromozeka.domain.model.ApplicationInstallation
+import com.gromozeka.domain.model.UpdateComponent
+import com.gromozeka.domain.model.UpdatePlatform
+import com.gromozeka.domain.model.User
 import org.postgresql.ds.PGSimpleDataSource
 import java.lang.reflect.Proxy
 import java.nio.file.Files
@@ -42,6 +49,7 @@ class PostgresWorkerRequestRepositoryTest {
                         .readText().split(';').map(String::trim).filter(String::isNotEmpty).forEach(statement::execute)
                     statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V68__development_slots.sql")).readText())
                     statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V77__worker_request_retention.sql")).readText())
+                    statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V83__application_updates.sql")).readText())
                 }
             }
             val settings = Proxy.newProxyInstance(SettingsProvider::class.java.classLoader, arrayOf(SettingsProvider::class.java)) { _, method, _ ->
@@ -50,6 +58,20 @@ class PostgresWorkerRequestRepositoryTest {
             } as SettingsProvider
             val repository = PostgresWorkerRequestRepository(dataSource, SecretCipher(settings))
             val now = Clock.System.now()
+            val installations = PostgresApplicationUpdateRepository(dataSource)
+            val installation = ApplicationInstallation("worker-update-test", User.Id("owner"), "worker", UpdateComponent.WORKER,
+                UpdatePlatform.WINDOWS_X64, "Test Worker", "0", now.toString())
+            installations.modify(installation.id, installation) { it }
+            (1..16).map {
+                async(Dispatchers.IO) {
+                    PostgresApplicationUpdateRepository(dataSource).modify(installation.id) { current ->
+                        current.copy(version = (current.version.toInt() + 1).toString())
+                    }
+                }
+            }.awaitAll()
+            assertEquals("16", PostgresApplicationUpdateRepository(dataSource).find(installation.id)?.version)
+            assertFailsWith<IllegalStateException> { installations.modify(installation.id) { error("Synthetic transaction failure") } }
+            assertEquals("16", installations.list().single().version)
             val workerId = ConversationRuntimeWorkerId("worker")
             val request = StoredWorkerRequest("request", workerId, "private-request-secret".encodeToByteArray(), now, now + 30.seconds, slotOrigin = com.gromozeka.domain.slot.SlotCommandOrigin("slot", 7, "lease"), executionDeadline = now + 60.seconds)
             repository.create(request)

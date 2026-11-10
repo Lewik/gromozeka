@@ -9,12 +9,55 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import json
+import shlex
 
 
 SERVICE_SCRIPT = Path(__file__).resolve().parents[1] / "deploy/distribution/gromozeka-worker-service"
 
 
 class WorkerServiceTest(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "darwin", "Uses the macOS archive tool")
+    def test_update_directory_swap_and_launch_failure_recovery(self):
+        source = SERVICE_SCRIPT.parents[2] / "application-updates/src/jvmMain/resources/updates/install.sh"
+        for fail in (False, True):
+            with self.subTest(launch_failure=fail), tempfile.TemporaryDirectory(prefix="gromozeka-update-fixture-") as temporary:
+                root = Path(temporary)
+                destination = root / "installed/Gromozeka.app"
+                package = root / "package/Gromozeka.app"
+                destination.mkdir(parents=True)
+                (destination / "old.txt").write_text("old")
+                (package / "Contents/MacOS").mkdir(parents=True)
+                binary = package / "Contents/MacOS/Gromozeka"
+                binary.write_text("#!/bin/sh\nexit 0\n")
+                binary.chmod(0o755)
+                (package / "new.txt").write_text("new")
+                archive = root / "app.zip"
+                subprocess.run(["ditto", "-c", "-k", "--keepParent", str(package), str(archive)], check=True)
+                noop = root / "native-noop"
+                noop.write_text("#!/bin/sh\nexit 0\n")
+                noop.chmod(0o755)
+                launcher = root / "native-launch"
+                launcher.write_text('#!/bin/sh\n' + ('test ! -f "$1/new.txt"\n' if fail else 'test -f "$1/new.txt"\n'))
+                launcher.chmod(0o755)
+                script = root / "install.sh"
+                script.write_text(source.read_text().replace("/bin/launchctl", shlex.quote(str(noop)))
+                                  .replace("/usr/bin/codesign", shlex.quote(str(noop)))
+                                  .replace("/usr/bin/open", shlex.quote(str(launcher))))
+                old = subprocess.Popen(["/usr/bin/true"])
+                old.wait()
+                result = root / "result.json"
+                process = subprocess.run(["bash", str(script), str(archive), str(destination), "CLIENT", "fixture",
+                                          str(old.pid), str(result), "isolated-fixture", str(os.getuid())], capture_output=True, timeout=20)
+                self.assertEqual(fail, process.returncode != 0, process.stderr.decode())
+                self.assertEqual(fail, (destination / "old.txt").exists())
+                self.assertEqual(not fail, (destination / "new.txt").exists())
+                if fail:
+                    self.assertEqual("FAILED", json.loads(result.read_text())["phase"])
+                else:
+                    self.assertFalse(result.exists())
+                    self.assertTrue(Path(str(destination) + ".previous-fixture/old.txt").exists())
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="gromozeka-worker-service-test-")
         self.addCleanup(temporary.cleanup)
