@@ -365,7 +365,6 @@ internal fun MessageInput(
                             val modeHint = localization.text(if (voiceAutoSend) "chat.voice.afterDictation.sendHint" else "chat.voice.afterDictation.inputHint")
                             CompactButton(
                                 onClick = { onVoiceAutoSendChange(!voiceAutoSend) },
-                                enabled = pttState != PttState.RECORDING && pttState != PttState.PREPARING && liveVoiceInputState != LiveVoiceInputState.SPEECH,
                                 modifier = Modifier.size(controls.minHeight)
                                     .testTag("voice-send-mode")
                                     .semantics { contentDescription = modeHint; stateDescription = modeLabel },
