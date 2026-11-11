@@ -106,6 +106,7 @@ class ClaudeCodeLatencyProbeTest {
                     val responseText = withTimeout(300_000) {
                         if (scenario == "direct-text") {
                             val result = executor.execute(ClaudeCodeCommand(
+            modelConfigurationId = "test-model",
                                 diagnosticId = label, connectionId = "latency-probe", cacheKey = conversationId,
                                 modelName = model, workspaceDirectory = workspace, systemPrompt = systemPrompt,
                                 userPrompt = prompt, effort = effort,

@@ -102,6 +102,8 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_ai_catalog_get",
                 "grz_ai_concurrency_group_upsert",
                 "grz_ai_concurrency_group_delete",
+                "grz_ai_tpm_group_upsert",
+                "grz_ai_tpm_group_delete",
                 "grz_ai_admission_status",
                 "grz_ai_connection_upsert",
                 "grz_ai_connection_delete",

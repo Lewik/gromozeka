@@ -274,7 +274,7 @@ class OpenAiSubscriptionCompactionTest {
         suspend fun compact(request: AiRuntimeRequest, mapped: OpenAiSubscriptionResponsesRequest,
             modelProfile: OpenAiSubscriptionModelProfile = profile) = compaction.executeIfNeeded(request, mapped,
             modelProfile, OpenAiSubscriptionSession("access", "refresh", null, "account", Long.MAX_VALUE),
-            "conversation", "connection", "configuration")
+            "conversation", "connection", testModelConfiguration("connection"))
 
         override fun close() = server.stop(0)
     }

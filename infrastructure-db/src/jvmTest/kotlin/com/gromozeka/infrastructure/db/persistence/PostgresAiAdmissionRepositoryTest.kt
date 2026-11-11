@@ -47,6 +47,19 @@ class PostgresAiAdmissionRepositoryTest {
                     }
                     sql.executeQuery("SELECT revision FROM runtime_catalog_configuration").use { rows -> rows.next(); assertEquals(13, rows.getLong(1)) }
                     sql.executeQuery("SELECT max_concurrent_calls FROM ai_concurrency_groups WHERE id = 'default'").use { rows -> rows.next(); assertEquals(4, rows.getInt(1)) }
+                    sql.execute("CREATE TABLE ai_model_configurations(id TEXT PRIMARY KEY, connection_id TEXT NOT NULL, payload_json TEXT NOT NULL)")
+                    sql.execute("INSERT INTO ai_concurrency_groups VALUES ('shared', 'Shared', 2)")
+                    sql.execute("UPDATE ai_connections SET payload_json = jsonb_set(payload_json::jsonb, '{concurrencyGroupId}', '\"shared\"'::jsonb)::text WHERE id = 'one'")
+                    sql.execute("INSERT INTO ai_model_configurations VALUES ('model-one', 'one', '{}')")
+                    sql.execute(requireNotNull(PostgresAiAdmissionRepositoryTest::class.java.getResource("/db/migration/postgres/V84__model_configuration_tpm.sql")).readText())
+                    sql.executeQuery("SELECT payload_json FROM ai_model_configurations WHERE id = 'model-one'").use { rows ->
+                        rows.next(); assertEquals("shared", Json.parseToJsonElement(rows.getString(1)).jsonObject.getValue("concurrencyGroupId").jsonPrimitive.content)
+                    }
+                    sql.executeQuery("SELECT payload_json FROM ai_connections WHERE id = 'one'").use { rows ->
+                        rows.next(); assertFalse(Json.parseToJsonElement(rows.getString(1)).jsonObject.containsKey("concurrencyGroupId"))
+                    }
+                    sql.executeQuery("SELECT group_key FROM ai_concurrency_groups WHERE id = 'shared'").use { rows -> rows.next(); assertEquals("shared", rows.getString(1)) }
+
                 } }
                 val repository = PostgresAiAdmissionRepository(source, Json { encodeDefaults = true })
                 fun lease(id: String, worker: String? = null, root: String? = null, background: String? = null) = AiAdmissionLease(
@@ -60,6 +73,22 @@ class PostgresAiAdmissionRepositoryTest {
                 assertEquals(listOf("remote"), restored.map { it.operation.id })
                 assertFailsWith<IllegalArgumentException> { repository.finish("remote", "another-worker") }
                 assertEquals(1, repository.restoreRemoteLeases().size)
+
+                val tpmGroup = AiTpmGroup(AiTpmGroup.Id("quota"), "account/model", "Quota", 1000)
+                source.connection.use { connection -> connection.prepareStatement("INSERT INTO ai_tpm_groups(id,group_key,payload_json) VALUES (?,?,?)").use {
+                    it.setString(1, tpmGroup.id.value); it.setString(2, tpmGroup.key)
+                    it.setString(3, Json.encodeToString(AiTpmGroup.serializer(), tpmGroup)); it.executeUpdate()
+                } }
+                val quotaLease = lease("quota-call", "worker", "root").let { it.copy(operation = it.operation.copy(tpm =
+                    AiTpmReservation(tpmGroup.id, 200, AiTpmFeedbackPolicy.Fields(AiQuotaValueSource.Header("remaining"))))) }
+                val debit = AiTpmState(tpmGroup.id, 800.0, -30.0, 200)
+                repository.create(quotaLease, listOf(debit))
+                assertEquals(listOf(debit), repository.loadTpmStates())
+                repository.finish("quota-call", "worker", listOf(debit), "invalid feedback")
+                assertEquals("invalid feedback", repository.findCompletion("quota-call", "worker")?.feedbackError)
+                repository.finish("quota-call", "worker", listOf(debit))
+                assertEquals("invalid feedback", repository.findCompletion("quota-call", "worker")?.feedbackError)
+                assertFailsWith<IllegalArgumentException> { repository.findCompletion("quota-call", "other") }
 
                 repository.create(lease("capture", "worker", "capture-root", "capture-session"))
                 repository.create(lease("lost-grant", "worker", "capture-root", "lost-session"))

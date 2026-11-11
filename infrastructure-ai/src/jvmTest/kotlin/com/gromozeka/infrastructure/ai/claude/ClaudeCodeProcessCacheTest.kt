@@ -587,6 +587,7 @@ class ClaudeCodeProcessCacheTest {
         reasoningMode: AiReasoningMode? = null,
     ): ClaudeCodeCommand =
         ClaudeCodeCommand(
+            modelConfigurationId = "test-model",
             connectionId = "connection",
             executablePath = "claude",
             cacheKey = cacheKey,

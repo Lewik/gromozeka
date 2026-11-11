@@ -105,7 +105,8 @@ internal class ProcessClaudeCodeCliExecutor(
         var entered = false
         try {
             return admission.execute(
-                com.gromozeka.domain.model.ai.AiAdmissionTarget.Connection(AiConnection.Id(command.connectionId)), "CLAUDE_CODE",
+                com.gromozeka.domain.model.ai.AiAdmissionTarget.ModelConfiguration(
+                    com.gromozeka.domain.model.ai.AiModelConfiguration.Id(command.modelConfigurationId), AiConnection.Id(command.connectionId)), "CLAUDE_CODE",
             ) {
                 entered = true
                 var succeeded = false
@@ -150,7 +151,8 @@ internal class ProcessClaudeCodeCliExecutor(
         }
 
         return admission.execute(
-            com.gromozeka.domain.model.ai.AiAdmissionTarget.Connection(AiConnection.Id(command.connectionId)), "CLAUDE_CODE_WEB",
+            com.gromozeka.domain.model.ai.AiAdmissionTarget.ModelConfiguration(
+                    com.gromozeka.domain.model.ai.AiModelConfiguration.Id(command.modelConfigurationId), AiConnection.Id(command.connectionId)), "CLAUDE_CODE_WEB",
         ) {
             val process = processCache.startUncached(effectiveCommand)
             try {

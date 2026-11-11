@@ -5,9 +5,9 @@ import kotlin.test.*
 
 class AiConcurrencyGroupTest {
     @Test
-    fun `new connections explicitly select default and the initial group has capacity four`() {
-        val connection = Json.decodeFromString<AiConnection>("""{"connectionKind":"openai_api","id":"test","displayName":"Test"}""")
-        assertEquals(AiConcurrencyGroup.DEFAULT_ID, connection.concurrencyGroupId)
+    fun `new model configurations explicitly select default and the initial group has capacity four`() {
+        val configuration = Json.decodeFromString<AiModelConfiguration>("""{"connectionId":"connection","providerModelId":"model","id":"test","displayName":"Test"}""")
+        assertEquals(AiConcurrencyGroup.DEFAULT_ID, configuration.concurrencyGroupId)
         assertEquals(4, AiConcurrencyGroup.DEFAULT.maxConcurrentCalls)
     }
 

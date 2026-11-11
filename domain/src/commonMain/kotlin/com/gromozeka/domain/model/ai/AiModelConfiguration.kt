@@ -30,6 +30,8 @@ data class AiModelConfiguration(
     val assistantResponseFormat: AssistantResponseFormat = AssistantResponseFormat.JSON_SCHEMA,
     val defaultParameters: DefaultParameters = DefaultParameters(),
     val requestedEmbeddingDimensions: Int? = null,
+    val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
+    val tpm: AiTpmPolicy? = null,
 ) {
     init {
         require(providerModelId.isNotBlank()) { "AI provider model id must not be blank" }

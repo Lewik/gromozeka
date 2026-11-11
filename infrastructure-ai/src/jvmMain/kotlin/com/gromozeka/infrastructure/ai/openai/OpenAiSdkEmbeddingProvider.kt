@@ -59,7 +59,7 @@ class OpenAiSdkEmbeddingProvider(
         var promptTokens = 0
         if (missingInputs.isNotEmpty()) {
             val executor = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor(
-                runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission,
+                runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = runtime.modelConfiguration,
             ) { end -> clientFactory.createInferenceClient(runtime.connection, end) }
             val params = embeddingCreateParams(
                 modelId = runtime.modelConfiguration.providerModelId,

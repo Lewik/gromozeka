@@ -230,17 +230,39 @@ class AiConfigurationApplicationServiceTest {
         val created = service.upsertConcurrencyGroup(group, 0)
         assertEquals(group, created.catalog.concurrencyGroups.single { it.id == group.id })
         val connection = assertIs<AiConnection.OpenAiApi>(created.catalog.connections.single { it.id.value == "openai-api" })
-        service.upsertConnection(connection.copy(concurrencyGroupId = group.id), 1)
+        val model = created.catalog.modelConfigurations.first { it.connectionId == connection.id }
+        service.upsertModelConfiguration(model.copy(concurrencyGroupId = group.id), 1)
         assertFailsWith<IllegalArgumentException> { service.deleteConcurrencyGroup(group.id, 2) }
         assertFailsWith<IllegalArgumentException> { service.upsertConcurrencyGroup(group.copy(maxConcurrentCalls = 2), 1) }
         val changed = service.upsertConcurrencyGroup(group.copy(maxConcurrentCalls = null), 2)
         assertNull(changed.catalog.concurrencyGroups.single { it.id == group.id }.maxConcurrentCalls)
         assertEquals(changed, service.reload())
-        service.upsertConnection(connection, 3)
+        service.upsertModelConfiguration(model, 3)
         val deleted = service.deleteConcurrencyGroup(group.id, 4)
         assertEquals(5, deleted.revision)
         assertFailsWith<IllegalArgumentException> { service.deleteConcurrencyGroup(com.gromozeka.domain.model.ai.AiConcurrencyGroup.DEFAULT_ID, 5) }
         assertEquals(5, service.snapshot.revision)
+    }
+
+    @Test
+    fun `TPM groups require explicit valid assignments and preserve independent configuration`() = runBlocking<Unit> {
+        val repository = TestAiCatalogRepository(seed.aiCatalog, revision = 0)
+        val service = service(repository)
+        service.initialize()
+        val group = com.gromozeka.domain.model.ai.AiTpmGroup(com.gromozeka.domain.model.ai.AiTpmGroup.Id("quota"), "account/model", "Quota", 1000)
+        service.upsertTpmGroup(group, 0)
+        val original = service.catalog.modelConfigurations.first { it.connectionId.value == "openai-api" }
+        val policy = com.gromozeka.domain.model.ai.AiTpmPolicy(com.gromozeka.domain.model.ai.AiTpmGroupSelector.Fixed(group.id),
+            com.gromozeka.domain.model.ai.AiQuotaCalculator.BuiltIn(),
+            com.gromozeka.domain.model.ai.AiTpmFeedbackPolicy.Fields(com.gromozeka.domain.model.ai.AiQuotaValueSource.Header("remaining")))
+        service.upsertModelConfiguration(original.copy(tpm = policy), 1)
+        assertFailsWith<IllegalArgumentException> { service.deleteTpmGroup(group.id, 2) }
+        assertFailsWith<IllegalArgumentException> { service.upsertTpmGroup(group.copy(id = com.gromozeka.domain.model.ai.AiTpmGroup.Id("other")), 2) }
+        assertEquals(2, service.snapshot.revision)
+        assertEquals(policy, service.reload().catalog.modelConfigurations.single { it.id == original.id }.tpm)
+        service.upsertModelConfiguration(original, 2)
+        service.deleteTpmGroup(group.id, 3)
+        assertTrue(service.catalog.tpmGroups.isEmpty())
     }
 
     private fun service(

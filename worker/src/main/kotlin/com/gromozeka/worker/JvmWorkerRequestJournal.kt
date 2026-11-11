@@ -3,6 +3,7 @@ package com.gromozeka.worker
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.model.ai.AiAdmissionLease
+import com.gromozeka.domain.model.ai.AiAdmissionCompletion
 import com.gromozeka.shared.utils.sha256
 import com.gromozeka.worker.runtime.WorkerRequestJournal
 import com.gromozeka.worker.runtime.WorkerRequestReceipt
@@ -85,8 +86,21 @@ class JvmWorkerRequestJournal(
         writeEncrypted(directory.resolve("${lease.operation.id.sha256()}.admission"), json.encodeToString(lease).encodeToByteArray())
     }
 
+    suspend fun loadAiAdmissionCompletions(): List<AiAdmissionCompletion> = withContext(Dispatchers.IO) {
+        Files.list(directory).use { files -> files.filter { it.fileName.toString().endsWith(".admission-completion") }.map { path ->
+            json.decodeFromString<AiAdmissionCompletion>(readEncrypted(path).decodeToString()).also {
+                require(path.fileName.toString() == "${it.lease.operation.id.sha256()}.admission-completion")
+            }
+        }.toList() }
+    }
+
+    suspend fun saveAiAdmissionCompletion(completion: AiAdmissionCompletion): Unit = withContext(Dispatchers.IO) {
+        writeEncrypted(directory.resolve("${completion.lease.operation.id.sha256()}.admission-completion"), json.encodeToString(completion).encodeToByteArray())
+    }
+
     suspend fun deleteAiAdmission(id: String): Unit = withContext(Dispatchers.IO) {
         Files.deleteIfExists(directory.resolve("${id.sha256()}.admission"))
+        Files.deleteIfExists(directory.resolve("${id.sha256()}.admission-completion"))
         syncDirectory()
     }
 

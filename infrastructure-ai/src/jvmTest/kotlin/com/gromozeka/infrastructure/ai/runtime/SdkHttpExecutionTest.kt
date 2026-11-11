@@ -8,6 +8,8 @@ import com.gromozeka.infrastructure.ai.openai.OpenAiSdkClientFactory
 import com.gromozeka.infrastructure.ai.openai.OpenAiSdkRuntimeBackend
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.*
+import kotlinx.serialization.json.*
+import java.util.concurrent.CopyOnWriteArrayList
 import java.io.BufferedInputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -308,17 +310,90 @@ class SdkHttpExecutionTest {
         }
     }
 
+    @Test
+    fun `TPM sees exact SDK JSON and response feedback on every admitted attempt`() = runBlocking {
+        for (api in Api.entries) {
+            val admission = QuotaAdmission()
+            SdkHttpTestServer(listOf(rate(), SdkHttpTestServer.Reply(api.reply(), headers = mapOf("Custom-Quota" to "-20")))).use { server ->
+                assertEquals(AiStepOutcome.COMPLETE, runtime(api.connection(server.origin), admission = admission, tpm = quotaPolicy).call(request()).outcome)
+                assertEquals(server.requests.map { Json.parseToJsonElement(it.body) }, admission.requests.toList())
+                assertEquals(listOf(429, 200), admission.feedback.map { requireNotNull(it).status })
+                assertEquals("-20", admission.feedback.last()!!.headers.entries.single { it.key.equals("Custom-Quota", true) }.value.single())
+                assertNotNull(admission.feedback.last()!!.body)
+                assertEquals(0, admission.active.get())
+            }
+        }
+    }
+
+    @Test
+    fun `TPM feedback failure is not retried and does not keep a permit`() = runBlocking {
+        for (api in Api.entries) {
+            val admission = QuotaAdmission(rejectMissing = true)
+            SdkHttpTestServer(api.reply(), api.reply()).use { server ->
+                assertFailsWith<AiAdmissionException> { runtime(api.connection(server.origin), admission = admission, tpm = quotaPolicy).call(request()) }
+                assertEquals(1, server.requests.size)
+                assertEquals(0, admission.active.get())
+            }
+        }
+    }
+
+    @Test
+    fun `TPM waiting cancels before network and streaming cancellation closes the socket before completion`() = runBlocking {
+        for (api in Api.entries) {
+            val gate = CompletableDeferred<Unit>()
+            val admission = QuotaAdmission(gate = gate)
+            SdkHttpTestServer(api.reply()).use { server ->
+                val call = launch { runtime(api.connection(server.origin), admission = admission, tpm = quotaPolicy).call(request()) }
+                withTimeout(5_000) { while (admission.requests.isEmpty()) delay(10) }
+                call.cancelAndJoin()
+                assertTrue(server.requests.isEmpty())
+                assertEquals(0, admission.active.get())
+            }
+            StalledServer(true).use { server ->
+                val admitted = QuotaAdmission()
+                val call = launch(Dispatchers.Default) { runtime(api.connection(server.origin), admission = admitted, tpm = quotaPolicy).call(request()) }
+                server.started.awaitCancellable()
+                assertEquals(1, admitted.active.get())
+                call.cancelAndJoin()
+                assertEquals(-1, withContext(Dispatchers.IO) { server.peerClosed.get(2, TimeUnit.SECONDS) })
+                assertEquals(0, admitted.active.get())
+                assertEquals(1, admitted.feedback.size)
+            }
+        }
+    }
+
+    private class QuotaAdmission(val rejectMissing: Boolean = false, val gate: CompletableDeferred<Unit>? = null) : AiCallAdmission() {
+        val requests = CopyOnWriteArrayList<JsonElement>()
+        val feedback = CopyOnWriteArrayList<AiHttpQuotaFeedback?>()
+        val active = AtomicInteger()
+        override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = error("TPM must use prepared HTTP admission")
+        override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease {
+            requests += request
+            gate?.await()
+            assertEquals(1, active.incrementAndGet())
+            return AiAdmissionLease(operation.copy(tpm = AiTpmReservation(AiTpmGroup.Id("test"), 10, quotaPolicy.feedback)),
+                AiConcurrencyGroup.DEFAULT_ID, Clock.System.now())
+        }
+        override suspend fun finish(lease: AiAdmissionLease, outcome: AiAdmissionOutcome) = error("HTTP completion required")
+        override suspend fun finishHttp(lease: AiAdmissionLease, outcome: AiAdmissionOutcome, feedback: AiHttpQuotaFeedback?) {
+            assertEquals(0, active.decrementAndGet())
+            this.feedback += feedback
+            if (rejectMissing && feedback?.status == 200 && feedback.headers.keys.none { it.equals("Custom-Quota", true) })
+                throw AiQuotaFeedbackException("Missing configured feedback")
+        }
+    }
+
     private fun settings() = AiHttpSettings(authentication = AiHttpSettings.Authentication.BEARER, noProxy = listOf("*"))
     private fun rate(after: String = "0") = SdkHttpTestServer.Reply(ERROR, 429, mapOf("Retry-After" to after, "x-should-retry" to "true"))
     private fun request(deadlineMillis: Long? = null) = AiRuntimeRequest(listOf("Synthetic system"), listOf(
         Conversation.Message(Conversation.Message.Id("one"), Conversation.Id("synthetic"), role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage("Hello")), createdAt = Instant.fromEpochMilliseconds(0))),
         options = AiRuntimeOptions(maxOutputTokens = 128, executionDeadline = deadlineMillis?.let { Clock.System.now() + it.milliseconds }))
-    private fun runtime(connection: AiConnection, sources: Sources = Sources(), timeoutSeconds: Int? = null, modelId: String = "synthetic", admission: AiCallAdmission = TestAiAdmission()): AiRuntime {
+    private fun runtime(connection: AiConnection, sources: Sources = Sources(), timeoutSeconds: Int? = null, modelId: String = "synthetic", admission: AiCallAdmission = TestAiAdmission(), tpm: AiTpmPolicy? = null): AiRuntime {
         val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(sources, admission = admission)
             else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(sources), admission = admission)
         val model = AiModelConfiguration(AiModelConfiguration.Id(modelId), connection.id, MODEL, "Synthetic",
-            defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = timeoutSeconds))
+            defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = timeoutSeconds), tpm = tpm)
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)))
         return RoutingAiRuntimeProvider(listOf(backend)).getRuntime(ResolvedAiRuntime(connection, model, spec), null)
@@ -347,6 +422,8 @@ class SdkHttpExecutionTest {
     }
     private suspend fun CountDownLatch.awaitCancellable() = withContext(Dispatchers.IO) { assertTrue(await(5, TimeUnit.SECONDS)) }
     private companion object {
+        val quotaPolicy = AiTpmPolicy(AiTpmGroupSelector.Fixed(AiTpmGroup.Id("test")), AiQuotaCalculator.BuiltIn(),
+            AiTpmFeedbackPolicy.Fields(AiQuotaValueSource.Header("Custom-Quota")))
         const val TOKEN = "synthetic-execution-secret"
         const val MODEL = "account/exact-model"
         const val ERROR = """{"error":{"type":"rate_limit_error","message":"private-error-marker","code":"limited"}}"""

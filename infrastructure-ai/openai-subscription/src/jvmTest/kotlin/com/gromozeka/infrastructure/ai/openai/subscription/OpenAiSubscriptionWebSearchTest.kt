@@ -27,14 +27,14 @@ class OpenAiSubscriptionWebSearchTest {
             val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:${server.address.port}"))
             val request = AiRuntimeRequest(emptyList(), listOf(userMessage("Search")) + persisted(mapResponse(listOf(webCall))))
             assertFailsWith<OpenAiSubscriptionUnauthorizedException> {
-                search.executePending(request, session, "conversation", connectionId, model, true)
+                search.executePending(request, session, "conversation", testModelConfiguration(connectionId, model), true)
             }
             status = 503
-            val failed = assertNotNull(search.executePending(request, session, "conversation", connectionId, model, true))
+            val failed = assertNotNull(search.executePending(request, session, "conversation", testModelConfiguration(connectionId, model), true))
             val result = failed.messages.single().content.single() as ContentItem.ToolResult
             assertTrue(result.isError)
             assertEquals("Web search failed (HTTP 503)", (result.result.single() as ContentItem.ToolResult.Data.Text).content)
-            assertNull(search.executePending(request.copy(messages = request.messages + persisted(failed)), session, "conversation", connectionId, model, true))
+            assertNull(search.executePending(request.copy(messages = request.messages + persisted(failed)), session, "conversation", testModelConfiguration(connectionId, model), true))
         } finally {
             server.stop(0)
         }
@@ -71,7 +71,7 @@ class OpenAiSubscriptionWebSearchTest {
             assertNotNull(search.pendingCall(history, connectionId, model))
             assertNull(search.pendingCall(history, "other", model))
             assertNull(search.pendingCall(history, connectionId, "other-model"))
-            val result = assertNotNull(search.executePending(AiRuntimeRequest(emptyList(), history), session, "conversation", connectionId, model, true))
+            val result = assertNotNull(search.executePending(AiRuntimeRequest(emptyList(), history), session, "conversation", testModelConfiguration(connectionId, model), true))
             val toolResult = result.messages.single().content.single() as ContentItem.ToolResult
             assertEquals(output, (toolResult.result.single() as ContentItem.ToolResult.Data.Text).content)
             history += persisted(result)
@@ -80,7 +80,7 @@ class OpenAiSubscriptionWebSearchTest {
             assertEquals(model, calls.single()["model"]?.jsonPrimitive?.content)
             assertEquals(JsonPrimitive(true), calls.single()["settings"]?.jsonObject?.get("external_web_access"))
             assertNull(OpenAiSubscriptionWebSearch(client("http://127.0.0.1:${server.address.port}"))
-                .executePending(AiRuntimeRequest(emptyList(), history), session, "conversation", connectionId, model, true))
+                .executePending(AiRuntimeRequest(emptyList(), history), session, "conversation", testModelConfiguration(connectionId, model), true))
             assertEquals(1, calls.size)
             val replay = OpenAiSubscriptionRequestMapper().toRequest(
                 AiRuntimeRequest(emptyList(), history), profile, "conversation", true, connectionId,
@@ -108,7 +108,7 @@ class OpenAiSubscriptionWebSearchTest {
         val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
         val history = listOf(userMessage("Search")) + persisted(mapResponse(listOf(webCall)))
         for (options in listOf(AiRuntimeOptions(toolChoice = AiToolChoice.None), AiRuntimeOptions(toolAccess = ToolAccessPolicy.AllowOnly()))) {
-            val result = assertNotNull(search.executePending(AiRuntimeRequest(emptyList(), history, options = options), session, "conversation", connectionId, model, true))
+            val result = assertNotNull(search.executePending(AiRuntimeRequest(emptyList(), history, options = options), session, "conversation", testModelConfiguration(connectionId, model), true))
             assertTrue((result.messages.single().content.single() as ContentItem.ToolResult).isError)
         }
         assertNull(search.pendingCall(history + userMessage("New turn"), connectionId, model))

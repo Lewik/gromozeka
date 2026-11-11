@@ -90,7 +90,7 @@ class OpenAiSubscriptionProgressRealTest {
         val mapped = requestMapper.toRequest(initial, profile, conversationId.value, connectionId = connectionId)
         val compactor = OpenAiSubscriptionCompaction(client(), requestMapper, responseMapper)
         val compacted = assertNotNull(compactor.executeIfNeeded(initial, mapped, profile, session,
-            conversationId.value, connectionId, "live-compaction-$model"))
+            conversationId.value, connectionId, testModelConfiguration(connectionId, model, "live-compaction-$model")))
         assertEquals(AiStepOutcome.CONTINUE, compacted.outcome)
         assertTrue(compacted.toolCalls.isEmpty())
         assertTrue(requireNotNull(compacted.contextUsage).inputTokens < 4_000)
@@ -102,8 +102,8 @@ class OpenAiSubscriptionProgressRealTest {
             val replay = requestMapper.toRequest(next, profile, conversationId.value, connectionId = connectionId)
             assertTrue(replay.input.none { it.toString().contains("Build record 1000:") })
             assertNull(freshCompactor.executeIfNeeded(next, replay, profile, session,
-                conversationId.value, connectionId, "live-compaction-$model"))
-            val parsed = freshClient.create("test-subscription", session, conversationId.value, replay, profile, options.assistantResponseFormat)
+                conversationId.value, connectionId, testModelConfiguration(connectionId, model, "live-compaction-$model")))
+            val parsed = freshClient.create(testModelConfiguration(), session, conversationId.value, replay, profile, options.assistantResponseFormat)
             val response = responseMapper.toRuntimeResponse(parsed.outputItems, parsed.completed, conversationId.value,
                 connectionId, "live-compaction-$model", model, options.assistantResponseFormat)
             assertEquals(AiStepOutcome.COMPLETE, response.outcome)
@@ -176,7 +176,7 @@ class OpenAiSubscriptionProgressRealTest {
                 profile, conversationId.value, connectionId = connectionId,
             )
             assertEquals("low", request.reasoning?.get("effort")?.jsonPrimitive?.content)
-            val parsed = client.create("test-subscription", session, conversationId.value, request, profile, options.assistantResponseFormat)
+            val parsed = client.create(testModelConfiguration(), session, conversationId.value, request, profile, options.assistantResponseFormat)
             val response = responseMapper.toRuntimeResponse(
                 parsed.outputItems, parsed.completed, conversationId.value, connectionId,
                 "live-progress-$model", model, options.assistantResponseFormat,

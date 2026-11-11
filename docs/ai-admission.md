@@ -1,32 +1,32 @@
 # AI concurrency groups
 
 AI admission is owned by one Server coordinator, not by individual providers or
-Worker processes. Every connection references exactly one `AiConcurrencyGroup`
+Worker processes. Every model configuration references exactly one `AiConcurrencyGroup`
 through `concurrencyGroupId`. Group IDs are explicit configuration: matching URLs,
-credentials or provider names never implicitly combine connections.
+credentials or provider names never implicitly combine configurations.
 
 `default` is permanent and initially allows 4 concurrent operations. New
-connections use it unless another group is selected. A group limit is 1–64, or
+model configurations use it unless another group is selected. A group limit is 1–64, or
 explicit `null` for unlimited. Unlimited operations still pass through admission
-and retain the same lifecycle and diagnostics. There is no TPM accounting,
-provider-quota discovery or plugin policy in this contract.
+and retain the same lifecycle and diagnostics. Optional [HTTP TPM admission](ai-tpm.md) shares this coordinator but has separate
+named groups, estimates and feedback. Provider quotas are never auto-discovered.
 
 ## Configuration
 
 The AI catalog contains `concurrencyGroups` alongside connections, model specs,
 configurations and assignments. Changes use the catalog's optimistic revision.
-The settings UI edits groups and a connection's group membership. Control MCP has:
+The settings UI edits groups and a model configuration's group membership. Control MCP has:
 
-- `grz_ai_catalog_get`: groups and connection membership in the normal catalog.
+- `grz_ai_catalog_get`: groups and model configuration membership in the normal catalog.
 - `grz_ai_concurrency_group_upsert`: a complete `group` and `expectedRevision`.
 - `grz_ai_concurrency_group_delete`: `groupId` and `expectedRevision`.
-- `grz_ai_connection_upsert`: sets `connection.concurrencyGroupId`.
+- `grz_ai_model_configuration_upsert`: sets `configuration.concurrencyGroupId`.
 - `grz_ai_admission_status`: current waiting operations and active leases with
-  measurement time; routing metadata only, not model prompts or responses.
+  measurement time; routing metadata and quota balances, not model prompts or responses.
 
 These operations require Server-owner access. The default group cannot be
-deleted. Neither can a group referenced by a connection or an active durable
-lease. A connection change does not move an already active lease to another
+deleted. Neither can a group referenced by a model configuration or an active durable
+lease. A configuration change does not move an already active lease to another
 group. New grants resolve current membership; lowering a limit never cancels
 active work. Catalog revisions prevent delayed snapshot updates from undoing a
 newer admission configuration.
@@ -113,11 +113,14 @@ it. Old `httpSettings.maxConcurrentCalls` values are deliberately discarded, not
 converted into per-connection groups or preserved as another limit. The shared
 default limit is 4. Operators can explicitly split groups afterwards.
 
-Worker Gateway protocol 22 is required for Server-owned admission. Update Server
+Migration V84 transfers those connection assignments to their model configurations
+and removes the old connection field. It also adds TPM groups/state/receipts.
+
+Worker Gateway protocol 23 is required for HTTP quota feedback and admission. Update Server
 and all Workers together, including Workers without AI capabilities; update UI
 clients before editing the new catalog. Protocol 21 CBOR byte-string encoding is
 unchanged. Finish queued/in-flight operations before the coordinated cutover:
-stored old AI request payloads can still contain the removed HTTP setting. They
+stored old AI request payloads can still contain removed connection/HTTP fields. They
 are not rewritten or silently retried by this migration. Do not mix a new Server
 with an old Worker bypassing admission, or an old UI with the new catalog. The
 migration does not replay or erase Worker requests, change provider credentials,

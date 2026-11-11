@@ -84,7 +84,7 @@ internal class OpenAiSdkRuntimeBackend(
     ): AiRuntime {
         val connection = runtime.connection
         val modelConfiguration = runtime.modelConfiguration
-        val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission) { end ->
+        val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = modelConfiguration) { end ->
             clientFactory.createInferenceClient(connection, end)
         }
         return when (connection) {

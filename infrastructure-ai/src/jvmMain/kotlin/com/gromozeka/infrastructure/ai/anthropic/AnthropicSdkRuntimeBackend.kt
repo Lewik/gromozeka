@@ -99,7 +99,7 @@ internal class AnthropicSdkRuntimeBackend(
         val messageMapper = AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec))
         val execute: suspend (AiRuntimeRequest) -> AiRuntimeResponse = when (connectionKind) {
             AiConnection.Kind.ANTHROPIC_API -> {
-                val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission) { end ->
+                val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = modelConfiguration) { end ->
                     createDirectAnthropicClient(connection, end)
                 }
                 val call: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { request ->
@@ -114,7 +114,7 @@ internal class AnthropicSdkRuntimeBackend(
             }
             AiConnection.Kind.ANTHROPIC_BEDROCK -> { request ->
                 val params = messageMapper.toCreateParams(modelConfiguration.providerModelId, request)
-                admission.execute(connection, request.options.usagePurpose ?: "INFERENCE", request.options.executionDeadline) {
+                admission.execute(modelConfiguration, request.options.usagePurpose ?: "INFERENCE", request.options.executionDeadline) {
                     withContext(Dispatchers.IO) {
                         try {
                             val client = createBedrockAnthropicClient(connection)

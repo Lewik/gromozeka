@@ -394,3 +394,11 @@ Worker executor with codecs; they are not acceptance of the work TrueFoundry dep
 - [HTTP 429 (RFC 6585)](https://www.rfc-editor.org/rfc/rfc6585.html#section-4)
 
 - [TrueFoundry model listing contract](https://www.truefoundry.com/docs/api-reference/models/list-available-models)
+
+## Optional token-quota admission
+
+[TPM policies](ai-tpm.md) belong to model configurations, not connections. They
+inspect the prepared JSON before native HTTP execution and retain the slot until
+body completion/cleanup. Quota feedback errors never trigger an inference replay.
+Multipart STT and realtime WebSocket do not support TPM. Existing HTTP transport
+settings and their complete-429-only retry contract remain independent.

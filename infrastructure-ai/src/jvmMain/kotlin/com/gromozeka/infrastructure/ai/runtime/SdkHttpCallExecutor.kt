@@ -3,6 +3,9 @@ package com.gromozeka.infrastructure.ai.runtime
 import com.gromozeka.domain.model.ai.AiCallException
 import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiAdmissionOutcome
+import kotlinx.coroutines.CoroutineScope
 import com.gromozeka.domain.service.AiCallAdmission
 import com.gromozeka.domain.model.ai.AiHttpCallBudget
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -36,6 +39,7 @@ internal class SdkHttpCallExecutor<C>(
     private val timeoutSeconds: Int?,
     private val maxAttempts: Int = SdkHttpSupport.settings(connection).maxAttempts,
     private val admission: AiCallAdmission,
+    private val modelConfiguration: AiModelConfiguration? = null,
     private val clientFactory: (deadlineNanos: Long) -> SdkInferenceClient<C>,
 ) {
     init { require(maxAttempts in 1..5) { "Invalid AI HTTP attempt limit" } }
@@ -59,7 +63,7 @@ internal class SdkHttpCallExecutor<C>(
                         while (true) {
                             currentCoroutineContext().ensureActive()
                             try {
-                                return@withContext admission.execute(connection, options.usagePurpose ?: "INFERENCE", deadline) {
+                                suspend fun attempt(): T {
                                     currentCoroutineContext().ensureActive()
                                     val activeSession = session ?: try {
                                         clientFactory(end).also { session = it; transportRef.set(it.transport) }
@@ -69,13 +73,28 @@ internal class SdkHttpCallExecutor<C>(
                                     val left = end - System.nanoTime()
                                     if (left <= 0) throw deadlineFailure(activeSession.transport)
                                     activeSession.transport.beginAttempt()
-                                    await(activeSession.transport) { action(activeSession.client, Duration.ofNanos(left)) }
+                                    val tpm = modelConfiguration?.takeIf { it.tpm != null }
+                                    if (tpm != null) activeSession.transport.configureTpm(CoroutineScope(currentCoroutineContext()),
+                                        admission, tpm, options.usagePurpose ?: "INFERENCE", deadline)
+                                    var outcome = AiAdmissionOutcome.FAILED
+                                    try {
+                                        return await(activeSession.transport) { action(activeSession.client, Duration.ofNanos(left)) }
+                                            .also { outcome = AiAdmissionOutcome.SUCCEEDED }
+                                    } catch (error: CancellationException) { outcome = AiAdmissionOutcome.CANCELLED; throw error }
+                                    finally { if (tpm != null) activeSession.transport.finishTpm(outcome) }
+                                }
+                                return@withContext when {
+                                    modelConfiguration?.tpm != null -> attempt()
+                                    modelConfiguration != null -> admission.execute(modelConfiguration, options.usagePurpose ?: "INFERENCE", deadline) { attempt() }
+                                    else -> admission.execute(connection, options.usagePurpose ?: "INFERENCE", deadline) { attempt() }
                                 }
                             } catch (error: CancellationException) { throw error }
                             catch (error: com.gromozeka.domain.service.AiAdmissionException) { throw error }
                             catch (error: AiCallException) { throw error }
                             catch (error: Exception) {
                                 currentCoroutineContext().ensureActive()
+                                generateSequence<Throwable>(error) { it.cause }.filterIsInstance<com.gromozeka.domain.service.AiAdmissionException>()
+                                    .firstOrNull()?.let { throw it }
                                 val transport = requireNotNull(transportRef.get()) { "SDK failure has no transport attempt" }
                                 if (end - System.nanoTime() <= 0) throw deadlineFailure(transport)
                                 val failure = classify(error, transport)

@@ -265,7 +265,7 @@ class OpenAiSpeechTranscriptionExecutor(
         request: AiSpeechTranscriptionRequest,
     ): String {
         val executor = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor(
-            runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission,
+            runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = runtime.modelConfiguration,
         ) { end -> clientFactory.createInferenceClient(runtime.connection, end) }
         val tempFile = File.createTempFile("gromozeka-stt", ".${request.format.fileExtension}")
 

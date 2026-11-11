@@ -1,6 +1,18 @@
 package com.gromozeka.infrastructure.ai.runtime
 
 import com.gromozeka.domain.model.ai.AiHttpSettings
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiHttpQuotaFeedback
+import com.gromozeka.domain.model.ai.AiAdmissionOutcome
+import com.gromozeka.domain.service.AiCallAdmission
+import com.gromozeka.domain.service.AiAdmittedHttpSession
+import com.gromozeka.domain.service.AiAdmissionException
+import kotlinx.coroutines.*
+import kotlinx.serialization.json.Json
+import okio.Buffer
+import okio.ForwardingSink
+import okio.buffer
+import java.io.ByteArrayOutputStream
 import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpInterceptor
 import okhttp3.Call
 import okhttp3.Callback
@@ -29,6 +41,38 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
     private val responses = mutableSetOf<NativeResponse>()
     private var current = Attempt()
     private var count = 0
+    private data class TpmGate(val scope: CoroutineScope, val admission: AiCallAdmission, val configuration: AiModelConfiguration,
+        val purpose: String, val deadline: kotlin.time.Instant)
+    private var tpmGate: TpmGate? = null
+    @Volatile private var gateJob: Job? = null
+    @Volatile private var admitted: AiAdmittedHttpSession? = null
+    private var feedbackHeaders: Map<String, List<String>> = emptyMap()
+    private val feedbackBody = ByteArrayOutputStream()
+    private var feedbackBodyTooLarge = false
+
+    fun configureTpm(scope: CoroutineScope, admission: AiCallAdmission, configuration: AiModelConfiguration, purpose: String, deadline: kotlin.time.Instant) {
+        tpmGate = TpmGate(scope, admission, configuration, purpose, deadline)
+    }
+
+    suspend fun finishTpm(outcome: AiAdmissionOutcome) {
+        withContext(NonCancellable) {
+            gateJob?.cancelAndJoin()
+            val feedback = synchronized(lock) {
+                current.status?.let { status ->
+                    val raw = feedbackBody.toByteArray()
+                    val body = if (feedbackBodyTooLarge || raw.isEmpty()) null else try {
+                        Json.parseToJsonElement(raw.decodeToString(throwOnInvalidSequence = true))
+                    } catch (_: IllegalArgumentException) { null }
+                    AiHttpQuotaFeedback(status, feedbackHeaders, body, feedbackBodyTooLarge || (raw.isNotEmpty() && body == null))
+                }
+            }
+            admitted?.finish(outcome, feedback)
+            admitted = null
+            gateJob = null
+            tpmGate = null
+        }
+    }
+
     private class ExchangeGuard { val exchanges = java.util.concurrent.atomic.AtomicInteger() }
     private val client = OkHttpClient.Builder()
         .addNetworkInterceptor(AiTrafficDumpInterceptor("sdk"))
@@ -57,9 +101,51 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
     fun beginAttempt() = synchronized(lock) {
         check(calls.isEmpty() && responses.isEmpty()) { "Previous AI HTTP attempt has not closed" }
         current = Attempt()
+        feedbackHeaders = emptyMap()
+        feedbackBody.reset()
+        feedbackBodyTooLarge = false
     }
 
     fun execute(request: Request, closeRequestBody: () -> Unit): CompletableFuture<NativeResponse> {
+        val gate = tpmGate ?: return executeNative(request, closeRequestBody)
+        val result = CompletableFuture<NativeResponse>()
+        gateJob = gate.scope.launch {
+            try {
+                val original = requireNotNull(request.body) { "TPM requires a JSON request body" }
+                require(original.contentType()?.subtype?.contains("json") == true) { "TPM is unavailable for non-JSON HTTP requests" }
+                val buffer = Buffer()
+                val bounded = object : ForwardingSink(buffer) {
+                    override fun write(source: Buffer, byteCount: Long) {
+                        require(buffer.size + byteCount <= 16 * 1024 * 1024) { "TPM request exceeds 16 MiB" }
+                        super.write(source, byteCount)
+                    }
+                }.buffer()
+                original.writeTo(bounded)
+                bounded.flush()
+                val bytes = buffer.readByteArray()
+                val document = Json.parseToJsonElement(bytes.decodeToString(throwOnInvalidSequence = true))
+                admitted = gate.admission.openHttpSession(gate.configuration, document, gate.purpose, gate.deadline)
+                currentCoroutineContext().ensureActive()
+                val body = object : RequestBody() {
+                    override fun contentType() = original.contentType()
+                    override fun contentLength() = bytes.size.toLong()
+                    override fun isOneShot() = true
+                    override fun writeTo(sink: BufferedSink) { sink.write(bytes) }
+                }
+                executeNative(request.newBuilder().method(request.method, body).build(), closeRequestBody).whenComplete { value, error ->
+                    if (error != null) result.completeExceptionally(error)
+                    else if (!result.complete(value)) value.close()
+                }
+            } catch (error: Throwable) {
+                closeRequestBody()
+                result.completeExceptionally(if (error is CancellationException || error is AiAdmissionException) error
+                    else AiAdmissionException("TPM request preparation failed (${error::class.simpleName})", error))
+            }
+        }
+        return result
+    }
+
+    private fun executeNative(request: Request, closeRequestBody: () -> Unit): CompletableFuture<NativeResponse> {
         val future = CompletableFuture<NativeResponse>()
         synchronized(lock) {
             if (closed || deadlineNanos - System.nanoTime() <= 0) {
@@ -85,6 +171,7 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
                     val accepted = synchronized(lock) {
                         current = current.copy(status = response.code, bodyComplete = response.body?.contentLength() == 0L,
                             retryAfterMillis = parseRetryAfter(response.header("Retry-After")))
+                        feedbackHeaders = response.headers.toMultimap()
                         if (closed) false else { responses.add(native); true }
                     }
                     if (!accepted || !future.complete(native)) native.close()
@@ -99,10 +186,19 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
         private val length = response.body?.contentLength() ?: 0L
         private var read = 0L
         val body: InputStream = object : FilterInputStream(requireNotNull(response.body).byteStream()) {
-            override fun read(): Int = super.read().also { received(if (it < 0) -1 else 1) }
+            override fun read(): Int = `in`.read().also {
+                if (it >= 0) capture(byteArrayOf(it.toByte()), 0, 1)
+                received(if (it < 0) -1 else 1)
+            }
             override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-                `in`.read(buffer, offset, length).also(::received)
+                `in`.read(buffer, offset, length).also { if (it > 0) capture(buffer, offset, it); received(it) }
             override fun close() = this@NativeResponse.close()
+        }
+        private fun capture(bytes: ByteArray, offset: Int, count: Int) = synchronized(lock) {
+            if (tpmGate != null && !feedbackBodyTooLarge) {
+                if (feedbackBody.size() + count > 2 * 1024 * 1024) { feedbackBodyTooLarge = true; feedbackBody.reset() }
+                else feedbackBody.write(bytes, offset, count)
+            }
         }
         private fun received(bytes: Int) {
             synchronized(lock) {
@@ -123,6 +219,7 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
 
     /** Also cancels a call whose response headers arrived but whose body is still being parsed. */
     override fun close() {
+        gateJob?.cancel()
         val active = synchronized(lock) {
             if (closed) return
             closed = true

@@ -18,8 +18,11 @@ import kotlinx.coroutines.sync.withLock
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import kotlin.time.Clock
+import kotlinx.serialization.json.JsonElement
+import com.gromozeka.domain.service.AiAdmissionException
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @Service
 class WorkerAiCallAdmission(
@@ -28,7 +31,8 @@ class WorkerAiCallAdmission(
     private val journal: JvmWorkerRequestJournal,
     @Qualifier("applicationScope") private val scope: CoroutineScope,
 ) : AiCallAdmission() {
-    private data class Completion(val lease: AiAdmissionLease, val outcome: AiAdmissionOutcome)
+    private data class Completion(val lease: AiAdmissionLease, val outcome: AiAdmissionOutcome, val feedback: AiHttpQuotaFeedback? = null,
+        val result: CompletableDeferred<String?> = CompletableDeferred())
     private val log = KLoggers.logger(this)
     private val pending = linkedMapOf<String, Completion>()
     private val pendingMutex = Mutex()
@@ -41,9 +45,12 @@ class WorkerAiCallAdmission(
     @PostConstruct
     fun initialize() = runBlocking {
         // The exclusively locked journal belongs to this process; its previous execution owners are gone.
-        journal.loadAiAdmissions().forEach { lease ->
+        val completed = journal.loadAiAdmissionCompletions().associateBy { it.lease.operation.id }
+        val leases = journal.loadAiAdmissions().associateBy { it.operation.id }
+        (leases + completed.mapValues { it.value.lease }).values.forEach { lease ->
             require(lease.workerId == identity.workerId.value) { "AI admission journal belongs to another Worker" }
-            pending[lease.operation.id] = Completion(lease, AiAdmissionOutcome.OWNER_STOPPED)
+            val saved = completed[lease.operation.id]
+            pending[lease.operation.id] = Completion(lease, saved?.outcome ?: AiAdmissionOutcome.OWNER_STOPPED, saved?.feedback)
         }
         publisher = scope.launch {
             for (signal in retrySignals) {
@@ -73,7 +80,10 @@ class WorkerAiCallAdmission(
         retrySignals.close()
     }
 
-    override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease {
+    override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = acquireOwned(operation, null)
+    override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease = acquireOwned(operation, request)
+
+    private suspend fun acquireOwned(operation: AiAdmissionOperation, request: JsonElement?): AiAdmissionLease {
         check(recoveryFailure == null) { "AI admission recovery requires attention" }
         flushPending()
         val owner = requireNotNull(currentCoroutineContext()[AiAdmissionWorkerContext]) {
@@ -83,7 +93,7 @@ class WorkerAiCallAdmission(
         require(wait.isPositive()) { "AI admission deadline has passed" }
         val lease = AiAdmissionGatewayCodec.decodeLease(outbound.execute(
             WorkerGatewayOperation.AI_ADMISSION,
-            AiAdmissionGatewayCodec.encode(AiAdmissionCommand.Acquire(operation, owner.requestId)),
+            AiAdmissionGatewayCodec.encode(AiAdmissionCommand.Acquire(operation, owner.requestId, request)),
             wait,
         ))
         check(lease.operation.id == operation.id && lease.operation.target == operation.target &&
@@ -109,11 +119,24 @@ class WorkerAiCallAdmission(
         }
     }
 
-    override suspend fun finish(lease: AiAdmissionLease, outcome: AiAdmissionOutcome) {
-        pendingMutex.withLock { pending[lease.operation.id] = Completion(lease, outcome) }
-        retrySignals.trySend(Unit)
-        try { flushPending() } catch (error: ControlPlaneUnavailableException) {
-            // Completion is durably queued, not acknowledged. The Server keeps charging the lease until delivery.
+    override suspend fun finish(lease: AiAdmissionLease, outcome: AiAdmissionOutcome) = finishOwned(lease, outcome, null)
+    override suspend fun finishHttp(lease: AiAdmissionLease, outcome: AiAdmissionOutcome, feedback: AiHttpQuotaFeedback?) = finishOwned(lease, outcome, feedback)
+
+    private suspend fun finishOwned(lease: AiAdmissionLease, outcome: AiAdmissionOutcome, feedback: AiHttpQuotaFeedback?) {
+        val completion = pendingMutex.withLock {
+            pending[lease.operation.id]?.also {
+                check(it.lease == lease && it.outcome == outcome && it.feedback == feedback) { "Conflicting AI admission completion" }
+            } ?: Completion(lease, outcome, feedback).also {
+                journal.saveAiAdmissionCompletion(AiAdmissionCompletion(lease, outcome, feedback))
+                pending[lease.operation.id] = it
+            }
+        }
+        try {
+            flushPending()
+            completion.result.await()?.let { throw AiAdmissionException(it) }
+        } catch (error: ControlPlaneUnavailableException) {
+            retrySignals.trySend(Unit)
+            if (lease.operation.tpm != null) throw AiAdmissionException("TPM feedback could not be confirmed; inference must not be repeated", error)
             log.debug { "AI admission completion deferred: operation=${lease.operation.id}" }
         }
     }
@@ -121,10 +144,13 @@ class WorkerAiCallAdmission(
     private suspend fun flushPending() = flushMutex.withLock {
         val completions = pendingMutex.withLock { pending.values.toList() }
         for (completion in completions) {
-            outbound.execute(WorkerGatewayOperation.AI_ADMISSION,
-                AiAdmissionGatewayCodec.encode(AiAdmissionCommand.Finish(completion.lease.operation.id, completion.outcome)))
+            val payload = outbound.execute(WorkerGatewayOperation.AI_ADMISSION,
+                AiAdmissionGatewayCodec.encode(AiAdmissionCommand.Finish(completion.lease.operation.id, completion.outcome, completion.feedback)),
+                ((completion.lease.operation.tpm?.feedback as? AiTpmFeedbackPolicy.Command)?.command?.timeoutSeconds?.plus(30) ?: 30).seconds)
+            val feedbackError = if (completion.lease.operation.tpm == null) null else AiAdmissionGatewayCodec.decodeCompletion(payload).feedbackError
             journal.deleteAiAdmission(completion.lease.operation.id)
             pendingMutex.withLock { pending.remove(completion.lease.operation.id) }
+            completion.result.complete(feedbackError)
         }
     }
 }

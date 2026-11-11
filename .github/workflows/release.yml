@@ -118,6 +118,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Verify PostgreSQL migrations and Worker inventory
         env:
+          GROMOZEKA_AI_HTTP_TEST_URL: jdbc:postgresql://localhost:5432/gromozeka
+          GROMOZEKA_AI_HTTP_TEST_USER: gromozeka
+          GROMOZEKA_AI_HTTP_TEST_PASSWORD: gromozeka
           GROMOZEKA_POSTGRES_RUNTIME_TEST: 'true'
           GROMOZEKA_POSTGRES_URL: jdbc:postgresql://localhost:5432/gromozeka
           GROMOZEKA_POSTGRES_USER: gromozeka
@@ -136,6 +139,8 @@ jobs:
           --tests '*PostgresWorkerRequestRepositoryTest'
           --tests '*CompactionCoverageMigrationTest'
           --tests '*WorkerRequestByteStringMigrationTest'
+          --tests '*PostgresAiAdmissionRepositoryTest'
+          --tests '*PostgresAiHttpSettingsTest'
           --tests '*PostgresRuntimeMessageReadTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           --console=plain
@@ -151,7 +156,9 @@ jobs:
           :worker:test
           :remote-protocol:jvmTest
           :worker-runtime:jvmTest
-          :domain:jvmTest --tests '*ConversationPinTest'
+          :shared:jvmTest --tests '*JsonPointerTest'
+          :domain:jvmTest --tests '*AiTpmPolicyTest' --tests '*AiConcurrencyGroupTest'
+          --tests '*ConversationPinTest'
           --tests '*ConversationContextTest'
           --tests '*SparseConversationHistoryTest'
           --tests '*SyntheticToolCallIdsTest'
@@ -179,6 +186,11 @@ jobs:
           --tests '*MessageSquashServiceTest'
           --tests '*AgentSessionRuntimeProjectionTest'
           --tests '*DistributedAiToolRoutingTest'
+          --tests '*AiAdmissionQueueTest'
+          --tests '*AiTpmLedgerTest'
+          --tests '*AiQuotaPolicyEvaluatorTest'
+          --tests '*ServerAiTpmAdmissionTest'
+          --tests '*AiConfigurationApplicationServiceTest'
           :infrastructure-ai:jvmTest
           --tests '*ClaudeCodeCliRuntimeTest.conversationPin*'
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'

@@ -45,7 +45,7 @@ class WorkerAiAdmissionGatewayHandler(
                 require(remaining > 0) { "Owning AI operation deadline has passed" }
                 withTimeout(remaining) {
                     AiAdmissionGatewayCodec.encodeLease(admission.acquireRemote(
-                        command.operation.copy(deadline = deadline), identity.workerId.value, owner.id,
+                        command.operation.copy(deadline = deadline), identity.workerId.value, owner.id, command.httpRequest,
                     ))
                 }
             }
@@ -54,8 +54,11 @@ class WorkerAiAdmissionGatewayHandler(
                 byteArrayOf()
             }
             is AiAdmissionCommand.Finish -> {
-                admission.finishOperation(command.operationId, identity.workerId.value, command.outcome)
-                byteArrayOf()
+                val feedbackError = try {
+                    admission.finishOperation(command.operationId, identity.workerId.value, command.outcome, command.feedback)
+                    null
+                } catch (error: com.gromozeka.domain.service.AiQuotaFeedbackException) { error.message }
+                AiAdmissionGatewayCodec.encodeCompletion(com.gromozeka.domain.model.ai.AiAdmissionCompletionResult(feedbackError))
             }
         }
     }

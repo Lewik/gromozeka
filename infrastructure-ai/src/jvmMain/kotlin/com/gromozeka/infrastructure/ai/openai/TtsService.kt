@@ -152,7 +152,7 @@ class OpenAiSpeechSynthesisExecutor(
     private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : DirectAiTextToSpeechProvider {
     private fun executor(runtime: ResolvedAiRuntime) = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor(
-        runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission,
+        runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = runtime.modelConfiguration,
     ) { end -> clientFactory.createInferenceClient(runtime.connection, end) }
 
     override suspend fun synthesize(

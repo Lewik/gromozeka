@@ -28,3 +28,6 @@ class TestAiAdmission(limit: Int = 64) : AiCallAdmission() {
         permits.release()
     }
 }
+
+internal fun testModelConfiguration(connectionId: String = "test-subscription", modelId: String = "model", id: String = "configuration") =
+    AiModelConfiguration(AiModelConfiguration.Id(id), AiConnection.Id(connectionId), modelId, "Test model")

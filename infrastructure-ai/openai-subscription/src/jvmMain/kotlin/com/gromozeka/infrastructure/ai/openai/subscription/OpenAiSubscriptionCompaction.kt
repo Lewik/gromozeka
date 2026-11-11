@@ -37,7 +37,7 @@ class OpenAiSubscriptionCompaction(
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         connectionId: String,
-        modelConfigurationId: String,
+        configuration: AiModelConfiguration,
     ): AiRuntimeResponse? {
         val threshold = request.options.autoCompactionThresholdTokens ?: return null
         if (!modelProfile.useResponsesLite || requestBody.input.isEmpty()) return null
@@ -51,7 +51,7 @@ class OpenAiSubscriptionCompaction(
         log.info("OpenAI subscription compaction started: conversationKey=$conversationKey, " +
             "model=${modelProfile.slug}, estimatedTokens=$estimatedTokens, threshold=$threshold")
         val parsed = client.create(
-            connectionId = connectionId,
+            configuration = configuration,
             session = session,
             conversationKey = conversationKey,
             requestBody = requestBody.copy(
@@ -74,7 +74,7 @@ class OpenAiSubscriptionCompaction(
         val response = responseMapper.toRuntimeResponse(
             outputItems = listOf(compacted), completed = parsed.completed,
             conversationKey = conversationKey, connectionId = connectionId,
-            modelConfigurationId = modelConfigurationId, modelName = modelProfile.slug,
+            modelConfigurationId = configuration.id.value, modelName = modelProfile.slug,
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         )
         val message = response.messages.single()

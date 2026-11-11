@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiTpmGroup
 import com.gromozeka.domain.model.ai.AiConcurrencyGroup
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
@@ -58,7 +59,9 @@ internal class AiSettingsToolContributor(
                     Read current entities before changing references. Create Prompts and Skills before Agents that reference them.
                     Prompt and Skill imports accept exact inline content. Read client-local files with the caller's filesystem tools before invoking Control MCP; the Server does not guess which Worker's filesystem owns an arbitrary path.
                     AI catalog mutations require the latest expectedRevision. Read grz_ai_catalog_get again after a revision conflict.
-                    AI concurrency groups are Server-wide across execution targets. Each connection uses one concurrencyGroupId (default: default). Create or update groups with grz_ai_concurrency_group_upsert; null maxConcurrentCalls means unlimited. The default group cannot be deleted.
+                    AI concurrency groups are Server-wide across execution targets. Each model configuration uses one concurrencyGroupId (default: default). Create or update groups with grz_ai_concurrency_group_upsert; null maxConcurrentCalls means unlimited. The default group cannot be deleted.
+                    Model configuration tpm policies select a group by fixed id, request JSON Pointer value matching a group key, or Server command stdout. Commands receive JSON on stdin, use separate executable/arguments and run as the Server OS user. They are trusted owner configuration, not sandboxed model input. Set calculator and mandatory feedback extraction explicitly. TPM is disabled when tpm is null.
+                    TPM serialized policy uses type tags: group={type:"fixed",groupId} or {type:"request_value",pointer} or {type:"command",command}. Commands are {executable,arguments:[],timeoutSeconds}; selector stdout is a plain key and calculator stdout is an integer. Calculator={type:"builtin",preset,charactersPerUnit,multiplier,fixedOverhead,outputReserve?} or {type:"command",command}; presets are CHARACTERS, INPUT_ONLY, INPUT_PLUS_OUTPUT, OPENAI_MAXIMUM, and are estimates, not tokenizers. Feedback={type:"fields",remaining,retryDelay?,retryFormat} or {type:"command",command}. Value sources are {type:"header",name,jsonPointer?} or {type:"body",pointer}; retryFormat is SECONDS, MILLISECONDS, HTTP_DATE or RETRY_AFTER. Feedback-command stdin is {status,headers,body,bodyUnavailable}; stdout is {remaining?,retryAfterMillis?}. fallbackGroupId applies only to group selection. Header names and quota constants require installation-specific configuration. Missing required success feedback fails the call; it never resets the budget or retries inference.
                     Web tool configuration is part of the central AI catalog and is shared by all Workers.
                     External MCP servers are assigned to one exact Worker. Create, update, refresh, and delete are explicit operations against its current live Worker session and are never retried automatically after execution starts.
                     External MCP environment and HTTP header values are never returned. Read configuredTransportValues for their names; update sends only add/replace values plus explicit removal lists.
@@ -88,7 +91,7 @@ internal class AiSettingsToolContributor(
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_concurrency_group_upsert",
-            description = "Create or replace a Server-wide AI concurrency group. Fields: id, displayName, maxConcurrentCalls (1-64, default 4; null means unlimited). Connections select one group by concurrencyGroupId; multiple connections and Workers share its capacity. Existing operations are not cancelled when lowering a limit.",
+            description = "Create or replace a Server-wide AI concurrency group. Fields: id, key (unique; defaults to id), displayName, maxConcurrentCalls (1-64, default 4; null means unlimited). Model configurations select one group by concurrencyGroupId; configurations across connections and Workers share its capacity. Existing operations are not cancelled when lowering a limit.",
             inputSchema = aiEntityMutationSchema("group", "Serialized AiConcurrencyGroup object."),
             readOnly = false,
             accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
@@ -99,7 +102,7 @@ internal class AiSettingsToolContributor(
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_concurrency_group_delete",
-            description = "Delete an unused AI concurrency group. The default group and groups referenced by connections or active admissions cannot be deleted.",
+            description = "Delete an unused AI concurrency group. The default group and groups referenced by model configurations or active admissions cannot be deleted.",
             inputSchema = aiDeleteSchema("groupId", "AI concurrency group id."),
             readOnly = false,
             destructive = true,
@@ -110,8 +113,30 @@ internal class AiSettingsToolContributor(
                 "ai_concurrency_group", id.value)
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
+            name = "grz_ai_tpm_group_upsert",
+            description = "Create or replace a Server-wide TPM group: id, unique human-readable key, displayName, tokenLimit, renewalPeriodSeconds (default 60), allowParallelRequests (default false), quotaUsageFraction (greater than 0, at most 1; default 1), missingRetryDelaySeconds (default 10). Model configurations opt in through tpm policy. No groups are created automatically.",
+            inputSchema = aiEntityMutationSchema("group", "Serialized AiTpmGroup object."),
+            readOnly = false,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
+        ) { input ->
+            val group = input.decodeRequired("group", AiTpmGroup.serializer())
+            val snapshot = aiCatalogManagementService.upsertTpmGroup(group, input.requiredLong("expectedRevision"))
+            aiMutationResult(snapshot, "group", AiTpmGroup.serializer(), snapshot.catalog.tpmGroups.single { it.id == group.id })
+        },
+        toolFactory.create(CONTROL_TOOL_SOURCE,
+            name = "grz_ai_tpm_group_delete",
+            description = "Delete a TPM group not referenced by a fixed/fallback policy or active admission. Dynamic key selectors are not rewritten; their configured error/fallback policy applies.",
+            inputSchema = aiDeleteSchema("groupId", "TPM group id."),
+            readOnly = false,
+            destructive = true,
+            accessPolicy = AiToolAccessPolicy.SERVER_OWNER,
+        ) { input ->
+            val id = AiTpmGroup.Id(input.requiredString("groupId"))
+            aiDeleteResult(aiCatalogManagementService.deleteTpmGroup(id, input.requiredLong("expectedRevision")), "ai_tpm_group", id.value)
+        },
+        toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_connection_upsert",
-            description = "Create or replace one AI connection using the latest AI catalog revision. concurrencyGroupId selects one Server-wide AI concurrency group and defaults to default. Missing API keys preserve the existing secret by default. SDK connections support httpSettings for Bearer/native auth, additional CA, proxy/noProxy, non-secret static headers and maxAttempts (1-5, default 3 including the first attempt; only complete HTTP 429 rejections may retry). Token env/file sources and CA paths belong to the selected execution target; Authorization must not be supplied in extraHeaders.",
+            description = "Create or replace one AI connection using the latest AI catalog revision. Missing API keys preserve the existing secret by default. SDK connections support httpSettings for Bearer/native auth, additional CA, proxy/noProxy, non-secret static headers and maxAttempts (1-5, default 3 including the first attempt; only complete HTTP 429 rejections may retry). Token env/file sources and CA paths belong to the selected execution target; Authorization must not be supplied in extraHeaders.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "connection",
                 description = "Serialized AiConnection object with connectionKind discriminator.",

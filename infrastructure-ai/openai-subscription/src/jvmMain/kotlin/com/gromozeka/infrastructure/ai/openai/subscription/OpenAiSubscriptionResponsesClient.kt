@@ -72,7 +72,7 @@ class OpenAiSubscriptionResponsesClient(
     private val webSocketSessions = ConcurrentHashMap<String, WebSocketSessionState>()
 
     suspend fun search(
-        connectionId: String,
+        configuration: AiModelConfiguration,
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         request: JsonObject,
@@ -90,8 +90,7 @@ class OpenAiSubscriptionResponsesClient(
             .header("Accept", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(request.toString()))
         session.accountId?.let { builder.header("ChatGPT-Account-Id", it) }
-        val response = admission.execute(AiAdmissionTarget.Connection(AiConnection.Id(connectionId)), "PROVIDER_WEB_SEARCH",
-            Clock.System.now() + timeoutMs.milliseconds) {
+        val response = admittedHttp(configuration, request, "PROVIDER_WEB_SEARCH", timeoutMs) {
             httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
                 .awaitHttpResponse(timeoutMs)
         }
@@ -104,7 +103,7 @@ class OpenAiSubscriptionResponsesClient(
     }
 
     suspend fun create(
-        connectionId: String,
+        configuration: AiModelConfiguration,
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
@@ -112,10 +111,11 @@ class OpenAiSubscriptionResponsesClient(
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): OpenAiSubscriptionParsedResponse = withContext(Dispatchers.IO) {
         evictIdleWebSocketSessions()
+        if (configuration.tpm != null) return@withContext createViaHttp(configuration, session, conversationKey, requestBody, modelProfile)
 
         val wsResult = runCatching {
             createViaWebSocket(
-                connectionId = connectionId,
+                configuration = configuration,
                 session = session,
                 conversationKey = conversationKey,
                 requestBody = requestBody,
@@ -151,7 +151,7 @@ class OpenAiSubscriptionResponsesClient(
 
         currentCoroutineContext().ensureActive()
         createViaHttp(
-            connectionId = connectionId,
+            configuration = configuration,
             session = session,
             conversationKey = conversationKey,
             requestBody = requestBody,
@@ -160,7 +160,7 @@ class OpenAiSubscriptionResponsesClient(
     }
 
     private suspend fun createViaHttp(
-        connectionId: String,
+        configuration: AiModelConfiguration,
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
@@ -185,8 +185,7 @@ class OpenAiSubscriptionResponsesClient(
             requestBuilder.header("x-openai-internal-codex-responses-lite", "true")
         }
 
-        val response = admission.execute(AiAdmissionTarget.Connection(AiConnection.Id(connectionId)), "INFERENCE",
-            Clock.System.now() + httpResponseTimeoutMs.coerceAtLeast(1L).milliseconds) {
+        val response = admittedHttp(configuration, json.parseToJsonElement(requestJson), "INFERENCE", httpResponseTimeoutMs.coerceAtLeast(1L)) {
             httpClient.sendAsync(requestBuilder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
                 .awaitHttpResponse(httpResponseTimeoutMs.coerceAtLeast(1L))
         }
@@ -208,8 +207,43 @@ class OpenAiSubscriptionResponsesClient(
         return parseEventStream(response.body())
     }
 
+    private suspend fun admittedHttp(
+        configuration: AiModelConfiguration, request: kotlinx.serialization.json.JsonElement,
+        purpose: String, timeoutMs: Long, block: suspend () -> HttpResponse<String>,
+    ): HttpResponse<String> = kotlinx.coroutines.withTimeout(timeoutMs) {
+        val deadline = Clock.System.now() + timeoutMs.milliseconds
+        if (configuration.tpm == null) return@withTimeout admission.execute(configuration, purpose, deadline, block)
+        val lease = admission.openHttpSession(configuration, request, purpose, deadline)
+        var response: HttpResponse<String>? = null
+        var outcome = com.gromozeka.domain.model.ai.AiAdmissionOutcome.FAILED
+        try {
+            block().also {
+                response = it
+                outcome = if (it.statusCode() in 200..299) com.gromozeka.domain.model.ai.AiAdmissionOutcome.SUCCEEDED
+                    else com.gromozeka.domain.model.ai.AiAdmissionOutcome.FAILED
+            }
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            outcome = com.gromozeka.domain.model.ai.AiAdmissionOutcome.CANCELLED
+            throw error
+        } finally {
+            val feedback = response?.let { received ->
+                val raw = received.body()
+                val body = if (raw.encodeToByteArray().size > 2 * 1024 * 1024) null else try {
+                    json.parseToJsonElement(raw)
+                } catch (_: kotlinx.serialization.SerializationException) {
+                    raw.lineSequence().filter { it.startsWith("data:") }.mapNotNull { line ->
+                        try { json.parseToJsonElement(line.removePrefix("data:").trim()) as? JsonObject }
+                        catch (_: kotlinx.serialization.SerializationException) { null }
+                    }.lastOrNull { it["type"]?.jsonPrimitive?.contentOrNull in setOf("response.completed", "response.failed", "response.incomplete") }?.get("response")
+                }
+                com.gromozeka.domain.model.ai.AiHttpQuotaFeedback(received.statusCode(), received.headers().map(), body, body == null)
+            }
+            lease.finish(outcome, feedback)
+        }
+    }
+
     private suspend fun createViaWebSocket(
-        connectionId: String,
+        configuration: AiModelConfiguration,
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
@@ -227,7 +261,7 @@ class OpenAiSubscriptionResponsesClient(
         }!!
 
         return sessionState.execute(
-            connectionId = connectionId,
+            configuration = configuration,
             admission = admission,
             session = session,
             requestBody = requestBody,
@@ -373,7 +407,7 @@ class OpenAiSubscriptionResponsesClient(
         private val incrementalState = OpenAiSubscriptionIncrementalState()
 
         suspend fun execute(
-            connectionId: String,
+            configuration: AiModelConfiguration,
             admission: AiCallAdmission,
             session: OpenAiSubscriptionSession,
             requestBody: OpenAiSubscriptionResponsesRequest,
@@ -402,7 +436,7 @@ class OpenAiSubscriptionResponsesClient(
                     "previousResponseId=${plan.request.previousResponseId != null}"
             )
 
-            val parsed = admission.execute(AiAdmissionTarget.Connection(AiConnection.Id(connectionId)), "INFERENCE",
+            val parsed = admission.execute(configuration, "INFERENCE",
                 Clock.System.now() + responseTimeoutMs.milliseconds) {
                 try {
                     val coroutineContext = currentCoroutineContext()

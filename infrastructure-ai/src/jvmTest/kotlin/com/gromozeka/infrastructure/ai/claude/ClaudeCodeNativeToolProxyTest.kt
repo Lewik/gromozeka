@@ -197,6 +197,7 @@ class ClaudeCodeNativeToolProxyTest {
 
     private fun command(tool: ClaudeCodeNativeTool, input: JsonObject = invocation().input): ClaudeCodeCommand =
         ClaudeCodeCommand(
+            modelConfigurationId = "test-model",
             modelName = "haiku",
             workspaceDirectory = null,
             systemPrompt = "Use the selected native tool exactly once with the exact JSON arguments supplied. Do not change the query, mode or domain filters.",

@@ -213,6 +213,7 @@ internal class ClaudeCodeCliRuntime(
 
         val command = ClaudeCodeCommand(
             diagnosticId = diagnosticId,
+            modelConfigurationId = modelConfigurationId,
             connectionId = connectionId,
             executablePath = executablePath,
             cacheKey = sessionStateKey?.lockKey(),
@@ -1090,6 +1091,7 @@ internal data class ClaudeCodeNativeToolResponse(
 )
 
 internal data class ClaudeCodeCommand(
+    val modelConfigurationId: String,
     val diagnosticId: String = "untracked",
     val connectionId: String = "claude-code",
     val executablePath: String = "claude",

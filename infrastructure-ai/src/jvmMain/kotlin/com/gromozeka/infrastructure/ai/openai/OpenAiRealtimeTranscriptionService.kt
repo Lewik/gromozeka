@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.failSpeechAvailability
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiConfigurationProvider
@@ -70,8 +71,8 @@ class OpenAiRealtimeTranscriptionService(
         languageCode: String?,
         prompt: String?,
     ): OpenAiRealtimeTranscriptionSession {
-        val (connection, configuration) = resolveConfiguration(languageCode, prompt)
-        val admitted = admission.openSession(connection, "SPEECH_TO_TEXT")
+        val (modelConfiguration, configuration) = resolveConfiguration(languageCode, prompt)
+        val admitted = admission.openSession(modelConfiguration, "SPEECH_TO_TEXT")
         val session = OpenAiRealtimeTranscriptionSession(configuration, userStableId, admitted)
         try {
             session.start()
@@ -85,7 +86,7 @@ class OpenAiRealtimeTranscriptionService(
     private fun resolveConfiguration(
         languageCode: String? = null,
         prompt: String? = null,
-    ): Pair<AiConnection, OpenAiRealtimeTranscriptionConfiguration> {
+    ): Pair<AiModelConfiguration, OpenAiRealtimeTranscriptionConfiguration> {
         val speechToText = settingsProvider.userProfile.speechSettings.speechToText
         if (!speechToText.enabled) failSpeechAvailability(Code.SPEECH_TO_TEXT_DISABLED)
         if (speechToText.engine != UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API) {
@@ -106,7 +107,7 @@ class OpenAiRealtimeTranscriptionService(
             failSpeechAvailability(Code.PROVIDER_VAD_REQUIRES_OPENAI)
         }
 
-        return runtime.connection to OpenAiRealtimeTranscriptionConfiguration(
+        return runtime.modelConfiguration to OpenAiRealtimeTranscriptionConfiguration(
             apiKey = clientFactory.resolveApiKey(runtime.connection),
             baseUrl = clientFactory.resolveBaseUrl(runtime.connection),
             transcriptionModel = REALTIME_TRANSCRIPTION_MODEL,

@@ -118,7 +118,7 @@ internal class GitHubCopilotRuntime(
         val toolPlan = buildToolPlan(request)
         val token = resolveToken(request)
         val handle = clientPool.acquire(connection)
-        return admission.execute(connection, request.options.usagePurpose ?: "INFERENCE", request.options.executionDeadline) admitted@ {
+        return admission.execute(modelConfiguration, request.options.usagePurpose ?: "INFERENCE", request.options.executionDeadline) admitted@ {
             val sessionId = "gromozeka-${UUID.randomUUID()}"
             var session: CopilotSession? = null
             var usageSubscription: Closeable? = null

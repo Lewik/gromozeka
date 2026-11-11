@@ -15,6 +15,7 @@ import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlinx.serialization.json.JsonElement
 
 /** The Worker request is an execution owner, not a permission supplied by model input. */
 class AiAdmissionWorkerContext(val requestId: String) : AbstractCoroutineContextElement(Key) {
@@ -25,7 +26,9 @@ private class HeldAiAdmission : AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<HeldAiAdmission>
 }
 
-class AiAdmissionException(message: String, cause: Throwable? = null) : IllegalStateException(message, cause)
+open class AiAdmissionException(message: String, cause: Throwable? = null) : IllegalStateException(message, cause)
+
+class AiQuotaFeedbackException(message: String) : AiAdmissionException(message)
 
 /** For adapters returning a live session. Close the transport before finishing its admission. */
 class AiAdmittedSession internal constructor(private val release: suspend (AiAdmissionOutcome) -> Unit) {
@@ -41,6 +44,32 @@ class AiAdmittedSession internal constructor(private val release: suspend (AiAdm
 abstract class AiCallAdmission {
     protected abstract suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease
     protected abstract suspend fun finish(lease: AiAdmissionLease, outcome: AiAdmissionOutcome)
+    protected open suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease =
+        throw AiAdmissionException("This admission coordinator does not support HTTP quota policies")
+    protected open suspend fun finishHttp(lease: AiAdmissionLease, outcome: AiAdmissionOutcome, feedback: AiHttpQuotaFeedback?) = finish(lease, outcome)
+
+    suspend fun openHttpSession(configuration: AiModelConfiguration, request: JsonElement, purpose: String, deadline: Instant?): AiAdmittedHttpSession {
+        if (currentCoroutineContext()[HeldAiAdmission] != null) throw AiAdmissionException("Nested AI admission is not allowed")
+        val operation = AiAdmissionOperation(uuid7().toString(), AiAdmissionTarget.ModelConfiguration(configuration.id, configuration.connectionId), purpose, deadline)
+        val lease = try { acquireHttp(operation, request) }
+        catch (error: CancellationException) { throw error }
+        catch (error: Exception) { throw AiAdmissionException("HTTP AI admission failed (${error::class.simpleName})", error) }
+        return AiAdmittedHttpSession(lease) { outcome, feedback ->
+            try { finishHttp(lease, outcome, feedback) }
+            catch (error: Exception) { throw AiAdmissionException("HTTP AI admission completion failed (${error::class.simpleName})", error) }
+        }
+    }
+
+    suspend fun <T> execute(configuration: AiModelConfiguration, purpose: String = "INFERENCE", deadline: Instant? = null, block: suspend () -> T): T =
+        execute(AiAdmissionTarget.ModelConfiguration(configuration.id, configuration.connectionId), purpose, deadline, block)
+
+
+    suspend fun openSession(configuration: AiModelConfiguration, purpose: String): AiAdmittedSession {
+        if (currentCoroutineContext()[HeldAiAdmission] != null) throw AiAdmissionException("Nested AI admission is not allowed")
+        val operation = AiAdmissionOperation(uuid7().toString(), AiAdmissionTarget.ModelConfiguration(configuration.id, configuration.connectionId), purpose)
+        val lease = acquireChecked(operation)
+        return AiAdmittedSession { finishChecked(lease, it) }
+    }
 
     suspend fun openSession(connection: AiConnection, purpose: String, backgroundSessionId: String? = null): AiAdmittedSession {
         if (currentCoroutineContext()[HeldAiAdmission] != null) throw AiAdmissionException("Nested AI admission is not allowed")
@@ -103,4 +132,18 @@ abstract class AiCallAdmission {
     private fun deadlineFailure() = AiCallException(AiCallFailure(
         AiCallFailure.Kind.DEADLINE_EXCEEDED, AiCallFailure.Outcome.NOT_STARTED, 0,
     ))
+}
+
+/** Raw provider payload is transient; the lease contains routing and accounting metadata only. */
+class AiAdmittedHttpSession internal constructor(
+    val lease: AiAdmissionLease,
+    private val release: suspend (AiAdmissionOutcome, AiHttpQuotaFeedback?) -> Unit,
+) {
+    private val mutex = Mutex()
+    private var finished = false
+    suspend fun finish(outcome: AiAdmissionOutcome, feedback: AiHttpQuotaFeedback?) = withContext(NonCancellable) {
+        mutex.withLock {
+            if (!finished) { release(outcome, feedback); finished = true }
+        }
+    }
 }

@@ -45,6 +45,26 @@ class AiConcurrencyToolsTest {
     }
 
     @Test
+    fun `TPM groups retain human keys and require owner revisioned mutations`() = runBlocking<Unit> {
+        val seed = RuntimeCatalogTemplateApplicationService().createSeed().aiCatalog
+        val group = AiTpmGroup(AiTpmGroup.Id("quota"), "account/model", "Quota", 1000, quotaUsageFraction = 0.9)
+        val manager = Mockito.mock(AiCatalogManagementService::class.java)
+        Mockito.`when`(manager.upsertTpmGroup(group, 7L)).thenReturn(AiCatalogSnapshot(seed.copy(tpmGroups = listOf(group)), 8))
+        Mockito.`when`(manager.deleteTpmGroup(group.id, 8L)).thenReturn(AiCatalogSnapshot(seed, 9))
+        val contributor = AiSettingsToolContributor(testServerToolFactory(), Mockito.mock(AiConfigurationService::class.java),
+            manager, Mockito.mock(SettingsService::class.java))
+        val upsert = contributor.callbacks.single { it.definition.name == "grz_ai_tpm_group_upsert" }
+        val arguments = buildJsonObject { put("group", Json.encodeToJsonElement(AiTpmGroup.serializer(), group)); put("expectedRevision", 7) }
+        assertContains(upsert.invokeStructured(testControlMcpContext(), arguments).toString(), "account/model")
+        assertEquals(true, upsert.invoke(testControlMcpContext(User.Role.entries.first { it != User.Role.OWNER }), arguments).isError)
+        contributor.callbacks.single { it.definition.name == "grz_ai_tpm_group_delete" }.invokeStructured(testControlMcpContext(),
+            buildJsonObject { put("groupId", "quota"); put("expectedRevision", 8) })
+        Mockito.verify(manager).upsertTpmGroup(group, 7L)
+        Mockito.verify(manager).deleteTpmGroup(group.id, 8L)
+        Mockito.verifyNoMoreInteractions(manager)
+    }
+
+    @Test
     fun `admission status exposes only the typed routing snapshot`() = runBlocking<Unit> {
         val admission = Mockito.mock(ServerAiCallAdmission::class.java)
         Mockito.`when`(admission.snapshot).thenReturn(AiAdmissionSnapshot(waiting = listOf(

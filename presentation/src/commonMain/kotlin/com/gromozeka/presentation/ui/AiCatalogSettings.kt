@@ -58,7 +58,7 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiConcurrencyGroup
-import com.gromozeka.domain.model.ai.withConcurrencyGroupId
+import com.gromozeka.domain.model.ai.AiTpmGroup
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -94,6 +94,7 @@ private enum class AiCatalogSection(val titleKey: String) {
     Models("ai.catalog.section.models"),
     Connections("ai.catalog.section.connections"),
     Concurrency("ai.catalog.section.concurrency"),
+    Tpm("ai.tpm.groups"),
     Credentials("ai.catalog.section.credentials"),
     Specs("ai.catalog.section.specs"),
 }
@@ -112,6 +113,7 @@ private data class AiCatalogDraft(
     val defaultAgentId: com.gromozeka.domain.model.AgentDefinition.Id,
     val webTools: AiWebToolConfiguration,
     val concurrencyGroups: List<AiConcurrencyGroup>,
+    val tpmGroups: List<AiTpmGroup>,
     val secretMutations: List<AiCatalogSecretMutation> = emptyList(),
 ) {
     fun toCatalog(): AiCatalog = AiCatalog(
@@ -122,6 +124,7 @@ private data class AiCatalogDraft(
         defaultAgentId = defaultAgentId,
         webTools = webTools,
         concurrencyGroups = concurrencyGroups,
+        tpmGroups = tpmGroups,
     )
 
     fun withSecretMutation(mutation: AiCatalogSecretMutation?): AiCatalogDraft {
@@ -140,6 +143,7 @@ private data class AiCatalogDraft(
             defaultAgentId = catalog.defaultAgentId,
             webTools = catalog.webTools,
             concurrencyGroups = catalog.concurrencyGroups,
+            tpmGroups = catalog.tpmGroups,
         )
     }
 }
@@ -314,6 +318,8 @@ fun AiCatalogSettings(
                 )
 
                 AiCatalogSection.Concurrency -> ConcurrencyGroupsEditor(currentDraft, { draft = it }, { error = it })
+                AiCatalogSection.Tpm -> AiTpmGroupsEditor(currentDraft.tpmGroups, currentDraft.modelConfigurations,
+                    { draft = currentDraft.copy(tpmGroups = it) }, { error = it })
 
                 AiCatalogSection.Credentials -> GitHubCopilotCredentialSettings(
                     connections = currentDraft.connections.filterIsInstance<AiConnection.GitHubCopilot>(),
@@ -571,6 +577,8 @@ private fun ModelConfigurationsEditor(
             existing = editing,
             connections = draft.connections,
             modelSpecs = draft.modelSpecs,
+            concurrencyGroups = draft.concurrencyGroups,
+            tpmGroups = draft.tpmGroups,
             onDismiss = {
                 creating = false
                 editing = null
@@ -605,7 +613,7 @@ private fun ConcurrencyGroupsEditor(draft: AiCatalogDraft, onChange: (AiCatalogD
                     ?: translation.text("ai.concurrency.unlimited")),
                 onEdit = { editing = group },
                 onDelete = {
-                    if (group.id == AiConcurrencyGroup.DEFAULT_ID || draft.connections.any { it.concurrencyGroupId == group.id }) {
+                    if (group.id == AiConcurrencyGroup.DEFAULT_ID || draft.modelConfigurations.any { it.concurrencyGroupId == group.id }) {
                         onError(translation.text("ai.concurrency.in_use"))
                     } else onChange(draft.copy(concurrencyGroups = draft.concurrencyGroups.filterNot { it.id == group.id }))
                 },
@@ -614,7 +622,7 @@ private fun ConcurrencyGroupsEditor(draft: AiCatalogDraft, onChange: (AiCatalogD
     }
     if (creating || editing != null) {
         ConcurrencyGroupDialog(editing, onDismiss = { creating = false; editing = null }) { group ->
-            if (creating && draft.concurrencyGroups.any { it.id == group.id }) {
+            if (draft.concurrencyGroups.any { (creating && it.id == group.id) || (it.id != group.id && it.key == group.key) }) {
                 onError(translation.text("ai.concurrency.duplicate"))
             } else onChange(draft.copy(concurrencyGroups = draft.concurrencyGroups.filterNot { it.id == group.id } + group))
             creating = false
@@ -627,6 +635,7 @@ private fun ConcurrencyGroupsEditor(draft: AiCatalogDraft, onChange: (AiCatalogD
 private fun ConcurrencyGroupDialog(existing: AiConcurrencyGroup?, onDismiss: () -> Unit, onSave: (AiConcurrencyGroup) -> Unit) {
     val translation = LocalTranslation.current
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
+    var groupKey by remember { mutableStateOf(existing?.key.orEmpty()) }
     var name by remember { mutableStateOf(existing?.displayName.orEmpty()) }
     var limit by remember { mutableStateOf<Int?>(if (existing == null) 4 else existing.maxConcurrentCalls) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -637,6 +646,8 @@ private fun ConcurrencyGroupDialog(existing: AiConcurrencyGroup?, onDismiss: () 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = id, onValueChange = { id = it }, enabled = existing == null,
                     label = { Text(translation.text("ai.field.stable_id")) }, singleLine = true)
+                OutlinedTextField(value = groupKey, onValueChange = { groupKey = it },
+                    label = { Text(translation.text("ai.tpm.key")) }, singleLine = true)
                 OutlinedTextField(value = name, onValueChange = { name = it },
                     label = { Text(translation.text("ai.field.display_name")) }, singleLine = true)
                 LabeledDropdown(label = translation.text("ai.concurrency.limit"), value = limit,
@@ -646,7 +657,7 @@ private fun ConcurrencyGroupDialog(existing: AiConcurrencyGroup?, onDismiss: () 
             }
         },
         confirmButton = { Button(onClick = {
-            runCatching { AiConcurrencyGroup(AiConcurrencyGroup.Id(id.trim()), name.trim(), limit) }
+            runCatching { AiConcurrencyGroup(AiConcurrencyGroup.Id(id.trim()), name.trim(), limit, groupKey.trim()) }
                 .onSuccess(onSave).onFailure { error = it.message }
         }) { Text(translation.text("ai.action.apply")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("ai.action.cancel")) } },
@@ -715,7 +726,6 @@ private fun ConnectionsEditor(
                 secretStates.firstOrNull { it.slot == slot }
             },
             workers = workers,
-            concurrencyGroups = draft.concurrencyGroups,
             onDismiss = {
                 creating = false
                 editing = null
@@ -846,7 +856,7 @@ private fun CatalogSectionActions(
 }
 
 @Composable
-private fun CatalogEntityCard(
+internal fun CatalogEntityCard(
     title: String,
     subtitle: String,
     badges: List<String>,
@@ -926,7 +936,6 @@ private fun ConnectionDialog(
     existing: AiConnection?,
     existingSecretState: AiCatalogSecretState?,
     workers: List<WorkerCatalogEntry>,
-    concurrencyGroups: List<AiConcurrencyGroup>,
     onDismiss: () -> Unit,
     onSave: (AiConnection, AiCatalogSecretMutation?) -> Unit,
 ) {
@@ -946,7 +955,6 @@ private fun ConnectionDialog(
     }
     val initialHttp = (existing as? AiConnection.ConfigurableHttpAiConnection)?.httpSettings ?: AiHttpSettings()
     var httpAuthentication by remember { mutableStateOf(initialHttp.authentication) }
-    var concurrencyGroupId by remember { mutableStateOf(existing?.concurrencyGroupId ?: AiConcurrencyGroup.DEFAULT_ID) }
     var maxAttempts by remember { mutableStateOf(initialHttp.maxAttempts) }
     var caBundlePath by remember { mutableStateOf(initialHttp.caBundlePath.orEmpty()) }
     var proxyUrl by remember { mutableStateOf(initialHttp.proxyUrl.orEmpty()) }
@@ -1105,13 +1113,6 @@ private fun ConnectionDialog(
                         }
                     }
                 }
-                LabeledDropdown(
-                    label = translation.text("ai.concurrency.group"),
-                    value = concurrencyGroupId,
-                    options = concurrencyGroups.map { it.id },
-                    optionLabel = { selected -> concurrencyGroups.single { it.id == selected }.displayName },
-                    onSelect = { concurrencyGroupId = it },
-                )
                 val targetOptions = buildList<AiExecutionTarget> {
                     if (kind != AiConnection.Kind.CLAUDE_CODE) {
                         add(AiExecutionTarget.Server)
@@ -1458,7 +1459,7 @@ private fun ConnectionDialog(
                             awsProfile = awsProfile,
                             executionTarget = executionTarget,
                             httpSettings = httpSettings,
-                        ).withConcurrencyGroupId(concurrencyGroupId)
+                        )
                         val slot = AiCatalogSecretSlot.ConnectionApiKey(connection.id)
                         val secretMutation = when {
                             removeConfiguredSecret -> AiCatalogSecretMutation.Remove(slot)
@@ -1649,10 +1650,14 @@ private fun ModelConfigurationDialog(
     existing: AiModelConfiguration?,
     connections: List<AiConnection>,
     modelSpecs: List<AiModelSpec>,
+    concurrencyGroups: List<AiConcurrencyGroup>,
+    tpmGroups: List<AiTpmGroup>,
     onDismiss: () -> Unit,
     onSave: (AiModelConfiguration) -> Unit,
 ) {
     val translation = LocalTranslation.current
+    var concurrencyGroupId by remember { mutableStateOf(existing?.concurrencyGroupId ?: AiConcurrencyGroup.DEFAULT_ID) }
+    val tpmDraft = remember(existing) { AiTpmPolicyDraft(existing?.tpm) }
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
     var connectionId by remember {
         mutableStateOf(existing?.connectionId ?: connections.firstOrNull()?.id)
@@ -1776,6 +1781,9 @@ private fun ModelConfigurationDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                LabeledDropdown(translation.text("ai.concurrency.group"), concurrencyGroupId, concurrencyGroups.map { it.id },
+                    { selected -> concurrencyGroups.single { it.id == selected }.let { "${it.displayName} · ${it.key}" } }, { concurrencyGroupId = it })
+                AiTpmPolicyEditor(tpmDraft, tpmGroups, selectedConnection, selectedModelSpec?.contextWindowTokens)
                 Text(translation.text("ai.reasoning.default"), style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NullableEnumDropdown(
@@ -1830,7 +1838,13 @@ private fun ModelConfigurationDialog(
                     } else {
                         null
                     }
+                    require(!tpmDraft.enabled || selectedConnection?.kind in setOf(AiConnection.Kind.OPENAI_API,
+                        AiConnection.Kind.OPENAI_COMPATIBLE, AiConnection.Kind.ANTHROPIC_API, AiConnection.Kind.OPENAI_SUBSCRIPTION)) {
+                        translation.text("ai.tpm.http_only")
+                    }
                     AiModelConfiguration(
+                        concurrencyGroupId = concurrencyGroupId,
+                        tpm = tpmDraft.build(),
                         id = AiModelConfiguration.Id(id.trim()),
                         connectionId = selectedConnectionId,
                         providerModelId = providerModelId.trim(),
@@ -2141,7 +2155,7 @@ private fun <T : Enum<T>> EnumSetEditor(
 }
 
 @Composable
-private fun <T> LabeledDropdown(
+internal fun <T> LabeledDropdown(
     label: String,
     value: T,
     options: List<T>,

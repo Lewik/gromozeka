@@ -45,8 +45,7 @@ class OpenAiSubscriptionRuntimeBackend(
         return Runtime(
             connectionId = connection.id.value,
             webSearchEnabled = subscription.webSearchEnabled,
-            modelConfigurationId = modelConfiguration.id.value,
-            modelName = modelConfiguration.providerModelId,
+            configuration = modelConfiguration,
             authService = authService,
             modelsClient = modelsClient,
             responsesClient = responsesClient,
@@ -61,8 +60,7 @@ class OpenAiSubscriptionRuntimeBackend(
 private class Runtime(
     private val connectionId: String,
     private val webSearchEnabled: Boolean,
-    private val modelConfigurationId: String,
-    private val modelName: String,
+    private val configuration: AiModelConfiguration,
     private val authService: OpenAiSubscriptionAuthService,
     private val modelsClient: OpenAiSubscriptionModelsClient,
     private val responsesClient: OpenAiSubscriptionResponsesClient,
@@ -71,6 +69,8 @@ private class Runtime(
     private val webSearch: OpenAiSubscriptionWebSearch,
     private val compaction: OpenAiSubscriptionCompaction,
 ) : AiRuntime {
+    private val modelConfigurationId get() = configuration.id.value
+    private val modelName get() = configuration.providerModelId
     private val fallbackConversationKey = UUID.randomUUID().toString()
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
         supportsAutoCompaction = true,
@@ -94,7 +94,7 @@ private class Runtime(
         val promptCacheKey = (request.options.toolContext["promptCacheKey"] as? String ?: rawConversationKey)
             .toOpenAiSubscriptionKey()
         try {
-            webSearch.executePending(request, session, conversationKey, connectionId, modelName, webSearchEnabled)
+            webSearch.executePending(request, session, conversationKey, configuration, webSearchEnabled)
                 ?.let { return@withContext it }
             val modelProfile = modelsClient.getProfile(session, modelName)
             val requestBody = requestMapper.toRequest(
@@ -105,10 +105,10 @@ private class Runtime(
                 connectionId = connectionId,
             )
             compaction.executeIfNeeded(
-                request, requestBody, modelProfile, session, conversationKey, connectionId, modelConfigurationId,
+                request, requestBody, modelProfile, session, conversationKey, connectionId, configuration,
             )?.let { return@withContext it }
             val parsed = responsesClient.create(
-                connectionId = connectionId,
+                configuration = configuration,
                 session = session,
                 conversationKey = conversationKey,
                 requestBody = requestBody,

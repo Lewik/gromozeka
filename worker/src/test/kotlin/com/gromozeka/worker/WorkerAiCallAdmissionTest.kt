@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.remote.protocol.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.channels.Channel
 import org.mockito.Mockito
 import java.nio.file.Files
@@ -104,6 +105,63 @@ class WorkerAiCallAdmissionTest {
         }
     }
 
+    @Test
+    fun `TPM feedback survives lost acknowledgement and process restart without inference replay`() = runBlocking {
+        withTimeout(15_000) {
+            fixture { settings, identity, scope ->
+                var journal = JvmWorkerRequestJournal(settings, identity)
+                val outbound = WorkerGatewayOutbound(ConversationRuntimeWorkerProperties(identity.workerId.value))
+                val state = PeerState(identity.workerId.value)
+                var peer = connect(scope, outbound, state)
+                var admission = WorkerAiCallAdmission(outbound, identity, journal, scope)
+                admission.initialize()
+                try {
+                    val session = withContext(AiAdmissionWorkerContext("root")) {
+                        admission.openHttpSession(model, Json.parseToJsonElement("{}"), "TEST", null)
+                    }
+                    state.dropFinishAck.set(true)
+                    val feedback = AiHttpQuotaFeedback(200, mapOf("quota" to listOf("-20")))
+                    assertFailsWith<AiAdmissionException> { session.finish(AiAdmissionOutcome.SUCCEEDED, feedback) }
+                    assertEquals(feedback, journal.loadAiAdmissionCompletions().single().feedback)
+                    admission.stop(); peer.close(outbound); journal.close()
+                    journal = JvmWorkerRequestJournal(settings, identity.copy(sessionId = ConversationRuntimeWorkerSessionId("second")))
+                    admission = WorkerAiCallAdmission(outbound, identity, journal, scope)
+                    admission.initialize()
+                    peer = connect(scope, outbound, state)
+                    waitUntil { journal.loadAiAdmissions().isEmpty() && journal.loadAiAdmissionCompletions().isEmpty() }
+                    assertEquals(1, state.acquisitions.get())
+                    assertEquals(1, state.finishEffects.get())
+                    assertTrue(state.feedback.size >= 2)
+                    assertTrue(state.feedback.all { it == feedback })
+                } finally { admission.stop(); peer.close(outbound); journal.close() }
+            }
+        }
+    }
+
+    @Test
+    fun `invalid TPM feedback fails its thread but completion publisher and next call remain usable`() = runBlocking {
+        fixture { settings, identity, scope ->
+            val journal = JvmWorkerRequestJournal(settings, identity)
+            val outbound = WorkerGatewayOutbound(ConversationRuntimeWorkerProperties(identity.workerId.value))
+            val state = PeerState(identity.workerId.value).also { it.feedbackError = "Invalid quota feedback" }
+            val peer = connect(scope, outbound, state)
+            val admission = WorkerAiCallAdmission(outbound, identity, journal, scope)
+            admission.initialize()
+            try {
+                suspend fun start() = withContext(AiAdmissionWorkerContext("root")) {
+                    admission.openHttpSession(model, Json.parseToJsonElement("{}"), "TEST", null)
+                }
+                val first = start()
+                assertFailsWith<AiAdmissionException> { first.finish(AiAdmissionOutcome.SUCCEEDED, AiHttpQuotaFeedback(200, emptyMap())) }
+                assertTrue(journal.loadAiAdmissions().isEmpty())
+                state.feedbackError = null
+                start().finish(AiAdmissionOutcome.SUCCEEDED, AiHttpQuotaFeedback(200, mapOf("quota" to listOf("10"))))
+                assertEquals(2, state.finishEffects.get())
+                assertTrue(journal.loadAiAdmissionCompletions().isEmpty())
+            } finally { admission.stop(); peer.close(outbound); journal.close() }
+        }
+    }
+
     private class PeerState(val workerId: String) {
         val active = ConcurrentHashMap<String, AiAdmissionLease>()
         val accepted = ConcurrentHashMap.newKeySet<String>()
@@ -112,6 +170,8 @@ class WorkerAiCallAdmissionTest {
         val finishAttempts = AtomicInteger()
         val dropFinishAck = AtomicBoolean()
         val outcomes = CopyOnWriteArrayList<AiAdmissionOutcome>()
+        val feedback = CopyOnWriteArrayList<AiHttpQuotaFeedback?>()
+        @Volatile var feedbackError: String? = null
     }
 
     private class Peer(val outgoing: Channel<WorkerGatewayMessage>, val job: Job) {
@@ -132,7 +192,9 @@ class WorkerAiCallAdmissionTest {
                 val payload = when (val command = AiAdmissionGatewayCodec.decode(request.payload)) {
                     is AiAdmissionCommand.Acquire -> {
                         state.acquisitions.incrementAndGet()
-                        val lease = AiAdmissionLease(command.operation, AiConcurrencyGroup.DEFAULT_ID, Clock.System.now(), state.workerId, command.workerRequestId)
+                        val operation = if (command.httpRequest == null) command.operation else command.operation.copy(tpm =
+                            AiTpmReservation(AiTpmGroup.Id("quota"), 10, model.tpm!!.feedback))
+                        val lease = AiAdmissionLease(operation, AiConcurrencyGroup.DEFAULT_ID, Clock.System.now(), state.workerId, command.workerRequestId)
                         check(state.active.putIfAbsent(command.operation.id, lease) == null)
                         AiAdmissionGatewayCodec.encodeLease(lease)
                     }
@@ -143,6 +205,7 @@ class WorkerAiCallAdmissionTest {
                     }
                     is AiAdmissionCommand.Finish -> {
                         state.finishAttempts.incrementAndGet()
+                        state.feedback += command.feedback
                         if (state.active.remove(command.operationId) != null) {
                             state.finishEffects.incrementAndGet()
                             state.outcomes += command.outcome
@@ -151,7 +214,7 @@ class WorkerAiCallAdmissionTest {
                             outbound.detach(outgoing)
                             continue
                         }
-                        byteArrayOf()
+                        AiAdmissionGatewayCodec.encodeCompletion(AiAdmissionCompletionResult(state.feedbackError))
                     }
                 }
                 assertTrue(outbound.accept(WorkerGatewayMessage.Response(request.id, WorkerGatewayMessage.Response.Status.SUCCEEDED, payload)))
@@ -180,5 +243,8 @@ class WorkerAiCallAdmissionTest {
 
     private companion object {
         val connection = AiConnection.OpenAiApi(AiConnection.Id("test-connection"), "Test")
+        val model = AiModelConfiguration(AiModelConfiguration.Id("test"), connection.id, "test", "Test", tpm =
+            AiTpmPolicy(AiTpmGroupSelector.Fixed(AiTpmGroup.Id("quota")), AiQuotaCalculator.BuiltIn(),
+                AiTpmFeedbackPolicy.Fields(AiQuotaValueSource.Header("quota"))))
     }
 }

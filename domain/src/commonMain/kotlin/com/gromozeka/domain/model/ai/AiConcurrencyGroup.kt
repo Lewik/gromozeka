@@ -8,8 +8,10 @@ data class AiConcurrencyGroup(
     val id: Id,
     val displayName: String,
     val maxConcurrentCalls: Int? = 4,
+    val key: String = id.value,
 ) {
     init {
+        requireAiQuotaKey(key)
         require(displayName.isNotBlank() && displayName.length <= 255) { "AI concurrency group name must contain 1 to 255 characters" }
         require(maxConcurrentCalls == null || maxConcurrentCalls in 1..64) {
             "AI concurrency group limit must be between 1 and 64, or null for unlimited"

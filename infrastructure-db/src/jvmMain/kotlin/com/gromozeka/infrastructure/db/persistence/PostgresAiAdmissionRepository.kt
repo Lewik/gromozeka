@@ -1,6 +1,8 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.ai.AiAdmissionLease
+import com.gromozeka.domain.model.ai.AiTpmState
+import com.gromozeka.domain.model.ai.AiAdmissionCompletionResult
 import com.gromozeka.domain.repository.AiAdmissionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,7 +28,7 @@ internal class PostgresAiAdmissionRepository(
         }
     }
 
-    override suspend fun create(lease: AiAdmissionLease): Unit = withContext(Dispatchers.IO) {
+    override suspend fun create(lease: AiAdmissionLease, tpmStates: List<AiTpmState>): Unit = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
             connection.autoCommit = false
             try {
@@ -46,8 +48,8 @@ internal class PostgresAiAdmissionRepository(
                     }
                 }
                 connection.prepareStatement("""
-                    INSERT INTO ai_admission_leases(id, group_id, worker_id, worker_request_id, payload_json, created_at, background_session_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO ai_admission_leases(id, group_id, worker_id, worker_request_id, payload_json, created_at, background_session_id, tpm_group_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """.trimIndent()).use { statement ->
                     statement.setString(1, lease.operation.id)
                     statement.setString(2, lease.groupId.value)
@@ -56,8 +58,10 @@ internal class PostgresAiAdmissionRepository(
                     statement.setString(5, json.encodeToString(lease))
                     statement.setTimestamp(6, Timestamp.from(java.time.Instant.ofEpochMilli(lease.acquiredAt.toEpochMilliseconds())))
                     statement.setString(7, lease.operation.backgroundSessionId)
+                    statement.setString(8, lease.operation.tpm?.groupId?.value)
                     check(statement.executeUpdate() == 1)
                 }
+                saveTpmStates(connection, tpmStates)
                 connection.commit()
             } catch (error: Throwable) {
                 connection.rollback()
@@ -88,20 +92,29 @@ internal class PostgresAiAdmissionRepository(
         }
     }
 
-    override suspend fun finish(id: String, workerId: String?): Unit = withContext(Dispatchers.IO) {
+    override suspend fun finish(id: String, workerId: String?, tpmStates: List<AiTpmState>, feedbackError: String?): Unit = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
             connection.autoCommit = false
             try {
+                var existed = false
                 connection.prepareStatement("SELECT worker_id FROM ai_admission_leases WHERE id = ? FOR UPDATE").use { statement ->
                     statement.setString(1, id)
                     statement.executeQuery().use { rows ->
-                        if (rows.next()) require(rows.getString(1) == workerId) { "AI admission lease belongs to another executor" }
+                        if (rows.next()) {
+                            require(rows.getString(1) == workerId) { "AI admission lease belongs to another executor" }
+                            existed = true
+                        }
                     }
                 }
                 connection.prepareStatement("DELETE FROM ai_admission_leases WHERE id = ?").use {
                     it.setString(1, id)
                     it.executeUpdate()
                 }
+                if (existed) connection.prepareStatement("INSERT INTO ai_admission_completions(id,worker_id,feedback_error) VALUES (?,?,?) ON CONFLICT(id) DO NOTHING").use {
+                    it.setString(1, id); it.setString(2, workerId); it.setString(3, feedbackError); it.executeUpdate()
+                }
+                connection.createStatement().use { it.executeUpdate("DELETE FROM ai_admission_completions WHERE id IN (SELECT id FROM ai_admission_completions WHERE created_at < now() - interval '30 days' ORDER BY created_at LIMIT 64)") }
+                saveTpmStates(connection, tpmStates)
                 connection.commit()
             } catch (error: Throwable) {
                 connection.rollback()
@@ -119,4 +132,36 @@ internal class PostgresAiAdmissionRepository(
             }
         }
     }
+    override suspend fun findCompletion(id: String, workerId: String?): AiAdmissionCompletionResult? = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection -> connection.prepareStatement("SELECT worker_id,feedback_error FROM ai_admission_completions WHERE id = ?").use {
+            it.setString(1, id)
+            it.executeQuery().use { rows ->
+                if (!rows.next()) null else {
+                    require(rows.getString(1) == workerId) { "AI admission completion belongs to another executor" }
+                    AiAdmissionCompletionResult(rows.getString(2))
+                }
+            }
+        } }
+    }
+
+    override suspend fun loadTpmStates(): List<AiTpmState> = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection -> connection.createStatement().use { statement ->
+            statement.executeQuery("SELECT payload_json FROM ai_tpm_state ORDER BY group_id").use { rows -> buildList {
+                while (rows.next()) add(json.decodeFromString<AiTpmState>(rows.getString(1)))
+            } }
+        } }
+    }
+
+    private fun saveTpmStates(connection: java.sql.Connection, states: List<AiTpmState>) {
+        connection.prepareStatement("INSERT INTO ai_tpm_state(group_id,payload_json) SELECT ?,? WHERE EXISTS (SELECT 1 FROM ai_tpm_groups WHERE id=?) ON CONFLICT(group_id) DO UPDATE SET payload_json=excluded.payload_json").use { statement ->
+            states.forEach { state ->
+                statement.setString(1, state.groupId.value)
+                statement.setString(2, json.encodeToString(state))
+                statement.setString(3, state.groupId.value)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
 }

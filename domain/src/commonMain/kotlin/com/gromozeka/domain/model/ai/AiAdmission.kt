@@ -9,6 +9,9 @@ sealed interface AiAdmissionTarget {
     data class Connection(val id: AiConnection.Id) : AiAdmissionTarget
 
     @Serializable
+    data class ModelConfiguration(val id: AiModelConfiguration.Id, val connectionId: AiConnection.Id) : AiAdmissionTarget
+
+    @Serializable
     data object LocalInference : AiAdmissionTarget
 }
 
@@ -19,6 +22,7 @@ data class AiAdmissionOperation(
     val purpose: String,
     val deadline: Instant? = null,
     val backgroundSessionId: String? = null,
+    val tpm: AiTpmReservation? = null,
 ) {
     init {
         require(id.matches(Regex("[A-Za-z0-9-]{1,128}"))) { "Invalid AI admission operation id" }
@@ -50,4 +54,5 @@ enum class AiAdmissionOutcome { SUCCEEDED, FAILED, CANCELLED, OWNER_STOPPED }
 data class AiAdmissionSnapshot(
     val waiting: List<AiAdmissionOperation> = emptyList(),
     val active: List<AiAdmissionLease> = emptyList(),
+    val tpmGroups: List<AiTpmState> = emptyList(),
 )
