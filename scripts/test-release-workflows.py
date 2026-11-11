@@ -394,6 +394,7 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn("needs.release.result == 'success'", JOBS["deploy"]["if"])
 
     def test_removed_workflows_unique_checks_are_preserved(self):
+        self.assertEqual("ubuntu-24.04", JOBS["verify-e2e"]["runs-on"])
         e2e = scripts(JOBS["verify-e2e"])
         for check in ("localization.py validate", "localization.py context",
                       "generate-native-localization.py --check", "generate-font-resources.py --check", "e2e-tests/run.sh"):
