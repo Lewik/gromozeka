@@ -141,6 +141,13 @@ The executor is selected before execution:
   usage is never treated as occupied context. Changing thread/model or an
   incompatible source prefix discards that calibration.
 
+Context-size accounting is separate from TPM quota reservation: calibration does
+not change the configured quota formula or balances. Count, compact and summary
+HTTP operations retain their model configuration's admission policy. Required TPM
+feedback must be compatible with those endpoint responses. Quota calculators that
+need an output reserve must configure it explicitly when the request omits an
+output limit; the Harness does not invent a summary cap or bypass quota policy.
+
 A failed counter or native operation is an error, not permission to retry through
 another route. Every committed compaction creates a new Thread; canonical source
 messages and original IDs remain archived. Runtime roots, queues and stable
@@ -296,16 +303,17 @@ must not be assumed to honor typed terminal failures if it is enabled later.
 ## Execution budget, concurrency and cancellation
 
 - Concurrency is controlled by [AI concurrency groups](ai-admission.md), not
-  `httpSettings`. Each connection names one `concurrencyGroupId`; all connections
-  initially share `default` (limit 4), across Server and Workers. A group limit
-  is 1–64 or explicit `null` for unlimited. There is no tokens-per-minute limiter.
+  `httpSettings`. Each model configuration names one `concurrencyGroupId`, shared
+  across Server and Workers. A group limit is 1–64 or explicit `null` for unlimited.
+  Optional [TPM admission](ai-tpm.md) is configured separately on the model
+  configuration and uses its explicitly selected request/feedback contract.
 - Each HTTP attempt acquires admission separately. Client/credential setup for
   the first attempt and full response consumption are inside admission; retry
   backoff is outside it. The per-call client and credential snapshot remain the
   same across attempts. Cancellation or expiry while queued starts no HTTP and
   releases no other call's permit. A changed group limit affects waiting/new
-  attempts without cancelling active calls; moving a connection does not retag
-  already active leases.
+  attempts without cancelling active calls; moving a model configuration to a
+  different group does not retag already active leases.
 - `defaultParameters.timeoutSeconds` on the model configuration now controls
   this logical call: 1–86400 seconds, default 600. Parameter preparation, queueing,
   credential/CA loading, backoff and HTTP consume the same deadline. A shorter

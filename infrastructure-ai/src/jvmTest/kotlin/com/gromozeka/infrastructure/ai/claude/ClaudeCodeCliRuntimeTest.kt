@@ -1653,7 +1653,7 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
-    fun missingContextInputUsageIsUnavailableRatherThanZero() = runBlocking {
+    fun missingContextInputUsageIsUnavailableRatherThanZero(): Unit = runBlocking {
         val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
         val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = answer).copy(contextUsage = JsonObject(emptyMap())))
         val result = runtime(executor).call(request(listOf(userMessage("Hello")), emptyList()))

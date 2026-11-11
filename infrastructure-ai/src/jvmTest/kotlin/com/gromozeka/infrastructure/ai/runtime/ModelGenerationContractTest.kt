@@ -30,13 +30,13 @@ class ModelGenerationContractTest {
                 val body = chatBody(mapper, request().copy(options = AiRuntimeOptions(maxOutputTokens = limit)))
                 assertEquals(MODEL, body.getValue("model").jsonPrimitive.content)
                 val tokenFields = body.keys.intersect(setOf("max_tokens", "max_completion_tokens"))
-                val expected = when (field) {
+                val expected = if (limit == null) null else when (field) {
                     AiModelBehavior.ChatCompletionsTokenLimit.MAX_COMPLETION_TOKENS -> "max_completion_tokens"
                     AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS -> "max_tokens"
                     AiModelBehavior.ChatCompletionsTokenLimit.OMIT -> null
                 }
                 assertEquals(expected?.let(::setOf).orEmpty(), tokenFields)
-                expected?.let { assertEquals(limit ?: 8192, body.getValue(it).jsonPrimitive.int) }
+                expected?.let { assertEquals(limit, body.getValue(it).jsonPrimitive.int) }
             }
         }
     }
