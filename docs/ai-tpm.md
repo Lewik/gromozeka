@@ -132,6 +132,8 @@ Worker-executed inference. They are not sandboxed and must not contain secrets i
 arguments or source. Configure programs/credentials on Server explicitly.
 
 Selector and estimator stdin is the prepared request JSON plus a newline.
+Commands must consume stdin before exiting; a closed input pipe is an explicit
+command failure, even if a program has already printed a value.
 Estimator stdout is one integer. Feedback stdin is
 `{status, headers: {name: [values]}, body, bodyUnavailable}`; stdout is
 `{"remaining": -20, "retryAfterMillis": 1000}` (fields may be null on errors).

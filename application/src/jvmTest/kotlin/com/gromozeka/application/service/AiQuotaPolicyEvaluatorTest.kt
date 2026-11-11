@@ -64,12 +64,16 @@ class AiQuotaPolicyEvaluatorTest {
         val echoed = evaluator.runCommand(AiQuotaCommand("/bin/sh", listOf("-c", "cat")), request)
         assertEquals(request, Json.parseToJsonElement(echoed))
         val error = assertFailsWith<IllegalArgumentException> {
-            evaluator.runCommand(AiQuotaCommand("/bin/sh", listOf("-c", "printf 'private-marker' >&2; exit 3")), request)
+            evaluator.runCommand(AiQuotaCommand("/bin/sh", listOf("-c", "cat >/dev/null; printf 'private-marker' >&2; exit 3")), request)
         }
         assertFalse(error.message.orEmpty().contains("private-marker"))
         assertFailsWith<AiAdmissionException> {
             evaluator.runCommand(AiQuotaCommand("/bin/sh", listOf("-c", "sleep 30"), timeoutSeconds = 1), request)
         }
         assertEquals(group.id, evaluator.prepare(policy(AiTpmGroupSelector.Command(AiQuotaCommand("/bin/sh", listOf("-c", "exit 2"))), group.id), request, catalog).groupId)
+        val largeInput = JsonPrimitive("x".repeat(1_000_000))
+        assertFailsWith<java.io.IOException> {
+            evaluator.runCommand(AiQuotaCommand("/bin/sh", listOf("-c", "exec 0<&-; sleep 10; printf 100")), largeInput)
+        }
     }
 }
