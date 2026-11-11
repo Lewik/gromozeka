@@ -1,7 +1,11 @@
 ARG JAVA_BUILD_IMAGE=eclipse-temurin:21-jdk-jammy
 FROM ${JAVA_BUILD_IMAGE}
 
-RUN apt-get update \
+ARG UBUNTU_ARCHIVE_MIRROR
+RUN if [ -n "$UBUNTU_ARCHIVE_MIRROR" ]; then \
+        sed -i -E "s#https?://(archive|security)\.ubuntu\.com/ubuntu#${UBUNTU_ARCHIVE_MIRROR%/}#g" /etc/apt/sources.list; \
+    fi \
+    && apt-get -o APT::Update::Error-Mode=any update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         fontconfig \
         libasound2 \

@@ -395,6 +395,13 @@ class WorkflowContracts(unittest.TestCase):
 
     def test_removed_workflows_unique_checks_are_preserved(self):
         self.assertEqual("ubuntu-24.04", JOBS["verify-e2e"]["runs-on"])
+        e2e_step = next(step for step in JOBS["verify-e2e"]["steps"]
+                        if step.get("name") == "Verify Compose E2E")
+        self.assertEqual("https://mirrors.edge.kernel.org/ubuntu",
+                         e2e_step["env"]["GROMOZEKA_E2E_UBUNTU_MIRROR"])
+        compose = load_yaml(ROOT / "e2e-tests/compose.yaml")
+        self.assertEqual("${GROMOZEKA_E2E_UBUNTU_MIRROR:-}",
+                         compose["services"]["tests"]["build"]["args"]["UBUNTU_ARCHIVE_MIRROR"])
         e2e = scripts(JOBS["verify-e2e"])
         for check in ("localization.py validate", "localization.py context",
                       "generate-native-localization.py --check", "generate-font-resources.py --check", "e2e-tests/run.sh"):

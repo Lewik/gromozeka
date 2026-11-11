@@ -338,6 +338,7 @@ jobs:
         env:
           GROMOZEKA_E2E_POSTGRES_IMAGE: mirror.gcr.io/pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
           GROMOZEKA_E2E_JAVA_IMAGE: mirror.gcr.io/library/eclipse-temurin:21-jdk-jammy
+          GROMOZEKA_E2E_UBUNTU_MIRROR: https://mirrors.edge.kernel.org/ubuntu
         run: bash e2e-tests/run.sh
       - name: Upload E2E diagnostics
         if: always()
