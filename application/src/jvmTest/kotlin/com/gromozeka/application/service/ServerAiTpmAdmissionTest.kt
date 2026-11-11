@@ -15,7 +15,16 @@ class ServerAiTpmAdmissionTest {
         try {
             val first = fixture.service.openHttpSession(fixture.model, fixture.request, "TEST", null)
             assertEquals(1, fixture.service.snapshot.active.size)
-            assertEquals(fixture.service.snapshot.tpmGroups, fixture.repository.states)
+            val reservation = requireNotNull(fixture.service.snapshot.active.single().operation.tpm)
+            val persisted = fixture.repository.states.single()
+            val current = fixture.service.snapshot.tpmGroups.single()
+            assertEquals(reservation.groupId, persisted.groupId)
+            assertEquals(reservation.cumulativeBefore + reservation.estimatedUnits, persisted.cumulativeAdmitted)
+            assertEquals(persisted.groupId, current.groupId)
+            assertEquals(persisted.cumulativeAdmitted, current.cumulativeAdmitted)
+            assertEquals(persisted.cooldownUntil, current.cooldownUntil)
+            assertTrue(current.localRemaining >= persisted.localRemaining)
+            assertTrue(current.observedRemaining >= persisted.observedRemaining)
             val bad = AiHttpQuotaFeedback(200, emptyMap())
             assertFailsWith<AiAdmissionException> { first.finish(AiAdmissionOutcome.SUCCEEDED, bad) }
             assertTrue(fixture.service.snapshot.active.isEmpty())
