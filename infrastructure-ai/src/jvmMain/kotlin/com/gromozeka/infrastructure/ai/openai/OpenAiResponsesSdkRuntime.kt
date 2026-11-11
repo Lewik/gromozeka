@@ -728,8 +728,6 @@ internal class OpenAiResponsesMessageMapper(
 
     private fun Long.toIntClamped(): Int = coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
-    private companion object {
-    }
 }
 
 private const val OPENAI_API_REASONING_ITEMS_METADATA_KEY = "openAiApiReasoningItems"

@@ -365,12 +365,10 @@ internal class ClaudeCodeCliRuntime(
         command: ClaudeCodeCommand,
         contract: ClaudeCodeResponseContract?,
     ): ClaudeCodeCliResponse = executor.withSession(command) { session ->
-        val responses = mutableListOf<ClaudeCodeCliResponse>()
         currentCoroutineContext().ensureActive()
         val startedAt = System.nanoTime()
         val response = session.execute(command)
-        responses += response
-        val usage = sumCliUsage(responses.mapNotNull { it.usage })
+        val usage = response.usage
         val completeText = try {
             val text = response.completeAssistantText()
             if (contract == null) text else contract.validatedText(text)
@@ -392,12 +390,7 @@ internal class ClaudeCodeCliRuntime(
             "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=response_validation " +
                 "elapsedMs=${elapsedMillis(startedAt)} valid=true frames=${response.replayEvents.size}"
         }
-        response.copy(
-            result = completeText,
-            usage = usage,
-            compactionBoundaries = responses.flatMap { it.compactionBoundaries },
-            replayEvents = responses.flatMap { it.replayEvents },
-        )
+        response.copy(result = completeText)
     }
 
     private fun sumCliUsage(values: List<JsonObject>): JsonObject? =
