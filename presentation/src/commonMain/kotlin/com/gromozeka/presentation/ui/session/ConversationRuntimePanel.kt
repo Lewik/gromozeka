@@ -914,12 +914,14 @@ private fun RuntimeTasksSection(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = commandTask.command,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                                com.gromozeka.presentation.ui.OptionalTooltip(commandTask.command, monospace = true) {
+                                    Text(
+                                        text = commandTask.displayLabel,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                                 Text(
                                     text = "${commandTask.workerId.value} · ${commandTask.outputBytes.formatBytes()}",
                                     style = MaterialTheme.typography.labelSmall,

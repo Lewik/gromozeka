@@ -1004,6 +1004,7 @@ class RemoteProtocolCodecTest {
             workerId = ConversationRuntimeWorkerId("worker-command-1"),
             workspaceMountId = WorkspaceMount.Id("mount-command-1"),
             command = "./gradlew build",
+            description = "Сборка проекта",
             workingDirectory = "/workspace",
             status = CommandTask.Status.WORKING,
             processId = 321,

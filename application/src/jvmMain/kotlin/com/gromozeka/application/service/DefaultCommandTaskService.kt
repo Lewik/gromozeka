@@ -157,6 +157,7 @@ class DefaultCommandTaskService(
                     launchReference = launchReference,
                     agentDefinitionId = context.agentDefinitionIdOrNull(),
                     visualId = context.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_VISUAL_ID),
+                    description = request.description,
                     command = request.command,
                     workingDirectory = workingDirectory,
                     processLifetime = processLifetime,

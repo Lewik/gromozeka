@@ -68,6 +68,35 @@ class DefaultCommandTaskServiceTest {
     )
 
     @Test
+    fun `description is display metadata retained in running and completed tasks without entering shell`() = runBlocking {
+        withService { service, runner, coordinator, directory ->
+            val description = "Проверка сборки — " + "д".repeat(1000 - "Проверка сборки — ".length)
+            val command = "echo original"
+            val result = service.start(ExecuteCommandRequest(command, yield_time_ms = 0, description = description), context(directory))
+            assertEquals(command, runner.lastSpec.command)
+            assertFalse(runner.lastSpec.environment.values.any { description in it })
+            assertEquals(description, result.task.description)
+            assertEquals(description, coordinator.findCommandTask(conversationId, result.task.id)?.description)
+            runner.lastProcess.complete(0)
+            val completed = assertNotNull(service.get(conversationId, result.task.id, 0, 5_000))
+            assertEquals(CommandTask.Status.COMPLETED, completed.task.status)
+            assertEquals(description, completed.task.description)
+            assertEquals(command, completed.task.command)
+            assertEquals(description, completed.task.displayLabel)
+        }
+    }
+
+    @Test
+    fun `only description payload safety bound rejects input before starting a process`() = runBlocking {
+        withService { service, runner, _, directory ->
+            assertFailsWith<IllegalArgumentException> {
+                service.start(ExecuteCommandRequest("echo original", description = "x".repeat(1001)), context(directory))
+            }
+            assertEquals(0, runner.startCount)
+        }
+    }
+
+    @Test
     fun `expired delivery and parent cancellation cannot start a command`() = runBlocking {
         withService { service, runner, _, directory ->
             val expired = context(directory).withValue("toolCallId", "call").copy(

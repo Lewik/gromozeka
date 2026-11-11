@@ -186,6 +186,7 @@ private fun CommandTask.toSummary(monitorIds: List<String>): Map<String, Any> = 
     put("status", status.name)
     synchronizationError?.let { put("synchronization_error", it) }
     put("command", command)
+    description?.let { put("description", it) }
     put("survive_worker_restart", processLifetime == CommandTask.ProcessLifetime.RESUMABLE)
     put("worker_id", workerId.value)
     put("workspace_mount_id", workspaceMountId.value)

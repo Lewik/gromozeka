@@ -103,6 +103,7 @@ private fun CommandTaskOutput.metadata(): Map<String, Any> = buildMap {
     put("status", task.status.name)
     task.synchronizationError?.let { put("synchronization_error", it) }
     put("command", task.command)
+    task.description?.let { put("description", it) }
     put("survive_worker_restart", task.processLifetime == CommandTask.ProcessLifetime.RESUMABLE)
     task.processId?.let { put("process_id", it) }
     task.exitCode?.let { put("exit_code", it) }

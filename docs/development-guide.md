@@ -1503,6 +1503,23 @@ is not deleted or marked delivered. Other notifications continue after completio
 or failure, including bounded-batch overflow without another Worker event. This
 neither retries the failed delivery nor re-executes the command or monitor.
 
+Managed shell commands accept an optional `description`: a short user-facing
+purpose in the user's language, preferably **at most 50 characters including
+spaces**. This is prompt guidance, not an acceptance limit: longer labels remain
+valid and are ellipsized by the UI. A separate 1,000-character payload safety bound
+is enforced before process launch. Labels describe intent ("Run tests"), never
+claim results ("Tests passed"), and must not contain secrets.
+
+The exact command stays separate and unchanged. Description is persisted with the
+command task, included in get/list/completion metadata, and cannot change during
+state synchronization. Runtime captions prefer it, with the original command
+available in the tooltip; missing or blank task labels display the command.
+This adds no shell argument/environment value or extra model call. Existing JSON
+records default description to null; no database migration is required.
+Worker Gateway protocol **26** adds this command metadata. Update Server, Workers
+and clients together. The tool registry assigns a new immutable execute-command
+schema revision; clients must discover the current name rather than invent it.
+
 Managed commands accept `secret_env`, a map of environment variable names to
 exact `secret://name` references, for example `{"GH_TOKEN":"secret://github-pat"}`.
 Multiple variables and repeated references to the same secret are supported.

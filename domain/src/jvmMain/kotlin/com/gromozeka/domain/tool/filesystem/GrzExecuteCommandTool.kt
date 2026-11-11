@@ -2,6 +2,7 @@ package com.gromozeka.domain.tool.filesystem
 
 import com.gromozeka.domain.tool.AiToolContextField.*
 import com.gromozeka.domain.tool.withContextRequirements
+import com.gromozeka.domain.service.requireValidCommandDescription
 
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
@@ -43,7 +44,13 @@ data class ExecuteCommandRequest(
         description = "Named secrets to inject into this command's environment: variable name -> exact secret://name reference. Multiple variables are supported. The program must read them directly, not expand them into command-line arguments.",
     )
     val secret_env: Map<String, String> = emptyMap(),
-)
+    @property:ToolParameter(
+        description = "Optional short user-facing purpose in the user's language. Aim for at most 50 characters including spaces (guidance only; longer text is accepted up to 1000 characters). Describe the action, not a claimed result. Do not include secrets. This label is never executed.",
+    )
+    val description: String? = null,
+) {
+    init { requireValidCommandDescription(description) }
+}
 
 /**
  * Domain specification for shell command execution tool.
@@ -177,6 +184,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, List<AiToolResult>
     override val description: String
         get() = """
             Execute a shell command as a managed task. Short commands return a terminal result; long commands return status WORKING and task_id after yield_time_ms.
+            Give description a short action label such as "Run unit tests" or "Find usages", preferably at most 50 characters. It is optional display metadata; status and results come from execution.
             The target Worker uses its native shell: /bin/sh on macOS/Linux and cmd.exe on Windows. Match command syntax to the target WorkspaceMount and Worker.
             yield_time_ms is only the initial wait and may be from 0 to $MAX_COMMAND_INITIAL_YIELD_MILLIS; it is not the command timeout.
             Commands stop with the Worker by default. Set survive_worker_restart=true only when uninterrupted execution across a Worker restart is required.
