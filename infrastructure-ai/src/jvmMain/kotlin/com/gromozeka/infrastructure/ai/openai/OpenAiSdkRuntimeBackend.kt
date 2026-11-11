@@ -75,7 +75,7 @@ internal class OpenAiSdkRuntimeBackend(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
     ) = AiRuntimeCapabilities(
-        supportsAutoCompaction = connection.kind == AiConnection.Kind.OPENAI_API,
+        supportsNativeCompaction = connection.kind == AiConnection.Kind.OPENAI_API,
     )
 
     override fun createRuntime(
@@ -153,11 +153,16 @@ internal class OpenAiSdkMessageMapper(
         }
         val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty())
         val builder = ChatCompletionCreateParams.builder().model(modelName)
-        val maxOutputTokens = request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS
-        when (generation.behavior.chatCompletionsTokenLimit) {
-            AiModelBehavior.ChatCompletionsTokenLimit.MAX_COMPLETION_TOKENS -> builder.maxCompletionTokens(maxOutputTokens.toLong())
-            AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS -> builder.maxTokens(maxOutputTokens.toLong())
-            AiModelBehavior.ChatCompletionsTokenLimit.OMIT -> Unit
+        val maxOutputTokens = request.options.maxOutputTokens ?: if (
+            generation.behavior.chatCompletionsReasoning == AiModelBehavior.ChatCompletionsReasoning.ANTHROPIC_THINKING &&
+            reasoning?.mode == AiReasoningMode.TOKEN_BUDGET
+        ) generation.requiredOutputTokens(request) else null
+        maxOutputTokens?.let { limit ->
+            when (generation.behavior.chatCompletionsTokenLimit) {
+                AiModelBehavior.ChatCompletionsTokenLimit.MAX_COMPLETION_TOKENS -> builder.maxCompletionTokens(limit.toLong())
+                AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS -> builder.maxTokens(limit.toLong())
+                AiModelBehavior.ChatCompletionsTokenLimit.OMIT -> Unit
+            }
         }
 
         val systemPrompt = request.systemPrompts
@@ -192,7 +197,7 @@ internal class OpenAiSdkMessageMapper(
                 messages = emptyList(),
                 outcome = AiStepOutcome.FAILED,
                 usage = usage,
-                contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
+                contextUsage = usage?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
                 providerMetadata = mapOf("provider" to connectionKind.name, "model" to completion.model()),
             )
         val message = choice.message()
@@ -244,7 +249,7 @@ internal class OpenAiSdkMessageMapper(
         return AiRuntimeResponse(
             messages = assistantMessages,
             usage = usage,
-            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
+            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
             finishReason = choice.finishReason().asString(),
             outcome = outcome,
             providerMetadata = mapOf(
@@ -602,7 +607,7 @@ internal class OpenAiSdkMessageMapper(
     private fun applyReasoning(
         builder: ChatCompletionCreateParams.Builder,
         reasoning: AiReasoningConfig?,
-        maxOutputTokens: Int,
+        maxOutputTokens: Int?,
     ) {
         when (generation.behavior.chatCompletionsReasoning) {
             AiModelBehavior.ChatCompletionsReasoning.REASONING_EFFORT -> {
@@ -724,7 +729,6 @@ internal class OpenAiSdkMessageMapper(
         coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
     companion object {
-        private const val DEFAULT_MAX_TOKENS = 8192
     }
 }
 

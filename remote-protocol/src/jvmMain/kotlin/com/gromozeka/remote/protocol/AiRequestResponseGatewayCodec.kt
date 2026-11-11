@@ -1,5 +1,6 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiConnectionModels
 import com.gromozeka.domain.model.ai.requireGatewayModelListing
 import com.gromozeka.domain.model.ai.AiCallException
@@ -69,6 +70,19 @@ object AiRequestResponseGatewayCodec {
             is AiRequestResponsePayload.Models -> decoded.result
             is AiRequestResponsePayload.CallFailure -> throw AiCallException(decoded.failure)
             else -> error("Worker Gateway AI response payload type mismatch: expected model list")
+        }
+
+    fun encodeContextInspectionRequest(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): ByteArray =
+        encodeOperation(AiRequestResponseOperation.InspectContext(runtime, workspaceRootPath, request.toWire()))
+
+    fun encodeCompactionRequest(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): ByteArray =
+        encodeOperation(AiRequestResponseOperation.Compact(runtime, workspaceRootPath, request.toWire()))
+
+    fun decodeContextInspectionResponse(payload: ByteArray): AiContextInspection =
+        when (val decoded = json.decodeFromString(AiRequestResponsePayload.serializer(), payload.decodeToString())) {
+            is AiRequestResponsePayload.ContextInspection -> decoded.inspection
+            is AiRequestResponsePayload.CallFailure -> throw AiCallException(decoded.failure)
+            else -> error("Worker Gateway AI response payload type mismatch: expected context inspection")
         }
 
     fun encodeCallRequest(
@@ -157,6 +171,16 @@ object AiRequestResponseGatewayCodec {
                 try { AiRequestResponsePayload.Models(handler.listModels(operation.connection, operation.deadline)) }
                 catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
             }
+            is AiRequestResponseOperation.InspectContext -> {
+                try { AiRequestResponsePayload.ContextInspection(handler.inspectContext(
+                    operation.runtime, operation.workspaceRootPath, operation.request.toRuntime())) }
+                catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
+            }
+            is AiRequestResponseOperation.Compact -> {
+                try { AiRequestResponsePayload.Call(handler.compact(
+                    operation.runtime, operation.workspaceRootPath, operation.request.toRuntime()).toWire()) }
+                catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
+            }
             is AiRequestResponseOperation.Call -> {
                 require(operation.request.options.usagePurpose != AI_CONTEXT_QUERY_PURPOSE) {
                     "Isolated context query requires its versioned wire operation"
@@ -206,8 +230,7 @@ object AiRequestResponseGatewayCodec {
     private fun requireContextQueryContract(workspaceRootPath: String?, request: AiRuntimeRequest) {
         require(workspaceRootPath == null && request.options.usagePurpose == AI_CONTEXT_QUERY_PURPOSE &&
             request.tools.isEmpty() && request.options.toolChoice == AiToolChoice.None &&
-            request.options.toolAccess == com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly() &&
-            request.options.autoCompactionThresholdTokens == null) {
+            request.options.toolAccess == com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly()) {
             "Unsupported isolated context query transport contract"
         }
     }
@@ -229,6 +252,14 @@ private sealed interface AiRequestResponseOperation {
     @Serializable
     @SerialName("connection_models")
     data class Models(val connection: AiConnection, val deadline: kotlin.time.Instant) : AiRequestResponseOperation
+
+    @Serializable
+    @SerialName("inspect_context_v1")
+    data class InspectContext(val runtime: ResolvedAiRuntime, val workspaceRootPath: String?, val request: AiRuntimeRequestWire) : AiRequestResponseOperation
+
+    @Serializable
+    @SerialName("compact_v1")
+    data class Compact(val runtime: ResolvedAiRuntime, val workspaceRootPath: String?, val request: AiRuntimeRequestWire) : AiRequestResponseOperation
 
     @Serializable
     @SerialName("call")
@@ -283,6 +314,10 @@ private sealed interface AiRequestResponsePayload {
     data class Models(val result: AiConnectionModels) : AiRequestResponsePayload
 
     @Serializable
+    @SerialName("context_inspection")
+    data class ContextInspection(val inspection: AiContextInspection) : AiRequestResponsePayload
+
+    @Serializable
     @SerialName("call_failure")
     data class CallFailure(val failure: AiCallFailure) : AiRequestResponsePayload
 
@@ -322,7 +357,6 @@ private data class AiRuntimeOptionsWire(
     val toolAccess: com.gromozeka.domain.tool.ToolAccessPolicy = com.gromozeka.domain.tool.ToolAccessPolicy.DenyListed(),
     val maxOutputTokens: Int?,
     val reasoning: AiReasoningConfig?,
-    val autoCompactionThresholdTokens: Int?,
     val toolChoice: ToolChoiceWire,
     val responseFormat: ResponseFormatWire,
     val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
@@ -444,7 +478,6 @@ private fun AiRuntimeOptions.toWire(): AiRuntimeOptionsWire =
         toolAccess = toolAccess,
         maxOutputTokens = maxOutputTokens,
         reasoning = reasoning,
-        autoCompactionThresholdTokens = autoCompactionThresholdTokens,
         toolChoice = toolChoice.toWire(),
         responseFormat = responseFormat.toWire(),
         assistantResponseFormat = assistantResponseFormat,
@@ -458,7 +491,6 @@ private fun AiRuntimeOptionsWire.toRuntime(): AiRuntimeOptions =
         toolAccess = toolAccess,
         maxOutputTokens = maxOutputTokens,
         reasoning = reasoning,
-        autoCompactionThresholdTokens = autoCompactionThresholdTokens,
         toolChoice = toolChoice.toRuntime(),
         responseFormat = responseFormat.toRuntime(),
         assistantResponseFormat = assistantResponseFormat,

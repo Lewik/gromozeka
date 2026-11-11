@@ -29,6 +29,10 @@ import com.openai.models.ResponsesModel
 import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.Response
+import com.openai.models.responses.ResponseCompactParams
+import com.openai.models.responses.CompactedResponse
+import com.openai.models.responses.inputtokens.InputTokenCountParams
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFormatTextJsonSchemaConfig
 import com.openai.models.responses.ResponseFunctionCallOutputItem
@@ -83,8 +87,37 @@ internal class OpenAiResponsesSdkRuntime(
         generation = generation,
     ),
 ) : AiRuntime {
-    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(supportsAutoCompaction = true)
+    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(supportsNativeCompaction = true)
     private val log = KLoggers.logger(this)
+
+    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+        val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
+        val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
+        val countBody = jsonMapper().readValue(JsonObject(fields.filterKeys {
+            it in setOf("model", "input", "instructions", "tools", "tool_choice", "reasoning", "text")
+        }).toString(), InputTokenCountParams.Body::class.java)
+        val options = executor.withDeadline(request.options.copy(usagePurpose = "CONTEXT_COUNT"))
+        return executor.call(options) { client, remaining ->
+            client.async().responses().inputTokens().count(InputTokenCountParams.builder().body(countBody).build(),
+                com.openai.core.RequestOptions.builder().timeout(remaining).build()).thenApply {
+                AiContextInspection(Math.toIntExact(it.inputTokens()), AiContextInspection.Precision.PROVIDER_COUNT, true)
+            }
+        }
+    }
+
+    override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
+        val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
+        val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
+        val compactBody = jsonMapper().readValue(JsonObject(fields.filterKeys {
+            it in setOf("model", "input", "instructions")
+        }).toString(), ResponseCompactParams.Body::class.java)
+        val options = executor.withDeadline(request.options)
+        return executor.call(options) { client, remaining ->
+            client.async().responses().compact(ResponseCompactParams.builder().body(compactBody).build(),
+                com.openai.core.RequestOptions.builder().timeout(remaining).build())
+                .thenApply { messageMapper.toCompactionResponse(it, request) }
+        }
+    }
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         val options = executor.withDeadline(request.options)
@@ -125,17 +158,11 @@ internal class OpenAiResponsesMessageMapper(
         val builder = ResponseCreateParams.builder()
             .model(modelName)
             .inputOfResponse(input)
-            .maxOutputTokens((request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS).toLong())
             .parallelToolCalls(true)
             .store(false)
             .addInclude(ResponseIncludable.REASONING_ENCRYPTED_CONTENT)
 
-        request.options.autoCompactionThresholdTokens?.let { threshold ->
-            builder.addContextManagement(ResponseCreateParams.ContextManagement.builder()
-                .type("compaction")
-                .compactThreshold(threshold.toLong())
-                .build())
-        }
+        request.options.maxOutputTokens?.let { builder.maxOutputTokens(it.toLong()) }
 
         request.systemPrompts
             .filter(String::isNotBlank)
@@ -218,7 +245,7 @@ internal class OpenAiResponsesMessageMapper(
             usage = usage,
             // Billed input tokens describe the pre-compaction request, not the retained window.
             contextUsage = usage?.takeIf { outputItems.none { item -> item.isCompaction() } }
-                ?.let { AiContextUsage(it.totalInputTokens) },
+                ?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
             finishReason = response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
             outcome = outcome,
             providerMetadata = mapOf(
@@ -229,6 +256,22 @@ internal class OpenAiResponsesMessageMapper(
                 "modelConfigurationId" to modelConfigurationId,
                 "responseId" to response.id(),
             ),
+        )
+    }
+
+    fun toCompactionResponse(response: CompactedResponse, request: AiRuntimeRequest): AiRuntimeResponse {
+        val window = JsonArray(response.output().map { Json.parseToJsonElement(jsonMapper().writeValueAsString(it)) })
+        validateCompactionWindow(window)
+        return AiRuntimeResponse(
+            messages = listOf(AiAssistantMessage(listOf(ContextCompactionResult(
+                payload = ContextCompactionResult.Payload.OpaqueProviderState(JsonObject(mapOf("replay_window" to window))),
+                origin = ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+                coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                sourceMessageIds = request.messages.map { it.id },
+                providerScope = ContextCompactionResult.ProviderScope("OPENAI_API", connectionId, modelConfigurationId, modelName),
+            )))),
+            usage = response.usage().toAiUsage(), outcome = AiStepOutcome.CONTINUE, finishReason = "compaction",
         )
     }
 
@@ -249,7 +292,7 @@ internal class OpenAiResponsesMessageMapper(
 
     private fun toInputItems(message: Conversation.Message): List<ResponseInputItem> = buildList {
         val nativeCompactions = message.content.filterIsInstance<ContextCompactionResult>()
-            .mapNotNull { it.nativeInputItem() }
+            .flatMap { it.nativeInputItems() }
         check(nativeCompactions.isEmpty() || message.role == Conversation.Message.Role.ASSISTANT) {
             "OpenAI Responses compaction checkpoint must be an assistant message"
         }
@@ -327,18 +370,30 @@ internal class OpenAiResponsesMessageMapper(
             .forEach(::add)
     }
 
-    private fun ContextCompactionResult.nativeInputItem(): ResponseInputItem? {
-        val opaque = payload as? ContextCompactionResult.Payload.OpaqueProviderState ?: return null
+    private fun validateCompactionWindow(window: JsonArray) {
+        val checkpoint = window.mapNotNull { it as? JsonObject }.singleOrNull { it["type"] == JsonPrimitive("compaction") }
+        check(checkpoint != null && !checkpoint["id"]?.jsonPrimitive?.contentOrNull.isNullOrBlank() &&
+            !checkpoint["encrypted_content"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()) {
+            "OpenAI compact must return one complete encrypted checkpoint in its replay window"
+        }
+    }
+
+    private fun ContextCompactionResult.nativeInputItems(): List<ResponseInputItem> {
+        val opaque = payload as? ContextCompactionResult.Payload.OpaqueProviderState ?: return emptyList()
         val scope = providerScope
         check(scope?.provider == "OPENAI_API" && scope.connectionId == connectionId && scope.modelName == modelName) {
             "OpenAI Responses compaction checkpoint belongs to another provider, connection or model"
+        }
+        (opaque.state["replay_window"] as? JsonArray)?.let { window ->
+            validateCompactionWindow(window)
+            return window.map { jsonMapper().readValue(it.toString(), ResponseInputItem::class.java) }
         }
         val item = opaque.state["replay_item"]?.jsonObject
             ?: error("OpenAI Responses compaction checkpoint has no replay item")
         check(item["type"] == JsonPrimitive("compaction") && !item["encrypted_content"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()) {
             "OpenAI Responses compaction checkpoint has no encrypted state"
         }
-        return jsonMapper().readValue(item.toString(), ResponseInputItem::class.java)
+        return listOf(jsonMapper().readValue(item.toString(), ResponseInputItem::class.java))
     }
 
     private fun easyMessage(role: EasyInputMessage.Role, text: String): ResponseInputItem =
@@ -674,7 +729,6 @@ internal class OpenAiResponsesMessageMapper(
     private fun Long.toIntClamped(): Int = coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
     private companion object {
-        const val DEFAULT_MAX_TOKENS = 8192
     }
 }
 

@@ -64,6 +64,10 @@ Queue-wide memory/backpressure and cache-backed payload fetching remain separate
 Protocol 23 adds HTTP quota feedback and model-configuration admission identity to
 the Server-owned admission introduced in protocol 22. See [HTTP TPM policies](ai-tpm.md) and [AI concurrency groups](ai-admission.md) for the coordination,
 recovery and upgrade contract. It retains protocol 21 byte-string encoding.
+Protocol 24 separates context inspection and compact-only operations from ordinary
+inference, and moves compaction policy to model configurations. Upgrade Server and
+Workers together; finish in-flight AI operations before updating. See
+[blocking compaction](ai-http-settings.md#blocking-conversation-compaction).
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
 secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy

@@ -43,7 +43,8 @@ Every user, policy, provider, or migration compaction is represented by a
 - origin and strategy;
 - source message IDs in conversation order;
 - normalized provider, connection, model-configuration, and model identity when AI generated the result;
-- stable prompt-template identity and version when a Gromozeka prompt was used.
+- stable prompt-template identity and version when a Gromozeka prompt was used;
+- the source/target history-version transition for a newly committed checkpoint.
 
 Large prompt copies and unreliable token-saving estimates are intentionally not stored.
 
@@ -56,7 +57,13 @@ The shared compaction workflow supports:
 - provider-managed opaque compaction boundaries.
 
 All strategies use the same copy-on-write commit path. Source messages and the
-original thread remain unchanged for history and restoration.
+original thread remain unchanged for history and restoration. The commit reads current
+links inside its transaction, preserving appends accepted before the commit, and
+carries forward the turn-number high-water mark. The existing Conversation Runtime
+serializes mutation and retains the active root and queue; a compact does not start
+a new logical conversation or cancel stable Conversation/Agent collaboration work.
+Native session adoption is authorized by the checkpoint's explicit history transition,
+not by retagging arbitrary archived provider state. Forks clear that transition.
 
 ### Why conversationId in Message, not threadId
 

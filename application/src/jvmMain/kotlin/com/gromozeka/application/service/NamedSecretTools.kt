@@ -33,6 +33,13 @@ class PendingSecretRevealService {
         pending.merge(Key(conversationId, userId), values, Map<String, String>::plus)
     }
 
+    /** Reserve space without sending one-shot secret values to a counter or summary model. */
+    fun estimatedInputTokens(conversationId: Conversation.Id, userId: User.Id?): Int {
+        val owner = userId ?: return 0
+        val values = pending[Key(conversationId, owner)] ?: return 0
+        return com.gromozeka.domain.model.ai.AiRequestTokenEstimate.text(RevealedSecretRuntimeContext(values).toXml())
+    }
+
     fun consume(
         conversationId: Conversation.Id,
         userId: User.Id?,

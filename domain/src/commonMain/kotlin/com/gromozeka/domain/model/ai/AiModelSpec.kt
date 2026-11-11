@@ -1,9 +1,7 @@
 package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.AiProvider
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonClassDiscriminator
 
 /**
  * Static knowledge about a provider model.
@@ -59,11 +57,6 @@ data class AiModelSpec(
     val maxOutputTokens: Int?
         get() = limits.textGeneration?.maxOutputTokens
 
-    val autoCompactionThresholdTokens: Int?
-        get() = limits.textGeneration?.let { textGeneration ->
-            textGeneration.autoCompaction?.thresholdTokens(textGeneration.contextWindowTokens)
-        }
-
     @Serializable
     data class Limits(
         val textGeneration: TextGeneration? = null,
@@ -73,17 +66,13 @@ data class AiModelSpec(
         data class TextGeneration(
             val contextWindowTokens: Int,
             val maxOutputTokens: Int? = null,
-            val autoCompaction: AutoCompaction? = null,
         ) {
             init {
                 require(contextWindowTokens > 0) { "AI model context window must be positive" }
                 require(maxOutputTokens == null || maxOutputTokens in 1..contextWindowTokens) {
                     "AI model max output tokens must be inside context window"
                 }
-                val threshold = autoCompaction?.thresholdTokens(contextWindowTokens)
-                require(threshold == null || threshold in 1..contextWindowTokens) {
-                    "AI model auto compaction threshold must be inside context window"
-                }
+
             }
         }
 
@@ -102,35 +91,7 @@ data class AiModelSpec(
         }
     }
 
-    /**
-     * Auto-compaction threshold policy for models that support provider-side compaction.
-     */
-    @Serializable
-    @JsonClassDiscriminator("type")
-    sealed interface AutoCompaction {
-        fun thresholdTokens(contextWindowTokens: Int): Int
 
-        @Serializable
-        @SerialName("percent")
-        data class Percent(val value: Int) : AutoCompaction {
-            init {
-                require(value in 1..100) { "AI model auto compaction percent must be in 1..100" }
-            }
-
-            override fun thresholdTokens(contextWindowTokens: Int): Int =
-                (contextWindowTokens.toLong() * value / 100).toInt()
-        }
-
-        @Serializable
-        @SerialName("absolute")
-        data class Absolute(val tokens: Int) : AutoCompaction {
-            init {
-                require(tokens > 0) { "AI model auto compaction threshold must be positive" }
-            }
-
-            override fun thresholdTokens(contextWindowTokens: Int): Int = tokens
-        }
-    }
 }
 
 @Serializable

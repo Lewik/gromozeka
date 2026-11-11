@@ -142,6 +142,8 @@ jobs:
           --tests '*PostgresAiAdmissionRepositoryTest'
           --tests '*PostgresAiHttpSettingsTest'
           --tests '*PostgresRuntimeMessageReadTest'
+          --tests '*PostgresConversationCompactionRepositoryTest'
+          --tests '*PostgresCompactionConfigurationMigrationTest'
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           --console=plain
       - name: Verify Server and Worker
@@ -160,6 +162,9 @@ jobs:
           :domain:jvmTest --tests '*AiTpmPolicyTest' --tests '*AiConcurrencyGroupTest'
           --tests '*ConversationPinTest'
           --tests '*ConversationContextTest'
+          --tests '*AiCatalogTest'
+          --tests '*AiModelConfigurationTest'
+          --tests '*AiModelSpecTest'
           --tests '*SparseConversationHistoryTest'
           --tests '*SyntheticToolCallIdsTest'
           --tests '*Visual*'
@@ -184,6 +189,7 @@ jobs:
           --tests '*SparseModelPreparationTest'
           --tests '*AgentResponseReviewServiceTest'
           --tests '*MessageSquashServiceTest'
+          --tests '*ConversationCompactionServiceTest'
           --tests '*AgentSessionRuntimeProjectionTest'
           --tests '*DistributedAiToolRoutingTest'
           --tests '*AiAdmissionQueueTest'
@@ -192,11 +198,13 @@ jobs:
           --tests '*ServerAiTpmAdmissionTest'
           --tests '*AiConfigurationApplicationServiceTest'
           :infrastructure-ai:jvmTest
-          --tests '*ClaudeCodeCliRuntimeTest.conversationPin*'
+          --tests '*ClaudeCodeCliRuntimeTest'
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'
           --tests '*SdkWorkerExecutionTest'
           --tests '*OpenAiResponsesSdkRuntimeTest'
           --tests '*OpenAiResponsesCompactionTest'
+          --tests '*AnthropicSdkMessageMapperTest'
+          --tests '*AiContextMeasurementsTest'
           --tests '*SdkHttpContractTest'
           --tests '*SdkHttpExecutionTest'
           --tests '*OpenAiThinkingReplayTest'

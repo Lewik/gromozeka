@@ -209,6 +209,8 @@
     "ai.catalog.section.runtime": "模型分配",
     "ai.catalog.section.specs": "模型规格",
     "ai.catalog.title": "AI 运行配置目录",
+    "ai.compaction.summary_model": "摘要模型",
+    "ai.compaction.current_model": "当前模型（默认）",
     "ai.compaction.disabled": "已禁用",
     "ai.compaction.percent": "百分比",
     "ai.compaction.percent_field": "上下文压缩百分比",
@@ -402,7 +404,7 @@
     "ai.secret.source": "凭据来源",
     "ai.secret.source.environment": "环境变量",
     "ai.secret.source.inline": "直接输入",
-    "ai.spec.auto_compaction": "自动压缩上下文",
+    "ai.compaction.title": "自动压缩上下文",
     "ai.spec.capabilities": "支持的能力",
     "ai.spec.context_window": "上下文窗口",
     "ai.spec.default_dimensions": "默认维度",
@@ -1445,7 +1447,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "自动精简上下文：{count} 个词元"
     },
-    "session.runtime.parameters.autoCompactionUnsupported": "自动精简上下文：不支持",
     "session.runtime.parameters.budget": "预算：{count}",
     "session.runtime.parameters.effort": "推理强度：{effort}",
     "session.runtime.parameters.maxOutput": "最大输出：{count}",

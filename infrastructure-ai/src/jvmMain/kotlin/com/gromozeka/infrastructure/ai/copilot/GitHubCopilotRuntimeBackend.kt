@@ -232,9 +232,6 @@ internal class GitHubCopilotRuntime(
         require(request.options.maxOutputTokens == null) {
             "GitHub Copilot SDK does not expose a per-request maximum output token control"
         }
-        require(request.options.autoCompactionThresholdTokens == null) {
-            "GitHub Copilot runtime does not support Gromozeka auto-compaction"
-        }
         val reasoning = request.options.reasoning ?: return
         require(reasoning.mode != AiReasoningMode.TOKEN_BUDGET && reasoning.budgetTokens == null) {
             "GitHub Copilot does not expose a fixed reasoning token budget"
@@ -523,7 +520,8 @@ internal class GitHubCopilotRuntime(
         val event = lastOrNull { usage ->
             usage.initiator() == null && usage.interactionType() !in NON_PRIMARY_INTERACTION_TYPES
         } ?: return null
-        return AiContextUsage((event.inputTokens() ?: 0L).toIntTokens())
+        val input = event.inputTokens() ?: return null
+        return AiContextUsage(input.toIntTokens(), event.outputTokens()?.toIntTokens())
     }
 
     private fun Long.toIntTokens(): Int = coerceIn(0, Int.MAX_VALUE.toLong()).toInt()

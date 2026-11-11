@@ -39,6 +39,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ClaudeCodeCliRuntimeTest {
@@ -279,7 +280,6 @@ class ClaudeCodeCliRuntimeTest {
             Conversation.Message.ContentItem.ContextCompactionResult
         assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO, compaction.origin)
         assertEquals("CLAUDE_CODE", compaction.providerScope?.provider)
-        assertTrue(runtime.capabilities.providerManagedAutoCompaction)
 
         val persistedResponses = firstResponse.messages.mapIndexed { index, message ->
             Conversation.Message(
@@ -337,7 +337,6 @@ class ClaudeCodeCliRuntimeTest {
             Conversation.Message.ContentItem.ContextCompactionResult
         assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO, compaction.origin)
         assertEquals("CLAUDE_CODE", compaction.providerScope?.provider)
-        assertTrue(runtime.capabilities.providerManagedAutoCompaction)
 
         val persistedResponses = firstResponse.messages.mapIndexed { index, message ->
             Conversation.Message(
@@ -1227,13 +1226,12 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
-    fun cleanRetryDoesNotCommitACompactionFromTheRejectedAttempt() = runBlocking {
+    fun cleanRetryDoesNotCommitProviderCompactionFromRejectedGeneration() = runBlocking {
         val boundary = Json.parseToJsonElement("""{"type":"system","subtype":"compact_boundary","compact_metadata":{"trigger":"manual"}}""").jsonObject
         val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
         val executor = FakeClaudeCodeCliExecutor(
             response(structuredOutput = answer),
-            response(structuredOutput = answer, compactionBoundaries = listOf(boundary)),
-            response(structuredOutput = answer).withNativeText("REJECTED_EXECUTION_CLAIM"),
+            response(structuredOutput = answer, compactionBoundaries = listOf(boundary)).withNativeText("REJECTED_EXECUTION_CLAIM"),
             response(sessionId = "clean", structuredOutput = answer),
         )
         val runtime = runtime(executor)
@@ -1241,15 +1239,15 @@ class ClaudeCodeCliRuntimeTest {
         val first = runtime.call(request(listOf(original), listOf(readFileTool())))
         val input = listOf(original, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next request"))
         val result = runtime.call(request(input, listOf(readFileTool()), AiRuntimeOptions(
-            autoCompactionThresholdTokens = 10, toolContext = testToolContext(),
+            toolContext = testToolContext(),
         )))
-        assertEquals(4, executor.commands.size)
-        assertEquals("/compact", executor.commands[1].userPrompt)
+        assertEquals(3, executor.commands.size)
+        assertFalse(executor.commands.any { it.userPrompt == "/compact" })
         assertNull(executor.commands.last().resumeSessionId)
         assertTrue(executor.commands.last().userPrompt.contains("Canonical original request"))
         assertFalse(executor.commands.last().userPrompt.contains("AURORA_713"))
         assertEquals(1, result.messages.size)
-        assertEquals(30, result.usage?.promptTokens) // compact + rejected response + clean retry
+        assertEquals(20, result.usage?.promptTokens) // rejected response + clean retry
         assertEquals(10, result.contextUsage?.inputTokens)
     }
 
@@ -1614,7 +1612,7 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
-    fun configuredThresholdCompactsBetweenRequestsAndRecordsPolicyOrigin() = runBlocking {
+    fun explicitCompactOnlyCoversTheSessionPrefixAndContinuesAcrossCow() = runBlocking {
         val boundary = Json.parseToJsonElement("""{"type":"system","subtype":"compact_boundary","compact_metadata":{"trigger":"manual"}}""").jsonObject
         val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
         val executor = FakeClaudeCodeCliExecutor(
@@ -1626,21 +1624,45 @@ class ClaudeCodeCliRuntimeTest {
         val firstUser = userMessage("Original")
         val first = runtime.call(request(listOf(firstUser), emptyList()))
         val history = listOf(firstUser, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next"))
-        val result = runtime.call(request(history, emptyList(), AiRuntimeOptions(
-            autoCompactionThresholdTokens = 10, toolContext = testToolContext(),
-        )).copy(systemPrompts = listOf("base", "Pinned conversation context:\n\nNATIVE_COMPACTION_PIN")))
+        val compactRequest = request(history, emptyList(), AiRuntimeOptions(toolContext = testToolContext(), usagePurpose = "CONTEXT_COMPACTION"))
+            .copy(systemPrompts = listOf("base", "Pinned conversation context:\n\nNATIVE_COMPACTION_PIN"))
+        assertTrue(runtime.inspectContext(compactRequest).nativeCompactionAvailable)
+        val compact = runtime.compact(compactRequest)
+        assertEquals(2, executor.commands.size, "Compact must not run ordinary inference")
+        val checkpoint = compact.messages.single().content.single() as Conversation.Message.ContentItem.ContextCompactionResult
+        assertEquals(history.take(2).map { it.id }, checkpoint.sourceMessageIds)
+        val targetThread = Conversation.Thread.Id("after-compaction")
+        val checkpointMessage = assistantMessage("").copy(content = listOf(checkpoint.copy(
+            historyTransition = Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(
+                Conversation.Thread.Id(testToolContext().getValue("threadId").toString()), targetThread))),
+            providerMetadata = JsonObject(compact.messages.single().metadata.mapValues { (_, value) ->
+                value as? kotlinx.serialization.json.JsonElement ?: JsonPrimitive(value.toString())
+            }))
+        val afterCow = compactRequest.copy(messages = history.take(2) + checkpointMessage + history.last(), options = compactRequest.options.copy(
+            usagePurpose = "CONVERSATION", toolContext = testToolContext() + ("threadId" to targetThread.value)))
+        val result = runtime.call(afterCow)
+        assertTrue(result.messages.none { it.content.any { content -> content is Conversation.Message.ContentItem.ContextCompactionResult } })
         assertEquals("/compact", executor.commands[1].userPrompt)
         assertTrue(executor.commands[1].systemPrompt.contains("NATIVE_COMPACTION_PIN"))
         assertEquals(executor.commands[1].systemPrompt, executor.commands[2].systemPrompt)
         assertTrue(executor.commands[2].userPrompt.contains("Next"))
-        val checkpoint = result.messages.first().content.single() as Conversation.Message.ContentItem.ContextCompactionResult
         assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY, checkpoint.origin)
-        assertEquals(history.map { it.id }, checkpoint.sourceMessageIds)
-        assertTrue(runtime.capabilities.supportsAutoCompaction)
+        assertEquals("session-1", executor.commands[2].resumeSessionId)
+        assertFalse(executor.commands[2].userPrompt.contains("Original"))
+        assertTrue(runtime.capabilities.supportsNativeCompaction)
     }
 
     @Test
-    fun doesNotCompactBelowConfiguredThreshold() = runBlocking {
+    fun missingContextInputUsageIsUnavailableRatherThanZero() = runBlocking {
+        val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = answer).copy(contextUsage = JsonObject(emptyMap())))
+        val result = runtime(executor).call(request(listOf(userMessage("Hello")), emptyList()))
+        assertNull(result.contextUsage)
+        assertNotNull(result.usage)
+    }
+
+    @Test
+    fun ordinaryCallNeverInitiatesExplicitCompaction() = runBlocking {
         val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
         val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = answer), response(structuredOutput = answer))
         val runtime = runtime(executor)
@@ -1648,7 +1670,7 @@ class ClaudeCodeCliRuntimeTest {
         val first = runtime.call(request(listOf(firstUser), emptyList()))
         runtime.call(request(
             listOf(firstUser, assistantMessage("").copy(content = first.messages.single().content), userMessage("Next")),
-            emptyList(), AiRuntimeOptions(autoCompactionThresholdTokens = 11, toolContext = testToolContext()),
+            emptyList(), AiRuntimeOptions(toolContext = testToolContext()),
         ))
         assertEquals(2, executor.commands.size)
         assertFalse(executor.commands.any { it.userPrompt == "/compact" })

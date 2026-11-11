@@ -37,7 +37,7 @@ class TrueFoundryChatCompletionsTest {
         )
         SdkHttpTestServer(replies, expectedTarget = CHAT_PATH).use { server ->
             val runtime = runtime(server.origin)
-            assertFalse(runtime.capabilities.supportsAutoCompaction)
+            assertFalse(runtime.capabilities.supportsNativeCompaction)
             val first = runtime.call(request(listOf(user)))
             assertEquals(AiStepOutcome.TOOL_CALLS, first.outcome)
             assertEquals("lookup", first.toolCalls.single().call.name)

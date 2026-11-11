@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
@@ -32,7 +33,7 @@ class OpenAiSubscriptionRuntimeBackend(
     override fun capabilities(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true)
+    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsNativeCompaction = true)
 
     override fun createRuntime(
         runtime: ResolvedAiRuntime,
@@ -73,8 +74,23 @@ private class Runtime(
     private val modelName get() = configuration.providerModelId
     private val fallbackConversationKey = UUID.randomUUID().toString()
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
-        supportsAutoCompaction = true,
+        supportsNativeCompaction = true,
     )
+
+    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+        val session = authService.getValidSession()
+        val profile = modelsClient.getProfile(session, modelName)
+        val body = requestMapper.toRequest(request, profile,
+            request.subscriptionTransportNamespace(fallbackConversationKey).toOpenAiSubscriptionKey(), webSearchEnabled, connectionId)
+        val boundary = request.messages.indexOfLast { it.content.any { content ->
+            content is com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
+        } }
+        return compaction.inspectContext(request.messages.drop((boundary + 1).coerceAtLeast(0)), body, connectionId,
+            modelConfigurationId, request.options.toolContext["threadId"] as? String).copy(nativeCompactionAvailable = profile.useResponsesLite)
+    }
+
+    override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse =
+        execute(request, retryOnUnauthorized = true, compactOnly = true)
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         return execute(request, retryOnUnauthorized = true)
@@ -87,6 +103,7 @@ private class Runtime(
     private suspend fun execute(
         request: AiRuntimeRequest,
         retryOnUnauthorized: Boolean,
+        compactOnly: Boolean = false,
     ): AiRuntimeResponse = withContext(Dispatchers.IO) {
         val session = authService.getValidSession()
         val rawConversationKey = request.subscriptionTransportNamespace(fallbackConversationKey)
@@ -94,7 +111,7 @@ private class Runtime(
         val promptCacheKey = (request.options.toolContext["promptCacheKey"] as? String ?: rawConversationKey)
             .toOpenAiSubscriptionKey()
         try {
-            webSearch.executePending(request, session, conversationKey, configuration, webSearchEnabled)
+            if (!compactOnly) webSearch.executePending(request, session, conversationKey, configuration, webSearchEnabled)
                 ?.let { return@withContext it }
             val modelProfile = modelsClient.getProfile(session, modelName)
             val requestBody = requestMapper.toRequest(
@@ -104,9 +121,9 @@ private class Runtime(
                 webSearchEnabled = webSearchEnabled,
                 connectionId = connectionId,
             )
-            compaction.executeIfNeeded(
+            if (compactOnly) return@withContext compaction.execute(
                 request, requestBody, modelProfile, session, conversationKey, connectionId, configuration,
-            )?.let { return@withContext it }
+            )
             val parsed = responsesClient.create(
                 configuration = configuration,
                 session = session,
@@ -129,7 +146,7 @@ private class Runtime(
             if (!retryOnUnauthorized) throw error
 
             authService.refreshTokens(session.refreshToken).getOrThrow()
-            execute(request, retryOnUnauthorized = false)
+            execute(request, retryOnUnauthorized = false, compactOnly = compactOnly)
         }
     }
 }

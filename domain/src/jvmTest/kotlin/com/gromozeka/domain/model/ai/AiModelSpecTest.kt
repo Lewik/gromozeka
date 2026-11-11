@@ -21,11 +21,7 @@ class AiModelSpecTest {
               "limits": {
                 "textGeneration": {
                   "contextWindowTokens": 1050000,
-                  "maxOutputTokens": 128000,
-                  "autoCompaction": {
-                    "type": "percent",
-                    "value": 80
-                  }
+                  "maxOutputTokens": 128000
                 }
               },
               "reasoning": {
@@ -46,41 +42,6 @@ class AiModelSpecTest {
         assertEquals(setOf(AiReasoningMode.ADAPTIVE), spec.reasoning?.modes)
         assertEquals(setOf(AiReasoningEffort.LOW, AiReasoningEffort.MEDIUM, AiReasoningEffort.HIGH), spec.reasoning?.efforts)
         assertEquals(setOf(AiReasoningDisplay.SUMMARIZED, AiReasoningDisplay.OMITTED), spec.reasoning?.displays)
-        assertEquals(840_000, spec.autoCompactionThresholdTokens)
-    }
-
-    @Test
-    fun supportsAbsoluteAutoCompactionThreshold() {
-        val spec = AiModelSpec(
-            id = "custom-model",
-            provider = AiProvider.OPENAI,
-            capabilities = setOf(AiModelCapability.TEXT_GENERATION),
-            limits = AiModelSpec.Limits(
-                textGeneration = AiModelSpec.Limits.TextGeneration(
-                    contextWindowTokens = 100_000,
-                    autoCompaction = AiModelSpec.AutoCompaction.Absolute(75_000),
-                )
-            ),
-        )
-
-        assertEquals(75_000, spec.autoCompactionThresholdTokens)
-    }
-
-    @Test
-    fun rejectsAutoCompactionThresholdOutsideContextWindow() {
-        assertFailsWith<IllegalArgumentException> {
-            AiModelSpec(
-                id = "broken-model",
-                provider = AiProvider.OPENAI,
-                capabilities = setOf(AiModelCapability.TEXT_GENERATION),
-                limits = AiModelSpec.Limits(
-                    textGeneration = AiModelSpec.Limits.TextGeneration(
-                        contextWindowTokens = 100_000,
-                        autoCompaction = AiModelSpec.AutoCompaction.Absolute(100_001),
-                    )
-                ),
-            )
-        }
     }
 
     @Test

@@ -209,6 +209,8 @@
     "ai.catalog.section.runtime": "モデルの割り当て",
     "ai.catalog.section.specs": "モデル仕様",
     "ai.catalog.title": "AI実行設定カタログ",
+    "ai.compaction.summary_model": "要約モデル",
+    "ai.compaction.current_model": "現在のモデル（デフォルト）",
     "ai.compaction.disabled": "無効",
     "ai.compaction.percent": "割合",
     "ai.compaction.percent_field": "コンテキスト圧縮の割合",
@@ -402,7 +404,7 @@
     "ai.secret.source": "認証情報の取得元",
     "ai.secret.source.environment": "環境変数",
     "ai.secret.source.inline": "直接入力",
-    "ai.spec.auto_compaction": "コンテキストの自動圧縮",
+    "ai.compaction.title": "コンテキストの自動圧縮",
     "ai.spec.capabilities": "対応機能",
     "ai.spec.context_window": "コンテキストウィンドウ",
     "ai.spec.default_dimensions": "既定の次元数",
@@ -1445,7 +1447,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "自動圧縮：{count} トークン"
     },
-    "session.runtime.parameters.autoCompactionUnsupported": "自動圧縮：未対応",
     "session.runtime.parameters.budget": "予算：{count}",
     "session.runtime.parameters.effort": "推論の強度：{effort}",
     "session.runtime.parameters.maxOutput": "最大出力：{count}",

@@ -26,25 +26,24 @@ class OpenAiResponsesCompactionTest {
     fun `Responses advertises compaction through both capability and runtime routes but Chat does not`() {
         val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
         val responses = resolved(connection("http://127.0.0.1:1/api/llm"))
-        assertTrue(provider.capabilities(responses).supportsAutoCompaction)
-        assertTrue(provider.getRuntime(responses, null).capabilities.supportsAutoCompaction)
-        assertFalse(provider.capabilities(responses).providerManagedAutoCompaction)
+        assertTrue(provider.capabilities(responses).supportsNativeCompaction)
+        assertTrue(provider.getRuntime(responses, null).capabilities.supportsNativeCompaction)
         assertEquals("OPENAI_API", responses.connection.kind.nativeCompactionProvider())
         val chat = resolved(AiConnection.OpenAiCompatible(AiConnection.Id(CONNECTION), "Chat", enabled = true,
             baseUrl = "http://127.0.0.1:1/api/llm", apiKey = SecretRef.Inline(TOKEN)))
-        assertFalse(provider.capabilities(chat).supportsAutoCompaction)
-        assertFalse(provider.getRuntime(chat, null).capabilities.supportsAutoCompaction)
+        assertFalse(provider.capabilities(chat).supportsNativeCompaction)
+        assertFalse(provider.getRuntime(chat, null).capabilities.supportsNativeCompaction)
     }
 
     @Test
-    fun `configured threshold is sent with stateless requests and absent policy stays disabled`() {
+    fun `ordinary stateless requests never enable inline compaction or impose a default output cap`() {
         val configured = mapper.toCreateParams(MODEL, false, request(listOf(text("user"))))
-        assertEquals("compaction", configured.contextManagement().get().single().type())
-        assertEquals(7000L, configured.contextManagement().get().single().compactThreshold().get())
+        assertFalse(configured.contextManagement().isPresent)
         assertEquals(false, configured.store().get())
         assertFalse(configured.previousResponseId().isPresent)
         val disabled = mapper.toCreateParams(MODEL, false, request(listOf(text("user"))).copy(options = AiRuntimeOptions()))
         assertFalse(disabled.contextManagement().isPresent)
+        assertFalse(disabled.maxOutputTokens().isPresent)
     }
 
     @Test
@@ -121,7 +120,7 @@ class OpenAiResponsesCompactionTest {
     }
 
     @Test
-    fun `gateway HTTP request enables compaction and next tool turn sends the persisted checkpoint`() = runBlocking {
+    fun `gateway preserves provider checkpoints without requesting inline compaction`() = runBlocking {
         SdkHttpTestServer(response(COMPACT, CALL), response(ANSWER)).use { server ->
             val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
             val runtime = provider.getRuntime(resolved(connection("${server.origin}/api/llm")), null)
@@ -136,7 +135,7 @@ class OpenAiResponsesCompactionTest {
                 assertEquals("Bearer $TOKEN", recorded.headers["authorization"]?.single())
                 val body = Json.parseToJsonElement(recorded.body).jsonObject
                 assertEquals(JsonPrimitive(false), body["store"])
-                assertEquals(Json.parseToJsonElement("""[{"type":"compaction","compact_threshold":7000}]"""), body["context_management"])
+                assertNull(body["context_management"])
             }
             val nextInput = Json.parseToJsonElement(server.requests.last().body).jsonObject.getValue("input").jsonArray
             assertEquals(listOf("compaction", "function_call", "function_call_output"), nextInput.map { it.jsonObject.getValue("type").jsonPrimitive.content })
@@ -145,12 +144,43 @@ class OpenAiResponsesCompactionTest {
         }
     }
 
+    @Test
+    fun `explicit counter and compactor use separate endpoints and replay the complete returned window`() = runBlocking {
+        val retained = """{"type":"message","id":"retained","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Retained detail","annotations":[]}]}"""
+        val compactedBody = """{"id":"compact-1","object":"response.compaction","created_at":1,"output":[$retained,$COMPACT],"usage":{"input_tokens":9000,"output_tokens":100,"total_tokens":9100,"input_tokens_details":{"cached_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}"""
+        SdkHttpTestServer("""{"object":"response.input_tokens","input_tokens":9000}""", compactedBody, response(ANSWER)).use { server ->
+            val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
+            val runtime = provider.getRuntime(resolved(connection("${server.origin}/api/llm")), null)
+            val archive = listOf(text("old", "ARCHIVE_MARKER"))
+            val inspection = runtime.inspectContext(request(archive))
+            assertEquals(AiContextInspection.Precision.PROVIDER_COUNT, inspection.precision)
+            assertEquals(9000, inspection.inputTokens)
+            assertTrue(inspection.nativeCompactionAvailable)
+            val compact = runtime.compact(request(archive).copy(options = request(archive).options.copy(usagePurpose = "CONTEXT_COMPACTION")))
+            assertEquals(AiStepOutcome.CONTINUE, compact.outcome)
+            assertEquals(1, compact.messages.size)
+            assertNull(compact.contextUsage)
+            val stored = persist(compact)
+            val checkpoint = stored.single().content.single() as Compaction
+            assertEquals(archive.map { it.id }, checkpoint.sourceMessageIds)
+            val result = runtime.call(request(archive + stored + text("continue")))
+            assertEquals(AiStepOutcome.COMPLETE, result.outcome)
+            assertEquals(listOf("/api/llm/responses/input_tokens", "/api/llm/responses/compact", "/api/llm/responses"), server.requests.map { it.target })
+            val compactInput = Json.parseToJsonElement(server.requests[1].body).jsonObject
+            assertNull(compactInput["max_output_tokens"])
+            assertNull(compactInput["context_management"])
+            val next = Json.parseToJsonElement(server.requests[2].body).jsonObject.getValue("input").jsonArray
+            assertEquals(Json.parseToJsonElement(retained), next[0])
+            assertEquals(Json.parseToJsonElement(COMPACT), next[1])
+            assertFalse(server.requests[2].body.contains("ARCHIVE_MARKER"))
+        }
+    }
+
     private fun parse(body: String) = mapper.toRuntimeResponse(jsonMapper().readValue(body, Response::class.java), AiModelConfiguration.AssistantResponseFormat.TEXT)
 
     private fun request(messages: List<Message>) = AiRuntimeRequest(
         systemPrompts = listOf("Continue the task."), messages = messages,
-        options = AiRuntimeOptions(maxOutputTokens = 128, autoCompactionThresholdTokens = 7000,
-            toolContext = mapOf("threadId" to "thread")),
+        options = AiRuntimeOptions(maxOutputTokens = 128, toolContext = mapOf("threadId" to "thread")),
     )
 
     private fun persist(response: AiRuntimeResponse, prefix: String = "generated") = response.messages.mapIndexed { index, message ->
@@ -172,7 +202,7 @@ class OpenAiResponsesCompactionTest {
         AiModelConfiguration(AiModelConfiguration.Id("configuration"), connection.id, MODEL, "Gateway model",
             defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = 10)),
         AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
-            AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(10_000, 1000, AiModelSpec.AutoCompaction.Percent(70)))))
+            AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(10_000, 1000))))
 
     private object Sources : SettingsProvider {
         override val userProfile: UserProfile get() = error("Not used")

@@ -101,6 +101,5 @@ class PostgresAiModelBehaviorMigrationTest {
 
     private fun spec(id: String) = AiModelSpec(id, AiProvider.ANTHROPIC,
         setOf(AiModelCapability.TEXT_GENERATION, AiModelCapability.TOOL_CALLING),
-        AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 4096,
-            AiModelSpec.AutoCompaction.Percent(73))))
+        AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 4096)))
 }

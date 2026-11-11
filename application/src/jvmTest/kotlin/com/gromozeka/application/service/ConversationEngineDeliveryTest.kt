@@ -414,8 +414,62 @@ class ConversationEngineDeliveryTest {
         }
     }
 
+    @Test fun `COW compaction keeps the root and queued steering and consumes secrets only for inference`() = runBlocking {
+        val f = Fixture()
+        val root = f.messages.single()
+        val running = f.begin()
+        f.pendingSecrets.queue(conversation.id, user, mapOf("fixture" to "approved-model-only-value"))
+        f.onCompact = { request ->
+            assertTrue(f.requests.isEmpty())
+            assertFalse(request.messages.any { message -> message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext } })
+            val target = Conversation.Thread.Id("compacted-thread")
+            f.messages += root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+                author = Conversation.Message.Author.Agent(agentId, "Test"),
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Continue the root task"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    sourceMessageIds = f.messages.map { it.id }, coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                    historyTransition = ContentItem.ContextCompactionResult.HistoryTransition(f.currentConversation.currentThread, target),
+                )))
+            f.currentConversation = f.currentConversation.copy(currentThread = target)
+            f.onCompact = { null }
+            f.currentConversation
+        }
+        val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) { f.emitted += it })
+        assertTrue(f.requests.isEmpty())
+        assertTrue(f.pendingSecrets.estimatedInputTokens(conversation.id, user) > 0)
+        val continuation = assertIs<ConversationRuntimeTask.Payload.LlmCall>(outcome.nextTask.payload)
+        assertTrue(continuation.afterCompaction)
+        assertEquals(root.id, continuation.rootUserMessageId)
+        assertEquals(running.turnId, outcome.nextTask.turnId)
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
+        assertTrue(f.coordinator.submitUserInput(input("late-steering"), UserMessageDeliveryMode.STEER))
+        f.drain()
+        val request = f.requests.single()
+        assertEquals("compacted-thread", request.options.toolContext["threadId"])
+        assertEquals(root.id.value, request.options.toolContext[com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID])
+        assertTrue(request.messages.any { it.id.value == "late-steering" })
+        val secrets = request.messages.flatMap { it.instructions }.filterIsInstance<Conversation.Message.Instruction.RevealedSecretRuntimeContext>()
+        assertEquals(1, secrets.size)
+        assertContains(secrets.single().serializeContent(), "approved-model-only-value")
+        assertEquals(0, f.pendingSecrets.estimatedInputTokens(conversation.id, user))
+        assertEquals(root, f.messages.single { it.id == root.id })
+        assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
+    }
+
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
+        var currentConversation = conversation
+        val pendingSecrets = PendingSecretRevealService()
+        var onCompact: (AiRuntimeRequest) -> Conversation? = { null }
+        val compactionChecks = mutableListOf<Pair<AiRuntimeRequest, Boolean>>()
+        private val compactions = responding<ConversationCompactionService> {
+            if (it.method.name.startsWith("compactIfNeeded")) {
+                val request = it.arguments[4] as AiRuntimeRequest
+                compactionChecks += request to (it.arguments[5] as Boolean)
+                onCompact(request)
+            } else Mockito.RETURNS_DEFAULTS.answer(it)
+        }
         val pins = ReadOnlyTestPins()
         val messages = mutableListOf(requireNotNull(input("root").userMessageOrNull()))
         val emitted = mutableListOf<Conversation.Message>()
@@ -447,7 +501,7 @@ class ConversationEngineDeliveryTest {
         private val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
         private val conversations = responding<ConversationDomainService> {
             when (it.method.name.substringBefore('-')) {
-                "findById" -> conversation; "getProject" -> project
+                "findById" -> currentConversation; "getProject" -> project
                 "loadCurrentMessages" -> {
                     check(allowFullHistoryLoad) { "Point operation must not load the archive" }
                     messages.toList()
@@ -457,7 +511,7 @@ class ConversationEngineDeliveryTest {
         }
         private val appender = object : ConversationRuntimeMessageAppender {
             override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation {
-                messages += message; onAppend(message); return conversation
+                messages += message; onAppend(message); return currentConversation
             }
         }
         private val artifacts = responding<ConversationArtifactApplicationService> {
@@ -470,7 +524,7 @@ class ConversationEngineDeliveryTest {
         val contextReads = mutableListOf<String?>()
         private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
             check(it.method.name.substringBefore('-') == "getContextMessagesByThread")
-            assertEquals(conversation.currentThread.value, it.arguments[0])
+            assertEquals(currentConversation.currentThread.value, it.arguments[0])
             val provider = it.arguments[1] as String?
             contextReads += provider
             val selected = selectModelHistoryMessageIds(
@@ -481,9 +535,9 @@ class ConversationEngineDeliveryTest {
         }
         var historyMessageReads = 0
         private val history = ConversationHistoryReadService(
-            responding<com.gromozeka.domain.repository.ConversationRepository> { conversation },
+            responding<com.gromozeka.domain.repository.ConversationRepository> { currentConversation },
             responding<com.gromozeka.domain.repository.ConversationHistoryRepository> {
-                assertEquals(conversation.currentThread.value, it.arguments[0])
+                assertEquals(currentConversation.currentThread.value, it.arguments[0])
                 val index = messages.indexOfFirst { message -> message.id.value == it.arguments[1] }
                 when (it.method.name.substringBefore('-')) {
                     "position" -> index.takeIf { position -> position >= 0 }
@@ -529,7 +583,7 @@ class ConversationEngineDeliveryTest {
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
             }, agentPromptAssemblyService = responding { emptyList<String>() },
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
-            conversationMessageAppender = appender, historyMutationExecutor = mock(), memoryApplicationService = mock(), memoryToolApplicationService = responding {
+            conversationMessageAppender = appender, historyMutationExecutor = mock(), compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)
             },
             backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),
@@ -539,7 +593,7 @@ class ConversationEngineDeliveryTest {
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
             aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(),
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
-            stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = PendingSecretRevealService(),
+            stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
             suggestedRepliesGenerationService = mock(),
             conversationPins = ConversationPinnedPrompt(pins),
             requestEnrichers = if (withEnricher) listOf(object : ConversationRequestEnricher {

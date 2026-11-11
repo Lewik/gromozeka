@@ -3,6 +3,7 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -106,6 +107,12 @@ interface AiRequestResponseExecutionClient {
     suspend fun listModels(target: ConversationRuntimeWorkerIdentity, connection: AiConnection, deadline: kotlin.time.Instant,
         actorUserId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ai.AiConnectionModels
 
+    suspend fun inspectContext(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
+        workspaceRootPath: String?, request: AiRuntimeRequest): AiContextInspection
+
+    suspend fun compact(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
+        workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse
+
     suspend fun call(
         target: ConversationRuntimeWorkerIdentity,
         runtime: ResolvedAiRuntime,
@@ -140,6 +147,12 @@ interface AiRequestResponseExecutionClient {
 
 interface AiRequestResponseExecutionHandler {
     suspend fun listModels(connection: AiConnection, deadline: kotlin.time.Instant): com.gromozeka.domain.model.ai.AiConnectionModels
+
+    suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest):
+        AiContextInspection
+
+    suspend fun compact(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest):
+        AiRuntimeResponse
 
     suspend fun call(
         runtime: ResolvedAiRuntime,

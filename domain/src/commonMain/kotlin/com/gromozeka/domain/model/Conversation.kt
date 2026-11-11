@@ -508,8 +508,20 @@ data class Conversation(
                 // Kept turns produced against the pre-compaction history must not replay
                 // signed thinking or provider-native copies of that old history.
                 val invalidatedReplayMessageIds: List<Id> = emptyList(),
+                val historyTransition: HistoryTransition? = null,
                 override val state: BlockState = BlockState.COMPLETE,
             ) : ContentItem() {
+                /** Durable COW receipt; a native adapter may continue only this exact context transition. */
+                @Serializable
+                data class HistoryTransition(
+                    val sourceThreadId: Thread.Id,
+                    val targetThreadId: Thread.Id,
+                ) {
+                    init {
+                        require(sourceThreadId != targetThreadId) { "Compaction must create a new history version" }
+                    }
+                }
+
                 val coversAllPrevious: Boolean
                     get() = coverage == Coverage.ALL_PREVIOUS
 

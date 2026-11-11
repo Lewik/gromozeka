@@ -554,7 +554,9 @@ private fun ModelConfigurationsEditor(
                         },
                         onEdit = { editing = configuration },
                         onDelete = {
-                            if (assignments.isNotEmpty()) {
+                            if (assignments.isNotEmpty() || draft.modelConfigurations.any {
+                                    it.compaction.summaryModelConfigurationId == configuration.id
+                                }) {
                                 onError(translation.text("ai.model.in_use", "name" to configuration.displayName))
                             } else {
                                 onChange(
@@ -579,6 +581,7 @@ private fun ModelConfigurationsEditor(
             modelSpecs = draft.modelSpecs,
             concurrencyGroups = draft.concurrencyGroups,
             tpmGroups = draft.tpmGroups,
+            configurations = draft.modelConfigurations,
             onDismiss = {
                 creating = false
                 editing = null
@@ -1652,6 +1655,7 @@ private fun ModelConfigurationDialog(
     modelSpecs: List<AiModelSpec>,
     concurrencyGroups: List<AiConcurrencyGroup>,
     tpmGroups: List<AiTpmGroup>,
+    configurations: List<AiModelConfiguration>,
     onDismiss: () -> Unit,
     onSave: (AiModelConfiguration) -> Unit,
 ) {
@@ -1682,6 +1686,11 @@ private fun ModelConfigurationDialog(
     var requestedEmbeddingDimensions by remember {
         mutableStateOf(existing?.requestedEmbeddingDimensions?.toString().orEmpty())
     }
+    var compactionMode by remember {
+        mutableStateOf(if (existing?.compaction?.thresholdTokens == null) AutoCompactionEditorMode.None else AutoCompactionEditorMode.Absolute)
+    }
+    var compactionValue by remember { mutableStateOf(existing?.compaction?.thresholdTokens?.toString().orEmpty()) }
+    var summaryConfigurationId by remember { mutableStateOf(existing?.compaction?.summaryModelConfigurationId) }
     var reasoningMode by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.mode) }
     var reasoningEffort by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.effort) }
     var reasoningDisplay by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.display) }
@@ -1767,6 +1776,43 @@ private fun ModelConfigurationDialog(
                         onValueChange = { timeoutSeconds = it },
                         label = translation.text("ai.model.timeout_seconds"),
                         modifier = Modifier.weight(1f),
+                    )
+                }
+                if (selectedModelSpec?.limits?.textGeneration != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LabeledDropdown(
+                            label = translation.text("ai.compaction.title"),
+                            value = compactionMode,
+                            options = AutoCompactionEditorMode.entries,
+                            optionLabel = { translation.text(it.titleKey) },
+                            onSelect = { compactionMode = it },
+                            modifier = Modifier.weight(1f),
+                        )
+                        OptionalNumberField(
+                            compactionValue,
+                            { compactionValue = it },
+                            when (compactionMode) {
+                                AutoCompactionEditorMode.None -> translation.text("ai.compaction.disabled")
+                                AutoCompactionEditorMode.Percent -> translation.text("ai.compaction.percent")
+                                AutoCompactionEditorMode.Absolute -> translation.text("ai.compaction.threshold_tokens")
+                            },
+                            Modifier.weight(1f),
+                            enabled = compactionMode != AutoCompactionEditorMode.None,
+                        )
+                    }
+                    LabeledDropdown(
+                        label = translation.text("ai.compaction.summary_model"),
+                        value = summaryConfigurationId,
+                        options = listOf<AiModelConfiguration.Id?>(null) + configurations.filter { candidate ->
+                            candidate.enabled && candidate.id.value != id.trim() && modelSpecs.any { spec ->
+                                spec.id == candidate.providerModelId && spec.limits.textGeneration != null &&
+                                    spec.provider == connections.firstOrNull { it.id == candidate.connectionId }?.kind?.provider
+                            }
+                        }.map { it.id },
+                        optionLabel = { candidate -> candidate?.let { selected ->
+                            configurations.first { it.id == selected }.displayName
+                        } ?: translation.text("ai.compaction.current_model") },
+                        onSelect = { summaryConfigurationId = it },
                     )
                 }
                 if (supportsEmbeddings) {
@@ -1857,6 +1903,18 @@ private fun ModelConfigurationDialog(
                             reasoning = reasoning,
                             timeoutSeconds = timeoutSeconds.optionalInt(translation.text("ai.model.timeout"), translation),
                         ),
+                        compaction = if (selectedModelSpec?.limits?.textGeneration != null) AiModelConfiguration.Compaction(
+                            thresholdTokens = when (compactionMode) {
+                                AutoCompactionEditorMode.None -> null
+                                AutoCompactionEditorMode.Absolute -> compactionValue.requiredInt(translation.text("ai.compaction.threshold_field"), translation)
+                                AutoCompactionEditorMode.Percent -> {
+                                    val percent = compactionValue.requiredInt(translation.text("ai.compaction.percent_field"), translation)
+                                    require(percent in 1..99) { translation.text("ai.compaction.percent_field") + ": 1–99" }
+                                    (requireNotNull(selectedModelSpec.contextWindowTokens).toLong() * percent / 100).toInt()
+                                }
+                            },
+                            summaryModelConfigurationId = summaryConfigurationId,
+                        ) else AiModelConfiguration.Compaction(),
                         requestedEmbeddingDimensions = if (supportsEmbeddings) {
                             requestedEmbeddingDimensions.optionalInt(translation.text("ai.model.requested_embedding_dimensions"), translation)
                         } else {
@@ -1889,25 +1947,6 @@ private fun ModelSpecDialog(
     }
     var maxOutput by remember {
         mutableStateOf(existing?.limits?.textGeneration?.maxOutputTokens?.toString().orEmpty())
-    }
-    val initialAutoCompaction = existing?.limits?.textGeneration?.autoCompaction
-    var compactionMode by remember {
-        mutableStateOf(
-            when (initialAutoCompaction) {
-                null -> AutoCompactionEditorMode.None
-                is AiModelSpec.AutoCompaction.Percent -> AutoCompactionEditorMode.Percent
-                is AiModelSpec.AutoCompaction.Absolute -> AutoCompactionEditorMode.Absolute
-            }
-        )
-    }
-    var compactionValue by remember {
-        mutableStateOf(
-            when (initialAutoCompaction) {
-                null -> ""
-                is AiModelSpec.AutoCompaction.Percent -> initialAutoCompaction.value.toString()
-                is AiModelSpec.AutoCompaction.Absolute -> initialAutoCompaction.tokens.toString()
-            }
-        )
     }
     var embeddingDimensions by remember {
         mutableStateOf(existing?.limits?.embeddings?.dimensions?.toString().orEmpty())
@@ -1976,27 +2015,6 @@ private fun ModelSpecDialog(
                             Modifier.weight(1f),
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LabeledDropdown(
-                            label = translation.text("ai.spec.auto_compaction"),
-                            value = compactionMode,
-                            options = AutoCompactionEditorMode.entries,
-                            optionLabel = { translation.text(it.titleKey) },
-                            onSelect = { compactionMode = it },
-                            modifier = Modifier.weight(1f),
-                        )
-                        OptionalNumberField(
-                            compactionValue,
-                            { compactionValue = it },
-                            when (compactionMode) {
-                                AutoCompactionEditorMode.None -> translation.text("ai.compaction.disabled")
-                                AutoCompactionEditorMode.Percent -> translation.text("ai.compaction.percent")
-                                AutoCompactionEditorMode.Absolute -> translation.text("ai.compaction.threshold_tokens")
-                            },
-                            Modifier.weight(1f),
-                            enabled = compactionMode != AutoCompactionEditorMode.None,
-                        )
-                    }
                     EnumSetEditor(translation.text("ai.spec.reasoning_modes"), reasoningModes, AiReasoningMode.entries, { it.aiLabel(translation) }) {
                         reasoningModes = it
                     }
@@ -2031,19 +2049,9 @@ private fun ModelSpecDialog(
             Button(onClick = {
                 runCatching {
                     val textLimits = if (AiModelCapability.TEXT_GENERATION in capabilities) {
-                        val autoCompaction = when (compactionMode) {
-                            AutoCompactionEditorMode.None -> null
-                            AutoCompactionEditorMode.Percent -> AiModelSpec.AutoCompaction.Percent(
-                                compactionValue.requiredInt(translation.text("ai.compaction.percent_field"), translation)
-                            )
-                            AutoCompactionEditorMode.Absolute -> AiModelSpec.AutoCompaction.Absolute(
-                                compactionValue.requiredInt(translation.text("ai.compaction.threshold_field"), translation)
-                            )
-                        }
                         AiModelSpec.Limits.TextGeneration(
                             contextWindowTokens = contextWindow.requiredInt(translation.text("ai.spec.context_window"), translation),
                             maxOutputTokens = maxOutput.optionalInt(translation.text("ai.model.max_output"), translation),
-                            autoCompaction = autoCompaction,
                         )
                     } else {
                         null

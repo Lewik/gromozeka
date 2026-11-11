@@ -1,5 +1,6 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiConnectionModels
 import com.gromozeka.domain.model.ai.requireGatewayModelListing
 import com.gromozeka.domain.model.ai.AiCallException
@@ -62,6 +63,31 @@ class GatewayAiRequestResponseExecutionClient(
         }
         val (id, payload) = executeCall(target, AiRequestResponseGatewayCodec.encodeModelsRequest(connection, deadline), deadline, actorUserId)
         return try { AiRequestResponseGatewayCodec.decodeModelsResponse(payload) }
+        catch (error: AiCallException) { throw AiCallException(error.failure.copy(workerRequestId = id)) }
+        catch (error: CancellationException) { throw error }
+        catch (_: Exception) { throw AiCallException(AiCallFailure(AiCallFailure.Kind.WORKER_FAILURE,
+            AiCallFailure.Outcome.UNKNOWN, null, workerRequestId = id)) }
+    }
+
+    override suspend fun inspectContext(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
+        workspaceRootPath: String?, request: AiRuntimeRequest): AiContextInspection =
+        contextOperation(target, runtime, workspaceRootPath, request,
+            AiRequestResponseGatewayCodec::encodeContextInspectionRequest, AiRequestResponseGatewayCodec::decodeContextInspectionResponse)
+
+    override suspend fun compact(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
+        workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse =
+        contextOperation(target, runtime, workspaceRootPath, request,
+            AiRequestResponseGatewayCodec::encodeCompactionRequest, AiRequestResponseGatewayCodec::decodeCallResponse)
+
+    private suspend fun <T> contextOperation(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
+        workspaceRootPath: String?, request: AiRuntimeRequest,
+        encode: (ResolvedAiRuntime, String?, AiRuntimeRequest) -> ByteArray, decode: (ByteArray) -> T): T {
+        val now = Clock.System.now()
+        val deadline = minOf(AiHttpCallBudget.deadline(runtime.modelConfiguration.defaultParameters.timeoutSeconds,
+            request.options.executionDeadline, now), now + timeout.toMillis().milliseconds)
+        val payload = encode(runtime, workspaceRootPath, request.copy(options = request.options.copy(executionDeadline = deadline)))
+        val (id, response) = executeCall(target, payload, deadline)
+        return try { decode(response) }
         catch (error: AiCallException) { throw AiCallException(error.failure.copy(workerRequestId = id)) }
         catch (error: CancellationException) { throw error }
         catch (_: Exception) { throw AiCallException(AiCallFailure(AiCallFailure.Kind.WORKER_FAILURE,

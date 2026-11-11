@@ -156,7 +156,7 @@ class AgentResponseReviewServiceTest {
         assertEquals(listOf(b.conversationId, b.conversationId), pins.reads)
         assertTrue(seen.first().systemPrompts.last().contains("REVIEW_PIN_A"))
         assertTrue(seen.last().systemPrompts.last().contains("REVIEW_PIN_B"))
-        assertTrue(seen.all { it.tools.isEmpty() && it.options.toolChoice == AiToolChoice.None && it.options.autoCompactionThresholdTokens == null })
+        assertTrue(seen.all { it.tools.isEmpty() && it.options.toolChoice == AiToolChoice.None })
         assertTrue(seen.all { it.systemPrompts.size == 2 })
     }
 

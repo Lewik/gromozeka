@@ -92,7 +92,7 @@ class MessageSquashServiceTest {
                 assertEquals("connection", result.providerScope?.connectionId)
                 assertEquals("model-config", result.providerScope?.modelConfigurationId)
                 assertEquals("gpt-test", result.providerScope?.modelName)
-                assertEquals(1, result.promptTemplate?.version)
+                assertEquals(2, result.promptTemplate?.version)
                 assertContains(result.promptTemplate?.id.orEmpty(), strategy.name.lowercase())
             }
         }
@@ -265,7 +265,7 @@ class MessageSquashServiceTest {
                         assertContains(text, "I will inspect it", message = case)
                         assertContains(text, "raw output", message = case)
                         assertContains(text, "[tool_call:read_file]", message = case)
-                        assertContains(text, "[tool_result:read_file error=false]", message = case)
+                        assertContains(text, "[tool_result:read_file error=false call_id=", message = case)
                     }
 
                     val history = fixture.threadMessages.messages(updated.currentThread)
@@ -497,7 +497,18 @@ class MessageSquashServiceTest {
             )
             return MessageSquashService(
                 aiRuntimeProvider = runtimeProvider,
+                artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
+                    if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
+                    else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
+                },
                 aiConfigurationProvider = configurationProvider,
+                agents = Mockito.mock(com.gromozeka.domain.service.AgentDomainService::class.java) { invocation ->
+                    if (invocation.method.name.startsWith("findById")) AgentDefinition(
+                        id = AgentDefinition.Id("agent"), name = "Agent", prompts = emptyList(),
+                        runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-config")),
+                        type = AgentDefinition.Type.Global, createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
+                    ) else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
+                },
                 conversationRepository = conversations,
                 threadMessageRepository = threadMessages,
                 toolCallPairingService = pairingService,
@@ -738,14 +749,18 @@ private class InMemoryConversationCompactionRepository(
         expectedThreadId: Conversation.Thread.Id,
         compactionMessage: Conversation.Message,
         newThread: Conversation.Thread,
-        newLinks: List<ThreadMessageLink>,
+        insertionAnchorId: Conversation.Message.Id,
     ): Boolean {
         if (forceConflict) return false
         val conversation = conversations.values[compactionMessage.conversationId] ?: return false
         if (conversation.currentThread != expectedThreadId) return false
+        val links = threadMessages.getByThread(expectedThreadId)
+        val anchor = links.indexOfFirst { it.messageId == insertionAnchorId }
+        check(anchor >= 0)
+        val ids = links.take(anchor + 1).map { it.messageId } + compactionMessage.id + links.drop(anchor + 1).map { it.messageId }
         messages.save(compactionMessage)
-        threads.save(newThread)
-        threadMessages.addBatch(newLinks)
+        threads.save(newThread.copy(lastTurnNumber = requireNotNull(threads.findById(expectedThreadId)).lastTurnNumber))
+        threadMessages.addBatch(ids.mapIndexed { index, id -> ThreadMessageLink(newThread.id, id, index) })
         conversations.updateCurrentThread(conversation.id, newThread.id)
         return true
     }

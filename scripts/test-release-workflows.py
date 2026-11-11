@@ -226,7 +226,7 @@ class WorkflowContracts(unittest.TestCase):
         verification = scripts(JOBS["verify-runtime"])
         for check in ("*PostgresConversationPinRepositoryTest", "*ConversationPinTest", "*ConversationPin*Test",
                       "*ConversationAgentAccessServiceTest", "*DistributedAiToolRoutingTest",
-                      "*ClaudeCodeCliRuntimeTest.conversationPin*", "*ClaudeCodeProcessCacheTest.pinEditAndDelete*"):
+                      "*ClaudeCodeCliRuntimeTest", "*ClaudeCodeProcessCacheTest.pinEditAndDelete*"):
             self.assertIn(check, verification)
         postgres = next(step for step in JOBS["verify-runtime"]["steps"]
                         if "*PostgresConversationPinRepositoryTest" in step.get("run", ""))
@@ -280,6 +280,13 @@ class WorkflowContracts(unittest.TestCase):
     def test_responses_auto_compaction_is_verified_without_a_live_gateway(self):
         verification = scripts(JOBS["verify-runtime"])
         for check in ("*OpenAiResponsesSdkRuntimeTest", "*OpenAiResponsesCompactionTest"):
+            self.assertIn(check, verification)
+
+    def test_unified_compaction_contracts_are_in_the_verification_set(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*PostgresConversationCompactionRepositoryTest", "*PostgresCompactionConfigurationMigrationTest",
+                      "*ConversationCompactionServiceTest", "*MessageSquashServiceTest", "*AiModelConfigurationTest",
+                      "*AiCatalogTest", "*AiContextMeasurementsTest", "*AnthropicSdkMessageMapperTest"):
             self.assertIn(check, verification)
 
     def test_synthetic_call_ids_are_checked_in_generation_replay_and_sdk_payloads(self):

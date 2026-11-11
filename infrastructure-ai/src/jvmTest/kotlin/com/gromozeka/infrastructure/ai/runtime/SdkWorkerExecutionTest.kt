@@ -155,6 +155,11 @@ class SdkWorkerExecutionTest {
             else AiRequestResponseGatewayCodec.encodeCallRequest(runtime, null, request)
         private val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources()), admission = TestAiAdmission())))
         private val handler = object : AiRequestResponseExecutionHandler {
+        override suspend fun inspectContext(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
+        override suspend fun compact(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compact")
+
         override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant):
             com.gromozeka.domain.model.ai.AiConnectionModels = SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection, deadline)
 

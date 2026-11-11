@@ -209,6 +209,8 @@
     "ai.catalog.section.runtime": "執行用途",
     "ai.catalog.section.specs": "規格",
     "ai.catalog.title": "AI 執行設定目錄",
+    "ai.compaction.summary_model": "摘要模型",
+    "ai.compaction.current_model": "目前模型（預設）",
     "ai.compaction.disabled": "已停用",
     "ai.compaction.percent": "百分比",
     "ai.compaction.percent_field": "上下文精簡百分比",
@@ -402,7 +404,7 @@
     "ai.secret.source": "機密值來源",
     "ai.secret.source.environment": "環境變數",
     "ai.secret.source.inline": "直接輸入",
-    "ai.spec.auto_compaction": "自動精簡上下文",
+    "ai.compaction.title": "自動精簡上下文",
     "ai.spec.capabilities": "支援功能",
     "ai.spec.context_window": "上下文視窗",
     "ai.spec.default_dimensions": "預設維度",
@@ -1445,7 +1447,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "自動精簡上下文：{count} 個詞元"
     },
-    "session.runtime.parameters.autoCompactionUnsupported": "自動精簡上下文：不支援",
     "session.runtime.parameters.budget": "預算：{count}",
     "session.runtime.parameters.effort": "推理強度：{effort}",
     "session.runtime.parameters.maxOutput": "最大輸出：{count}",

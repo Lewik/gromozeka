@@ -69,12 +69,14 @@ class OpenAiSubscriptionResponseMapper {
         return AiRuntimeResponse(
             messages = appendWebSearchSources(messages, webSearchSourceUrls),
             usage = usage,
-            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
+            contextUsage = usage?.takeIf { outputItems.none { item -> item["type"] in listOf(JsonPrimitive("compaction"), JsonPrimitive("compaction_summary")) } }
+                ?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
             finishReason = completed?.incompleteDetails?.get("reason")?.jsonPrimitive?.contentOrNull ?: completed?.status,
             outcome = outcome,
             providerMetadata = buildMap {
                 put("provider", AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
                 put("connectionId", connectionId)
+                put("modelConfigurationId", modelConfigurationId)
                 put("model", modelName)
                 put("conversationKey", conversationKey)
                 completed?.id?.let { put("responseId", it) }

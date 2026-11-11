@@ -141,7 +141,6 @@ private val AiRuntimeAssignment.Purpose.aiTranslationKey: String
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_NOTE_RECONCILER -> "ai.runtime.purpose.memory_write_note_reconciler"
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_RETRIEVAL_PLANNER -> "ai.runtime.purpose.memory_write_retrieval_planner"
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_ROUTER -> "ai.runtime.purpose.memory_write_router"
-        AiRuntimeAssignment.Purpose.MESSAGE_SQUASH -> "ai.runtime.purpose.message_squash"
         AiRuntimeAssignment.Purpose.QUICK_TEXT_ACTION -> "ai.runtime.purpose.quick_text_action"
         AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT -> "ai.runtime.purpose.speech_to_text"
         AiRuntimeAssignment.Purpose.SUGGESTED_REPLIES -> "ai.runtime.purpose.suggested_replies"

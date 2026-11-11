@@ -66,7 +66,7 @@ class OpenAiSubscriptionProgressRealTest {
             )),
         )
         val options = AiRuntimeOptions(reasoning = AiReasoningConfig(effort = AiReasoningEffort.LOW),
-            autoCompactionThresholdTokens = 4_000)
+            )
         fun runtimeRequest() = AiRuntimeRequest(
             listOf("This is a synthetic protocol test. Preserve the project marker from tool results and report it exactly."),
             history.toList(), listOf(readFileTool), options,
@@ -89,21 +89,19 @@ class OpenAiSubscriptionProgressRealTest {
         val initial = runtimeRequest()
         val mapped = requestMapper.toRequest(initial, profile, conversationId.value, connectionId = connectionId)
         val compactor = OpenAiSubscriptionCompaction(client(), requestMapper, responseMapper)
-        val compacted = assertNotNull(compactor.executeIfNeeded(initial, mapped, profile, session,
+        val compacted = assertNotNull(compactor.execute(initial, mapped, profile, session,
             conversationId.value, connectionId, testModelConfiguration(connectionId, model, "live-compaction-$model")))
         assertEquals(AiStepOutcome.CONTINUE, compacted.outcome)
         assertTrue(compacted.toolCalls.isEmpty())
-        assertTrue(requireNotNull(compacted.contextUsage).inputTokens < 4_000)
+        assertNull(compacted.contextUsage)
         persist(compacted)
         repeat(2) { iteration ->
             val freshClient = client()
-            val freshCompactor = OpenAiSubscriptionCompaction(freshClient, requestMapper, responseMapper)
             val next = runtimeRequest()
             val replay = requestMapper.toRequest(next, profile, conversationId.value, connectionId = connectionId)
             assertTrue(replay.input.none { it.toString().contains("Build record 1000:") })
-            assertNull(freshCompactor.executeIfNeeded(next, replay, profile, session,
-                conversationId.value, connectionId, testModelConfiguration(connectionId, model, "live-compaction-$model")))
-            val parsed = freshClient.create(testModelConfiguration(), session, conversationId.value, replay, profile, options.assistantResponseFormat)
+            assertTrue(compactor.estimateRequestTokens(replay) < 4_000, "Compacted replay should be smaller; this is an estimate")
+            val parsed = freshClient.create(testModelConfiguration(connectionId, model, "live-compaction-$model"), session, conversationId.value, replay, profile, options.assistantResponseFormat)
             val response = responseMapper.toRuntimeResponse(parsed.outputItems, parsed.completed, conversationId.value,
                 connectionId, "live-compaction-$model", model, options.assistantResponseFormat)
             assertEquals(AiStepOutcome.COMPLETE, response.outcome)
@@ -112,7 +110,7 @@ class OpenAiSubscriptionProgressRealTest {
                 .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                 .any { fileMarker in it.structured.fullText }, "Compaction lost the tool result marker")
             println("Live compaction replay: model=$model iteration=$iteration inputTokens=${response.contextUsage?.inputTokens}")
-            persist(freshCompactor.recordContextUsage(replay, parsed, response, options.assistantResponseFormat, profile))
+            persist(compactor.recordContextUsage(replay, parsed, response, options.assistantResponseFormat, profile))
             history += message(conversationId, Conversation.Message.Role.USER, listOf(
                 Conversation.Message.ContentItem.UserMessage("Repeat the same project marker. Do not use tools.")
             ))

@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.runtime
 
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -53,18 +54,33 @@ class AiInputValidatingRuntime(
     override val capabilities: AiRuntimeCapabilities
         get() = delegate.capabilities
 
+    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+        val prepared = validatedRequest(request)
+        val inspection = delegate.inspectContext(prepared)
+        return if (runtime.connection.kind in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION)) inspection
+            else AiContextMeasurements.calibrate(runtime, prepared, inspection)
+    }
+
+    override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
+        require(request.options.usagePurpose == "CONTEXT_COMPACTION") { "Native compaction requires its own usage purpose" }
+        return delegate.compact(validatedRequest(request)).withReplayScope(request)
+    }
+
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
-        val prepared = prepare(request)
-        AiRuntimeInputValidator.requireSupported(runtime, prepared.messages)
-        return delegate.call(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request.copy(messages = request.originalCollaborationMessages()) else prepared)
-            .withReplayScope(request)
+        val prepared = validatedRequest(request)
+        return AiContextMeasurements.record(runtime, prepared, delegate.call(prepared)).withReplayScope(request)
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> {
+        val prepared = validatedRequest(request)
+        return delegate.stream(prepared).map { AiContextMeasurements.record(runtime, prepared, it).withReplayScope(request) }
+    }
+
+    private fun validatedRequest(request: AiRuntimeRequest): AiRuntimeRequest {
         val prepared = prepare(request)
         AiRuntimeInputValidator.requireSupported(runtime, prepared.messages)
-        return delegate.stream(if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request.copy(messages = request.originalCollaborationMessages()) else prepared)
-            .map { it.withReplayScope(request) }
+        return if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE)
+            request.copy(messages = request.originalCollaborationMessages()) else prepared
     }
 
     private fun prepare(request: AiRuntimeRequest): AiRuntimeRequest = request.copy(
@@ -86,6 +102,12 @@ class ModelDefaultAiRuntime(
     override val capabilities: AiRuntimeCapabilities
         get() = delegate.capabilities
 
+    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection =
+        delegate.inspectContext(request.withModelDefaults(defaults))
+
+    override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse =
+        delegate.compact(request.withModelDefaults(defaults))
+
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse =
         delegate.call(request.withModelDefaults(defaults))
 
@@ -98,7 +120,7 @@ fun AiRuntimeRequest.withModelDefaults(
 ): AiRuntimeRequest =
     copy(
         options = options.copy(
-            maxOutputTokens = options.maxOutputTokens ?: defaults.maxOutputTokens,
+            maxOutputTokens = options.maxOutputTokens ?: defaults.maxOutputTokens.takeUnless { options.usagePurpose == "MESSAGE_SQUASH" },
             reasoning = options.reasoning ?: defaults.reasoning,
         )
     )
