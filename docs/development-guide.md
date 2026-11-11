@@ -52,11 +52,23 @@ or replace coroutine-based application services with Spring AI orchestration.
 
 Worker Gateway binary WebSocket messages have a 128 MiB transport limit on both
 Server and JVM Worker. Client `/ws` messages and text messages retain the 16 MiB
-limit. Servlet container defaults stay at 16 MiB; only `/worker/ws` raises its
-per-session binary receive limit, avoiding larger default buffers for UI sockets.
-The limit applies to the complete encoded message, including fragmented messages,
-not to the raw AI request. The separate 64 MiB Worker request payload limit is
-unchanged. Worker Gateway protocol 21 encodes opaque request/response payloads as
+limit. The Server uses partial-message delivery with 64 KiB binary and 64K-character
+text receive buffers, including the servlet container defaults. Per-connection
+assemblers allocate only for messages being received and enforce the complete
+encoded-message limit across all fragments; text is counted in UTF-8 bytes.
+Partial state is released on completion, rejection and disconnect. Do not set
+Tomcat's receive buffers to the full message limit: it allocates those arrays for
+every open connection, even in idle sessions.
+
+Remote client disconnect cleanup runs in a cancellation-protected context, removes
+the presentation registration before waiting for cancelled work, and attempts each
+remaining cleanup independently. Waiting for concurrent requests and stopping each
+owned voice service have deadlines; failures are logged with the connection and
+resource. A cancellable `join` in an unprotected `finally` can otherwise skip
+unregistration even when every joined request has already completed.
+
+The separate 64 MiB Worker request payload limit is unchanged.
+Worker Gateway protocol 21 encodes opaque request/response payloads as
 CBOR byte strings rather than numeric arrays, removing their per-byte expansion.
 The same codec is used for transport and persisted Server envelopes; there is no
 old-format reader. Server and all Workers require a [coordinated update](worker-request-delivery.md#protocol-21-cutover).

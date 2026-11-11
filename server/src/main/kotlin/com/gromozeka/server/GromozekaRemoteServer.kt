@@ -62,6 +62,7 @@ import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -69,6 +70,8 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import com.gromozeka.statesync.StateSyncCursor
 import com.gromozeka.statesync.StateSyncSubscription
 import kotlin.time.Clock
@@ -278,16 +281,42 @@ class GromozekaRemoteServer(
             } finally {
                 authenticationMonitor.cancel()
                 concurrentRequests.forEach(Job::cancel)
-                concurrentRequests.joinAll()
                 conversationSubscriptions.values.forEach { it.cancel() }
                 conversationSubscriptions.clear()
                 stateSubscriptions.values.forEach { it.cancel() }
                 stateSubscriptions.clear()
-                liveInterpreterApplicationService.stopOwnedBy(liveInterpreterOwner)
-                liveVoiceProviderVadApplicationService.stopOwnedBy(liveVoiceProviderVadOwner)
-                speechCaptureApplicationService.stopOwnedBy(speechCaptureOwner)
-                clientPresentationRegistry.disconnect(connectionId)
+                withContext(NonCancellable) {
+                    cleanUpSessionResource(connectionId, "client presentation") {
+                        clientPresentationRegistry.disconnect(connectionId)
+                    }
+                    cleanUpSessionResource(connectionId, "concurrent requests") {
+                        withTimeout(SESSION_CLEANUP_TIMEOUT_MILLIS) { concurrentRequests.joinAll() }
+                    }
+                    cleanUpSessionResource(connectionId, "live interpreter") {
+                        withTimeout(SESSION_CLEANUP_TIMEOUT_MILLIS) {
+                            liveInterpreterApplicationService.stopOwnedBy(liveInterpreterOwner)
+                        }
+                    }
+                    cleanUpSessionResource(connectionId, "voice provider VAD") {
+                        withTimeout(SESSION_CLEANUP_TIMEOUT_MILLIS) {
+                            liveVoiceProviderVadApplicationService.stopOwnedBy(liveVoiceProviderVadOwner)
+                        }
+                    }
+                    cleanUpSessionResource(connectionId, "speech capture") {
+                        withTimeout(SESSION_CLEANUP_TIMEOUT_MILLIS) {
+                            speechCaptureApplicationService.stopOwnedBy(speechCaptureOwner)
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    private suspend fun cleanUpSessionResource(connectionId: String, resource: String, cleanup: suspend () -> Unit) {
+        try {
+            cleanup()
+        } catch (error: Exception) {
+            log.error(error) { "Remote WebSocket cleanup failed: connection=$connectionId resource=$resource" }
         }
     }
 
@@ -1418,6 +1447,7 @@ class GromozekaRemoteServer(
     }
 
     private companion object {
+        const val SESSION_CLEANUP_TIMEOUT_MILLIS = 30_000L
         const val AUTHENTICATION_RECHECK_INTERVAL_MILLIS = 30_000L
         const val MAX_PERSONAL_ACCESS_TOKEN_LIFETIME_DAYS = 3_650
         val closedMemoryActionItemStatuses = setOf(MemoryActionItem.Status.DONE, MemoryActionItem.Status.CANCELLED)
