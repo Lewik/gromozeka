@@ -117,7 +117,176 @@ class TrueFoundryChatCompletionsTest {
         }
     }
 
-    private fun runtime(origin: String, responses: Boolean = false): com.gromozeka.domain.service.AiRuntime {
+    @Test
+    fun `opt in repairs the reported schema finish reason without changing content usage or opaque replay`() = runBlocking {
+        val source = JsonObject(Json.parseToJsonElement(TOOL_MESSAGE).jsonObject.minus("tool_calls") +
+            ("content" to JsonPrimitive("""{"fullText":"ALPHA-74"}""")))
+        for (calls in listOf<JsonElement?>(null, JsonNull, JsonArray(emptyList()))) {
+            val message = if (calls == null) source else JsonObject(source + ("tool_calls" to calls))
+            SdkHttpTestServer(completion(message.toString(), "tool_calls")).use { server ->
+                val result = runtime(server.origin, workaround = true).call(request(listOf(user)))
+                assertEquals(AiStepOutcome.COMPLETE, result.outcome)
+                assertEquals("stop", result.finishReason)
+                assertTrue(result.toolCalls.isEmpty())
+                assertEquals("tool_calls", result.providerMetadata["originalFinishReason"])
+                assertEquals("chatSchemaEmptyToolCallsAsStop", result.providerMetadata["finishReasonNormalization"])
+                val stored = persist(result)
+                assertEquals("ALPHA-74", stored.content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.fullText)
+                val raw = stored.providerMetadata.getValue("openaiCompatibleMessage").jsonObject
+                for ((key, value) in message) assertEquals(value, raw[key], key)
+                assertEquals(JsonPrimitive("tool_calls"), stored.providerMetadata["originalFinishReason"])
+                assertEquals(6, result.usage?.promptTokens)
+                assertEquals(4, result.usage?.cacheReadTokens)
+                assertEquals(3, result.usage?.thinkingTokens)
+                assertEquals(2, result.usage?.completionTokens)
+                assertEquals(10, result.contextUsage?.inputTokens)
+                val sent = Json.parseToJsonElement(server.requests.single().body).jsonObject
+                assertEquals("json_schema", sent.getValue("response_format").jsonObject.getValue("type").jsonPrimitive.content)
+                assertTrue(sent["stream"] == null || sent["stream"] == JsonPrimitive(false))
+            }
+        }
+    }
+
+    @Test
+    fun `ordinary schema answer and genuine function calls stay unchanged with workaround enabled`() = runBlocking {
+        val actualCall = JsonObject(Json.parseToJsonElement(TOOL_MESSAGE).jsonObject +
+            ("content" to JsonPrimitive("""{"fullText":"Working"}""")))
+        SdkHttpTestServer(completion(actualCall.toString(), "tool_calls"), completion(ANSWER_MESSAGE, "tool_calls"),
+            completion(ANSWER_MESSAGE, "stop")).use { server ->
+            val runtime = runtime(server.origin, workaround = true)
+            val action = runtime.call(request(listOf(user)))
+            assertEquals(AiStepOutcome.TOOL_CALLS, action.outcome)
+            assertEquals("lookup", action.toolCalls.single().call.name)
+            assertNull(action.providerMetadata["finishReasonNormalization"])
+            val storedAction = persist(action)
+            val answer = runtime.call(request(listOf(user, storedAction, toolResult)))
+            assertEquals(AiStepOutcome.COMPLETE, answer.outcome)
+            assertEquals("stop", answer.finishReason)
+            val storedAnswer = persist(answer).copy(id = Message.Id("answer"))
+            val followup = user.copy(id = Message.Id("followup"))
+            val next = runtime.call(request(listOf(user, storedAction, toolResult, storedAnswer, followup)))
+            assertEquals(AiStepOutcome.COMPLETE, next.outcome)
+            assertNull(next.providerMetadata["finishReasonNormalization"])
+            val sent = Json.parseToJsonElement(server.requests.last().body).jsonObject.getValue("messages").jsonArray
+            val replay = sent[2].jsonObject
+            for (key in listOf("thinking_blocks", "reasoning_content", "tool_calls", "content")) assertEquals(actualCall[key], replay[key])
+            assertEquals(3, server.requests.size)
+        }
+    }
+
+    @Test
+    fun `disabled flag missing schema and forced tools never authorize finish reason repair`() = runBlocking {
+        val cases = listOf(
+            false to request(listOf(user)),
+            true to request(listOf(user)).let { it.copy(options = it.options.copy(responseFormat = AiResponseFormat.Text)) },
+            true to request(listOf(user)).let { it.copy(options = it.options.copy(toolChoice = AiToolChoice.RequiredAny)) },
+            true to request(listOf(user)).let { it.copy(options = it.options.copy(toolChoice = AiToolChoice.RequiredTool("lookup"))) },
+        )
+        for ((enabled, request) in cases) SdkHttpTestServer(completion(ANSWER_MESSAGE, "tool_calls")).use { server ->
+            val result = runtime(server.origin, workaround = enabled).call(request)
+            assertEquals(AiStepOutcome.TOOL_CALLS, result.outcome)
+            assertEquals("tool_calls", result.finishReason)
+            assertTrue(result.toolCalls.isEmpty())
+            assertNull(result.providerMetadata["finishReasonNormalization"])
+            assertEquals(1, server.requests.size)
+        }
+    }
+
+    @Test
+    fun `invalid JSON or schema does not become a successful answer`() = runBlocking {
+        val invalid = listOf("not JSON", "```json\n{\"fullText\":\"x\"}\n```", "{\"fullText\":1}",
+            "{}", "{\"fullText\":\"x\",\"extra\":1}", "{\"fullText\":\"x\",\"fullText\":\"y\"}",
+            "{\"fullText\":\"x\"} {}", "{\"fullText\":\"x\"", "null", "[]")
+        for (text in invalid) {
+            val message = buildJsonObject { put("role", "assistant"); put("content", text) }
+            SdkHttpTestServer(completion(message.toString(), "tool_calls")).use { server ->
+                val result = runtime(server.origin, workaround = true).call(request(listOf(user)))
+                assertEquals(AiStepOutcome.TOOL_CALLS, result.outcome, text)
+                assertNull(result.providerMetadata["finishReasonNormalization"])
+                assertEquals(1, server.requests.size)
+            }
+        }
+    }
+
+    @Test
+    fun `malformed tool fields legacy function calls and refusal are not treated as absent`() = runBlocking {
+        val source = Json.parseToJsonElement(ANSWER_MESSAGE).jsonObject
+        val cases = listOf(
+            "tool_calls" to JsonPrimitive(""), "tool_calls" to JsonObject(emptyMap()), "tool_calls" to JsonPrimitive(false),
+            "tool_calls" to JsonArray(listOf(JsonNull)), "tool_calls" to JsonArray(listOf(JsonObject(emptyMap()))),
+            "function_call" to JsonPrimitive(""), "function_call" to JsonArray(emptyList()), "function_call" to JsonObject(emptyMap()),
+            "function_call" to Json.parseToJsonElement("""{"name":"lookup","arguments":"{}"}"""),
+            "refusal" to JsonPrimitive(""), "refusal" to JsonPrimitive("Refused"), "refusal" to JsonPrimitive(false),
+            "role" to JsonPrimitive("user"),
+        )
+        for ((field, value) in cases) SdkHttpTestServer(completion(JsonObject(source + (field to value)).toString(), "tool_calls")).use { server ->
+            try {
+                val result = runtime(server.origin, workaround = true).call(request(listOf(user)))
+                assertEquals(AiStepOutcome.TOOL_CALLS, result.outcome, "$field=$value")
+                assertNull(result.providerMetadata["finishReasonNormalization"])
+            } catch (error: AiCallException) {
+                assertEquals(AiCallFailure.Kind.INVALID_RESPONSE, error.failure.kind)
+            }
+            assertEquals(1, server.requests.size)
+        }
+    }
+
+    @Test
+    fun `schema workaround does not repair HTTP errors truncated envelopes or other finish reasons`() = runBlocking {
+        SdkHttpTestServer(listOf(SdkHttpTestServer.Reply(completion(ANSWER_MESSAGE, "tool_calls"), 500))).use { server ->
+            val error = assertFailsWith<AiCallException> { runtime(server.origin, workaround = true).call(request(listOf(user))) }
+            assertEquals(AiCallFailure.Kind.HTTP_ERROR, error.failure.kind)
+            assertEquals(1, server.requests.size)
+        }
+        SdkHttpTestServer(completion(ANSWER_MESSAGE, "tool_calls").dropLast(8)).use { server ->
+            assertFailsWith<AiCallException> { runtime(server.origin, workaround = true).call(request(listOf(user))) }
+            assertEquals(1, server.requests.size)
+        }
+        for ((finish, outcome) in listOf("length" to AiStepOutcome.INCOMPLETE, "content_filter" to AiStepOutcome.REFUSED))
+            SdkHttpTestServer(completion(ANSWER_MESSAGE, finish)).use { server ->
+                val result = runtime(server.origin, workaround = true).call(request(listOf(user)))
+                assertEquals(outcome, result.outcome)
+                assertEquals(finish, result.finishReason)
+                assertNull(result.providerMetadata["finishReasonNormalization"])
+                assertEquals(1, server.requests.size)
+            }
+    }
+
+    @Test
+    fun `validation uses the sent schema constraints rather than only the assistant DTO`() = runBlocking {
+        val constrained = request(listOf(user)).let { it.copy(options = it.options.copy(responseFormat = AiResponseFormat.JsonSchema("restricted",
+            Json.parseToJsonElement("""{"type":"object","properties":{"fullText":{"type":"string","enum":["ALPHA-74"]}},"required":["fullText"],"additionalProperties":false}""").jsonObject))) }
+        for ((text, expected) in listOf("ALPHA-74" to AiStepOutcome.COMPLETE, "BETA-22" to AiStepOutcome.TOOL_CALLS)) {
+            val message = buildJsonObject { put("role", "assistant"); put("content", buildJsonObject { put("fullText", text) }.toString()) }
+            SdkHttpTestServer(completion(message.toString(), "tool_calls")).use { server ->
+                assertEquals(expected, runtime(server.origin, workaround = true).call(constrained).outcome)
+                val body = Json.parseToJsonElement(server.requests.single().body).jsonObject
+                assertEquals((constrained.options.responseFormat as AiResponseFormat.JsonSchema).schema,
+                    body.getValue("response_format").jsonObject.getValue("json_schema").jsonObject.getValue("schema"))
+            }
+        }
+    }
+
+    @Test
+    fun `repair is restricted to a single compatible Chat choice`() {
+        for (kind in listOf(AiConnection.Kind.OPENAI_API, AiConnection.Kind.OPENAI_COMPATIBLE)) {
+            val spec = AiModelSpec(MODEL, kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
+                AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32000, 8192)),
+                behavior = AiModelBehavior(chatSchemaEmptyToolCallsAsStop = true))
+            val mapper = OpenAiSdkMessageMapper(kind, "connection", MODEL, com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy(spec))
+            val body = Json.parseToJsonElement(completion(ANSWER_MESSAGE, "tool_calls")).jsonObject
+            val multiple = JsonObject(body + ("choices" to JsonArray(body.getValue("choices").jsonArray +
+                JsonObject(body.getValue("choices").jsonArray.single().jsonObject + ("index" to JsonPrimitive(1))))))
+            val native = com.openai.core.jsonMapper().readValue((if (kind == AiConnection.Kind.OPENAI_API) body else multiple).toString(),
+                com.openai.models.chat.completions.ChatCompletion::class.java)
+            val result = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
+                mapper.toCreateParams(MODEL, request(listOf(user))))
+            assertEquals(AiStepOutcome.TOOL_CALLS, result.outcome)
+            assertNull(result.providerMetadata["finishReasonNormalization"])
+        }
+    }
+
+    private fun runtime(origin: String, responses: Boolean = false, workaround: Boolean = false): com.gromozeka.domain.service.AiRuntime {
         val id = AiConnection.Id("gateway")
         val settings = AiHttpSettings(authentication = AiHttpSettings.Authentication.BEARER, noProxy = listOf("*"))
         val connection = if (responses) AiConnection.OpenAiApi(id, "Gateway", enabled = true,
@@ -128,7 +297,8 @@ class TrueFoundryChatCompletionsTest {
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
             defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = 10))
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
-            AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)))
+            AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)),
+            behavior = AiModelBehavior(chatSchemaEmptyToolCallsAsStop = workaround))
         return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
             .getRuntime(ResolvedAiRuntime(connection, configuration, spec), null)
     }

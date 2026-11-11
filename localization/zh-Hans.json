@@ -2102,6 +2102,8 @@
     "ai.tpm.preset.CHARACTERS": "序列化 JSON 字符",
     "ai.tpm.preset.INPUT_ONLY": "输入文本估算",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "输入加输出预留",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "输入与输出预留的最大值"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "输入与输出预留的最大值",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry：修正无工具调用的 Schema 响应状态",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "仅在受影响的 Chat Completions 路由上启用。只接受符合 Schema 且没有调用或拒绝的内容；不修复强制工具调用或其他错误。"
   }
 }

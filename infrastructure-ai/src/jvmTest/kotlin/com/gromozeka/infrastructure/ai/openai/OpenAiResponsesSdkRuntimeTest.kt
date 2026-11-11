@@ -157,7 +157,8 @@ class OpenAiResponsesSdkRuntimeTest {
                 "tool_calls":[{"id":"call-1","type":"function","function":{"name":"check","arguments":"{}"},"extra_content":{"signature":"attached-to-call"}}]
             }}]
         }""", com.openai.models.chat.completions.ChatCompletion::class.java)
-        val response = compatible.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA)
+        val response = compatible.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
+            com.openai.models.chat.completions.ChatCompletionCreateParams.builder().model("deepseek-reasoner").addUserMessage("test").build())
         val message = response.messages.single()
         assertEquals("Compare both sources.", (message.content.first() as Conversation.Message.ContentItem.Thinking).thinking)
         val replay = compatible.toCreateParams("deepseek-reasoner", request(messages = listOf(userMessage().copy(

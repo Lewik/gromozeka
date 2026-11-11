@@ -2213,6 +2213,8 @@
     "ai.tpm.preset.CHARACTERS": "Символы сериализованного JSON",
     "ai.tpm.preset.INPUT_ONLY": "Оценка входного текста",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "Вход плюс резерв выхода",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "Максимум входа и резерва выхода"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "Максимум входа и резерва выхода",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: исправлять tool_calls без вызовов",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "Только для затронутых Chat Completions-маршрутов. Принимается лишь ответ по схеме без вызовов и отказа; обязательные tool calls и другие ошибки не исправляются."
   }
 }

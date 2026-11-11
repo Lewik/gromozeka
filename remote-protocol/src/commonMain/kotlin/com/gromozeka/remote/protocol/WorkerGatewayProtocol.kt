@@ -178,7 +178,7 @@ enum class WorkerGatewayOperation {
     ARTIFACT_CONTENT,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 24
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 25
 const val MAX_WORKER_GATEWAY_MESSAGE_BYTES = 128 * 1024 * 1024
 
 @OptIn(ExperimentalSerializationApi::class)

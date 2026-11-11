@@ -47,8 +47,9 @@ class SdkHttpContractTest {
                     .build()
                 try {
                     val mapper = OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_COMPATIBLE, "http-test", MODEL)
-                    val response = client.chat().completions().create(mapper.toCreateParams(MODEL, request()))
-                    assertAnswer(mapper.toRuntimeResponse(response, AiModelConfiguration.AssistantResponseFormat.TEXT))
+                    val params = mapper.toCreateParams(MODEL, request())
+                    val response = client.chat().completions().create(params)
+                    assertAnswer(mapper.toRuntimeResponse(response, AiModelConfiguration.AssistantResponseFormat.TEXT, params))
                 } finally {
                     client.close()
                 }

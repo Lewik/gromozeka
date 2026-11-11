@@ -183,7 +183,7 @@ internal class AiSettingsToolContributor(
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_model_spec_upsert",
-            description = "Create or replace capabilities, limits and explicit request behavior for one exact model route. Behavior is not inferred from the model ID; preserve it when copying a spec to a gateway ID.",
+            description = "Create or replace capabilities, limits and explicit request behavior for one exact model route. Behavior is not inferred from the model ID; preserve it when copying a spec to a gateway ID. behavior.chatSchemaEmptyToolCallsAsStop (default false) is an explicit workaround for affected TrueFoundry Chat Completions routes: only a schema-valid answer with tool_calls finish reason but no actual calls/refusal may become stop; forced tools are never bypassed.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "modelSpec",
                 description = "Serialized AiModelSpec object.",

@@ -2287,6 +2287,8 @@
     "ai.tpm.preset.CHARACTERS": "أحرف JSON المتسلسلة",
     "ai.tpm.preset.INPUT_ONLY": "تقدير نص الإدخال",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "الإدخال مع احتياطي الإخراج",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "الأكبر بين الإدخال واحتياطي الإخراج"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "الأكبر بين الإدخال واحتياطي الإخراج",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: تصحيح نتيجة مخطط بلا استدعاءات أدوات",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "يُفعّل فقط لمسارات Chat Completions المتأثرة. يقبل محتوى مطابقًا للمخطط دون استدعاءات أو رفض؛ لا يصحح استدعاءات الأدوات الإلزامية أو الأخطاء الأخرى."
   }
 }

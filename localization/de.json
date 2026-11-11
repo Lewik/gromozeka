@@ -2139,6 +2139,8 @@
     "ai.tpm.preset.CHARACTERS": "Zeichen des serialisierten JSON",
     "ai.tpm.preset.INPUT_ONLY": "Schätzung des Eingabetexts",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "Eingabe plus Ausgabereserve",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "Maximum aus Eingabe und Ausgabereserve"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "Maximum aus Eingabe und Ausgabereserve",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: Schema-Ergebnis ohne Tool-Aufrufe korrigieren",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "Nur für betroffene Chat-Completions-Routen aktivieren. Akzeptiert nur schemakonformen Inhalt ohne Aufrufe oder Ablehnung; erzwungene Tools und andere Fehler bleiben unverändert."
   }
 }

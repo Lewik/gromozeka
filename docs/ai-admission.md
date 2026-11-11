@@ -116,7 +116,7 @@ default limit is 4. Operators can explicitly split groups afterwards.
 Migration V84 transfers those connection assignments to their model configurations
 and removes the old connection field. It also adds TPM groups/state/receipts.
 
-Worker Gateway protocol 24 is required for the combined admission/compaction
+Worker Gateway protocol 25 is required for the current admission/compaction
 release; HTTP quota feedback and model-configuration admission were introduced
 in protocol 23. Update Server
 and all Workers together, including Workers without AI capabilities; update UI

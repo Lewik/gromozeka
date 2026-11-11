@@ -56,7 +56,8 @@ class PostgresAiHttpSettingsTest {
                 )
                 val specs = connections.map { connection -> AiModelSpec("account/${connection.id.value}", connection.kind.provider,
                     AiModelCapability.entries.toSet(), AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000),
-                        AiModelSpec.Limits.Embeddings(dimensions = 2))) }.sortedWith(compareBy({ it.provider.name }, { it.id }))
+                        AiModelSpec.Limits.Embeddings(dimensions = 2)),
+                    behavior = AiModelBehavior(chatSchemaEmptyToolCallsAsStop = true)) }.sortedWith(compareBy({ it.provider.name }, { it.id }))
                 val configurations = connections.map { AiModelConfiguration(AiModelConfiguration.Id(it.id.value), it.id,
                     "account/${it.id.value}", it.displayName) }
                 val assignments = AiRuntimeAssignment.Purpose.entries.filter { it.requiresExplicitAssignment }.map {

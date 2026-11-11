@@ -159,7 +159,7 @@ jobs:
           :remote-protocol:jvmTest
           :worker-runtime:jvmTest
           :shared:jvmTest --tests '*JsonPointerTest'
-          :domain:jvmTest --tests '*AiTpmPolicyTest' --tests '*AiConcurrencyGroupTest'
+          :domain:jvmTest --tests '*AiTpmPolicyTest' --tests '*AiConcurrencyGroupTest' --tests '*AiModelBehaviorTest'
           --tests '*ConversationPinTest'
           --tests '*ConversationContextTest'
           --tests '*AiCatalogTest'
@@ -197,6 +197,7 @@ jobs:
           --tests '*AiQuotaPolicyEvaluatorTest'
           --tests '*ServerAiTpmAdmissionTest'
           --tests '*AiConfigurationApplicationServiceTest'
+          --tests '*ToolCallPairingServiceTest'
           :infrastructure-ai:jvmTest
           --tests '*ClaudeCodeCliRuntimeTest'
           --tests '*ClaudeCodeProcessCacheTest.pinEditAndDelete*'

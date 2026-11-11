@@ -1478,6 +1478,11 @@ tag remains occupied even if a build or publication fails: never delete or move
 it to reuse its number. Retrying failed jobs for the same release is allowed;
 a replacement release must account for every reserved remote version.
 
+Protocol 25 adds the explicit `chatSchemaEmptyToolCallsAsStop` model-behavior
+flag. AI RPCs serialize resolved model specs with strict decoding, so update
+Server, Workers and UI clients together even when the workaround stays off.
+See [the opt-in workaround](ai-http-settings.md#opt-in-truefoundry-json-schema-finish-reason-workaround).
+
 ## Named Secrets And Background Continuations
 
 A background command or monitor keeps the identity of the user who created it,

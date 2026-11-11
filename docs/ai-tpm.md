@@ -211,7 +211,7 @@ refunded. This may wait longer after a restart; it cannot invent a fresh budget.
 
 Migration V84 moves each existing connection's concurrency assignment to its
 model configurations, removes the old connection field, and adds quota storage.
-Worker Gateway protocol **24** is required for the combined TPM and compaction
+Worker Gateway protocol **25** is required for the current TPM and compaction
 release (HTTP quota feedback was introduced in protocol 23). Drain existing operations and update
 Server, Workers and UI clients together before editing the catalog. No live
 account configuration is changed automatically by enabling this feature in a

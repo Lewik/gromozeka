@@ -168,6 +168,7 @@ class AiRequestResponseGatewayCodecTest {
                 maximumDisabledReasoningEffort = com.gromozeka.domain.model.ai.AiReasoningEffort.HIGH,
                 supportsForcedToolChoice = false,
                 anthropicThinkingPrefixDrop = true,
+                chatSchemaEmptyToolCallsAsStop = true,
             ))
         val expected = fixture.runtime.copy(modelSpec = spec)
         var called = false

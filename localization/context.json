@@ -16011,5 +16011,7 @@
     ],
     "description": "Blocking automatic compaction policy on a model configuration. Percentage input is converted to an absolute token threshold when saved.",
     "args": []
-  }
+  },
+  "ai.spec.chat_schema_empty_tool_calls_as_stop": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "TrueFoundry: repair empty schema tool-call outcome The workaround is OFF by default; preserve TrueFoundry, Chat Completions and JSON Schema identifiers.", "args": []},
+  "ai.spec.chat_schema_empty_tool_calls_as_stop_help": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Opt-in for affected Chat Completions routes only. Accepts only schema-valid content without calls or refusal; forced tools and other errors are not repaired. The workaround is OFF by default; preserve TrueFoundry, Chat Completions and JSON Schema identifiers.", "args": []}
 }

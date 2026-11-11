@@ -2102,6 +2102,8 @@
     "ai.tpm.preset.CHARACTERS": "직렬화된 JSON 문자",
     "ai.tpm.preset.INPUT_ONLY": "입력 텍스트 추정",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "입력과 출력 예약량의 합",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "입력과 출력 예약량 중 최댓값"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "입력과 출력 예약량 중 최댓값",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: 스키마 응답의 빈 도구 호출 판정 수정",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "영향받는 Chat Completions 경로에서만 활성화하세요. 호출이나 거부가 없고 스키마에 맞는 내용만 허용합니다. 필수 도구 호출 및 다른 오류는 수정하지 않습니다."
   }
 }

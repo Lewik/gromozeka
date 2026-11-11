@@ -2176,6 +2176,8 @@
     "ai.tpm.preset.CHARACTERS": "Caractères JSON sérialisés",
     "ai.tpm.preset.INPUT_ONLY": "Estimation du texte d’entrée",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "Entrée plus réserve de sortie",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "Maximum entre entrée et réserve de sortie"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "Maximum entre entrée et réserve de sortie",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry : corriger un résultat de schéma sans appels",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "À activer uniquement pour les routes Chat Completions concernées. Accepte seulement un contenu conforme au schéma sans appel ni refus ; les outils obligatoires et autres erreurs restent inchangés."
   }
 }

@@ -147,11 +147,11 @@ class OpenAiThinkingReplayTest {
                 .build()
             try {
                 val first = client.chat().completions().create(mapper.toCreateParams(MODEL, request(listOf(user))))
-                val firstResponse = mapper.toRuntimeResponse(first, AiModelConfiguration.AssistantResponseFormat.TEXT)
+                val firstResponse = mapper.toRuntimeResponse(first, AiModelConfiguration.AssistantResponseFormat.TEXT, mapper.toCreateParams(MODEL, request(listOf(user))))
                 assertEquals(AiStepOutcome.TOOL_CALLS, firstResponse.outcome)
                 val stored = store(firstResponse)
                 val second = client.chat().completions().create(mapper.toCreateParams(MODEL, request(listOf(user, stored, toolResult))))
-                val answer = mapper.toRuntimeResponse(second, AiModelConfiguration.AssistantResponseFormat.TEXT)
+                val answer = mapper.toRuntimeResponse(second, AiModelConfiguration.AssistantResponseFormat.TEXT, mapper.toCreateParams(MODEL, request(listOf(user, stored, toolResult))))
                 assertEquals(AiStepOutcome.COMPLETE, answer.outcome)
                 assertEquals("Done.", (answer.messages.single().content.single() as Conversation.Message.ContentItem.AssistantMessage).structured.fullText)
             } finally { client.close() }
@@ -241,6 +241,7 @@ class OpenAiThinkingReplayTest {
         mapper.toRuntimeResponse(
             com.openai.core.jsonMapper().readValue(completion(value, finishReason), ChatCompletion::class.java),
             AiModelConfiguration.AssistantResponseFormat.TEXT,
+            mapper.toCreateParams(MODEL, request(listOf(user))),
         )
 
     private fun store(response: AiRuntimeResponse): Conversation.Message {

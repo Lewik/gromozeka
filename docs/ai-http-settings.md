@@ -153,7 +153,7 @@ another route. Every committed compaction creates a new Thread; canonical source
 messages and original IDs remain archived. Runtime roots, queues and stable
 Conversation/Agent collaboration addresses continue. New provider output after a
 native checkpoint receives the new replay scope; archived opaque state is not
-retagged. Server and Workers must use the matching Gateway protocol (version 24).
+retagged. Server and Workers must use the matching Gateway protocol (currently version 25).
 
 Text auto-compaction always uses the continuation-oriented SUMMARIZE prompt.
 There is no preserved raw-message tail and no separate summary-length setting.
@@ -454,3 +454,47 @@ inspect the prepared JSON before native HTTP execution and retain the slot until
 body completion/cleanup. Quota feedback errors never trigger an inference replay.
 Multipart STT and realtime WebSocket do not support TPM. Existing HTTP transport
 settings and their complete-429-only retry contract remain independent.
+
+## Opt-in TrueFoundry JSON Schema finish-reason workaround
+
+TrueFoundry 0.179.11 has been observed returning `finish_reason: "tool_calls"`
+for a valid JSON Schema answer in `message.content`, without any tool call, when
+using non-streaming Chat Completions. This is not permission to accept arbitrary
+inconsistent responses or bypass required function calls.
+
+For an affected exact model route, enable
+`AiModelSpec.behavior.chatSchemaEmptyToolCallsAsStop` (default **false**). The UI
+checkbox is under AI Settings → Model specs → Request behavior. It applies to
+configurations using that spec. Existing
+`grz_ai_model_spec_upsert`/catalog tools read and update the same field. No model
+name, URL, provider credential or gateway version enables it automatically.
+
+The OpenAI-compatible Chat adapter applies the workaround only after the SDK
+successfully parses the HTTP response, with one choice whose finish reason is
+`tool_calls`, and only when all of these checks pass:
+
+- The actual sent SDK parameters contain `response_format: json_schema` with a
+  schema. Tool choice is absent, `auto` or `none`, not a required/named tool.
+- `tool_calls` is absent, null or an empty array. A malformed field is not empty.
+- Legacy `function_call` and `refusal` are absent or null, not malformed/empty
+  objects or strings. Legacy request function-choice options are also excluded.
+- Content parses as one strict JSON value, with no duplicate keys, trailing JSON,
+  Markdown fence removal, coercion or content repair, and validates against the
+  exact schema from the sent parameters using the existing schema validator.
+
+Only the effective finish reason becomes `stop`, producing `COMPLETE`.
+`originalFinishReason: "tool_calls"` and
+`finishReasonNormalization: "chatSchemaEmptyToolCallsAsStop"` are recorded in
+response and persisted assistant metadata. Original content, usage and opaque
+reasoning/replay fields remain unchanged. The shared
+`Tool-call outcome without tool calls` invariant remains in place.
+
+This does not enable SSE, change endpoints, retry a failed inference, alter TPM
+feedback/accounting, or affect Responses/Anthropic/CLI adapters. Disable the flag
+after confirming that the gateway no longer needs it. Local real-SDK HTTP fixtures
+cover tool → result → schema → follow-up, negative conditions and unchanged
+reasoning replay; live validation on the work deployment is still required.
+
+Gateway protocol **25** carries the expanded model-behavior contract. Upgrade
+Server, Workers and UI clients together; no persisted-data migration is needed.
+The existing serialized catalog defaults this flag to false when absent.

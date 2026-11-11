@@ -2139,6 +2139,8 @@
     "ai.tpm.preset.CHARACTERS": "Serialized JSON characters",
     "ai.tpm.preset.INPUT_ONLY": "Input text estimate",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "Input plus output reserve",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "Maximum of input and output reserve"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "Maximum of input and output reserve",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: repair empty schema tool-call outcome",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "Opt-in for affected Chat Completions routes only. Accepts only schema-valid content without calls or refusal; forced tools and other errors are not repaired."
   }
 }

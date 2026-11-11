@@ -2102,6 +2102,8 @@
     "ai.tpm.preset.CHARACTERS": "Karakter JSON terserialisasi",
     "ai.tpm.preset.INPUT_ONLY": "Perkiraan teks masukan",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "Masukan ditambah cadangan keluaran",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "Maksimum masukan dan cadangan keluaran"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "Maksimum masukan dan cadangan keluaran",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: perbaiki hasil skema tanpa panggilan alat",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "Aktifkan hanya untuk rute Chat Completions yang terdampak. Hanya menerima konten sesuai skema tanpa panggilan atau penolakan; alat wajib dan kesalahan lain tidak diperbaiki."
   }
 }

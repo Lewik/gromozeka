@@ -2102,6 +2102,8 @@
     "ai.tpm.preset.CHARACTERS": "シリアライズ済みJSONの文字数",
     "ai.tpm.preset.INPUT_ONLY": "入力テキストの見積もり",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "入力と出力予約量の合計",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "入力と出力予約量の最大値"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "入力と出力予約量の最大値",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry：スキーマ応答の空のツール呼び出し判定を修正",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "影響のあるChat Completions経路のみで有効にしてください。呼び出しや拒否がなく、スキーマに適合する内容のみ対象です。必須のツール呼び出しや他のエラーは修正しません。"
   }
 }

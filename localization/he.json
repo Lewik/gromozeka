@@ -2176,6 +2176,8 @@
     "ai.tpm.preset.CHARACTERS": "תווים ב-JSON מסודר",
     "ai.tpm.preset.INPUT_ONLY": "אומדן טקסט הקלט",
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "קלט ועוד רזרבת פלט",
-    "ai.tpm.preset.OPENAI_MAXIMUM": "המרבי מבין הקלט ורזרבת הפלט"
+    "ai.tpm.preset.OPENAI_MAXIMUM": "המרבי מבין הקלט ורזרבת הפלט",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: תיקון תוצאת schema ללא קריאות כלי",
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "הפעלה מפורשת רק למסלולי Chat Completions שנפגעו. מתקבל רק תוכן תקין לפי הסכמה ללא קריאות או סירוב; קריאות חובה ושגיאות אחרות אינן מתוקנות."
   }
 }

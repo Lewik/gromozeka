@@ -24,6 +24,12 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.core.StreamReadFeature
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.json.JsonMapper
+import io.github.optimumcode.json.schema.JsonSchema
+import kotlinx.serialization.SerializationException
 import com.openai.client.OpenAIClient
 import com.openai.core.JsonValue
 import com.openai.models.FunctionDefinition
@@ -128,7 +134,7 @@ private class OpenAiSdkRuntime(
 
         val response = executor.call(options) { client, remaining ->
             client.async().chat().completions().create(params, com.openai.core.RequestOptions.builder().timeout(remaining).build())
-                .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat) }
+                .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat, params) }
         }
 
         return response
@@ -190,6 +196,7 @@ internal class OpenAiSdkMessageMapper(
     fun toRuntimeResponse(
         completion: ChatCompletion,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        sentParams: ChatCompletionCreateParams,
     ): AiRuntimeResponse {
         val usage = completion.usage().getOrNull()?.toAiUsage()
         val choice = completion.choices().firstOrNull()
@@ -202,7 +209,16 @@ internal class OpenAiSdkMessageMapper(
             )
         val message = choice.message()
         val rawMessage = json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(message)).jsonObject
-        val outcome = when (choice.finishReason().asString()) {
+        val reportedFinishReason = choice.finishReason().asString()
+        val normalized = connectionKind == AiConnection.Kind.OPENAI_COMPATIBLE &&
+            generation.behavior.chatSchemaEmptyToolCallsAsStop && completion.choices().size == 1 &&
+            reportedFinishReason == "tool_calls" && isSchemaAnswerWithoutToolCalls(rawMessage, sentParams)
+        val effectiveFinishReason = if (normalized) "stop" else reportedFinishReason
+        val normalizationMetadata = if (normalized) mapOf(
+            "originalFinishReason" to reportedFinishReason,
+            "finishReasonNormalization" to "chatSchemaEmptyToolCallsAsStop",
+        ) else emptyMap()
+        val outcome = when (effectiveFinishReason) {
             "stop" -> when {
                 message.refusal().isPresent -> AiStepOutcome.REFUSED
                 message.toolCalls().getOrNull().orEmpty().isNotEmpty() -> AiStepOutcome.FAILED
@@ -241,7 +257,7 @@ internal class OpenAiSdkMessageMapper(
                         "completionId" to completion.id(),
                         "connectionId" to connectionId,
                         "openaiCompatibleMessage" to rawMessage,
-                    ),
+                    ) + normalizationMetadata,
                 )
             )
         }
@@ -250,7 +266,7 @@ internal class OpenAiSdkMessageMapper(
             messages = assistantMessages,
             usage = usage,
             contextUsage = usage?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
-            finishReason = choice.finishReason().asString(),
+            finishReason = effectiveFinishReason,
             outcome = outcome,
             providerMetadata = mapOf(
                 "provider" to connectionKind.name,
@@ -258,8 +274,29 @@ internal class OpenAiSdkMessageMapper(
                 "reportedModel" to completion.model(),
                 "completionId" to completion.id(),
                 "choiceCount" to completion.choices().size,
-            ),
+            ) + normalizationMetadata,
         )
+    }
+
+    private fun isSchemaAnswerWithoutToolCalls(message: JsonObject, sentParams: ChatCompletionCreateParams): Boolean {
+        if (message["role"] != JsonPrimitive("assistant")) return false
+        val format = sentParams.responseFormat().getOrNull()?.jsonSchema()?.getOrNull() ?: return false
+        val schema = format.jsonSchema().schema().getOrNull() ?: return false
+        val toolChoice = sentParams.toolChoice().getOrNull()
+        if (toolChoice != null && toolChoice.auto().getOrNull()?.asString() !in setOf("auto", "none")) return false
+        if (sentParams.functionCall().isPresent || sentParams.n().getOrNull()?.let { it != 1L } == true) return false
+        val calls = message["tool_calls"]
+        if (calls != null && calls != JsonNull && (calls !is JsonArray || calls.isNotEmpty())) return false
+        if (listOf("function_call", "refusal").any { message[it] != null && message[it] != JsonNull }) return false
+        val content = (message["content"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return false
+        val value = try {
+            // A last-value-wins duplicate key or a second JSON value must not authorize this repair.
+            schemaSyntaxParser.readTree(content)
+            Json.parseToJsonElement(content)
+        } catch (_: JsonProcessingException) { return false }
+        catch (_: SerializationException) { return false }
+        val definition = Json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(schema))
+        return JsonSchema.fromJsonElement(definition).validate(value) { }
     }
 
     private fun thinkingContent(message: JsonObject): List<Conversation.Message.ContentItem.Thinking> {
@@ -728,7 +765,11 @@ internal class OpenAiSdkMessageMapper(
     private fun Long.toIntClamped(): Int =
         coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
-    companion object {
+    private companion object {
+        val schemaSyntaxParser = JsonMapper.builder()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .build()
     }
 }
 

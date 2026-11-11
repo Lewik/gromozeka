@@ -2136,6 +2136,13 @@ private fun ModelBehaviorEditor(behavior: AiModelBehavior, onChange: (AiModelBeh
         Spacer(Modifier.width(8.dp))
         Text(translation.text("ai.spec.anthropic_prefix_drop"))
     }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = behavior.chatSchemaEmptyToolCallsAsStop,
+            onCheckedChange = { onChange(behavior.copy(chatSchemaEmptyToolCallsAsStop = it)) })
+        Spacer(Modifier.width(8.dp))
+        Text(translation.text("ai.spec.chat_schema_empty_tool_calls_as_stop"))
+    }
+    Text(translation.text("ai.spec.chat_schema_empty_tool_calls_as_stop_help"), style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
