@@ -1,4 +1,4 @@
-name: Diagnose Ubuntu package mirror
+name: Diagnose Ubuntu DNS and mirrors
 on:
   workflow_dispatch:
 permissions:
@@ -8,14 +8,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Probe Azure Ubuntu mirror
+      - name: Compare DNS resolvers
         run: |
-          getent ahostsv4 azure.archive.ubuntu.com
-          curl -fIL --max-time 20 https://azure.archive.ubuntu.com/ubuntu/dists/jammy/InRelease
-      - name: Probe signed package installation
+          for host in archive.ubuntu.com azure.archive.ubuntu.com mirrors.edge.kernel.org mirror.math.princeton.edu github.com; do
+            echo "$host"
+            getent ahostsv4 "$host" || true
+            dig +time=3 +tries=1 "$host" A || true
+            dig +time=3 +tries=1 @1.1.1.1 "$host" A || true
+          done
+      - name: Probe signed installation through Kernel.org mirror
         run: |
           docker run --rm mirror.gcr.io/library/eclipse-temurin:21-jdk-jammy bash -ec '
-            sed -i -e "s|http://archive.ubuntu.com/ubuntu|https://azure.archive.ubuntu.com/ubuntu|g" -e "s|http://security.ubuntu.com/ubuntu|https://azure.archive.ubuntu.com/ubuntu|g" /etc/apt/sources.list
-            apt-get -o APT::Update::Error-Mode=any -o Acquire::http::Timeout=20 update
+            sed -i -e "s|http://archive.ubuntu.com/ubuntu|https://mirrors.edge.kernel.org/ubuntu|g" -e "s|http://security.ubuntu.com/ubuntu|https://mirrors.edge.kernel.org/ubuntu|g" /etc/apt/sources.list
+            apt-get -o APT::Update::Error-Mode=any -o Acquire::https::Timeout=20 update
             DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fontconfig libasound2 libfreetype6 libegl1 libgl1 libgtk-3-0 libx11-6 libxcursor1 libxext6 libxi6 libxinerama1 libxrandr2 libxrender1 libxtst6
           '
