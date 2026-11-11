@@ -3,6 +3,11 @@ package com.gromozeka.infrastructure.ai.runtime
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.ResolvedAiRuntime
+import com.gromozeka.domain.service.AiRuntime
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.single
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
 import kotlin.test.*
 import kotlin.time.Instant
@@ -67,6 +72,46 @@ class AiContextMeasurementsTest {
         val inspection = AiContextMeasurements.calibrate(runtime, smaller, estimate(smaller))
         assertEquals(estimate(smaller), inspection)
         assertTrue(inspection.inputTokens > 0)
+    }
+
+    @Test fun imageAndDocumentRequestsPreserveCompletedAndStreamedProviderResponses() = runBlocking {
+        val media = listOf(
+            Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.Base64ImageSource("aW1hZ2U=", "image/jpeg")),
+            Conversation.Message.ContentItem.DocumentItem(
+                Conversation.Message.DocumentSource.Base64DocumentSource("cGRm", "application/pdf", "document.pdf")),
+        )
+        val request = initial.copy(messages = listOf(initial.messages.single().copy(content = media)))
+        val capable = runtime.copy(modelSpec = runtime.modelSpec.copy(capabilities = runtime.modelSpec.capabilities +
+            setOf(AiModelCapability.IMAGE_INPUT, AiModelCapability.DOCUMENT_INPUT)))
+        var calls = 0
+        val backend = object : AiRuntime {
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                calls++
+                assertEquals(media, request.messages.single().content)
+                return response
+            }
+            override fun stream(request: AiRuntimeRequest) = flowOf(response)
+        }
+        val wrapped = AiInputValidatingRuntime(backend, capable)
+        for (received in listOf(wrapped.call(request), wrapped.stream(request).single())) {
+            assertEquals(response.messages.single().content, received.messages.single().content)
+            assertEquals(response.usage, received.usage)
+            assertEquals(response.contextUsage, received.contextUsage)
+            assertEquals(response.outcome, received.outcome)
+            assertNotNull(received.messages.single().metadata["gromozekaContextMeasurement"])
+        }
+        assertEquals(1, calls)
+    }
+
+    @Test fun failedAuxiliaryEstimatePreservesTheProviderResponse() {
+        val invalidNumber = Conversation.Message.ContentItem.ToolCall(
+            Conversation.Message.ContentItem.ToolCall.Id("call"),
+            Conversation.Message.ContentItem.ToolCall.Data("tool", JsonPrimitive(Double.NaN)),
+        )
+        val unencodable = initial.copy(messages = listOf(initial.messages.single().copy(content = listOf(invalidNumber))))
+        assertFailsWith<SerializationException> { AiRequestTokenEstimate.input(unencodable) }
+        assertSame(response, AiContextMeasurements.record(runtime, unencodable, response))
     }
 
     private fun estimate(request: AiRuntimeRequest) = AiContextInspection(AiRequestTokenEstimate.input(request), AiContextInspection.Precision.ESTIMATE)

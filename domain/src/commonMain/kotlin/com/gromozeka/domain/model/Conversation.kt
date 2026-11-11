@@ -637,8 +637,9 @@ data class Conversation(
                 val data: String,
                 @SerialName("media_type")
                 val mediaType: String,
-                override val type: String = "base64",
-            ) : ImageSource()
+            ) : ImageSource() {
+                override val type: String get() = "base64"
+            }
 
             /**
              * Image URL reference.
@@ -650,8 +651,9 @@ data class Conversation(
             @SerialName("url")
             data class UrlImageSource(
                 val url: String,
-                override val type: String = "url",
-            ) : ImageSource()
+            ) : ImageSource() {
+                override val type: String get() = "url"
+            }
 
             /**
              * Image file reference.
@@ -664,8 +666,9 @@ data class Conversation(
             data class FileImageSource(
                 @SerialName("file_id")
                 val fileId: String,
-                override val type: String = "file",
-            ) : ImageSource()
+            ) : ImageSource() {
+                override val type: String get() = "file"
+            }
         }
 
         @Serializable
@@ -681,8 +684,9 @@ data class Conversation(
                 val mediaType: String,
                 @SerialName("file_name")
                 val fileName: String,
-                override val type: String = "base64",
-            ) : DocumentSource()
+            ) : DocumentSource() {
+                override val type: String get() = "base64"
+            }
         }
 
         /**

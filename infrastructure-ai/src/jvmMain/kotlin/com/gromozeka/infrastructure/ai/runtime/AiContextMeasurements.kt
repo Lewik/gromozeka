@@ -4,7 +4,9 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import java.security.MessageDigest
+import klog.KLoggers
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -13,6 +15,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 internal object AiContextMeasurements {
     private const val KEY = "gromozekaContextMeasurement"
     private val json = Json
+    private val log = KLoggers.logger(this)
 
     @Serializable
     private data class Measurement(
@@ -40,9 +43,22 @@ internal object AiContextMeasurements {
         val thread = request.options.toolContext["threadId"] as? String ?: return response
         if (request.options.usagePurpose != "CONVERSATION" || response.messages.isEmpty() ||
             response.messages.any { message -> message.content.any { it is Conversation.Message.ContentItem.ContextCompactionResult } }) return response
+        val inputEstimate: Int
+        val outputEstimate: Int
+        try {
+            inputEstimate = AiRequestTokenEstimate.input(request)
+            outputEstimate = AiRequestTokenEstimate.output(response.messages)
+        } catch (error: SerializationException) {
+            log.warn {
+                "AI context estimate serialization failed; preserving provider response without calibration: " +
+                    "connection=${runtime.connection.id.value}, configuration=${runtime.modelConfiguration.id.value}, " +
+                    "error=${error.javaClass.simpleName}"
+            }
+            return response
+        }
         val measurement = Measurement(runtime.connection.id.value, runtime.modelConfiguration.id.value,
             runtime.modelConfiguration.providerModelId, thread, request.messages.size, idsHash(request.messages),
-            input, output, AiRequestTokenEstimate.input(request), AiRequestTokenEstimate.output(response.messages))
+            input, output, inputEstimate, outputEstimate)
         return response.copy(messages = response.messages.mapIndexed { index, message ->
             if (index == response.messages.lastIndex) message.copy(metadata = message.metadata + (KEY to json.encodeToJsonElement(measurement)))
             else message

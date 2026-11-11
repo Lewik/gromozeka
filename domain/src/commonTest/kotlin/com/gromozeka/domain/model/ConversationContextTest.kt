@@ -11,8 +11,41 @@ import kotlin.time.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 
 class ConversationContextTest {
+    @Test
+    fun imageSourcesRoundTripInsideMessagesWithOneDiscriminator() {
+        val sources = listOf(
+            Message.ImageSource.Base64ImageSource("aW1hZ2U=", "image/jpeg"),
+            Message.ImageSource.UrlImageSource("https://example.test/image.jpg"),
+            Message.ImageSource.FileImageSource("image-file"),
+        )
+        for (json in listOf(Json, Json { encodeDefaults = true })) {
+            for (source in sources) {
+                val message = text("image").copy(content = listOf(Message.ContentItem.ImageItem(source)))
+                val encoded = json.encodeToString(message)
+                assertEquals(message, json.decodeFromString<Message>(encoded))
+                val encodedSource = json.parseToJsonElement(encoded).jsonObject.getValue("content")
+                    .jsonArray.single().jsonObject.getValue("source").jsonObject
+                assertEquals(JsonPrimitive(source.type), encodedSource["type"])
+                assertEquals(1, Regex("\"type\":\"${source.type}\"").findAll(encoded).count())
+            }
+        }
+    }
+
+    @Test
+    fun documentSourcesRoundTripInsideMessagesWithOneDiscriminator() {
+        val source = Message.DocumentSource.Base64DocumentSource("cGRm", "application/pdf", "document.pdf")
+        val message = text("document").copy(content = listOf(Message.ContentItem.DocumentItem(source)))
+        for (json in listOf(Json, Json { encodeDefaults = true })) {
+            val encoded = json.encodeToString(message)
+            assertEquals(message, json.decodeFromString<Message>(encoded))
+            assertEquals(1, Regex("\"type\":\"base64\"").findAll(encoded).count())
+        }
+    }
+
     @Test
     fun coverageIsRequiredAndIndependentOfOrigin() {
         for (coverage in Compaction.Coverage.entries) {

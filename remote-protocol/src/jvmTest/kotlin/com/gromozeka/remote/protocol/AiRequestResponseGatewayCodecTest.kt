@@ -13,6 +13,7 @@ import kotlin.test.assertIs
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
 import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
@@ -44,6 +45,34 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
+    @Test
+    fun imageAndDocumentContentSurvivesWorkerRequestAndResponseEncoding() = runBlocking {
+        val fixture = TestHandler()
+        val content = listOf(
+            Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.Base64ImageSource("aW1hZ2U=", "image/jpeg")),
+            Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.UrlImageSource("https://example.test/image.jpg")),
+            Conversation.Message.ContentItem.ImageItem(Conversation.Message.ImageSource.FileImageSource("image-file")),
+            Conversation.Message.ContentItem.DocumentItem(
+                Conversation.Message.DocumentSource.Base64DocumentSource("cGRm", "application/pdf", "document.pdf")),
+        )
+        val message = Conversation.Message(Conversation.Message.Id("image-message"), Conversation.Id("conversation"),
+            role = Conversation.Message.Role.USER, content = content, createdAt = Instant.fromEpochMilliseconds(0))
+        val request = fixture.runtimeRequest.copy(messages = listOf(message))
+        val expected = fixture.runtimeResponse.copy(messages = listOf(
+            com.gromozeka.domain.model.ai.AiAssistantMessage(content)))
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                assertEquals(listOf(message), request.messages)
+                return expected
+            }
+        }
+        val response = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request), handler)
+        assertEquals(expected, AiRequestResponseGatewayCodec.decodeCallResponse(response))
+    }
+
     @Test
     fun `model discovery is connection scoped and rejects wrong executor or disabled connection`() = runBlocking<Unit> {
         val fixture = TestHandler()
