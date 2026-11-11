@@ -18,11 +18,19 @@ data class AiContextInspection(
     enum class Precision { PROVIDER_COUNT, USAGE_CALIBRATED_ESTIMATE, ESTIMATE }
 }
 
+/** Input and output must use the same projection and scale; change id when either changes. */
+interface AiRequestTokenEstimator {
+    val id: String
+    fun input(request: AiRuntimeRequest): Int
+    fun output(messages: List<AiAssistantMessage>): Int
+}
+
 /** Portable estimate when a route has no preflight counting API. UTF-8/4 includes non-ASCII input. */
-object AiRequestTokenEstimate {
+object AiRequestTokenEstimate : AiRequestTokenEstimator {
+    override val id: String = "portable-message-json-v1"
     private val json = Json { encodeDefaults = false }
 
-    fun input(request: AiRuntimeRequest): Int = checked(
+    override fun input(request: AiRuntimeRequest): Int = checked(
         request.systemPrompts.sumOf { text(it).toLong() } +
             request.tools.sumOf { text(it.definition.name + it.definition.description + it.definition.inputSchema).toLong() + 8 } +
             request.messages.sumOf { message(it).toLong() } +
@@ -36,7 +44,7 @@ object AiRequestTokenEstimate {
         text(json.encodeToString(message.content)).toLong() + text(json.encodeToString(message.instructions)) + 4
     )
 
-    fun output(messages: List<AiAssistantMessage>): Int = checked(messages.sumOf {
+    override fun output(messages: List<AiAssistantMessage>): Int = checked(messages.sumOf {
         text(json.encodeToString(it.content)).toLong() + text("[]") + 4
     })
 

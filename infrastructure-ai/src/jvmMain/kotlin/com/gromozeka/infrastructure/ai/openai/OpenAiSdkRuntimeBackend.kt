@@ -10,6 +10,7 @@ import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimator
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -122,6 +123,7 @@ private class OpenAiSdkRuntime(
     private val messageMapper: OpenAiSdkMessageMapper,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
+    override val tokenEstimator: AiRequestTokenEstimator get() = messageMapper
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         val options = executor.withDeadline(request.options)
@@ -150,8 +152,25 @@ internal class OpenAiSdkMessageMapper(
     private val connectionId: String? = null,
     private val modelName: String? = null,
     private val generation: ModelGenerationPolicy = ModelGenerationPolicy(),
-) {
+) : AiRequestTokenEstimator {
+    override val id: String = "chat-completions-payload-v1"
     private val json = Json { ignoreUnknownKeys = true }
+
+    override fun input(request: AiRuntimeRequest): Int {
+        val targetModel = requireNotNull(modelName) { "Chat estimation requires a bound model" }
+        val body = toCreateParams(targetModel, request)._body()
+        return OpenAiChatTokenEstimate.input(json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(body)).jsonObject)
+    }
+
+    override fun output(messages: List<AiAssistantMessage>): Int = OpenAiChatTokenEstimate.output(messages.map { message ->
+        assistantReplay(requireNotNull(message.metadata["openaiCompatibleMessage"] as? JsonObject) {
+            "Chat response must retain its original assistant payload for context accounting"
+        })
+    })
+
+    private fun assistantReplay(raw: JsonObject): JsonObject = JsonObject(raw.filterKeys {
+        it in setOf("role", "content", "tool_calls", "reasoning_content", "thinking_blocks", "refusal")
+    })
 
     fun toCreateParams(modelName: String, request: AiRuntimeRequest): ChatCompletionCreateParams {
         require(this.modelName == null || this.modelName == modelName) {
@@ -445,7 +464,7 @@ internal class OpenAiSdkMessageMapper(
             metadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
             metadata["model"]?.jsonPrimitive?.contentOrNull == targetModelName
         ) {
-            val replay = JsonObject(raw.filterKeys { it in setOf("role", "content", "tool_calls", "reasoning_content", "thinking_blocks", "refusal") })
+            val replay = assistantReplay(raw)
             return ChatCompletionMessageParam.ofAssistant(com.openai.core.jsonMapper().readValue(
                 replay.toString(), com.openai.models.chat.completions.ChatCompletionAssistantMessageParam::class.java,
             ))

@@ -167,6 +167,11 @@ class OpenAiResponsesCompactionTest {
             assertEquals(AiStepOutcome.COMPLETE, result.outcome)
             assertEquals(listOf("/api/llm/responses/input_tokens", "/api/llm/responses/compact", "/api/llm/responses"), server.requests.map { it.target })
             val compactInput = Json.parseToJsonElement(server.requests[1].body).jsonObject
+            assertNull(compactInput["instructions"], "Compaction instructions invalidate preserved reasoning on newer models")
+            val counted = Json.parseToJsonElement(server.requests[0].body).jsonObject
+            val continued = Json.parseToJsonElement(server.requests[2].body).jsonObject
+            assertEquals(JsonPrimitive("Continue the task."), counted["instructions"])
+            assertEquals(counted["instructions"], continued["instructions"])
             assertNull(compactInput["max_output_tokens"])
             assertNull(compactInput["context_management"])
             val next = Json.parseToJsonElement(server.requests[2].body).jsonObject.getValue("input").jsonArray

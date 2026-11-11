@@ -286,17 +286,81 @@ class TrueFoundryChatCompletionsTest {
         }
     }
 
-    private fun runtime(origin: String, responses: Boolean = false, workaround: Boolean = false): com.gromozeka.domain.service.AiRuntime {
+    @Test
+    fun `model switch estimates sent Chat context without discarded encrypted reasoning`() = runBlocking {
+        val ciphertext = "synthetic-ciphertext-".repeat(65_000)
+        val source = TOOL_MESSAGE.replace(CIPHERTEXT, ciphertext)
+        SdkHttpTestServer(completion(source, "tool_calls"), completion(ANSWER_MESSAGE, "stop"),
+            completion(ANSWER_MESSAGE, "stop")).use { server ->
+            val sol = runtime(server.origin, model = "gateway/sol")
+            val astra = runtime(server.origin, model = "gateway/astra")
+            val first = sol.call(request(listOf(user)))
+            val stored = persist(first)
+            val archived = Json.encodeToString(stored)
+            val beforeTool = request(listOf(user, stored))
+            val next = request(listOf(user, stored, toolResult))
+            val sameModel = sol.inspectContext(next)
+            assertEquals(AiContextInspection.Precision.USAGE_CALIBRATED_ESTIMATE, sameModel.precision)
+            assertEquals(15 + sol.tokenEstimator.input(next) - sol.tokenEstimator.input(beforeTool), sameModel.inputTokens)
+
+            val switched = astra.inspectContext(next)
+            assertEquals(AiContextInspection.Precision.ESTIMATE, switched.precision)
+            assertEquals(astra.tokenEstimator.input(next), switched.inputTokens)
+            assertTrue(AiRequestTokenEstimate.input(next) > 300_000, "Regression fixture must expose the old overestimate")
+            assertTrue(switched.inputTokens < 1_000, "Discarded replay must not trigger a 1000-token compact threshold")
+            assertEquals(1, server.requests.size, "Chat inspection must not probe a different API")
+
+            astra.call(next)
+            val sentToAstra = Json.parseToJsonElement(server.requests[1].body).jsonObject
+            val astraAssistant = sentToAstra.getValue("messages").jsonArray[2].jsonObject
+            assertNull(astraAssistant["thinking_blocks"])
+            assertNull(astraAssistant["reasoning_content"])
+            assertFalse(server.requests[1].body.contains(ciphertext))
+            assertEquals(OpenAiChatTokenEstimate.input(sentToAstra), switched.inputTokens)
+
+            sol.call(next)
+            val solAssistant = Json.parseToJsonElement(server.requests[2].body).jsonObject.getValue("messages").jsonArray[2].jsonObject
+            assertEquals(ciphertext, solAssistant.getValue("thinking_blocks").jsonArray.single().jsonObject.getValue("encrypted_content").jsonPrimitive.content)
+            assertEquals(archived, Json.encodeToString(stored), "Counting and model switches must not rewrite archived reasoning")
+            assertTrue(server.requests.all { it.target == CHAT_PATH })
+        }
+    }
+
+    @Test
+    fun `opaque byte length never stands in for reasoning tokens and user text is not stripped`() {
+        fun body(ciphertext: String) = Json.parseToJsonElement("""{"messages":[${TOOL_MESSAGE.replace(CIPHERTEXT, ciphertext)}]}""").jsonObject
+        val short = body("short")
+        val large = body("x".repeat(1_200_000))
+        assertEquals(OpenAiChatTokenEstimate.input(short), OpenAiChatTokenEstimate.input(large))
+        val original = Json.parseToJsonElement("""{"messages":[{"role":"user","content":"ordinary"}]}""").jsonObject
+        val longer = Json.parseToJsonElement("""{"messages":[{"role":"user","content":"encrypted_content is a business field ${"x".repeat(2000)}"}]}""").jsonObject
+        assertTrue(OpenAiChatTokenEstimate.input(longer) > OpenAiChatTokenEstimate.input(original) + 400)
+        assertEquals(large, body("x".repeat(1_200_000)), "Estimation must not mutate the outbound payload")
+    }
+
+    @Test
+    fun `Chat input and output use the same mapped assistant representation`() {
+        val mapper = OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_COMPATIBLE, "gateway", MODEL)
+        val original = Json.parseToJsonElement(TOOL_MESSAGE).jsonObject
+        val generated = AiAssistantMessage(listOf(ContentItem.Thinking("Display-only text ".repeat(10_000))),
+            metadata = mapOf("openaiCompatibleMessage" to original))
+        val body = Json.parseToJsonElement("""{"messages":[$TOOL_MESSAGE]}""").jsonObject
+        assertEquals(OpenAiChatTokenEstimate.input(body) - 8, mapper.output(listOf(generated)))
+        assertFailsWith<IllegalArgumentException> { mapper.output(listOf(generated.copy(metadata = emptyMap()))) }
+    }
+
+    private fun runtime(origin: String, responses: Boolean = false, workaround: Boolean = false,
+        model: String = MODEL): com.gromozeka.domain.service.AiRuntime {
         val id = AiConnection.Id("gateway")
         val settings = AiHttpSettings(authentication = AiHttpSettings.Authentication.BEARER, noProxy = listOf("*"))
         val connection = if (responses) AiConnection.OpenAiApi(id, "Gateway", enabled = true,
             baseUrl = "$origin/api/llm", apiKey = SecretRef.Inline(TOKEN), httpSettings = settings)
         else AiConnection.OpenAiCompatible(id, "Gateway", enabled = true,
             baseUrl = "$origin/api/llm", apiKey = SecretRef.Inline(TOKEN), httpSettings = settings)
-        val configuration = AiModelConfiguration(AiModelConfiguration.Id("configuration"), id, MODEL, "Gateway model",
+        val configuration = AiModelConfiguration(AiModelConfiguration.Id("configuration"), id, model, "Gateway model",
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
             defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = 10))
-        val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
+        val spec = AiModelSpec(model, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)),
             behavior = AiModelBehavior(chatSchemaEmptyToolCallsAsStop = workaround))
         return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
@@ -305,7 +369,8 @@ class TrueFoundryChatCompletionsTest {
 
     private fun request(messages: List<Message>) = AiRuntimeRequest(listOf("Follow the tool results."), messages,
         tools = listOf(tool), options = AiRuntimeOptions(
-            maxOutputTokens = 128, reasoning = AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE, effort = AiReasoningEffort.LOW),
+            usagePurpose = "CONVERSATION", maxOutputTokens = 128,
+            reasoning = AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE, effort = AiReasoningEffort.LOW),
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
             responseFormat = AiResponseFormat.JsonSchema("answer", Json.parseToJsonElement("""{
                 "type":"object","properties":{"fullText":{"type":"string"}},"required":["fullText"],"additionalProperties":false

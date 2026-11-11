@@ -10,6 +10,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /** A single request baseline. Never sum usage across turns or reuse it after a context/model change. */
 internal object AiContextMeasurements {
@@ -19,6 +22,7 @@ internal object AiContextMeasurements {
 
     @Serializable
     private data class Measurement(
+        val estimatorId: String,
         val connectionId: String,
         val configurationId: String,
         val model: String,
@@ -31,13 +35,14 @@ internal object AiContextMeasurements {
         val outputEstimate: Int,
     ) {
         init {
-            require(sourceCount > 0 && inputTokens >= 0 && outputTokens >= 0 && inputEstimate >= 0 && outputEstimate >= 0) {
+            require(estimatorId.isNotBlank() && sourceCount > 0 && inputTokens >= 0 && outputTokens >= 0 && inputEstimate >= 0 && outputEstimate >= 0) {
                 "Invalid stored context measurement"
             }
         }
     }
 
-    fun record(runtime: ResolvedAiRuntime, request: AiRuntimeRequest, response: AiRuntimeResponse): AiRuntimeResponse {
+    fun record(runtime: ResolvedAiRuntime, request: AiRuntimeRequest, response: AiRuntimeResponse,
+        estimator: AiRequestTokenEstimator = AiRequestTokenEstimate): AiRuntimeResponse {
         val input = response.contextUsage?.inputTokens ?: return response
         val output = response.contextUsage?.outputTokens ?: return response
         val thread = request.options.toolContext["threadId"] as? String ?: return response
@@ -46,8 +51,8 @@ internal object AiContextMeasurements {
         val inputEstimate: Int
         val outputEstimate: Int
         try {
-            inputEstimate = AiRequestTokenEstimate.input(request)
-            outputEstimate = AiRequestTokenEstimate.output(response.messages)
+            inputEstimate = estimator.input(request)
+            outputEstimate = estimator.output(response.messages)
         } catch (error: SerializationException) {
             log.warn {
                 "AI context estimate serialization failed; preserving provider response without calibration: " +
@@ -56,7 +61,7 @@ internal object AiContextMeasurements {
             }
             return response
         }
-        val measurement = Measurement(runtime.connection.id.value, runtime.modelConfiguration.id.value,
+        val measurement = Measurement(estimator.id, runtime.connection.id.value, runtime.modelConfiguration.id.value,
             runtime.modelConfiguration.providerModelId, thread, request.messages.size, idsHash(request.messages),
             input, output, inputEstimate, outputEstimate)
         return response.copy(messages = response.messages.mapIndexed { index, message ->
@@ -65,11 +70,13 @@ internal object AiContextMeasurements {
         })
     }
 
-    fun calibrate(runtime: ResolvedAiRuntime, request: AiRuntimeRequest, inspection: AiContextInspection): AiContextInspection {
+    fun calibrate(runtime: ResolvedAiRuntime, request: AiRuntimeRequest, inspection: AiContextInspection,
+        estimatorId: String = AiRequestTokenEstimate.id): AiContextInspection {
         if (inspection.precision != AiContextInspection.Precision.ESTIMATE) return inspection
         val thread = request.options.toolContext["threadId"] as? String ?: return inspection
-        val measurement = request.messages.asReversed().firstNotNullOfOrNull { it.providerMetadata[KEY] }
-            ?.let { json.decodeFromJsonElement<Measurement>(it) } ?: return inspection
+        val stored = request.messages.asReversed().firstNotNullOfOrNull { it.providerMetadata[KEY] } ?: return inspection
+        if (stored.jsonObject["estimatorId"]?.jsonPrimitive?.contentOrNull != estimatorId) return inspection
+        val measurement = json.decodeFromJsonElement<Measurement>(stored)
         if (measurement.connectionId != runtime.connection.id.value || measurement.configurationId != runtime.modelConfiguration.id.value ||
             measurement.model != runtime.modelConfiguration.providerModelId || measurement.threadId != thread ||
             measurement.sourceCount >= request.messages.size ||

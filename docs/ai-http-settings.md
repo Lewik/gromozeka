@@ -120,7 +120,9 @@ The executor is selected before execution:
 
 - OpenAI API Responses: `/responses/input_tokens` counts the request, then
   `/responses/compact` returns a complete native replay window. Its order and
-  encrypted items are preserved. Ordinary `/responses` calls remain stateless
+  encrypted items are preserved. Compact-only requests omit `instructions` to
+  avoid invalidating subsequent preserved reasoning; ordinary generation still
+  receives its instructions. Ordinary `/responses` calls remain stateless
   (`store=false`) and no longer send `context_management` thresholds.
 - OpenAI Subscription: Responses Lite uses an explicit compact-only trigger.
   Other profiles use text summarization. The adapter's decoded-opaque estimate
@@ -136,10 +138,17 @@ The executor is selected before execution:
   text summarization performs compaction. Bedrock has no universal count endpoint
   in this adapter and uses an explicitly marked estimate.
 - Chat Completions, including TrueFoundry: no speculative count endpoint or header
-  is used. A portable estimate is calibrated with the last compatible request's
-  measured input and output usage plus changes in the request. Cumulative billed
-  usage is never treated as occupied context. Changing thread/model or an
-  incompatible source prefix discards that calibration.
+  is used. The estimate uses the same mapped messages, tools and response schema
+  as the actual SDK request, after model/connection/branch replay filtering.
+  Ciphertext, thinking signatures and redacted blobs are not tokenized as text.
+  Compatible opaque reasoning is still sent unchanged; its measured contribution
+  comes from usage calibration, not encrypted byte length. Input and output use
+  the same estimator, calibrated with the last compatible request's measured
+  input/output usage plus request changes. Cumulative billing is not occupied
+  context. Changing thread/model, source prefix or estimator identity discards
+  the old calibration. Older untagged baselines are ignored without changing the
+  archive. Without compatible measurements this remains a text-size estimate,
+  not an exact tokenizer, hidden-reasoning or multimodal token count.
 
 Context-size accounting is separate from TPM quota reservation: calibration does
 not change the configured quota formula or balances. Count, compact and summary
@@ -179,6 +188,7 @@ opaque replay remains scope-checked; use an explicit readable handoff when
 changing to an incompatible route.
 
 Contracts: [OpenAI compaction](https://developers.openai.com/api/docs/guides/compaction),
+[OpenAI preserved reasoning](https://developers.openai.com/api/docs/guides/preserved-reasoning),
 [TrueFoundry Chat usage and reasoning](https://www.truefoundry.com/docs/ai-gateway/chat-completions-advanced#reasoning-on-openai-azure-openai-and-microsoft-foundry).
 
 ## Synthetic tool-call IDs

@@ -1,6 +1,8 @@
 package com.gromozeka.infrastructure.ai.runtime
 
 import com.gromozeka.domain.model.ai.AiContextInspection
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimator
+import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -54,11 +56,13 @@ class AiInputValidatingRuntime(
     override val capabilities: AiRuntimeCapabilities
         get() = delegate.capabilities
 
+    override val tokenEstimator: AiRequestTokenEstimator get() = delegate.tokenEstimator
+
     override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
         val prepared = validatedRequest(request)
         val inspection = delegate.inspectContext(prepared)
         return if (runtime.connection.kind in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION)) inspection
-            else AiContextMeasurements.calibrate(runtime, prepared, inspection)
+            else AiContextMeasurements.calibrate(runtime, prepared, inspection, tokenEstimator.id)
     }
 
     override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -68,12 +72,12 @@ class AiInputValidatingRuntime(
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         val prepared = validatedRequest(request)
-        return AiContextMeasurements.record(runtime, prepared, delegate.call(prepared)).withReplayScope(request)
+        return AiContextMeasurements.record(runtime, prepared, delegate.call(prepared), tokenEstimator).withReplayScope(request)
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> {
         val prepared = validatedRequest(request)
-        return delegate.stream(prepared).map { AiContextMeasurements.record(runtime, prepared, it).withReplayScope(request) }
+        return delegate.stream(prepared).map { AiContextMeasurements.record(runtime, prepared, it, tokenEstimator).withReplayScope(request) }
     }
 
     private fun validatedRequest(request: AiRuntimeRequest): AiRuntimeRequest {
@@ -101,6 +105,12 @@ class ModelDefaultAiRuntime(
 ) : AiRuntime {
     override val capabilities: AiRuntimeCapabilities
         get() = delegate.capabilities
+
+    override val tokenEstimator: AiRequestTokenEstimator = object : AiRequestTokenEstimator {
+        override val id: String get() = delegate.tokenEstimator.id
+        override fun input(request: AiRuntimeRequest): Int = delegate.tokenEstimator.input(request.withModelDefaults(defaults))
+        override fun output(messages: List<AiAssistantMessage>): Int = delegate.tokenEstimator.output(messages)
+    }
 
     override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection =
         delegate.inspectContext(request.withModelDefaults(defaults))

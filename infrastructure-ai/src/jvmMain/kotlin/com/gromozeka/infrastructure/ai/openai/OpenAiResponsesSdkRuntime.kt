@@ -108,8 +108,9 @@ internal class OpenAiResponsesSdkRuntime(
     override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
         val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
         val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
+        // Custom compaction instructions can invalidate subsequent preserved reasoning.
         val compactBody = jsonMapper().readValue(JsonObject(fields.filterKeys {
-            it in setOf("model", "input", "instructions")
+            it in setOf("model", "input")
         }).toString(), ResponseCompactParams.Body::class.java)
         val options = executor.withDeadline(request.options)
         return executor.call(options) { client, remaining ->

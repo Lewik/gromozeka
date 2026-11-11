@@ -59,6 +59,43 @@ class AiContextMeasurementsTest {
         assertEquals(response, AiContextMeasurements.record(runtime, helper, response))
     }
 
+    @Test fun oldOrDifferentEstimatorBaselinesAreDiscardedWithoutRewritingHistory() {
+        val stored = persisted(AiContextMeasurements.record(runtime, initial, response))
+        val measurement = stored.providerMetadata.getValue("gromozekaContextMeasurement").jsonObject
+        for (modified in listOf(JsonObject(measurement - "estimatorId"),
+            JsonObject(measurement + ("estimatorId" to JsonPrimitive("different-projection"))))) {
+            val source = stored.copy(providerMetadata = JsonObject(stored.providerMetadata + ("gromozekaContextMeasurement" to modified)))
+            val next = initial.copy(messages = initial.messages + source)
+            assertEquals(estimate(next), AiContextMeasurements.calibrate(runtime, next, estimate(next)))
+            assertEquals(modified, source.providerMetadata["gromozekaContextMeasurement"])
+        }
+    }
+
+    @Test fun modelDefaultsReachBothInspectionAndCalibrationEstimator() = runBlocking {
+        val defaults = AiModelConfiguration.DefaultParameters(maxOutputTokens = 42)
+        var estimates = 0
+        val backend = object : AiRuntime {
+            override val tokenEstimator = object : AiRequestTokenEstimator {
+                override val id = "configured-estimator"
+                override fun input(request: AiRuntimeRequest): Int {
+                    assertEquals(42, request.options.maxOutputTokens)
+                    estimates++
+                    return AiRequestTokenEstimate.input(request)
+                }
+                override fun output(messages: List<AiAssistantMessage>): Int = AiRequestTokenEstimate.output(messages)
+            }
+            override suspend fun call(request: AiRuntimeRequest) = response
+            override fun stream(request: AiRuntimeRequest) = flowOf(response)
+        }
+        val wrapped = AiInputValidatingRuntime(ModelDefaultAiRuntime(backend, defaults), runtime)
+        val result = wrapped.call(initial)
+        val next = initial.copy(messages = initial.messages + persisted(result))
+        assertEquals(120, wrapped.inspectContext(next).inputTokens)
+        assertEquals(2, estimates)
+        assertEquals("configured-estimator", result.messages.single().metadata.getValue("gromozekaContextMeasurement")
+            .let { it as JsonObject }.getValue("estimatorId").jsonPrimitive.content)
+    }
+
     @Test fun providerCountNeverGetsAdjustedByAnOldEstimate() {
         val next = initial.copy(messages = initial.messages + persisted(AiContextMeasurements.record(runtime, initial, response)))
         val measured = AiContextInspection(42, AiContextInspection.Precision.PROVIDER_COUNT)
@@ -117,7 +154,12 @@ class AiContextMeasurementsTest {
     private fun estimate(request: AiRuntimeRequest) = AiContextInspection(AiRequestTokenEstimate.input(request), AiContextInspection.Precision.ESTIMATE)
     private fun persisted(response: AiRuntimeResponse) = user("answer", "").copy(role = Conversation.Message.Role.ASSISTANT,
         content = response.messages.single().content,
-        providerMetadata = JsonObject(response.messages.single().metadata.mapValues { (_, value) -> value as JsonElement }))
+        providerMetadata = JsonObject(response.messages.single().metadata.mapValues { (_, value) -> when (value) {
+            is JsonElement -> value
+            is String -> JsonPrimitive(value)
+            null -> JsonNull
+            else -> error("Unexpected fixture metadata")
+        } }))
     private fun user(id: String, text: String) = Conversation.Message(id = Conversation.Message.Id(id), conversationId = Conversation.Id("conversation"),
         role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage(text)), createdAt = Instant.fromEpochMilliseconds(0))
 }

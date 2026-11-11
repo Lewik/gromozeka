@@ -2,6 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimator
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
@@ -29,8 +30,11 @@ interface AiRuntime {
     val capabilities: AiRuntimeCapabilities
         get() = AiRuntimeCapabilities()
 
+    val tokenEstimator: AiRequestTokenEstimator
+        get() = AiRequestTokenEstimate
+
     suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection = AiContextInspection(
-        AiRequestTokenEstimate.input(request), AiContextInspection.Precision.ESTIMATE,
+        tokenEstimator.input(request), AiContextInspection.Precision.ESTIMATE,
         nativeCompactionAvailable = capabilities.supportsNativeCompaction,
     )
 
