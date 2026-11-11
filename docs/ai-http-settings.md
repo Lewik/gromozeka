@@ -86,49 +86,100 @@ contracts, not acceptance tests against an AMAT installation.
 
 Reference: [TrueFoundry Chat reasoning and multi-turn replay](https://www.truefoundry.com/docs/ai-gateway/chat-completions-advanced#reasoning-on-openai-azure-openai-and-microsoft-foundry).
 
-## Responses auto-compaction
+## Blocking conversation compaction
 
-The OpenAI Responses connection (`OPENAI_API`), including a gateway base URL,
-passes the model spec's configured auto-compaction threshold as
-`context_management: [{"type":"compaction","compact_threshold":...}]` on normal
-`POST /responses` calls. `store=false` remains enabled. This is native provider-side
-compaction, not incremental `previous_response_id` chaining, truncation, or a
-separate Gromozeka summarization model.
-
-Configure the existing model spec policy explicitly, for example this limits fragment:
+Compaction is configured on `AiModelConfiguration`, not `AiModelSpec`:
 
 ```json
 {
-  "textGeneration": {
-    "contextWindowTokens": 200000,
-    "autoCompaction": { "type": "percent", "value": 70 }
+  "compaction": {
+    "thresholdTokens": 140000,
+    "summaryModelConfigurationId": null
   }
 }
 ```
 
-An absolute threshold (`{"type":"absolute","tokens":140000}`) is also supported.
-`contextWindowTokens` alone does not enable compaction: an absent `autoCompaction`
-policy remains disabled. Leave space below the model's actual context limit for
-new tool output and generation. A single oversized input or a conversation that
-already exceeds that limit may still be rejected; no history is silently truncated.
-The exact provider/model route and gateway version must support this Responses
-parameter and compaction-item replay. Unsupported routes fail explicitly rather
-than retrying without compaction. Chat Completions is not enabled by this change.
+The threshold is an absolute input-token count below the model's context window.
+Percentage input in Settings is converted to tokens; percentages are not stored.
+`thresholdTokens: null` disables the Harness automatic trigger (the default for
+new and migrated configurations). A provider's intrinsic session compaction can
+still occur; its emitted checkpoints also use the COW commit. The optional summary configuration is used only for
+text summarization; null means the active agent's model. Existing Control MCP
+`grz_ai_catalog_get` and `grz_ai_model_configuration_upsert` read and replace these
+settings. `compaction: {}` resets both fields. The global `MESSAGE_SQUASH` runtime
+assignment and model-spec threshold policy have been removed.
 
-Encrypted output items are persisted as full context checkpoints in their original
-output order. Subsequent requests send the latest checkpoint and following turns,
-including tool call/result pairs, without resending the covered archive. Canonical
-source messages remain stored. Checkpoint-only output continues the agent loop;
-malformed or wrong-connection/model checkpoints are explicit errors. Billing usage
-is retained, but pre-compaction input usage is not presented as the retained-window
-size on that response. Update the Server or Worker that executes the AI calls.
+Before an ordinary model call, the Conversation Runtime checks the complete next
+request, including system prompts, tools, response schema and projected history.
+At the threshold it blocks generation, executes one compaction, commits a new
+history version (COW), and rebuilds the request. If the result still exceeds the
+threshold, it stops with an explicit error instead of repeatedly compacting or
+sending the oversized request. Preparation is not proactive or concurrent.
 
-Regression coverage uses the real SDK and a local HTTP gateway fixture, JSON
-persistence/replay and sparse-history selection. It is not acceptance testing of
-a live TrueFoundry installation. Cross-provider migration is unchanged; use an
-explicit handoff when changing providers.
+The executor is selected before execution:
 
-Contract: [OpenAI Responses compaction](https://developers.openai.com/api/docs/guides/compaction).
+- OpenAI API Responses: `/responses/input_tokens` counts the request, then
+  `/responses/compact` returns a complete native replay window. Its order and
+  encrypted items are preserved. Ordinary `/responses` calls remain stateless
+  (`store=false`) and no longer send `context_management` thresholds.
+- OpenAI Subscription: Responses Lite uses an explicit compact-only trigger.
+  Other profiles use text summarization. The adapter's decoded-opaque estimate
+  is calibrated to scoped usage; it is not a provider token count. Native replay
+  may retain raw items according to its protocol, independently of text policy.
+- Claude Code: an existing compatible session can execute `/compact` exclusively,
+  without also generating the next answer. Coverage ends at the session's actual
+  input boundary; unseen user/tool messages remain outside it. An explicit COW
+  receipt plus session ID, source IDs and transcript fingerprints authorize
+  continuation across the history-version change. A fresh session or incomplete
+  tool boundary selects text summarization before any native mutation.
+- Anthropic Messages: `/messages/count_tokens` counts supported API requests;
+  text summarization performs compaction. Bedrock has no universal count endpoint
+  in this adapter and uses an explicitly marked estimate.
+- Chat Completions, including TrueFoundry: no speculative count endpoint or header
+  is used. A portable estimate is calibrated with the last compatible request's
+  measured input and output usage plus changes in the request. Cumulative billed
+  usage is never treated as occupied context. Changing thread/model or an
+  incompatible source prefix discards that calibration.
+
+Context-size accounting is separate from TPM quota reservation: calibration does
+not change the configured quota formula or balances. Count, compact and summary
+HTTP operations retain their model configuration's admission policy. Required TPM
+feedback must be compatible with those endpoint responses. Quota calculators that
+need an output reserve must configure it explicitly when the request omits an
+output limit; the Harness does not invent a summary cap or bypass quota policy.
+
+A failed counter or native operation is an error, not permission to retry through
+another route. Every committed compaction creates a new Thread; canonical source
+messages and original IDs remain archived. Runtime roots, queues and stable
+Conversation/Agent collaboration addresses continue. New provider output after a
+native checkpoint receives the new replay scope; archived opaque state is not
+retagged. Server and Workers must use the matching Gateway protocol (version 24).
+
+Text auto-compaction always uses the continuation-oriented SUMMARIZE prompt.
+There is no preserved raw-message tail and no separate summary-length setting.
+Recent work, current instructions, verified results, open obligations, constraints
+and next actions are preserved semantically. Readable material and supported
+committed image/PDF attachments are sent to the helper, not raw provider replay.
+One-shot revealed secrets are reserved for the ordinary request and are not sent
+to the counter or summary model. DISTILL remains a manual-only prompt variant;
+CONCATENATE remains non-generative. Manual AI compaction uses the single automatic
+responder, or the sole connected agent; ambiguous multi-agent selection is an
+explicit error rather than an arbitrary model choice.
+
+Summary calls do not inherit the ordinary model configuration's output cap.
+Optional output-token fields are omitted. APIs requiring an output budget use
+model-declared limits and the available request budget; missing required model
+knowledge fails explicitly. Truncated, refused or incomplete summaries are never
+committed. Native compaction billing is not mislabeled as retained context usage.
+
+Regression coverage uses the production SDKs against local HTTP fixtures,
+serialization/replay, Runtime tests and isolated PostgreSQL schemas. These are
+not acceptance tests against a live TrueFoundry deployment. Cross-provider
+opaque replay remains scope-checked; use an explicit readable handoff when
+changing to an incompatible route.
+
+Contracts: [OpenAI compaction](https://developers.openai.com/api/docs/guides/compaction),
+[TrueFoundry Chat usage and reasoning](https://www.truefoundry.com/docs/ai-gateway/chat-completions-advanced#reasoning-on-openai-azure-openai-and-microsoft-foundry).
 
 ## Synthetic tool-call IDs
 
@@ -252,16 +303,17 @@ must not be assumed to honor typed terminal failures if it is enabled later.
 ## Execution budget, concurrency and cancellation
 
 - Concurrency is controlled by [AI concurrency groups](ai-admission.md), not
-  `httpSettings`. Each connection names one `concurrencyGroupId`; all connections
-  initially share `default` (limit 4), across Server and Workers. A group limit
-  is 1–64 or explicit `null` for unlimited. There is no tokens-per-minute limiter.
+  `httpSettings`. Each model configuration names one `concurrencyGroupId`, shared
+  across Server and Workers. A group limit is 1–64 or explicit `null` for unlimited.
+  Optional [TPM admission](ai-tpm.md) is configured separately on the model
+  configuration and uses its explicitly selected request/feedback contract.
 - Each HTTP attempt acquires admission separately. Client/credential setup for
   the first attempt and full response consumption are inside admission; retry
   backoff is outside it. The per-call client and credential snapshot remain the
   same across attempts. Cancellation or expiry while queued starts no HTTP and
   releases no other call's permit. A changed group limit affects waiting/new
-  attempts without cancelling active calls; moving a connection does not retag
-  already active leases.
+  attempts without cancelling active calls; moving a model configuration to a
+  different group does not retag already active leases.
 - `defaultParameters.timeoutSeconds` on the model configuration now controls
   this logical call: 1–86400 seconds, default 600. Parameter preparation, queueing,
   credential/CA loading, backoff and HTTP consume the same deadline. A shorter

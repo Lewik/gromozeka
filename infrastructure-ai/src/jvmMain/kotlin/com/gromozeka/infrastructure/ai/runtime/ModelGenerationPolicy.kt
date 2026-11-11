@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.runtime
 
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiModelBehavior
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiReasoningCapabilities
@@ -11,8 +13,22 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 internal class ModelGenerationPolicy(
     val behavior: AiModelBehavior = AiModelBehavior(),
     private val reasoningCapabilities: AiReasoningCapabilities? = null,
+    private val limits: AiModelSpec.Limits.TextGeneration? = null,
 ) {
-    constructor(spec: AiModelSpec) : this(spec.behavior, spec.reasoning)
+    constructor(spec: AiModelSpec) : this(spec.behavior, spec.reasoning, spec.limits.textGeneration)
+
+    fun outputTokenLimit(options: AiRuntimeOptions): Int = options.maxOutputTokens ?: requireNotNull(limits?.maxOutputTokens) {
+        "Required output budget needs a declared model output token limit"
+    }
+
+    fun requiredOutputTokens(request: AiRuntimeRequest): Int {
+        request.options.maxOutputTokens?.let { return it }
+        val modelLimits = requireNotNull(limits) { "Required output budget needs explicit model limits" }
+        val maximum = outputTokenLimit(request.options)
+        val remaining = modelLimits.contextWindowTokens - AiRequestTokenEstimate.input(request)
+        require(remaining > 0) { "Request leaves no context budget for output" }
+        return minOf(maximum, remaining)
+    }
 
     fun reasoning(options: AiRuntimeOptions, hasTools: Boolean): AiReasoningConfig? {
         require(behavior.supportsForcedToolChoice || options.toolChoice == AiToolChoice.Auto ||

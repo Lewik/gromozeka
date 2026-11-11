@@ -82,7 +82,6 @@ class OpenAiSubscriptionRequestMapper {
             model = modelProfile.slug,
             input = inputItems,
             instructions = instructions,
-            contextManagement = buildContextManagement(request.options.autoCompactionThresholdTokens),
             parallelToolCalls = modelProfile.supportsParallelToolCalls && !modelProfile.useResponsesLite,
             tools = effectiveTools,
             toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { effectiveTools.isNotEmpty() },
@@ -152,7 +151,6 @@ class OpenAiSubscriptionRequestMapper {
         return request.copy(
             input = prefix + request.input,
             instructions = null,
-            contextManagement = null,
             parallelToolCalls = false,
             tools = null,
             reasoning = reasoning,
@@ -437,15 +435,6 @@ class OpenAiSubscriptionRequestMapper {
         }
     }
 
-    private fun buildContextManagement(autoCompactionThresholdTokens: Int?): List<JsonObject>? {
-        val threshold = autoCompactionThresholdTokens ?: return null
-        return listOf(
-            buildJsonObject {
-                put("type", "compaction")
-                put("compact_threshold", threshold)
-            }
-        )
-    }
 
     private fun buildReasoning(
         reasoning: AiReasoningConfig?,
@@ -887,7 +876,6 @@ class OpenAiSubscriptionRequestMapper {
                 "tools=${effectiveToolNames.size}, " +
                 "toolChoice=${requestPayload.toolChoice?.toString()?.take(80) ?: "omitted"}, " +
                 "toolSignature=${toolSignature.toUInt().toString(16)}, " +
-                "autoCompactionThreshold=${request.options.autoCompactionThresholdTokens ?: "omitted"}, " +
                 "responseFormat=${request.options.responseFormat.logName()}, " +
                 "payloadChars=${payloadChars ?: -1}"
         )

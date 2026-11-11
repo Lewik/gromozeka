@@ -1,5 +1,7 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.ai.AiContextInspection
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
@@ -26,6 +28,15 @@ interface AiRuntimeProvider {
 interface AiRuntime {
     val capabilities: AiRuntimeCapabilities
         get() = AiRuntimeCapabilities()
+
+    suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection = AiContextInspection(
+        AiRequestTokenEstimate.input(request), AiContextInspection.Precision.ESTIMATE,
+        nativeCompactionAvailable = capabilities.supportsNativeCompaction,
+    )
+
+    /** Compact only: never start the next ordinary generation. */
+    suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse =
+        error("This runtime does not support explicit native compaction")
 
     suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse
 

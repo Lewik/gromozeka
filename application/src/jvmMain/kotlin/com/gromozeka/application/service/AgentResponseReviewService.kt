@@ -68,7 +68,7 @@ class AgentResponseReviewService(
                     role = Conversation.Message.Role.USER, content = listOf(ContentItem.UserMessage(data + correction)), createdAt = draft.createdAt,
                 )),
                 options = options.copy(
-                    maxOutputTokens = 6000, autoCompactionThresholdTokens = null,
+                    maxOutputTokens = 6000,
                     toolChoice = AiToolChoice.None, responseFormat = AiResponseFormat.JsonSchema("agent_response_decision", SCHEMA),
                     assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
                     usagePurpose = "AGENT_RESPONSE_REVIEW",

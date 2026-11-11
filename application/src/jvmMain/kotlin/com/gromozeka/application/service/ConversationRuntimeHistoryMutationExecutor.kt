@@ -16,6 +16,8 @@ class ConversationRuntimeHistoryMutationExecutor(
     internal suspend fun execute(
         conversationId: Conversation.Id,
         mutation: ConversationHistoryMutation,
+        task: com.gromozeka.domain.service.ConversationRuntimeTask,
+        beforeCommit: suspend () -> Unit,
     ): Conversation = when (mutation) {
         is ConversationHistoryMutation.Edit -> conversationService.editRuntimeHistory(
             conversationId = conversationId,
@@ -32,6 +34,9 @@ class ConversationRuntimeHistoryMutationExecutor(
             conversationId = conversationId,
             messageIds = mutation.messageIds,
             strategy = mutation.strategy,
+            checkpointId = Conversation.Message.Id("${task.id.value}:compaction"),
+            requestContext = mapOf("userId" to task.actorUserId?.value),
+            beforeCommit = beforeCommit,
         )
     }
 }

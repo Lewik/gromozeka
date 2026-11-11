@@ -27,6 +27,25 @@ class AiModelConfigurationTest {
         }
     }
 
+    @Test
+    fun compactionDefaultsToDisabledAndUsesTheCurrentModel() {
+        assertEquals(AiModelConfiguration.Compaction(), configuration().compaction)
+        assertFailsWith<IllegalArgumentException> { AiModelConfiguration.Compaction(thresholdTokens = 0) }
+        assertFailsWith<IllegalArgumentException> { AiModelConfiguration.Compaction(thresholdTokens = -1) }
+    }
+
+    @Test
+    fun compactionRoundTripsOnlyAbsoluteTokensAndExplicitReset() {
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(75_000, AiModelConfiguration.Id("summary")))
+        val encoded = json.encodeToString(AiModelConfiguration.serializer(), configured)
+        assertEquals(configured, json.decodeFromString(AiModelConfiguration.serializer(), encoded))
+        kotlin.test.assertFalse(encoded.contains("percent"))
+        val reset = kotlinx.serialization.json.JsonObject(kotlinx.serialization.json.Json.parseToJsonElement(encoded)
+            .let { it as kotlinx.serialization.json.JsonObject } + ("compaction" to kotlinx.serialization.json.JsonObject(emptyMap())))
+        assertEquals(AiModelConfiguration.Compaction(), json.decodeFromString(AiModelConfiguration.serializer(), reset.toString()).compaction)
+    }
+
     private fun configuration(
         requestedEmbeddingDimensions: Int? = null,
     ) =

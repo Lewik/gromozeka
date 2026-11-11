@@ -62,6 +62,7 @@ internal class AiSettingsToolContributor(
                     AI concurrency groups are Server-wide across execution targets. Each model configuration uses one concurrencyGroupId (default: default). Create or update groups with grz_ai_concurrency_group_upsert; null maxConcurrentCalls means unlimited. The default group cannot be deleted.
                     Model configuration tpm policies select a group by fixed id, request JSON Pointer value matching a group key, or Server command stdout. Commands receive JSON on stdin, use separate executable/arguments and run as the Server OS user. They are trusted owner configuration, not sandboxed model input. Set calculator and mandatory feedback extraction explicitly. TPM is disabled when tpm is null.
                     TPM serialized policy uses type tags: group={type:"fixed",groupId} or {type:"request_value",pointer} or {type:"command",command}. Commands are {executable,arguments:[],timeoutSeconds}; selector stdout is a plain key and calculator stdout is an integer. Calculator={type:"builtin",preset,charactersPerUnit,multiplier,fixedOverhead,outputReserve?} or {type:"command",command}; presets are CHARACTERS, INPUT_ONLY, INPUT_PLUS_OUTPUT, OPENAI_MAXIMUM, and are estimates, not tokenizers. Feedback={type:"fields",remaining,retryDelay?,retryFormat} or {type:"command",command}. Value sources are {type:"header",name,jsonPointer?} or {type:"body",pointer}; retryFormat is SECONDS, MILLISECONDS, HTTP_DATE or RETRY_AFTER. Feedback-command stdin is {status,headers,body,bodyUnavailable}; stdout is {remaining?,retryAfterMillis?}. fallbackGroupId applies only to group selection. Header names and quota constants require installation-specific configuration. Missing required success feedback fails the call; it never resets the budget or retries inference.
+                    Conversation compaction belongs to AiModelConfiguration.compaction: thresholdTokens is an absolute positive integer (null disables auto-compaction); summaryModelConfigurationId is optional (null uses the current agent model). Percentages are UI input only. Replace these settings through grz_ai_model_configuration_upsert; compaction={} resets both to defaults. Auto-compaction is blocking SUMMARIZE; DISTILL is manual only.
                     Web tool configuration is part of the central AI catalog and is shared by all Workers.
                     External MCP servers are assigned to one exact Worker. Create, update, refresh, and delete are explicit operations against its current live Worker session and are never retried automatically after execution starts.
                     External MCP environment and HTTP header values are never returned. Read configuredTransportValues for their names; update sends only add/replace values plus explicit removal lists.
@@ -236,10 +237,10 @@ internal class AiSettingsToolContributor(
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_model_configuration_upsert",
-            description = "Create or replace one concrete model configuration attached to an AI connection.",
+            description = "Create or replace one concrete model configuration, including compaction.thresholdTokens (null disables) and compaction.summaryModelConfigurationId (null uses current model). Omitted compaction or {} resets it.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "modelConfiguration",
-                description = "Serialized AiModelConfiguration object.",
+                description = "Serialized AiModelConfiguration object. compaction: {thresholdTokens: positive integer or null, summaryModelConfigurationId: configuration ID or null}. Defaults: both null.",
             ),
             readOnly = false,
             accessPolicy = AiToolAccessPolicy.SERVER_OWNER,

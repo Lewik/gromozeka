@@ -75,6 +75,22 @@ data class AiCatalog(
                     "for a model without embeddings capability"
             }
         }
+        modelConfigurations.forEach { configuration ->
+            val compaction = configuration.compaction
+            if (compaction != AiModelConfiguration.Compaction()) {
+                val limits = modelSpecFor(configuration)?.limits?.textGeneration
+                require(limits != null) { "Compaction requires a text generation model: ${configuration.id.value}" }
+                require(compaction.thresholdTokens == null || compaction.thresholdTokens < limits.contextWindowTokens) {
+                    "Compaction threshold must leave room inside the context window: ${configuration.id.value}"
+                }
+                compaction.summaryModelConfigurationId?.let { summaryId ->
+                    val summary = modelConfigurations.singleOrNull { it.id == summaryId }
+                    require(summary != null && summary.enabled && modelSpecFor(summary)?.limits?.textGeneration != null) {
+                        "Compaction references a missing, disabled or non-text summary configuration: ${summaryId.value}"
+                    }
+                }
+            }
+        }
         runtimeAssignments.forEach { assignment ->
             val configuration = modelConfigurations.firstOrNull {
                 it.id == assignment.selection.modelConfigurationId

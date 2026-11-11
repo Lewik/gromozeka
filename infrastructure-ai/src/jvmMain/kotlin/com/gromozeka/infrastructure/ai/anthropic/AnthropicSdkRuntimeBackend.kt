@@ -27,6 +27,8 @@ import com.anthropic.models.messages.DocumentBlockParam
 import com.anthropic.models.messages.ImageBlockParam
 import com.anthropic.models.messages.JsonOutputFormat
 import com.anthropic.models.messages.Message
+import com.anthropic.models.messages.MessageCountTokensParams
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.MessageParam
 import com.anthropic.models.messages.OutputConfig
@@ -66,6 +68,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -97,10 +100,19 @@ internal class AnthropicSdkRuntimeBackend(
         val modelConfiguration = runtime.modelConfiguration
         val connectionKind = connection.kind
         val messageMapper = AnthropicSdkMessageMapper(connectionKind, connection.id.value, modelConfiguration.providerModelId, ModelGenerationPolicy(runtime.modelSpec))
+        var count: (suspend (AiRuntimeRequest) -> AiContextInspection)? = null
         val execute: suspend (AiRuntimeRequest) -> AiRuntimeResponse = when (connectionKind) {
             AiConnection.Kind.ANTHROPIC_API -> {
                 val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = modelConfiguration) { end ->
                     createDirectAnthropicClient(connection, end)
+                }
+                count = { request ->
+                    val options = executor.withDeadline(request.options.copy(usagePurpose = "CONTEXT_COUNT"))
+                    val params = messageMapper.toCountParams(modelConfiguration.providerModelId, request)
+                    executor.call(options) { client, remaining ->
+                        client.async().messages().countTokens(params, com.anthropic.core.RequestOptions.builder().timeout(remaining).build())
+                            .thenApply { AiContextInspection(Math.toIntExact(it.inputTokens()), AiContextInspection.Precision.PROVIDER_COUNT) }
+                    }
                 }
                 val call: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { request ->
                     val options = executor.withDeadline(request.options)
@@ -129,7 +141,7 @@ internal class AnthropicSdkRuntimeBackend(
         return AnthropicSdkRuntime(
             connectionKind,
             modelConfiguration.providerModelId,
-            execute
+            execute, count
         )
     }
 
@@ -224,8 +236,12 @@ private class AnthropicSdkRuntime(
     private val connectionKind: AiConnection.Kind,
     private val modelName: String,
     private val execute: suspend (AiRuntimeRequest) -> AiRuntimeResponse,
+    private val count: (suspend (AiRuntimeRequest) -> AiContextInspection)?,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
+
+    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection =
+        count?.invoke(request) ?: super.inspectContext(request)
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         log.info {
@@ -255,12 +271,25 @@ internal class AnthropicSdkMessageMapper(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    fun toCountParams(modelName: String, request: AiRuntimeRequest): MessageCountTokensParams {
+        val mapped = toCreateParams(modelName, request.copy(options = request.options.copy(
+            maxOutputTokens = generation.outputTokenLimit(request.options))))
+        val fields = Json.parseToJsonElement(com.anthropic.core.jsonMapper().writeValueAsString(mapped._body())).jsonObject
+        val body = com.anthropic.core.jsonMapper().readValue(JsonObject(fields.filterKeys {
+            it in setOf("model", "messages", "system", "tools", "tool_choice", "thinking", "output_config", "cache_control")
+        }).toString(), MessageCountTokensParams.Body::class.java)
+        return MessageCountTokensParams.builder().body(body).apply {
+            if (generation.behavior.anthropicThinkingPrefixDrop) putAdditionalHeader("anthropic-beta", AnthropicThinkingParameters.PREFIX_DROP_BETA)
+        }.build()
+    }
+
     fun toCreateParams(modelName: String, request: AiRuntimeRequest): MessageCreateParams {
         val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty())
+        val outputBudget = generation.requiredOutputTokens(request)
 
         val builder = MessageCreateParams.builder()
             .model(modelName)
-            .maxTokens((request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS).toLong())
+            .maxTokens(outputBudget.toLong())
 
         val systemPrompt = request.systemPrompts
             .filter { it.isNotBlank() }
@@ -289,7 +318,7 @@ internal class AnthropicSdkMessageMapper(
         }
 
         applyTools(builder, request.tools, request.options.toolChoice)
-        AnthropicThinkingParameters.create(reasoning, generation.behavior, request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS)
+        AnthropicThinkingParameters.create(reasoning, generation.behavior, outputBudget)
             ?.let(builder::thinking)
         if (generation.behavior.anthropicThinkingPrefixDrop) {
             builder.putAdditionalHeader("anthropic-beta", AnthropicThinkingParameters.PREFIX_DROP_BETA)
@@ -337,7 +366,7 @@ internal class AnthropicSdkMessageMapper(
         return AiRuntimeResponse(
             messages = assistantMessages,
             usage = usage,
-            contextUsage = AiContextUsage(usage.totalInputTokens),
+            contextUsage = contextUsage(message.usage()),
             finishReason = stopReason,
             outcome = outcome,
             providerMetadata = mapOf(
@@ -719,6 +748,19 @@ internal class AnthropicSdkMessageMapper(
         return items
     }
 
+    private fun contextUsage(usage: com.anthropic.models.messages.Usage): AiContextUsage? {
+        val raw = Json.parseToJsonElement(jsonMapper().writeValueAsString(usage)).jsonObject
+        val iterations = raw["iterations"] as? JsonArray
+        if (iterations == null) return toAiUsage(usage).let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) }
+        val last = iterations.map { it.jsonObject }.lastOrNull { it["type"]?.jsonPrimitive?.contentOrNull == "message" }
+            ?: return null
+        val input = last["input_tokens"]?.jsonPrimitive?.longOrNull ?: return null
+        val cacheRead = last["cache_read_input_tokens"]?.jsonPrimitive?.longOrNull ?: 0L
+        val cacheCreate = last["cache_creation_input_tokens"]?.jsonPrimitive?.longOrNull ?: 0L
+        return AiContextUsage(Math.toIntExact(input + cacheRead + cacheCreate),
+            last["output_tokens"]?.jsonPrimitive?.longOrNull?.let(Math::toIntExact))
+    }
+
     private fun toAiUsage(usage: com.anthropic.models.messages.Usage): AiUsage =
         AiUsage(
             promptTokens = usage.inputTokens().toIntClamped(),
@@ -772,7 +814,6 @@ internal class AnthropicSdkMessageMapper(
         coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
     companion object {
-        private const val DEFAULT_MAX_TOKENS = 8192
         private val ANTHROPIC_TEXT_DOCUMENT_TYPES = setOf(
             "application/json",
             "application/xml",

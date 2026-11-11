@@ -32,12 +32,26 @@ data class AiModelConfiguration(
     val requestedEmbeddingDimensions: Int? = null,
     val concurrencyGroupId: AiConcurrencyGroup.Id = AiConcurrencyGroup.DEFAULT_ID,
     val tpm: AiTpmPolicy? = null,
+    val compaction: Compaction = Compaction(),
 ) {
     init {
         require(providerModelId.isNotBlank()) { "AI provider model id must not be blank" }
         require(displayName.isNotBlank()) { "AI model configuration display name must not be blank" }
         require(requestedEmbeddingDimensions == null || requestedEmbeddingDimensions > 0) {
             "Requested AI embedding dimensions must be positive"
+        }
+    }
+
+    /** Blocking conversation compaction; percentages are an editor convenience, not stored policy. */
+    @Serializable
+    data class Compaction(
+        val thresholdTokens: Int? = null,
+        val summaryModelConfigurationId: Id? = null,
+    ) {
+        init {
+            require(thresholdTokens == null || thresholdTokens > 0) {
+                "AI compaction threshold must be positive"
+            }
         }
     }
 

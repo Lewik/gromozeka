@@ -97,6 +97,7 @@ data class ConversationRuntimeTask(
             val rootUserMessageId: Conversation.Message.Id,
             val agentDefinitionId: AgentDefinition.Id,
             val iteration: Int,
+            val afterCompaction: Boolean = false,
         ) : Payload {
             init {
                 require(iteration >= 1) { "Conversation LLM call iteration must be positive" }

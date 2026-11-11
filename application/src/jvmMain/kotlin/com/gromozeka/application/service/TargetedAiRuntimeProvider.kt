@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.IdentityRepository
@@ -72,6 +73,16 @@ class TargetedAiRuntimeProvider(
         override val capabilities: AiRuntimeCapabilities
             get() = delegate.capabilities
 
+        override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+            requireAiPermission(request)
+            return delegate.inspectContext(request)
+        }
+
+        override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
+            requireAiPermission(request)
+            return delegate.compact(request).also { usageRecorder.record(runtime, request, it) }
+        }
+
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
             requireAiPermission(request)
             return delegate.call(request).also { response -> usageRecorder.record(runtime, request, response) }
@@ -101,6 +112,16 @@ class TargetedAiRuntimeProvider(
         private val workerId: ConversationRuntimeWorkerId,
         override val capabilities: AiRuntimeCapabilities,
     ) : AiRuntime {
+        override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+            val target = workerTargetResolver.requireRegistered(workerId, ConversationRuntimeCapability.AI_REQUEST_RESPONSE)
+            return remoteClient().inspectContext(target, runtime, null, request.copy(messages = request.originalCollaborationMessages()))
+        }
+
+        override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
+            val target = workerTargetResolver.requireRegistered(workerId, ConversationRuntimeCapability.AI_REQUEST_RESPONSE)
+            return remoteClient().compact(target, runtime, null, request.copy(messages = request.originalCollaborationMessages()))
+        }
+
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
             // Normalize on Server too: an older Worker must not replay the UI correction
             // as if the provider had generated it. Reviewer sessions are explicitly isolated.

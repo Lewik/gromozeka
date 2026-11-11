@@ -209,6 +209,8 @@
     "ai.catalog.section.runtime": "Fungsi Gromozeka",
     "ai.catalog.section.specs": "Spesifikasi",
     "ai.catalog.title": "Katalog eksekusi AI",
+    "ai.compaction.summary_model": "Model ringkasan",
+    "ai.compaction.current_model": "Model saat ini (default)",
     "ai.compaction.disabled": "Dinonaktifkan",
     "ai.compaction.percent": "Persen",
     "ai.compaction.percent_field": "Persentase pemadatan",
@@ -402,7 +404,7 @@
     "ai.secret.source": "Sumber rahasia",
     "ai.secret.source.environment": "Lingkungan",
     "ai.secret.source.inline": "Input langsung",
-    "ai.spec.auto_compaction": "Pemadatan otomatis",
+    "ai.compaction.title": "Pemadatan otomatis",
     "ai.spec.capabilities": "Kemampuan",
     "ai.spec.context_window": "Jendela konteks",
     "ai.spec.default_dimensions": "Dimensi bawaan",
@@ -1445,7 +1447,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "Pemadatan otomatis: {count} token"
     },
-    "session.runtime.parameters.autoCompactionUnsupported": "Pemadatan otomatis: tidak didukung",
     "session.runtime.parameters.budget": "Anggaran: {count}",
     "session.runtime.parameters.effort": "Upaya: {effort}",
     "session.runtime.parameters.maxOutput": "Output maks.: {count}",

@@ -6,8 +6,7 @@
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 1000000,
-        "maxOutputTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "maxOutputTokens": 128000
       }
     },
     "reasoning": {
@@ -30,8 +29,7 @@
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 1000000,
-        "maxOutputTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "maxOutputTokens": 128000
       }
     },
     "reasoning": {
@@ -51,8 +49,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 1000000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 1000000
       }
     }
   },
@@ -62,8 +59,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 1000000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 1000000
       }
     }
   },
@@ -73,8 +69,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -84,8 +79,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -95,8 +89,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -106,8 +99,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -117,8 +109,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -128,8 +119,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -139,8 +129,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -150,8 +139,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -161,8 +149,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 1000000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 1000000
       }
     }
   },
@@ -172,8 +159,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 1000000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 1000000
       }
     }
   },
@@ -183,8 +169,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 200000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 200000
       }
     }
   },
@@ -194,8 +179,7 @@
     "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 1000000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 1000000
       }
     }
   },
@@ -205,8 +189,7 @@
     "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 2000000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 2000000
       }
     }
   },
@@ -216,8 +199,7 @@
     "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 1000000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 1000000
       }
     }
   },
@@ -227,8 +209,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 128000
       }
     }
   },
@@ -238,8 +219,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 128000
       }
     }
   },
@@ -249,8 +229,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 128000
       }
     }
   },
@@ -261,8 +240,7 @@
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 400000,
-        "maxOutputTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "maxOutputTokens": 128000
       }
     }
   },
@@ -273,8 +251,7 @@
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 400000,
-        "maxOutputTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "maxOutputTokens": 128000
       }
     }
   },
@@ -285,8 +262,7 @@
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 400000,
-        "maxOutputTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "maxOutputTokens": 128000
       }
     }
   },
@@ -296,8 +272,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 372000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 372000
       }
     }
   },
@@ -307,8 +282,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 372000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 372000
       }
     }
   },
@@ -318,8 +292,7 @@
     "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 372000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 372000
       }
     }
   },
@@ -330,8 +303,7 @@
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 272000,
-        "maxOutputTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "maxOutputTokens": 128000
       }
     }
   },
@@ -384,8 +356,7 @@
     "capabilities": ["TEXT_GENERATION"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 4096,
-        "autoCompaction": { "type": "percent", "value": 80 }
+        "contextWindowTokens": 4096
       }
     }
   }

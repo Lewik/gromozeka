@@ -28,7 +28,7 @@ class ConversationContextSnapshotServiceTest {
         for (block in listOf("catalog", "environment", "skills", "read-only-runtime")) assertContains(snapshot.request.systemPrompts, block)
         assertEquals(AiToolChoice.None, snapshot.request.options.toolChoice)
         assertEquals(ToolAccessPolicy.AllowOnly(), snapshot.request.options.toolAccess)
-        assertNull(snapshot.request.options.autoCompactionThresholdTokens)
+
         assertEquals(1, f.snapshotEnrichments)
         assertEquals(original, listOf(f.user, f.incompleteCall))
         Mockito.verify(f.history).getMessagesByThread(f.target.threadId)
@@ -268,7 +268,7 @@ class ConversationContextSnapshotServiceTest {
         assertNotEquals(f.conversation.id.value, sent.options.toolContext[TOOL_CONTEXT_CONVERSATION_ID])
         assertTrue(sent.tools.isEmpty())
         assertEquals(AiToolChoice.None, sent.options.toolChoice)
-        assertNull(sent.options.autoCompactionThresholdTokens)
+
         assertEquals(snapshot.request.systemPrompts.dropLast(1), f.capture().request.systemPrompts)
     }
 

@@ -873,7 +873,7 @@
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:92",
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1797"
     ],
-    "description": "Automatic context compaction is disabled for this model spec. This does not disable the AI connection, reasoning or manual summarization.",
+    "description": "Automatic compaction is disabled for this model configuration. Manual summarization remains available.",
     "args": []
   },
   "ai.compaction.percent": {
@@ -2375,13 +2375,6 @@
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1042"
     ],
     "description": "Display option for supplying the secret value directly. Inline means direct credential entry, not an inline XML response or a one-line layout. Preserve the backing Inline control-flow value.",
-    "args": []
-  },
-  "ai.spec.auto_compaction": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1786"
-    ],
-    "description": "Control selecting automatic context-condensation behavior for this model spec. It is not disk compression or a setting to compact the visual UI.",
     "args": []
   },
   "ai.spec.capabilities": {
@@ -11012,13 +11005,6 @@
       "count": 96000
     }
   },
-  "session.runtime.parameters.autoCompactionUnsupported": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt:676"
-    ],
-    "description": "Runtime indication that configured automatic context compaction is unsupported by this connection.",
-    "args": []
-  },
   "session.runtime.parameters.budget": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt:292"
@@ -16004,5 +15990,26 @@
   "ai.tpm.preset.CHARACTERS": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Serialized JSON characters TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []},
   "ai.tpm.preset.INPUT_ONLY": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Input text estimate TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []},
   "ai.tpm.preset.INPUT_PLUS_OUTPUT": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Input plus output reserve TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []},
-  "ai.tpm.preset.OPENAI_MAXIMUM": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Maximum of input and output reserve TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []}
+  "ai.tpm.preset.OPENAI_MAXIMUM": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Maximum of input and output reserve TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []},
+  "ai.compaction.summary_model": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Optional model configuration for text compaction, separate from the conversation model.",
+    "args": []
+  },
+  "ai.compaction.current_model": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Use the active agent model for summarization; the default without an override.",
+    "args": []
+  },
+  "ai.compaction.title": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1786"
+    ],
+    "description": "Blocking automatic compaction policy on a model configuration. Percentage input is converted to an absolute token threshold when saved.",
+    "args": []
+  }
 }

@@ -209,6 +209,8 @@
     "ai.catalog.section.runtime": "모델 할당",
     "ai.catalog.section.specs": "모델 사양",
     "ai.catalog.title": "AI 런타임 카탈로그",
+    "ai.compaction.summary_model": "요약 모델",
+    "ai.compaction.current_model": "현재 모델 (기본값)",
     "ai.compaction.disabled": "사용 안 함",
     "ai.compaction.percent": "비율",
     "ai.compaction.percent_field": "컨텍스트 압축 비율",
@@ -402,7 +404,7 @@
     "ai.secret.source": "인증 정보 출처",
     "ai.secret.source.environment": "환경 변수",
     "ai.secret.source.inline": "직접 입력",
-    "ai.spec.auto_compaction": "컨텍스트 자동 압축",
+    "ai.compaction.title": "컨텍스트 자동 압축",
     "ai.spec.capabilities": "지원 기능",
     "ai.spec.context_window": "컨텍스트 창",
     "ai.spec.default_dimensions": "기본 차원 수",
@@ -1445,7 +1447,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "자동 압축: {count}토큰"
     },
-    "session.runtime.parameters.autoCompactionUnsupported": "자동 압축: 지원 안 함",
     "session.runtime.parameters.budget": "예산: {count}",
     "session.runtime.parameters.effort": "추론 강도: {effort}",
     "session.runtime.parameters.maxOutput": "최대 출력: {count}",

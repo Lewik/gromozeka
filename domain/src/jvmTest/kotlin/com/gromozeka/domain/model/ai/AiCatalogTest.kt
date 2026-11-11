@@ -242,6 +242,31 @@ class AiCatalogTest {
         )
     }
 
+    @Test
+    fun validatesCompactionLimitsAndSummaryReferences() {
+        val catalog = testCatalog()
+        fun configured(policy: AiModelConfiguration.Compaction) = catalog.copy(modelConfigurations = catalog.modelConfigurations.map {
+            if (it.id == CHAT_CONFIGURATION_ID) it.copy(compaction = policy) else it
+        })
+        assertEquals(100_000, configured(AiModelConfiguration.Compaction(100_000)).modelConfigurations.first().compaction.thresholdTokens)
+        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(128_000)) }
+        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(200_000)) }
+        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(summaryModelConfigurationId = EMBEDDING_CONFIGURATION_ID)) }
+        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(summaryModelConfigurationId = AiModelConfiguration.Id("missing"))) }
+        assertFailsWith<IllegalArgumentException> { catalog.copy(modelConfigurations = catalog.modelConfigurations.map {
+            if (it.id == EMBEDDING_CONFIGURATION_ID) it.copy(compaction = AiModelConfiguration.Compaction(100)) else it
+        }) }
+        val second = catalog.modelConfigurations.first().copy(id = AiModelConfiguration.Id("summary"))
+        val withSummary = catalog.copy(modelConfigurations = catalog.modelConfigurations + second)
+        val used = withSummary.copy(modelConfigurations = withSummary.modelConfigurations.map {
+            if (it.id == CHAT_CONFIGURATION_ID) it.copy(compaction = AiModelConfiguration.Compaction(100_000, second.id)) else it
+        })
+        assertFailsWith<IllegalArgumentException> { used.copy(modelConfigurations = used.modelConfigurations.filterNot { it.id == second.id }) }
+        assertFailsWith<IllegalArgumentException> { used.copy(modelConfigurations = used.modelConfigurations.map {
+            if (it.id == second.id) it.copy(enabled = false) else it
+        }) }
+    }
+
     private fun testCatalog(connectionEnabled: Boolean = true): AiCatalog {
         val configurations = listOf(
             configuration(CHAT_CONFIGURATION_ID, "chat"),

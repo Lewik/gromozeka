@@ -163,6 +163,11 @@ class AiConnectionModelsServiceTest {
         override suspend fun requireOnline(workerId: ConversationRuntimeWorkerId, capability: ConversationRuntimeCapability): ConversationRuntimeWorkerIdentity = error("Use explicit registered executor")
     }
     private open class UnusedRemote : AiRequestResponseExecutionClient {
+        override suspend fun inspectContext(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity, runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
+        override suspend fun compact(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity, runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compact")
+
         override suspend fun listModels(target: ConversationRuntimeWorkerIdentity, connection: AiConnection, deadline: Instant, actorUserId: User.Id): AiConnectionModels = error("Unexpected remote listing")
         override suspend fun call(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse = error("No inference")
         override suspend fun embed(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime, request: AiEmbeddingRequest): AiEmbeddingResponse = error("Unused")

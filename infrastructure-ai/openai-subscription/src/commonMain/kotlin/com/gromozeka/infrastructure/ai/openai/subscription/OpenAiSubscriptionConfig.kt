@@ -61,8 +61,6 @@ data class OpenAiSubscriptionResponsesRequest(
     val instructions: String? = null,
     @SerialName("previous_response_id")
     val previousResponseId: String? = null,
-    @SerialName("context_management")
-    val contextManagement: List<JsonObject>? = null,
     @SerialName("parallel_tool_calls")
     val parallelToolCalls: Boolean = true,
     val tools: List<JsonObject>? = emptyList(),
@@ -87,8 +85,6 @@ data class OpenAiSubscriptionResponsesWebSocketRequest(
     val instructions: String? = null,
     @SerialName("previous_response_id")
     val previousResponseId: String? = null,
-    @SerialName("context_management")
-    val contextManagement: List<JsonObject>? = null,
     @SerialName("parallel_tool_calls")
     val parallelToolCalls: Boolean = true,
     val tools: List<JsonObject>? = emptyList(),
@@ -116,7 +112,6 @@ data class OpenAiSubscriptionResponsesWebSocketRequest(
                 stream = request.stream,
                 instructions = request.instructions,
                 previousResponseId = request.previousResponseId,
-                contextManagement = request.contextManagement,
                 parallelToolCalls = request.parallelToolCalls,
                 tools = request.tools,
                 toolChoice = request.toolChoice,

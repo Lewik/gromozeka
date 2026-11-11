@@ -31,7 +31,7 @@ class ConversationRuntimePanelTest {
             runtimeAutoCompactionLabel(AiConnection.Kind.OPENAI_SUBSCRIPTION, 180_000, translation),
         )
         assertEquals(
-            "Automatic compaction: unsupported",
+            "Automatic compaction: 180000 tokens",
             runtimeAutoCompactionLabel(AiConnection.Kind.ANTHROPIC_API, 180_000, translation),
         )
     }
