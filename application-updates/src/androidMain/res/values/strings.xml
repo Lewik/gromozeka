@@ -1,0 +1,21 @@
+<resources>
+    <string name="update_title">Gromozeka updates</string>
+    <string name="update_cancel_pending">Cancel pending confirmation</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_download">Download update</string>
+    <string name="update_install">Install update</string>
+    <string name="update_allow">Allow installation</string>
+    <string name="update_install_permission">Allow Gromozeka to install updates in Android settings</string>
+    <string name="update_confirm">Tap to confirm the update</string>
+    <string name="update_failed">Update installation failed</string>
+    <string name="update_connect_first">Connect to your server to check for updates</string>
+    <string name="update_automatic">Automatic updates</string>
+    <string name="update_available">Available: %1$s</string>
+    <string name="update_queued">Queued</string>
+    <string name="update_waiting">Waiting for active work to finish</string>
+    <string name="update_downloading">Downloading</string>
+    <string name="update_ready">Ready to install</string>
+    <string name="update_installing">Installing</string>
+    <string name="update_succeeded">Updated</string>
+    <string name="update_cancelled">Cancelled</string>
+</resources>

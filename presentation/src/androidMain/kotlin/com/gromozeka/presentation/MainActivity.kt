@@ -1,5 +1,13 @@
 package com.gromozeka.presentation
 
+import com.gromozeka.updates.*
+import com.gromozeka.domain.model.UpdateComponent
+import com.gromozeka.domain.model.UpdatePlatform
+import com.gromozeka.presentation.ui.ApplicationUpdateLauncher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -47,6 +55,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AndroidUpdateVisibility.register(application)
         val explicitRemoteUrl = intent.getStringExtra(EXTRA_REMOTE_URL)
         val metadata = packageManager
             .getApplicationInfo(packageName, PackageManager.GET_META_DATA)
@@ -134,6 +143,30 @@ private fun GromozekaAndroidApp(
     var authenticationError by remember { mutableStateOf<Throwable?>(null) }
     var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
     var authenticationConnection by remember { mutableStateOf<RemoteAuthenticationConnection?>(null) }
+    var updateAgent by remember { mutableStateOf<ApplicationUpdateAgent?>(null) }
+    fun connectUpdater(userId: String) {
+        updateAgent?.close()
+        val targetUrl = requireNotNull(remoteUrl)
+        val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+        updateAgent = ApplicationUpdateAgent(targetUrl, com.gromozeka.client.createGromozekaHttpClient(targetUrl, sessionCredentialStore), UpdateComponent.CLIENT, UpdatePlatform.ANDROID,
+            android.os.Build.MODEL, version,
+            UpdateLocalStore(File(context.noBackupFilesDir, "updates/${UpdateLocalStore.key("$targetUrl/$userId")}")),
+            AndroidUpdateInstaller(context, prepareUpdate = {
+                withContext(Dispatchers.Main) { currentRemoteApp?.components?.uiStateService?.forceSave() }
+                true
+            }), allowAutomaticInstall = { AndroidUpdateVisibility.background }, closeHttpClient = true,
+        ).also { AndroidUpdateActivity.agent = it; it.start(scope) }
+    }
+    DisposableEffect(Unit) {
+        ApplicationUpdateLauncher.open = {
+            context.startActivity(Intent(context, AndroidUpdateActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        onDispose {
+            ApplicationUpdateLauncher.open = null
+            AndroidUpdateActivity.agent = null
+            updateAgent?.close()
+        }
+    }
     val locationPermissionRequester = remember { ComposeLocationPermissionRequester() }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -157,6 +190,9 @@ private fun GromozekaAndroidApp(
         authenticationStatus = null
         remoteApp?.close()
         remoteApp = null
+        updateAgent?.close()
+        updateAgent = null
+        AndroidUpdateActivity.agent = null
         authenticationConnection?.close()
         try {
             val connection = RemoteAuthenticationConnection(
@@ -168,6 +204,7 @@ private fun GromozekaAndroidApp(
             val status = connection.status()
             authenticationStatus = status
             if (status.authenticatedUser != null) {
+                connectUpdater(status.authenticatedUser!!.id.value)
                 val app = createRemoteAppComponents(
                     remoteUrl = targetUrl,
                     authenticatedUser = requireNotNull(status.authenticatedUser),
@@ -193,6 +230,7 @@ private fun GromozekaAndroidApp(
             throw error
         } catch (error: Throwable) {
             startupError = error
+            if (updateAgent != null) context.startActivity(Intent(context, AndroidUpdateActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
         connecting = false
     }
@@ -236,6 +274,7 @@ private fun GromozekaAndroidApp(
                                 )
                                 val authenticatedStatus = connection.status()
                                 authenticationStatus = authenticatedStatus
+                                connectUpdater(requireNotNull(authenticatedStatus.authenticatedUser).id.value)
                                 val app = createRemoteAppComponents(
                                     remoteUrl = requireNotNull(remoteUrl),
                                     authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),

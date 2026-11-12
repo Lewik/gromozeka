@@ -87,7 +87,7 @@ internal class GromozekaRequestAuthenticationFilter(
                 when {
                     path == "/mcp" || path.startsWith("/mcp/") -> request.requireMcpCaller(authentication, tokens, settings, oauth, scripts)
                         .also { request.setAttribute(AUTHENTICATED_MCP_CALLER, it) }
-                    path == "/worker/ws" || path == "/api/worker/events" || path == "/api/worker/heartbeat" -> {
+                    path == "/worker/ws" || path == "/api/worker/events" || path == "/api/worker/heartbeat" || path.startsWith("/api/updates/v1/worker/") -> {
                         if (path != "/worker/ws" && !request.isSecureTransport(settings)) {
                             throw HttpAuthenticationException(HttpStatus.UPGRADE_REQUIRED, "Worker synchronization requires HTTPS")
                         }

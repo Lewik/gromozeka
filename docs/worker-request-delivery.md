@@ -240,7 +240,7 @@ invalid-bundle rejection. Managed-process tests verify that the first Python SDK
 cannot precede registration. MVC, permission, daily-reminder and isolated PostgreSQL tests
 cover scoped authentication, RPC retention, credential cleanup and no reissue after GC.
 
-Gateway protocol **27** and migration **V86** introduce registration and durable command
+Gateway protocol **27** and migration **V87** introduce registration and durable command
 SDK grants. Upgrade Server and Workers together. Commands launched before this update do
 not acquire SDK credentials retroactively; their existing process lifecycle is unchanged.
 

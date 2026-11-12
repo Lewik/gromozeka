@@ -25,7 +25,7 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
-/** Real PostgreSQL and the production V86 migration in an isolated minimal parent schema. */
+/** Real PostgreSQL and the production V87 migration in an isolated minimal parent schema. */
 @EnabledIfEnvironmentVariable(named = "GROMOZEKA_POSTGRES_RUNTIME_TEST", matches = "true")
 class PostgresCommandScriptGrantRepositoryTest {
     @Test fun `grant survives creating RPC retention but cannot be replaced or reissued after credential GC`() = runBlocking<Unit> {
@@ -151,7 +151,7 @@ class PostgresCommandScriptGrantRepositoryTest {
             sql.execute("""CREATE TABLE worker_requests(id VARCHAR(128) PRIMARY KEY,worker_id TEXT,actor_user_id TEXT,project_id TEXT,
                 dispatched_at TIMESTAMPTZ,execution_deadline TIMESTAMPTZ,cancel_requested_at TIMESTAMPTZ,completed_at TIMESTAMPTZ)""")
             sql.execute("CREATE TABLE background_activity_origins(kind TEXT,activity_id VARCHAR(128),record_json JSONB,PRIMARY KEY(kind,activity_id))")
-            val migration = checkNotNull(javaClass.getResourceAsStream("/db/migration/postgres/V86__command_script_grants.sql"))
+            val migration = checkNotNull(javaClass.getResourceAsStream("/db/migration/postgres/V87__command_script_grants.sql"))
                 .bufferedReader().use { it.readText() }
             sql.execute(migration)
             sql.update("INSERT INTO users VALUES ('user')")

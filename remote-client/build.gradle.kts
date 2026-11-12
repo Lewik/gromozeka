@@ -67,6 +67,7 @@ kotlin {
 
         val jvmTest by getting {
             dependencies {
+                implementation(project(":application-updates"))
                 implementation(libs.ktor.server.test.host)
                 implementation(libs.ktor.server.websockets)
             }

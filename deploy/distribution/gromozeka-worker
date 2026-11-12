@@ -2,6 +2,7 @@
 set -euo pipefail
 
 app_home="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+export GROMOZEKA_INSTALLATION_HOME="$app_home"
 export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$HOME/.gromozeka}"
 export GROMOZEKA_BROWSER_MCP_LAUNCHER="${GROMOZEKA_BROWSER_MCP_LAUNCHER:-$app_home/bin/gromozeka-browser-mcp}"
 export GROMOZEKA_BROWSER_MCP_HOME="${GROMOZEKA_BROWSER_MCP_HOME:-$app_home/app/browser-mcp}"

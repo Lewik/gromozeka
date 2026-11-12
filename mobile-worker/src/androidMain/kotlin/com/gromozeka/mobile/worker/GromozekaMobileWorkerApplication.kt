@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 class GromozekaMobileWorkerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.gromozeka.updates.AndroidUpdateVisibility.register(this)
+        AndroidWorkerApplicationUpdates.start(this)
         AndroidDiagnosticLogging.install(this, "mobile-worker.log")
         CoroutineScope(Dispatchers.IO).launch {
             runCatching { AndroidWorkerSoundOutput.recoverVolume(applicationContext) }

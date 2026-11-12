@@ -2,6 +2,12 @@ name: Worker cross-platform checks
 
 on:
   workflow_call:
+  workflow_dispatch:
+    inputs:
+      recovery_only:
+        description: Run only the independent Windows update recovery checks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -11,7 +17,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  verify-update-recovery:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Verify interrupted Windows client update recovery
+        shell: powershell
+        run: ./scripts/test-windows-updates.ps1
+
   verify:
+    if: inputs.recovery_only != true
     strategy:
       fail-fast: false
       matrix:
@@ -29,8 +45,9 @@ jobs:
         run: >
           ./gradlew
           :worker:assemble :server:assemble
-          :worker:test --tests '*JvmComputerUseControllerTest' --tests '*WorkerCommandScriptBootstrapServiceTest'
+          :worker:test --tests '*WorkerUpdatePreparationTest' --tests '*VisualWorkerRuntimeTest' --tests '*JvmComputerUseControllerTest' --tests '*WorkerCommandScriptBootstrapServiceTest'
           :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*LocalScriptSdkTest' --tests '*LocalScriptSdkTlsTest' --tests '*JsonSchemaGeneratorTest'
+          :application-updates:jvmTest
           :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
           :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest' --tests '*ManagedCommandScriptSdkTest' --tests '*CommandScriptHttpTest'
           -q

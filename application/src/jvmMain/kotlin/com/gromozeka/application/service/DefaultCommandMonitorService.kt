@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.service.WorkerUpdateParticipant
 import com.gromozeka.domain.slot.commandEnvironment
 
 import com.gromozeka.domain.model.BinaryContent
@@ -65,7 +66,7 @@ class DefaultCommandMonitorService(
     private val processRunner: CommandProcessRunner,
     private val runtimeState: CommandRuntimeStateService,
     private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
-) : CommandMonitorService {
+) : CommandMonitorService, WorkerUpdateParticipant {
     private val log = KLoggers.logger(this)
     private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
     private val workerId get() = runtimeWorkerDescriptor.getObject().id
@@ -74,6 +75,14 @@ class DefaultCommandMonitorService(
     private val activeMonitors = ConcurrentHashMap<CommandMonitor.Id, ActiveMonitor>()
     private val lifecycleMutex = Mutex()
     private val monitorMutexes = Array(MONITOR_MUTEX_STRIPES) { Mutex() }
+    private var updatePrepared = false
+
+    override suspend fun prepareForUpdate(): Boolean = lifecycleMutex.withLock {
+        if (!supervisor.isActive || activeMonitors.isNotEmpty()) false
+        else { updatePrepared = true; true }
+    }
+
+    override suspend fun resumeAfterUpdate() = lifecycleMutex.withLock { updatePrepared = false }
 
     @EventListener(ApplicationReadyEvent::class)
     fun recoverOnStartup() {
@@ -109,6 +118,7 @@ class DefaultCommandMonitorService(
             context.checkStartAllowed()
         }
         val activeMonitor = lifecycleMutex.withLock {
+            check(!updatePrepared && supervisor.isActive) { "Worker is stopping or updating; monitor was not started" }
             startGuard()
             val process = processRunner.start(
                 CommandProcessSpec(
@@ -289,6 +299,7 @@ class DefaultCommandMonitorService(
     }
 
     internal suspend fun recoverPersistedMonitors() = lifecycleMutex.withLock {
+        if (updatePrepared) return@withLock false
         inventoryLog.debug {
             "event=command_inventory_request scope=worker operation=monitors " +
                 "worker_id=${Json.encodeToString(workerId.value)} reason=startup_recovery"
@@ -308,13 +319,17 @@ class DefaultCommandMonitorService(
                     )
                 }
             }
+        true
     }
 
     private suspend fun recoverPersistedMonitorsWhenAvailable() {
         var consecutiveFailures = 0L
         while (currentCoroutineContext().isActive) {
             try {
-                recoverPersistedMonitors()
+                if (!recoverPersistedMonitors()) {
+                    delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                    continue
+                }
                 if (consecutiveFailures > 0) {
                     log.info {
                         "Command monitor recovery resumed after " +
