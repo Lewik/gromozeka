@@ -17,10 +17,13 @@ import kotlin.time.Instant
 
 /** Explicit OpenAI-compatible /models discovery, independent of the inference API and model catalog. */
 @Service
-class SdkConnectionModelsExecutor(private val settingsProvider: SettingsProvider) : AiConnectionModelsExecutor {
+class SdkConnectionModelsExecutor(
+    private val settingsProvider: SettingsProvider,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
+) : AiConnectionModelsExecutor {
     override suspend fun listModels(connection: AiConnection, deadline: Instant): AiConnectionModels {
         connection.requireGatewayModelListing()
-        val executor = SdkHttpCallExecutor(connection, timeoutSeconds = 30, maxAttempts = 1) { end ->
+        val executor = SdkHttpCallExecutor(connection, timeoutSeconds = 30, maxAttempts = 1, admission = admission) { end ->
             val settings = SdkHttpSupport.settings(connection)
             val baseUrl = requireNotNull((connection as AiConnection.HttpAiConnection).baseUrl)
             val token = SdkHttpSupport.token(connection, settingsProvider,
@@ -36,7 +39,7 @@ class SdkConnectionModelsExecutor(private val settingsProvider: SettingsProvider
             val transport = SdkHttpTransport(settings, baseUrl, end)
             SdkInferenceClient(ModelsClient(request, transport), transport) {}
         }
-        return executor.call(AiRuntimeOptions(executionDeadline = deadline)) { client, _ -> client.read() }
+        return executor.call(AiRuntimeOptions(executionDeadline = deadline, usagePurpose = "MODEL_DISCOVERY")) { client, _ -> client.read() }
     }
 
     private class ModelsClient(val request: Request, val transport: SdkHttpTransport) {

@@ -19,11 +19,9 @@ class AiHttpExecutionPolicyTest {
 
     @Test
     fun `HTTP limits round trip and invalid values fail instead of being clamped`() {
-        val settings = AiHttpSettings(maxConcurrentCalls = 7, maxAttempts = 4)
+        val settings = AiHttpSettings(maxAttempts = 4)
         assertEquals(settings, Json.decodeFromString<AiHttpSettings>(Json.encodeToString(settings)))
-        assertEquals(4, Json.decodeFromString<AiHttpSettings>("{}").maxConcurrentCalls)
         assertEquals(3, Json.decodeFromString<AiHttpSettings>("{}").maxAttempts)
-        for (value in listOf(0, -1, 65)) assertFailsWith<IllegalArgumentException> { AiHttpSettings(maxConcurrentCalls = value) }
         for (value in listOf(0, -1, 6)) assertFailsWith<IllegalArgumentException> { AiHttpSettings(maxAttempts = value) }
     }
 

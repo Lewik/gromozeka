@@ -9,12 +9,29 @@ import com.gromozeka.domain.tool.skills.ImportAgentSkillFromDirectoryTool
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_INITIAL_YIELD_MILLIS
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_TASK_WAIT_MILLIS
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class JsonSchemaGeneratorTest {
     private val objectMapper = jacksonObjectMapper().findAndRegisterModules()
     private val generator = JsonSchemaGenerator(objectMapper)
+
+    @Test
+    fun `command description length recommendation is prompt guidance not a fifty character limit`() {
+        val schema = objectMapper.readTree(generator.schemaFor(ExecuteCommandRequest::class))
+        val property = schema.path("properties").path("description")
+        assertTrue(property.path("description").textValue().contains("50 characters"))
+        assertTrue(property.path("description").textValue().contains("1000 characters"))
+        assertTrue(!property.has("maxLength"))
+        assertTrue(schema.path("required").none { it.textValue() == "description" })
+        for (description in listOf(null, "", "Run tests", "x".repeat(75), "x".repeat(1000), "😀".repeat(1000))) {
+            val request = ExecuteCommandRequest("echo original", description = description)
+            assertEquals(request, objectMapper.readValue(objectMapper.writeValueAsString(request), ExecuteCommandRequest::class.java))
+        }
+        assertEquals(null, objectMapper.readValue("""{"command":"echo original"}""", ExecuteCommandRequest::class.java).description)
+        assertFailsWith<IllegalArgumentException> { ExecuteCommandRequest("echo original", description = "x".repeat(1001)) }
+    }
 
     @Test
     fun `skill directory naming requirement is visible before import`() {

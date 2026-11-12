@@ -26,11 +26,11 @@ class AgentResponseReviewService(
         conversation: Conversation, input: List<Conversation.Message>, messages: List<Conversation.Message>): AgentResponseDraft? {
         if (conversation.externalChannel != null) return null
         val actor = task.actorUserId ?: return null
-        val endpoint = AgentEndpoint(conversation.id, conversation.currentThread, payload.agentDefinitionId)
-        val requests = collaboration.context(endpoint, actor).filter { it.isOpen }
+        val endpoint = AgentContextRef(conversation.id, conversation.currentThread, payload.agentDefinitionId)
+        val requests = collaboration.context(endpoint.address, actor).filter { it.isOpen }
         if (requests.isEmpty()) return null
-        val incoming = requests.filter { it.target == endpoint }
-        val outgoing = requests.filter { it.source == endpoint }
+        val incoming = requests.filter { it.target.address == endpoint.address }
+        val outgoing = requests.filter { it.source.address == endpoint.address }
         val waitable = outgoing.map { it.id } +
             coordinator.findCommandTasks(conversation.id).filter { !it.isTerminal && it.agentDefinitionId == endpoint.agentId }.map { it.id.value } +
             coordinator.findCommandMonitors(conversation.id).filter { !it.isTerminal && it.agentDefinitionId == endpoint.agentId }.map { it.id.value }
@@ -68,7 +68,7 @@ class AgentResponseReviewService(
                     role = Conversation.Message.Role.USER, content = listOf(ContentItem.UserMessage(data + correction)), createdAt = draft.createdAt,
                 )),
                 options = options.copy(
-                    maxOutputTokens = 6000, autoCompactionThresholdTokens = null,
+                    maxOutputTokens = 6000,
                     toolChoice = AiToolChoice.None, responseFormat = AiResponseFormat.JsonSchema("agent_response_decision", SCHEMA),
                     assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
                     usagePurpose = "AGENT_RESPONSE_REVIEW",
@@ -91,7 +91,7 @@ class AgentResponseReviewService(
 
     suspend fun apply(draft: AgentResponseDraft, activeTaskId: String, decision: AgentResponseDecision): Boolean {
         validate(decision, draft)
-        collaboration.authorize(draft.endpoint, draft.actorUserId)
+        collaboration.authorize(draft.endpoint.address, draft.actorUserId)
         val decisions = decision.requests.associateBy { it.requestId }
         val updated = draft.incoming.map { r ->
             val d = decisions.getValue(r.id)

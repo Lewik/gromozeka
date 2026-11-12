@@ -19,7 +19,7 @@ class RuntimeCatalogTemplateApplicationServiceTest {
         }
 
         assertEquals(272_000, spec.contextWindowTokens)
-        assertEquals(217_600, spec.autoCompactionThresholdTokens)
+        assertTrue(catalog.modelConfigurations.all { it.compaction == AiModelConfiguration.Compaction() })
     }
 
     @Test
@@ -40,7 +40,7 @@ class RuntimeCatalogTemplateApplicationServiceTest {
         val spec = catalog.modelSpecs.single { it.provider == AiProvider.ANTHROPIC && it.id == "claude-opus-5-5" }
         assertEquals(1_000_000, spec.contextWindowTokens)
         assertEquals(128_000, spec.maxOutputTokens)
-        assertEquals(800_000, spec.autoCompactionThresholdTokens)
+        assertTrue(catalog.modelConfigurations.all { it.compaction == AiModelConfiguration.Compaction() })
         assertEquals(setOf(AiReasoningMode.ADAPTIVE), spec.reasoning?.modes)
         assertEquals(AiReasoningEffort.entries.toSet(), spec.reasoning?.efforts)
         assertEquals(setOf(AiReasoningDisplay.SUMMARIZED, AiReasoningDisplay.OMITTED), spec.reasoning?.displays)
@@ -60,7 +60,7 @@ class RuntimeCatalogTemplateApplicationServiceTest {
 
         assertEquals(1_000_000, spec.contextWindowTokens)
         assertEquals(128_000, spec.maxOutputTokens)
-        assertEquals(800_000, spec.autoCompactionThresholdTokens)
+        assertTrue(catalog.modelConfigurations.all { it.compaction == AiModelConfiguration.Compaction() })
         assertEquals(setOf(AiReasoningMode.DISABLED, AiReasoningMode.ADAPTIVE), spec.reasoning?.modes)
         assertEquals(
             setOf(

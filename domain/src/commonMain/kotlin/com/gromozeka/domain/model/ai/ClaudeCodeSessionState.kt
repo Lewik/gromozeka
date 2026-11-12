@@ -18,6 +18,8 @@ data class ClaudeCodeSessionState(
     val lastUsedAt: Instant,
     val replayState: JsonObject? = null,
     val contextUsage: AiContextUsage? = null,
+    val requestOverheadEstimate: Int? = null,
+    val lastOutputTokens: Int? = null,
 ) {
     init {
         require(claudeSessionId.isNotBlank()) { "Claude Code session id must not be blank" }

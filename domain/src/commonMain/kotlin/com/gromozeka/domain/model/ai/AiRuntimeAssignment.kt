@@ -21,11 +21,6 @@ data class AiRuntimeAssignment(
             displayName = "Default chat",
             description = "Default model for newly created agents and normal chat unless an agent overrides it.",
         ),
-        MESSAGE_SQUASH(
-            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
-            displayName = "Message squash",
-            description = "Model used to summarize or compact chat messages.",
-        ),
         QUICK_TEXT_ACTION(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Quick text action",

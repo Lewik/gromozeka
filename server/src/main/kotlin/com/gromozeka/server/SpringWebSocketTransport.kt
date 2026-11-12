@@ -22,6 +22,7 @@ import org.springframework.beans.factory.DisposableBean
 import org.springframework.web.socket.BinaryMessage
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
+import org.springframework.web.socket.WebSocketMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.AbstractWebSocketHandler
 import java.util.concurrent.ConcurrentHashMap
@@ -46,6 +47,7 @@ internal interface ServerSocketConnection {
 }
 
 internal const val DEFAULT_WEBSOCKET_MESSAGE_BYTES = 16 * 1024 * 1024
+internal const val WEBSOCKET_RECEIVE_BUFFER_SIZE = 64 * 1024
 
 private fun ServerSocketMessage.exceedsLimit(maxBinaryMessageBytes: Int): Boolean =
     byteSize > when (this) {
@@ -69,6 +71,7 @@ internal class SpringSocketConnection(
     private val closeStatus = AtomicReference<CloseStatus?>()
     private val sendMutex = Mutex()
     private val incoming = Channel<ServerSocketMessage>(Channel.UNLIMITED)
+    private val assembler = WebSocketMessageAssembler(maxBinaryMessageBytes)
 
     init {
         require(sendTimeoutMillis > 0)
@@ -78,6 +81,12 @@ internal class SpringSocketConnection(
     fun accept(message: ServerSocketMessage): Boolean {
         if (closed.get() || message.exceedsLimit(maxBinaryMessageBytes)) return false
         return incoming.trySend(message).isSuccess
+    }
+
+    fun acceptFragment(message: WebSocketMessage<*>): Boolean = synchronized(assembler) {
+        if (closed.get()) return@synchronized false
+        val complete = assembler.accept(message) ?: return@synchronized true
+        incoming.trySend(complete).isSuccess
     }
 
     override suspend fun receive(): ServerSocketMessage? = incoming.receiveCatching().getOrNull()
@@ -123,7 +132,10 @@ internal class SpringSocketConnection(
 
     fun disconnect() {
         if (closed.compareAndSet(false, true)) {
-            incoming.cancel(CancellationException("WebSocket disconnected"))
+            synchronized(assembler) {
+                assembler.clear()
+                incoming.cancel(CancellationException("WebSocket disconnected"))
+            }
         }
     }
 
@@ -155,8 +167,8 @@ internal class CoroutineWebSocketHandler(
     override fun afterConnectionEstablished(session: WebSocketSession) {
         // Tomcat applies per-session limits before reading the next message. Keep container defaults
         // small: raising them allocates larger receive buffers for every connection, including UI.
-        session.binaryMessageSizeLimit = maxBinaryMessageBytes
-        session.textMessageSizeLimit = DEFAULT_WEBSOCKET_MESSAGE_BYTES
+        session.binaryMessageSizeLimit = WEBSOCKET_RECEIVE_BUFFER_SIZE
+        session.textMessageSizeLimit = WEBSOCKET_RECEIVE_BUFFER_SIZE
         val socket = SpringSocketConnection(session, maxBinaryMessageBytes = maxBinaryMessageBytes)
         lateinit var connection: Connection
         val job = scope.launch(start = CoroutineStart.LAZY) {
@@ -178,28 +190,22 @@ internal class CoroutineWebSocketHandler(
         job.start()
     }
 
-    override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
-        accept(session, ServerSocketMessage.Text(message.payload))
-    }
+    override fun supportsPartialMessages(): Boolean = true
+
+    override fun handleTextMessage(session: WebSocketSession, message: TextMessage) = accept(session, message)
 
     override fun handleBinaryMessage(session: WebSocketSession, message: BinaryMessage) {
-        val buffer = message.payload.asReadOnlyBuffer()
-        if (buffer.remaining() > maxBinaryMessageBytes) {
-            reject(session, 1009, "WebSocket message is too large")
-            return
-        }
-        val bytes = ByteArray(buffer.remaining()).also(buffer::get)
-        accept(session, ServerSocketMessage.Binary(bytes))
+        accept(session, message)
     }
 
-    private fun accept(session: WebSocketSession, message: ServerSocketMessage) {
-        if (message.exceedsLimit(maxBinaryMessageBytes)) {
-            reject(session, 1009, "WebSocket message is too large")
-            return
-        }
+    private fun accept(session: WebSocketSession, message: WebSocketMessage<*>) {
         val connection = connections[session.id] ?: return
-        if (!connection.socket.accept(message)) {
-            log.debug { "WebSocket message ignored after disconnect: ${session.diagnosticContext}" }
+        try {
+            if (!connection.socket.acceptFragment(message)) {
+                log.debug { "WebSocket message ignored after disconnect: ${session.diagnosticContext}" }
+            }
+        } catch (rejected: WebSocketMessageRejected) {
+            reject(session, rejected.code, rejected.message)
         }
     }
 

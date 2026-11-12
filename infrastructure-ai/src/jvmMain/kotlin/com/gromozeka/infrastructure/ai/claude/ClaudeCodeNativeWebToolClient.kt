@@ -33,6 +33,7 @@ internal class ClaudeCodeNativeWebToolClient(
         val runtime = resolveRuntime(tool)
         val invocation = ClaudeCodeNativeToolInvocation(tool, input)
         val command = ClaudeCodeCommand(
+            modelConfigurationId = runtime.configuration.id.value,
             connectionId = runtime.connection.id.value,
             executablePath = runtime.connection.executablePath,
             modelName = runtime.configuration.providerModelId,

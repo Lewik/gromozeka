@@ -194,6 +194,11 @@ class GatewayAiHttpExecutionTest {
     }
 
     private open class UnusedHandler : AiRequestResponseExecutionHandler {
+        override suspend fun inspectContext(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
+        override suspend fun compact(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compact")
+
         override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant):
             com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")
 

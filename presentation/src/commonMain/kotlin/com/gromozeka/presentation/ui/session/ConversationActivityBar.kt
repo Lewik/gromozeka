@@ -135,7 +135,7 @@ internal fun ConversationActivityBar(
     val percent = tokenStats?.takeIf { it.contextStatus != TokenUsageStatistics.ContextStatus.OUT_OF_RANGE }
         ?.let { stats -> stats.currentContextSize?.let { current -> stats.contextWindowTokens?.takeIf { it > 0 }?.let { limit -> (100L * current / limit).toInt().coerceIn(0, 100) } } }
     val commandHint = (listOf(translation.text("session.runtime.commandCount", "count" to commands.size)) +
-        commands.map { "${it.workerId.value}: ${it.command.lineSequence().first().take(160)}" }).joinToString("\n")
+        commands.map { "${it.workerId.value}: ${it.displayLabel.lineSequence().first().take(160)}" }).joinToString("\n")
     val monitorHint = (listOf(translation.text("session.runtime.monitorCount", "count" to monitors.size)) +
         monitors.map { "${it.workerId.value}: ${it.filterCommand.lineSequence().first().take(160)}" }).joinToString("\n")
 

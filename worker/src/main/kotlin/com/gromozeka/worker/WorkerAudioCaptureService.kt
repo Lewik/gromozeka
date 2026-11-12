@@ -191,6 +191,7 @@ internal interface WorkerAudioCaptureHandle {
 @Service
 internal class JvmWorkerAudioCaptureHandleFactory(
     private val claudeCodeVoiceTranscriptionService: ClaudeCodeVoiceTranscriptionService,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
     @param:Qualifier("applicationScope") private val scope: CoroutineScope,
 ) : WorkerAudioCaptureHandleFactory {
     override suspend fun prepare(
@@ -227,17 +228,28 @@ internal class JvmWorkerAudioCaptureHandleFactory(
                 require(target.workerId == request.target.workerId.value) {
                     "Claude Code microphone connection targets another Worker"
                 }
-                val session = claudeCodeVoiceTranscriptionService.startLocalMicrophone(
-                    command.connection,
-                    command.language,
-                )
+                val admitted = admission.openSession(command.connection, "SPEECH_TO_TEXT", command.sessionId)
+                val session = try {
+                    claudeCodeVoiceTranscriptionService.startLocalMicrophone(command.connection, command.language)
+                } catch (error: Throwable) {
+                    admitted.finish(com.gromozeka.domain.model.ai.AiAdmissionOutcome.FAILED)
+                    throw error
+                }
                 object : WorkerAudioCaptureHandle {
-                    override suspend fun stop(): WorkerAudioCaptureResult = WorkerAudioCaptureResult(
-                        status = WorkerAudioCaptureResult.Status.TRANSCRIBED,
-                        transcript = session.stop(),
-                    )
+                    override suspend fun stop(): WorkerAudioCaptureResult {
+                        val text = try { session.stop() } catch (error: Throwable) {
+                            withContext(NonCancellable) { session.cancel() }
+                            admitted.finish(com.gromozeka.domain.model.ai.AiAdmissionOutcome.FAILED)
+                            throw error
+                        }
+                        admitted.finish()
+                        return WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.TRANSCRIBED, transcript = text)
+                    }
 
-                    override suspend fun cancel() = session.cancel()
+                    override suspend fun cancel() = withContext(NonCancellable) {
+                        session.cancel()
+                        admitted.finish(com.gromozeka.domain.model.ai.AiAdmissionOutcome.CANCELLED)
+                    }
                 }
             }
             is WorkerAudioCaptureRequest.Command.Stop,

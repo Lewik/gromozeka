@@ -5,6 +5,8 @@ import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.presentation.services.translation.data.Translation
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -30,6 +32,11 @@ internal fun toolActivityCaption(
 ): String {
     val strings = translation.runtime
     val actionName = normalizedToolActionName(toolName)
+    if (actionName.isCommandTool()) {
+        val description = ((input as? JsonObject)?.get("description") as? JsonPrimitive)
+            ?.takeIf { it.isString }?.content?.takeIf(String::isNotBlank)
+        if (description != null) return description
+    }
     return when {
         actionName.isCommandTool() && input.isTestCommand() -> strings.runningTestsActivity
         actionName.isCommandTool() -> strings.runningCommandActivity

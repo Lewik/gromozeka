@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.safeToolOutputText
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -37,10 +38,11 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
         request: AiRuntimeRequest,
         session: OpenAiSubscriptionSession,
         conversationKey: String,
-        connectionId: String,
-        modelName: String,
+        configuration: AiModelConfiguration,
         enabled: Boolean,
     ): AiRuntimeResponse? {
+        val connectionId = configuration.connectionId.value
+        val modelName = configuration.providerModelId
         val pending = pendingCall(request.messages, connectionId, modelName) ?: return null
         val callId = requireNotNull(pending["call_id"]?.jsonPrimitive?.contentOrNull)
         var isError = false
@@ -49,7 +51,7 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
             "Web search is disabled by the current connection or tool access policy."
         } else {
             try {
-                client.search(session, conversationKey, buildJsonObject {
+                client.search(configuration, session, conversationKey, buildJsonObject {
                     put("id", conversationKey)
                     put("model", modelName)
                     put("commands", Json.parseOpenAiSubscriptionToolArguments(pending.getValue("arguments").jsonPrimitive.content))

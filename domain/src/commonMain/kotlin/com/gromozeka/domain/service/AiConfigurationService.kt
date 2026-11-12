@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiTpmGroup
+import com.gromozeka.domain.model.ai.AiConcurrencyGroup
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -57,6 +59,14 @@ interface AiConfigurationService : AiConfigurationProvider {
 }
 
 interface AiCatalogManagementService {
+    suspend fun upsertTpmGroup(group: AiTpmGroup, expectedRevision: Long): AiCatalogSnapshot
+
+    suspend fun deleteTpmGroup(groupId: AiTpmGroup.Id, expectedRevision: Long): AiCatalogSnapshot
+
+    suspend fun upsertConcurrencyGroup(group: AiConcurrencyGroup, expectedRevision: Long): AiCatalogSnapshot
+
+    suspend fun deleteConcurrencyGroup(groupId: AiConcurrencyGroup.Id, expectedRevision: Long): AiCatalogSnapshot
+
     suspend fun upsertConnection(
         connection: AiConnection,
         expectedRevision: Long,

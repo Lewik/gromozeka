@@ -21,7 +21,7 @@ class SdkConnectionModelsExecutorTest {
     fun `three gateway connection kinds use exact models prefix and preserve metadata without any model spec`() = runBlocking {
         for (kind in KINDS) for (suffix in listOf("", "/")) {
             SdkHttpTestServer(MODELS).use { server ->
-                val result = SdkConnectionModelsExecutor(Sources()).listModels(connection(kind, server.origin + "/api/llm" + suffix), deadline())
+                val result = SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection(kind, server.origin + "/api/llm" + suffix), deadline())
                 assertEquals(listOf(AiModelCandidate("account/exact-opaque-id", "model", 123, "account")), result.models)
                 val sent = server.requests.single()
                 assertEquals("GET", sent.method); assertEquals("/api/llm/models", sent.target); assertEquals("", sent.body)
@@ -37,7 +37,7 @@ class SdkConnectionModelsExecutorTest {
     @Test
     fun `disabled unsupported and implicit endpoints make no HTTP and do not read a secret`() = runBlocking {
         val source = Sources()
-        val executor = SdkConnectionModelsExecutor(source)
+        val executor = SdkConnectionModelsExecutor(source, admission = TestAiAdmission())
         SdkHttpTestServer(MODELS).use { server ->
             val configured = connection(AiConnection.Kind.OPENAI_API, server.origin) as AiConnection.OpenAiApi
             for (invalid in listOf(configured.copy(enabled = false), configured.copy(baseUrl = null),
@@ -55,7 +55,7 @@ class SdkConnectionModelsExecutorTest {
                 mapOf("Retry-After" to "0", "Location" to "/other-models", "x-tfy-resolved-model" to "private-discovery-header"))
             SdkHttpTestServer(listOf(reply)).use { server ->
                 val error = assertFailsWith<AiCallException> {
-                    SdkConnectionModelsExecutor(Sources()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline())
+                    SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline())
                 }
                 assertEquals(status, error.failure.httpStatus); assertEquals(1, error.failure.attempts)
                 assertEquals(when (status) { 401 -> AiCallFailure.Kind.AUTHENTICATION; 403 -> AiCallFailure.Kind.ACCESS_DENIED;
@@ -77,18 +77,18 @@ class SdkConnectionModelsExecutorTest {
             """{"object":"list","data":[],"has_more":true}""", "x".repeat(4 * 1024 * 1024 + 1))
         for (body in bodies) SdkHttpTestServer(body).use { server ->
             val error = assertFailsWith<AiCallException> {
-                SdkConnectionModelsExecutor(Sources()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline())
+                SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline())
             }
             assertEquals(AiCallFailure.Kind.INVALID_RESPONSE, error.failure.kind)
             assertEquals(1, error.failure.attempts); assertEquals(1, server.requests.size)
             assertFalse(error.stackTraceToString().contains("private-discovery-invalid"))
         }
         SdkHttpTestServer("""{"object":"list","data":[{"id":" provider/custom-id "}],"has_more":false}""").use { server ->
-            val result = SdkConnectionModelsExecutor(Sources()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline())
+            val result = SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline())
             assertEquals(AiModelCandidate(" provider/custom-id "), result.models.single())
         }
         SdkHttpTestServer("""{"object":"list","data":[]}""").use { server ->
-            assertTrue(SdkConnectionModelsExecutor(Sources()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline()).models.isEmpty())
+            assertTrue(SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin), deadline()).models.isEmpty())
         }
     }
 
@@ -99,7 +99,7 @@ class SdkConnectionModelsExecutorTest {
             Files.writeString(file, TOKEN)
             SdkHttpTestServer(MODELS, MODELS).use { server ->
                 val source = Sources { Files.readString(file) }
-                val executor = SdkConnectionModelsExecutor(source)
+                val executor = SdkConnectionModelsExecutor(source, admission = TestAiAdmission())
                 val connection = (connection(AiConnection.Kind.ANTHROPIC_API, server.origin) as AiConnection.AnthropicApi)
                     .copy(apiKey = SecretRef.File(file.toString()), httpSettings = settings().copy(authentication = AiHttpSettings.Authentication.PROVIDER_DEFAULT))
                 executor.listModels(connection, deadline())
@@ -122,9 +122,9 @@ class SdkConnectionModelsExecutorTest {
             SdkHttpTestServer(listOf(SdkHttpTestServer.Reply(MODELS)), identity.context).use { server ->
                 val connection = (connection(AiConnection.Kind.OPENAI_API, server.origin) as AiConnection.OpenAiApi)
                     .copy(httpSettings = settings().copy(caBundlePath = identity.caBundle.toString()))
-                assertEquals(1, SdkConnectionModelsExecutor(Sources()).listModels(connection, deadline()).models.size)
+                assertEquals(1, SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection, deadline()).models.size)
                 assertEquals(AiCallFailure.Kind.TLS, assertFailsWith<AiCallException> {
-                    SdkConnectionModelsExecutor(Sources()).listModels(connection.copy(httpSettings = settings()), deadline())
+                    SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection.copy(httpSettings = settings()), deadline())
                 }.failure.kind)
                 assertEquals(1, server.requests.size)
             }
@@ -132,7 +132,7 @@ class SdkConnectionModelsExecutorTest {
         SdkHttpTestServer(MODELS).use { proxy ->
             val connection = (connection(AiConnection.Kind.OPENAI_API, "http://models.invalid/api/llm") as AiConnection.OpenAiApi)
                 .copy(httpSettings = settings().copy(proxyUrl = proxy.origin, noProxy = emptyList()))
-            SdkConnectionModelsExecutor(Sources()).listModels(connection, deadline())
+            SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection, deadline())
             assertEquals("http://models.invalid/api/llm/models", proxy.requests.single().target)
         }
     }
@@ -141,7 +141,7 @@ class SdkConnectionModelsExecutorTest {
     fun `cancellation and deadline close a real GET socket while reading its body`() = runBlocking {
         for (expire in listOf(false, true)) StalledServer(true).use { server ->
             val result = async(Dispatchers.Default) {
-                try { SdkConnectionModelsExecutor(Sources()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin),
+                try { SdkConnectionModelsExecutor(Sources(), admission = TestAiAdmission()).listModels(connection(AiConnection.Kind.OPENAI_API, server.origin),
                     if (expire) Clock.System.now() + 500.milliseconds else deadline()); null }
                 catch (error: AiCallException) { error.failure }
             }
@@ -156,21 +156,21 @@ class SdkConnectionModelsExecutorTest {
     @Test
     fun `models inspection shares the inference gate and expired queueing starts no GET`() = runBlocking {
         SdkHttpTestServer(MODELS).use { server ->
-            val connection = (connection(AiConnection.Kind.OPENAI_API, server.origin) as AiConnection.OpenAiApi)
-                .copy(httpSettings = settings().copy(maxConcurrentCalls = 1))
+            val connection = connection(AiConnection.Kind.OPENAI_API, server.origin)
+            val admission = TestAiAdmission(1)
             val source = Sources()
             val entered = CompletableDeferred<Unit>()
-            val inference = SdkHttpCallExecutor(connection, 5) { OpenAiSdkClientFactory(source).createInferenceClient(connection, it) }
+            val inference = SdkHttpCallExecutor(connection, 5, admission = admission) { OpenAiSdkClientFactory(source).createInferenceClient(connection, it) }
             val held = launch(Dispatchers.Default) { inference.call<Unit>(AiRuntimeOptions()) { _, _ -> entered.complete(Unit); CompletableFuture<Unit>() } }
             try {
                 entered.await()
                 val error = assertFailsWith<AiCallException> {
-                    SdkConnectionModelsExecutor(source).listModels(connection, Clock.System.now() + 100.milliseconds)
+                    SdkConnectionModelsExecutor(source, admission = admission).listModels(connection, Clock.System.now() + 100.milliseconds)
                 }
                 assertEquals(AiCallFailure.Outcome.NOT_STARTED, error.failure.outcome); assertEquals(0, error.failure.attempts)
                 assertTrue(server.requests.isEmpty()); assertEquals(1, source.reads.get())
             } finally { held.cancelAndJoin() }
-            SdkConnectionModelsExecutor(source).listModels(connection, deadline())
+            SdkConnectionModelsExecutor(source, admission = admission).listModels(connection, deadline())
             assertEquals(1, server.requests.size)
         }
     }

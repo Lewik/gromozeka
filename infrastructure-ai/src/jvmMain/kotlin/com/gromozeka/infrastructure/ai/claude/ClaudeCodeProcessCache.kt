@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.domain.model.ai.AiConnection
+
 import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpProcess
 import com.gromozeka.domain.model.Conversation
 
@@ -51,6 +53,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 internal class ProcessClaudeCodeCliExecutor(
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
     private val executableOverride: String? = null,
     processFactory: ClaudeCodeCliProcessFactory = DefaultClaudeCodeCliProcessFactory(),
     nanoTime: () -> Long = System::nanoTime,
@@ -76,23 +79,10 @@ internal class ProcessClaudeCodeCliExecutor(
         return try {
             if (effectiveCommand.noSessionPersistence || effectiveCommand.cacheKey == null) {
                 val process = processCache.startUncached(effectiveCommand)
-                try {
-                    block(boundExecutor(process, command))
-                } finally {
-                    withContext(NonCancellable) {
-                        process.close()
-                    }
-                }
+                withAdmittedSession(process, command, { process.close() }, block)
             } else {
                 val lease = processCache.acquire(effectiveCommand)
-                var succeeded = false
-                try {
-                    block(boundExecutor(lease.process, command)).also { succeeded = true }
-                } finally {
-                    withContext(NonCancellable) {
-                        processCache.release(lease, succeeded)
-                    }
-                }
+                withAdmittedSession(lease.process, command, { succeeded -> processCache.release(lease, succeeded) }, block)
             }
         } catch (error: CancellationException) {
             throw error
@@ -103,6 +93,31 @@ internal class ProcessClaudeCodeCliExecutor(
                     "message=${error.message?.redactedDiagnosticPreview()}"
             }
             throw error
+        }
+    }
+
+    private suspend fun <T> withAdmittedSession(
+        process: ClaudeCodeCliProcess,
+        command: ClaudeCodeCommand,
+        release: suspend (Boolean) -> Unit,
+        block: suspend (ClaudeCodeCliExecutor) -> T,
+    ): T {
+        var entered = false
+        try {
+            return admission.execute(
+                com.gromozeka.domain.model.ai.AiAdmissionTarget.ModelConfiguration(
+                    com.gromozeka.domain.model.ai.AiModelConfiguration.Id(command.modelConfigurationId), AiConnection.Id(command.connectionId)), "CLAUDE_CODE",
+            ) {
+                entered = true
+                var succeeded = false
+                try {
+                    block(boundExecutor(process, command)).also { succeeded = true }
+                } finally {
+                    withContext(NonCancellable) { release(succeeded) }
+                }
+            }
+        } finally {
+            if (!entered) withContext(NonCancellable) { release(false) }
         }
     }
 
@@ -135,12 +150,15 @@ internal class ProcessClaudeCodeCliExecutor(
             "Claude Code native tool command must expose only ${invocation.tool.cliName}"
         }
 
-        val process = processCache.startUncached(effectiveCommand)
-        return try {
-            process.executeNativeTool(effectiveCommand.userPrompt, invocation)
-        } finally {
-            withContext(NonCancellable) {
-                process.close()
+        return admission.execute(
+            com.gromozeka.domain.model.ai.AiAdmissionTarget.ModelConfiguration(
+                    com.gromozeka.domain.model.ai.AiModelConfiguration.Id(command.modelConfigurationId), AiConnection.Id(command.connectionId)), "CLAUDE_CODE_WEB",
+        ) {
+            val process = processCache.startUncached(effectiveCommand)
+            try {
+                process.executeNativeTool(effectiveCommand.userPrompt, invocation)
+            } finally {
+                withContext(NonCancellable) { process.close() }
             }
         }
     }

@@ -7,6 +7,6 @@ interface ConversationCompactionRepository {
         expectedThreadId: Conversation.Thread.Id,
         compactionMessage: Conversation.Message,
         newThread: Conversation.Thread,
-        newLinks: List<ThreadMessageLink>,
+        insertionAnchorId: Conversation.Message.Id,
     ): Boolean
 }

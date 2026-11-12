@@ -1,5 +1,22 @@
 package com.gromozeka.server
 
+import com.gromozeka.application.service.ConversationPinApplicationService
+import com.gromozeka.domain.model.AuthenticatedUser
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserSession
+import com.gromozeka.domain.service.AuthenticationService
+import com.gromozeka.remote.protocol.ClientInstanceId
+import com.gromozeka.remote.protocol.ClientSessionId
+import com.gromozeka.remote.protocol.GromozekaClientEnvelope
+import com.gromozeka.remote.protocol.ListConversationPinsRequest
+import com.gromozeka.remote.protocol.RegisterClientSessionCommand
+import com.gromozeka.remote.protocol.RemoteClientPlatform
+import com.gromozeka.remote.protocol.RemoteProtocolCodec
+import kotlin.coroutines.Continuation
+import kotlin.time.Instant
+import kotlinx.coroutines.Job
+
 import com.gromozeka.remote.protocol.MAX_WORKER_GATEWAY_MESSAGE_BYTES
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
@@ -11,6 +28,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Test
@@ -44,6 +62,83 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class SpringWebSocketTransportTest {
+    @Test
+    fun `remote session unregisters after disconnect with a completed or cancelled concurrent request`() = runBlocking<Unit> {
+        val user = User(
+            id = User.Id("cleanup-user"),
+            identities = emptyList(),
+            displayName = "Cleanup user",
+            status = User.Status.ACTIVE,
+            role = User.Role.OWNER,
+            createdAt = Instant.fromEpochMilliseconds(1),
+            updatedAt = Instant.fromEpochMilliseconds(1),
+        )
+        val principal = AuthenticatedUser(user, UserSession.Id("cleanup-session"))
+        val authenticated = AuthenticatedRemoteSession("cleanup-token", principal)
+        for ((blockedRequest, failedCleanup) in listOf(false to false, true to false, false to true)) {
+            val registry = ClientPresentationRegistry()
+            val authentication = mock(AuthenticationService::class.java)
+            `when`(authentication.authenticate(authenticated.token)).thenReturn(principal)
+            val pins = mock(ConversationPinApplicationService::class.java)
+            val conversationId = Conversation.Id("cleanup-conversation")
+            val requestJob = CompletableDeferred<Job>()
+            `when`(pins.list(user.id, conversationId)).thenAnswer { invocation ->
+                val continuation = invocation.rawArguments.last() as Continuation<*>
+                requestJob.complete(checkNotNull(continuation.context[Job]))
+                emptyList<Any>()
+            }
+            val interpreter = mock(LiveInterpreterApplicationService::class.java)
+            `when`(interpreter.stopOwnedBy(any() ?: LiveInterpreterSessionOwner(user.id, "unused"))).thenAnswer {
+                if (failedCleanup) throw IllegalStateException("CLEANUP_FAILURE")
+                0
+            }
+            val speechCapture = mock(SpeechCaptureApplicationService::class.java)
+            val speechStopped = CompletableDeferred<Unit>()
+            `when`(speechCapture.stopOwnedBy(any() ?: SpeechCaptureSessionOwner(user.id, "unused"))).thenAnswer {
+                speechStopped.complete(Unit)
+                0
+            }
+            val dependencies = mapOf<Class<*>, Any>(
+                ClientPresentationRegistry::class.java to registry,
+                AuthenticationService::class.java to authentication,
+                ConversationPinApplicationService::class.java to pins,
+                LiveInterpreterApplicationService::class.java to interpreter,
+                SpeechCaptureApplicationService::class.java to speechCapture,
+            )
+            val constructor = GromozekaRemoteServer::class.java.constructors.single()
+            val server = constructor.newInstance(*constructor.parameterTypes.map { dependencies[it] ?: mock(it) }.toTypedArray()) as GromozekaRemoteServer
+            val fixture = SocketFixture()
+            val response = CompletableDeferred<Unit>()
+            fixture.send = {
+                response.complete(Unit)
+                if (blockedRequest) Thread.sleep(30_000)
+            }
+            val handler = CoroutineWebSocketHandler { connection, _ -> server.handle(connection, authenticated) }
+            try {
+                handler.afterConnectionEstablished(fixture.session)
+                val register = RegisterClientSessionCommand(
+                    clientInstanceId = ClientInstanceId("cleanup-client"),
+                    clientSessionId = ClientSessionId("cleanup-client-session"),
+                    platform = RemoteClientPlatform.DESKTOP,
+                )
+                for (payload in listOf(register, ListConversationPinsRequest(conversationId))) {
+                    handler.handleMessage(fixture.session, TextMessage(RemoteProtocolCodec.encodeClientText(
+                        GromozekaClientEnvelope("cleanup-request", payload),
+                    )))
+                }
+                withTimeout(5_000) { response.await() }
+                if (!blockedRequest) withTimeout(5_000) { requestJob.await().join() }
+                assertEquals(setOf("cleanup-client"), registry.registeredClientIds(user.id))
+                fixture.open.set(false)
+                handler.afterConnectionClosed(fixture.session, CloseStatus.NORMAL)
+                withTimeout(5_000) {
+                    while (registry.registeredClientIds(user.id).isNotEmpty()) delay(10)
+                    speechStopped.await()
+                }
+            } finally { handler.destroy() }
+        }
+    }
+
     @Test
     fun `incoming text and binary preserve exact values and order`() = runBlocking<Unit> {
         val fixture = SocketFixture()
@@ -280,8 +375,9 @@ class SpringWebSocketTransportTest {
             }
             try {
                 handler.afterConnectionEstablished(fixture.session)
-                verify(fixture.session).setBinaryMessageSizeLimit(limit)
-                verify(fixture.session).setTextMessageSizeLimit(DEFAULT_WEBSOCKET_MESSAGE_BYTES)
+                assertTrue(handler.supportsPartialMessages())
+                verify(fixture.session).setBinaryMessageSizeLimit(WEBSOCKET_RECEIVE_BUFFER_SIZE)
+                verify(fixture.session).setTextMessageSizeLimit(WEBSOCKET_RECEIVE_BUFFER_SIZE)
                 handler.handleMessage(fixture.session, BinaryMessage(bytes))
                 val status = withTimeout(5_000) { fixture.closed.await() }
                 if (limit == DEFAULT_WEBSOCKET_MESSAGE_BYTES) {
@@ -310,17 +406,60 @@ class SpringWebSocketTransportTest {
         try {
             configuration.registerWebSocketHandlers(registry)
             assertEquals(setOf("/ws", "/worker/ws"), handlers.keys)
-            for ((path, expected) in listOf("/ws" to DEFAULT_WEBSOCKET_MESSAGE_BYTES, "/worker/ws" to MAX_WORKER_GATEWAY_MESSAGE_BYTES)) {
+            for (path in listOf("/ws", "/worker/ws")) {
                 val fixture = SocketFixture()
                 `when`(fixture.session.attributes).thenReturn(mutableMapOf(
                     AUTHENTICATED_REMOTE_SESSION to mock(AuthenticatedRemoteSession::class.java),
                     AUTHENTICATED_WORKER_GATEWAY to mock(AuthenticatedWorkerGateway::class.java),
                 ))
                 handlers.getValue(path).afterConnectionEstablished(fixture.session)
-                verify(fixture.session).setBinaryMessageSizeLimit(expected)
-                verify(fixture.session).setTextMessageSizeLimit(DEFAULT_WEBSOCKET_MESSAGE_BYTES)
+                assertTrue(handlers.getValue(path).supportsPartialMessages())
+                verify(fixture.session).setBinaryMessageSizeLimit(WEBSOCKET_RECEIVE_BUFFER_SIZE)
+                verify(fixture.session).setTextMessageSizeLimit(WEBSOCKET_RECEIVE_BUFFER_SIZE)
             }
         } finally { configuration.destroy() }
+    }
+
+    @Test
+    fun `fragments become one complete message and reset before the next message`() = runBlocking<Unit> {
+        val connection = SpringSocketConnection(SocketFixture().session)
+        assertTrue(connection.acceptFragment(BinaryMessage(byteArrayOf(0, -1), false)))
+        repeat(10) { assertTrue(connection.acceptFragment(BinaryMessage(byteArrayOf(), false))) }
+        assertTrue(connection.acceptFragment(BinaryMessage(byteArrayOf(2), true)))
+        assertContentEquals(byteArrayOf(0, -1, 2), (connection.receive() as ServerSocketMessage.Binary).bytes)
+        assertTrue(connection.acceptFragment(TextMessage("שלום \uD83D", false)))
+        assertTrue(connection.acceptFragment(TextMessage("", false)))
+        assertTrue(connection.acceptFragment(TextMessage("\uDE42", true)))
+        assertEquals("שלום 🙂", (connection.receive() as ServerSocketMessage.Text).text)
+        assertTrue(connection.acceptFragment(BinaryMessage(byteArrayOf(), true)))
+        assertContentEquals(byteArrayOf(), (connection.receive() as ServerSocketMessage.Binary).bytes)
+        connection.close()
+    }
+
+    @Test
+    fun `aggregate fragment budgets and invalid type changes reject the connection`() = runBlocking<Unit> {
+        for (typeChange in listOf(false, true)) {
+            val fixture = SocketFixture()
+            val handler = CoroutineWebSocketHandler(maxBinaryMessageBytes = 8) { socket, _ ->
+                assertNull(socket.receive())
+            }
+            try {
+                handler.afterConnectionEstablished(fixture.session)
+                handler.handleMessage(fixture.session, BinaryMessage(ByteArray(4), false))
+                handler.handleMessage(fixture.session, if (typeChange) TextMessage("a", true) else BinaryMessage(ByteArray(5), true))
+                assertEquals(if (typeChange) 1002 else 1009, withTimeout(5_000) { fixture.closed.await() }.code)
+            } finally { handler.destroy() }
+        }
+    }
+
+    @Test
+    fun `text fragments enforce the complete UTF8 budget including split surrogate pairs`() {
+        val assembler = WebSocketMessageAssembler(MAX_WORKER_GATEWAY_MESSAGE_BYTES)
+        assertNull(assembler.accept(TextMessage("a".repeat(DEFAULT_WEBSOCKET_MESSAGE_BYTES - 4) + "\uD83D", false)))
+        assertEquals(DEFAULT_WEBSOCKET_MESSAGE_BYTES, checkNotNull(assembler.accept(TextMessage("\uDE42", true))).byteSize)
+        assertNull(assembler.accept(TextMessage("é".repeat(DEFAULT_WEBSOCKET_MESSAGE_BYTES / 2), false)))
+        assertEquals(1009, assertFailsWith<WebSocketMessageRejected> { assembler.accept(TextMessage("a", true)) }.code)
+        assertEquals(ServerSocketMessage.Text("new"), assembler.accept(TextMessage("new")))
     }
 
     @Test

@@ -7,6 +7,9 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiTpmGroup
+import com.gromozeka.domain.model.ai.AiTpmGroupSelector
+import com.gromozeka.domain.model.ai.AiConcurrencyGroup
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -82,6 +85,37 @@ class AiConfigurationApplicationService(
         if (repository.findRevision() != current.revision) {
             reload()
         }
+    }
+
+    override suspend fun upsertTpmGroup(group: AiTpmGroup, expectedRevision: Long): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        catalog.copy(tpmGroups = catalog.tpmGroups.upsertBy(group, AiTpmGroup::id))
+    }
+
+    override suspend fun deleteTpmGroup(groupId: AiTpmGroup.Id, expectedRevision: Long): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        require(catalog.tpmGroups.any { it.id == groupId }) { "TPM group is unavailable" }
+        require(catalog.modelConfigurations.none { configuration -> configuration.tpm?.let {
+            (it.group as? AiTpmGroupSelector.Fixed)?.groupId == groupId || it.fallbackGroupId == groupId
+        } == true }) { "TPM group is referenced by a model configuration" }
+        catalog.copy(tpmGroups = catalog.tpmGroups.filterNot { it.id == groupId })
+    }
+
+    override suspend fun upsertConcurrencyGroup(
+        group: AiConcurrencyGroup,
+        expectedRevision: Long,
+    ): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        catalog.copy(concurrencyGroups = catalog.concurrencyGroups.upsertBy(group, AiConcurrencyGroup::id))
+    }
+
+    override suspend fun deleteConcurrencyGroup(
+        groupId: AiConcurrencyGroup.Id,
+        expectedRevision: Long,
+    ): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        require(groupId != AiConcurrencyGroup.DEFAULT_ID) { "The default AI concurrency group cannot be deleted" }
+        require(catalog.concurrencyGroups.any { it.id == groupId }) { "AI concurrency group not found: ${groupId.value}" }
+        require(catalog.modelConfigurations.none { it.concurrencyGroupId == groupId }) {
+            "AI concurrency group is referenced by a model configuration: ${groupId.value}"
+        }
+        catalog.copy(concurrencyGroups = catalog.concurrencyGroups.filterNot { it.id == groupId })
     }
 
     override suspend fun upsertConnection(

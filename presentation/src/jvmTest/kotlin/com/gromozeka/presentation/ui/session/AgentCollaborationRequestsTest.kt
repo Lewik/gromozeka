@@ -12,8 +12,8 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalTestApi::class)
 class AgentCollaborationRequestsTest {
-    private val a = AgentEndpoint(Conversation.Id("a"), Conversation.Thread.Id("ta"), AgentDefinition.Id("A"))
-    private val b = AgentEndpoint(Conversation.Id("b"), Conversation.Thread.Id("tb"), AgentDefinition.Id("B"))
+    private val a = AgentContextRef(Conversation.Id("a"), Conversation.Thread.Id("ta"), AgentDefinition.Id("A"))
+    private val b = AgentContextRef(Conversation.Id("b"), Conversation.Thread.Id("tb"), AgentDefinition.Id("B"))
     private val request = AgentRequest("r", a, b, User.Id("u"), "Synthetic delegated work", Instant.fromEpochMilliseconds(1))
     @Test fun waitingRequestRemainsVisibleWhileConversationIsIdle() = runDesktopComposeUiTest {
         setContent { GromozekaTheme { AgentCollaborationRequests(listOf(request.copy(state = AgentRequest.State.WAITING_USER)), b.conversationId) } }

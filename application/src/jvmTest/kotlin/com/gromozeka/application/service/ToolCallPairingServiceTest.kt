@@ -12,6 +12,15 @@ import kotlin.time.Clock
 
 class ToolCallPairingServiceTest {
     @Test
+    fun `text never legitimizes a tool-call outcome without calls`() {
+        val response = AiRuntimeResponse(listOf(AiAssistantMessage(listOf(
+            Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("ALPHA-74"))))),
+            outcome = AiStepOutcome.TOOL_CALLS, finishReason = "tool_calls")
+        val error = kotlin.test.assertFailsWith<IllegalArgumentException> { AiConversationMessageMapper.prepareResponse(response) }
+        assertEquals("Tool-call outcome without tool calls", error.message)
+    }
+
+    @Test
     fun `provider managed calls stay separate from application calls during persistence`() {
         val providerCall = Conversation.Message.ContentItem.ToolCall(
             Conversation.Message.ContentItem.ToolCall.Id("web"),

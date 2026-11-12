@@ -125,7 +125,7 @@ class ConversationPinToolSupportTest {
     }
 
     @Test fun `creation identity is stable bounded and entirely endpoint actor call scoped`() {
-        val endpoint = AgentEndpoint(Conversation.Id("source"), Conversation.Thread.Id("thread"), AgentDefinition.Id("agent"))
+        val endpoint = AgentContextRef(Conversation.Id("source"), Conversation.Thread.Id("thread"), AgentDefinition.Id("agent"))
         val actor = User.Id("actor")
         val key = ConversationPinToolSupport.creationKey(endpoint, actor, "call")
         assertEquals(key, ConversationPinToolSupport.creationKey(endpoint, actor, "call"))

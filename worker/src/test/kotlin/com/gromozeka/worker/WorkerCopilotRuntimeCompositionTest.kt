@@ -42,7 +42,7 @@ class WorkerCopilotRuntimeCompositionTest {
             assertEquals(0, context.getBeansOfType(WorkerApplicationUpdates::class.java).size)
             assertEquals(
                 false,
-                provider.capabilities(copilotRuntime()).supportsAutoCompaction,
+                provider.capabilities(copilotRuntime()).supportsNativeCompaction,
             )
         } finally {
             context?.close()

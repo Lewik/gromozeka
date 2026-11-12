@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.failSpeechAvailability
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiConfigurationProvider
@@ -14,6 +15,13 @@ import com.gromozeka.domain.service.SettingsProvider
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import com.gromozeka.domain.model.ai.AiAdmissionOutcome
+import com.gromozeka.domain.service.AiCallAdmission
+import com.gromozeka.domain.service.AiAdmittedSession
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -46,6 +54,7 @@ class OpenAiRealtimeTranscriptionService(
     private val settingsProvider: SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val clientFactory: OpenAiSdkClientFactory,
+    private val admission: AiCallAdmission,
 ) {
     fun availabilityFailure(): SpeechAvailabilityFailure? =
         runCatching {
@@ -62,16 +71,22 @@ class OpenAiRealtimeTranscriptionService(
         languageCode: String?,
         prompt: String?,
     ): OpenAiRealtimeTranscriptionSession {
-        val configuration = resolveConfiguration(languageCode, prompt)
-        val session = OpenAiRealtimeTranscriptionSession(configuration, userStableId)
-        session.start()
-        return session
+        val (modelConfiguration, configuration) = resolveConfiguration(languageCode, prompt)
+        val admitted = admission.openSession(modelConfiguration, "SPEECH_TO_TEXT")
+        val session = OpenAiRealtimeTranscriptionSession(configuration, userStableId, admitted)
+        try {
+            session.start()
+            return session
+        } catch (error: Throwable) {
+            session.stop(AiAdmissionOutcome.FAILED)
+            throw error
+        }
     }
 
     private fun resolveConfiguration(
         languageCode: String? = null,
         prompt: String? = null,
-    ): OpenAiRealtimeTranscriptionConfiguration {
+    ): Pair<AiModelConfiguration, OpenAiRealtimeTranscriptionConfiguration> {
         val speechToText = settingsProvider.userProfile.speechSettings.speechToText
         if (!speechToText.enabled) failSpeechAvailability(Code.SPEECH_TO_TEXT_DISABLED)
         if (speechToText.engine != UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API) {
@@ -92,7 +107,7 @@ class OpenAiRealtimeTranscriptionService(
             failSpeechAvailability(Code.PROVIDER_VAD_REQUIRES_OPENAI)
         }
 
-        return OpenAiRealtimeTranscriptionConfiguration(
+        return runtime.modelConfiguration to OpenAiRealtimeTranscriptionConfiguration(
             apiKey = clientFactory.resolveApiKey(runtime.connection),
             baseUrl = clientFactory.resolveBaseUrl(runtime.connection),
             transcriptionModel = REALTIME_TRANSCRIPTION_MODEL,
@@ -112,13 +127,18 @@ class OpenAiRealtimeTranscriptionService(
 class OpenAiRealtimeTranscriptionSession internal constructor(
     private val configuration: OpenAiRealtimeTranscriptionConfiguration,
     private val userStableId: String,
+    private val admission: AiAdmittedSession,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json { ignoreUnknownKeys = true }
     private val eventsChannel = Channel<OpenAiRealtimeTranscriptionEvent>(Channel.UNLIMITED)
     private val textBuffer = StringBuilder()
     private var webSocket: WebSocket? = null
-    val events: Flow<OpenAiRealtimeTranscriptionEvent> = eventsChannel.receiveAsFlow()
+    private val stopMutex = Mutex()
+    @Volatile private var failed = false
+    val events: Flow<OpenAiRealtimeTranscriptionEvent> = eventsChannel.receiveAsFlow().onCompletion { error ->
+        stop(if (error != null || failed) AiAdmissionOutcome.FAILED else AiAdmissionOutcome.SUCCEEDED)
+    }
 
     suspend fun start() {
         val uri = URI.create("${configuration.websocketBaseUrl()}/realtime?intent=transcription")
@@ -154,17 +174,19 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
         )
     }
 
-    suspend fun stop() {
-        val socket = webSocket
-        webSocket = null
-        withContext(Dispatchers.IO) {
-            runCatching {
-                socket?.sendClose(WebSocket.NORMAL_CLOSURE, "stopped")
-                    ?.get(CLOSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            }
+    suspend fun stop(outcome: AiAdmissionOutcome = AiAdmissionOutcome.SUCCEEDED): Unit = withContext(NonCancellable) {
+        stopMutex.withLock {
+            val socket = webSocket
+            webSocket = null
+            try {
+                withContext(Dispatchers.IO) {
+                    runCatching { socket?.sendClose(WebSocket.NORMAL_CLOSURE, "stopped")?.get(CLOSE_TIMEOUT_SECONDS, TimeUnit.SECONDS) }
+                }
+            } finally { socket?.abort() }
+            eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.Stopped)
+            eventsChannel.close()
+            admission.finish(outcome)
         }
-        eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.Stopped)
-        eventsChannel.close()
     }
 
     private suspend fun sendJson(payload: JsonObject) {
@@ -258,6 +280,7 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
     }
 
     private fun fail(message: String) {
+        failed = true
         eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.Failed(message))
         eventsChannel.close()
         runCatching { webSocket?.abort() }
@@ -280,6 +303,7 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
         }
 
         override fun onError(webSocket: WebSocket, error: Throwable) {
+            failed = true
             log.warn(error) { "OpenAI realtime transcription WebSocket failed: ${error.message}" }
             eventsChannel.trySend(
                 OpenAiRealtimeTranscriptionEvent.Failed(

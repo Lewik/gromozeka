@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import com.gromozeka.domain.model.Conversation
@@ -59,7 +61,7 @@ class ClaudeCodeLatencyProbeTest {
         val referenceLines = (System.getenv("GROMOZEKA_CLAUDE_PROBE_REFERENCE_LINES") ?: "0").toInt().also { require(it in 0..1_000) }
         val dialogue = System.getenv("GROMOZEKA_CLAUDE_PROBE_PROFILE") == "dialogue"
         val systemPrompt = SYSTEM
-        val processExecutor = ProcessClaudeCodeCliExecutor(executable)
+        val processExecutor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), executable)
         val executor = processExecutor
         val workspace = File(requireNotNull(System.getenv("GROMOZEKA_CLAUDE_DIAGNOSTIC_DIR")))
         val selected = (System.getenv("GROMOZEKA_CLAUDE_PROBE_CASES")
@@ -104,6 +106,7 @@ class ClaudeCodeLatencyProbeTest {
                     val responseText = withTimeout(300_000) {
                         if (scenario == "direct-text") {
                             val result = executor.execute(ClaudeCodeCommand(
+            modelConfigurationId = "test-model",
                                 diagnosticId = label, connectionId = "latency-probe", cacheKey = conversationId,
                                 modelName = model, workspaceDirectory = workspace, systemPrompt = systemPrompt,
                                 userPrompt = prompt, effort = effort,

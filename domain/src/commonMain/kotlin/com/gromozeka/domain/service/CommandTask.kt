@@ -8,6 +8,14 @@ import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
+const val MAX_COMMAND_DESCRIPTION_LENGTH = 1000
+
+fun requireValidCommandDescription(description: String?) {
+    require(description == null || description.count { it !in '\uDC00'..'\uDFFF' } <= MAX_COMMAND_DESCRIPTION_LENGTH) {
+        "Command description must not exceed $MAX_COMMAND_DESCRIPTION_LENGTH characters"
+    }
+}
+
 @Serializable
 data class CommandTask(
     val id: Id,
@@ -43,8 +51,10 @@ data class CommandTask(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
     val launchReference: BackgroundActivityLaunchReference? = null,
+    val description: String? = null,
 ) {
     init {
+        requireValidCommandDescription(description)
         require(completionNotificationDeliveredAt == null || completionNotificationRequestedAt != null) {
             "Command completion notification cannot be delivered before it is requested"
         }
@@ -52,6 +62,8 @@ data class CommandTask(
             "Command terminal output and its byte offset must be stored together"
         }
     }
+
+    val displayLabel: String get() = description?.takeIf(String::isNotBlank) ?: command
 
     val terminalOutput: String? get() = terminalOutputContent?.textPreview()
 

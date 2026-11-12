@@ -1,6 +1,6 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.AgentEndpoint
+import com.gromozeka.domain.model.AgentAddress
 import com.gromozeka.domain.model.AgentResponseDecision
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiStepOutcome
@@ -104,6 +104,7 @@ class ConversationEngineService(
     private val contextHistory: ThreadMessageRepository,
     private val conversationMessageAppender: ConversationRuntimeMessageAppender,
     private val historyMutationExecutor: ConversationRuntimeHistoryMutationExecutor,
+    private val compactions: ConversationCompactionService,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryToolApplicationService: MemoryToolApplicationService,
     private val backgroundActivityCompletionApplicationService: BackgroundActivityCompletionApplicationService,
@@ -173,7 +174,9 @@ class ConversationEngineService(
     ): ConversationRuntimeTaskOutcome {
         ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
         requireActorConnected(task)
-        historyMutationExecutor.execute(task.conversationId, payload.mutation)
+        historyMutationExecutor.execute(task.conversationId, payload.mutation, task) {
+            ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        }
         val kind = when (payload.mutation) {
             is ConversationHistoryMutation.Edit -> ConversationHistoryMutationKind.EDIT
             is ConversationHistoryMutation.Delete -> ConversationHistoryMutationKind.DELETE
@@ -294,7 +297,7 @@ class ConversationEngineService(
             "AI_TURN_TRACE call=$diagnosticId task=${task.id.value} phase=preparing iteration=${payload.iteration}"
         }
         val conversationId = task.conversationId
-        val conversation = conversationService.findById(conversationId)
+        var conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
@@ -336,20 +339,14 @@ class ConversationEngineService(
         if (beforeModel.consumedTasks) {
             beforeModel.messages.forEach { emitMessage(it) }
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
-                payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId))
+                payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId, payload.afterCompaction))
         }
 
         // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
-        val currentMessages = if (conversation.externalChannel == null && context.connectionKind !in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.GITHUB_COPILOT)) {
-            contextHistory.getContextMessagesByThread(conversation.currentThread, context.connectionKind.nativeCompactionProvider())
-        } else conversationService.loadCurrentMessages(conversationId)
+        var currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
-                messages = pendingSecretRevealService.consume(
-                    conversationId = conversationId,
-                    userId = task.actorUserId,
-                    messages = currentMessages,
-                ),
+                messages = currentMessages,
                 enabled = context.includeMessageTemporalContext,
             ),
             groups = settingsProvider.userProfile.messageInstructionGroups,
@@ -357,7 +354,7 @@ class ConversationEngineService(
         // External channels keep their existing turn lifecycle; collaboration is opt-out for the whole turn.
         val collaboration = collaboration.takeIf { conversation.externalChannel == null }
         val collaborationRequests = if (collaboration != null && task.actorUserId != null)
-            collaboration.context(AgentEndpoint(conversation.id, conversation.currentThread, payload.agentDefinitionId), requireNotNull(task.actorUserId)) else emptyList()
+            collaboration.context(AgentAddress(conversation.id, payload.agentDefinitionId), requireNotNull(task.actorUserId)) else emptyList()
         val toolSelection = aiToolRuntimeCatalogService.selectTools(
             agent = context.agent,
             catalog = context.toolCatalog,
@@ -368,7 +365,7 @@ class ConversationEngineService(
         var runtimeRequest = AiRuntimeRequest(
             systemPrompts = buildList {
                 addAll(context.runtimeSystemPrompts)
-                if (collaboration != null) add(collaboration.prompt(AgentEndpoint(conversation.id, conversation.currentThread, payload.agentDefinitionId), collaborationRequests))
+                if (collaboration != null) add(collaboration.prompt(AgentAddress(conversation.id, payload.agentDefinitionId), collaborationRequests))
                 toolSelection.unavailableToolsSystemPrompt()?.let(::add)
             },
             messages = runtimeMessages,
@@ -377,7 +374,6 @@ class ConversationEngineService(
                 maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,
                 toolAccess = context.agent.toolAccess,
                 reasoning = context.agent.runtimeOverrides.reasoning,
-                autoCompactionThresholdTokens = context.autoCompactionThresholdTokens,
                 toolChoice = AiToolChoice.Auto,
                 responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(
                     context.assistantResponseFormat,
@@ -406,6 +402,28 @@ class ConversationEngineService(
         runtimeRequest = runtimeRequest.copy(messages = artifactService.materialize(conversationId, runtimeRequest.messages))
         runtimeRequest = conversationPins.append(conversationId, runtimeRequest)
         context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
+
+        val compacted = compactions.compactIfNeeded(task, conversation, context.agent, context.runtime, runtimeRequest,
+            payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId)) {
+            ensureRuntimeTaskOwner(conversationId, task.id, executor)
+            check(agentDomainService.findById(context.agent.id) == context.agent) { "Agent changed during compaction" }
+        }
+        if (compacted != null) {
+            // A portable handoff can end with an assistant summary. This explicit Runtime continuation
+            // also provides a user input anchor for one-shot secrets without preserving a raw history tail.
+            val continuation = Conversation.Message(
+                id = runtimeMessageId(task.id, "compaction-continuation"), conversationId = conversationId,
+                role = Conversation.Message.Role.USER, createdAt = Clock.System.now(),
+                content = listOf(ContentItem.UserMessage("Continue the active task from the compacted context. Follow the latest user instructions; do not repeat completed work.")),
+                providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "compaction_continuation") },
+            )
+            ensureRuntimeTaskOwner(conversationId, task.id, executor)
+            if (addRuntimeMessageIfMissing(conversationId, continuation)) emitMessage(continuation)
+            return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
+                payload.agentDefinitionId, payload.iteration + 1, task.actorUserId, afterCompaction = true))
+        }
+        runtimeRequest = runtimeRequest.copy(messages = pendingSecretRevealService.consume(
+            conversationId, task.actorUserId, runtimeRequest.messages))
 
         val generationStartedAt = Clock.System.now()
         log.debug {
@@ -478,7 +496,7 @@ class ConversationEngineService(
 
         val outcome = runtimeResponse.outcome
         val allToolCalls = runtimeResponse.toolCalls
-        val mappedAssistantMessages = AiConversationMessageMapper
+        var mappedAssistantMessages = AiConversationMessageMapper
             .toConversationMessages(
                 conversationId = conversationId,
                 response = runtimeResponse,
@@ -489,6 +507,26 @@ class ConversationEngineService(
             )
             .withRuntimeMessageIds(task.id, "assistant")
             .map { artifactService.persistAndCommitMessageToolResults(conversation, task.actorUserId, it) }
+        val nativeCheckpoints = mappedAssistantMessages.takeWhile { it.content.singleOrNull() is ContentItem.ContextCompactionResult }
+        check(mappedAssistantMessages.drop(nativeCheckpoints.size).none { message ->
+            message.content.any { it is ContentItem.ContextCompactionResult }
+        }) { "Provider checkpoint must precede the continuation it generated" }
+        check(nativeCheckpoints.isEmpty() || (!outcome.isFailure && outcome != AiStepOutcome.REFUSED)) {
+            "Provider generation failed after compaction; its checkpoint was not committed"
+        }
+        for (checkpoint in nativeCheckpoints) {
+            conversation = compactions.commitNative(task, conversation, checkpoint, runtimeRequest.messages.map { it.id }) {
+                ensureRuntimeTaskOwner(conversationId, task.id, executor)
+            }
+        }
+        if (nativeCheckpoints.isNotEmpty()) {
+            // Only new outputs generated AFTER this checkpoint get its replay scope; archived messages are untouched.
+            mappedAssistantMessages = mappedAssistantMessages.drop(nativeCheckpoints.size).map { message ->
+                message.copy(providerMetadata = JsonObject(message.providerMetadata +
+                    (com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY to JsonPrimitive(conversation.currentThread.value))))
+            }
+            currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
+        }
         if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && collaboration != null && responseReview != null) {
             val draft = responseReview.prepare(task, payload, conversation, currentMessages, mappedAssistantMessages)
             if (draft != null) return ConversationRuntimeTaskOutcome.Continue(
@@ -1158,7 +1196,6 @@ class ConversationEngineService(
         val memorySystemPrompts: List<String>,
         val runtimeSystemPrompts: List<String>,
         val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
-        val autoCompactionThresholdTokens: Int?,
         val automaticMemoryRememberEnabled: Boolean,
         val automaticMemoryRecallEnabled: Boolean,
         val includeMessageTemporalContext: Boolean,
@@ -1166,6 +1203,11 @@ class ConversationEngineService(
     ) {
         val project get() = runtimeContext.project
     }
+
+    private suspend fun loadRuntimeMessages(conversation: Conversation, kind: AiConnection.Kind): List<Conversation.Message> =
+        if (conversation.externalChannel == null && kind !in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.GITHUB_COPILOT)) {
+            contextHistory.getContextMessagesByThread(conversation.currentThread, kind.nativeCompactionProvider())
+        } else conversationService.loadCurrentMessages(conversation.id)
 
     private suspend fun buildConversationRuntimeContext(
         agentDefinitionId: AgentDefinition.Id,
@@ -1203,16 +1245,6 @@ class ConversationEngineService(
             agent.runtimeSelection,
             null,
         )
-        val autoCompactionThresholdTokens = resolvedRuntime.modelSpec.autoCompactionThresholdTokens
-            .takeIf { runtime.capabilities.supportsAutoCompaction }
-        when {
-            autoCompactionThresholdTokens != null ->
-                log.info { "Auto compaction configured: model=$modelName threshold=$autoCompactionThresholdTokens" }
-            runtime.capabilities.providerManagedAutoCompaction ->
-                log.info { "Auto compaction is provider-managed: model=$modelName" }
-            runtime.capabilities.supportsAutoCompaction ->
-                log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
-        }
         val baseToolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess, conversation)
         val agentSkillRuntime = agentSkillRuntimeCatalogService.prepare(
             agent = agent,
@@ -1256,7 +1288,6 @@ class ConversationEngineService(
             memorySystemPrompts = baseSystemPrompts,
             runtimeSystemPrompts = runtimeSystemPrompts,
             assistantResponseFormat = assistantResponseFormat,
-            autoCompactionThresholdTokens = autoCompactionThresholdTokens,
             automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
             automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
             includeMessageTemporalContext =
@@ -1428,6 +1459,7 @@ class ConversationEngineService(
         agentDefinitionId: AgentDefinition.Id,
         iteration: Int,
         actorUserId: User.Id?,
+        afterCompaction: Boolean = false,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${parentTask.turnId.value}:llm:$iteration"),
@@ -1440,6 +1472,7 @@ class ConversationEngineService(
                 rootUserMessageId = rootUserMessageId,
                 agentDefinitionId = agentDefinitionId,
                 iteration = iteration,
+                afterCompaction = afterCompaction,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "conversation:${conversationId.value}:runtime:${parentTask.turnId.value}:llm:$iteration",

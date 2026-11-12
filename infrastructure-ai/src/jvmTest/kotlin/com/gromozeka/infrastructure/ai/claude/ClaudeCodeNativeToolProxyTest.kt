@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
@@ -13,7 +15,7 @@ import kotlin.test.assertTrue
 class ClaudeCodeNativeToolProxyTest {
     @Test
     fun `native command exposes only the selected Claude Code tool`() {
-        val executor = ProcessClaudeCodeCliExecutor("claude")
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), "claude")
         val command = command(ClaudeCodeNativeTool.WEB_SEARCH)
 
         val args = executor.buildArgs(command, "/tmp/gromozeka-system.md")
@@ -26,7 +28,7 @@ class ClaudeCodeNativeToolProxyTest {
     @Test
     fun `native execution always uses and closes a fresh process`() = runBlocking {
         val processes = mutableListOf<NativeToolProcess>()
-        val executor = ProcessClaudeCodeCliExecutor(
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(),
             processFactory = ClaudeCodeCliProcessFactory {
                 NativeToolProcess().also(processes::add)
             },
@@ -172,7 +174,7 @@ class ClaudeCodeNativeToolProxyTest {
 
     private fun realSearch(mode: String): Unit = runBlocking {
         if (!realClaudeCodeEnabled()) return@runBlocking
-        val executor = ProcessClaudeCodeCliExecutor(realClaudeExecutable())
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), realClaudeExecutable())
         val invocation = invocation(mode)
         try {
             val response = withTimeout(120_000L) {
@@ -195,6 +197,7 @@ class ClaudeCodeNativeToolProxyTest {
 
     private fun command(tool: ClaudeCodeNativeTool, input: JsonObject = invocation().input): ClaudeCodeCommand =
         ClaudeCodeCommand(
+            modelConfigurationId = "test-model",
             modelName = "haiku",
             workspaceDirectory = null,
             systemPrompt = "Use the selected native tool exactly once with the exact JSON arguments supplied. Do not change the query, mode or domain filters.",

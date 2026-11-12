@@ -19,8 +19,8 @@ import kotlin.time.Instant
 class AgentCollaborationServiceTest {
     private val now = Instant.fromEpochMilliseconds(1)
     private val actor = User(User.Id("u"), displayName = "User", status = User.Status.ACTIVE, createdAt = now, updatedAt = now)
-    private val source = AgentEndpoint(Conversation.Id("a"), Conversation.Thread.Id("ta"), AgentDefinition.Id("aa"))
-    private val target = AgentEndpoint(Conversation.Id("b"), Conversation.Thread.Id("tb"), AgentDefinition.Id("bb"))
+    private val source = AgentContextRef(Conversation.Id("a"), Conversation.Thread.Id("ta"), AgentDefinition.Id("aa"))
+    private val target = AgentContextRef(Conversation.Id("b"), Conversation.Thread.Id("tb"), AgentDefinition.Id("bb"))
     private val selection = AiRuntimeSelection(AiModelConfiguration.Id("config"))
     private val repo = MemoryRepository()
     private val conversations = mock<ConversationRepository>()
@@ -34,7 +34,7 @@ class AgentCollaborationServiceTest {
     private val agentAccess = ConversationAgentAccessService(conversations, identities, access, agents)
     private val service = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory)
     private fun agent(id: AgentDefinition.Id) = AgentDefinition(id, name = id.value, prompts = emptyList(), runtimeSelection = selection, type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
-    private fun conversation(endpoint: AgentEndpoint) = Conversation(endpoint.conversationId, Project.Id("p"), setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)), currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
+    private fun conversation(endpoint: AgentContextRef) = Conversation(endpoint.conversationId, Project.Id("p"), setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)), currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
     private suspend fun setup() {
         Mockito.`when`(tabLayouts.snapshot(actor.id)).thenReturn(ConversationTabLayout(listOf(target.conversationId)))
         Mockito.`when`(messageHistory.latestMessageTimes(setOf(target.threadId))).thenReturn(mapOf(target.threadId to null))
@@ -120,7 +120,7 @@ class AgentCollaborationServiceTest {
         setup()
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target),
             conversation(target).copy(currentThread = Conversation.Thread.Id("new-target-thread")))
-        assertEquals("History branch changed; collaboration needs a new request",
+        assertEquals("History branch changed; context is no longer current",
             assertFailsWith<IllegalArgumentException> { service.resolveEligibleTarget(source, actor.id, "b") }.message)
         Mockito.verifyNoInteractions(coordinator, sync)
         assertTrue(repo.items.isEmpty() && repo.deliveries.isEmpty())
@@ -401,7 +401,7 @@ class AgentCollaborationServiceTest {
     }
 
     private fun sessionConversation(id: String, title: String = id): Conversation = conversation(
-        AgentEndpoint(Conversation.Id(id), Conversation.Thread.Id("thread-$id"), AgentDefinition.Id("agent-$id")),
+        AgentContextRef(Conversation.Id(id), Conversation.Thread.Id("thread-$id"), AgentDefinition.Id("agent-$id")),
     ).copy(displayName = title)
 
     private suspend fun directory(entries: List<Pair<Conversation, Instant?>>, open: List<Conversation.Id> = entries.map { it.first.id }) {
@@ -455,7 +455,7 @@ class AgentCollaborationServiceTest {
         setup()
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target).copy(
             externalChannel = ExternalConversationChannel("telegram", "test", "chat")))
-        assertFailsWith<IllegalArgumentException> { service.authorize(target, actor.id) }
+        assertFailsWith<IllegalArgumentException> { service.authorize(target.address, actor.id) }
         assertFailsWith<IllegalArgumentException> { service.send(source, actor.id, "b", null, "No Telegram delegation", "external", true) }
         assertTrue(repo.pendingDeliveries().isEmpty())
     }
@@ -470,22 +470,21 @@ class AgentCollaborationServiceTest {
     @Test fun `response uses recorded requester and cannot answer a foreign request`() = runBlocking {
         setup()
         val id = service.send(source, actor.id, "b", null, "Investigate", "call-1", true)
-        assertFailsWith<IllegalArgumentException> { service.reply(source, actor.id, id, "Forged") }
-        service.reply(target, actor.id, id, "Result")
-        service.reply(target, actor.id, id, "Result")
+        assertFailsWith<IllegalArgumentException> { service.reply(source.address, actor.id, id, "Forged") }
+        service.reply(target.address, actor.id, id, "Result")
+        service.reply(target.address, actor.id, id, "Result")
         val result = repo.pendingDeliveries().single { it.kind == AgentDelivery.Kind.RESULT }
         assertEquals(source, result.target)
         assertEquals(2, repo.pendingDeliveries().size)
         assertEquals(AgentRequest.State.COMPLETED, repo.findRequest(id)?.state)
     }
-    @Test fun `removed user changed branch and different tool policy cannot receive delegated work`() = runBlocking {
+    @Test fun `removed user and different tool policy cannot receive delegated work`() = runBlocking {
         setup()
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target).copy(participants = setOf(Conversation.Participant.User(User.Id("other")), Conversation.Participant.Agent(target.agentId))))
         assertFailsWith<IllegalArgumentException> { service.send(source, actor.id, "b", null, "Private", "call-1", true) }
         Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target))
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(agent(target.agentId).copy(toolAccess = ToolAccessPolicy.AllowOnly()))
         assertFailsWith<IllegalArgumentException> { service.send(source, actor.id, "b", null, "Private", "call-2", true) }
-        assertFailsWith<IllegalArgumentException> { service.authorize(target.copy(threadId = Conversation.Thread.Id("old")), actor.id) }
         assertTrue(repo.pendingDeliveries().isEmpty())
     }
     @Test fun `paused target retains pending delivery without waking it`() = runBlocking {
@@ -529,7 +528,7 @@ class AgentCollaborationServiceTest {
     @Test fun `cancelling a queued request prevents execution`() = runBlocking {
         setup()
         val id = service.send(source, actor.id, "b", null, "Investigate", "call-1", true)
-        service.cancel(source, actor.id, id)
+        service.cancel(source.address, actor.id, id)
         service.deliverPending()
         assertTrue(repo.pendingDeliveries().isEmpty())
         assertEquals(AgentRequest.State.CANCELLED, repo.findRequest(id)?.state)
@@ -551,7 +550,7 @@ class AgentCollaborationServiceTest {
         val capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN, ConversationRuntimeCapability.MEMORY_PIPELINE)
         scheduler.claimDeliveredTask(target.conversationId, queued.id, owner, capabilities, emptySet())
         scheduler.markActiveTaskStarted(target.conversationId, queued.id, owner, now)
-        transport.reply(target, actor.id, id, "Result")
+        transport.reply(target.address, actor.id, id, "Result")
         scheduler.completeActiveTask(target.conversationId, queued.id, owner, ConversationRuntimeTaskOutcome.CompleteTurn)
         transport.deliverPending()
         transport.deliverPending()
@@ -588,6 +587,138 @@ class AgentCollaborationServiceTest {
         val result = repo.deliveries.values.single { it.kind == AgentDelivery.Kind.RESULT }
         assertEquals(source, result.target)
     }
+    private suspend fun advance(ref: AgentContextRef, thread: String): AgentContextRef =
+        ref.copy(threadId = Conversation.Thread.Id(thread)).also {
+            Mockito.`when`(conversations.findById(ref.conversationId)).thenReturn(conversation(it))
+        }
+
+    @Test fun `request and reply survive both history changes and preserve captured provenance`(): Unit = runBlocking {
+        setup()
+        val scheduler = InMemoryConversationRuntimeCoordinator()
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory)
+        val id = transport.send(source, actor.id, "b", null, "Investigate", "history-round-trip", true)
+        val newSource = advance(source, "source-v2")
+        val newTarget = advance(target, "target-v2")
+        assertEquals(id, transport.send(newSource, actor.id, "b", null, "Investigate", "history-round-trip", true))
+        assertEquals(1, repo.items.size)
+        assertEquals(1, repo.deliveries.size)
+        assertEquals(source, repo.items.getValue(id).source)
+        assertEquals(target, repo.items.getValue(id).target)
+        assertEquals(listOf(id), transport.context(newTarget.address, actor.id).map { it.id })
+        assertEquals(listOf(id), transport.context(newSource.address, actor.id).map { it.id })
+        transport.deliverPending()
+        transport.deliverPending()
+        val invocation = scheduler.listPending(target.conversationId).single().requireAgentInvocation()
+        assertEquals(target.agentId, invocation.agentDefinitionId)
+        advance(target, "target-v3")
+        assertTrue(transport.validateMessage(invocation.userMessage))
+        transport.reply(newTarget.address, actor.id, id, "Result")
+        advance(source, "source-v3")
+        transport.reply(newTarget.address, actor.id, id, "Result")
+        transport.deliverPending()
+        transport.deliverPending()
+        val result = scheduler.listPending(source.conversationId).single().requireAgentInvocation()
+        assertEquals(source.agentId, result.agentDefinitionId)
+        assertTrue(transport.validateMessage(result.userMessage))
+        assertEquals("Result", (result.userMessage.content.single() as Conversation.Message.ContentItem.UserMessage).text)
+        assertEquals(source, repo.deliveries.getValue("$id:result").target)
+        assertEquals(target, repo.deliveries.getValue("$id:result").source)
+        assertEquals(AgentRequest.State.COMPLETED, repo.items.getValue(id).state)
+        assertTrue(repo.pendingDeliveries().isEmpty())
+    }
+
+    @Test fun `informational delivery is idempotent across history changes without starting a turn`(): Unit = runBlocking {
+        setup()
+        val scheduler = InMemoryConversationRuntimeCoordinator()
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory)
+        val id = transport.send(source, actor.id, "b", null, "Information", "info", false)
+        val newSource = advance(source, "source-v2")
+        advance(target, "target-v2")
+        assertEquals(id, transport.send(newSource, actor.id, "b", null, "Information", "info", false))
+        transport.deliverPending()
+        val payload = assertIs<ConversationRuntimeTask.Payload.PostMessage>(scheduler.listPending(target.conversationId).single().payload)
+        assertTrue(transport.validateMessage(payload.userMessage))
+        assertTrue(repo.items.isEmpty())
+        assertEquals(source, repo.deliveries.values.single().source)
+        assertEquals(target, repo.deliveries.values.single().target)
+    }
+
+    @Test fun `history changes cannot hide a cycle or inherited read only obligation`(): Unit = runBlocking {
+        setup()
+        val id = service.send(source, actor.id, "b", null, "Read only task", "original", true)
+        repo.items[id] = repo.items.getValue(id).copy(readOnly = true, state = AgentRequest.State.WAITING_RESULT, waitFor = listOf("command"))
+        advance(source, "source-v2")
+        val newTarget = advance(target, "target-v2")
+        assertFailsWith<IllegalArgumentException> { service.send(newTarget, actor.id, "a", null, "Cycle", "cycle", true) }
+        val third = target.copy(conversationId = Conversation.Id("third"), threadId = Conversation.Thread.Id("third-thread"))
+        Mockito.`when`(conversations.findById(third.conversationId)).thenReturn(conversation(third))
+        val delegated = service.send(newTarget, actor.id, "third", null, "Delegated read only", "delegated", true)
+        assertTrue(repo.items.getValue(delegated).readOnly)
+        assertTrue(repo.deliveries.getValue("$delegated:input").readOnly)
+        assertEquals(listOf("command"), service.context(newTarget.address, actor.id).single { it.id == id }.waitFor)
+    }
+
+    @Test fun `a new conversation or another attached agent cannot inherit or complete a request`(): Unit = runBlocking {
+        setup()
+        val id = service.send(source, actor.id, "b", null, "Investigate", "isolated", true)
+        val fork = target.copy(conversationId = Conversation.Id("fork"))
+        Mockito.`when`(conversations.findById(fork.conversationId)).thenReturn(conversation(fork))
+        assertTrue(service.context(fork.address, actor.id).isEmpty())
+        assertFailsWith<IllegalArgumentException> { service.reply(fork.address, actor.id, id, "Wrong conversation") }
+        val otherAgent = target.address.copy(agentId = AgentDefinition.Id("other"))
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(target).copy(
+            participants = conversation(target).participants + Conversation.Participant.Agent(otherAgent.agentId)))
+        assertTrue(service.context(otherAgent, actor.id).isEmpty())
+        assertFailsWith<IllegalArgumentException> { service.reply(otherAgent, actor.id, id, "Wrong agent") }
+        assertFailsWith<IllegalArgumentException> { service.reply(target.address, User.Id("other-user"), id, "Wrong user") }
+        assertEquals(AgentRequest.State.WORKING, repo.items.getValue(id).state)
+    }
+
+    @Test fun `cancellation after a history change prevents queued execution and late completion`(): Unit = runBlocking {
+        setup()
+        val scheduler = InMemoryConversationRuntimeCoordinator()
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory)
+        val id = transport.send(source, actor.id, "b", null, "Investigate", "cancel-after-change", true)
+        transport.deliverPending()
+        val message = scheduler.listPending(target.conversationId).single().requireAgentInvocation().userMessage
+        val newSource = advance(source, "source-v2")
+        val newTarget = advance(target, "target-v2")
+        transport.cancel(newSource.address, actor.id, id)
+        assertFalse(transport.validateMessage(message))
+        assertFailsWith<IllegalArgumentException> { transport.reply(newTarget.address, actor.id, id, "Too late") }
+        assertEquals(AgentRequest.State.CANCELLED, repo.items.getValue(id).state)
+        assertFalse(repo.deliveries.values.any { it.kind == AgentDelivery.Kind.RESULT })
+    }
+
+    @Test fun `stop after history changes cancels obligations and delivers the recipient cancellation once`(): Unit = runBlocking {
+        setup()
+        val scheduler = InMemoryConversationRuntimeCoordinator()
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory)
+        val id = transport.send(source, actor.id, "b", null, "Investigate", "stop-after-change", true)
+        advance(source, "source-v2")
+        val newTarget = advance(target, "target-v2")
+        assertTrue(transport.cancelConversation(target.conversationId))
+        assertFalse(transport.cancelConversation(target.conversationId))
+        assertFailsWith<IllegalArgumentException> { transport.reply(newTarget.address, actor.id, id, "Too late") }
+        transport.deliverPending()
+        transport.deliverPending()
+        assertTrue(scheduler.listPending(target.conversationId).isEmpty())
+        val result = scheduler.listPending(source.conversationId).single().requireAgentInvocation().userMessage
+        assertTrue(transport.validateMessage(result))
+        assertEquals(AgentRequest.State.CANCELLED, repo.items.getValue(id).state)
+    }
+
+    @Test fun `history independent delivery still rejects revoked target access`(): Unit = runBlocking {
+        setup()
+        val id = service.send(source, actor.id, "b", null, "Investigate", "revoked", true)
+        val next = advance(target, "target-v2")
+        Mockito.`when`(conversations.findById(target.conversationId)).thenReturn(conversation(next).copy(participants = setOf(Conversation.Participant.User(actor.id))))
+        service.deliverPending()
+        assertEquals(AgentDelivery.State.BLOCKED, repo.deliveries.getValue("$id:input").state)
+        assertEquals(AgentRequest.State.BLOCKED, repo.items.getValue(id).state)
+        Mockito.verifyNoInteractions(coordinator)
+    }
+
     private inline fun <reified T> mock(): T = Mockito.mock(T::class.java)
 
     private class MemoryRepository : AgentCollaborationRepository {

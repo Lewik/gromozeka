@@ -66,6 +66,11 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn("--tests '*DangerousAiTrafficDumpTest'", verification["run"])
         self.assertNotIn("GROMOZEKA_DANGEROUS_AI_TRAFFIC_DUMP", verification["env"])
 
+    def test_chat_gateway_reasoning_and_execution_regressions_gate_publication(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*OpenAiThinkingReplayTest", "*TrueFoundryChatCompletionsTest", "*SdkHttpExecutionTest"):
+            self.assertIn(check, verification)
+
     def test_safe_dispatch_defaults(self):
         inputs = RELEASE["on"]["workflow_dispatch"]["inputs"]
         for name, default in (("publish_release", "false"), ("deploy_aws", "false"), ("skip_android", "false"), ("skip_ios", "true")):
@@ -236,7 +241,7 @@ class WorkflowContracts(unittest.TestCase):
         verification = scripts(JOBS["verify-runtime"])
         for check in ("*PostgresConversationPinRepositoryTest", "*ConversationPinTest", "*ConversationPin*Test",
                       "*ConversationAgentAccessServiceTest", "*DistributedAiToolRoutingTest",
-                      "*ClaudeCodeCliRuntimeTest.conversationPin*", "*ClaudeCodeProcessCacheTest.pinEditAndDelete*"):
+                      "*ClaudeCodeCliRuntimeTest", "*ClaudeCodeProcessCacheTest.pinEditAndDelete*"):
             self.assertIn(check, verification)
         postgres = next(step for step in JOBS["verify-runtime"]["steps"]
                         if "*PostgresConversationPinRepositoryTest" in step.get("run", ""))
@@ -290,6 +295,13 @@ class WorkflowContracts(unittest.TestCase):
     def test_responses_auto_compaction_is_verified_without_a_live_gateway(self):
         verification = scripts(JOBS["verify-runtime"])
         for check in ("*OpenAiResponsesSdkRuntimeTest", "*OpenAiResponsesCompactionTest"):
+            self.assertIn(check, verification)
+
+    def test_unified_compaction_contracts_are_in_the_verification_set(self):
+        verification = scripts(JOBS["verify-runtime"])
+        for check in ("*PostgresConversationCompactionRepositoryTest", "*PostgresCompactionConfigurationMigrationTest",
+                      "*ConversationCompactionServiceTest", "*MessageSquashServiceTest", "*AiModelConfigurationTest",
+                      "*AiCatalogTest", "*AiContextMeasurementsTest", "*AnthropicSdkMessageMapperTest"):
             self.assertIn(check, verification)
 
     def test_synthetic_call_ids_are_checked_in_generation_replay_and_sdk_payloads(self):
@@ -397,6 +409,14 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn("needs.release.result == 'success'", JOBS["deploy"]["if"])
 
     def test_removed_workflows_unique_checks_are_preserved(self):
+        self.assertEqual("ubuntu-24.04", JOBS["verify-e2e"]["runs-on"])
+        e2e_step = next(step for step in JOBS["verify-e2e"]["steps"]
+                        if step.get("name") == "Verify Compose E2E")
+        self.assertEqual("https://mirrors.edge.kernel.org/ubuntu",
+                         e2e_step["env"]["GROMOZEKA_E2E_UBUNTU_MIRROR"])
+        compose = load_yaml(ROOT / "e2e-tests/compose.yaml")
+        self.assertEqual("${GROMOZEKA_E2E_UBUNTU_MIRROR:-}",
+                         compose["services"]["tests"]["build"]["args"]["UBUNTU_ARCHIVE_MIRROR"])
         e2e = scripts(JOBS["verify-e2e"])
         for check in ("localization.py validate", "localization.py context",
                       "generate-native-localization.py --check", "generate-font-resources.py --check", "e2e-tests/run.sh"):

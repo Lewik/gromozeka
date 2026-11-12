@@ -34,7 +34,6 @@ data class AiRuntimeRequest(
 data class AiRuntimeOptions(
     val maxOutputTokens: Int? = null,
     val reasoning: AiReasoningConfig? = null,
-    val autoCompactionThresholdTokens: Int? = null,
     val toolChoice: AiToolChoice = AiToolChoice.Auto,
     val responseFormat: AiResponseFormat = AiResponseFormat.Text,
     val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
@@ -45,9 +44,7 @@ data class AiRuntimeOptions(
 ) {
     init {
         require(maxOutputTokens == null || maxOutputTokens > 0) { "AI runtime max output tokens must be positive" }
-        require(autoCompactionThresholdTokens == null || autoCompactionThresholdTokens > 0) {
-            "AI runtime auto-compaction threshold tokens must be positive"
-        }
+
     }
 }
 
@@ -70,8 +67,7 @@ sealed class AiResponseFormat {
 }
 
 data class AiRuntimeCapabilities(
-    val supportsAutoCompaction: Boolean = false,
-    val providerManagedAutoCompaction: Boolean = false,
+    val supportsNativeCompaction: Boolean = false,
 )
 
 data class AiRuntimeResponse(
@@ -112,9 +108,11 @@ data class AiAssistantMessage(
 @Serializable
 data class AiContextUsage(
     val inputTokens: Int,
+    val outputTokens: Int? = null,
 ) {
     init {
         require(inputTokens >= 0) { "AI context input tokens must not be negative" }
+        require(outputTokens == null || outputTokens >= 0) { "AI context output tokens must not be negative" }
     }
 }
 

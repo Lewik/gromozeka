@@ -21,6 +21,7 @@ class PostgresAiHttpSettingsTest {
         val source = PGSimpleDataSource().apply {
             setURL(url)
             user = System.getenv("GROMOZEKA_AI_HTTP_TEST_USER") ?: "grz_e_test"
+            password = System.getenv("GROMOZEKA_AI_HTTP_TEST_PASSWORD")
         }
         val schema = "ai_http_${UUID.randomUUID().toString().replace("-", "")}"
         source.connection.use { admin ->
@@ -35,6 +36,8 @@ class PostgresAiHttpSettingsTest {
                     sql.execute("CREATE TABLE ai_model_configurations(id VARCHAR(255) PRIMARY KEY, connection_id VARCHAR(255) NOT NULL REFERENCES ai_connections(id), payload_json TEXT NOT NULL)")
                     sql.execute("CREATE TABLE ai_runtime_assignments(purpose VARCHAR(100) PRIMARY KEY, model_configuration_id VARCHAR(255) NOT NULL REFERENCES ai_model_configurations(id), payload_json TEXT NOT NULL)")
                     sql.execute("CREATE TABLE runtime_catalog_configuration(id VARCHAR(32) PRIMARY KEY, default_agent_id VARCHAR(255) NOT NULL REFERENCES agents(id), web_tools_json TEXT NOT NULL, revision BIGINT NOT NULL)")
+                    sql.execute(requireNotNull(PostgresAiHttpSettingsTest::class.java.getResource("/db/migration/postgres/V83__ai_concurrency_groups.sql")).readText())
+                    sql.execute(requireNotNull(PostgresAiHttpSettingsTest::class.java.getResource("/db/migration/postgres/V84__model_configuration_tpm.sql")).readText())
                     sql.execute("INSERT INTO runtime_catalog_configuration VALUES ('primary', 'synthetic-agent', '{}', 7)")
                 } }
                 Database.connect(source)
@@ -53,13 +56,18 @@ class PostgresAiHttpSettingsTest {
                 )
                 val specs = connections.map { connection -> AiModelSpec("account/${connection.id.value}", connection.kind.provider,
                     AiModelCapability.entries.toSet(), AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000),
-                        AiModelSpec.Limits.Embeddings(dimensions = 2))) }.sortedWith(compareBy({ it.provider.name }, { it.id }))
+                        AiModelSpec.Limits.Embeddings(dimensions = 2)),
+                    behavior = AiModelBehavior(chatSchemaEmptyToolCallsAsStop = true)) }.sortedWith(compareBy({ it.provider.name }, { it.id }))
                 val configurations = connections.map { AiModelConfiguration(AiModelConfiguration.Id(it.id.value), it.id,
                     "account/${it.id.value}", it.displayName) }
                 val assignments = AiRuntimeAssignment.Purpose.entries.filter { it.requiresExplicitAssignment }.map {
                     AiRuntimeAssignment(it, AiRuntimeSelection(configurations.first().id))
                 }
-                val catalog = AiCatalog(connections, specs, configurations, assignments, AgentDefinition.Id("synthetic-agent"))
+                val quota = AiTpmGroup(AiTpmGroup.Id("quota"), "account/shared", "Quota", 1000, quotaUsageFraction = 0.8)
+                val policy = AiTpmPolicy(AiTpmGroupSelector.RequestValue("/model"), AiQuotaCalculator.BuiltIn(),
+                    AiTpmFeedbackPolicy.Fields(AiQuotaValueSource.Header("custom-quota")), quota.id)
+                val catalog = AiCatalog(connections, specs, configurations.map { it.copy(tpm = policy) }, assignments,
+                    AgentDefinition.Id("synthetic-agent"), tpmGroups = listOf(quota))
                 val saved = repository.replace(7, catalog)
                 assertEquals(8, saved.revision)
                 assertEquals(saved, ExposedRuntimeCatalogRepository(json).find())

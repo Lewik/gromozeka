@@ -101,7 +101,7 @@ class TelegramCollaborationIsolationTest {
                 awaitAnswer(telegram.id)
                 val request = model.requests.single()
                 assertEquals("CONVERSATION", request.options.usagePurpose)
-                assertTrue(request.systemPrompts.none { it.contains("Cross-thread collaboration (experimental") })
+                assertTrue(request.systemPrompts.none { it.contains("Cross-conversation collaboration (experimental") })
                 assertTrue(request.tools.none { it.definition.name in AGENT_COLLABORATION_TOOL_NAMES })
                 val bound = assertNotNull(conversations.findById(telegram.id))
                 val catalog = context.getBean(DistributedAiToolCatalog::class.java).snapshot(project, agent.toolAccess, bound)
@@ -116,7 +116,7 @@ class TelegramCollaborationIsolationTest {
                 awaitAnswer(ordinary.id)
                 assertEquals(2, model.requests.size)
                 val normal = model.requests.last()
-                assertTrue(normal.systemPrompts.any { it.contains("Cross-thread collaboration (experimental") })
+                assertTrue(normal.systemPrompts.any { it.contains("Cross-conversation collaboration (experimental") })
                 val normalCatalog = context.getBean(DistributedAiToolCatalog::class.java).snapshot(project, agent.toolAccess, ordinary)
                 val collaborationModelNames = normalCatalog.entries.values.filter { it.logicalName in AGENT_COLLABORATION_TOOL_NAMES }.map { it.modelName }
                 assertEquals(AGENT_COLLABORATION_TOOL_NAMES.size, collaborationModelNames.size)

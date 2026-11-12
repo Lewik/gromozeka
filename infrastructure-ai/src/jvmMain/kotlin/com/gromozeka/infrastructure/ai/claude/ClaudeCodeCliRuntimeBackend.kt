@@ -14,6 +14,8 @@ import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
+import com.gromozeka.domain.model.ai.AiContextInspection
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -66,7 +68,7 @@ internal class ClaudeCodeCliRuntimeBackend(
     override fun capabilities(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true, providerManagedAutoCompaction = true)
+    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsNativeCompaction = true)
 
     override fun createRuntime(
         runtime: ResolvedAiRuntime,
@@ -114,9 +116,81 @@ internal class ClaudeCodeCliRuntime(
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
-        supportsAutoCompaction = true,
-        providerManagedAutoCompaction = true,
+        supportsNativeCompaction = true,
     )
+
+    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+        val key = sessionStateKey(request)
+        val projected = request.copy(messages = ConversationContext(request.messages).messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
+        if (key == null) return AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)
+        return sessionLocks.computeIfAbsent(key.lockKey()) { Mutex() }.withLock {
+            val plan = planSession(key, request.messages)
+            val coveredCount = request.messages.size - plan.messagesToSend.size
+            val prefix = request.messages.take(coveredCount)
+            val nativeAvailable = plan.resumeSessionId != null && prefix.isNotEmpty() && completeToolBoundary(prefix, plan.messagesToSend)
+            val state = plan.state
+            val overhead = AiRequestTokenEstimate.input(request.copy(messages = emptyList()))
+            val baseline = state?.contextUsage?.inputTokens
+            val previousOverhead = state?.requestOverheadEstimate
+            val tokens = if (baseline != null && previousOverhead != null) {
+                baseline.toLong() + (state.lastOutputTokens ?: prefix.takeLast(state.coveredGeneratedAssistantSignatures.size)
+                    .sumOf(AiRequestTokenEstimate::message)) + plan.messagesToSend.sumOf(AiRequestTokenEstimate::message) + overhead - previousOverhead
+            } else AiRequestTokenEstimate.input(projected).toLong()
+            if (tokens < 0) return@withLock AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE, nativeAvailable)
+            require(tokens <= Int.MAX_VALUE.toLong()) { "Claude Code context estimate exceeds the supported range" }
+            AiContextInspection(tokens.toInt(), if (baseline != null && previousOverhead != null)
+                AiContextInspection.Precision.USAGE_CALIBRATED_ESTIMATE else AiContextInspection.Precision.ESTIMATE, nativeAvailable)
+        }
+    }
+
+    override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
+        val key = requireNotNull(sessionStateKey(request)) { "Native Claude Code compaction requires a durable session" }
+        return sessionLocks.computeIfAbsent(key.lockKey()) { Mutex() }.withLock {
+            val plan = planSession(key, request.messages)
+            val state = requireNotNull(plan.state) { "Claude Code session is not available for native compaction" }
+            val prefix = request.messages.take(request.messages.size - plan.messagesToSend.size)
+            require(plan.resumeSessionId != null && prefix.isNotEmpty() && completeToolBoundary(prefix, plan.messagesToSend)) {
+                "Claude Code session cannot compact this context boundary"
+            }
+            val protocol = request.toolProtocol()
+            val schema = protocol?.schema ?: (request.options.responseFormat as? AiResponseFormat.JsonSchema)?.schema
+            val contract = schema?.let { ClaudeCodeResponseContract(it, request.tools, protocol != null) }
+            val command = ClaudeCodeCommand(
+                diagnosticId = "compact-${uuid7()}", connectionId = connectionId, modelConfigurationId = modelConfigurationId, executablePath = executablePath,
+                cacheKey = key.lockKey(), maxCachedProcesses = maxCachedProcesses, processIdleTtlMinutes = processIdleTtlMinutes,
+                modelName = modelName, workspaceDirectory = workspaceDirectory,
+                systemPrompt = listOfNotNull(buildSystemPrompt(request, protocol), contract?.instructions()).joinToString("\n\n"),
+                userPrompt = "/compact", userContentBlocks = emptyList(), effort = request.options.reasoning?.effort,
+                reasoningMode = request.options.reasoning?.mode, resumeSessionId = plan.resumeSessionId,
+                noSessionPersistence = false, disableCompaction = false,
+            )
+            try {
+                val response = executor.withSession(command) { it.execute(command) }
+                check(response.compactionBoundaries.isNotEmpty()) { "Claude Code did not perform the requested compaction" }
+                val replay = ClaudeCodeReplayState(state.replayState)
+                response.replayEvents.forEach(replay::accept)
+                replay.ensureComplete()
+                val checkpoint = compactionMessage(ClaudeCodeCompactionCheckpoint(response.compactionBoundaries.last(), replay.snapshot()),
+                    response, request.copy(messages = prefix), resumed = true)
+                // No ordinary answer has been generated. The COW receipt authorizes this exact session continuation.
+                saveSessionState(key, requireNotNull(response.sessionId), prefix, listOf(checkpoint), replay.snapshot(), null,
+                    requestOverheadEstimate = null, lastOutputTokens = null)
+                AiRuntimeResponse(messages = listOf(checkpoint), usage = response.usage?.toAiUsage(),
+                    outcome = com.gromozeka.domain.model.ai.AiStepOutcome.CONTINUE, finishReason = "compaction")
+            } catch (error: Throwable) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { sessionStateRepository.delete(key) }
+                throw error
+            }
+        }
+    }
+
+    private fun completeToolBoundary(prefix: List<Conversation.Message>, suffix: List<Conversation.Message>): Boolean {
+        fun calls(messages: List<Conversation.Message>) = messages.flatMap { it.content }
+            .filterIsInstance<Conversation.Message.ContentItem.ToolCall>().map { it.id }.toSet()
+        fun results(messages: List<Conversation.Message>) = messages.flatMap { it.content }
+            .filterIsInstance<Conversation.Message.ContentItem.ToolResult>().map { it.toolUseId }.toSet()
+        return calls(prefix).intersect(results(suffix)).isEmpty() && results(prefix).intersect(calls(suffix)).isEmpty()
+    }
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         require(request.messages.isNotEmpty()) { "Claude Code CLI request must contain at least one message" }
@@ -213,6 +287,7 @@ internal class ClaudeCodeCliRuntime(
 
         val command = ClaudeCodeCommand(
             diagnosticId = diagnosticId,
+            modelConfigurationId = modelConfigurationId,
             connectionId = connectionId,
             executablePath = executablePath,
             cacheKey = sessionStateKey?.lockKey(),
@@ -232,7 +307,7 @@ internal class ClaudeCodeCliRuntime(
 
         val executionStartedAt = System.nanoTime()
         val cliResponse = try {
-            executeValidated(command, contract, request.options.autoCompactionThresholdTokens, sessionPlan.state?.contextUsage)
+            executeValidated(command, contract)
         } catch (error: ClaudeCodeSessionUnavailableException) {
             if (sessionStateKey == null || sessionPlan.resumeSessionId == null) throw error
             sessionStateRepository.delete(sessionStateKey)
@@ -275,7 +350,8 @@ internal class ClaudeCodeCliRuntime(
 
         if (sessionStateKey != null && cliResponse.sessionId != null) {
             val saveStartedAt = System.nanoTime()
-            saveSessionState(sessionStateKey, cliResponse.sessionId, request.messages, runtimeResponse.messages, replayState.snapshot(), runtimeResponse.contextUsage)
+            saveSessionState(sessionStateKey, cliResponse.sessionId, request.messages, runtimeResponse.messages, replayState.snapshot(), runtimeResponse.contextUsage,
+                AiRequestTokenEstimate.input(request.copy(messages = emptyList())), runtimeResponse.contextUsage?.outputTokens)
             log.debug {
                 "CLAUDE_CODE_TRACE call=$diagnosticId phase=session_state_saved saveMs=${elapsedMillis(saveStartedAt)} " +
                     "coveredMessages=${request.messages.size} generatedMessages=${runtimeResponse.messages.size}"
@@ -288,28 +364,11 @@ internal class ClaudeCodeCliRuntime(
     private suspend fun executeValidated(
         command: ClaudeCodeCommand,
         contract: ClaudeCodeResponseContract?,
-        compactionThreshold: Int?,
-        previousContextUsage: AiContextUsage?,
     ): ClaudeCodeCliResponse = executor.withSession(command) { session ->
-        val responses = mutableListOf<ClaudeCodeCliResponse>()
-        if (command.resumeSessionId != null && compactionThreshold != null &&
-            (previousContextUsage?.inputTokens ?: 0) >= compactionThreshold
-        ) {
-            val compacted = session.execute(command.copy(
-                diagnosticId = "${command.diagnosticId}-compact",
-                userPrompt = "/compact",
-                userContentBlocks = emptyList(),
-            ))
-            check(compacted.compactionBoundaries.isNotEmpty()) {
-                "Claude Code did not perform the requested context compaction"
-            }
-            responses += compacted
-        }
         currentCoroutineContext().ensureActive()
         val startedAt = System.nanoTime()
         val response = session.execute(command)
-        responses += response
-        val usage = sumCliUsage(responses.mapNotNull { it.usage })
+        val usage = response.usage
         val completeText = try {
             val text = response.completeAssistantText()
             if (contract == null) text else contract.validatedText(text)
@@ -331,12 +390,7 @@ internal class ClaudeCodeCliRuntime(
             "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=response_validation " +
                 "elapsedMs=${elapsedMillis(startedAt)} valid=true frames=${response.replayEvents.size}"
         }
-        response.copy(
-            result = completeText,
-            usage = usage,
-            compactionBoundaries = responses.flatMap { it.compactionBoundaries },
-            replayEvents = responses.flatMap { it.replayEvents },
-        )
+        response.copy(result = completeText)
     }
 
     private fun sumCliUsage(values: List<JsonObject>): JsonObject? =
@@ -415,11 +469,27 @@ internal class ClaudeCodeCliRuntime(
         )
     }
 
+    private suspend fun findCowContinuation(key: ClaudeCodeSessionState.Key, messages: List<Conversation.Message>): ClaudeCodeSessionState? {
+        val checkpointMessage = messages.lastOrNull { message -> message.content.any { item ->
+            item is Conversation.Message.ContentItem.ContextCompactionResult && item.historyTransition?.targetThreadId == key.threadId
+        } } ?: return null
+        val checkpoint = checkpointMessage.content.single() as Conversation.Message.ContentItem.ContextCompactionResult
+        val scope = checkpoint.providerScope
+        if (checkpoint.payload !is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ||
+            scope?.provider != AiConnection.Kind.CLAUDE_CODE.name || scope.connectionId != connectionId ||
+            scope.modelConfigurationId != modelConfigurationId || scope.modelName != modelName) return null
+        val transition = requireNotNull(checkpoint.historyTransition)
+        val previous = sessionStateRepository.find(key.copy(threadId = transition.sourceThreadId)) ?: return null
+        if (checkpointMessage.providerMetadata["sessionId"]?.jsonPrimitive?.contentOrNull != previous.claudeSessionId) return null
+        // planSession still verifies every covered ID, generated signature and transcript fingerprint.
+        return previous.copy(key = key)
+    }
+
     private suspend fun planSession(
         sessionKey: ClaudeCodeSessionState.Key?,
         messages: List<Conversation.Message>,
     ): ClaudeCodeSessionPlan {
-        val state = sessionKey?.let { sessionStateRepository.find(it) }
+        val state = sessionKey?.let { sessionStateRepository.find(it) ?: findCowContinuation(it, messages) }
         if (state == null || state.replayState == null) {
             return ClaudeCodeSessionPlan(
                 messagesToSend = messages,
@@ -494,6 +564,8 @@ internal class ClaudeCodeCliRuntime(
         generatedAssistantMessages: List<AiAssistantMessage>,
         replayState: JsonObject,
         contextUsage: AiContextUsage?,
+        requestOverheadEstimate: Int?,
+        lastOutputTokens: Int?,
     ) {
         val now = Clock.System.now()
         val existing = sessionStateRepository.find(key)
@@ -513,6 +585,8 @@ internal class ClaudeCodeCliRuntime(
                 lastUsedAt = now,
                 replayState = replayState,
                 contextUsage = contextUsage,
+                requestOverheadEstimate = requestOverheadEstimate,
+                lastOutputTokens = lastOutputTokens,
             )
         )
     }
@@ -588,7 +662,25 @@ internal class ClaudeCodeCliRuntime(
             )
         }
 
-        val compactionMessages = compactions.map { checkpoint ->
+        val compactionMessages = compactions.map { compactionMessage(it, cliResponse, request, resumed) }
+
+        return AiRuntimeResponse(
+            messages = compactionMessages + assistantMessage,
+            usage = cliResponse.usage?.toAiUsage(),
+            contextUsage = cliResponse.contextUsage?.toContextUsage(),
+            finishReason = cliResponse.finishReason,
+            providerMetadata = mapOf(
+                "provider" to AiConnection.Kind.CLAUDE_CODE.name,
+                "model" to modelName,
+                "sessionId" to cliResponse.sessionId,
+                "resumed" to resumed,
+                "wrapper" to (toolProtocol != null),
+            ),
+        )
+    }
+
+    private fun compactionMessage(checkpoint: ClaudeCodeCompactionCheckpoint, cliResponse: ClaudeCodeCliResponse,
+        request: AiRuntimeRequest, resumed: Boolean): AiAssistantMessage =
             AiAssistantMessage(
                 content = listOf(
                     Conversation.Message.ContentItem.ContextCompactionResult(
@@ -612,22 +704,6 @@ internal class ClaudeCodeCliRuntime(
                 metadata = assistantMetadata(cliResponse, wrapper = false, resumed = resumed) +
                     ("compactionBoundary" to checkpoint.boundary),
             )
-        }
-
-        return AiRuntimeResponse(
-            messages = compactionMessages + assistantMessage,
-            usage = cliResponse.usage?.toAiUsage(),
-            contextUsage = cliResponse.contextUsage?.toAiUsage()?.let { AiContextUsage(it.totalInputTokens) },
-            finishReason = cliResponse.finishReason,
-            providerMetadata = mapOf(
-                "provider" to AiConnection.Kind.CLAUDE_CODE.name,
-                "model" to modelName,
-                "sessionId" to cliResponse.sessionId,
-                "resumed" to resumed,
-                "wrapper" to (toolProtocol != null),
-            ),
-        )
-    }
 
     private fun finalAssistantMessage(
         text: String,
@@ -668,6 +744,14 @@ internal class ClaudeCodeCliRuntime(
             "resumed" to resumed,
             "wrapper" to wrapper,
         )
+
+    private fun JsonObject.toContextUsage(): AiContextUsage? {
+        val input = this["input_tokens"]?.jsonPrimitive?.longOrNull ?: return null
+        val cacheRead = this["cache_read_input_tokens"]?.jsonPrimitive?.longOrNull ?: 0L
+        val cacheCreation = this["cache_creation_input_tokens"]?.jsonPrimitive?.longOrNull ?: 0L
+        return AiContextUsage(Math.toIntExact(input + cacheRead + cacheCreation),
+            this["output_tokens"]?.jsonPrimitive?.longOrNull?.let(Math::toIntExact))
+    }
 
     private fun JsonObject.toAiUsage(): AiUsage =
         AiUsage(
@@ -1090,6 +1174,7 @@ internal data class ClaudeCodeNativeToolResponse(
 )
 
 internal data class ClaudeCodeCommand(
+    val modelConfigurationId: String,
     val diagnosticId: String = "untracked",
     val connectionId: String = "claude-code",
     val executablePath: String = "claude",

@@ -17,6 +17,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -29,6 +30,8 @@ open class WorkerGatewayOutbound(
 ) : WorkerToolCatalogPublisher, McpServerRefreshPublisher {
     private val mutex = Mutex()
     private val tools = MutableStateFlow<List<AiToolDescriptor>>(emptyList())
+    private val mutableConnected = MutableStateFlow(false)
+    val connected = mutableConnected.asStateFlow()
     private var activeOutgoing: SendChannel<WorkerGatewayMessage>? = null
     private val pending = mutableMapOf<String, CompletableDeferred<WorkerGatewayMessage.Response>>()
     private val closedRequests = linkedSetOf<String>()
@@ -48,11 +51,13 @@ open class WorkerGatewayOutbound(
     suspend fun attach(outgoing: SendChannel<WorkerGatewayMessage>) = mutex.withLock {
         check(activeOutgoing == null) { "Worker Gateway outgoing channel is already attached" }
         activeOutgoing = outgoing
+        mutableConnected.value = true
     }
 
     suspend fun detach(outgoing: SendChannel<WorkerGatewayMessage>) = mutex.withLock {
         if (activeOutgoing === outgoing) {
             activeOutgoing = null
+            mutableConnected.value = false
             val error = ControlPlaneUnavailableException("Worker Gateway disconnected before receiving a response")
             pending.values.forEach { it.completeExceptionally(error) }
             pending.clear()

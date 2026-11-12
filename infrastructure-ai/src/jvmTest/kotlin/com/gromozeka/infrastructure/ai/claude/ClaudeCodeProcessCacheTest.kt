@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.Conversation
 
 import com.gromozeka.domain.model.ai.AiConnection
@@ -28,7 +30,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun reusesProcessForMatchingSessionAndLaunchConfiguration() = runBlocking {
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         try {
             val first = executor.execute(command(cacheKey = "conversation"))
             val second = executor.execute(
@@ -50,7 +52,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun replacesProcessWhenLaunchConfigurationChanges() = runBlocking {
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         try {
             val first = executor.execute(command(cacheKey = "conversation"))
             executor.execute(
@@ -71,7 +73,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun pinEditAndDeleteChangeTheProcessFingerprintButIdenticalPinsReuseIt() = runBlocking<Unit> {
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         try {
             val before = "base\n\nPinned conversation context:\n\nPIN_CACHE_BEFORE"
             val after = "base\n\nPinned conversation context:\n\nPIN_CACHE_AFTER"
@@ -89,7 +91,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun replacesProcessWhenReasoningModeChanges() = runBlocking {
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         try {
             val first = executor.execute(
                 command(
@@ -147,7 +149,7 @@ class ClaudeCodeProcessCacheTest {
 
     @Test
     fun freshAndResumedProcessesUseTheCurrentSystemPrompt() = runBlocking {
-        val executor = ProcessClaudeCodeCliExecutor()
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission())
         try {
             for (sessionId in listOf(null, "existing-session")) {
                 val args = executor.buildArgs(command(cacheKey = "conversation", resumeSessionId = sessionId), "/tmp/system.md")
@@ -382,7 +384,7 @@ class ClaudeCodeProcessCacheTest {
     fun evictsLeastRecentlyUsedIdleProcessAtConfiguredLimit() = runBlocking {
         var now = 0L
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(),
             processFactory = factory,
             nanoTime = { now },
         )
@@ -420,7 +422,7 @@ class ClaudeCodeProcessCacheTest {
     fun expiresIdleProcessAfterConfiguredTtl() = runBlocking {
         var now = 0L
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(),
             processFactory = factory,
             nanoTime = { now },
         )
@@ -449,7 +451,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun doesNotRetryFailedProcessAutomatically() = runBlocking {
         val factory = FakeProcessFactory(failFirstProcess = true)
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         try {
             assertFailsWith<IllegalStateException> {
                 executor.execute(command(cacheKey = "conversation"))
@@ -466,7 +468,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun bypassesCacheWithoutDurableSessionKey() = runBlocking {
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         try {
             executor.execute(command(cacheKey = null, noSessionPersistence = true))
             executor.execute(command(cacheKey = null, noSessionPersistence = true))
@@ -481,7 +483,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun removesAndClosesProcessWhenCallIsCancelled() = runBlocking {
         val process = BlockingProcess()
-        val executor = ProcessClaudeCodeCliExecutor(
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(),
             processFactory = ClaudeCodeCliProcessFactory { process },
         )
         try {
@@ -509,7 +511,7 @@ class ClaudeCodeProcessCacheTest {
             generatedSessionId = "session",
             fail = false,
         )
-        val executor = ProcessClaudeCodeCliExecutor(
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(),
             processFactory = ClaudeCodeCliProcessFactory {
                 factoryStarted.complete(Unit)
                 allowFactoryToFinish.await()
@@ -537,7 +539,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun keepsEphemeralProcessAliveAcrossResponseCorrections() = runBlocking {
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         val initial = command(cacheKey = null, noSessionPersistence = true)
         try {
             executor.withSession(initial) { session ->
@@ -557,7 +559,7 @@ class ClaudeCodeProcessCacheTest {
     @Test
     fun evictsProcessWhenResponseValidationFails() = runBlocking {
         val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        val executor = ProcessClaudeCodeCliExecutor(TestAiAdmission(), processFactory = factory)
         val initial = command(cacheKey = "conversation")
         try {
             assertFailsWith<ClaudeCodeResponseFormatException> {
@@ -585,6 +587,7 @@ class ClaudeCodeProcessCacheTest {
         reasoningMode: AiReasoningMode? = null,
     ): ClaudeCodeCommand =
         ClaudeCodeCommand(
+            modelConfigurationId = "test-model",
             connectionId = "connection",
             executablePath = "claude",
             cacheKey = cacheKey,

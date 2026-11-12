@@ -56,15 +56,34 @@ or replace coroutine-based application services with Spring AI orchestration.
 
 Worker Gateway binary WebSocket messages have a 128 MiB transport limit on both
 Server and JVM Worker. Client `/ws` messages and text messages retain the 16 MiB
-limit. Servlet container defaults stay at 16 MiB; only `/worker/ws` raises its
-per-session binary receive limit, avoiding larger default buffers for UI sockets.
-The limit applies to the complete encoded message, including fragmented messages,
-not to the raw AI request. The separate 64 MiB Worker request payload limit is
-unchanged. Worker Gateway protocol 21 encodes opaque request/response payloads as
+limit. The Server uses partial-message delivery with 64 KiB binary and 64K-character
+text receive buffers, including the servlet container defaults. Per-connection
+assemblers allocate only for messages being received and enforce the complete
+encoded-message limit across all fragments; text is counted in UTF-8 bytes.
+Partial state is released on completion, rejection and disconnect. Do not set
+Tomcat's receive buffers to the full message limit: it allocates those arrays for
+every open connection, even in idle sessions.
+
+Remote client disconnect cleanup runs in a cancellation-protected context, removes
+the presentation registration before waiting for cancelled work, and attempts each
+remaining cleanup independently. Waiting for concurrent requests and stopping each
+owned voice service have deadlines; failures are logged with the connection and
+resource. A cancellable `join` in an unprotected `finally` can otherwise skip
+unregistration even when every joined request has already completed.
+
+The separate 64 MiB Worker request payload limit is unchanged.
+Worker Gateway protocol 21 encodes opaque request/response payloads as
 CBOR byte strings rather than numeric arrays, removing their per-byte expansion.
 The same codec is used for transport and persisted Server envelopes; there is no
 old-format reader. Server and all Workers require a [coordinated update](worker-request-delivery.md#protocol-21-cutover).
 Queue-wide memory/backpressure and cache-backed payload fetching remain separate work.
+Protocol 23 adds HTTP quota feedback and model-configuration admission identity to
+the Server-owned admission introduced in protocol 22. See [HTTP TPM policies](ai-tpm.md) and [AI concurrency groups](ai-admission.md) for the coordination,
+recovery and upgrade contract. It retains protocol 21 byte-string encoding.
+Protocol 24 separates context inspection and compact-only operations from ordinary
+inference, and moves compaction policy to model configurations. Upgrade Server and
+Workers together; finish in-flight AI operations before updating. See
+[blocking compaction](ai-http-settings.md#blocking-conversation-compaction).
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
 secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy
@@ -749,7 +768,7 @@ visual pause, not the final confirmation or backend assertions. The fixture drop
 its own database schema and credentials; stop its separately managed Worker too.
 Never point this test at an existing account/schema or publish raw fixture logs.
 
-## Experimental Cross-Thread Collaboration
+## Experimental Cross-Conversation Collaboration
 
 Enable only on an isolated Server with `GROMOZEKA_COLLABORATION_ENABLED=true`.
 The default is off. Open two conversations in one project with identical tool
@@ -774,8 +793,17 @@ actual delivery in a durable outbox. A stale decision cannot commit over queued
 safe-point input. Failed or interrupted reviews retain their draft; they do not
 silently publish it or rerun the original model call.
 
-This first iteration deliberately rejects cross-project communication, mismatched
-tool access policies and history-branch changes. Telegram and other externally bound
+Delivery addresses are `AgentAddress(conversationId, agentId)`: requests, replies,
+waits, read-only inheritance and cycle detection survive history-version changes
+inside the same conversation. `AgentContextRef` retains the originally captured
+`threadId` in requests and outbox records as provenance; delivery never rewrites it.
+A new conversation does not inherit obligations, and another agent cannot complete
+them. Stop/cancellation still closes requests and prevents late completion. Source
+tool contexts and newly captured peer snapshots must be current when selected;
+response-review drafts remain bound to their exact history version at commit.
+
+This first iteration deliberately rejects cross-project communication and mismatched
+tool access policies. Telegram and other externally bound
 conversations keep their ordinary turn lifecycle: no collaboration prompt or response
 review, and collaboration tools are hidden from both the catalog and tool discovery.
 Direct collaboration calls from those channels remain rejected.
@@ -805,7 +833,7 @@ come from the same scheduling read. `IDLE` only means no observed scheduled fore
 work: background commands/monitors, slots and failures are not queried by this view.
 
 `agent_requests` describes open obligations for the authenticated user and selected
-agent/current thread: incoming/outgoing counts and incoming `WAITING_USER` /
+agent in the conversation, across history versions: incoming/outgoing counts and incoming `WAITING_USER` /
 `WAITING_RESULT` counts. These are independent of foreground activity; an open outgoing
 request does not imply that its sender is blocked. The existing repository read is
 bounded to 128 conversation requests; `possibly_truncated` makes that boundary explicit
@@ -1466,6 +1494,11 @@ tag remains occupied even if a build or publication fails: never delete or move
 it to reuse its number. Retrying failed jobs for the same release is allowed;
 a replacement release must account for every reserved remote version.
 
+Protocol 25 adds the explicit `chatSchemaEmptyToolCallsAsStop` model-behavior
+flag. AI RPCs serialize resolved model specs with strict decoding, so update
+Server, Workers and UI clients together even when the workaround stays off.
+See [the opt-in workaround](ai-http-settings.md#opt-in-truefoundry-json-schema-finish-reason-workaround).
+
 ## Named Secrets And Background Continuations
 
 A background command or monitor keeps the identity of the user who created it,
@@ -1485,6 +1518,23 @@ automatic scheduling and batching using its retained Runtime incident; its outpu
 is not deleted or marked delivered. Other notifications continue after completion
 or failure, including bounded-batch overflow without another Worker event. This
 neither retries the failed delivery nor re-executes the command or monitor.
+
+Managed shell commands accept an optional `description`: a short user-facing
+purpose in the user's language, preferably **at most 50 characters including
+spaces**. This is prompt guidance, not an acceptance limit: longer labels remain
+valid and are ellipsized by the UI. A separate 1,000-character payload safety bound
+is enforced before process launch. Labels describe intent ("Run tests"), never
+claim results ("Tests passed"), and must not contain secrets.
+
+The exact command stays separate and unchanged. Description is persisted with the
+command task, included in get/list/completion metadata, and cannot change during
+state synchronization. Runtime captions prefer it, with the original command
+available in the tooltip; missing or blank task labels display the command.
+This adds no shell argument/environment value or extra model call. Existing JSON
+records default description to null; no database migration is required.
+Worker Gateway protocol **26** adds this command metadata. Update Server, Workers
+and clients together. The tool registry assigns a new immutable execute-command
+schema revision; clients must discover the current name rather than invent it.
 
 Managed commands accept `secret_env`, a map of environment variable names to
 exact `secret://name` references, for example `{"GH_TOKEN":"secret://github-pat"}`.

@@ -36,6 +36,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import com.gromozeka.domain.service.AiAdmissionWorkerContext
 import kotlin.time.Clock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -254,80 +256,83 @@ class WorkerGatewayOperationHandler(
                 "bytes=${request.payload.size}"
         }
         return runCatching {
-            val payload = when (request.operation) {
-                WorkerGatewayOperation.WORKER_CONTROL -> {
-                    val controlRequest = json.decodeFromString<WorkerControlRequest>(
-                        request.payload.decodeToString()
-                    )
-                    require(controlRequest.target.workerId == identity.workerId) {
-                        "Worker control request targets another Worker"
-                    }
-                    json.encodeToString<WorkerControlResult>(
-                        workerControlHandler.handle(controlRequest)
-                    ).encodeToByteArray()
-                }
-
-                WorkerGatewayOperation.AI_REQUEST_RESPONSE ->
-                    AiRequestResponseGatewayCodec.execute(request.payload, aiRequestResponseHandler, identity.workerId)
-
-                WorkerGatewayOperation.AUDIO_CAPTURE ->
-                    WorkerAudioCaptureGatewayCodec.execute(request.payload, identity, workerAudioCaptureHandler)
-
-                WorkerGatewayOperation.WORKSPACE_TEXT_FILE ->
-                    WorkerWorkspaceTextFileGatewayCodec.execute(
-                        request.payload,
-                        identity,
-                        workerWorkspaceTextFileHandler,
-                    )
-
-                WorkerGatewayOperation.VISUAL_COMMAND -> {
-                    val operation = json.decodeFromString<com.gromozeka.remote.protocol.VisualWorkerCommand>(request.payload.decodeToString())
-                    json.encodeToString(visualRuntime.execute(
-                        operation,
-                        WorkerRequestExecutionContext(request.id, requireNotNull(request.delivery) { "Server request has no delivery metadata" }.startDeadline),
-                    )).encodeToByteArray()
-                }
-
-                WorkerGatewayOperation.TOOL_EXECUTION -> {
-                    val toolRequest = json.decodeFromString<WorkerToolExecutionRequest>(
-                        request.payload.decodeToString()
-                    )
-                    require(toolRequest.executionTarget.workerId == identity.workerId) {
-                        "Tool execution request targets another Worker"
-                    }
-                    val result = parallelToolExecutor.executeParallel(
-                        toolCalls = toolRequest.toolCalls,
-                        toolContext = ToolExecutionContext(
-                            toolRequest.toolContext,
-                            workerRequest = WorkerRequestExecutionContext(request.id, requireNotNull(request.delivery) { "Server request has no delivery metadata" }.startDeadline),
-                        ),
-                        runtimeTaskId = null,
-                        executor = ConversationRuntimeExecutorIdentity.Worker(identity),
-                        expectedTarget = toolRequest.executionTarget,
-                        resolvedSecretsByToolCallId = toolRequest.resolvedSecretsByToolCallId,
-                    )
-                    json.encodeToString(
-                        WorkerToolExecutionResponse(
-                            results = result.results,
-                            returnDirect = result.returnDirect,
-                            structuredContentByCallId = result.structuredContentByCallId,
+            withContext(AiAdmissionWorkerContext(request.id)) {
+                val payload = when (request.operation) {
+                    WorkerGatewayOperation.WORKER_CONTROL -> {
+                        val controlRequest = json.decodeFromString<WorkerControlRequest>(
+                            request.payload.decodeToString()
                         )
-                    ).encodeToByteArray()
-                }
+                        require(controlRequest.target.workerId == identity.workerId) {
+                            "Worker control request targets another Worker"
+                        }
+                        json.encodeToString<WorkerControlResult>(
+                            workerControlHandler.handle(controlRequest)
+                        ).encodeToByteArray()
+                    }
 
-                WorkerGatewayOperation.ARTIFACT_CONTENT,
-                WorkerGatewayOperation.COMMAND_RUNTIME_STATE,
-                WorkerGatewayOperation.VISUAL_OUTPUT,
-                WorkerGatewayOperation.WORKSPACE_STATE,
-                WorkerGatewayOperation.AGENT_SKILL_PACKAGE,
-                WorkerGatewayOperation.AGENT_SKILL_IMPORT ->
-                    error("Server cannot invoke the Worker-owned Server state operation")
+                    WorkerGatewayOperation.AI_REQUEST_RESPONSE ->
+                        AiRequestResponseGatewayCodec.execute(request.payload, aiRequestResponseHandler, identity.workerId)
+
+                    WorkerGatewayOperation.AUDIO_CAPTURE ->
+                        WorkerAudioCaptureGatewayCodec.execute(request.payload, identity, workerAudioCaptureHandler)
+
+                    WorkerGatewayOperation.WORKSPACE_TEXT_FILE ->
+                        WorkerWorkspaceTextFileGatewayCodec.execute(
+                            request.payload,
+                            identity,
+                            workerWorkspaceTextFileHandler,
+                        )
+
+                    WorkerGatewayOperation.VISUAL_COMMAND -> {
+                        val operation = json.decodeFromString<com.gromozeka.remote.protocol.VisualWorkerCommand>(request.payload.decodeToString())
+                        json.encodeToString(visualRuntime.execute(
+                            operation,
+                            WorkerRequestExecutionContext(request.id, requireNotNull(request.delivery) { "Server request has no delivery metadata" }.startDeadline),
+                        )).encodeToByteArray()
+                    }
+
+                    WorkerGatewayOperation.TOOL_EXECUTION -> {
+                        val toolRequest = json.decodeFromString<WorkerToolExecutionRequest>(
+                            request.payload.decodeToString()
+                        )
+                        require(toolRequest.executionTarget.workerId == identity.workerId) {
+                            "Tool execution request targets another Worker"
+                        }
+                        val result = parallelToolExecutor.executeParallel(
+                            toolCalls = toolRequest.toolCalls,
+                            toolContext = ToolExecutionContext(
+                                toolRequest.toolContext,
+                                workerRequest = WorkerRequestExecutionContext(request.id, requireNotNull(request.delivery) { "Server request has no delivery metadata" }.startDeadline),
+                            ),
+                            runtimeTaskId = null,
+                            executor = ConversationRuntimeExecutorIdentity.Worker(identity),
+                            expectedTarget = toolRequest.executionTarget,
+                            resolvedSecretsByToolCallId = toolRequest.resolvedSecretsByToolCallId,
+                        )
+                        json.encodeToString(
+                            WorkerToolExecutionResponse(
+                                results = result.results,
+                                returnDirect = result.returnDirect,
+                                structuredContentByCallId = result.structuredContentByCallId,
+                            )
+                        ).encodeToByteArray()
+                    }
+
+                    WorkerGatewayOperation.AI_ADMISSION,
+                    WorkerGatewayOperation.ARTIFACT_CONTENT,
+                    WorkerGatewayOperation.COMMAND_RUNTIME_STATE,
+                    WorkerGatewayOperation.VISUAL_OUTPUT,
+                    WorkerGatewayOperation.WORKSPACE_STATE,
+                    WorkerGatewayOperation.AGENT_SKILL_PACKAGE,
+                    WorkerGatewayOperation.AGENT_SKILL_IMPORT ->
+                        error("Server cannot invoke the Worker-owned Server state operation")
+                }
+                WorkerGatewayMessage.Response(
+                    requestId = request.id,
+                    status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
+                    payload = payload,
+                )
             }
-            WorkerGatewayMessage.Response(
-                requestId = request.id,
-                status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
-                payload = payload,
-            )
         }.getOrElse { error ->
             if (error is CancellationException) throw error
             WorkerGatewayMessage.Response(

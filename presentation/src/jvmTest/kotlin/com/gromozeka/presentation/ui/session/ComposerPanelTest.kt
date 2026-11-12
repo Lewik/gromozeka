@@ -193,7 +193,14 @@ class ComposerPanelTest {
         runOnIdle { assertEquals(listOf(PTTEvent.SINGLE_CLICK), events) }
         for (next in listOf(PttState.PREPARING, PttState.RECORDING)) {
             runOnIdle { state = next }
-            onNodeWithTag("voice-send-mode").assertIsNotEnabled()
+            val previousMode = autoSend
+            onNodeWithTag("voice-send-mode").assertIsEnabled().performClick()
+            runOnIdle {
+                assertEquals(!previousMode, autoSend)
+                assertEquals(next, state)
+                assertEquals(listOf(PTTEvent.SINGLE_CLICK), events)
+                assertEquals(0, sends)
+            }
             onNodeWithTag(UiTestTag.PttButton.value).assertIsEnabled()
         }
     }

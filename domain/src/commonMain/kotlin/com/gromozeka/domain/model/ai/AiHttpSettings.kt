@@ -13,11 +13,9 @@ data class AiHttpSettings(
     val proxyUrl: String? = null,
     val noProxy: List<String> = emptyList(),
     val extraHeaders: Map<String, String> = emptyMap(),
-    val maxConcurrentCalls: Int = 4,
     val maxAttempts: Int = 3,
 ) {
     init {
-        require(maxConcurrentCalls in 1..64) { "AI HTTP concurrency must be between 1 and 64" }
         require(maxAttempts in 1..5) { "AI HTTP max attempts must be between 1 and 5" }
         require(caBundlePath == null || caBundlePath.isNotBlank()) { "CA bundle path must not be blank" }
         proxyUrl?.let {

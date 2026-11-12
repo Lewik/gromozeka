@@ -6,8 +6,8 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 internal class ClaudeCodeCliConfiguration {
     @Bean(destroyMethod = "close")
-    fun claudeCodeCliExecutor(): ProcessClaudeCodeCliExecutor =
-        ProcessClaudeCodeCliExecutor()
+    fun claudeCodeCliExecutor(admission: com.gromozeka.domain.service.AiCallAdmission): ProcessClaudeCodeCliExecutor =
+        ProcessClaudeCodeCliExecutor(admission = admission)
 
     @Bean
     fun claudeCodeVoiceTranscriptionService(): ClaudeCodeVoiceTranscriptionService =

@@ -18,6 +18,7 @@ class AiModelBehaviorTest {
             maximumDisabledReasoningEffort = AiReasoningEffort.HIGH,
             supportsForcedToolChoice = false,
             anthropicThinkingPrefixDrop = true,
+            chatSchemaEmptyToolCallsAsStop = true,
         ))
         val json = Json { encodeDefaults = true }
         assertEquals(spec, json.decodeFromString<AiModelSpec>(json.encodeToString(spec)))
@@ -33,6 +34,7 @@ class AiModelBehaviorTest {
             "limits":{"textGeneration":{"contextWindowTokens":10000}}
         }""")
         assertEquals(AiModelBehavior(), spec.behavior)
+        assertEquals(false, spec.behavior.chatSchemaEmptyToolCallsAsStop)
     }
 
     @Test

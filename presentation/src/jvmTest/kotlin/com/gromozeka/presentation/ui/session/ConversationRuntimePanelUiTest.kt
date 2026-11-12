@@ -463,6 +463,25 @@ class ConversationRuntimePanelUiTest {
         runOnIdle { assertFalse(visible.value) }
     }
 
+    @Test
+    fun commandDescriptionsUseOneLineWithoutReplacingTheStoredCommand() = runDesktopComposeUiTest(width = 1100, height = 900) {
+        val fixture = Fixture()
+        val now = Instant.fromEpochMilliseconds(0)
+        val command = "./gradlew :server:test --tests '*ExampleTest'"
+        val task = mutableStateOf(CommandTask(CommandTask.Id("caption"), fixture.conversationId,
+            ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"), command = command, description = "Запуск тестов",
+            workingDirectory = "/workspace", status = CommandTask.Status.WORKING, processId = null, processStartedAt = null,
+            outputFile = "/output", outputBytes = 0, createdAt = now, updatedAt = now))
+        setContent { fixture.Panel(fixture.snapshot().copy(commandTasks = listOf(task.value))) }
+        val shortHeight = onNodeWithText("Запуск тестов", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.height
+        val long = "Подробное описание: " + "д".repeat(900)
+        runOnIdle { task.value = task.value.copy(description = long) }
+        val longHeight = onNodeWithText(long, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.height
+        assertEquals(shortHeight, longHeight)
+        runOnIdle { assertEquals(command, task.value.command); task.value = task.value.copy(description = null) }
+        onNodeWithText(command, useUnmergedTree = true).assertExists()
+    }
+
     private fun visualFixture(conversationId: Conversation.Id) = Visual(
         id = "visual-preview", conversationId = conversationId, createdBy = User.Id("viewer"),
         document = "<html><body><p>Preview</p></body></html>", title = "Preview",

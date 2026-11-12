@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.repository.ClaudeCodeSessionStateRepository
@@ -20,7 +22,7 @@ class ClaudeCodeCompactionLiveTest {
     @Test
     fun messageSquashHelperCompletesWithoutPersistingANativeSession() = runBlocking {
         org.junit.Assume.assumeTrue(System.getenv("GROMOZEKA_CLAUDE_COMPACTION_LIVE") == "true")
-        val process = ProcessClaudeCodeCliExecutor(System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude")
+        val process = ProcessClaudeCodeCliExecutor(TestAiAdmission(), System.getenv("GROMOZEKA_CLAUDE_EXECUTABLE") ?: "claude")
         val sessions = Sessions()
         val runtime = ClaudeCodeCliRuntime(
             executor = process,
@@ -72,7 +74,7 @@ class ClaudeCodeCompactionLiveTest {
             writeText("#!/bin/sh\nexport CLAUDE_CODE_AUTO_COMPACT_WINDOW=100000\nexport CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=5\nexec '" + executable.replace("'", "'\"'\"'") + "' \"\$@\"\n")
             check(setExecutable(true))
         } else null
-        val process = ProcessClaudeCodeCliExecutor(launcher?.absolutePath ?: executable)
+        val process = ProcessClaudeCodeCliExecutor(TestAiAdmission(), launcher?.absolutePath ?: executable)
         val sessions = Sessions()
         val commands = mutableListOf<ClaudeCodeCommand>()
         val executor = object : ClaudeCodeCliExecutor {
@@ -101,41 +103,57 @@ class ClaudeCodeCompactionLiveTest {
         val marker = "AURORA_${UUID.randomUUID().toString().take(8)}"
         val tailMarker = "TAIL_${UUID.randomUUID().toString().take(8)}"
         var thread = "original"
-        suspend fun ask(text: String, threshold: Int? = null): AiRuntimeResponse {
-            messages += Conversation.Message(
-                id = Conversation.Message.Id(UUID.randomUUID().toString()),
-                conversationId = conversationId,
-                role = Conversation.Message.Role.USER,
-                content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
-                createdAt = Clock.System.now(),
-            )
-            val response = runtime.call(AiRuntimeRequest(
-                systemPrompts = listOf("You are a synthetic integration test. Remember the exact marker supplied by the user. Answer briefly. No tools."),
-                messages = messages.toList(),
-                options = AiRuntimeOptions(
-                    autoCompactionThresholdTokens = threshold,
-                    reasoning = AiReasoningConfig(mode = AiReasoningMode.DISABLED),
-                    toolContext = mapOf("conversationId" to conversationId.value, "threadId" to thread, "projectId" to "synthetic"),
-                ),
-            ))
-            messages += response.messages.map { message ->
-                Conversation.Message(
-                    id = Conversation.Message.Id(UUID.randomUUID().toString()),
-                    conversationId = conversationId,
-                    role = Conversation.Message.Role.ASSISTANT,
-                    content = message.content,
-                    createdAt = Clock.System.now(),
+        fun currentRequest() = AiRuntimeRequest(
+            systemPrompts = listOf("You are a synthetic integration test. Remember the exact marker supplied by the user. Answer briefly. No tools."),
+            messages = messages.toList(),
+            options = AiRuntimeOptions(reasoning = AiReasoningConfig(mode = AiReasoningMode.DISABLED),
+                toolContext = mapOf("conversationId" to conversationId.value, "threadId" to thread, "projectId" to "synthetic")),
+        )
+        fun persist(response: AiRuntimeResponse) {
+            for (generated in response.messages) {
+                var saved = Conversation.Message(
+                    id = Conversation.Message.Id(UUID.randomUUID().toString()), conversationId = conversationId,
+                    role = Conversation.Message.Role.ASSISTANT, content = generated.content, createdAt = Clock.System.now(),
+                    providerMetadata = kotlinx.serialization.json.JsonObject((response.providerMetadata + generated.metadata).mapValues { (_, value) ->
+                        value as? kotlinx.serialization.json.JsonElement ?: kotlinx.serialization.json.JsonPrimitive(value?.toString())
+                    }),
                 )
+                val checkpoint = saved.content.singleOrNull() as? Conversation.Message.ContentItem.ContextCompactionResult
+                if (checkpoint != null) {
+                    val source = Conversation.Thread.Id(thread)
+                    thread = "cow-${UUID.randomUUID()}"
+                    saved = saved.copy(content = listOf(checkpoint.copy(historyTransition =
+                        Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(source, Conversation.Thread.Id(thread)))))
+                    val boundary = messages.indexOfLast { it.id == checkpoint.sourceMessageIds.last() }
+                    check(boundary >= 0)
+                    messages.add(boundary + 1, saved)
+                } else messages += saved
             }
-            println("COMPACTION_PROBE native=$nativeCompaction thread=$thread resumed=${response.providerMetadata["resumed"]} context=${response.contextUsage?.inputTokens} checkpoints=${response.messages.sumOf { message -> message.content.count { it is Conversation.Message.ContentItem.ContextCompactionResult } }}")
+        }
+        suspend fun ask(text: String, compactBeforeGeneration: Boolean = false): AiRuntimeResponse {
+            messages += Conversation.Message(id = Conversation.Message.Id(UUID.randomUUID().toString()), conversationId = conversationId,
+                role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage(text)), createdAt = Clock.System.now())
+            if (compactBeforeGeneration) {
+                val prepared = currentRequest()
+                assertTrue(runtime.inspectContext(prepared).nativeCompactionAvailable)
+                val compacted = runtime.compact(prepared.copy(options = prepared.options.copy(usagePurpose = "CONTEXT_COMPACTION")))
+                assertEquals(1, compacted.messages.size)
+                assertEquals(AiStepOutcome.CONTINUE, compacted.outcome)
+                assertFalse((compacted.messages.single().content.single() as Conversation.Message.ContentItem.ContextCompactionResult)
+                    .sourceMessageIds.contains(messages.last().id), "Unsent user input must remain outside native coverage")
+                persist(compacted)
+            }
+            val response = runtime.call(currentRequest())
+            persist(response)
+            println("COMPACTION_PROBE native=$nativeCompaction thread=$thread resumed=${response.providerMetadata["resumed"]} context=${response.contextUsage?.inputTokens}")
             return response
         }
         try {
             withTimeout(240_000) {
                 ask("The project marker is $marker. Remember it and reply OK.\n" + (1..250).joinToString("\n") { "Inert reference $it: alpha beta gamma delta epsilon zeta." })
                 ask("Keep the project marker. Reply OK.")
-                val compacted = ask("The separate task marker is $tailMarker. Remember both markers without replacing the original project marker. Now reply only with the original project marker.", threshold = if (nativeCompaction) null else 1)
-                assertTrue(compacted.messages.flatMap { it.content }.any { it is Conversation.Message.ContentItem.ContextCompactionResult })
+                val compacted = ask("The separate task marker is $tailMarker. Remember both markers without replacing the original project marker. Now reply only with the original project marker.", compactBeforeGeneration = !nativeCompaction)
+                assertTrue(messages.flatMap { it.content }.any { it is Conversation.Message.ContentItem.ContextCompactionResult })
                 assertEquals(if (nativeCompaction) 0 else 1, commands.count { it.userPrompt == "/compact" })
                 assertTrue(compacted.text().contains(marker))
 

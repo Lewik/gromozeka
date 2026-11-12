@@ -22,6 +22,7 @@ services:
       dockerfile: e2e-tests/Dockerfile
       args:
         JAVA_BUILD_IMAGE: ${GROMOZEKA_E2E_JAVA_IMAGE:-eclipse-temurin:21-jdk-jammy}
+        UBUNTU_ARCHIVE_MIRROR: ${GROMOZEKA_E2E_UBUNTU_MIRROR:-}
     depends_on:
       postgres:
         condition: service_healthy

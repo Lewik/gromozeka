@@ -13,6 +13,7 @@ import kotlin.test.assertIs
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
 import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
@@ -44,6 +45,34 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
+    @Test
+    fun imageAndDocumentContentSurvivesWorkerRequestAndResponseEncoding() = runBlocking {
+        val fixture = TestHandler()
+        val content = listOf(
+            Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.Base64ImageSource("aW1hZ2U=", "image/jpeg")),
+            Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.UrlImageSource("https://example.test/image.jpg")),
+            Conversation.Message.ContentItem.ImageItem(Conversation.Message.ImageSource.FileImageSource("image-file")),
+            Conversation.Message.ContentItem.DocumentItem(
+                Conversation.Message.DocumentSource.Base64DocumentSource("cGRm", "application/pdf", "document.pdf")),
+        )
+        val message = Conversation.Message(Conversation.Message.Id("image-message"), Conversation.Id("conversation"),
+            role = Conversation.Message.Role.USER, content = content, createdAt = Instant.fromEpochMilliseconds(0))
+        val request = fixture.runtimeRequest.copy(messages = listOf(message))
+        val expected = fixture.runtimeResponse.copy(messages = listOf(
+            com.gromozeka.domain.model.ai.AiAssistantMessage(content)))
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                assertEquals(listOf(message), request.messages)
+                return expected
+            }
+        }
+        val response = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request), handler)
+        assertEquals(expected, AiRequestResponseGatewayCodec.decodeCallResponse(response))
+    }
+
     @Test
     fun `model discovery is connection scoped and rejects wrong executor or disabled connection`() = runBlocking<Unit> {
         val fixture = TestHandler()
@@ -133,7 +162,7 @@ class AiRequestResponseGatewayCodecTest {
         val settings = com.gromozeka.domain.model.ai.AiHttpSettings(
             authentication = com.gromozeka.domain.model.ai.AiHttpSettings.Authentication.BEARER,
             caBundlePath = "C:\\worker\\ca.pem", proxyUrl = "http://proxy.example:8080", noProxy = listOf(".internal"),
-            extraHeaders = mapOf("User-Agent" to "Worker-fixture", "x-tfy-strict-openai" to "false"), maxConcurrentCalls = 7, maxAttempts = 4)
+            extraHeaders = mapOf("User-Agent" to "Worker-fixture", "x-tfy-strict-openai" to "false"), maxAttempts = 4)
         for (source in listOf(com.gromozeka.domain.model.SecretRef.Inline("synthetic-worker-token"),
             com.gromozeka.domain.model.SecretRef.EnvironmentVariable("WORKER_TOKEN"),
             com.gromozeka.domain.model.SecretRef.File("C:\\worker\\token.txt"))) {
@@ -168,6 +197,7 @@ class AiRequestResponseGatewayCodecTest {
                 maximumDisabledReasoningEffort = com.gromozeka.domain.model.ai.AiReasoningEffort.HIGH,
                 supportsForcedToolChoice = false,
                 anthropicThinkingPrefixDrop = true,
+                chatSchemaEmptyToolCallsAsStop = true,
             ))
         val expected = fixture.runtime.copy(modelSpec = spec)
         var called = false
@@ -397,10 +427,52 @@ class AiRequestResponseGatewayCodecTest {
 
     private fun contextQuery(fixture: TestHandler) = fixture.runtimeRequest.copy(tools = emptyList(), options = fixture.runtimeRequest.options.copy(
         usagePurpose = AI_CONTEXT_QUERY_PURPOSE, toolChoice = AiToolChoice.None, toolAccess = ToolAccessPolicy.AllowOnly(),
-        autoCompactionThresholdTokens = null, toolContext = mapOf("conversationId" to "context-query:synthetic"),
+        toolContext = mapOf("conversationId" to "context-query:synthetic"),
     ))
 
+    @Test
+    fun contextInspectionAndCompactionAreDistinctFromOrdinaryInference() = kotlinx.coroutines.runBlocking {
+        val fixture = TestHandler()
+        val inspection = com.gromozeka.domain.model.ai.AiContextInspection(1234,
+            com.gromozeka.domain.model.ai.AiContextInspection.Precision.PROVIDER_COUNT, true)
+        var inspected = false
+        var compacted = false
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse =
+                error("Context operations must not start ordinary inference")
+            override suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest):
+                com.gromozeka.domain.model.ai.AiContextInspection {
+                assertEquals(fixture.runtime, runtime)
+                assertEquals(fixture.runtimeRequest.messages, request.messages)
+                assertEquals(fixture.runtimeRequest.systemPrompts, request.systemPrompts)
+                inspected = true
+                return inspection
+            }
+            override suspend fun compact(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                assertEquals(fixture.runtime, runtime)
+                assertEquals("CONTEXT_COMPACTION", request.options.usagePurpose)
+                compacted = true
+                return fixture.runtimeResponse
+            }
+        }
+        val countBytes = AiRequestResponseGatewayCodec.encodeContextInspectionRequest(fixture.runtime, null, fixture.runtimeRequest)
+        kotlin.test.assertTrue(countBytes.decodeToString().contains("inspect_context_v1"))
+        assertEquals(inspection, AiRequestResponseGatewayCodec.decodeContextInspectionResponse(
+            AiRequestResponseGatewayCodec.execute(countBytes, handler)))
+        val request = fixture.runtimeRequest.copy(options = fixture.runtimeRequest.options.copy(usagePurpose = "CONTEXT_COMPACTION"))
+        val compactBytes = AiRequestResponseGatewayCodec.encodeCompactionRequest(fixture.runtime, null, request)
+        kotlin.test.assertTrue(compactBytes.decodeToString().contains("compact_v1"))
+        assertEquals(fixture.runtimeResponse, AiRequestResponseGatewayCodec.decodeCallResponse(
+            AiRequestResponseGatewayCodec.execute(compactBytes, handler)))
+        kotlin.test.assertTrue(inspected && compacted)
+    }
+
     private class TestHandler : AiRequestResponseExecutionHandler {
+        override suspend fun inspectContext(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
+        override suspend fun compact(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compact")
+
         override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant):
             com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")
 

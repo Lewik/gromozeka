@@ -12,6 +12,7 @@ data class AiModelBehavior(
     val maximumDisabledReasoningEffort: AiReasoningEffort? = null,
     val supportsForcedToolChoice: Boolean = true,
     val anthropicThinkingPrefixDrop: Boolean = false,
+    val chatSchemaEmptyToolCallsAsStop: Boolean = false,
 ) {
     @Serializable
     enum class ChatCompletionsTokenLimit {

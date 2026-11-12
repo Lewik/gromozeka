@@ -269,35 +269,33 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
-    fun mapsResolvedAutoCompactionThresholdIntoContextManagement() {
+    fun ordinaryRequestsNeverConfigureInlineCompaction() {
         val request = mapper.toRequest(
             request = AiRuntimeRequest(
                 systemPrompts = emptyList(),
                 messages = emptyList(),
-                options = AiRuntimeOptions(autoCompactionThresholdTokens = 945_000),
+                options = AiRuntimeOptions(),
             ),
             modelName = "gpt-5.5",
             conversationKey = "test-conversation",
         )
 
-        val contextManagement = request.contextManagement?.single()
-        assertEquals("compaction", contextManagement?.string("type"))
-        assertEquals(945_000, contextManagement?.int("compact_threshold"))
+        assertFalse(Json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), request).contains("\"context_management\""))
     }
 
     @Test
-    fun omitsContextManagementWhenAutoCompactionThresholdIsAbsent() {
+    fun ordinaryRequestsOmitContextManagement() {
         val request = mapper.toRequest(
             request = AiRuntimeRequest(
                 systemPrompts = emptyList(),
                 messages = emptyList(),
-                options = AiRuntimeOptions(autoCompactionThresholdTokens = null),
+                options = AiRuntimeOptions(),
             ),
             modelName = "gpt-5.5",
             conversationKey = "test-conversation",
         )
 
-        assertNull(request.contextManagement)
+        assertFalse(Json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), request).contains("\"context_management\""))
     }
 
     @Test
@@ -490,8 +488,7 @@ class OpenAiSubscriptionRequestMapperTest {
                 tools = listOf(testTool("memory_remember")),
                 options = AiRuntimeOptions(
                     reasoning = AiReasoningConfig(effort = AiReasoningEffort.HIGH),
-                    autoCompactionThresholdTokens = 297_600,
-                ),
+                    ),
             ),
             modelProfile = profile,
             conversationKey = "test-conversation",
@@ -501,7 +498,7 @@ class OpenAiSubscriptionRequestMapperTest {
 
         assertNull(transportRequest.instructions)
         assertNull(transportRequest.tools)
-        assertNull(transportRequest.contextManagement)
+        assertFalse(Json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), transportRequest).contains("\"context_management\""))
         assertFalse(transportRequest.parallelToolCalls)
         assertEquals("additional_tools", transportRequest.input[0].string("type"))
         assertEquals("developer", transportRequest.input[0].string("role"))

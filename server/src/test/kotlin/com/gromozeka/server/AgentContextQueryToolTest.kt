@@ -114,7 +114,7 @@ class AgentContextQueryToolTest {
 
     @Test fun `result contains final answer and bounded snapshot provenance not the target request`() = runBlocking {
         val snapshot = ConversationContextSnapshot(
-            target = AgentEndpoint(Conversation.Id("target"), Conversation.Thread.Id("pinned"), AgentDefinition.Id("receiver")),
+            target = AgentContextRef(Conversation.Id("target"), Conversation.Thread.Id("pinned"), AgentDefinition.Id("receiver")),
             runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model")),
             resolvedRuntime = Mockito.mock(ResolvedAiRuntime::class.java),
             request = AiRuntimeRequest(listOf("private system prefix"), emptyList()),

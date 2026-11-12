@@ -12,8 +12,30 @@ data class AiCatalog(
     val runtimeAssignments: List<AiRuntimeAssignment>,
     val defaultAgentId: AgentDefinition.Id,
     val webTools: AiWebToolConfiguration = AiWebToolConfiguration(),
+    val concurrencyGroups: List<AiConcurrencyGroup> = listOf(AiConcurrencyGroup.DEFAULT),
+    val tpmGroups: List<AiTpmGroup> = emptyList(),
 ) {
     init {
+        require(concurrencyGroups.map { it.key }.distinct().size == concurrencyGroups.size) { "Concurrency group keys must be unique" }
+        require(tpmGroups.map { it.id }.distinct().size == tpmGroups.size && tpmGroups.map { it.key }.distinct().size == tpmGroups.size) {
+            "TPM group ids and keys must be unique"
+        }
+        modelConfigurations.forEach { configuration -> configuration.tpm?.let { policy ->
+            val connection = requireNotNull(connections.find { it.id == configuration.connectionId })
+            require(connection.kind in setOf(AiConnection.Kind.OPENAI_API, AiConnection.Kind.OPENAI_COMPATIBLE,
+                AiConnection.Kind.ANTHROPIC_API, AiConnection.Kind.OPENAI_SUBSCRIPTION)) { "TPM requires a supported JSON HTTP adapter" }
+            val ids = listOfNotNull((policy.group as? AiTpmGroupSelector.Fixed)?.groupId, policy.fallbackGroupId)
+            require(ids.all { id -> tpmGroups.any { it.id == id } }) { "TPM policy references an unavailable group" }
+        } }
+        require(concurrencyGroups.map { it.id }.distinct().size == concurrencyGroups.size) {
+            "AI concurrency group ids must be unique"
+        }
+        require(concurrencyGroups.any { it.id == AiConcurrencyGroup.DEFAULT_ID }) {
+            "The default AI concurrency group is required"
+        }
+        require(modelConfigurations.all { configuration -> concurrencyGroups.any { it.id == configuration.concurrencyGroupId } }) {
+            "Every AI model configuration must reference an existing concurrency group"
+        }
         require(connections.map { it.id }.distinct().size == connections.size) {
             "AI connection ids must be unique"
         }
@@ -51,6 +73,22 @@ data class AiCatalog(
             ) {
                 "AI model configuration ${configuration.id.value} requests embedding dimensions " +
                     "for a model without embeddings capability"
+            }
+        }
+        modelConfigurations.forEach { configuration ->
+            val compaction = configuration.compaction
+            if (compaction != AiModelConfiguration.Compaction()) {
+                val limits = modelSpecFor(configuration)?.limits?.textGeneration
+                require(limits != null) { "Compaction requires a text generation model: ${configuration.id.value}" }
+                require(compaction.thresholdTokens == null || compaction.thresholdTokens < limits.contextWindowTokens) {
+                    "Compaction threshold must leave room inside the context window: ${configuration.id.value}"
+                }
+                compaction.summaryModelConfigurationId?.let { summaryId ->
+                    val summary = modelConfigurations.singleOrNull { it.id == summaryId }
+                    require(summary != null && summary.enabled && modelSpecFor(summary)?.limits?.textGeneration != null) {
+                        "Compaction references a missing, disabled or non-text summary configuration: ${summaryId.value}"
+                    }
+                }
             }
         }
         runtimeAssignments.forEach { assignment ->

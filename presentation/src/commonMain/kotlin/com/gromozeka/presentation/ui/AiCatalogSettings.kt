@@ -57,6 +57,8 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiConcurrencyGroup
+import com.gromozeka.domain.model.ai.AiTpmGroup
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -91,6 +93,8 @@ private enum class AiCatalogSection(val titleKey: String) {
     Runtime("ai.catalog.section.runtime"),
     Models("ai.catalog.section.models"),
     Connections("ai.catalog.section.connections"),
+    Concurrency("ai.catalog.section.concurrency"),
+    Tpm("ai.tpm.groups"),
     Credentials("ai.catalog.section.credentials"),
     Specs("ai.catalog.section.specs"),
 }
@@ -108,6 +112,8 @@ private data class AiCatalogDraft(
     val runtimeAssignments: List<AiRuntimeAssignment>,
     val defaultAgentId: com.gromozeka.domain.model.AgentDefinition.Id,
     val webTools: AiWebToolConfiguration,
+    val concurrencyGroups: List<AiConcurrencyGroup>,
+    val tpmGroups: List<AiTpmGroup>,
     val secretMutations: List<AiCatalogSecretMutation> = emptyList(),
 ) {
     fun toCatalog(): AiCatalog = AiCatalog(
@@ -117,6 +123,8 @@ private data class AiCatalogDraft(
         runtimeAssignments = runtimeAssignments,
         defaultAgentId = defaultAgentId,
         webTools = webTools,
+        concurrencyGroups = concurrencyGroups,
+        tpmGroups = tpmGroups,
     )
 
     fun withSecretMutation(mutation: AiCatalogSecretMutation?): AiCatalogDraft {
@@ -134,6 +142,8 @@ private data class AiCatalogDraft(
             runtimeAssignments = catalog.runtimeAssignments,
             defaultAgentId = catalog.defaultAgentId,
             webTools = catalog.webTools,
+            concurrencyGroups = catalog.concurrencyGroups,
+            tpmGroups = catalog.tpmGroups,
         )
     }
 }
@@ -306,6 +316,10 @@ fun AiCatalogSettings(
                     onChange = { draft = it },
                     onError = { error = it },
                 )
+
+                AiCatalogSection.Concurrency -> ConcurrencyGroupsEditor(currentDraft, { draft = it }, { error = it })
+                AiCatalogSection.Tpm -> AiTpmGroupsEditor(currentDraft.tpmGroups, currentDraft.modelConfigurations,
+                    { draft = currentDraft.copy(tpmGroups = it) }, { error = it })
 
                 AiCatalogSection.Credentials -> GitHubCopilotCredentialSettings(
                     connections = currentDraft.connections.filterIsInstance<AiConnection.GitHubCopilot>(),
@@ -540,7 +554,9 @@ private fun ModelConfigurationsEditor(
                         },
                         onEdit = { editing = configuration },
                         onDelete = {
-                            if (assignments.isNotEmpty()) {
+                            if (assignments.isNotEmpty() || draft.modelConfigurations.any {
+                                    it.compaction.summaryModelConfigurationId == configuration.id
+                                }) {
                                 onError(translation.text("ai.model.in_use", "name" to configuration.displayName))
                             } else {
                                 onChange(
@@ -563,6 +579,9 @@ private fun ModelConfigurationsEditor(
             existing = editing,
             connections = draft.connections,
             modelSpecs = draft.modelSpecs,
+            concurrencyGroups = draft.concurrencyGroups,
+            tpmGroups = draft.tpmGroups,
+            configurations = draft.modelConfigurations,
             onDismiss = {
                 creating = false
                 editing = null
@@ -579,6 +598,73 @@ private fun ModelConfigurationsEditor(
             },
         )
     }
+}
+
+@Composable
+private fun ConcurrencyGroupsEditor(draft: AiCatalogDraft, onChange: (AiCatalogDraft) -> Unit, onError: (String?) -> Unit) {
+    val translation = LocalTranslation.current
+    var editing by remember { mutableStateOf<AiConcurrencyGroup?>(null) }
+    var creating by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(translation.text("ai.concurrency.description"), style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = { creating = true }) { Text(translation.text("ai.concurrency.new")) }
+        draft.concurrencyGroups.forEach { group ->
+            CatalogEntityCard(
+                title = group.displayName,
+                subtitle = group.id.value,
+                badges = listOf(group.maxConcurrentCalls?.let { translation.text("ai.concurrency.limit_value", "limit" to it) }
+                    ?: translation.text("ai.concurrency.unlimited")),
+                onEdit = { editing = group },
+                onDelete = {
+                    if (group.id == AiConcurrencyGroup.DEFAULT_ID || draft.modelConfigurations.any { it.concurrencyGroupId == group.id }) {
+                        onError(translation.text("ai.concurrency.in_use"))
+                    } else onChange(draft.copy(concurrencyGroups = draft.concurrencyGroups.filterNot { it.id == group.id }))
+                },
+            )
+        }
+    }
+    if (creating || editing != null) {
+        ConcurrencyGroupDialog(editing, onDismiss = { creating = false; editing = null }) { group ->
+            if (draft.concurrencyGroups.any { (creating && it.id == group.id) || (it.id != group.id && it.key == group.key) }) {
+                onError(translation.text("ai.concurrency.duplicate"))
+            } else onChange(draft.copy(concurrencyGroups = draft.concurrencyGroups.filterNot { it.id == group.id } + group))
+            creating = false
+            editing = null
+        }
+    }
+}
+
+@Composable
+private fun ConcurrencyGroupDialog(existing: AiConcurrencyGroup?, onDismiss: () -> Unit, onSave: (AiConcurrencyGroup) -> Unit) {
+    val translation = LocalTranslation.current
+    var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
+    var groupKey by remember { mutableStateOf(existing?.key.orEmpty()) }
+    var name by remember { mutableStateOf(existing?.displayName.orEmpty()) }
+    var limit by remember { mutableStateOf<Int?>(if (existing == null) 4 else existing.maxConcurrentCalls) }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(translation.text(if (existing == null) "ai.concurrency.new" else "ai.concurrency.edit")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = id, onValueChange = { id = it }, enabled = existing == null,
+                    label = { Text(translation.text("ai.field.stable_id")) }, singleLine = true)
+                OutlinedTextField(value = groupKey, onValueChange = { groupKey = it },
+                    label = { Text(translation.text("ai.tpm.key")) }, singleLine = true)
+                OutlinedTextField(value = name, onValueChange = { name = it },
+                    label = { Text(translation.text("ai.field.display_name")) }, singleLine = true)
+                LabeledDropdown(label = translation.text("ai.concurrency.limit"), value = limit,
+                    options = listOf<Int?>(null) + (1..64).toList(),
+                    optionLabel = { it?.toString() ?: translation.text("ai.concurrency.unlimited") }, onSelect = { limit = it })
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = { Button(onClick = {
+            runCatching { AiConcurrencyGroup(AiConcurrencyGroup.Id(id.trim()), name.trim(), limit, groupKey.trim()) }
+                .onSuccess(onSave).onFailure { error = it.message }
+        }) { Text(translation.text("ai.action.apply")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(translation.text("ai.action.cancel")) } },
+    )
 }
 
 @Composable
@@ -773,7 +859,7 @@ private fun CatalogSectionActions(
 }
 
 @Composable
-private fun CatalogEntityCard(
+internal fun CatalogEntityCard(
     title: String,
     subtitle: String,
     badges: List<String>,
@@ -872,7 +958,6 @@ private fun ConnectionDialog(
     }
     val initialHttp = (existing as? AiConnection.ConfigurableHttpAiConnection)?.httpSettings ?: AiHttpSettings()
     var httpAuthentication by remember { mutableStateOf(initialHttp.authentication) }
-    var maxConcurrentCalls by remember { mutableStateOf(initialHttp.maxConcurrentCalls) }
     var maxAttempts by remember { mutableStateOf(initialHttp.maxAttempts) }
     var caBundlePath by remember { mutableStateOf(initialHttp.caBundlePath.orEmpty()) }
     var proxyUrl by remember { mutableStateOf(initialHttp.proxyUrl.orEmpty()) }
@@ -1160,8 +1245,6 @@ private fun ConnectionDialog(
                     OutlinedTextField(value = extraHeaders, onValueChange = { extraHeaders = it },
                         label = { Text(translation.text("ai.http.headers")) }, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
                     Text(translation.text("ai.http.headers_hint"), style = MaterialTheme.typography.bodySmall)
-                    LabeledDropdown(label = translation.text("ai.http.concurrency"), value = maxConcurrentCalls,
-                        options = (1..64).toList(), optionLabel = { it.toString() }, onSelect = { maxConcurrentCalls = it })
                     LabeledDropdown(label = translation.text("ai.http.max_attempts"), value = maxAttempts,
                         options = (1..5).toList(), optionLabel = { it.toString() }, onSelect = { maxAttempts = it })
                     Text(translation.text("ai.http.execution_hint"), style = MaterialTheme.typography.bodySmall)
@@ -1350,7 +1433,6 @@ private fun ConnectionDialog(
                             proxyUrl = proxyUrl.trim().ifBlank { null },
                             noProxy = noProxy.split(',').map(String::trim).filter(String::isNotEmpty),
                             extraHeaders = parseAiExtraHeaders(extraHeaders, translation),
-                            maxConcurrentCalls = maxConcurrentCalls,
                             maxAttempts = maxAttempts,
                         ) else AiHttpSettings()
                         val connection = createConnection(
@@ -1571,10 +1653,15 @@ private fun ModelConfigurationDialog(
     existing: AiModelConfiguration?,
     connections: List<AiConnection>,
     modelSpecs: List<AiModelSpec>,
+    concurrencyGroups: List<AiConcurrencyGroup>,
+    tpmGroups: List<AiTpmGroup>,
+    configurations: List<AiModelConfiguration>,
     onDismiss: () -> Unit,
     onSave: (AiModelConfiguration) -> Unit,
 ) {
     val translation = LocalTranslation.current
+    var concurrencyGroupId by remember { mutableStateOf(existing?.concurrencyGroupId ?: AiConcurrencyGroup.DEFAULT_ID) }
+    val tpmDraft = remember(existing) { AiTpmPolicyDraft(existing?.tpm) }
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
     var connectionId by remember {
         mutableStateOf(existing?.connectionId ?: connections.firstOrNull()?.id)
@@ -1599,6 +1686,11 @@ private fun ModelConfigurationDialog(
     var requestedEmbeddingDimensions by remember {
         mutableStateOf(existing?.requestedEmbeddingDimensions?.toString().orEmpty())
     }
+    var compactionMode by remember {
+        mutableStateOf(if (existing?.compaction?.thresholdTokens == null) AutoCompactionEditorMode.None else AutoCompactionEditorMode.Absolute)
+    }
+    var compactionValue by remember { mutableStateOf(existing?.compaction?.thresholdTokens?.toString().orEmpty()) }
+    var summaryConfigurationId by remember { mutableStateOf(existing?.compaction?.summaryModelConfigurationId) }
     var reasoningMode by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.mode) }
     var reasoningEffort by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.effort) }
     var reasoningDisplay by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.display) }
@@ -1686,6 +1778,43 @@ private fun ModelConfigurationDialog(
                         modifier = Modifier.weight(1f),
                     )
                 }
+                if (selectedModelSpec?.limits?.textGeneration != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LabeledDropdown(
+                            label = translation.text("ai.compaction.title"),
+                            value = compactionMode,
+                            options = AutoCompactionEditorMode.entries,
+                            optionLabel = { translation.text(it.titleKey) },
+                            onSelect = { compactionMode = it },
+                            modifier = Modifier.weight(1f),
+                        )
+                        OptionalNumberField(
+                            compactionValue,
+                            { compactionValue = it },
+                            when (compactionMode) {
+                                AutoCompactionEditorMode.None -> translation.text("ai.compaction.disabled")
+                                AutoCompactionEditorMode.Percent -> translation.text("ai.compaction.percent")
+                                AutoCompactionEditorMode.Absolute -> translation.text("ai.compaction.threshold_tokens")
+                            },
+                            Modifier.weight(1f),
+                            enabled = compactionMode != AutoCompactionEditorMode.None,
+                        )
+                    }
+                    LabeledDropdown(
+                        label = translation.text("ai.compaction.summary_model"),
+                        value = summaryConfigurationId,
+                        options = listOf<AiModelConfiguration.Id?>(null) + configurations.filter { candidate ->
+                            candidate.enabled && candidate.id.value != id.trim() && modelSpecs.any { spec ->
+                                spec.id == candidate.providerModelId && spec.limits.textGeneration != null &&
+                                    spec.provider == connections.firstOrNull { it.id == candidate.connectionId }?.kind?.provider
+                            }
+                        }.map { it.id },
+                        optionLabel = { candidate -> candidate?.let { selected ->
+                            configurations.first { it.id == selected }.displayName
+                        } ?: translation.text("ai.compaction.current_model") },
+                        onSelect = { summaryConfigurationId = it },
+                    )
+                }
                 if (supportsEmbeddings) {
                     OptionalNumberField(
                         value = requestedEmbeddingDimensions,
@@ -1698,6 +1827,9 @@ private fun ModelConfigurationDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                LabeledDropdown(translation.text("ai.concurrency.group"), concurrencyGroupId, concurrencyGroups.map { it.id },
+                    { selected -> concurrencyGroups.single { it.id == selected }.let { "${it.displayName} · ${it.key}" } }, { concurrencyGroupId = it })
+                AiTpmPolicyEditor(tpmDraft, tpmGroups, selectedConnection, selectedModelSpec?.contextWindowTokens)
                 Text(translation.text("ai.reasoning.default"), style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NullableEnumDropdown(
@@ -1752,7 +1884,13 @@ private fun ModelConfigurationDialog(
                     } else {
                         null
                     }
+                    require(!tpmDraft.enabled || selectedConnection?.kind in setOf(AiConnection.Kind.OPENAI_API,
+                        AiConnection.Kind.OPENAI_COMPATIBLE, AiConnection.Kind.ANTHROPIC_API, AiConnection.Kind.OPENAI_SUBSCRIPTION)) {
+                        translation.text("ai.tpm.http_only")
+                    }
                     AiModelConfiguration(
+                        concurrencyGroupId = concurrencyGroupId,
+                        tpm = tpmDraft.build(),
                         id = AiModelConfiguration.Id(id.trim()),
                         connectionId = selectedConnectionId,
                         providerModelId = providerModelId.trim(),
@@ -1765,6 +1903,18 @@ private fun ModelConfigurationDialog(
                             reasoning = reasoning,
                             timeoutSeconds = timeoutSeconds.optionalInt(translation.text("ai.model.timeout"), translation),
                         ),
+                        compaction = if (selectedModelSpec?.limits?.textGeneration != null) AiModelConfiguration.Compaction(
+                            thresholdTokens = when (compactionMode) {
+                                AutoCompactionEditorMode.None -> null
+                                AutoCompactionEditorMode.Absolute -> compactionValue.requiredInt(translation.text("ai.compaction.threshold_field"), translation)
+                                AutoCompactionEditorMode.Percent -> {
+                                    val percent = compactionValue.requiredInt(translation.text("ai.compaction.percent_field"), translation)
+                                    require(percent in 1..99) { translation.text("ai.compaction.percent_field") + ": 1–99" }
+                                    (requireNotNull(selectedModelSpec.contextWindowTokens).toLong() * percent / 100).toInt()
+                                }
+                            },
+                            summaryModelConfigurationId = summaryConfigurationId,
+                        ) else AiModelConfiguration.Compaction(),
                         requestedEmbeddingDimensions = if (supportsEmbeddings) {
                             requestedEmbeddingDimensions.optionalInt(translation.text("ai.model.requested_embedding_dimensions"), translation)
                         } else {
@@ -1797,25 +1947,6 @@ private fun ModelSpecDialog(
     }
     var maxOutput by remember {
         mutableStateOf(existing?.limits?.textGeneration?.maxOutputTokens?.toString().orEmpty())
-    }
-    val initialAutoCompaction = existing?.limits?.textGeneration?.autoCompaction
-    var compactionMode by remember {
-        mutableStateOf(
-            when (initialAutoCompaction) {
-                null -> AutoCompactionEditorMode.None
-                is AiModelSpec.AutoCompaction.Percent -> AutoCompactionEditorMode.Percent
-                is AiModelSpec.AutoCompaction.Absolute -> AutoCompactionEditorMode.Absolute
-            }
-        )
-    }
-    var compactionValue by remember {
-        mutableStateOf(
-            when (initialAutoCompaction) {
-                null -> ""
-                is AiModelSpec.AutoCompaction.Percent -> initialAutoCompaction.value.toString()
-                is AiModelSpec.AutoCompaction.Absolute -> initialAutoCompaction.tokens.toString()
-            }
-        )
     }
     var embeddingDimensions by remember {
         mutableStateOf(existing?.limits?.embeddings?.dimensions?.toString().orEmpty())
@@ -1884,27 +2015,6 @@ private fun ModelSpecDialog(
                             Modifier.weight(1f),
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LabeledDropdown(
-                            label = translation.text("ai.spec.auto_compaction"),
-                            value = compactionMode,
-                            options = AutoCompactionEditorMode.entries,
-                            optionLabel = { translation.text(it.titleKey) },
-                            onSelect = { compactionMode = it },
-                            modifier = Modifier.weight(1f),
-                        )
-                        OptionalNumberField(
-                            compactionValue,
-                            { compactionValue = it },
-                            when (compactionMode) {
-                                AutoCompactionEditorMode.None -> translation.text("ai.compaction.disabled")
-                                AutoCompactionEditorMode.Percent -> translation.text("ai.compaction.percent")
-                                AutoCompactionEditorMode.Absolute -> translation.text("ai.compaction.threshold_tokens")
-                            },
-                            Modifier.weight(1f),
-                            enabled = compactionMode != AutoCompactionEditorMode.None,
-                        )
-                    }
                     EnumSetEditor(translation.text("ai.spec.reasoning_modes"), reasoningModes, AiReasoningMode.entries, { it.aiLabel(translation) }) {
                         reasoningModes = it
                     }
@@ -1939,19 +2049,9 @@ private fun ModelSpecDialog(
             Button(onClick = {
                 runCatching {
                     val textLimits = if (AiModelCapability.TEXT_GENERATION in capabilities) {
-                        val autoCompaction = when (compactionMode) {
-                            AutoCompactionEditorMode.None -> null
-                            AutoCompactionEditorMode.Percent -> AiModelSpec.AutoCompaction.Percent(
-                                compactionValue.requiredInt(translation.text("ai.compaction.percent_field"), translation)
-                            )
-                            AutoCompactionEditorMode.Absolute -> AiModelSpec.AutoCompaction.Absolute(
-                                compactionValue.requiredInt(translation.text("ai.compaction.threshold_field"), translation)
-                            )
-                        }
                         AiModelSpec.Limits.TextGeneration(
                             contextWindowTokens = contextWindow.requiredInt(translation.text("ai.spec.context_window"), translation),
                             maxOutputTokens = maxOutput.optionalInt(translation.text("ai.model.max_output"), translation),
-                            autoCompaction = autoCompaction,
                         )
                     } else {
                         null
@@ -2036,6 +2136,13 @@ private fun ModelBehaviorEditor(behavior: AiModelBehavior, onChange: (AiModelBeh
         Spacer(Modifier.width(8.dp))
         Text(translation.text("ai.spec.anthropic_prefix_drop"))
     }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = behavior.chatSchemaEmptyToolCallsAsStop,
+            onCheckedChange = { onChange(behavior.copy(chatSchemaEmptyToolCallsAsStop = it)) })
+        Spacer(Modifier.width(8.dp))
+        Text(translation.text("ai.spec.chat_schema_empty_tool_calls_as_stop"))
+    }
+    Text(translation.text("ai.spec.chat_schema_empty_tool_calls_as_stop_help"), style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
@@ -2063,7 +2170,7 @@ private fun <T : Enum<T>> EnumSetEditor(
 }
 
 @Composable
-private fun <T> LabeledDropdown(
+internal fun <T> LabeledDropdown(
     label: String,
     value: T,
     options: List<T>,

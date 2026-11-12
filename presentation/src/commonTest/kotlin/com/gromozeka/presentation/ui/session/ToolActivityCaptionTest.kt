@@ -11,6 +11,23 @@ class ToolActivityCaptionTest {
     private val translation = EnglishTranslation()
 
     @Test
+    fun `command purpose is retained beyond the recommendation without guessing or truncating`() {
+        val description = "Проверка интеграционных тестов: " + "д".repeat(100)
+        assertEquals(description, toolActivityCaption("grz_execute_command__v5", buildJsonObject {
+            put("command", "echo original"); put("description", description)
+        }, translation))
+        assertEquals("Running tests", toolActivityCaption("grz_execute_command", buildJsonObject {
+            put("command", "./gradlew :server:test"); put("description", " ")
+        }, translation))
+        assertEquals("Running command", toolActivityCaption("grz_execute_command", buildJsonObject {
+            put("command", "echo original"); put("description", 42)
+        }, translation))
+        assertEquals("Reading file", toolActivityCaption("grz_read_file", buildJsonObject {
+            put("description", description)
+        }, translation))
+    }
+
+    @Test
     fun `built-in and mcp tools use deterministic activity captions`() {
         assertEquals("Reading file", caption("grz_read_file"))
         assertEquals("Editing file", caption("grz_edit_file"))

@@ -10,6 +10,7 @@ import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimator
 import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -24,6 +25,12 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.core.StreamReadFeature
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.json.JsonMapper
+import io.github.optimumcode.json.schema.JsonSchema
+import kotlinx.serialization.SerializationException
 import com.openai.client.OpenAIClient
 import com.openai.core.JsonValue
 import com.openai.models.FunctionDefinition
@@ -66,6 +73,7 @@ import kotlin.jvm.optionals.getOrNull
 @Service
 internal class OpenAiSdkRuntimeBackend(
     private val clientFactory: OpenAiSdkClientFactory,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : AiRuntimeBackend {
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.OPENAI_API || connectionKind == AiConnection.Kind.OPENAI_COMPATIBLE
@@ -74,7 +82,7 @@ internal class OpenAiSdkRuntimeBackend(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
     ) = AiRuntimeCapabilities(
-        supportsAutoCompaction = connection.kind == AiConnection.Kind.OPENAI_API,
+        supportsNativeCompaction = connection.kind == AiConnection.Kind.OPENAI_API,
     )
 
     override fun createRuntime(
@@ -83,7 +91,7 @@ internal class OpenAiSdkRuntimeBackend(
     ): AiRuntime {
         val connection = runtime.connection
         val modelConfiguration = runtime.modelConfiguration
-        val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds) { end ->
+        val executor = SdkHttpCallExecutor(connection, modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = modelConfiguration) { end ->
             clientFactory.createInferenceClient(connection, end)
         }
         return when (connection) {
@@ -115,6 +123,7 @@ private class OpenAiSdkRuntime(
     private val messageMapper: OpenAiSdkMessageMapper,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
+    override val tokenEstimator: AiRequestTokenEstimator get() = messageMapper
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         val options = executor.withDeadline(request.options)
@@ -127,7 +136,7 @@ private class OpenAiSdkRuntime(
 
         val response = executor.call(options) { client, remaining ->
             client.async().chat().completions().create(params, com.openai.core.RequestOptions.builder().timeout(remaining).build())
-                .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat) }
+                .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat, params) }
         }
 
         return response
@@ -143,8 +152,25 @@ internal class OpenAiSdkMessageMapper(
     private val connectionId: String? = null,
     private val modelName: String? = null,
     private val generation: ModelGenerationPolicy = ModelGenerationPolicy(),
-) {
+) : AiRequestTokenEstimator {
+    override val id: String = "chat-completions-payload-v1"
     private val json = Json { ignoreUnknownKeys = true }
+
+    override fun input(request: AiRuntimeRequest): Int {
+        val targetModel = requireNotNull(modelName) { "Chat estimation requires a bound model" }
+        val body = toCreateParams(targetModel, request)._body()
+        return OpenAiChatTokenEstimate.input(json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(body)).jsonObject)
+    }
+
+    override fun output(messages: List<AiAssistantMessage>): Int = OpenAiChatTokenEstimate.output(messages.map { message ->
+        assistantReplay(requireNotNull(message.metadata["openaiCompatibleMessage"] as? JsonObject) {
+            "Chat response must retain its original assistant payload for context accounting"
+        })
+    })
+
+    private fun assistantReplay(raw: JsonObject): JsonObject = JsonObject(raw.filterKeys {
+        it in setOf("role", "content", "tool_calls", "reasoning_content", "thinking_blocks", "refusal")
+    })
 
     fun toCreateParams(modelName: String, request: AiRuntimeRequest): ChatCompletionCreateParams {
         require(this.modelName == null || this.modelName == modelName) {
@@ -152,11 +178,16 @@ internal class OpenAiSdkMessageMapper(
         }
         val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty())
         val builder = ChatCompletionCreateParams.builder().model(modelName)
-        val maxOutputTokens = request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS
-        when (generation.behavior.chatCompletionsTokenLimit) {
-            AiModelBehavior.ChatCompletionsTokenLimit.MAX_COMPLETION_TOKENS -> builder.maxCompletionTokens(maxOutputTokens.toLong())
-            AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS -> builder.maxTokens(maxOutputTokens.toLong())
-            AiModelBehavior.ChatCompletionsTokenLimit.OMIT -> Unit
+        val maxOutputTokens = request.options.maxOutputTokens ?: if (
+            generation.behavior.chatCompletionsReasoning == AiModelBehavior.ChatCompletionsReasoning.ANTHROPIC_THINKING &&
+            reasoning?.mode == AiReasoningMode.TOKEN_BUDGET
+        ) generation.requiredOutputTokens(request) else null
+        maxOutputTokens?.let { limit ->
+            when (generation.behavior.chatCompletionsTokenLimit) {
+                AiModelBehavior.ChatCompletionsTokenLimit.MAX_COMPLETION_TOKENS -> builder.maxCompletionTokens(limit.toLong())
+                AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS -> builder.maxTokens(limit.toLong())
+                AiModelBehavior.ChatCompletionsTokenLimit.OMIT -> Unit
+            }
         }
 
         val systemPrompt = request.systemPrompts
@@ -184,6 +215,7 @@ internal class OpenAiSdkMessageMapper(
     fun toRuntimeResponse(
         completion: ChatCompletion,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        sentParams: ChatCompletionCreateParams,
     ): AiRuntimeResponse {
         val usage = completion.usage().getOrNull()?.toAiUsage()
         val choice = completion.choices().firstOrNull()
@@ -191,12 +223,21 @@ internal class OpenAiSdkMessageMapper(
                 messages = emptyList(),
                 outcome = AiStepOutcome.FAILED,
                 usage = usage,
-                contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
+                contextUsage = usage?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
                 providerMetadata = mapOf("provider" to connectionKind.name, "model" to completion.model()),
             )
         val message = choice.message()
         val rawMessage = json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(message)).jsonObject
-        val outcome = when (choice.finishReason().asString()) {
+        val reportedFinishReason = choice.finishReason().asString()
+        val normalized = connectionKind == AiConnection.Kind.OPENAI_COMPATIBLE &&
+            generation.behavior.chatSchemaEmptyToolCallsAsStop && completion.choices().size == 1 &&
+            reportedFinishReason == "tool_calls" && isSchemaAnswerWithoutToolCalls(rawMessage, sentParams)
+        val effectiveFinishReason = if (normalized) "stop" else reportedFinishReason
+        val normalizationMetadata = if (normalized) mapOf(
+            "originalFinishReason" to reportedFinishReason,
+            "finishReasonNormalization" to "chatSchemaEmptyToolCallsAsStop",
+        ) else emptyMap()
+        val outcome = when (effectiveFinishReason) {
             "stop" -> when {
                 message.refusal().isPresent -> AiStepOutcome.REFUSED
                 message.toolCalls().getOrNull().orEmpty().isNotEmpty() -> AiStepOutcome.FAILED
@@ -235,7 +276,7 @@ internal class OpenAiSdkMessageMapper(
                         "completionId" to completion.id(),
                         "connectionId" to connectionId,
                         "openaiCompatibleMessage" to rawMessage,
-                    ),
+                    ) + normalizationMetadata,
                 )
             )
         }
@@ -243,8 +284,8 @@ internal class OpenAiSdkMessageMapper(
         return AiRuntimeResponse(
             messages = assistantMessages,
             usage = usage,
-            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
-            finishReason = choice.finishReason().asString(),
+            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
+            finishReason = effectiveFinishReason,
             outcome = outcome,
             providerMetadata = mapOf(
                 "provider" to connectionKind.name,
@@ -252,8 +293,29 @@ internal class OpenAiSdkMessageMapper(
                 "reportedModel" to completion.model(),
                 "completionId" to completion.id(),
                 "choiceCount" to completion.choices().size,
-            ),
+            ) + normalizationMetadata,
         )
+    }
+
+    private fun isSchemaAnswerWithoutToolCalls(message: JsonObject, sentParams: ChatCompletionCreateParams): Boolean {
+        if (message["role"] != JsonPrimitive("assistant")) return false
+        val format = sentParams.responseFormat().getOrNull()?.jsonSchema()?.getOrNull() ?: return false
+        val schema = format.jsonSchema().schema().getOrNull() ?: return false
+        val toolChoice = sentParams.toolChoice().getOrNull()
+        if (toolChoice != null && toolChoice.auto().getOrNull()?.asString() !in setOf("auto", "none")) return false
+        if (sentParams.functionCall().isPresent || sentParams.n().getOrNull()?.let { it != 1L } == true) return false
+        val calls = message["tool_calls"]
+        if (calls != null && calls != JsonNull && (calls !is JsonArray || calls.isNotEmpty())) return false
+        if (listOf("function_call", "refusal").any { message[it] != null && message[it] != JsonNull }) return false
+        val content = (message["content"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return false
+        val value = try {
+            // A last-value-wins duplicate key or a second JSON value must not authorize this repair.
+            schemaSyntaxParser.readTree(content)
+            Json.parseToJsonElement(content)
+        } catch (_: JsonProcessingException) { return false }
+        catch (_: SerializationException) { return false }
+        val definition = Json.parseToJsonElement(com.openai.core.jsonMapper().writeValueAsString(schema))
+        return JsonSchema.fromJsonElement(definition).validate(value) { }
     }
 
     private fun thinkingContent(message: JsonObject): List<Conversation.Message.ContentItem.Thinking> {
@@ -278,6 +340,12 @@ internal class OpenAiSdkMessageMapper(
                     signature = requireNotNull(block.thinkingString("data")) { "Redacted thinking block must contain data" },
                     kind = Conversation.Message.ContentItem.Thinking.Kind.REDACTED,
                 )
+                "reasoning" -> {
+                    require(!block.thinkingString("id").isNullOrBlank()) { "OpenAI-compatible reasoning block must contain a nonblank id" }
+                    val encrypted = block.thinkingString("encrypted_content")
+                    require(!encrypted.isNullOrBlank()) { "OpenAI-compatible reasoning block must contain nonblank encrypted_content" }
+                    Conversation.Message.ContentItem.Thinking(thinking = "", signature = encrypted)
+                }
                 else -> throw IllegalArgumentException("Unsupported OpenAI-compatible thinking block type")
             }
         }
@@ -396,7 +464,7 @@ internal class OpenAiSdkMessageMapper(
             metadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
             metadata["model"]?.jsonPrimitive?.contentOrNull == targetModelName
         ) {
-            val replay = JsonObject(raw.filterKeys { it in setOf("role", "content", "tool_calls", "reasoning_content", "thinking_blocks", "refusal") })
+            val replay = assistantReplay(raw)
             return ChatCompletionMessageParam.ofAssistant(com.openai.core.jsonMapper().readValue(
                 replay.toString(), com.openai.models.chat.completions.ChatCompletionAssistantMessageParam::class.java,
             ))
@@ -595,7 +663,7 @@ internal class OpenAiSdkMessageMapper(
     private fun applyReasoning(
         builder: ChatCompletionCreateParams.Builder,
         reasoning: AiReasoningConfig?,
-        maxOutputTokens: Int,
+        maxOutputTokens: Int?,
     ) {
         when (generation.behavior.chatCompletionsReasoning) {
             AiModelBehavior.ChatCompletionsReasoning.REASONING_EFFORT -> {
@@ -716,8 +784,11 @@ internal class OpenAiSdkMessageMapper(
     private fun Long.toIntClamped(): Int =
         coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
-    companion object {
-        private const val DEFAULT_MAX_TOKENS = 8192
+    private companion object {
+        val schemaSyntaxParser = JsonMapper.builder()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .build()
     }
 }
 

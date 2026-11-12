@@ -63,35 +63,32 @@ class OpenAiSubscriptionCompactionTest {
             assertNull(sent["context_management"])
             assertNull(sent["text"])
             assertEquals(9_000, response.usage?.totalInputTokens)
-            assertTrue(requireNotNull(response.contextUsage).inputTokens < 1_000)
+            assertNull(response.contextUsage, "A byte estimate is not measured context usage")
             val checkpoint = persisted(response).single()
             val restored = Json.decodeFromString(Conversation.Message.serializer(),
                 Json.encodeToString(Conversation.Message.serializer(), checkpoint))
             val resumed = request.copy(messages = request.messages + restored)
             val freshMapper = OpenAiSubscriptionRequestMapper()
             val replay = freshMapper.toRequest(resumed, profile, "conversation", connectionId = "connection")
-            assertEquals(listOf("message", "compaction"), replay.input.map { it.getValue("type").toString().trim('"') })
-            assertEquals(JsonPrimitive("Continue the implementation."), replay.input.first().getValue("content")
+            assertEquals(listOf("message", "message", "compaction"), replay.input.map { it.getValue("type").toString().trim('"') })
+            assertEquals(JsonPrimitive("Continue the implementation."), replay.input[1].getValue("content")
                 .jsonArray.first().jsonObject.getValue("text"))
             assertEquals(JsonPrimitive("opaque-checkpoint"), replay.input.last()["encrypted_content"])
-            Fixture().use { restarted ->
-                assertNull(restarted.compact(resumed, replay))
-                assertNull(restarted.compact(resumed.copy(options = AiRuntimeOptions(autoCompactionThresholdTokens = 1)), replay))
-                assertTrue(restarted.requests.isEmpty())
-            }
+            assertEquals(replay, freshMapper.toRequest(resumed, profile, "conversation", connectionId = "connection"))
+
         }
     }
 
     @Test
-    fun disabledCompactionAndOrdinaryResponsesDoNotSendLiteTriggers() = runBlocking {
+    fun explicitCompactionRejectsUnsupportedProfileWithoutInference() = runBlocking {
         Fixture().use { fixture ->
-            val disabled = request().copy(options = AiRuntimeOptions())
-            val mapped = fixture.mapper.toRequest(disabled, profile, "conversation")
-            assertNull(fixture.compact(disabled, mapped))
-            assertNull(fixture.compact(request(), mapped, profile.copy(useResponsesLite = false)))
-            assertNull(fixture.compact(request().copy(messages = listOf(user("small", "Hello"))),
-                mapped.copy(input = listOf(userItem("Hello")))))
+            val input = request()
+            val mapped = fixture.mapper.toRequest(input, profile, "conversation")
+            assertFailsWith<IllegalArgumentException> { fixture.compact(input, mapped, profile.copy(useResponsesLite = false)) }
             assertTrue(fixture.requests.isEmpty())
+            val small = input.copy(messages = listOf(user("small", "Hello")))
+            fixture.compact(small, mapped.copy(input = listOf(userItem("Hello"))))
+            assertEquals(1, fixture.requests.size, "The executor does not implement a second threshold policy")
         }
     }
 
@@ -101,16 +98,16 @@ class OpenAiSubscriptionCompactionTest {
             val mapped = OpenAiSubscriptionResponsesRequest(model = profile.slug, input = listOf(userItem("Hello")))
             val measured = user("measured", "Hello").copy(providerMetadata = buildJsonObject {
                 put("provider", AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
-                put("connectionId", "connection")
+                put("connectionId", "connection"); put("modelConfigurationId", "configuration"); put("gromozekaReplayThreadId", "thread")
                 put("model", profile.slug)
                 put(OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY, 900_000)
                 put(OpenAiSubscriptionCompaction.CONTEXT_ESTIMATE_KEY, 2)
             })
-            assertTrue(fixture.compaction.estimateContextTokens(listOf(measured), mapped, "connection") >= 900_000)
-            assertTrue(fixture.compaction.estimateContextTokens(listOf(measured), mapped, "other") < 100)
-            assertTrue(fixture.compaction.estimateContextTokens(listOf(measured), mapped.copy(model = "other"), "connection") < 100)
+            assertTrue(inspect(fixture, listOf(measured), mapped, "connection") >= 900_000)
+            assertTrue(inspect(fixture, listOf(measured), mapped, "other") < 100)
+            assertTrue(inspect(fixture, listOf(measured), mapped.copy(model = "other"), "connection") < 100)
             val changedPrefix = mapped.copy(instructions = "new instructions ".repeat(100))
-            assertTrue(fixture.compaction.estimateContextTokens(listOf(measured), changedPrefix, "connection") > 900_000)
+            assertTrue(inspect(fixture, listOf(measured), changedPrefix, "connection") > 900_000)
         }
     }
 
@@ -177,17 +174,19 @@ class OpenAiSubscriptionCompactionTest {
                 "conversation", "connection", "configuration", profile.slug, AiModelConfiguration.AssistantResponseFormat.TEXT)
             val recorded = fixture.compaction.recordContextUsage(mapped, parsed, response, AiModelConfiguration.AssistantResponseFormat.TEXT, profile)
             assertEquals(1100L, recorded.providerMetadata[OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY])
-            assertTrue(fixture.compaction.estimateContextTokens(persisted(recorded), mapped, "connection") >= 1100)
+            val replay = mapped.copy(input = mapped.input + fixture.mapper.toReplayItems(parsed.outputItems,
+                AiModelConfiguration.AssistantResponseFormat.TEXT, profile))
+            assertEquals(1100, inspect(fixture, persisted(recorded), replay, "connection"))
         }
     }
 
     @Test
-    fun `sparse history retains measured usage hidden by a selective summary`() {
+    fun `after COW sparse and full history discard pre-compaction measured usage`() {
         Fixture().use { fixture ->
             val measured = user("measured", "").copy(role = Conversation.Message.Role.ASSISTANT,
                 content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("answer"))),
                 providerMetadata = buildJsonObject {
-                    put("provider", "OPENAI_SUBSCRIPTION"); put("connectionId", "connection"); put("model", profile.slug)
+                    put("provider", "OPENAI_SUBSCRIPTION"); put("connectionId", "connection"); put("modelConfigurationId", "configuration"); put("gromozekaReplayThreadId", "thread"); put("model", profile.slug)
                     put(OpenAiSubscriptionCompaction.CONTEXT_TOKENS_KEY, 9000)
                     put(OpenAiSubscriptionCompaction.CONTEXT_ESTIMATE_KEY, 100)
                 })
@@ -206,17 +205,21 @@ class OpenAiSubscriptionCompactionTest {
             val request = AiRuntimeRequest(emptyList(), history)
             val mapped = fixture.mapper.toRequest(request, profile, "conversation", connectionId = "connection")
             assertEquals(mapped, fixture.mapper.toRequest(request.copy(messages = sparse), profile, "conversation", connectionId = "connection"))
-            val before = fixture.compaction.estimateContextTokens(history, mapped, "connection")
-            assertTrue(before >= 9000)
-            assertEquals(before, fixture.compaction.estimateContextTokens(sparse, mapped, "connection"))
+            val afterCow = fixture.compaction.inspectContext(history, mapped, "connection", "configuration", "new-thread")
+            assertEquals(com.gromozeka.domain.model.ai.AiContextInspection.Precision.ESTIMATE, afterCow.precision)
+            assertEquals(fixture.compaction.estimateRequestTokens(mapped).toInt(), afterCow.inputTokens)
+            assertEquals(afterCow, fixture.compaction.inspectContext(sparse, mapped, "connection", "configuration", "new-thread"))
             assertTrue(fixture.requests.isEmpty())
         }
     }
 
+    private fun inspect(fixture: Fixture, messages: List<Conversation.Message>, request: OpenAiSubscriptionResponsesRequest,
+        connectionId: String): Int = fixture.compaction.inspectContext(messages, request, connectionId, "configuration", "thread").inputTokens
+
     private fun request() = AiRuntimeRequest(
         systemPrompts = listOf("Preserve the user's task."),
         messages = listOf(user("old", "Long previous work. ".repeat(2000)), user("new", "Continue the implementation.")),
-        options = AiRuntimeOptions(autoCompactionThresholdTokens = 1000),
+        options = AiRuntimeOptions(),
     )
 
     private fun user(id: String, text: String) = Conversation.Message(
@@ -233,7 +236,7 @@ class OpenAiSubscriptionCompactionTest {
 
     private fun persisted(response: AiRuntimeResponse) = response.messages.mapIndexed { index, message ->
         user("assistant-$index", "").copy(role = Conversation.Message.Role.ASSISTANT, content = message.content,
-            providerMetadata = JsonObject((response.providerMetadata + message.metadata).mapValues { (_, value) ->
+            providerMetadata = JsonObject((response.providerMetadata + message.metadata + ("gromozekaReplayThreadId" to "thread")).mapValues { (_, value) ->
                 value as? JsonElement ?: when (value) {
                     is Number -> JsonPrimitive(value)
                     is Boolean -> JsonPrimitive(value)
@@ -268,13 +271,13 @@ class OpenAiSubscriptionCompactionTest {
         val mapper = OpenAiSubscriptionRequestMapper()
         val responseMapper = OpenAiSubscriptionResponseMapper()
         val client = OpenAiSubscriptionResponsesClient(responseMapper, mapper, "http://127.0.0.1:${server.address.port}",
-            "test", 1000, 5000, 1000, 5000)
+            "test", 1000, 5000, 1000, 5000, admission = TestAiAdmission())
         val compaction = OpenAiSubscriptionCompaction(client, mapper, responseMapper)
 
         suspend fun compact(request: AiRuntimeRequest, mapped: OpenAiSubscriptionResponsesRequest,
-            modelProfile: OpenAiSubscriptionModelProfile = profile) = compaction.executeIfNeeded(request, mapped,
+            modelProfile: OpenAiSubscriptionModelProfile = profile) = compaction.execute(request, mapped,
             modelProfile, OpenAiSubscriptionSession("access", "refresh", null, "account", Long.MAX_VALUE),
-            "conversation", "connection", "configuration")
+            "conversation", "connection", testModelConfiguration("connection"))
 
         override fun close() = server.stop(0)
     }

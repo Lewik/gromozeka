@@ -34,6 +34,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val service = completionService(coordinator)
         val command = terminalCommand("01a1ba26-6a4a-76dd-ad3d-b3bd9206f451", agentDefinitionId, "done", Instant.fromEpochMilliseconds(1000))
+            .copy(description = "Запуск тестов")
         coordinator.upsertCommandTask(command)
         val first = service.prepareBatch(conversationId, command.notificationSourceKey())
         val repeated = service.prepareBatch(conversationId, command.notificationSourceKey())
@@ -42,6 +43,10 @@ class BackgroundActivityCompletionApplicationServiceTest {
         val result = assertIs<ContentItem.ToolResult>(first.messages[1].content.single())
         assertTrue(Regex("[A-Za-z0-9]{9}").matches(call.id.value))
         assertEquals(call.id, result.toolUseId)
+        val metadata = kotlinx.serialization.json.Json.parseToJsonElement(result.result.filterIsInstance<ContentItem.ToolResult.Data.Text>().single().content)
+            as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("Запуск тестов"), metadata["description"])
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(command.command), metadata["command"])
         assertEquals("${command.id.value}:command:completion:call", first.messages[0].id.value)
         assertEquals("${command.id.value}:command:completion:result", first.messages[1].id.value)
         assertTrue(call.call.input.toString().contains(command.id.value))

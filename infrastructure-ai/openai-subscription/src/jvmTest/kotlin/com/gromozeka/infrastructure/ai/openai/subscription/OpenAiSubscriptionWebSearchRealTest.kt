@@ -59,10 +59,10 @@ class OpenAiSubscriptionWebSearchRealTest {
             val request = AiRuntimeRequest(listOf("Follow the verification steps precisely. Use tools for evidence. " +
                 "You may send short commentary; final answers must follow the configured schema. ttsText and voiceTone are empty; attentionRequested is false."),
                 history.toList(), listOf(finishTool), options)
-            val pending = OpenAiSubscriptionWebSearch(transport).executePending(request, session, conversationKey, connectionId, model, true)
+            val pending = OpenAiSubscriptionWebSearch(transport).executePending(request, session, conversationKey, testModelConfiguration(connectionId, model), true)
             val response = pending ?: run {
                 val body = mapper.toRequest(request, profile, conversationKey, true, connectionId)
-                val parsed = transport.create(session, conversationKey, body, profile, options.assistantResponseFormat)
+                val parsed = transport.create(testModelConfiguration(), session, conversationKey, body, profile, options.assistantResponseFormat)
                 responseMapper.toRuntimeResponse(parsed.outputItems, parsed.completed, conversationKey, connectionId,
                     "live-web-$model", model, options.assistantResponseFormat)
             }

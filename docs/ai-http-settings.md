@@ -13,6 +13,7 @@ Example for Anthropic Messages through a gateway:
   "id": "gateway-messages",
   "displayName": "Gateway Messages",
   "enabled": true,
+  "concurrencyGroupId": "default",
   "baseUrl": "https://gateway.example.com/api/llm",
   "apiKey": { "secretType": "file", "path": "/etc/gromozeka/gateway-token" },
   "httpSettings": {
@@ -20,7 +21,6 @@ Example for Anthropic Messages through a gateway:
     "caBundlePath": "/etc/gromozeka/company-ca.pem",
     "proxyUrl": "http://proxy.example.com:8080",
     "noProxy": ["localhost", ".internal.example"],
-    "maxConcurrentCalls": 4,
     "maxAttempts": 3,
     "extraHeaders": {
       "User-Agent": "Gromozeka",
@@ -37,49 +37,159 @@ or duplicate `/v1` in the configured prefix. Credentials, query strings and
 fragments are not accepted in the base URL. Use HTTPS for non-local gateways.
 There is no error-driven URL, protocol or model fallback.
 
-## Responses auto-compaction
+## Chat Completions through TrueFoundry
 
-The OpenAI Responses connection (`OPENAI_API`), including a gateway base URL,
-passes the model spec's configured auto-compaction threshold as
-`context_management: [{"type":"compaction","compact_threshold":...}]` on normal
-`POST /responses` calls. `store=false` remains enabled. This is native provider-side
-compaction, not incremental `previous_response_id` chaining, truncation, or a
-separate Gromozeka summarization model.
+When the gateway only exposes `POST /chat/completions`, use an
+`OPENAI_COMPATIBLE` connection (`connectionKind: "openai_compatible"`), not
+`OPENAI_API`. The existing connection kind selects the adapter; changing only
+the base URL does not change the protocol. Keep the exact gateway inference
+prefix, credential source, executor, CA/proxy settings and required headers.
+Do not append `/chat/completions` to the base URL: the SDK adds that path.
 
-Configure the existing model spec policy explicitly, for example this limits fragment:
+Register the exact gateway model ID with a `CUSTOM` model spec and bind its
+configuration to the Chat connection. Declare only the capabilities and limits
+known to work on that route. For OpenAI-style reasoning, use the existing
+`REASONING_EFFORT` encoding and leave reasoning `display` unset: Chat has no
+Responses summary-control parameter. Choose `MAX_COMPLETION_TOKENS`, `MAX_TOKENS`
+or `OMIT` explicitly for the route. Claude thinking through Chat retains its
+separate `ANTHROPIC_THINKING` encoding; neither is guessed from a model name.
+
+Chat replies can contain `reasoning_content` for display and `thinking_blocks`
+for continuation. In addition to `thinking`/`redacted_thinking` blocks, the
+adapter accepts OpenAI encrypted blocks with `type: "reasoning"`, a nonblank
+`id` and nonblank `encrypted_content`. The raw assistant message preserves
+these blocks, their order and additional nested fields through persistence and
+subsequent tool turns. Ciphertext is never rendered as reasoning text. An
+encrypted-only message is retained even without a readable summary. Missing or
+malformed replay fields fail explicitly instead of silently losing state.
+Native replay remains scoped to the same connection, model, provider and thread.
+
+There is no automatic fallback to `/responses`, and Gromozeka does not inject
+`x-tfy-openai-use-responses-api`. However, the gateway itself can serve OpenAI
+Chat reasoning through an upstream Responses call. Its routing and virtual-model
+backend affinity are separate from the client protocol; verify them on the target
+installation rather than assuming an external Chat endpoint removes every
+upstream Responses dependency.
+
+Responses encrypted compaction checkpoints are not Chat summaries. For a route
+change, prefer an explicit readable handoff and a fresh conversation instead of
+transplanting opaque history. Chat does not advertise Responses auto-compaction;
+starting fresh also does not add automatic compaction for future long conversations.
+This change does not add a separate summarization service or change stored history.
+
+`TrueFoundryChatCompletionsTest` exercises the production runtime and real SDK
+against a local Chat-only fixture (other paths return 404), including a complete
+429 rejection, encrypted reasoning/tool replay, JSON Schema, usage and safe
+malformed-response failures. `OpenAiThinkingReplayTest` covers JSON persistence,
+reasoning-only replies and replay scope boundaries. These are synthetic gateway
+contracts, not acceptance tests against an AMAT installation.
+
+Reference: [TrueFoundry Chat reasoning and multi-turn replay](https://www.truefoundry.com/docs/ai-gateway/chat-completions-advanced#reasoning-on-openai-azure-openai-and-microsoft-foundry).
+
+## Blocking conversation compaction
+
+Compaction is configured on `AiModelConfiguration`, not `AiModelSpec`:
 
 ```json
 {
-  "textGeneration": {
-    "contextWindowTokens": 200000,
-    "autoCompaction": { "type": "percent", "value": 70 }
+  "compaction": {
+    "thresholdTokens": 140000,
+    "summaryModelConfigurationId": null
   }
 }
 ```
 
-An absolute threshold (`{"type":"absolute","tokens":140000}`) is also supported.
-`contextWindowTokens` alone does not enable compaction: an absent `autoCompaction`
-policy remains disabled. Leave space below the model's actual context limit for
-new tool output and generation. A single oversized input or a conversation that
-already exceeds that limit may still be rejected; no history is silently truncated.
-The exact provider/model route and gateway version must support this Responses
-parameter and compaction-item replay. Unsupported routes fail explicitly rather
-than retrying without compaction. Chat Completions is not enabled by this change.
+The threshold is an absolute input-token count below the model's context window.
+Percentage input in Settings is converted to tokens; percentages are not stored.
+`thresholdTokens: null` disables the Harness automatic trigger (the default for
+new and migrated configurations). A provider's intrinsic session compaction can
+still occur; its emitted checkpoints also use the COW commit. The optional summary configuration is used only for
+text summarization; null means the active agent's model. Existing Control MCP
+`grz_ai_catalog_get` and `grz_ai_model_configuration_upsert` read and replace these
+settings. `compaction: {}` resets both fields. The global `MESSAGE_SQUASH` runtime
+assignment and model-spec threshold policy have been removed.
 
-Encrypted output items are persisted as full context checkpoints in their original
-output order. Subsequent requests send the latest checkpoint and following turns,
-including tool call/result pairs, without resending the covered archive. Canonical
-source messages remain stored. Checkpoint-only output continues the agent loop;
-malformed or wrong-connection/model checkpoints are explicit errors. Billing usage
-is retained, but pre-compaction input usage is not presented as the retained-window
-size on that response. Update the Server or Worker that executes the AI calls.
+Before an ordinary model call, the Conversation Runtime checks the complete next
+request, including system prompts, tools, response schema and projected history.
+At the threshold it blocks generation, executes one compaction, commits a new
+history version (COW), and rebuilds the request. If the result still exceeds the
+threshold, it stops with an explicit error instead of repeatedly compacting or
+sending the oversized request. Preparation is not proactive or concurrent.
 
-Regression coverage uses the real SDK and a local HTTP gateway fixture, JSON
-persistence/replay and sparse-history selection. It is not acceptance testing of
-a live TrueFoundry installation. Cross-provider migration is unchanged; use an
-explicit handoff when changing providers.
+The executor is selected before execution:
 
-Contract: [OpenAI Responses compaction](https://developers.openai.com/api/docs/guides/compaction).
+- OpenAI API Responses: `/responses/input_tokens` counts the request, then
+  `/responses/compact` returns a complete native replay window. Its order and
+  encrypted items are preserved. Compact-only requests omit `instructions` to
+  avoid invalidating subsequent preserved reasoning; ordinary generation still
+  receives its instructions. Ordinary `/responses` calls remain stateless
+  (`store=false`) and no longer send `context_management` thresholds.
+- OpenAI Subscription: Responses Lite uses an explicit compact-only trigger.
+  Other profiles use text summarization. The adapter's decoded-opaque estimate
+  is calibrated to scoped usage; it is not a provider token count. Native replay
+  may retain raw items according to its protocol, independently of text policy.
+- Claude Code: an existing compatible session can execute `/compact` exclusively,
+  without also generating the next answer. Coverage ends at the session's actual
+  input boundary; unseen user/tool messages remain outside it. An explicit COW
+  receipt plus session ID, source IDs and transcript fingerprints authorize
+  continuation across the history-version change. A fresh session or incomplete
+  tool boundary selects text summarization before any native mutation.
+- Anthropic Messages: `/messages/count_tokens` counts supported API requests;
+  text summarization performs compaction. Bedrock has no universal count endpoint
+  in this adapter and uses an explicitly marked estimate.
+- Chat Completions, including TrueFoundry: no speculative count endpoint or header
+  is used. The estimate uses the same mapped messages, tools and response schema
+  as the actual SDK request, after model/connection/branch replay filtering.
+  Ciphertext, thinking signatures and redacted blobs are not tokenized as text.
+  Compatible opaque reasoning is still sent unchanged; its measured contribution
+  comes from usage calibration, not encrypted byte length. Input and output use
+  the same estimator, calibrated with the last compatible request's measured
+  input/output usage plus request changes. Cumulative billing is not occupied
+  context. Changing thread/model, source prefix or estimator identity discards
+  the old calibration. Older untagged baselines are ignored without changing the
+  archive. Without compatible measurements this remains a text-size estimate,
+  not an exact tokenizer, hidden-reasoning or multimodal token count.
+
+Context-size accounting is separate from TPM quota reservation: calibration does
+not change the configured quota formula or balances. Count, compact and summary
+HTTP operations retain their model configuration's admission policy. Required TPM
+feedback must be compatible with those endpoint responses. Quota calculators that
+need an output reserve must configure it explicitly when the request omits an
+output limit; the Harness does not invent a summary cap or bypass quota policy.
+
+A failed counter or native operation is an error, not permission to retry through
+another route. Every committed compaction creates a new Thread; canonical source
+messages and original IDs remain archived. Runtime roots, queues and stable
+Conversation/Agent collaboration addresses continue. New provider output after a
+native checkpoint receives the new replay scope; archived opaque state is not
+retagged. Server and Workers must use the matching Gateway protocol (currently version 25).
+
+Text auto-compaction always uses the continuation-oriented SUMMARIZE prompt.
+There is no preserved raw-message tail and no separate summary-length setting.
+Recent work, current instructions, verified results, open obligations, constraints
+and next actions are preserved semantically. Readable material and supported
+committed image/PDF attachments are sent to the helper, not raw provider replay.
+One-shot revealed secrets are reserved for the ordinary request and are not sent
+to the counter or summary model. DISTILL remains a manual-only prompt variant;
+CONCATENATE remains non-generative. Manual AI compaction uses the single automatic
+responder, or the sole connected agent; ambiguous multi-agent selection is an
+explicit error rather than an arbitrary model choice.
+
+Summary calls do not inherit the ordinary model configuration's output cap.
+Optional output-token fields are omitted. APIs requiring an output budget use
+model-declared limits and the available request budget; missing required model
+knowledge fails explicitly. Truncated, refused or incomplete summaries are never
+committed. Native compaction billing is not mislabeled as retained context usage.
+
+Regression coverage uses the production SDKs against local HTTP fixtures,
+serialization/replay, Runtime tests and isolated PostgreSQL schemas. These are
+not acceptance tests against a live TrueFoundry deployment. Cross-provider
+opaque replay remains scope-checked; use an explicit readable handoff when
+changing to an incompatible route.
+
+Contracts: [OpenAI compaction](https://developers.openai.com/api/docs/guides/compaction),
+[OpenAI preserved reasoning](https://developers.openai.com/api/docs/guides/preserved-reasoning),
+[TrueFoundry Chat usage and reasoning](https://www.truefoundry.com/docs/ai-gateway/chat-completions-advanced#reasoning-on-openai-azure-openai-and-microsoft-foundry).
 
 ## Synthetic tool-call IDs
 
@@ -186,30 +296,34 @@ resolved while saving, serializing or displaying the catalog. They are resolved
 on the chosen Server or exact Worker during execution. The UI displays only
 source metadata such as the environment variable name or file path.
 
-Worker Gateway protocol 20 adds connection-scoped model listing on the exact Worker.
+Worker Gateway protocol 22 adds Server-owned AI admission callbacks and durable
+Worker leases. Protocol 20 added connection-scoped model listing on the exact Worker.
 Protocol 19 introduced HTTP execution settings, logical deadlines and typed AI
 failures; protocol 18 introduced HTTP settings and the file secret kind. Upgrade Server, Worker **and UI clients** together. Older clients cannot
 preserve the new fields or decode the new secret kind; mixed-version editing is
 not supported.
 
-This applies to the three finite inference APIs, not embeddings/audio, subscription
-backends, Bedrock execution, or a new streaming contract. Explicit model discovery is described below. Health endpoints and
+The HTTP connection-settings contract applies to the three finite inference APIs,
+not subscription backends or Bedrock. Shared admission additionally covers
+embeddings/audio and native adapters; it does not make their transports identical. Explicit model discovery is described below. Health endpoints and
 target-installation acceptance remain separate. Memory orchestration has not
 been changed; its legacy retry wrapper is outside this execution contract and
 must not be assumed to honor typed terminal failures if it is enabled later.
 
 ## Execution budget, concurrency and cancellation
 
-- `maxConcurrentCalls`: 1–64, default 4. All model configurations and runtime
-  instances on the same connection/executor share a process-local gate. Different
-  connections/executors are independent, even if they use the same gateway URL.
-  This is not a distributed account quota or tokens-per-minute limiter.
-- The permit covers client/credential setup, every HTTP attempt and retry delay.
-  Cancellation or deadline expiry while queued starts no HTTP and releases no
-  other call's permit. The gate is not replaced on a catalog edit: in-flight
-  calls retain their snapshot, new calls use the newly resolved limit and see
-  existing active calls. Lowering a limit does not cancel existing work; old
-  runtime snapshots do not acquire new configuration automatically.
+- Concurrency is controlled by [AI concurrency groups](ai-admission.md), not
+  `httpSettings`. Each model configuration names one `concurrencyGroupId`, shared
+  across Server and Workers. A group limit is 1–64 or explicit `null` for unlimited.
+  Optional [TPM admission](ai-tpm.md) is configured separately on the model
+  configuration and uses its explicitly selected request/feedback contract.
+- Each HTTP attempt acquires admission separately. Client/credential setup for
+  the first attempt and full response consumption are inside admission; retry
+  backoff is outside it. The per-call client and credential snapshot remain the
+  same across attempts. Cancellation or expiry while queued starts no HTTP and
+  releases no other call's permit. A changed group limit affects waiting/new
+  attempts without cancelling active calls; moving a model configuration to a
+  different group does not retag already active leases.
 - `defaultParameters.timeoutSeconds` on the model configuration now controls
   this logical call: 1–86400 seconds, default 600. Parameter preparation, queueing,
   credential/CA loading, backoff and HTTP consume the same deadline. A shorter
@@ -289,8 +403,8 @@ background synchronization are not added by this feature. Use manual configurati
 when that endpoint is unavailable.
 
 The request uses the selected token source/authentication mode, extra headers,
-CA trust and proxy policy from the connection. It shares the connection's concurrency
-gate and has one 30-second overall deadline, including Worker delivery and queueing.
+CA trust and proxy policy from the connection. It uses the connection's Server-owned concurrency
+group and has one 30-second overall deadline, including Worker delivery and queueing.
 It sends one GET attempt: no application retries, including 429, and no redirects.
 An additional native exchange guard prevents OkHttp's automatic bodyless-GET
 follow-up for a 503 with `Retry-After: 0`; inference's one-shot POST-body protection
@@ -342,3 +456,55 @@ Worker executor with codecs; they are not acceptance of the work TrueFoundry dep
 - [HTTP 429 (RFC 6585)](https://www.rfc-editor.org/rfc/rfc6585.html#section-4)
 
 - [TrueFoundry model listing contract](https://www.truefoundry.com/docs/api-reference/models/list-available-models)
+
+## Optional token-quota admission
+
+[TPM policies](ai-tpm.md) belong to model configurations, not connections. They
+inspect the prepared JSON before native HTTP execution and retain the slot until
+body completion/cleanup. Quota feedback errors never trigger an inference replay.
+Multipart STT and realtime WebSocket do not support TPM. Existing HTTP transport
+settings and their complete-429-only retry contract remain independent.
+
+## Opt-in TrueFoundry JSON Schema finish-reason workaround
+
+TrueFoundry 0.179.11 has been observed returning `finish_reason: "tool_calls"`
+for a valid JSON Schema answer in `message.content`, without any tool call, when
+using non-streaming Chat Completions. This is not permission to accept arbitrary
+inconsistent responses or bypass required function calls.
+
+For an affected exact model route, enable
+`AiModelSpec.behavior.chatSchemaEmptyToolCallsAsStop` (default **false**). The UI
+checkbox is under AI Settings → Model specs → Request behavior. It applies to
+configurations using that spec. Existing
+`grz_ai_model_spec_upsert`/catalog tools read and update the same field. No model
+name, URL, provider credential or gateway version enables it automatically.
+
+The OpenAI-compatible Chat adapter applies the workaround only after the SDK
+successfully parses the HTTP response, with one choice whose finish reason is
+`tool_calls`, and only when all of these checks pass:
+
+- The actual sent SDK parameters contain `response_format: json_schema` with a
+  schema. Tool choice is absent, `auto` or `none`, not a required/named tool.
+- `tool_calls` is absent, null or an empty array. A malformed field is not empty.
+- Legacy `function_call` and `refusal` are absent or null, not malformed/empty
+  objects or strings. Legacy request function-choice options are also excluded.
+- Content parses as one strict JSON value, with no duplicate keys, trailing JSON,
+  Markdown fence removal, coercion or content repair, and validates against the
+  exact schema from the sent parameters using the existing schema validator.
+
+Only the effective finish reason becomes `stop`, producing `COMPLETE`.
+`originalFinishReason: "tool_calls"` and
+`finishReasonNormalization: "chatSchemaEmptyToolCallsAsStop"` are recorded in
+response and persisted assistant metadata. Original content, usage and opaque
+reasoning/replay fields remain unchanged. The shared
+`Tool-call outcome without tool calls` invariant remains in place.
+
+This does not enable SSE, change endpoints, retry a failed inference, alter TPM
+feedback/accounting, or affect Responses/Anthropic/CLI adapters. Disable the flag
+after confirming that the gateway no longer needs it. Local real-SDK HTTP fixtures
+cover tool → result → schema → follow-up, negative conditions and unchanged
+reasoning replay; live validation on the work deployment is still required.
+
+Gateway protocol **25** carries the expanded model-behavior contract. Upgrade
+Server, Workers and UI clients together; no persisted-data migration is needed.
+The existing serialized catalog defaults this flag to false when absent.

@@ -1,6 +1,9 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
-import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.*
+import com.gromozeka.domain.service.*
+import kotlin.time.Clock
+import kotlinx.serialization.json.JsonElement
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -60,12 +63,14 @@ class OpenAiSubscriptionResponsesClientTest {
                 websocketResponseTimeoutMs = 5_000,
                 websocketTransportTimeoutMs = 1_000,
                 httpResponseTimeoutMs = 10_000,
+                admission = TestAiAdmission(),
             )
 
             val elapsed = measureTime {
                 assertFailsWith<kotlinx.coroutines.TimeoutCancellationException> {
                     withTimeout(2.seconds) {
                         client.create(
+                            configuration = testModelConfiguration(),
                             session = OpenAiSubscriptionSession(
                                 accessToken = "access-token",
                                 refreshToken = "refresh-token",
@@ -137,6 +142,7 @@ class OpenAiSubscriptionResponsesClientTest {
                 websocketResponseTimeoutMs = 5_000,
                 websocketTransportTimeoutMs = 1_000,
                 httpResponseTimeoutMs = 5_000,
+                admission = TestAiAdmission(),
             )
             val logicalRequest = OpenAiSubscriptionResponsesRequest(
                 model = profile.slug,
@@ -148,6 +154,7 @@ class OpenAiSubscriptionResponsesClientTest {
             )
 
             val response = client.create(
+                configuration = testModelConfiguration(),
                 session = OpenAiSubscriptionSession(
                     accessToken = "access-token",
                     refreshToken = "refresh-token",
@@ -175,6 +182,57 @@ class OpenAiSubscriptionResponsesClientTest {
         } finally {
             server.stop(0)
         }
+    }
+
+    @Test
+    fun tpmUsesHttpWithoutWebSocketAndExtractsTerminalResponseJson() = runBlocking {
+        val methods = java.util.concurrent.CopyOnWriteArrayList<String>()
+        var prepared: JsonElement? = null
+        var sent: JsonElement? = null
+        var feedback: AiHttpQuotaFeedback? = null
+        var active = false
+        val policy = AiTpmPolicy(AiTpmGroupSelector.Fixed(AiTpmGroup.Id("quota")), AiQuotaCalculator.BuiltIn(),
+            AiTpmFeedbackPolicy.Fields(AiQuotaValueSource.Body("/remaining")))
+        val admission = object : AiCallAdmission() {
+            override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = error("HTTP quota admission required")
+            override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease {
+                prepared = request; active = true
+                return AiAdmissionLease(operation, AiConcurrencyGroup.DEFAULT_ID, Clock.System.now())
+            }
+            override suspend fun finish(lease: AiAdmissionLease, outcome: AiAdmissionOutcome) = error("Raw feedback required")
+            override suspend fun finishHttp(lease: AiAdmissionLease, outcome: AiAdmissionOutcome, value: AiHttpQuotaFeedback?) {
+                assertTrue(active); active = false; feedback = value
+            }
+        }
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/responses") { exchange ->
+            exchange.use {
+                methods += exchange.requestMethod
+                assertTrue(active)
+                sent = Json.parseToJsonElement(exchange.requestBody.bufferedReader().use { it.readText() })
+                val body = "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_tpm\",\"status\":\"completed\",\"output\":[],\"remaining\":-20}}\n\n".toByteArray()
+                exchange.responseHeaders.add("Content-Type", "text/event-stream")
+                exchange.responseHeaders.add("Custom-Quota", "-20")
+                exchange.sendResponseHeaders(200, body.size.toLong())
+                exchange.responseBody.use { it.write(body) }
+            }
+        }
+        server.start()
+        try {
+            val client = OpenAiSubscriptionResponsesClient(OpenAiSubscriptionResponseMapper(), OpenAiSubscriptionRequestMapper(),
+                baseUrl = "http://127.0.0.1:${server.address.port}", clientVersion = "1.4.9", websocketIdleMs = 300000,
+                websocketResponseTimeoutMs = 5000, websocketTransportTimeoutMs = 1000, httpResponseTimeoutMs = 5000, admission = admission)
+            val profile = OpenAiSubscriptionModelProfile(slug = "model", useResponsesLite = true, supportsReasoningSummaries = false,
+                supportedReasoningEfforts = emptyList(), supportsVerbosity = false, defaultVerbosity = "low", supportsParallelToolCalls = true)
+            val result = client.create(testModelConfiguration().copy(tpm = policy),
+                OpenAiSubscriptionSession("access", "refresh", null, "account", Long.MAX_VALUE), "quota-conversation",
+                OpenAiSubscriptionResponsesRequest("model", emptyList()), profile, AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA)
+            assertEquals("resp_tpm", result.completed?.id)
+            assertEquals(listOf("POST"), methods.toList())
+            assertEquals(sent, prepared)
+            assertEquals("-20", feedback?.body?.jsonObject?.get("remaining")?.jsonPrimitive?.content)
+            assertFalse(active)
+        } finally { server.stop(0) }
     }
 
     @Test

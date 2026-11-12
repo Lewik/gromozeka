@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SpeechAudioFormat
@@ -69,6 +71,7 @@ class SpeechExecutionRoutingTest {
                 clientFactory,
                 LocalWhisperTranscriptionService(settings),
                 ClaudeCodeVoiceTranscriptionService(),
+                admission = TestAiAdmission(),
             ),
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
@@ -79,7 +82,7 @@ class SpeechExecutionRoutingTest {
             audioController = NoOpAudioController,
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
-            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory),
+            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory, admission = TestAiAdmission()),
         )
 
         assertEquals(
@@ -124,6 +127,7 @@ class SpeechExecutionRoutingTest {
                 clientFactory,
                 LocalWhisperTranscriptionService(settings),
                 ClaudeCodeVoiceTranscriptionService(),
+                admission = TestAiAdmission(),
             ),
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
@@ -134,7 +138,7 @@ class SpeechExecutionRoutingTest {
             audioController = NoOpAudioController,
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
-            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory),
+            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory, admission = TestAiAdmission()),
         )
 
         val sttError = assertFailsWith<IllegalArgumentException> {
@@ -230,6 +234,12 @@ class SpeechExecutionRoutingTest {
     }
 
     private class RecordingRemoteClient : AiRequestResponseExecutionClient {
+        override suspend fun inspectContext(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
+            runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused context inspection")
+        override suspend fun compact(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
+            runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compaction")
         override suspend fun listModels(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
             connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant,
             actorUserId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")

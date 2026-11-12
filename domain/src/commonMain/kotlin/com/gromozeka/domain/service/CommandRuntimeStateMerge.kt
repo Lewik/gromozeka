@@ -3,7 +3,7 @@ package com.gromozeka.domain.service
 fun CommandTask.requireSameIdentity(other: CommandTask) {
     require(id == other.id && conversationId == other.conversationId && workerId == other.workerId &&
         workspaceMountId == other.workspaceMountId && agentDefinitionId == other.agentDefinitionId &&
-        visualId == other.visualId && command == other.command && workingDirectory == other.workingDirectory &&
+        visualId == other.visualId && command == other.command && description == other.description && workingDirectory == other.workingDirectory &&
         processLifetime == other.processLifetime && processId == other.processId &&
         processStartedAt == other.processStartedAt && processTreeId == other.processTreeId &&
         outputFile == other.outputFile && slotOrigin == other.slotOrigin && timeoutAt == other.timeoutAt &&

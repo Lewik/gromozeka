@@ -50,7 +50,6 @@ class IsolatedContextQueryInvoker(
             messages = original.messages.map { it.copy(conversationId = isolatedConversation) } + tail,
             tools = emptyList(),
             options = original.options.copy(
-                autoCompactionThresholdTokens = null,
                 toolChoice = AiToolChoice.None,
                 toolAccess = ToolAccessPolicy.AllowOnly(),
                 usagePurpose = AI_CONTEXT_QUERY_PURPOSE,

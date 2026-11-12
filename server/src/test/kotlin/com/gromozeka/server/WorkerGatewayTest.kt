@@ -236,6 +236,60 @@ class WorkerGatewayTest {
     }
 
     @Test
+    fun `waiting AI admissions cannot exhaust callbacks needed to finish them`() = testApplication {
+        val worker = worker("admission-worker")
+        val credential = "gateway-credential-that-is-long-enough-for-validation"
+        val authentication = WorkerGatewayAuthenticationService(GatewayAuthenticationRepository(sha256(credential), worker))
+        val started = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+        val released = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val handler = object : WorkerGatewayServerRequestHandler {
+            override val operation = WorkerGatewayOperation.AI_ADMISSION
+            override suspend fun execute(identity: ConversationRuntimeWorkerIdentity, request: WorkerGatewayMessage.Request): ByteArray {
+                if (request.id == "finish") released.complete(Unit)
+                else { started.send(Unit); released.await() }
+                return byteArrayOf()
+            }
+        }
+        val gateway = WorkerGatewayService(InMemoryConversationRuntimeWorkerRegistry(), WorkerGatewaySessionRegistry(),
+            EmptyMcpServerRepository, listOf(handler), TestAiConfigurationProvider, authentication,
+            WorkerRequestService(TestWorkerRequestRepository(), WorkerRequestAuthorization {}))
+        application {
+            install(ServerWebSockets)
+            routing { webSocket("/worker/ws") {
+                gateway.handle(KtorPeerSocket(this), checkNotNull(authentication.authenticate(call.request.headers["Authorization"])))
+            } }
+        }
+        val client = createClient { install(ClientWebSockets) }
+        try {
+            client.webSocket(urlString = "/worker/ws", request = { header(HttpHeaders.Authorization, "Bearer $credential") }) {
+                suspend fun nextMessage(): WorkerGatewayMessage = withTimeout(5_000) {
+                    WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
+                }
+                val now = kotlin.time.Clock.System.now()
+                val registration = ConversationRuntimeWorkerRegistration(
+                    identity = ConversationRuntimeWorkerIdentity(worker.id, ConversationRuntimeWorkerSessionId("admission-session")),
+                    capabilities = setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE), tools = emptyList(),
+                    environmentProfile = workerEnvironment(now), version = "test", startedAt = now, lastHeartbeatAt = now,
+                )
+                send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Hello(registration))))
+                kotlin.test.assertIs<WorkerGatewayMessage.Welcome>(nextMessage())
+                send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Ready(emptyList()))))
+                repeat(64) { index ->
+                    send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Request(
+                        "wait-$index", WorkerGatewayOperation.AI_ADMISSION, byteArrayOf()))))
+                }
+                withTimeout(5_000) { repeat(64) { started.receive() } }
+                send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Request(
+                    "finish", WorkerGatewayOperation.AI_ADMISSION, byteArrayOf()))))
+                val responses = List(65) { kotlin.test.assertIs<WorkerGatewayMessage.Response>(nextMessage()) }
+                assertEquals((0 until 64).map { "wait-$it" }.toSet() + "finish", responses.map { it.requestId }.toSet())
+                assertTrue(responses.all { it.status == WorkerGatewayMessage.Response.Status.SUCCEEDED })
+                close()
+            }
+        } finally { released.complete(Unit); started.close(); client.close() }
+    }
+
+    @Test
     fun `late response after retention is acknowledged and the same socket serves the next request`() = testApplication {
         val worker = worker("worker-1")
         val credential = "gateway-credential-that-is-long-enough-for-validation"
@@ -250,7 +304,13 @@ class WorkerGatewayTest {
         repository.complete(worker.id, retired, WorkerGatewayCodec.encode(success(retired)), old)
         repository.markCompletionProjected(retired, old)
         assertEquals(1, repository.deleteCompletedBefore(kotlin.time.Clock.System.now() - kotlin.time.Duration.parse("1h"), 10))
-        val gateway = WorkerGatewayService(registry, sessions, EmptyMcpServerRepository, emptyList(), TestAiConfigurationProvider, authentication, requests)
+        val completions = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val observer = WorkerExecutionCompletionObserver { identity, response ->
+            assertEquals(worker.id, identity.workerId)
+            completions += response.requestId
+        }
+        val gateway = WorkerGatewayService(registry, sessions, EmptyMcpServerRepository, emptyList(),
+            TestAiConfigurationProvider, authentication, requests, listOf(observer))
         application {
             install(ServerWebSockets)
             routing { webSocket("/worker/ws") {
@@ -280,6 +340,7 @@ class WorkerGatewayTest {
             assertEquals(fresh, (nextMessage() as WorkerGatewayMessage.Request).id)
             send(Frame.Binary(true, WorkerGatewayCodec.encode(success(fresh))))
             acknowledge(fresh)
+            assertEquals(listOf(retired, fresh), completions.toList())
             assertEquals(success(fresh), requests.await(fresh, 1_000))
             assertNull(repository.find(retired))
             close()

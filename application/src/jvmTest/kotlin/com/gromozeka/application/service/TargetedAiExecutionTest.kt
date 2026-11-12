@@ -416,7 +416,7 @@ class TargetedAiExecutionTest {
         val response: AiRuntimeResponse = AiRuntimeResponse(messages = emptyList(), finishReason = "local"),
     ) : DirectAiRuntimeProvider {
         val runtimeRequests = mutableListOf<Pair<ResolvedAiRuntime, String?>>()
-        private val runtimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true)
+        private val runtimeCapabilities = AiRuntimeCapabilities(supportsNativeCompaction = true)
 
         override fun capabilities(runtime: ResolvedAiRuntime): AiRuntimeCapabilities = runtimeCapabilities
 
@@ -512,6 +512,11 @@ class TargetedAiExecutionTest {
     private class RecordingRemoteClient(
         val callResponse: AiRuntimeResponse = AiRuntimeResponse(messages = emptyList(), finishReason = "remote"),
     ) : AiRequestResponseExecutionClient {
+        override suspend fun inspectContext(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity, runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
+        override suspend fun compact(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity, runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compact")
+
         override suspend fun listModels(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
             connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant,
             actorUserId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ai.AiConnectionModels = error("Unused model listing")

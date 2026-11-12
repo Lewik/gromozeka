@@ -46,8 +46,8 @@ internal class GromozekaWebSocketConfiguration(
 
     @Bean
     fun servletWebSocketContainer() = ServletServerContainerFactoryBean().apply {
-        maxTextMessageBufferSize = DEFAULT_WEBSOCKET_MESSAGE_BYTES
-        maxBinaryMessageBufferSize = DEFAULT_WEBSOCKET_MESSAGE_BYTES
+        maxTextMessageBufferSize = WEBSOCKET_RECEIVE_BUFFER_SIZE
+        maxBinaryMessageBufferSize = WEBSOCKET_RECEIVE_BUFFER_SIZE
         asyncSendTimeout = 30_000L
     }
 

@@ -61,7 +61,7 @@ class PostgresConversationRuntimeCoordinatorTest {
             val now = Instant.fromEpochSeconds(1)
             val conversation = Conversation.Id("terminal-wins")
             val task = CommandTask(CommandTask.Id("task"), conversation, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
-                command = "echo test", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
+                command = "echo test", description = "Проверка " + "д".repeat(990), workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
                 processId = 1, processStartedAt = now, outputFile = "/tmp/task.log", outputBytes = 0, createdAt = now, updatedAt = now)
             val monitor = CommandMonitor(CommandMonitor.Id("monitor"), conversation, task.id, task.workerId, task.workspaceMountId,
                 filterCommand = "cat", mode = CommandMonitor.Mode.CONTINUOUS, startFrom = CommandMonitor.StartFrom.BEGINNING,
@@ -75,6 +75,8 @@ class PostgresConversationRuntimeCoordinatorTest {
             coordinator.synchronizeCommandMonitor(stopped)
             val restarted = PostgresConversationRuntimeCoordinator(source, json)
             assertEquals(terminal, restarted.upsertCommandTask(task).task)
+            assertEquals(task.description, restarted.findCommandTask(conversation, task.id)?.description)
+            assertFailsWith<IllegalArgumentException> { restarted.upsertCommandTask(task.copy(description = "changed")) }
             assertEquals(stopped, restarted.synchronizeCommandMonitor(monitor).monitor)
             assertFailsWith<IllegalArgumentException> { restarted.upsertCommandTask(task.copy(command = "changed")) }
             assertFailsWith<IllegalArgumentException> { restarted.synchronizeCommandMonitor(monitor.copy(filterCommand = "changed")) }

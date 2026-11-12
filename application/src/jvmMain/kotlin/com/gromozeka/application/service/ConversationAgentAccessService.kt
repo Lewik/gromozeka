@@ -18,21 +18,25 @@ class ConversationAgentAccessService(
     private val access: ProjectAccessService,
     private val agents: AgentDomainService,
 ) {
-    suspend fun source(context: ToolExecutionContext?): Pair<AgentEndpoint, User.Id> {
+    suspend fun source(context: ToolExecutionContext?): Pair<AgentContextRef, User.Id> {
         val id = context?.getString(TOOL_CONTEXT_CONVERSATION_ID)?.let(Conversation::Id) ?: error("Conversation context required")
         val thread = context.getString(TOOL_CONTEXT_THREAD_ID)?.let(Conversation.Thread::Id) ?: error("Thread context required")
-        val endpoint = AgentEndpoint(id, thread, context.requiredAgentDefinitionId())
+        val endpoint = AgentContextRef(id, thread, context.requiredAgentDefinitionId())
         val actor = context.requiredUserId()
         authorize(endpoint, actor)
         return endpoint to actor
     }
 
-    suspend fun authorize(endpoint: AgentEndpoint, actor: User.Id): Conversation {
+    suspend fun authorize(context: AgentContextRef, actor: User.Id): Conversation =
+        authorize(context.address, actor).also {
+            require(it.currentThread == context.threadId) { "History branch changed; context is no longer current" }
+        }
+
+    suspend fun authorize(endpoint: AgentAddress, actor: User.Id): Conversation {
         val user = identities.findUserById(actor)
         require(user?.canUseAi == true) { "Active AI-enabled user required" }
         val conversation = conversations.findById(endpoint.conversationId) ?: error("Conversation unavailable")
         access.requirePermission(actor, conversation.projectId, ProjectPermission.WRITE)
-        require(conversation.currentThread == endpoint.threadId) { "History branch changed; collaboration needs a new request" }
         require(conversation.externalChannel == null) { "External-channel conversations are not supported by this experiment" }
         require(Conversation.Participant.User(actor) in conversation.participants) { "User must participate in both conversations" }
         require(Conversation.Participant.Agent(endpoint.agentId) in conversation.participants) { "Target agent is no longer connected" }
@@ -48,12 +52,16 @@ class ConversationAgentAccessService(
 
     // The single policy implementation used by both A2A and conversation-wide agent operations.
     // Agent selection and A2A's no-self rule remain in AgentCollaborationService.
-    internal suspend fun sameBoundary(source: AgentEndpoint, target: AgentEndpoint, actor: User.Id): Boundary {
-        val from = authorize(source, actor)
-        val to = authorize(target, actor)
+    internal suspend fun sameBoundary(source: AgentContextRef, target: AgentContextRef, actor: User.Id): Boundary =
+        boundary(authorize(source, actor), authorize(target, actor), source.agentId, target.agentId)
+
+    internal suspend fun sameBoundary(source: AgentAddress, target: AgentAddress, actor: User.Id): Boundary =
+        boundary(authorize(source, actor), authorize(target, actor), source.agentId, target.agentId)
+
+    private suspend fun boundary(from: Conversation, to: Conversation, sourceId: AgentDefinition.Id, targetId: AgentDefinition.Id): Boundary {
         require(from.projectId == to.projectId) { "Cross-project communication is disabled" }
-        val sourceAgent = agents.findById(source.agentId) ?: error("Source agent unavailable")
-        val targetAgent = agents.findById(target.agentId) ?: error("Target agent unavailable")
+        val sourceAgent = agents.findById(sourceId) ?: error("Source agent unavailable")
+        val targetAgent = agents.findById(targetId) ?: error("Target agent unavailable")
         require(sourceAgent.toolAccess == targetAgent.toolAccess) { "This experiment requires matching agent tool policies" }
         return Boundary(from, to, sourceAgent, targetAgent)
     }
@@ -66,7 +74,7 @@ class ConversationAgentAccessService(
      * and handle subsequent changes. No history, scheduling, outbox or model effects occur here.
      */
     suspend fun resolveEligibleConversation(
-        source: AgentEndpoint,
+        source: AgentContextRef,
         actor: User.Id,
         targetConversationId: String,
     ): Conversation {
@@ -79,7 +87,7 @@ class ConversationAgentAccessService(
         var sourcePolicy: ToolAccessPolicy? = null
 
         suspend fun checkAgent(agentId: AgentDefinition.Id): Conversation {
-            val target = AgentEndpoint(candidate.id, candidate.currentThread, agentId)
+            val target = AgentContextRef(candidate.id, candidate.currentThread, agentId)
             val boundary = sameBoundary(source, target, actor)
             requireUnchanged(from, boundary.sourceConversation)
             requireUnchanged(candidate, boundary.targetConversation)

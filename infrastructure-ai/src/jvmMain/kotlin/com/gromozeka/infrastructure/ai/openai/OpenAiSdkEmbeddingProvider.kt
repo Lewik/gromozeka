@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service
 class OpenAiSdkEmbeddingProvider(
     private val clientFactory: OpenAiSdkClientFactory,
     private val embeddingCache: AiEmbeddingCache,
+    private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : DirectAiEmbeddingProvider {
     private val log = KLoggers.logger(this)
 
@@ -57,7 +58,9 @@ class OpenAiSdkEmbeddingProvider(
 
         var promptTokens = 0
         if (missingInputs.isNotEmpty()) {
-            val client = clientFactory.createClient(runtime.connection)
+            val executor = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor(
+                runtime.connection, runtime.modelConfiguration.defaultParameters.timeoutSeconds, admission = admission, modelConfiguration = runtime.modelConfiguration,
+            ) { end -> clientFactory.createInferenceClient(runtime.connection, end) }
             val params = embeddingCreateParams(
                 modelId = runtime.modelConfiguration.providerModelId,
                 inputs = missingInputs,
@@ -68,8 +71,8 @@ class OpenAiSdkEmbeddingProvider(
                     "model=${runtime.modelConfiguration.providerModelId} inputs=${missingInputs.size} " +
                     "dimensions=$dimensions requestedDimensions=${requestedDimensions ?: "provider-default"}"
             }
-            val response = withContext(Dispatchers.IO) {
-                client.embeddings().create(params)
+            val response = executor.call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "EMBEDDINGS")) { client, remaining ->
+                client.async().embeddings().create(params, com.openai.core.RequestOptions.builder().timeout(remaining).build())
             }
             promptTokens = response.usage().promptTokens().toInt()
             response.data().forEach { embedding ->

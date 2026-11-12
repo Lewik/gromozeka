@@ -335,6 +335,22 @@ internal object Artifacts : Table("artifacts") {
     override val primaryKey = PrimaryKey(id)
 }
 
+internal object AiConcurrencyGroups : Table("ai_concurrency_groups") {
+    val id = varchar("id", 128)
+    val groupKey = varchar("group_key", 512)
+    val displayName = varchar("display_name", 255)
+    val maxConcurrentCalls = integer("max_concurrent_calls").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object AiTpmGroups : Table("ai_tpm_groups") {
+    val id = varchar("id", 128)
+    val groupKey = varchar("group_key", 512)
+    val payloadJson = text("payload_json")
+    override val primaryKey = PrimaryKey(id)
+}
+
 internal object AiConnections : Table("ai_connections") {
     val id = varchar("id", 255)
     val payloadJson = text("payload_json")

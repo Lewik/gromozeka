@@ -3,8 +3,8 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.isFullContextCompaction
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiConnection
-import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -30,32 +30,25 @@ class OpenAiSubscriptionCompaction(
 ) {
     private val log = KLoggers.logger(this)
 
-    suspend fun executeIfNeeded(
+    suspend fun execute(
         request: AiRuntimeRequest,
         requestBody: OpenAiSubscriptionResponsesRequest,
         modelProfile: OpenAiSubscriptionModelProfile,
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         connectionId: String,
-        modelConfigurationId: String,
-    ): AiRuntimeResponse? {
-        val threshold = request.options.autoCompactionThresholdTokens ?: return null
-        if (!modelProfile.useResponsesLite || requestBody.input.isEmpty()) return null
-        val lastCheckpoint = request.messages.indexOfLast { it.isFullContextCompaction() }
-        if (lastCheckpoint >= 0 && lastCheckpoint == request.messages.lastIndex) return null
-        val estimatedTokens = estimateContextTokens(
-            request.messages.drop(lastCheckpoint.coerceAtLeast(0)), requestBody, connectionId,
-        )
-        if (estimatedTokens < threshold) return null
-
-        log.info("OpenAI subscription compaction started: conversationKey=$conversationKey, " +
-            "model=${modelProfile.slug}, estimatedTokens=$estimatedTokens, threshold=$threshold")
+        configuration: AiModelConfiguration,
+    ): AiRuntimeResponse {
+        require(modelProfile.useResponsesLite && requestBody.input.isNotEmpty()) {
+            "Explicit native compaction requires Responses Lite and nonempty input"
+        }
+        log.info("OpenAI subscription compaction started: conversationKey=$conversationKey, model=${modelProfile.slug}")
         val parsed = client.create(
+            configuration = configuration,
             session = session,
             conversationKey = conversationKey,
             requestBody = requestBody.copy(
                 input = requestBody.input + buildJsonObject { put("type", "compaction_trigger") },
-                contextManagement = null,
                 text = null,
             ),
             modelProfile = modelProfile,
@@ -69,11 +62,11 @@ class OpenAiSubscriptionCompaction(
         check(parsed.outputItems.none { it["type"] == JsonPrimitive("function_call") }) {
             "OpenAI subscription compaction unexpectedly returned tool calls"
         }
-        val retainedInput = retainUserInput(requestBody.input, minOf(16_000L, threshold.toLong() / 4))
+        val retainedInput = retainUserInput(requestBody.input, 16_000L)
         val response = responseMapper.toRuntimeResponse(
             outputItems = listOf(compacted), completed = parsed.completed,
             conversationKey = conversationKey, connectionId = connectionId,
-            modelConfigurationId = modelConfigurationId, modelName = modelProfile.slug,
+            modelConfigurationId = configuration.id.value, modelName = modelProfile.slug,
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         )
         val message = response.messages.single()
@@ -87,14 +80,12 @@ class OpenAiSubscriptionCompaction(
             messages = listOf(message.copy(content = listOf(checkpoint.copy(
                 payload = payload.copy(state = JsonObject(payload.state +
                     ("retained_input" to JsonArray(retainedInput)))),
+                sourceMessageIds = request.messages.map { it.id },
+                origin = ContextCompactionResult.Origin.GROMOZEKA_POLICY,
             )))),
-            contextUsage = AiContextUsage(nextTokens.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()),
+            contextUsage = null,
             outcome = AiStepOutcome.CONTINUE,
             finishReason = "compaction",
-            providerMetadata = response.providerMetadata + mapOf(
-                CONTEXT_TOKENS_KEY to nextTokens,
-                CONTEXT_ESTIMATE_KEY to nextTokens,
-            ),
         )
     }
 
@@ -116,23 +107,31 @@ class OpenAiSubscriptionCompaction(
         ))
     }
 
-    internal fun estimateContextTokens(
+    internal fun inspectContext(
         messages: List<Conversation.Message>,
         request: OpenAiSubscriptionResponsesRequest,
         connectionId: String,
-    ): Long {
+        modelConfigurationId: String,
+        threadId: String?,
+    ): AiContextInspection {
         val estimate = estimateRequestTokens(request)
         val measured = messages.lastOrNull { message ->
             val metadata = message.providerMetadata
             metadata["provider"] == JsonPrimitive(AiConnection.Kind.OPENAI_SUBSCRIPTION.name) &&
                 metadata["connectionId"] == JsonPrimitive(connectionId) &&
+                metadata["modelConfigurationId"] == JsonPrimitive(modelConfigurationId) &&
                 metadata["model"] == JsonPrimitive(request.model) &&
+                threadId != null && metadata[com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY] == JsonPrimitive(threadId) &&
                 metadata[CONTEXT_TOKENS_KEY]?.jsonPrimitive?.longOrNull != null &&
                 metadata[CONTEXT_ESTIMATE_KEY]?.jsonPrimitive?.longOrNull != null
-        }?.providerMetadata ?: return estimate
-        val measuredTokens = measured.getValue(CONTEXT_TOKENS_KEY).jsonPrimitive.longOrNull!!
-        val measuredEstimate = measured.getValue(CONTEXT_ESTIMATE_KEY).jsonPrimitive.longOrNull!!
-        return maxOf(estimate, measuredTokens + (estimate - measuredEstimate).coerceAtLeast(0))
+        }?.providerMetadata
+        if (measured == null) return AiContextInspection(Math.toIntExact(estimate), AiContextInspection.Precision.ESTIMATE)
+        val measuredTokens = requireNotNull(measured.getValue(CONTEXT_TOKENS_KEY).jsonPrimitive.longOrNull)
+        val measuredEstimate = requireNotNull(measured.getValue(CONTEXT_ESTIMATE_KEY).jsonPrimitive.longOrNull)
+        require(measuredTokens >= 0 && measuredEstimate >= 0) { "Invalid stored subscription context measurement" }
+        val tokens = measuredTokens + estimate - measuredEstimate
+        if (tokens < 0) return AiContextInspection(Math.toIntExact(estimate), AiContextInspection.Precision.ESTIMATE)
+        return AiContextInspection(Math.toIntExact(tokens), AiContextInspection.Precision.USAGE_CALIBRATED_ESTIMATE)
     }
 
     internal fun retainUserInput(input: List<JsonObject>, tokenBudget: Long): List<JsonObject> {

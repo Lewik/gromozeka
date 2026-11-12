@@ -55,6 +55,21 @@ class ConversationAgentAccessServiceTest {
         assertEquals(f.a to f.actor.id, f.service.source(ToolExecutionContext(fields)))
     }
 
+    @Test fun `delivery authorization follows addresses while context authorization checks exact versions`(): Unit = runBlocking {
+        val f = fixture()
+        val source = f.sourceConversation.copy(currentThread = Conversation.Thread.Id("source-v2"))
+        val target = f.targetConversation.copy(currentThread = Conversation.Thread.Id("target-v2"))
+        Mockito.`when`(f.conversations.findById(f.a.conversationId)).thenReturn(source)
+        Mockito.`when`(f.conversations.findById(f.b.conversationId)).thenReturn(target)
+        val boundary = f.service.sameBoundary(f.a.address, f.b.address, f.actor.id)
+        assertEquals(source, boundary.sourceConversation)
+        assertEquals(target, boundary.targetConversation)
+        assertFailsWith<IllegalArgumentException> { f.service.authorize(f.a, f.actor.id) }
+        assertFailsWith<IllegalArgumentException> { f.service.sameBoundary(f.a, f.b, f.actor.id) }
+        Mockito.`when`(f.agents.findById(f.b.agentId)).thenReturn(f.definition(f.b.agentId).copy(toolAccess = ToolAccessPolicy.AllowOnly()))
+        assertFailsWith<IllegalArgumentException> { f.service.sameBoundary(f.a.address, f.b.address, f.actor.id) }
+    }
+
     @Test fun `source participation external channel and current branch remain required`(): Unit = runBlocking {
         val f = fixture()
         for (source in listOf(
@@ -139,7 +154,7 @@ class ConversationAgentAccessServiceTest {
         val f = fixture()
         Mockito.`when`(f.conversations.findById(f.b.conversationId)).thenReturn(f.targetConversation,
             f.targetConversation.copy(currentThread = Conversation.Thread.Id("new-target-thread")))
-        assertEquals("History branch changed; collaboration needs a new request", assertFailsWith<IllegalArgumentException> { f.resolve() }.message)
+        assertEquals("History branch changed; context is no longer current", assertFailsWith<IllegalArgumentException> { f.resolve() }.message)
     }
 
     @Test fun `final revalidation rejects participant changes after the last agent was checked`(): Unit = runBlocking {
@@ -201,8 +216,8 @@ class ConversationAgentAccessServiceTest {
     private class Fixture {
         private val now = Instant.fromEpochMilliseconds(1)
         val actor = User(User.Id("actor"), displayName = "Synthetic actor", status = User.Status.ACTIVE, createdAt = now, updatedAt = now)
-        val a = AgentEndpoint(Conversation.Id("source"), Conversation.Thread.Id("source-thread"), AgentDefinition.Id("agent-a"))
-        val b = AgentEndpoint(Conversation.Id("target"), Conversation.Thread.Id("target-thread"), AgentDefinition.Id("agent-b1"))
+        val a = AgentContextRef(Conversation.Id("source"), Conversation.Thread.Id("source-thread"), AgentDefinition.Id("agent-a"))
+        val b = AgentContextRef(Conversation.Id("target"), Conversation.Thread.Id("target-thread"), AgentDefinition.Id("agent-b1"))
         val other = AgentDefinition.Id("agent-b2")
         val sourceConversation = conversation(a)
         val targetConversation = conversation(b).copy(participants = conversation(b).participants + Conversation.Participant.Agent(other))
@@ -211,7 +226,7 @@ class ConversationAgentAccessServiceTest {
         val projectAccess = Mockito.mock(ProjectAccessService::class.java)
         val agents = Mockito.mock(AgentDomainService::class.java)
         val service = ConversationAgentAccessService(conversations, identities, projectAccess, agents)
-        private fun conversation(endpoint: AgentEndpoint) = Conversation(endpoint.conversationId, Project.Id("project"),
+        private fun conversation(endpoint: AgentContextRef) = Conversation(endpoint.conversationId, Project.Id("project"),
             setOf(Conversation.Participant.User(actor.id), Conversation.Participant.Agent(endpoint.agentId)),
             currentThread = endpoint.threadId, createdAt = now, updatedAt = now)
         fun definition(id: AgentDefinition.Id) = AgentDefinition(id, name = id.value, prompts = emptyList(),

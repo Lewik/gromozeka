@@ -45,7 +45,7 @@ class AnthropicSdkMessageMapperTest {
             ),
         ))
         for (kind in listOf(AiConnection.Kind.ANTHROPIC_API, AiConnection.Kind.ANTHROPIC_BEDROCK)) {
-            val params = AnthropicSdkMessageMapper(kind).toCreateParams("claude-sonnet-4-20250514",
+            val params = mapper(kind).toCreateParams("claude-sonnet-4-20250514",
                 requestWithoutJsonSchema().copy(messages = listOf(earlier, source, summary)))
             val payload = com.anthropic.core.jsonMapper().writeValueAsString(params.messages())
             assertTrue(payload.contains("Earlier instruction"))
@@ -57,7 +57,7 @@ class AnthropicSdkMessageMapperTest {
     @Test
     fun `preserves signed empty and redacted thinking and content order through a tool turn`() {
         for (model in listOf("claude-opus-5", "claude-opus-5-5")) {
-            val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, "anthropic-test", model)
+            val mapper = mapper(AiConnection.Kind.ANTHROPIC_API, "anthropic-test", model)
             val native = com.anthropic.core.jsonMapper().readValue("""{
                 "id":"msg-1","model":"$model-snapshot","stop_reason":"tool_use",
                 "usage":{"input_tokens":10,"output_tokens":20},
@@ -97,7 +97,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun `distinguishes provider pause truncation refusal and completion`() {
-        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val mapper = mapper(AiConnection.Kind.ANTHROPIC_API)
         val outcomes = mapOf(
             "pause_turn" to AiStepOutcome.CONTINUE,
             "end_turn" to AiStepOutcome.COMPLETE,
@@ -118,7 +118,7 @@ class AnthropicSdkMessageMapperTest {
     @Test
     fun bedrockRejectsNativeJsonSchemaOutputFormat() {
         val error = assertFailsWith<IllegalArgumentException> {
-            AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
+            mapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
                 .toCreateParams("anthropic.claude-sonnet-4-20250514-v1:0", requestWithJsonSchema())
         }
 
@@ -127,7 +127,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun directAnthropicSendsNativeJsonSchemaOutputFormat() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val params = mapper(AiConnection.Kind.ANTHROPIC_API)
             .toCreateParams("claude-sonnet-4-20250514", requestWithJsonSchema())
 
         assertFalse(params.outputConfig().isEmpty)
@@ -136,7 +136,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun directAnthropicCachesStableSystemPromptPrefix() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val params = mapper(AiConnection.Kind.ANTHROPIC_API)
             .toCreateParams("claude-sonnet-4-20250514", requestWithJsonSchema())
 
         val systemBlocks = params.system().orElseThrow().asTextBlockParams()
@@ -146,7 +146,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun bedrockLeavesPromptCachingToTheProvider() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
+        val params = mapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
             .toCreateParams("anthropic.claude-sonnet-4-20250514-v1:0", requestWithoutJsonSchema())
 
         assertTrue(params.system().orElseThrow().isString())
@@ -155,7 +155,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun opus55UsesSummarizedAdaptiveThinkingAndSupportsMutableConversationPrefixes() {
-        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
+        val mapper = mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
         val params = mapper.toCreateParams("claude-opus-5-5", requestWithJsonSchema())
         val thinking = params.thinking().orElseThrow().asAdaptive()
         assertEquals("summarized", thinking.display().orElseThrow().asString())
@@ -169,7 +169,7 @@ class AnthropicSdkMessageMapperTest {
     @Test
     fun opus55SupportsAllEffortsAndExplicitOmittedDisplay() {
         for (effort in AiReasoningEffort.entries) {
-            val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true)).toCreateParams(
+            val params = mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true)).toCreateParams(
                 "claude-opus-5-5", requestWithoutJsonSchema(AiReasoningConfig(
                     mode = AiReasoningMode.ADAPTIVE, effort = effort, display = AiReasoningDisplay.OMITTED)))
             assertEquals(effort.name.lowercase(), params.outputConfig().orElseThrow().effort().orElseThrow().asString())
@@ -185,7 +185,7 @@ class AnthropicSdkMessageMapperTest {
             AiReasoningConfig(budgetTokens = 1024),
         )) {
             val error = assertFailsWith<IllegalArgumentException> {
-                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
+                mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
                     .toCreateParams("claude-opus-5-5", requestWithoutJsonSchema(reasoning))
             }
             assertTrue(error.message.orEmpty().contains(if (reasoning.mode == null) "Reasoning token budget requires TOKEN_BUDGET mode" else "does not support reasoning mode"))
@@ -194,7 +194,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun opus55AcceptsAutoOrNoneButRejectsForcedToolChoice() {
-        val mapper = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
+        val mapper = mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
         for (choice in listOf(AiToolChoice.Auto, AiToolChoice.None)) {
             mapper.toCreateParams("claude-opus-5-5", requestWithoutJsonSchema().copy(options = AiRuntimeOptions(toolChoice = choice)))
         }
@@ -214,7 +214,7 @@ class AnthropicSdkMessageMapperTest {
             "content":[{"type":"text","text":"OK"}],
             "input_transformations":[{"type":"thinking_dropped","path":"messages.1.content.0","reason":"prefix_binding_mismatch"}]
         }""", com.anthropic.models.messages.Message::class.java)
-        val result = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val result = mapper(AiConnection.Kind.ANTHROPIC_API)
             .toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.TEXT)
         assertEquals(AiStepOutcome.COMPLETE, result.outcome)
         assertTrue(result.providerMetadata["inputTransformations"].toString().contains("prefix_binding_mismatch"))
@@ -223,7 +223,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun opus5AcceptsAdaptiveThinkingAtMaximumEffort() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
+        val params = mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
             .toCreateParams(
                 "claude-opus-5",
                 requestWithoutJsonSchema(
@@ -241,7 +241,7 @@ class AnthropicSdkMessageMapperTest {
     @Test
     fun opus5RejectsManualThinkingBudget() {
         val error = assertFailsWith<IllegalArgumentException> {
-            AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
+            mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
                 .toCreateParams(
                     "claude-opus-5",
                     requestWithoutJsonSchema(
@@ -260,7 +260,7 @@ class AnthropicSdkMessageMapperTest {
     fun opus5RejectsDisabledThinkingAtExtendedEfforts() {
         listOf(AiReasoningEffort.XHIGH, AiReasoningEffort.MAX).forEach { effort ->
             val error = assertFailsWith<IllegalArgumentException> {
-                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
+                mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
                     .toCreateParams(
                         "claude-opus-5",
                         requestWithoutJsonSchema(
@@ -278,7 +278,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun `maps binary screenshot tool result to an Anthropic image block`() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val params = mapper(AiConnection.Kind.ANTHROPIC_API)
             .toCreateParams(
                 "claude-sonnet-4-20250514",
                 AiRuntimeRequest(
@@ -297,7 +297,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun `maps binary document tool result to an Anthropic document block`() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+        val params = mapper(AiConnection.Kind.ANTHROPIC_API)
             .toCreateParams(
                 "claude-sonnet-4-20250514",
                 AiRuntimeRequest(
@@ -341,7 +341,20 @@ class AnthropicSdkMessageMapperTest {
             )
         )
 
+    private fun mapper(kind: AiConnection.Kind, connectionId: String? = null, requestedModelName: String? = null,
+        generation: ModelGenerationPolicy = ModelGenerationPolicy(limits = com.gromozeka.domain.model.ai.AiModelSpec.Limits.TextGeneration(200_000, 128_000))) =
+        AnthropicSdkMessageMapper(kind, connectionId, requestedModelName, generation)
+
+    @Test fun summaryUsesDeclaredModelBudgetRatherThanAnImplicitSmallCap() {
+        val request = requestWithoutJsonSchema().copy(options = AiRuntimeOptions(usagePurpose = "MESSAGE_SQUASH"))
+        assertEquals(128_000L, mapper(AiConnection.Kind.ANTHROPIC_API).toCreateParams("test-model", request).maxTokens())
+        assertFailsWith<IllegalArgumentException> {
+            AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API).toCreateParams("unknown-limits", request)
+        }
+    }
+
     private fun adaptivePolicy(required: Boolean) = ModelGenerationPolicy(
+        limits = com.gromozeka.domain.model.ai.AiModelSpec.Limits.TextGeneration(200_000, 128_000),
         behavior = AiModelBehavior(
             defaultReasoningMode = if (required) AiReasoningMode.ADAPTIVE else null,
             maximumDisabledReasoningEffort = if (required) null else AiReasoningEffort.HIGH,

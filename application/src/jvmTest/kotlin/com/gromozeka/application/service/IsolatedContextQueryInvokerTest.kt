@@ -24,7 +24,7 @@ class IsolatedContextQueryInvokerTest {
         assertEquals(AI_CONTEXT_QUERY_PURPOSE, sent.options.usagePurpose)
         assertEquals(AiToolChoice.None, sent.options.toolChoice)
         assertEquals(ToolAccessPolicy.AllowOnly(), sent.options.toolAccess)
-        assertNull(sent.options.autoCompactionThresholdTokens)
+
         assertTrue(sent.tools.isEmpty())
         assertEquals("operator", sent.options.toolContext[TOOL_CONTEXT_USER_ID])
         assertEquals("target", sent.options.toolContext["promptCacheKey"])
@@ -82,13 +82,13 @@ class IsolatedContextQueryInvokerTest {
         private val resolved = ResolvedAiRuntime(connection, model, AiModelSpec("gpt-test", AiProvider.OPENAI,
             setOf(AiModelCapability.TEXT_GENERATION), AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(100_000))))
         val snapshot = ConversationContextSnapshot(
-            target = AgentEndpoint(Conversation.Id("target"), Conversation.Thread.Id("pinned"), AgentDefinition.Id("agent")),
+            target = AgentContextRef(Conversation.Id("target"), Conversation.Thread.Id("pinned"), AgentDefinition.Id("agent")),
             runtimeSelection = selection, resolvedRuntime = resolved,
             request = AiRuntimeRequest(listOf("base", "runtime", "skills", "slots", "visual"), listOf(
                 Conversation.Message(Conversation.Message.Id("u"), Conversation.Id("target"), role = Conversation.Message.Role.USER,
                     content = listOf(Conversation.Message.ContentItem.UserMessage("history")), createdAt = Instant.fromEpochMilliseconds(0)),
             ), options = AiRuntimeOptions(maxOutputTokens = 2048, reasoning = AiReasoningConfig(effort = AiReasoningEffort.HIGH),
-                autoCompactionThresholdTokens = 1000, toolContext = mapOf(TOOL_CONTEXT_USER_ID to "operator",
+                toolContext = mapOf(TOOL_CONTEXT_USER_ID to "operator",
                     TOOL_CONTEXT_CONVERSATION_ID to "target", TOOL_CONTEXT_THREAD_ID to "pinned", TOOL_CONTEXT_TARGET_MESSAGE_ID to "u",
                     TOOL_CONTEXT_PROJECT_ID to "project", TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent"))),
             capturedAt = Instant.fromEpochMilliseconds(0), sourceMessageCount = 1, omittedTrailingMessageCount = 0,
