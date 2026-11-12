@@ -38,6 +38,7 @@ try {
         $Result = Join-Path $Case 'result.json'
         & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script $Archive $Installation CLIENT $Id $Old.Id $Result
         if ($LASTEXITCODE -eq 0 -or -not (Test-Path (Join-Path $Case 'killed'))) { throw "Updater was not killed at $Boundary" }
+        $global:LASTEXITCODE = 0
         $StartupLink = Join-Path ([Environment]::GetFolderPath('Startup')) "Gromozeka update recovery $Id.lnk"
         if (-not (Test-Path $StartupLink)) { throw 'Login recovery shortcut is missing' }
         $Startup = (New-Object -ComObject WScript.Shell).CreateShortcut($StartupLink)
