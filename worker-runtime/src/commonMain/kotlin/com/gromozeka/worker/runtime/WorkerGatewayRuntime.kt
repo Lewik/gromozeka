@@ -36,13 +36,14 @@ class WorkerGatewayRuntime(
     private val onConnected: () -> Unit = {},
     private val onDisconnected: () -> Unit = {},
     private val onFailure: (Throwable, Long) -> Unit = { _, _ -> },
+    private val updateGate: WorkerUpdateGate = WorkerUpdateGate(),
 ) {
     init {
         require(reconnectDelay in 1.seconds..60.seconds) { "Worker reconnect delay must be between 1 and 60 seconds" }
     }
 
     suspend fun run(): Unit = coroutineScope {
-        val executor = WorkerRequestExecutor(journal, this, handler) { outbound.tryPublish(it) }
+        val executor = WorkerRequestExecutor(journal, this, handler, { outbound.tryPublish(it) }, updateGate)
         executor.initialize()
         try {
             var failures = 0L

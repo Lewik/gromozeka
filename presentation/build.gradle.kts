@@ -166,6 +166,7 @@ kotlin {
         val jvmMain by getting {
             resources.srcDir(windowsNotificationResources)
             dependencies {
+                implementation(project(":application-updates"))
                 implementation(project(":shared"))
                 implementation(compose.desktop.currentOs)
                 implementation(libs.jna)
@@ -188,6 +189,7 @@ kotlin {
 
         val androidMain by getting {
             dependencies {
+                implementation(project(":application-updates"))
                 implementation(libs.androidx.activity.compose)
             }
         }
@@ -264,6 +266,7 @@ tasks.matching { it.name == "jvmProcessResources" }.configureEach {
 compose.desktop {
     application {
         mainClass = "com.gromozeka.presentation.MainKt"
+        jvmArgs += "-Dgromozeka.client.version=${project.version}"
         
         // Platform-specific JVM arguments based on build OS
         // GitHub Actions builds each platform separately, so this works correctly:

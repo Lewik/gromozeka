@@ -30,6 +30,7 @@ class VisualWorkerRuntimeTest {
 
     @Test fun `owned command receives stdin and its final NDJSON is framed before stopping`() = fixture { f ->
         val started = f.runtime.execute(f.request).task!!
+        assertFalse(f.runtime.prepareForUpdate())
         assertEquals(started.id, f.runtime.execute(f.request).task!!.id)
         assertEquals(1, f.commands.starts)
         assertEquals(false, f.commands.request!!.survive_worker_restart)
@@ -51,8 +52,12 @@ class VisualWorkerRuntimeTest {
         assertEquals("", output.task.command)
         assertEquals("", output.task.workingDirectory)
         assertEquals(f.request.generation, output.generation)
+        assertFalse(f.runtime.prepareForUpdate())
         f.outbound.accept(WorkerGatewayMessage.Response(request.id, WorkerGatewayMessage.Response.Status.SUCCEEDED, "{\"active\":false}".encodeToByteArray()))
         withTimeout(3_000) { f.commands.cancelled.await() }
+        withTimeout(3_000) { while (!f.runtime.prepareForUpdate()) delay(10) }
+        assertFailsWith<IllegalStateException> { f.runtime.execute(f.request.copy(generation = "another-generation")) }
+        f.runtime.resumeAfterUpdate()
     }
 
     @Test fun `large output records are batched within the shared budget without empty batches`() = fixture { f ->

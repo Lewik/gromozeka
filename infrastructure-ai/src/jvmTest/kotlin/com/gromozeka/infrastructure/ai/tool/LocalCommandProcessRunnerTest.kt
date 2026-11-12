@@ -312,6 +312,10 @@ class LocalCommandProcessRunnerTest {
             assertContains(oversized.message.orEmpty(), "Process inspection output exceeds 1 MiB")
             val failed = assertFailsWith<AssertionError> { readInspectionOutput(inspectionFixture(1, 3), home) }
             assertContains(failed.message.orEmpty(), "Process inspection failed")
+            val timedOut = assertFailsWith<AssertionError> {
+                readInspectionOutput(inspectionFixture(1, delayMillis = 30_000), home, timeoutMillis = 100)
+            }
+            assertContains(timedOut.message.orEmpty(), "Process inspection timed out")
         }
     }
 
@@ -1042,7 +1046,7 @@ class LocalCommandProcessRunnerTest {
         return commandLines
     }
 
-    private fun readInspectionOutput(builder: ProcessBuilder, home: File): String {
+    private fun readInspectionOutput(builder: ProcessBuilder, home: File, timeoutMillis: Long = if (isWindows) 30_000 else 10_000): String {
         val output = File.createTempFile("process-inspection-", ".log", home)
         var inspection: Process? = null
         try {
@@ -1050,8 +1054,8 @@ class LocalCommandProcessRunnerTest {
             val process = builder.redirectErrorStream(true).redirectOutput(output).start()
             inspection = process
             process.outputStream.close()
-            assertTrue(process.waitFor(10, TimeUnit.SECONDS),
-                "Process inspection timed out after 10 seconds; captured bytes=${output.length()}")
+            assertTrue(process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS),
+                "Process inspection timed out after ${timeoutMillis}ms; captured bytes=${output.length()}")
             assertEquals(0, process.exitValue(), "Process inspection failed; captured bytes=${output.length()}")
             val bytes = output.inputStream().use { it.readNBytes(1024 * 1024 + 1) }
             assertTrue(bytes.size <= 1024 * 1024, "Process inspection output exceeds 1 MiB")
@@ -1063,13 +1067,12 @@ class LocalCommandProcessRunnerTest {
                     assertTrue(process.waitFor(5, TimeUnit.SECONDS), "Cannot stop process inspection")
                 }
             }
-            Files.deleteIfExists(output.toPath())
         }
     }
 
-    private fun inspectionFixture(size: Int, exitCode: Int = 0): ProcessBuilder = ProcessBuilder(
+    private fun inspectionFixture(size: Int, exitCode: Int = 0, delayMillis: Long = 0): ProcessBuilder = ProcessBuilder(
         File(System.getProperty("java.home"), if (isWindows) "bin/java.exe" else "bin/java").absolutePath,
-        CommandInspectionOutputTestProcess::class.java.name, size.toString(), exitCode.toString(),
+        CommandInspectionOutputTestProcess::class.java.name, size.toString(), exitCode.toString(), delayMillis.toString(),
     ).apply { environment()["CLASSPATH"] = System.getProperty("java.class.path") }
 
     private fun waitUntil(timeoutMillis: Long, condition: () -> Boolean) {
@@ -1208,6 +1211,7 @@ private fun windowsProcessTreeCommand(childPidFile: File): String {
 internal object CommandInspectionOutputTestProcess {
     @JvmStatic
     fun main(args: Array<String>) {
+        Thread.sleep(args[2].toLong())
         System.out.write(("x".repeat(args[0].toInt()) + "שלום\n").encodeToByteArray())
         System.out.flush()
         check(System.`in`.read() == -1) { "Process inspection must close stdin" }

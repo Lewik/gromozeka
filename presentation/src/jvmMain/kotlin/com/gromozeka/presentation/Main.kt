@@ -36,6 +36,12 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
+import com.gromozeka.updates.*
+import com.gromozeka.domain.model.UpdateComponent
+import com.gromozeka.presentation.ui.ApplicationUpdateLauncher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.awt.Desktop
 import java.awt.desktop.AppReopenedListener
 import java.awt.desktop.QuitHandler
@@ -82,10 +88,43 @@ fun main(args: Array<String>) {
             )
         }
         val scope = rememberCoroutineScope()
+        var updateAgent by remember { mutableStateOf<ApplicationUpdateAgent?>(null) }
+        var updatesVisible by remember { mutableStateOf(false) }
+
+        fun quit(skipUpdate: Boolean = false) {
+            if (quitting) return
+            quitting = true
+            scope.launch {
+                val installation = updateAgent?.view?.value?.installation
+                if (!skipUpdate && installation?.automatic == true && installation.request?.phase == com.gromozeka.domain.model.ApplicationUpdatePhase.READY) {
+                    runCatching { kotlinx.coroutines.withTimeout(10_000) { updateAgent?.installReady() } }
+                }
+                remoteApp?.close()
+                updateAgent?.close()
+                authenticationConnection?.close()
+                exitApplication()
+            }
+        }
+
+        DisposableEffect(Unit) {
+            ApplicationUpdateLauncher.open = { updatesVisible = true }
+            onDispose { ApplicationUpdateLauncher.open = null }
+        }
 
         suspend fun startAuthenticatedRemoteApp(connection: RemoteAuthenticationConnection) {
             val authenticatedStatus = connection.status()
             authenticationStatus = authenticatedStatus
+            updateAgent?.close()
+            val targetUrl = requireNotNull(remoteUrl)
+            val user = requireNotNull(authenticatedStatus.authenticatedUser)
+            updateAgent = ApplicationUpdateAgent(targetUrl, com.gromozeka.client.createGromozekaHttpClient(targetUrl, sessionCredentialStore), UpdateComponent.CLIENT,
+                DesktopUpdateInstaller.platform(), "${System.getProperty("user.name")} · ${System.getProperty("os.name")}",
+                System.getProperty("gromozeka.client.version", "0.0.0-dev"),
+                UpdateLocalStore(File(desktopRemoteClientHomeDirectory(), "updates/${UpdateLocalStore.key("$targetUrl/${user.id.value}")}")),
+                DesktopUpdateInstaller(UpdateComponent.CLIENT, DesktopUpdateInstaller.clientHome(),
+                    prepareUpdate = { trayPttState == PttState.IDLE },
+                    onLaunched = { withContext(Dispatchers.Main) { quit(skipUpdate = true) } }), closeHttpClient = true,
+            ).also { it.start(scope) }
             remoteApp = startRemotePresentation(
                 remoteUrl = requireNotNull(remoteUrl),
                 authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
@@ -97,16 +136,6 @@ fun main(args: Array<String>) {
 
         fun showWindow() {
             windowVisible = true
-        }
-
-        fun quit() {
-            if (quitting) return
-            quitting = true
-            scope.launch {
-                remoteApp?.close()
-                authenticationConnection?.close()
-                exitApplication()
-            }
         }
 
         LaunchedEffect(remoteApp) {
@@ -146,6 +175,8 @@ fun main(args: Array<String>) {
             authenticationStatus = null
             remoteApp?.close()
             remoteApp = null
+            updateAgent?.close()
+            updateAgent = null
             authenticationConnection?.close()
             try {
                 val connection = RemoteAuthenticationConnection(
@@ -158,19 +189,14 @@ fun main(args: Array<String>) {
                 authenticationStatus = status
                 if (status.authenticatedUser != null) {
                     log.info("Initializing authenticated remote UI client: $targetUrl")
-                    remoteApp = startRemotePresentation(
-                        remoteUrl = targetUrl,
-                        authenticatedUser = requireNotNull(status.authenticatedUser),
-                        remoteClientSettingsStore = settingsStore,
-                        desktopNotificationService = desktopNotificationService,
-                        httpClient = connection.httpClient,
-                    )
+                    startAuthenticatedRemoteApp(connection)
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
                 log.error("Failed to initialize remote UI client: ${error.message}")
                 initializationError = error
+                if (updateAgent != null) updatesVisible = true
             }
             connecting = false
         }
@@ -178,11 +204,15 @@ fun main(args: Array<String>) {
         DisposableEffect(Unit) {
             onDispose {
                 remoteApp?.close()
+                updateAgent?.close()
                 authenticationConnection?.close()
             }
         }
 
         val localization = rememberClientTranslation(remoteApp?.components?.translationService, settingsStore)
+        if (updatesVisible && updateAgent != null) {
+            ClientTheme(localization) { DesktopApplicationUpdateWindow(requireNotNull(updateAgent)) { updatesVisible = false } }
+        }
         val startedApp = remoteApp
         if (startedApp != null) {
             ChatWindow(
@@ -306,6 +336,7 @@ fun main(args: Array<String>) {
                 onAction = ::showWindow,
             ) {
                 Item(localization.text("native.open"), onClick = ::showWindow)
+                Item(localization.text("updates.title"), enabled = updateAgent != null, onClick = { updatesVisible = true })
                 Separator()
                 Item(
                     text = when {
@@ -337,7 +368,7 @@ fun main(args: Array<String>) {
                 Item(
                     text = if (quitting) localization.text("native.quitting") else localization.text("native.quit"),
                     enabled = !quitting,
-                    onClick = ::quit,
+                    onClick = { quit() },
                 )
             }
         }

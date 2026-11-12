@@ -291,9 +291,13 @@ internal class MobileWorkerRuntime(
         eventOutbox(collection.streamId, telemetryCommit = collection to checkpoint).append(events)
     }
 
-    suspend fun gatewayEnrollment(): MobileWorkerGatewayEnrollment? = mobileWorkerStorageMutex.withLock {
+    suspend fun gatewayEnrollment(): MobileWorkerGatewayEnrollment? = enrollment(requireGatewayEnabled = true)
+
+    suspend fun updateEnrollment(): MobileWorkerGatewayEnrollment? = enrollment(requireGatewayEnabled = false)
+
+    private suspend fun enrollment(requireGatewayEnabled: Boolean): MobileWorkerGatewayEnrollment? = mobileWorkerStorageMutex.withLock {
         val state = readState()
-        if (!state.enrolled || !state.gatewayEnabled) return@withLock null
+        if (!state.enrolled || requireGatewayEnabled && !state.gatewayEnabled) return@withLock null
         MobileWorkerGatewayEnrollment(
             serverUrl = requireNotNull(state.serverUrl),
             workerId = requireNotNull(state.workerId),

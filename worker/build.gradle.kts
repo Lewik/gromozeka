@@ -24,6 +24,7 @@ java {
 }
 
 dependencies {
+    implementation(project(":application-updates"))
     implementation(project(":domain"))
     implementation(project(":remote-protocol"))
     implementation(project(":worker-runtime"))

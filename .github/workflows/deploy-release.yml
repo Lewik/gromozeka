@@ -78,6 +78,31 @@ jobs:
             --image-ids "imageTag=$VERSION" \
             >/dev/null
 
+      - name: Stage private application update packages
+        if: ${{ hashFiles('deploy/aws/runtime/application-updates.py') != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          ARTIFACT_BUCKET: ${{ vars.AWS_GROMOZEKA_ARTIFACT_BUCKET }}
+        run: |
+          set -euo pipefail
+          packages="$RUNNER_TEMP/application-updates"
+          mkdir -p "$packages"
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --dir "$packages" --pattern catalog.json --pattern SHA256SUMS
+          python3 - "$packages/catalog.json" <<'PY'
+          import json, sys, runpy, os
+          from pathlib import Path
+          data = json.loads(Path(sys.argv[1]).read_text())
+          validate = runpy.run_path('deploy/aws/runtime/application-updates.py')['validate_catalog']
+          validate(data, os.environ['VERSION'])
+          PY
+          while IFS= read -r name; do
+            gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --dir "$packages" --pattern "$name"
+          done < <(jq -r '.artifacts[].fileName' "$packages/catalog.json")
+          python3 deploy/aws/runtime/application-updates.py bundle "$VERSION" "$packages" "$RUNNER_TEMP/application-updates.tar"
+          aws s3 cp "$RUNNER_TEMP/application-updates.tar" "s3://$ARTIFACT_BUCKET/runtime/application-updates/$VERSION.tar" --sse AES256
+
       - name: Publish release runtime bundle
         id: runtime
         shell: bash

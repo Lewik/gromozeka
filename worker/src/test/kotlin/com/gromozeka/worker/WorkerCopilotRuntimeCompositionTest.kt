@@ -39,6 +39,7 @@ class WorkerCopilotRuntimeCompositionTest {
                 )
 
             val provider = context.getBean(DirectAiRuntimeProvider::class.java)
+            assertEquals(0, context.getBeansOfType(WorkerApplicationUpdates::class.java).size)
             assertEquals(
                 false,
                 provider.capabilities(copilotRuntime()).supportsNativeCompaction,

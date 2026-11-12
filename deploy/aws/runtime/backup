@@ -45,6 +45,7 @@ compose exec -T postgres \
 tar \
   --exclude=logs \
   --exclude=cache \
+  --exclude=./updates \
   -czf "$backup_dir/home.tar.gz" \
   -C "$data_dir/home" \
   .

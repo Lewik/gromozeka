@@ -55,6 +55,28 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DefaultCommandMonitorServiceTest {
+    @Test
+    fun `update waits for active monitor and blocks launches until resumed`() = runBlocking {
+        withService { service, runner, coordinator, directory ->
+            assertTrue(service.prepareForUpdate())
+            assertFalse(service.recoverPersistedMonitors())
+            service.resumeAfterUpdate()
+            service.recoverPersistedMonitors()
+            val source = sourceTask(directory, "source still running")
+            coordinator.upsertCommandTask(source)
+            val spec = CommandMonitorSpec(source.id, "cat", CommandMonitor.Mode.CONTINUOUS, CommandMonitor.StartFrom.BEGINNING)
+            val monitor = service.start(spec, context(directory))
+            assertFalse(service.prepareForUpdate())
+            service.cancel(conversationId, monitor.id)
+            withTimeout(3_000) { while (!service.prepareForUpdate()) delay(10) }
+            assertFailsWith<IllegalStateException> { service.start(spec, context(directory)) }
+            assertEquals(1, runner.processes.size)
+            service.resumeAfterUpdate()
+            service.start(spec, context(directory))
+            assertEquals(2, runner.processes.size)
+        }
+    }
+
     private val conversationId = Conversation.Id("conversation-1")
     private val workspaceMountId = WorkspaceMount.Id("mount-1")
     private val workerDescriptor = ConversationRuntimeWorkerDescriptor(

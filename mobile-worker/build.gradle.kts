@@ -60,6 +60,7 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
+                implementation(project(":application-updates"))
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.car.app)

@@ -93,6 +93,13 @@ if [[ -n "$installed_postgres_major" && "$installed_postgres_major" != "$postgre
   chown 999:999 "$data_dir/postgres"
 fi
 
+update_archive="$(mktemp "$data_dir/runtime/application-updates.XXXXXX.tar")"
+trap 'rm -f "$update_archive"' EXIT
+aws s3 cp "s3://$artifact_bucket/runtime/application-updates/$release_version.tar" "$update_archive" --region "$aws_region" --only-show-errors
+python3 "$runtime_dir/application-updates.py" stage "$release_version" "$update_archive" "$data_dir/home/updates"
+rm -f "$update_archive"
+trap - EXIT
+
 compose pull
 if ! compose up --detach --remove-orphans --wait --wait-timeout 300; then
   echo "Gromozeka services did not become healthy" >&2

@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -27,32 +28,50 @@ internal class TestWorkerRequestJournal : WorkerRequestJournal {
 class WorkerRequestExecutorTest {
     @Test
     fun `duplicate delivery runs once and saved result survives a restart`() = runTest {
-        val journal = TestWorkerRequestJournal()
+        val saved = TestWorkerRequestJournal()
+        val commitAllowed = CompletableDeferred<Unit>()
+        val journal = object : WorkerRequestJournal by saved {
+            override suspend fun save(receipt: WorkerRequestReceipt) {
+                if (receipt.state == WorkerRequestReceipt.State.COMPLETED) commitAllowed.await()
+                saved.save(receipt)
+            }
+        }
+        val gate = WorkerUpdateGate()
         val responses = Channel<WorkerGatewayMessage.Response>(Channel.UNLIMITED)
         val finish = CompletableDeferred<Unit>()
         var runs = 0
         val executor = WorkerRequestExecutor(journal, backgroundScope, WorkerRequestHandler {
-            assertEquals(WorkerRequestReceipt.State.RUNNING, journal.receipts[it.id]?.state)
+            assertEquals(WorkerRequestReceipt.State.RUNNING, saved.receipts[it.id]?.state)
             runs++
             finish.await()
             success(it.id)
-        }, responses::send)
+        }, responses::send, gate)
         executor.initialize()
         val request = request("request")
         executor.accept(request)
         runCurrent()
         executor.accept(request)
         assertEquals(1, runs)
+        assertFalse(gate.prepare())
         finish.complete(Unit)
+        runCurrent()
+        assertFalse(gate.prepare())
+        commitAllowed.complete(Unit)
         assertEquals(success(request.id), responses.receive())
-        assertEquals(WorkerRequestReceipt.State.COMPLETED, journal.receipts[request.id]?.state)
+        runCurrent()
+        assertEquals(WorkerRequestReceipt.State.COMPLETED, saved.receipts[request.id]?.state)
+        assertTrue(gate.prepare())
+        executor.accept(request("during-update"))
+        assertEquals("WORKER_UPDATING", responses.receive().errorCode)
+        assertEquals(1, runs)
+        gate.resume()
 
         val restarted = WorkerRequestExecutor(journal, backgroundScope, WorkerRequestHandler { error("Must not repeat") }, responses::send)
         restarted.initialize()
         restarted.accept(request)
         assertEquals(success(request.id), responses.receive())
         restarted.acknowledge(request.id)
-        assertEquals(WorkerRequestReceipt.State.ACKNOWLEDGED, journal.receipts[request.id]?.state)
+        assertEquals(WorkerRequestReceipt.State.ACKNOWLEDGED, saved.receipts[request.id]?.state)
         restarted.accept(request)
         assertEquals("RESULT_ACKNOWLEDGED", responses.receive().errorCode)
     }

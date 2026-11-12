@@ -156,6 +156,7 @@ jobs:
           ./gradlew
           :server:test
           :worker:test
+          :application-updates:jvmTest
           :remote-protocol:jvmTest
           :worker-runtime:jvmTest
           :shared:jvmTest --tests '*JsonPointerTest'
@@ -260,8 +261,28 @@ jobs:
           ./gradlew :remote-client:jvmTest :presentation:jvmTest
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
+      - name: Prepare persistent Android signing identity
+        if: ${{ !inputs.skip_android && needs.metadata.outputs.publish == 'true' }}
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.GROMOZEKA_ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.GROMOZEKA_ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.GROMOZEKA_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.GROMOZEKA_ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64" && test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD" || {
+            echo 'Android publication requires all four persistent signing secrets; see docs/application-updates.md' >&2
+            exit 1
+          }
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/gromozeka-android.jks"
+          echo "GROMOZEKA_ANDROID_KEYSTORE=$RUNNER_TEMP/gromozeka-android.jks" >> "$GITHUB_ENV"
       - name: Verify Android clients
         if: ${{ !inputs.skip_android }}
+        env:
+          GROMOZEKA_ANDROID_STORE_PASSWORD: ${{ secrets.GROMOZEKA_ANDROID_STORE_PASSWORD }}
+          GROMOZEKA_ANDROID_KEY_ALIAS: ${{ secrets.GROMOZEKA_ANDROID_KEY_ALIAS }}
+          GROMOZEKA_ANDROID_KEY_PASSWORD: ${{ secrets.GROMOZEKA_ANDROID_KEY_PASSWORD }}
         run: >
           ./gradlew
           :presentation-android:assembleDebug
@@ -271,6 +292,9 @@ jobs:
           :mobile-worker-android:assemble
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
+      - name: Remove Android signing keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/gromozeka-android.jks"
       - name: Upload Android APKs
         if: ${{ !inputs.skip_android }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -567,10 +591,11 @@ jobs:
           hdiutil verify "$source_dmg"
           mkdir -p release-asset
           cp "$source_dmg" release-asset/gromozeka-client-macos-arm64.dmg
+          ditto -c -k --sequesterRsrc --keepParent "${app_binary%/Contents/MacOS/Gromozeka}" release-asset/gromozeka-client-macos-arm64.zip
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: client-macos-arm64
-          path: release-asset/gromozeka-client-macos-arm64.dmg
+          path: release-asset/gromozeka-client-macos-arm64.*
           if-no-files-found: error
           retention-days: 1
 
@@ -998,10 +1023,10 @@ jobs:
           mkdir -p release-assets
           find downloaded-artifacts -type f -exec cp {} release-assets/ \;
           if [[ "$SKIP_ANDROID" != "true" ]]; then
-            cp android-apks/mobile-worker-android/build/outputs/apk/debug/mobile-worker-android-debug.apk \
-              release-assets/gromozeka-worker-android-debug.apk
-            cp android-apks/presentation-android/build/outputs/apk/debug/presentation-android-debug.apk \
-              release-assets/gromozeka-client-android-debug.apk
+            cp android-apks/mobile-worker-android/build/outputs/apk/release/mobile-worker-android-release.apk \
+              release-assets/gromozeka-worker-android.apk
+            cp android-apks/presentation-android/build/outputs/apk/release/presentation-android-release.apk \
+              release-assets/gromozeka-client-android.apk
           fi
           mkdir -p server-stack/certs
           cp deploy/distribution/compose.yaml server-stack/compose.yaml
@@ -1018,9 +1043,12 @@ jobs:
             cd server-stack
             zip -q -r ../release-assets/gromozeka-server-stack.zip .
           )
+          python3 deploy/aws/runtime/application-updates.py catalog '${{ needs.metadata.outputs.version }}' release-assets
           (
             cd release-assets
             assets=(
+              catalog.json
+              gromozeka-client-macos-arm64.zip
               gromozeka-client-macos-arm64.dmg
               gromozeka-client-windows-x64.zip
               gromozeka-server-stack.zip
@@ -1033,7 +1061,7 @@ jobs:
               gromozeka-browser-bridge.zip
             )
             if [[ "$SKIP_ANDROID" != "true" ]]; then
-              assets+=(gromozeka-client-android-debug.apk gromozeka-worker-android-debug.apk)
+              assets+=(gromozeka-client-android.apk gromozeka-worker-android.apk)
             fi
             sha256sum "${assets[@]}" > SHA256SUMS
           )
@@ -1070,12 +1098,13 @@ jobs:
 
           ## Android
 
-          - Android Client (debug-signed APK): `gromozeka-client-android-debug.apk`
-          - Android Worker (debug-signed APK): `gromozeka-worker-android-debug.apk`
+          - Android Client (release-signed APK): `gromozeka-client-android.apk`
+          - Android Worker (release-signed APK): `gromozeka-worker-android.apk`
 
-          Android APKs use a debug signing key and are intended for manual installation.
-          The signing key may change between CI runs, so upgrading an existing Android
-          installation can require reinstallation and device enrollment again.
+          Android APKs use a persistent release signing key and increasing version codes.
+          Old debug-signed installations need a one-time reinstall and enrollment.
+          Subsequent updates preserve app data and use the private Server update endpoint.
+          Android may require confirmation before installing.
           EOF
           fi
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2

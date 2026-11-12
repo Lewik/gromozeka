@@ -15,6 +15,41 @@ New-Item -ItemType Directory -Path $SmokeRoot | Out-Null
 $ClassPath = "$SmokeRoot\BOOT-INF\classes;$SmokeRoot\BOOT-INF\lib\*;$(Join-Path $ProjectRoot 'worker\build\classes\kotlin\test')"
 $Entry = "com.gromozeka.worker.WindowsWorkerServiceSmoke"
 try {
+    $UpdateRoot = Join-Path $SmokeRoot 'updates'
+    New-Item -ItemType Directory -Path $UpdateRoot | Out-Null
+    $UpdateScript = Join-Path $ProjectRoot 'application-updates\src\jvmMain\resources\updates\install.ps1'
+    $Tokens = $null
+    $Errors = $null
+    [System.Management.Automation.Language.Parser]::ParseFile($UpdateScript, [ref]$Tokens, [ref]$Errors) | Out-Null
+    if ($Errors.Count) { throw ($Errors | Out-String) }
+    $Client = Join-Path $UpdateRoot 'client'
+    $ClientSource = Join-Path $UpdateRoot 'client-source'
+    New-Item -ItemType Directory -Path $Client, (Join-Path $ClientSource 'runtime') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $Client 'old.txt') -Value 'previous installation'
+    $env:GRZ_UPDATE_SMOKE_RESULT = Join-Path $UpdateRoot 'client-started.txt'
+    Add-Type -TypeDefinition 'using System; using System.IO; public class UpdateFixture { public static void Main() { File.WriteAllText(Environment.GetEnvironmentVariable("GRZ_UPDATE_SMOKE_RESULT"), "started"); } }' -OutputAssembly (Join-Path $ClientSource 'Gromozeka.exe') -OutputType ConsoleApplication
+    Set-Content -LiteralPath (Join-Path $ClientSource 'runtime\fixture.txt') -Value 'new runtime'
+    $ClientZip = Join-Path $UpdateRoot 'client.zip'
+    Compress-Archive -Path (Join-Path $ClientSource '*') -DestinationPath $ClientZip
+    $Old = Start-Process -FilePath "$env:SystemRoot\System32\cmd.exe" -ArgumentList '/c exit 0' -PassThru -Wait
+    $UpdateResult = Join-Path $UpdateRoot 'result.json'
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $UpdateScript $ClientZip $Client CLIENT client-smoke $Old.Id $UpdateResult
+    if ($LASTEXITCODE -ne 0 -or (Test-Path $UpdateResult) -or (Test-Path (Join-Path $Client 'old.txt'))) { throw 'Portable client replacement failed' }
+    if (-not (Test-Path (Join-Path "$Client.previous-client-smoke" 'old.txt'))) { throw 'Previous client was removed before version confirmation' }
+    $Deadline = (Get-Date).AddSeconds(10)
+    while (-not (Test-Path $env:GRZ_UPDATE_SMOKE_RESULT) -and (Get-Date) -lt $Deadline) { Start-Sleep -Milliseconds 100 }
+    if (-not (Test-Path $env:GRZ_UPDATE_SMOKE_RESULT)) { throw 'Updated client did not start' }
+
+    $WorkerSource = Join-Path $UpdateRoot 'gromozeka-worker-windows-x64'
+    New-Item -ItemType Directory -Path (Join-Path $WorkerSource 'bin') | Out-Null
+    $env:GRZ_UPDATE_SERVICE_RESULT = Join-Path $UpdateRoot 'service-updated.txt'
+    Set-Content -LiteralPath (Join-Path $WorkerSource 'bin\gromozeka-worker-service.ps1') -Value 'if ($args[0] -ne "update-service") { exit 2 }; Set-Content -LiteralPath $env:GRZ_UPDATE_SERVICE_RESULT -Value "updated"' -Encoding UTF8
+    $WorkerZip = Join-Path $UpdateRoot 'worker.zip'
+    Compress-Archive -Path $WorkerSource -DestinationPath $WorkerZip
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $UpdateScript $WorkerZip (Join-Path $UpdateRoot 'worker') WORKER worker-smoke $Old.Id $UpdateResult
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $env:GRZ_UPDATE_SERVICE_RESULT)) { throw 'Independent Worker updater did not invoke the existing service installer' }
+    Write-Output 'Independent update helpers verified portable client replacement and Worker installer handoff'
+
     Push-Location $SmokeRoot
     try {
         & $Jar -xf (Join-Path $ProjectRoot "worker\build\libs\gromozeka-worker.jar")

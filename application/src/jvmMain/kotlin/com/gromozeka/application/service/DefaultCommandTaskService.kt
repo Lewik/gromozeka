@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.service.WorkerUpdateParticipant
 import com.gromozeka.domain.slot.commandSlotOrigin
 import com.gromozeka.domain.slot.commandEnvironment
 
@@ -85,7 +86,7 @@ class DefaultCommandTaskService(
     private val outputMaxTotalBytes: Long = DEFAULT_OUTPUT_MAX_TOTAL_BYTES,
     @Value("\${gromozeka.runtime.command-output.gc-interval-minutes:60}")
     private val outputGcIntervalMinutes: Long = DEFAULT_OUTPUT_GC_INTERVAL_MINUTES,
-) : CommandTaskService {
+) : CommandTaskService, WorkerUpdateParticipant {
     private val log = KLoggers.logger(this)
     private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
     private val workerId get() = runtimeWorkerDescriptor.getObject().id
@@ -95,6 +96,14 @@ class DefaultCommandTaskService(
     private val lifecycleMutex = Mutex()
     private val taskMutexes = Array(TASK_MUTEX_STRIPES) { Mutex() }
     private val closed = AtomicBoolean()
+    private var updatePrepared = false
+
+    override suspend fun prepareForUpdate(): Boolean = lifecycleMutex.withLock {
+        if (closed.get() || activeCommands.isNotEmpty()) false
+        else { updatePrepared = true; true }
+    }
+
+    override suspend fun resumeAfterUpdate() = lifecycleMutex.withLock { updatePrepared = false }
 
     init {
         require(outputRetentionHours >= 0) { "Command output retention hours must be non-negative" }
@@ -133,6 +142,7 @@ class DefaultCommandTaskService(
         }
         val activeCommand = lifecycleMutex.withLock {
             check(!closed.get()) { "Command task service is closed" }
+            check(!updatePrepared) { "Worker is updating; command was not started" }
             startGuard()
             val process = processRunner.start(
                 CommandProcessSpec(
@@ -432,6 +442,7 @@ class DefaultCommandTaskService(
     }
 
     internal suspend fun recoverPersistedTasks() = lifecycleMutex.withLock {
+        if (updatePrepared) return@withLock false
         logInventoryRequest("tasks", "startup_recovery")
         val tasks = runtimeState.findCommandTasks()
             .filter { it.workerId == workerId }
@@ -444,13 +455,17 @@ class DefaultCommandTaskService(
             .filter { it.status == CommandTask.Status.WORKING }
             .sortedBy { it.createdAt }
             .forEach { recoverPersistedTask(it) }
+        true
     }
 
     private suspend fun recoverPersistedTasksWhenAvailable() {
         var consecutiveFailures = 0L
         while (currentCoroutineContext().isActive) {
             try {
-                recoverPersistedTasks()
+                if (!recoverPersistedTasks()) {
+                    delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                    continue
+                }
                 if (consecutiveFailures > 0) {
                     log.info {
                         "Command recovery resumed after $consecutiveFailures unavailable control-plane checks"

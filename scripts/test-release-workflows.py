@@ -43,7 +43,7 @@ class WorkflowContracts(unittest.TestCase):
         expected = {
             "release.yml": {"workflow_dispatch"},
             "deploy-release.yml": {"workflow_dispatch", "workflow_call"},
-            "windows-worker-service.yml": {"workflow_call"},
+            "windows-worker-service.yml": {"workflow_call", "workflow_dispatch"},
             "build-jni-libraries.yml": {"workflow_dispatch"},
         }
         self.assertEqual(set(expected), {p.name for p in WORKFLOWS.glob("*.y*ml")})
@@ -59,6 +59,16 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn(":server:test", step["run"])
         self.assertEqual("true", step["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
         self.assertEqual("jdbc:postgresql://localhost:5432/gromozeka", step["env"]["GROMOZEKA_POSTGRES_URL"])
+
+    def test_manual_windows_recovery_checks_cannot_skip_release_verification(self):
+        workflow = load_yaml(WORKFLOWS / "windows-worker-service.yml")
+        inputs = workflow["on"]["workflow_dispatch"]["inputs"]
+        self.assertEqual("boolean", inputs["recovery_only"]["type"])
+        self.assertEqual("false", inputs["recovery_only"]["default"])
+        self.assertEqual("contents: read", "\n".join(f"{key}: {value}" for key, value in workflow["permissions"].items()))
+        self.assertEqual("inputs.recovery_only != true", workflow["jobs"]["verify"]["if"])
+        self.assertNotIn("if", workflow["jobs"]["verify-update-recovery"])
+        self.assertNotIn("recovery_only", JOBS["verify-windows-worker"].get("with", {}))
 
     def test_ai_traffic_diagnostics_regressions_run_without_enabling_live_dumps(self):
         steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}
@@ -170,8 +180,8 @@ class WorkflowContracts(unittest.TestCase):
                 subprocess.run(["bash", "-eu", "-c", step["run"]], cwd=directory,
                                env={**os.environ, "SKIP_ANDROID": skip}, check=True)
                 notes = (Path(directory) / "release-notes.md").read_text()
-                self.assertEqual(skip == "false", "gromozeka-client-android-debug.apk" in notes)
-                self.assertEqual(skip == "false", "debug signing key" in notes)
+                self.assertEqual(skip == "false", "gromozeka-client-android.apk" in notes)
+                self.assertEqual(skip == "false", "persistent release signing key" in notes)
                 self.assertIn("gromozeka-client-macos-arm64.dmg", notes)
                 self.assertIn("gromozeka-server-linux-x64.tar.gz", notes)
 
@@ -179,7 +189,7 @@ class WorkflowContracts(unittest.TestCase):
         step = next(step for step in JOBS["release"]["steps"] if step.get("name") == "Prepare release assets")
         script = step["run"].replace("${{ needs.metadata.outputs.version }}", "4.9.0")
         self.assertNotIn("${{", script)
-        base = {"gromozeka-client-macos-arm64.dmg", "gromozeka-client-windows-x64.zip",
+        base = {"gromozeka-client-macos-arm64.zip", "gromozeka-client-macos-arm64.dmg", "gromozeka-client-windows-x64.zip",
                 "gromozeka-browser-bridge.zip"}
         for component in ("server", "worker"):
             base.update(f"gromozeka-{component}-{suffix}" for suffix in
@@ -196,9 +206,12 @@ class WorkflowContracts(unittest.TestCase):
                              "SERVER_README.md", "gromozeka.env.example"):
                     shutil.copyfile(ROOT / "deploy/distribution" / name, distribution / name)
                 shutil.copyfile(ROOT / "LICENSE", work / "LICENSE")
+                runtime = work / "deploy/aws/runtime"
+                runtime.mkdir(parents=True)
+                shutil.copyfile(ROOT / "deploy/aws/runtime/application-updates.py", runtime / "application-updates.py")
                 if skip == "false":
                     for module in ("presentation-android", "mobile-worker-android"):
-                        apk = work / "android-apks" / module / "build/outputs/apk/debug" / f"{module}-debug.apk"
+                        apk = work / "android-apks" / module / "build/outputs/apk/release" / f"{module}-release.apk"
                         apk.parent.mkdir(parents=True)
                         apk.write_text("synthetic APK")
                 # macOS has shasum rather than sha256sum; use a portable fixture implementation.
@@ -210,12 +223,24 @@ class WorkflowContracts(unittest.TestCase):
                 checksum.chmod(0o700)
                 subprocess.run(["bash", "-c", script], cwd=work, check=True,
                                env={**os.environ, "SKIP_ANDROID": skip, "PATH": str(binary) + os.pathsep + os.environ["PATH"]})
-                expected = base | {"gromozeka-server-stack.zip"}
+                expected = base | {"gromozeka-server-stack.zip", "catalog.json"}
                 if skip == "false":
-                    expected |= {"gromozeka-client-android-debug.apk", "gromozeka-worker-android-debug.apk"}
+                    expected |= {"gromozeka-client-android.apk", "gromozeka-worker-android.apk"}
                 checksums = (work / "release-assets/SHA256SUMS").read_text()
                 self.assertEqual(expected, {line.split()[1] for line in checksums.splitlines()})
                 self.assertEqual(expected | {"SHA256SUMS"}, {p.name for p in (work / "release-assets").iterdir()})
+                updater = runtime / "application-updates.py"
+                bundle = work / "updates.tar"
+                destination = work / "updates"
+                subprocess.run([sys.executable, str(updater), "bundle", "4.9.0", str(work / "release-assets"), str(bundle)], check=True)
+                stage_command = [sys.executable, str(updater), "stage", "4.9.0", str(bundle), str(destination)]
+                subprocess.run(stage_command, check=True)
+                subprocess.run(stage_command, check=True)
+                self.assertEqual((work / "release-assets/catalog.json").read_bytes(), (destination / "4.9.0/catalog.json").read_bytes())
+                (destination / "4.9.0/gromozeka-client-windows-x64.zip").write_text("tampered")
+                rejected = subprocess.run(stage_command, capture_output=True)
+                self.assertNotEqual(0, rejected.returncode)
+
 
     def test_slots_are_in_the_release_verification_set(self):
         verification = scripts(JOBS["verify-runtime"])

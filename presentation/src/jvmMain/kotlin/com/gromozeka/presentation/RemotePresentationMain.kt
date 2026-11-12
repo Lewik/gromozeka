@@ -123,7 +123,7 @@ internal fun createDesktopRemoteSessionCredentialStore(): DesktopRemoteSessionCr
         File(desktopRemoteClientHomeDirectory(), "remote-sessions.json")
     )
 
-private fun desktopRemoteClientHomeDirectory(): File =
+internal fun desktopRemoteClientHomeDirectory(): File =
     System.getProperty("GROMOZEKA_CLIENT_HOME")
         ?.let(::File)
         ?: System.getenv("GROMOZEKA_CLIENT_HOME")?.let(::File)

@@ -1,5 +1,6 @@
 package com.gromozeka.worker
 
+import com.gromozeka.domain.service.WorkerUpdateParticipant
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskService
 import com.gromozeka.domain.service.ControlPlaneUnavailableException
@@ -12,6 +13,8 @@ import com.gromozeka.domain.visual.VisualOutputRecord
 import com.gromozeka.remote.protocol.*
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Qualifier
@@ -25,11 +28,19 @@ class VisualWorkerRuntime(
     private val outbound: WorkerGatewayOutbound,
     private val identity: ConversationRuntimeWorkerIdentity,
     @param:Qualifier("applicationScope") private val scope: CoroutineScope,
-) {
+) : WorkerUpdateParticipant {
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
     private val owned = ConcurrentHashMap<String, Owned>()
     private val cancelled = ConcurrentHashMap<String, Long>()
     private val log = klog.KLoggers.logger(this)
+    private val updateMutex = Mutex()
+    private var updatePrepared = false
+
+    override suspend fun prepareForUpdate(): Boolean = updateMutex.withLock {
+        if (owned.isNotEmpty()) false else { updatePrepared = true; true }
+    }
+
+    override suspend fun resumeAfterUpdate() = updateMutex.withLock { updatePrepared = false }
 
     suspend fun execute(request: VisualWorkerCommand, workerRequest: WorkerRequestExecutionContext? = null): VisualWorkerResult {
         require(request.worker == identity) { "Visual operation targets another Worker session" }
@@ -78,7 +89,10 @@ class VisualWorkerRuntime(
             values[TOOL_CONTEXT_WORKSPACE_ROOT_PATH] == workspace.mount.rootPath &&
             values[TOOL_CONTEXT_USER_ID]?.isNotBlank() == true) { "Handler context does not match its execution target" }
         val entry = Owned(request)
-        owned.putIfAbsent(request.generation, entry)?.let { existing ->
+        updateMutex.withLock {
+            check(!updatePrepared) { "Worker is updating; Visual handler was not started" }
+            owned.putIfAbsent(request.generation, entry)
+        }?.let { existing ->
             require(existing.request == request) { "Visual generation was reused for another handler" }
             return existing.task.await()
         }
@@ -144,10 +158,10 @@ class VisualWorkerRuntime(
             log.warn(error) { "Visual output reader failed for ${request.visualId}" }
             runCatching { send(request, task.copy(statusMessage = "Visual output reader failed"), emptyList(), true) }
         } finally {
-            owned.remove(request.generation, entry)
             withContext(NonCancellable) {
                 runCatching { commands.cancel(request.conversationId, initial.id) }
                     .onFailure { log.warn(it) { "Visual handler cleanup failed for ${request.visualId}" } }
+                owned.remove(request.generation, entry)
             }
         }
     }

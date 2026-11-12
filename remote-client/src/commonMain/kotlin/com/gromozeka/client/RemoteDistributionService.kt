@@ -7,6 +7,23 @@ import kotlinx.serialization.json.Json
 class RemoteDistributionService internal constructor(
     private val client: GromozekaWsClient,
 ) {
+    suspend fun getUpdateInventory(): com.gromozeka.remote.protocol.ApplicationUpdateInventory =
+        json.decodeFromString(client.getServerResource("/api/updates/v1/installations"))
+
+    suspend fun requestUpdate(id: String) {
+        require(Regex("[a-zA-Z0-9_-]{1,100}").matches(id))
+        client.postServerResource("/api/updates/v1/installations/$id/request")
+    }
+
+    suspend fun cancelUpdate(id: String) {
+        require(Regex("[a-zA-Z0-9_-]{1,100}").matches(id))
+        client.postServerResource("/api/updates/v1/installations/$id/cancel")
+    }
+
+    suspend fun setAutomaticUpdates(id: String, enabled: Boolean) {
+        require(Regex("[a-zA-Z0-9_-]{1,100}").matches(id))
+        client.postServerResource("/api/updates/v1/installations/$id/policy", "{\"automatic\":$enabled}")
+    }
     private val json = Json {
         ignoreUnknownKeys = true
     }
