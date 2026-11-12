@@ -14,8 +14,7 @@ Move-Item -LiteralPath (Join-Path $Cache "installer-$RequestId.process.new") -De
 $Staging = "$Installation.update-$RequestId"
 $Previous = "$Installation.previous-$RequestId"
 $Transaction = Join-Path $Cache "transaction-$RequestId"
-$RecoveryName = "GromozekaUpdate-$RequestId"
-$RecoveryKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+$StartupLink = Join-Path ([Environment]::GetFolderPath('Startup')) "Gromozeka update recovery $RequestId.lnk"
 $RecoveryLink = Join-Path ([Environment]::GetFolderPath('Programs')) "Gromozeka update recovery $RequestId.lnk"
 $Finished = $false
 
@@ -46,13 +45,13 @@ function Restore-Previous {
 try {
     if ($Component -eq 'CLIENT') {
         $Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File ' + ((@($PSCommandPath, $Package, $Installation, $Component, $RequestId, $OldProcessId.ToString(), $Result) | ForEach-Object { '"' + $_ + '"' }) -join ' ')
-        if (-not (Test-Path $RecoveryKey)) { New-Item -Path $RecoveryKey -Force | Out-Null }
-        New-ItemProperty -Path $RecoveryKey -Name $RecoveryName -Value ('powershell.exe ' + $Arguments) -PropertyType String -Force | Out-Null
         $Shell = New-Object -ComObject WScript.Shell
-        $Shortcut = $Shell.CreateShortcut($RecoveryLink)
-        $Shortcut.TargetPath = Join-Path $PSHOME 'powershell.exe'
-        $Shortcut.Arguments = $Arguments
-        $Shortcut.Save()
+        foreach ($Link in @($RecoveryLink, $StartupLink)) {
+            $Shortcut = $Shell.CreateShortcut($Link)
+            $Shortcut.TargetPath = Join-Path $PSHOME 'powershell.exe'
+            $Shortcut.Arguments = $Arguments
+            $Shortcut.Save()
+        }
         if (Test-Path -LiteralPath $Transaction) {
             $Phase = [IO.File]::ReadAllText($Transaction).Trim()
             switch ($Phase) {
@@ -104,7 +103,7 @@ try {
         if ($Finished) {
             if (Test-Path -LiteralPath $Staging) { Remove-Item -LiteralPath $Staging -Recurse -Force }
             if ($Component -eq 'CLIENT') {
-                Remove-ItemProperty -Path $RecoveryKey -Name $RecoveryName -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath $StartupLink -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $RecoveryLink -ErrorAction SilentlyContinue
             }
         }

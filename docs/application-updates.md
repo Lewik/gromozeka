@@ -107,7 +107,7 @@ macOS and unsigned on Windows, matching the existing distribution policy.
   its existing writable directory and restarts it. User settings remain outside that
   directory. A protected Program Files installation requires a manual administrator
   update; the client does not silently elevate. Before changing directories, the
-  helper registers a per-user login recovery command and a **Gromozeka update
+  helper registers a per-user Startup folder shortcut and a **Gromozeka update
   recovery** Start Menu shortcut pointing into the update cache. After an abrupt
   termination, use the shortcut or sign in again to recover; this does not promise
   immediate background recovery. The durable transaction restores the old directory
@@ -188,7 +188,7 @@ This PR does not provision signing secrets, publish a release, or update live de
 `python3 scripts/test-worker-service.py` tests real macOS helper directory moves,
 ordinary launch failure, and SIGKILL at replacement and rollback boundaries; only
 OS launch and signing calls are stubbed. Windows CI runs
-`scripts/test-windows-updates.ps1` against real PowerShell, registry entries, and
+`scripts/test-windows-updates.ps1` against real PowerShell, Startup folder entries, and
 recovery shortcuts with an isolated fixture executable. No installed Gromozeka
 application or service is used by these recovery fixtures.
 

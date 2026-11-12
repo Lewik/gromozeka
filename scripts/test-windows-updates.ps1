@@ -1,7 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $Source = Join-Path $PSScriptRoot '../application-updates/src/jvmMain/resources/updates/install.ps1'
 $Root = Join-Path $env:TEMP ('gromozeka-update-recovery-' + [Guid]::NewGuid().ToString('N'))
-$RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 New-Item -ItemType Directory -Path $Root | Out-Null
 $Registrations = @()
 try {
@@ -39,8 +38,11 @@ try {
         $Result = Join-Path $Case 'result.json'
         & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script $Archive $Installation CLIENT $Id $Old.Id $Result
         if ($LASTEXITCODE -eq 0 -or -not (Test-Path (Join-Path $Case 'killed'))) { throw "Updater was not killed at $Boundary" }
-        $Recovery = Get-ItemPropertyValue -Path $RunKey -Name "GromozekaUpdate-$Id"
-        if (-not $Recovery.Contains($Script)) { throw 'Login recovery does not point outside installation' }
+        $StartupLink = Join-Path ([Environment]::GetFolderPath('Startup')) "Gromozeka update recovery $Id.lnk"
+        if (-not (Test-Path $StartupLink)) { throw 'Login recovery shortcut is missing' }
+        $Startup = (New-Object -ComObject WScript.Shell).CreateShortcut($StartupLink)
+        if (-not $Startup.Arguments.Contains($Script)) { throw 'Login recovery does not point outside installation' }
+        if ($Startup.Arguments.Length -le 260) { throw 'Fixture must exercise recovery commands exceeding the Run registry limit' }
         $Link = Join-Path ([Environment]::GetFolderPath('Programs')) "Gromozeka update recovery $Id.lnk"
         if (-not (Test-Path $Link)) { throw 'Manual recovery shortcut is missing' }
         if ($Boundary -eq 'old-moved' -and (Test-Path $Installation)) { throw 'Fixture did not expose the missing installation gap' }
@@ -51,13 +53,13 @@ try {
         if ((Test-Path (Join-Path $Installation 'old.txt')) -ne $RolledBack) { throw "Wrong recovered version at $Boundary" }
         if ((Test-Path (Join-Path $Installation 'new.txt')) -eq $RolledBack) { throw "Mixed installation at $Boundary" }
         if ($RolledBack -and ((Get-Content $Result -Raw | ConvertFrom-Json).phase -ne 'FAILED')) { throw 'Rollback was not reported' }
-        if (Get-ItemProperty -Path $RunKey -Name "GromozekaUpdate-$Id" -ErrorAction SilentlyContinue) { throw 'Login recovery was not removed' }
+        if (Test-Path $StartupLink) { throw 'Login recovery was not removed' }
         if (Test-Path $Link) { throw 'Recovery shortcut was not removed' }
         Write-Output "Recovered abrupt updater termination at $Boundary"
     }
 } finally {
     foreach ($Id in $Registrations) {
-        Remove-ItemProperty -Path $RunKey -Name "GromozekaUpdate-$Id" -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath (Join-Path ([Environment]::GetFolderPath('Startup')) "Gromozeka update recovery $Id.lnk") -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path ([Environment]::GetFolderPath('Programs')) "Gromozeka update recovery $Id.lnk") -ErrorAction SilentlyContinue
     }
     Remove-Item -LiteralPath $Root -Recurse -Force
