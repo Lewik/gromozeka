@@ -1,5 +1,6 @@
 package com.gromozeka.worker
 
+import com.gromozeka.domain.service.WorkerUpdateParticipant
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.domain.model.UpdateComponent
 import com.gromozeka.updates.*
@@ -18,6 +19,7 @@ class WorkerApplicationUpdates(
     private val properties: WorkerGatewayProperties,
     private val gateway: WorkerGatewayClient,
     private val settings: SettingsService,
+    private val updateParticipants: List<WorkerUpdateParticipant>,
     @param:Qualifier("applicationScope") private val scope: CoroutineScope,
 ) : SmartLifecycle {
     private var agent: ApplicationUpdateAgent? = null
@@ -31,8 +33,9 @@ class WorkerApplicationUpdates(
         http = client
         val home = System.getenv("GROMOZEKA_INSTALLATION_HOME")?.let(::File)
             ?: if (System.getProperty("os.name").startsWith("Windows")) File(System.getenv("ProgramFiles"), "Gromozeka Worker") else null
+        val preparation = WorkerUpdatePreparation(gateway.updateGate, updateParticipants)
         val installer = DesktopUpdateInstaller(UpdateComponent.WORKER, home,
-            prepareUpdate = { gateway.updateGate.prepare() }, resumeWork = { gateway.updateGate.resume() })
+            prepareUpdate = preparation::prepare, resumeWork = preparation::resume)
         agent = ApplicationUpdateAgent(properties.serverUrl, client, UpdateComponent.WORKER, DesktopUpdateInstaller.platform(),
             home?.name ?: "Worker", currentWorkerVersion(),
             UpdateLocalStore(File(settings.gromozekaHome, "updates/${UpdateLocalStore.key(properties.serverUrl)}")), installer,

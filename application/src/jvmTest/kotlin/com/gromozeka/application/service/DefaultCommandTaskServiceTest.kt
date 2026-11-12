@@ -57,6 +57,44 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DefaultCommandTaskServiceTest {
+    @Test
+    fun `update waits for yielded command and terminal persistence then excludes new launches`() = runBlocking {
+        val directory = Files.createTempDirectory("command-update-").toFile()
+        val runner = FakeCommandProcessRunner(directory)
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val terminalWrite = CompletableDeferred<Unit>()
+        val allowCommit = CompletableDeferred<Unit>()
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                if (task.isTerminal) { terminalWrite.complete(Unit); allowCommit.await() }
+                return delegate.upsertCommandTask(task)
+            }
+        }
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        try {
+            assertTrue(service.prepareForUpdate())
+            assertFalse(service.recoverPersistedTasks())
+            service.resumeAfterUpdate()
+            service.recoverPersistedTasks()
+            val output = service.start(ExecuteCommandRequest("long-running", yield_time_ms = 0), context(directory))
+            assertEquals(CommandTask.Status.WORKING, output.task.status)
+            assertTrue(runner.lastProcess.isAlive())
+            assertFalse(service.prepareForUpdate())
+            runner.lastProcess.complete(0)
+            withTimeout(3_000) { terminalWrite.await() }
+            assertFalse(service.prepareForUpdate())
+            allowCommit.complete(Unit)
+            withTimeout(3_000) { while (!service.prepareForUpdate()) delay(10) }
+            assertFailsWith<IllegalStateException> {
+                service.start(ExecuteCommandRequest("too-late", yield_time_ms = 0), context(directory))
+            }
+            assertEquals(1, runner.startCount)
+            service.resumeAfterUpdate()
+            service.start(ExecuteCommandRequest("resumed", yield_time_ms = 0), context(directory))
+            assertEquals(2, runner.startCount)
+        } finally { allowCommit.complete(Unit); service.close(); directory.deleteRecursively() }
+    }
+
     private val conversationId = Conversation.Id("conversation-1")
     private val workerDescriptor = ConversationRuntimeWorkerDescriptor(
         id = ConversationRuntimeWorkerId("command-worker"),
