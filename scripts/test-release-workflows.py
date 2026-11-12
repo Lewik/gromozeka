@@ -43,7 +43,7 @@ class WorkflowContracts(unittest.TestCase):
         expected = {
             "release.yml": {"workflow_dispatch"},
             "deploy-release.yml": {"workflow_dispatch", "workflow_call"},
-            "windows-worker-service.yml": {"workflow_call"},
+            "windows-worker-service.yml": {"workflow_call", "workflow_dispatch"},
             "build-jni-libraries.yml": {"workflow_dispatch"},
         }
         self.assertEqual(set(expected), {p.name for p in WORKFLOWS.glob("*.y*ml")})
@@ -59,6 +59,16 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn(":server:test", step["run"])
         self.assertEqual("true", step["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
         self.assertEqual("jdbc:postgresql://localhost:5432/gromozeka", step["env"]["GROMOZEKA_POSTGRES_URL"])
+
+    def test_manual_windows_recovery_checks_cannot_skip_release_verification(self):
+        workflow = load_yaml(WORKFLOWS / "windows-worker-service.yml")
+        inputs = workflow["on"]["workflow_dispatch"]["inputs"]
+        self.assertEqual("boolean", inputs["recovery_only"]["type"])
+        self.assertEqual("false", inputs["recovery_only"]["default"])
+        self.assertEqual("contents: read", "\n".join(f"{key}: {value}" for key, value in workflow["permissions"].items()))
+        self.assertEqual("inputs.recovery_only != true", workflow["jobs"]["verify"]["if"])
+        self.assertNotIn("if", workflow["jobs"]["verify-update-recovery"])
+        self.assertNotIn("recovery_only", JOBS["verify-windows-worker"].get("with", {}))
 
     def test_ai_traffic_diagnostics_regressions_run_without_enabling_live_dumps(self):
         steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}

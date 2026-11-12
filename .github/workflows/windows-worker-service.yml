@@ -2,6 +2,12 @@ name: Worker cross-platform checks
 
 on:
   workflow_call:
+  workflow_dispatch:
+    inputs:
+      recovery_only:
+        description: Run only the independent Windows update recovery checks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,6 +27,7 @@ jobs:
         run: ./scripts/test-windows-updates.ps1
 
   verify:
+    if: inputs.recovery_only != true
     strategy:
       fail-fast: false
       matrix:
