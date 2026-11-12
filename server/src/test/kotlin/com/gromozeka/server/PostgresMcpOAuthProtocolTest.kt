@@ -358,6 +358,7 @@ private class OAuthFixture(db: OAuthDatabase) : AutoCloseable {
             beans.registerSingleton("testDataSource", db.source)
             beans.registerSingleton("testUsers", users)
             beans.registerSingleton("testTokens", Mockito.mock(PersonalAccessTokenService::class.java))
+            beans.registerSingleton("testCommandScripts", Mockito.mock(CommandScriptGrantService::class.java))
             beans.registerSingleton("testWorkers", WorkerGatewayAuthenticationService(Mockito.mock(WorkerEnrollmentRepository::class.java)))
             beans.registerSingleton("testHttpSettings", ServerHttpSettings())
             beans.registerSingleton("testLimiter", AuthenticationAttemptLimiter())
