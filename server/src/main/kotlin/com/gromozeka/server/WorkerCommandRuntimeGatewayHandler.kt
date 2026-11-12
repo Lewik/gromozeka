@@ -53,7 +53,6 @@ internal class WorkerCommandRuntimeGatewayHandler(
             is WorkerCommandRuntimeRequest.RegisterCommandTask -> {
                 val task = validateCommandTask(identity.workerId, runtimeRequest.task)
                 val result = commandRuntimeStateService.upsertCommandTask(task)
-                result.evictedTasks.forEach { scriptGrants.observe(it) }
                 val registered = scriptGrants.register(result.task, runtimeRequest.tokenHash)
                 WorkerCommandRuntimeResponse.CommandTaskUpserted(registered, result.evictedTasks)
             }
@@ -61,8 +60,6 @@ internal class WorkerCommandRuntimeGatewayHandler(
             is WorkerCommandRuntimeRequest.UpsertCommandTask -> {
                 val task = validateCommandTask(identity.workerId, runtimeRequest.task)
                 val result = commandRuntimeStateService.upsertCommandTask(task)
-                scriptGrants.observe(result.task)
-                result.evictedTasks.forEach { scriptGrants.observe(it) }
                 WorkerCommandRuntimeResponse.CommandTaskUpserted(result.task, result.evictedTasks)
             }
 

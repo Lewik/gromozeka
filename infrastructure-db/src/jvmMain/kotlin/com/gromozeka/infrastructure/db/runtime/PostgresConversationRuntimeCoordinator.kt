@@ -422,6 +422,7 @@ class PostgresConversationRuntimeCoordinator(
             task.conversationId,
             createIfMissing = true,
             components = setOf(RuntimeComponent.COMMANDS, RuntimeComponent.MONITORS),
+            commandTaskMutation = task,
         ) { record ->
             val tasks = record.commandTasks.toMutableList()
             val existingIndex = tasks.indexOfFirst { it.id == task.id }
@@ -1186,6 +1187,7 @@ class PostgresConversationRuntimeCoordinator(
         conversationId: Conversation.Id,
         createIfMissing: Boolean,
         components: Set<RuntimeComponent> = setOf(RuntimeComponent.SCHEDULING),
+        commandTaskMutation: CommandTask? = null,
         block: (RuntimeRecord) -> T,
     ): T = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
@@ -1203,6 +1205,14 @@ class PostgresConversationRuntimeCoordinator(
                 val record = stored ?: RuntimeRecord(conversationId)
                 val before = record.copy()
                 val result = block(record)
+                if (RuntimeComponent.COMMANDS in components) {
+                    val previousTasks = before.commandTasks.associateBy { it.id }
+                    val currentTasks = record.commandTasks.associateBy { it.id }
+                    val changedTasks = record.commandTasks.filter { it != previousTasks[it.id] } +
+                        before.commandTasks.filter { it.id !in currentTasks } + listOfNotNull(commandTaskMutation)
+                    // Keep the input even when terminal retention immediately evicts it.
+                    connection.closeCommandScriptGrants(conversationId, changedTasks)
+                }
                 if (stored != null && record != before) {
                     val changedComponents = RuntimeComponent.entries.filter { record.componentValue(it) != before.componentValue(it) }
                     check(components.containsAll(changedComponents)) { "Runtime mutation changed an unloaded component" }
@@ -1218,6 +1228,41 @@ class PostgresConversationRuntimeCoordinator(
                 connection.rollback()
                 throw error
             }
+        }
+    }
+
+    private fun Connection.closeCommandScriptGrants(conversationId: Conversation.Id, tasks: List<CommandTask>) {
+        val now = Clock.System.now()
+        val ids = tasks.filter { task ->
+            task.launchReference != null &&
+                (task.isTerminal || task.cancellationRequestedAt != null || task.timeoutAt?.let { it <= now } == true)
+        }.map { it.id }.distinct()
+        if (ids.isEmpty()) return
+        // Closure and inventory retention commit together. The origin marker also fences a
+        // first registration racing with closure, before any credential row exists.
+        prepareStatement("""
+            UPDATE background_activity_origins SET command_closed_at=?
+            WHERE kind='COMMAND' AND conversation_id=? AND activity_id=? AND command_closed_at IS NULL
+        """.trimIndent()).use { statement ->
+            ids.forEach { id ->
+                statement.setTimestamp(1, now.toTimestamp())
+                statement.setString(2, conversationId.value)
+                statement.setString(3, id.value)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+        prepareStatement("""
+            UPDATE command_script_grants SET revoked_at=?
+            WHERE conversation_id=? AND command_id=? AND revoked_at IS NULL
+        """.trimIndent()).use { statement ->
+            ids.forEach { id ->
+                statement.setTimestamp(1, now.toTimestamp())
+                statement.setString(2, conversationId.value)
+                statement.setString(3, id.value)
+                statement.addBatch()
+            }
+            statement.executeBatch()
         }
     }
 

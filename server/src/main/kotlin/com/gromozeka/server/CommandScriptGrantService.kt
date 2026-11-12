@@ -81,10 +81,6 @@ internal class CommandScriptGrantService(
         return CommandScriptPrincipal(user, task.id, task.conversationId, grant.projectId, grant.origin.agentDefinitionId)
     }
 
-    suspend fun observe(task: CommandTask, at: Instant = Clock.System.now()) {
-        if (!isUsable(task, at)) grants.revoke(task.conversationId, task.id, at)
-    }
-
     suspend fun maintain(at: Instant = Clock.System.now()) {
         for (grant in grants.maintenanceCandidates(at - 1.minutes, 128)) {
             val taskId = CommandTask.Id(grant.origin.activityId)

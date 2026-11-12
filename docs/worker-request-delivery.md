@@ -173,8 +173,13 @@ calling Agent identity are Server-bound; Agent toolAccess applies to discovery a
 Changing/omitting SDK context cannot widen those rights. Ordinary upserts and recovery do
 not issue credentials. A non-secret issuance marker prevents revival after credential GC.
 
-Confirmed terminal/cancellation/deadline state denies new MCP calls. Maintenance retires
-such grants and removes revoked token rows after one hour in bounded batches. Offline or
+Confirmed terminal/cancellation/deadline state denies new MCP calls. The PostgreSQL
+coordinator commits command closure, a permanent origin closure marker and credential
+revocation in the same transaction, before terminal inventory can be forgotten. The marker
+also fences a first registration racing with closure. No post-commit callback is required;
+a stale WORKING snapshot cannot revive the credential after retention or a Server crash.
+Maintenance also detects elapsed deadlines and removes revoked token rows after one hour
+in bounded batches. Offline or
 missing state is not treated as completion; missing state authorizes no request. Active
 old grants are not deleted by creation age. After the first day, the existing user inbox
 receives one reminder per age-day, with a durable deduplication key and no catch-up burst.

@@ -62,12 +62,13 @@ internal class PostgresCommandScriptGrantRepository(private val dataSource: Data
                 }
             }
         }
-        val issued = c.prepareStatement("SELECT record_json::text,script_grant_issued FROM background_activity_origins WHERE kind='COMMAND' AND activity_id=? FOR UPDATE").use { s ->
+        val issued = c.prepareStatement("SELECT record_json::text,script_grant_issued,command_closed_at FROM background_activity_origins WHERE kind='COMMAND' AND activity_id=? FOR UPDATE").use { s ->
             s.setString(1, origin.activityId)
             s.executeQuery().use { r ->
                 require(r.next() && json.decodeFromString<BackgroundActivityOrigin>(r.getString(1)) == origin) {
                     "Command SDK registration requires trusted launch provenance"
                 }
+                require(r.getTimestamp("command_closed_at") == null) { "Command SDK access was permanently closed" }
                 r.getBoolean(2)
             }
         }

@@ -1,5 +1,7 @@
 -- A non-secret issuance marker prevents a retired command from minting another grant after GC.
-ALTER TABLE background_activity_origins ADD COLUMN script_grant_issued BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE background_activity_origins
+    ADD COLUMN script_grant_issued BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN command_closed_at TIMESTAMPTZ;
 
 CREATE TABLE command_script_grants (
     command_id VARCHAR(128) PRIMARY KEY,
