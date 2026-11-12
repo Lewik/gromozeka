@@ -14,8 +14,8 @@ Move-Item -LiteralPath (Join-Path $Cache "installer-$RequestId.process.new") -De
 $Staging = "$Installation.update-$RequestId"
 $Previous = "$Installation.previous-$RequestId"
 $Transaction = Join-Path $Cache "transaction-$RequestId"
-$StartupLink = Join-Path ([Environment]::GetFolderPath('Startup')) "Gromozeka update recovery $RequestId.lnk"
-$RecoveryLink = Join-Path ([Environment]::GetFolderPath('Programs')) "Gromozeka update recovery $RequestId.lnk"
+$StartupLink = Join-Path ([Environment]::GetFolderPath('Startup', 'Create')) "Gromozeka update recovery $RequestId.lnk"
+$RecoveryLink = Join-Path ([Environment]::GetFolderPath('Programs', 'Create')) "Gromozeka update recovery $RequestId.lnk"
 $Finished = $false
 
 function Write-Phase([string]$Phase) {
