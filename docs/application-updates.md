@@ -97,7 +97,9 @@ macOS and unsigned on Windows, matching the existing distribution policy.
   `~/Library/LaunchAgents` until completion and restarts after an abnormal helper exit
   or the next login. It can restore the previous directory even if the normal app
   path is missing. After the new directory is committed, recovery launches that
-  version instead. The previous directory is removed only after version confirmation.
+  version instead. Recovery also recognizes a completed second directory move if
+  termination happened before its phase marker was written; it keeps that new
+  directory rather than replacing an app that may already be running. The previous directory is removed only after version confirmation.
 * **Windows Worker:** an independent PowerShell process invokes the existing
   `update-service` installer from the downloaded distribution. It preserves the
   ProgramData configuration, LocalSystem account, service ACL, and recovery policy.

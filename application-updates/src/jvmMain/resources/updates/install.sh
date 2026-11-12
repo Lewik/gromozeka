@@ -68,7 +68,15 @@ if [[ -f "$transaction" ]]; then
   case "$phase" in
     installed) start_installed; write_phase complete ;;
     complete) ;;
-    prepared|stopping|replacing|rolling-back|failed) restore_previous ;;
+    replacing)
+      if [[ -d "$destination" && -d "$previous" ]]; then
+        write_phase installed
+        start_installed
+        write_phase complete
+      else
+        restore_previous
+      fi ;;
+    prepared|stopping|rolling-back|failed) restore_previous ;;
     *) echo 'Unknown installation transaction state' >&2; exit 1 ;;
   esac
   exit 0

@@ -123,10 +123,10 @@ if kill and not marker.exists():
                     self.assertFalse(destination.exists())
                 recovered = subprocess.run(args, env=env, capture_output=True, timeout=30)
                 self.assertEqual(0, recovered.returncode, recovered.stderr.decode())
-                self.assertEqual(boundary != "installed", (destination / "old.txt").exists())
-                self.assertEqual(boundary == "installed", (destination / "new.txt").exists())
+                self.assertEqual(boundary not in ("new-moved", "installed"), (destination / "old.txt").exists())
+                self.assertEqual(boundary in ("new-moved", "installed"), (destination / "new.txt").exists())
                 self.assertFalse(recovery.exists())
-                if boundary != "installed":
+                if boundary not in ("new-moved", "installed"):
                     self.assertEqual("FAILED", json.loads(result.read_text())["phase"])
                 else:
                     self.assertFalse(result.exists())

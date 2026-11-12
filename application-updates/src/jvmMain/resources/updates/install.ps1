@@ -57,7 +57,14 @@ try {
             switch ($Phase) {
                 'installed' { Start-Installed; Write-Phase 'complete' }
                 'complete' { }
-                { $_ -in @('prepared', 'replacing', 'rolling-back', 'failed') } { Restore-Previous }
+                'replacing' {
+                    if ((Test-Path -LiteralPath $Installation -PathType Container) -and (Test-Path -LiteralPath $Previous -PathType Container)) {
+                        Write-Phase 'installed'
+                        Start-Installed
+                        Write-Phase 'complete'
+                    } else { Restore-Previous }
+                }
+                { $_ -in @('prepared', 'rolling-back', 'failed') } { Restore-Previous }
                 default { throw 'Unknown installation transaction state' }
             }
             $Finished = $true

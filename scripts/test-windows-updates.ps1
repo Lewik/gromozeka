@@ -49,7 +49,7 @@ try {
         $Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($Link)
         $Recovered = Start-Process -FilePath $Shortcut.TargetPath -ArgumentList $Shortcut.Arguments -PassThru -Wait
         if ($Recovered.ExitCode -ne 0) { throw "Recovery failed at $Boundary" }
-        $RolledBack = $Boundary -ne 'installed'
+        $RolledBack = $Boundary -notin @('new-moved', 'installed')
         if ((Test-Path (Join-Path $Installation 'old.txt')) -ne $RolledBack) { throw "Wrong recovered version at $Boundary" }
         if ((Test-Path (Join-Path $Installation 'new.txt')) -eq $RolledBack) { throw "Mixed installation at $Boundary" }
         if ($RolledBack -and ((Get-Content $Result -Raw | ConvertFrom-Json).phase -ne 'FAILED')) { throw 'Rollback was not reported' }
