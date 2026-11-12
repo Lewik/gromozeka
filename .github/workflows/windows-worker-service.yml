@@ -11,6 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  verify-update-recovery:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Verify interrupted Windows client update recovery
+        shell: powershell
+        run: ./scripts/test-windows-updates.ps1
+
   verify:
     strategy:
       fail-fast: false
@@ -39,10 +48,6 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./scripts/test-windows-worker-service.ps1
-      - name: Verify interrupted Windows client update recovery
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: ./scripts/test-windows-updates.ps1
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

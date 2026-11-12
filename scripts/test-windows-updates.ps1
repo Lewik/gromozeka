@@ -41,7 +41,13 @@ try {
         $StartupLink = Join-Path ([Environment]::GetFolderPath('Startup')) "Gromozeka update recovery $Id.lnk"
         if (-not (Test-Path $StartupLink)) { throw 'Login recovery shortcut is missing' }
         $Startup = (New-Object -ComObject WScript.Shell).CreateShortcut($StartupLink)
-        if (-not $Startup.Arguments.Contains($Script)) { throw 'Login recovery does not point outside installation' }
+        if ($Startup.Arguments -notmatch '-File "([^"]+)"') { throw "Missing recovery script: $($Startup.Arguments)" }
+        $RecoveryScript = $Matches[1]
+        Write-Output "Recovery command: $($Startup.Arguments)"
+        Write-Output "Expected fixture script: $Script"
+        if (-not (Test-Path -LiteralPath $RecoveryScript -PathType Leaf)) { throw 'Recovery script is missing' }
+        if ((Get-FileHash -LiteralPath $RecoveryScript).Hash -ne (Get-FileHash -LiteralPath $Script).Hash) { throw 'Recovery points to another script' }
+        if ([IO.Path]::GetFileName([IO.Path]::GetDirectoryName($RecoveryScript)) -ne $Boundary) { throw 'Recovery script is not outside the installation' }
         if ($Startup.Arguments.Length -le 260) { throw 'Fixture must exercise recovery commands exceeding the Run registry limit' }
         $Link = Join-Path ([Environment]::GetFolderPath('Programs')) "Gromozeka update recovery $Id.lnk"
         if (-not (Test-Path $Link)) { throw 'Manual recovery shortcut is missing' }
