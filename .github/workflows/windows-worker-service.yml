@@ -29,8 +29,9 @@ jobs:
         run: >
           ./gradlew
           :worker:assemble :server:assemble
-          :worker:test --tests '*JvmComputerUseControllerTest'
+          :worker:test --tests '*WorkerUpdatePreparationTest' --tests '*VisualWorkerRuntimeTest' --tests '*JvmComputerUseControllerTest'
           :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*LocalScriptSdkTest' --tests '*JsonSchemaGeneratorTest'
+          :application-updates:jvmTest
           :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
           :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest'
           -q
@@ -38,6 +39,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./scripts/test-windows-worker-service.ps1
+      - name: Verify interrupted Windows client update recovery
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./scripts/test-windows-updates.ps1
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

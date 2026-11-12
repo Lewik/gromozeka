@@ -35,9 +35,13 @@ class DesktopUpdateInstaller(
         val handoff = File(store.directory, "handoff-${update.id}")
         val started = handoff.takeIf(File::isFile)?.readText()?.toLongOrNull() ?: return@withContext true
         if (System.currentTimeMillis() - started < 120_000) return@withContext false
-        val pid = File(store.directory, "installer-${update.id}.pid").takeIf(File::isFile)?.readText()?.trim()?.toLongOrNull()
-            ?: return@withContext true
-        !ProcessHandle.of(pid).map { it.isAlive }.orElse(false)
+        val identity = File(store.directory, "installer-${update.id}.process").takeIf(File::isFile)
+            ?.readText()?.trim()?.split(Regex("\\s+")) ?: return@withContext true
+        val pid = identity.getOrNull(0)?.toLongOrNull() ?: return@withContext true
+        val startedAt = identity.getOrNull(1)?.toLongOrNull() ?: return@withContext true
+        !ProcessHandle.of(pid).map {
+            it.isAlive && it.info().startInstant().map { instant -> instant.epochSecond == startedAt }.orElse(false)
+        }.orElse(false)
     }
 
     override suspend fun confirmed(update: ApplicationUpdateRequest) = withContext(Dispatchers.IO) {
@@ -59,7 +63,8 @@ class DesktopUpdateInstaller(
         val log = File(store.directory, "installer.log")
         if (mac) {
             val label = "com.gromozeka.update.${update.id}"
-            val plist = File(store.directory, "installer-${update.id}.plist")
+            val plist = File(System.getProperty("user.home"), "Library/LaunchAgents/$label.plist")
+            plist.parentFile.mkdirs()
             fun xml(value: String) = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
             val uid = ProcessBuilder("/usr/bin/id", "-u").start().let { process ->
                 val value = process.inputStream.bufferedReader().readText().trim()
@@ -70,7 +75,8 @@ class DesktopUpdateInstaller(
                 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
                 <plist version="1.0"><dict><key>Label</key><string>$label</string>
                 <key>ProgramArguments</key><array>${args.joinToString("") { "<string>${xml(it)}</string>" }}</array>
-                <key>RunAtLoad</key><true/><key>StandardOutPath</key><string>${xml(log.path)}</string>
+                <key>RunAtLoad</key><true/><key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+                <key>ThrottleInterval</key><integer>10</integer><key>StandardOutPath</key><string>${xml(log.path)}</string>
                 <key>StandardErrorPath</key><string>${xml(log.path)}</string></dict></plist>""".trimIndent())
             val process = ProcessBuilder("/bin/launchctl", "bootstrap", "gui/$uid", plist.path).redirectErrorStream(true).redirectOutput(log).start()
             check(process.waitFor(15, TimeUnit.SECONDS) && process.exitValue() == 0) { "Could not start independent update job" }

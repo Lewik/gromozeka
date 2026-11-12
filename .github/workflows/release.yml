@@ -156,6 +156,7 @@ jobs:
           ./gradlew
           :server:test
           :worker:test
+          :application-updates:jvmTest
           :remote-protocol:jvmTest
           :worker-runtime:jvmTest
           :shared:jvmTest --tests '*JsonPointerTest'

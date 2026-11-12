@@ -8,37 +8,74 @@ old_pid="$5"
 result="$6"
 job_label="$7"
 user_id="$8"
-printf '%s\n' "$$" > "$(dirname "$result")/installer-${request_id}.pid"
+[[ "$request_id" =~ ^[a-zA-Z0-9-]{1,80}$ && "$old_pid" =~ ^[0-9]+$ && "$user_id" =~ ^[0-9]+$ && "$job_label" =~ ^[a-zA-Z0-9.-]+$ ]]
+cache="$(dirname "$result")"
+started="$(LC_ALL=C TZ=UTC /bin/ps -p "$$" -o lstart=)"
+started="$(LC_ALL=C TZ=UTC /bin/date -j -f '%a %b %e %T %Y' "$started" '+%s')"
+printf '%s %s\n' "$$" "$started" > "$cache/installer-${request_id}.process.new"
+mv "$cache/installer-${request_id}.process.new" "$cache/installer-${request_id}.process"
 staging="${destination}.update-${request_id}"
 previous="${destination}.previous-${request_id}"
-swapped=false
-worker_stopped=false
+transaction="$cache/transaction-${request_id}"
 service="gui/${user_id}/com.gromozeka.worker"
 service_plist="$HOME/Library/LaunchAgents/com.gromozeka.worker.plist"
+recovery_plist="$HOME/Library/LaunchAgents/${job_label}.plist"
+
+write_phase() {
+  printf '%s\n' "$1" > "$transaction.new" || return 1
+  mv "$transaction.new" "$transaction" || return 1
+  /bin/sync
+}
+
+start_installed() {
+  if [[ "$component" == CLIENT ]]; then
+    /usr/bin/open "$destination"
+  else
+    /bin/launchctl print "$service" >/dev/null 2>&1 || /bin/launchctl bootstrap "gui/$user_id" "$service_plist"
+    /bin/launchctl print "$service"
+  fi
+}
+
+restore_previous() {
+  write_phase rolling-back || return 1
+  if [[ -d "$previous" ]]; then
+    rm -rf -- "$destination" || return 1
+    mv -- "$previous" "$destination" || return 1
+    /bin/sync || return 1
+  fi
+  [[ -d "$destination" ]] || return 1
+  printf '{"requestId":"%s","phase":"FAILED","message":"Interrupted or failed installation restored; see installer.log"}\n' "$request_id" > "$result.new" || return 1
+  mv "$result.new" "$result" || return 1
+  write_phase failed || return 1
+  start_installed
+}
 
 finish() {
   code=$?
   trap - EXIT
   if [[ "$code" != 0 ]]; then
-    if [[ "$swapped" == true && -d "$previous" ]]; then
-      rm -rf -- "$destination"
-      mv -- "$previous" "$destination"
-    fi
-    if [[ "$worker_stopped" == true ]]; then
-      /bin/launchctl bootstrap "gui/$user_id" "$service_plist" || true
-    elif [[ "$component" == CLIENT && -d "$destination" ]]; then
-      /usr/bin/open "$destination" || true
-    fi
-    printf '{"requestId":"%s","phase":"FAILED","message":"Installation failed; see installer.log"}\n' "$request_id" > "$result.new"
-    mv "$result.new" "$result"
+    restore_previous || exit 1
   fi
   rm -rf -- "$staging"
+  rm -f -- "$recovery_plist"
+  /bin/sync
   /bin/launchctl remove "$job_label" || true
 }
 trap finish EXIT
 
-[[ "$request_id" =~ ^[a-zA-Z0-9-]+$ && "$old_pid" =~ ^[0-9]+$ && -d "$destination" && -f "$archive" ]]
-[[ ! -e "$staging" && ! -e "$previous" ]]
+if [[ -f "$transaction" ]]; then
+  phase="$(cat "$transaction")"
+  case "$phase" in
+    installed) start_installed; write_phase complete ;;
+    complete) ;;
+    prepared|stopping|replacing|rolling-back|failed) restore_previous ;;
+    *) echo 'Unknown installation transaction state' >&2; exit 1 ;;
+  esac
+  exit 0
+fi
+
+[[ -d "$destination" && -f "$archive" && ! -e "$staging" && ! -e "$previous" ]]
+write_phase prepared
 mkdir "$staging"
 if [[ "$component" == CLIENT ]]; then
   [[ "$destination" == *.app ]]
@@ -54,8 +91,8 @@ else
   java="$source/runtime/java/bin/java"
   [[ -x "$java" ]] || java="$source/runtime/java/Contents/Home/bin/java"
   "$java" -version
+  write_phase stopping
   /bin/launchctl bootout "$service"
-  worker_stopped=true
 fi
 
 for attempt in {1..120}; do
@@ -63,15 +100,12 @@ for attempt in {1..120}; do
   sleep 1
 done
 if kill -0 "$old_pid" 2>/dev/null; then
-  echo "Application did not exit; refusing to replace running files" >&2
+  echo 'Application did not exit; refusing to replace running files' >&2
   exit 1
 fi
+write_phase replacing
 mv -- "$destination" "$previous"
-swapped=true
 mv -- "$source" "$destination"
-if [[ "$component" == CLIENT ]]; then
-  /usr/bin/open "$destination"
-else
-  /bin/launchctl bootstrap "gui/$user_id" "$service_plist"
-  /bin/launchctl print "$service"
-fi
+write_phase installed
+start_installed
+write_phase complete
