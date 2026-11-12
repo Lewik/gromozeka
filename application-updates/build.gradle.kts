@@ -23,7 +23,10 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
         }
         jvmMain { kotlin.srcDir("src/javaMain/kotlin") }
-        androidMain { kotlin.srcDir("src/javaMain/kotlin") }
+        androidMain {
+            kotlin.srcDir("src/javaMain/kotlin")
+            dependencies { implementation(libs.kotlinx.coroutines.android) }
+        }
         commonTest.dependencies { implementation(kotlin("test")) }
     }
 }

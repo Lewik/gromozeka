@@ -25,11 +25,17 @@ WebSocket protocol is incompatible. An authenticated startup failure opens it.
 An Android startup failure similarly opens its native update activity; the Android
 Worker has an Updates button on its main screen.
 
-Workers install requested updates after all accepted requests have finished and
-their results have been persisted in the delivery journal. Once this boundary is
+Workers install requested updates after accepted requests, managed commands and
+monitors, and Visual output delivery have finished. An early `WORKING` response
+is not completion: the command remains active through terminal-state persistence.
+Preparation closes admission under the same locks used by new launches and startup
+recovery, so neither can start between the idle check and handoff. Startup recovery
+may be deferred while updating; an unavailable or incompatible WebSocket connection
+alone does not block an otherwise idle Worker. Request results must also have been
+persisted in the delivery journal. Once this boundary is
 acquired, new commands receive `WORKER_UPDATING` without being executed. Pending
 durable responses can be delivered after restart. A failed installer releases the
-boundary. Long-running requests can delay an update indefinitely; the updater does
+boundary. Long-running commands, monitors, and Visual handlers can delay an update indefinitely; the updater does
 not kill them to meet a timer.
 
 Desktop clients download updates in the background, then wait for **Install and
@@ -87,7 +93,11 @@ macOS and unsigned on Windows, matching the existing distribution policy.
   waits for the old process to exit, swaps directories, and starts the application.
   Worker updates keep the existing stable launcher app and LaunchAgent configuration,
   preserving the permission identity. Replacement errors restore the old directory.
-  The previous directory is removed only after the new version is confirmed.
+  A durable transaction records replacement progress. The recovery job stays in
+  `~/Library/LaunchAgents` until completion and restarts after an abnormal helper exit
+  or the next login. It can restore the previous directory even if the normal app
+  path is missing. After the new directory is committed, recovery launches that
+  version instead. The previous directory is removed only after version confirmation.
 * **Windows Worker:** an independent PowerShell process invokes the existing
   `update-service` installer from the downloaded distribution. It preserves the
   ProgramData configuration, LocalSystem account, service ACL, and recovery policy.
@@ -96,17 +106,26 @@ macOS and unsigned on Windows, matching the existing distribution policy.
 * **Windows client:** the independent helper replaces the portable application in
   its existing writable directory and restarts it. User settings remain outside that
   directory. A protected Program Files installation requires a manual administrator
-  update; the client does not silently elevate.
+  update; the client does not silently elevate. Before changing directories, the
+  helper registers a per-user login recovery command and a **Gromozeka update
+  recovery** Start Menu shortcut pointing into the update cache. After an abrupt
+  termination, use the shortcut or sign in again to recover; this does not promise
+  immediate background recovery. The durable transaction restores the old directory
+  or launches the committed new version. Both entry points are removed on completion.
 * **Android:** `PackageInstaller` checks package name, release version, increasing
   version code, and the existing signing certificate. The updater handles
   `STATUS_PENDING_USER_ACTION`; it never claims ordinary apps can bypass Android
   confirmation. Grant installation permission once in Android settings. Allow
   notifications to receive confirmation prompts; the native update screen also
   offers confirmation and cancellation. Installation is performed by Android and
-  preserves app data when the signing identity matches.
+  preserves app data when the signing identity matches. The actual system confirmation
+  intent is saved atomically in private storage and checked against the owned install
+  session before reopening. The native update screen can therefore confirm after
+  process death even when notifications are denied; it does not depend on a static
+  in-memory intent. If Android has removed the session, retry the update explicitly.
 
 Native helpers run outside the application process they replace. Local handoff,
-process/session identity, and installer failure reports distinguish an active
+process identity (PID plus birth time), Android session identity, and failure reports distinguish an active
 installer from one that stopped without starting the new version. A missing network
 connection is not used as an automatic rollback trigger. Startup after the native
 handoff is confirmed by version polling; arbitrary application health failures are
@@ -163,3 +182,31 @@ enrollment unless their exact signing key is retained and deliberately reused.
 Do not promise an in-place transition from unknown CI debug signing keys.
 
 This PR does not provision signing secrets, publish a release, or update live devices.
+
+## Recovery verification
+
+`python3 scripts/test-worker-service.py` tests real macOS helper directory moves,
+ordinary launch failure, and SIGKILL at replacement and rollback boundaries; only
+OS launch and signing calls are stubbed. Windows CI runs
+`scripts/test-windows-updates.ps1` against real PowerShell, registry entries, and
+recovery shortcuts with an isolated fixture executable. No installed Gromozeka
+application or service is used by these recovery fixtures.
+
+The opt-in `scripts/fixtures/android-update` application links the real updater and
+native update screen. Its HTTP control-plane responses are replaced, and its
+manifest removes silent-update permission to force the OS confirmation path. Build two
+APKs with the same debug certificate and increasing versions, then run the harness
+on an isolated API 33+ emulator (the script refuses physical devices):
+
+```sh
+./gradlew -PupdateAndroidFixture=true -PupdateFixtureVersion=1 :update-android-fixture:assembleDebug -q
+cp scripts/fixtures/android-update/build/outputs/apk/debug/update-android-fixture-debug.apk /tmp/update-v1.apk
+./gradlew -PupdateAndroidFixture=true -PupdateFixtureVersion=2 :update-android-fixture:assembleDebug -q
+cp scripts/fixtures/android-update/build/outputs/apk/debug/update-android-fixture-debug.apk /tmp/update-v2.apk
+python3 scripts/test-android-update-recovery.py --serial emulator-5554 /tmp/update-v1.apk /tmp/update-v2.apk
+```
+
+The harness exercises real PackageInstaller confirmation after process death with
+notifications allowed and denied. It installs and removes only
+`com.gromozeka.updatefixture`; it requires no Server, VPN, credentials, or physical
+phone. This is not evidence about individual manufacturers' background policies.

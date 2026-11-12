@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.AtomicFile
 import com.gromozeka.domain.model.*
 import java.io.File
 
@@ -31,8 +32,19 @@ class AndroidUpdateInstaller(
     override suspend fun cancelPending(update: ApplicationUpdateRequest, store: UpdateLocalStore): Boolean {
         val session = File(store.directory, "session-${update.id}").takeIf(File::isFile)?.readText()?.toIntOrNull() ?: return false
         context.packageManager.packageInstaller.abandonSession(session)
-        AndroidUpdateActivity.pendingConfirmation = null
+        confirmationFile(store, update.id).delete()
         context.getSystemService(NotificationManager::class.java).cancel(UPDATE_NOTIFICATION_ID)
+        return true
+    }
+
+    override suspend fun confirmPending(update: ApplicationUpdateRequest, store: UpdateLocalStore): Boolean {
+        val session = File(store.directory, "session-${update.id}").takeIf(File::isFile)?.readText()?.toIntOrNull() ?: return false
+        if (context.packageManager.packageInstaller.mySessions.none { it.sessionId == session }) return false
+        val saved = confirmationFile(store, update.id)
+        if (!saved.baseFile.isFile) return false
+        val confirmation = Intent.parseUri(saved.readFully().decodeToString(), Intent.URI_INTENT_SCHEME)
+        if (confirmation.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1) != session) return false
+        context.startActivity(confirmation.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         return true
     }
 
@@ -91,22 +103,36 @@ class AndroidUpdateResultReceiver : BroadcastReceiver() {
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION") val confirmation = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
+                val session = File(store.directory, "session-$id").takeIf(File::isFile)?.readText()?.toIntOrNull() ?: return
+                if (confirmation.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1) != session) return
+                val saved = confirmationFile(store, id)
+                val output = saved.startWrite()
+                try {
+                    output.write(confirmation.toUri(Intent.URI_INTENT_SCHEME).encodeToByteArray())
+                    saved.finishWrite(output)
+                } catch (error: Exception) {
+                    saved.failWrite(output)
+                    throw error
+                }
                 store.report(ApplicationUpdateReport(id, ApplicationUpdatePhase.WAITING_FOR_USER))
-                AndroidUpdateActivity.pendingConfirmation = confirmation
                 notifyUpdate(context, context.getString(R.string.update_confirm), confirmation)
             }
             PackageInstaller.STATUS_SUCCESS -> {
+                confirmationFile(store, id).delete()
                 store.report(ApplicationUpdateReport(id, ApplicationUpdatePhase.INSTALLING))
                 context.getSystemService(NotificationManager::class.java).cancel(UPDATE_NOTIFICATION_ID)
             }
             else -> {
                 store.report(ApplicationUpdateReport(id, ApplicationUpdatePhase.FAILED, "Android package installation failed"))
-                AndroidUpdateActivity.pendingConfirmation = null
+                confirmationFile(store, id).delete()
                 notifyUpdate(context, context.getString(R.string.update_failed), Intent(context, AndroidUpdateActivity::class.java))
             }
         }
     }
 }
+
+private fun confirmationFile(store: UpdateLocalStore, id: String) =
+    AtomicFile(File(store.directory, "confirmation-${UpdateLocalStore.key(id)}.uri"))
 
 internal const val UPDATE_NOTIFICATION_ID = 4107
 

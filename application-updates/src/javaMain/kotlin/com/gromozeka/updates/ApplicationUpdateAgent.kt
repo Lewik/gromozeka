@@ -27,6 +27,7 @@ interface ApplicationUpdateInstaller {
     suspend fun installationStopped(update: ApplicationUpdateRequest, store: UpdateLocalStore): Boolean = false
     suspend fun confirmed(update: ApplicationUpdateRequest) {}
     suspend fun cancelPending(update: ApplicationUpdateRequest, store: UpdateLocalStore): Boolean = false
+    suspend fun confirmPending(update: ApplicationUpdateRequest, store: UpdateLocalStore): Boolean = false
 }
 
 class UpdateInstallationRejected(message: String) : IllegalArgumentException(message)
@@ -123,6 +124,12 @@ class ApplicationUpdateAgent(
     }
 
     suspend fun installReady(): Boolean = exclusive { installReadyLocked() }
+
+    suspend fun confirmPendingInstallation() = exclusive {
+        val request = poll().installation.request ?: return@exclusive
+        require(request.phase == ApplicationUpdatePhase.WAITING_FOR_USER) { "Installation is not waiting for confirmation" }
+        check(installer.confirmPending(request, store)) { "Installation confirmation is unavailable; cancel and retry the update" }
+    }
 
     suspend fun cancelPendingInstallation() = exclusive {
         val request = poll().installation.request ?: return@exclusive

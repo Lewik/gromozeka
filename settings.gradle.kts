@@ -15,6 +15,10 @@ rootProject.name = "gromozeka"
 
 include(":shared")
 include(":application-updates")
+if (providers.gradleProperty("updateAndroidFixture").orNull == "true") {
+    include(":update-android-fixture")
+    project(":update-android-fixture").projectDir = file("scripts/fixtures/android-update")
+}
 include(":state-sync")
 include(":device-telemetry")
 include(":mobile-worker")

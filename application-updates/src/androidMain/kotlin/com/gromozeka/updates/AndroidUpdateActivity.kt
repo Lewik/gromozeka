@@ -36,8 +36,9 @@ class AndroidUpdateActivity : Activity() {
         button(R.string.update_check) { agent?.checkNow() }
         val download = button(R.string.update_download) { agent?.requestUpdate(); agent?.checkNow() }
         val install = button(R.string.update_install) {
-            val confirmation = pendingConfirmation
-            if (confirmation != null) startActivity(confirmation) else agent?.installReady()
+            if (agent?.view?.value?.installation?.request?.phase == ApplicationUpdatePhase.WAITING_FOR_USER) {
+                agent?.confirmPendingInstallation()
+            } else agent?.installReady()
         }
         val cancel = button(R.string.update_cancel_pending) { agent?.cancelPendingInstallation() }
         if (Build.VERSION.SDK_INT >= 26) button(R.string.update_allow) { startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))) }
@@ -53,7 +54,7 @@ class AndroidUpdateActivity : Activity() {
                     ?: getString(R.string.update_connect_first)
                 val phase = view?.installation?.request?.phase
                 download.isEnabled = view?.available != null && phase?.terminal != false
-                install.isEnabled = phase == ApplicationUpdatePhase.READY || phase == ApplicationUpdatePhase.WAITING_FOR_USER && pendingConfirmation != null
+                install.isEnabled = phase == ApplicationUpdatePhase.READY || phase == ApplicationUpdatePhase.WAITING_FOR_USER
                 cancel.isEnabled = phase == ApplicationUpdatePhase.WAITING_FOR_USER
                 automatic.isEnabled = view?.installation != null
                 val enabled = view?.installation?.automatic == true
@@ -71,7 +72,6 @@ class AndroidUpdateActivity : Activity() {
 
     companion object {
         @Volatile var agent: ApplicationUpdateAgent? = null
-        @Volatile var pendingConfirmation: Intent? = null
     }
 }
 
