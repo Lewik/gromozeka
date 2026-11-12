@@ -3,6 +3,7 @@
 Python 3.9+. No OAuth/browser/Keychain, stdio transport, automatic retries or polling.
 Credentials are explicit: GRZ_MCP_URL and GRZ_MCP_TOKEN (an existing mcp:control PAT).
 GRZ_MCP_CONTEXT contains routing defaults, NOT an authorization grant.
+GRZ_MCP_CA_BUNDLE optionally adds the Worker's configured CA bundle to default TLS trust.
 """
 import copy
 import http.client
@@ -87,7 +88,7 @@ class Client:
     Tool errors raise ToolError carrying that same result unless check=False.
     Exact names only: use list_tools()/describe_tool(), never guess a version suffix.
     """
-    def __init__(self, url, token, *, context=None, timeout=60, max_response_bytes=_MAX_RESPONSE_BYTES):
+    def __init__(self, url, token, *, context=None, ca_bundle=None, timeout=60, max_response_bytes=_MAX_RESPONSE_BYTES):
         try:
             parts = urllib.parse.urlsplit(url)
             port = parts.port
@@ -112,6 +113,9 @@ class Client:
             raise ConfigurationError("MCP timeout must be a positive number")
         if isinstance(max_response_bytes, bool) or not isinstance(max_response_bytes, int) or max_response_bytes < 1:
             raise ConfigurationError("MCP response limit must be a positive integer")
+        if ca_bundle is not None and (not isinstance(ca_bundle, str) or not ca_bundle.strip() or "\x00" in ca_bundle):
+            raise ConfigurationError("MCP CA bundle must be a nonempty file path")
+        self._ca_bundle = ca_bundle
         self._scheme, self._host, self._port = parts.scheme, host, port
         self._path = parts.path or "/"
         self._token = token
@@ -132,6 +136,8 @@ class Client:
                 context = _json_loads(os.environ.get("GRZ_MCP_CONTEXT", "{}"))
             except (ValueError, TypeError):
                 raise ConfigurationError("GRZ_MCP_CONTEXT must be a JSON object") from None
+        if "ca_bundle" not in options and os.environ.get("GRZ_MCP_CA_BUNDLE"):
+            options["ca_bundle"] = os.environ["GRZ_MCP_CA_BUNDLE"]
         return cls(os.environ.get("GRZ_MCP_URL", ""), os.environ.get("GRZ_MCP_TOKEN", ""),
                    context=context, **options)
 
@@ -250,7 +256,7 @@ class Client:
         # A fresh connection per HTTP request avoids implicit stale-connection replays.
         # http.client does not follow redirects, send cookies, or use ambient proxies.
         connection = (http.client.HTTPSConnection(self._host, self._port, timeout=self._timeout,
-                                                 context=ssl.create_default_context())
+                                                 context=self._ssl_context())
                       if self._scheme == "https" else
                       http.client.HTTPConnection(self._host, self._port, timeout=self._timeout))
         uncertain = method == "tools/call"
@@ -297,6 +303,15 @@ class Client:
             raise ProtocolError(outcome_unknown=uncertain) from None
         finally:
             connection.close()
+
+    def _ssl_context(self):
+        try:
+            context = ssl.create_default_context()
+            if self._ca_bundle is not None:
+                context.load_verify_locations(cafile=self._ca_bundle)
+            return context
+        except (OSError, ValueError):
+            raise ConfigurationError("MCP TLS trust configuration is invalid") from None
 
     def _sse_response(self, response, request_id):
         # POST response only. Never opens GET, resumes event IDs, polls, or retries.

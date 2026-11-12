@@ -219,6 +219,36 @@ class SdkTest(unittest.TestCase):
         with self.assertRaises(grz.ConfigurationError):
             self.client.call("global__v2")
         self.assertEqual([], self.server.calls())
+    def test_ca_env_supplements_default_trust_and_is_reloaded_per_connection(self):
+        values = {"GRZ_MCP_URL": self.server.url, "GRZ_MCP_TOKEN": TOKEN, "GRZ_MCP_CA_BUNDLE": "corporate-ca.pem"}
+        with mock.patch.dict(os.environ, values), mock.patch.object(grz.ssl, "create_default_context") as create:
+            client = grz.Client.from_env(context={})
+            self.assertIs(create.return_value, client._ssl_context())
+            client._ssl_context()
+            self.assertEqual(2, create.call_count)
+            self.assertEqual([mock.call(cafile="corporate-ca.pem")] * 2,
+                             create.return_value.load_verify_locations.call_args_list)
+            create.reset_mock()
+            grz.Client.from_env(context={}, ca_bundle=None)._ssl_context()
+            create.return_value.load_verify_locations.assert_not_called()
+    def test_invalid_ca_configuration_never_disables_tls_or_exposes_details(self):
+        for path in (False, 17, "", " ", "a\x00b"):
+            with self.assertRaises(grz.ConfigurationError):
+                grz.Client("https://server.example/mcp", TOKEN, ca_bundle=path)
+        with mock.patch.object(grz.ssl, "create_default_context") as create:
+            create.return_value.load_verify_locations.side_effect = OSError(TOKEN)
+            client = grz.Client("https://server.example/mcp", TOKEN, ca_bundle="corporate-ca.pem")
+            with self.assertRaises(grz.ConfigurationError) as caught:
+                client.initialize()
+            self.assertNotIn(TOKEN, str(caught.exception))
+            self.assertFalse(caught.exception.outcome_unknown)
+        self.assertEqual([], self.server.calls())
+    def test_missing_ca_env_keeps_default_tls_trust(self):
+        with mock.patch.dict(os.environ, {"GRZ_MCP_URL": self.server.url, "GRZ_MCP_TOKEN": TOKEN,
+                                         "GRZ_MCP_CA_BUNDLE": ""}), mock.patch.object(grz.ssl, "create_default_context") as create:
+            client = grz.Client.from_env(context={})
+            self.assertIs(create.return_value, client._ssl_context())
+            create.return_value.load_verify_locations.assert_not_called()
     def env(self):
         return {**os.environ, "GRZ_MCP_URL": self.server.url, "GRZ_MCP_TOKEN": TOKEN,
                 "GRZ_MCP_CONTEXT": "{}", "GRZ_PYTHON": sys.executable, "PYTHONIOENCODING": "utf-8"}

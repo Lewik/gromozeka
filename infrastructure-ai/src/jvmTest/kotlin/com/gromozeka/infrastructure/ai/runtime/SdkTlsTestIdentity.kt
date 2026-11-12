@@ -17,7 +17,8 @@ internal class SdkTlsTestIdentity : AutoCloseable {
         try {
             val store = directory.resolve("server.p12")
             keytool("-genkeypair", "-alias", "server", "-keyalg", "RSA", "-keysize", "2048", "-validity", "2",
-                "-dname", "CN=Synthetic loopback fixture", "-ext", "SAN=ip:127.0.0.1", "-ext", "bc=ca:true",
+                "-dname", "CN=Synthetic loopback fixture", "-ext", "SAN=ip:127.0.0.1", "-ext", "bc:critical=ca:true",
+                "-ext", "ku:critical=keyCertSign,cRLSign,digitalSignature,keyEncipherment",
                 "-storetype", "PKCS12", "-keystore", store.toString(), "-storepass", PASSWORD, "-keypass", PASSWORD, "-noprompt")
             keytool("-exportcert", "-rfc", "-alias", "server", "-keystore", store.toString(),
                 "-storepass", PASSWORD, "-file", caBundle.toString())
