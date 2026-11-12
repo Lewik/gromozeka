@@ -31,8 +31,11 @@ internal class GromozekaMcpToolService(
     private val targets: ConversationRuntimeWorkerTargetResolver,
     private val workers: WorkerToolExecutionClient,
 ) {
-    suspend fun list(userId: User.Id): List<AiToolDefinition> = currentTools(userId).map { entry ->
-        entry.descriptor.withInvocationContext(AiToolContextBindings(setOf(AiToolContextField.USER)))
+    suspend fun list(caller: AuthenticatedMcpCaller): List<AiToolDefinition> = currentTools(caller).map { entry ->
+        entry.descriptor.withInvocationContext(if (caller is AuthenticatedMcpCaller.CommandScript)
+            AiToolContextBindings(setOf(AiToolContextField.USER, AiToolContextField.PROJECT,
+                AiToolContextField.CONVERSATION, AiToolContextField.AGENT))
+            else AiToolContextBindings(setOf(AiToolContextField.USER)))
             .definition.copy(
                 name = entry.contract.modelName,
                 description = entry.contract.descriptor.definition.description +
@@ -42,19 +45,32 @@ internal class GromozekaMcpToolService(
             )
     }
 
-    suspend fun call(userId: User.Id, name: String, arguments: JsonObject): AiToolCallResult = try {
+    suspend fun call(caller: AuthenticatedMcpCaller, name: String, arguments: JsonObject): AiToolCallResult = try {
         currentCoroutineContext().ensureActive()
         require("_context" !in arguments) { "Untrusted context is not accepted" }
         // Fresh identity, advertisements and contract: a listed tool is not a durable permission grant.
-        val actor = requireNotNull(users.findActiveById(userId)) { "User unavailable" }
-        val entry = catalog.authenticatedTools(actor, ::isMcpExposed).singleOrNull { it.contract.modelName == name }
+        val actor = requireNotNull(users.findActiveById(caller.user.id)) { "User unavailable" }
+        val entry = currentTools(caller).singleOrNull { it.contract.modelName == name }
             ?: error("Tool unavailable")
         if (entry.descriptor.metadata.accessPolicy == AiToolAccessPolicy.SERVER_OWNER && actor.role != User.Role.OWNER) {
             failure("forbidden", "Server owner permission is required")
         } else {
             val callId = ContentItem.ToolCall.Id(uuid7())
-            val resolved = contexts.resolve(entry.descriptor, arguments, actor.id,
-                ToolExecutionContext(mapOf("toolCallId" to callId.value)))
+            val script = (caller as? AuthenticatedMcpCaller.CommandScript)?.principal
+            if (script != null && script.agentDefinitionId == null) {
+                require((arguments[AI_TOOL_INVOCATION_CONTEXT_FIELD] as? JsonObject)?.containsKey("agent_id") != true) {
+                    "A command without a calling Agent cannot select one"
+                }
+            }
+            val binding = ToolExecutionContext(buildMap {
+                put("toolCallId", callId.value)
+                if (script != null) {
+                    put(TOOL_CONTEXT_PROJECT_ID, script.projectId.value)
+                    put(TOOL_CONTEXT_CONVERSATION_ID, script.conversationId.value)
+                    script.agentDefinitionId?.let { put(TOOL_CONTEXT_AGENT_DEFINITION_ID, it.value) }
+                }
+            })
+            val resolved = contexts.resolve(entry.descriptor, arguments, actor.id, binding)
             resolved.context.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)?.let { id ->
                 val agent = requireNotNull(agents.findById(AgentDefinition.Id(id))) { "Agent unavailable" }
                 require(agent.toolAccess.allows(entry.contract)) { "Tool unavailable to selected agent" }
@@ -110,8 +126,18 @@ internal class GromozekaMcpToolService(
         failure("invocation_failed", "Tool unavailable, invalid invocation context, or operation failed")
     }
 
-    private suspend fun currentTools(userId: User.Id): List<AuthenticatedAiTool> =
-        catalog.authenticatedTools(requireNotNull(users.findActiveById(userId)) { "User unavailable" }, ::isMcpExposed)
+    private suspend fun currentTools(caller: AuthenticatedMcpCaller): List<AuthenticatedAiTool> {
+        val actor = requireNotNull(users.findActiveById(caller.user.id)) { "User unavailable" }
+        val available = catalog.authenticatedTools(actor, ::isMcpExposed)
+        val script = (caller as? AuthenticatedMcpCaller.CommandScript)?.principal ?: return available
+        val policy = script.agentDefinitionId?.let { id ->
+            requireNotNull(agents.findById(id)) { "Calling Agent unavailable" }.toolAccess
+        }
+        return available.filter { entry ->
+            (policy?.allows(entry.contract) != false) &&
+                (script.agentDefinitionId != null || AiToolContextField.AGENT !in entry.descriptor.metadata.contextRequirements.required)
+        }
+    }
 
     private fun failure(code: String, message: String): AiToolCallResult {
         val value = buildJsonObject {

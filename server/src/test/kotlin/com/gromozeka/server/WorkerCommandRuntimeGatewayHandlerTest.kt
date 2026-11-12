@@ -382,6 +382,7 @@ class WorkerCommandRuntimeGatewayHandlerTest {
                 workspaceDomainService = workspaceService,
                 workerAccessService = workerAccessService,
                 origins = origins,
+                scriptGrants = mock<CommandScriptGrantService>(),
             ),
             now = now,
         )

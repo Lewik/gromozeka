@@ -1,7 +1,8 @@
 """Dependency-free synchronous client for Gromozeka's stateless HTTP MCP profile.
 
 Python 3.9+. No OAuth/browser/Keychain, stdio transport, automatic retries or polling.
-Credentials are explicit: GRZ_MCP_URL and GRZ_MCP_TOKEN (an existing mcp:control PAT).
+Managed commands receive GRZ_MCP_URL and GRZ_MCP_TOKEN automatically from the Harness.
+Outside the Harness, supply an explicit MCP credential and endpoint.
 GRZ_MCP_CONTEXT contains routing defaults, NOT an authorization grant.
 GRZ_MCP_CA_BUNDLE optionally adds the Worker's configured CA bundle to default TLS trust.
 """

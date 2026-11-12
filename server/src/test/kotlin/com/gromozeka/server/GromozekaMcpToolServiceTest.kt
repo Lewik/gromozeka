@@ -14,7 +14,7 @@ class GromozekaMcpToolServiceTest {
         val rename = mcpTestTool("rename", requirements = AiToolContextRequirements(setOf(USER, CONVERSATION)))
         val f = UnifiedMcpTestFixture(mcpTestProvider(rename, mcpTestTool("ordinary"))).initialize()
         f.advertise(mcpTestTool("read", AiToolExecutionScope.WORKSPACE), mcpTestTool("screen", AiToolExecutionScope.WORKER))
-        val listed = f.service.list(f.user.id).associateBy { it.name }
+        val listed = f.service.list(f.caller).associateBy { it.name }
         fun fields(name: String) = Json.parseToJsonElement(listed.getValue(name).inputSchema).jsonObject.getValue("properties").jsonObject
         assertFalse("_grz" in fields("ordinary"))
         val renameEnvelope = fields("rename").getValue("_grz").jsonObject
@@ -40,7 +40,7 @@ class GromozekaMcpToolServiceTest {
         val f = UnifiedMcpTestFixture(mcpTestProvider(tool)).initialize()
         val literal = "  hello\r\nשלום 🐱  "
         val input = buildJsonObject { put("text", literal); put("_grz", buildJsonObject { put("conversation_id", f.conversation.id.value) }) }
-        assertFalse(f.service.call(f.user.id, "rename", input).isError)
+        assertFalse(f.service.call(f.caller, "rename", input).isError)
         assertEquals(literal, Json.parseToJsonElement(payload!!).jsonObject.getValue("text").jsonPrimitive.content)
         assertFalse("_grz" in payload!!)
         assertEquals(f.user.id.value, context?.getString(TOOL_CONTEXT_USER_ID))
@@ -135,10 +135,10 @@ class GromozekaMcpToolServiceTest {
         val f = UnifiedMcpTestFixture(mcpTestProvider()).initialize()
         val first = mcpTestTool("screen", AiToolExecutionScope.WORKER)
         f.advertise(first)
-        assertEquals("screen", f.service.list(f.user.id).single().name)
+        assertEquals("screen", f.service.list(f.caller).single().name)
         val changed = object : AiToolCallback by first { override val definition = first.definition.copy(description = "New incompatible descriptor") }
         f.advertise(changed)
-        val name = f.service.list(f.user.id).single().name
+        val name = f.service.list(f.caller).single().name
         assertEquals("screen__v2", name)
         assertTrue(f.call("screen", """{"_grz":{"worker_id":"${f.identity.workerId.value}"}}""").isError)
         assertTrue(f.records.records.isEmpty())
@@ -206,7 +206,7 @@ class GromozekaMcpToolServiceTest {
     @Test fun `Worker memory advertisement is excluded too and cannot be invoked by guessed name`() = runBlocking<Unit> {
         val f = UnifiedMcpTestFixture(mcpTestProvider()).initialize()
         f.advertise(mcpTestTool("memory_remember", AiToolExecutionScope.WORKER))
-        assertTrue(f.service.list(f.user.id).isEmpty())
+        assertTrue(f.service.list(f.caller).isEmpty())
         assertTrue(f.call("memory_remember", """{"_grz":{"worker_id":"${f.identity.workerId.value}"}}""").isError)
         assertTrue(f.records.records.isEmpty()); assertTrue(f.contractRepository.findAll().isEmpty())
     }

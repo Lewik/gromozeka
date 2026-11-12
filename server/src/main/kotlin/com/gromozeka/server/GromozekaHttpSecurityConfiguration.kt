@@ -35,6 +35,7 @@ internal class GromozekaHttpSecurityConfiguration {
         tokens: PersonalAccessTokenService,
         workers: WorkerGatewayAuthenticationService,
         settings: ServerHttpSettings,
+        scripts: CommandScriptGrantService,
         oauth: org.springframework.beans.factory.ObjectProvider<McpOAuthAccessTokens>,
     ): SecurityFilterChain {
         // Existing opaque user sessions remain in the domain service, never HttpSession.
@@ -64,7 +65,7 @@ internal class GromozekaHttpSecurityConfiguration {
                 it.authenticationEntryPoint { _, response, _ -> response.writeHttpError(HttpStatus.UNAUTHORIZED, "Authentication required") }
                 it.accessDeniedHandler { _, response, _ -> response.writeHttpError(HttpStatus.FORBIDDEN, "Access denied") }
             }
-            .addFilterBefore(GromozekaRequestAuthenticationFilter(authentication, tokens, workers, settings, oauth.getIfAvailable()),
+            .addFilterBefore(GromozekaRequestAuthenticationFilter(authentication, tokens, workers, settings, scripts, oauth.getIfAvailable()),
                 AnonymousAuthenticationFilter::class.java)
         return http.build()
     }
@@ -76,6 +77,7 @@ internal class GromozekaRequestAuthenticationFilter(
     private val tokens: PersonalAccessTokenService,
     private val workers: WorkerGatewayAuthenticationService,
     private val settings: ServerHttpSettings,
+    private val scripts: CommandScriptGrantService,
     private val oauth: McpOAuthAccessTokens? = null,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
@@ -83,7 +85,7 @@ internal class GromozekaRequestAuthenticationFilter(
         val principal = try {
             runBlocking {
                 when {
-                    path == "/mcp" || path.startsWith("/mcp/") -> request.requireMcpCaller(authentication, tokens, settings, oauth)
+                    path == "/mcp" || path.startsWith("/mcp/") -> request.requireMcpCaller(authentication, tokens, settings, oauth, scripts)
                         .also { request.setAttribute(AUTHENTICATED_MCP_CALLER, it) }
                     path == "/worker/ws" || path == "/api/worker/events" || path == "/api/worker/heartbeat" -> {
                         if (path != "/worker/ws" && !request.isSecureTransport(settings)) {

@@ -15,7 +15,8 @@ import kotlin.time.Clock
 /** Real catalog/resolver/executor/request service. Synthetic identity/storage and a wire-level Worker peer. */
 internal class UnifiedMcpTestFixture(val provider: AiToolProvider) {
     val now = Clock.System.now()
-    val user = testControlMcpCaller().user
+    val caller = testControlMcpCaller()
+    val user = caller.user
     val project = Project(Project.Id("synthetic-project"), "Synthetic", createdAt = now, lastUsedAt = now)
     val agent = AgentDefinition(AgentDefinition.Id("synthetic-agent"), project.id, "Synthetic", emptyList(),
         runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("synthetic-model")),
@@ -109,7 +110,7 @@ internal class UnifiedMcpTestFixture(val provider: AiToolProvider) {
         }
     }
 
-    suspend fun call(name: String, input: String = "{}") = service.call(user.id, name, Json.parseToJsonElement(input).jsonObject)
+    suspend fun call(name: String, input: String = "{}") = service.call(caller, name, Json.parseToJsonElement(input).jsonObject)
     companion object {
         inline fun <reified T> mock(): T = Mockito.mock(T::class.java)
     }

@@ -98,7 +98,7 @@ class GromozekaStatelessMcpHttpTest {
             rpc("initialize", initializeParams())
             val published = rpc("tools/list").getValue("tools").jsonArray.associate { it.jsonObject.getValue("name").jsonPrimitive.content to it.jsonObject }
             assertEquals(setOf("synthetic_control", "synthetic_native", "synthetic_read", "mcp__synthetic__echo"), published.keys)
-            for (definition in f.service.list(f.user.id)) {
+            for (definition in f.service.list(f.caller)) {
                 assertEquals(serverToolJson.parseToJsonElement(definition.inputSchema), published.getValue(definition.name)["inputSchema"])
                 definition.outputSchema?.let { assertEquals(serverToolJson.parseToJsonElement(it), published.getValue(definition.name)["outputSchema"]) }
             }

@@ -32,10 +32,10 @@ class SecretArgumentSubstitutorTest {
     @Test
     fun `multiple named secrets reach only the requested environment without shell interpolation`() {
         val values = mapOf("github-pat" to "first ' \" % & ${'$'}value\nשלום", "mcp-token" to "second-test-token")
-        val input = """{"command":"python3 client.py","secret_env":{"GH_TOKEN":"secret://github-pat","GRZ_MCP_TOKEN":"secret://mcp-token","OTHER_TOKEN":"secret://github-pat"}}"""
+        val input = """{"command":"python3 client.py","secret_env":{"GH_TOKEN":"secret://github-pat","SERVICE_TOKEN":"secret://mcp-token","OTHER_TOKEN":"secret://github-pat"}}"""
         val prepared = SecretArgumentSubstitutor().prepare(GRZ_EXECUTE_COMMAND_TOOL_NAME, input, values)
         assertEquals("""{"command":"python3 client.py"}""", prepared.arguments)
-        assertEquals(mapOf("GH_TOKEN" to values.getValue("github-pat"), "GRZ_MCP_TOKEN" to values.getValue("mcp-token"),
+        assertEquals(mapOf("GH_TOKEN" to values.getValue("github-pat"), "SERVICE_TOKEN" to values.getValue("mcp-token"),
             "OTHER_TOKEN" to values.getValue("github-pat")), prepared.secretEnvironment)
         assertFalse(prepared.arguments.contains("secret://"))
         assertFalse(prepared.arguments.contains("second-test-token"))
@@ -72,6 +72,8 @@ class SecretArgumentSubstitutorTest {
             """{"BAD=NAME":"secret://github-pat"}""", """{"TOKEN":"secret://github-pat","token":"secret://github-pat"}""",
             """{"GRZ_SLOT":"secret://github-pat"}""", """{"grz_mcp_context":"secret://github-pat"}""",
             """{"GROMOZEKA_COMMAND_FILE":"secret://github-pat"}""",
+            """{"GRZ_MCP_TOKEN":"secret://github-pat"}""", """{"grz_mcp_url":"secret://github-pat"}""",
+            """{"GRZ_MCP_CA_BUNDLE":"secret://github-pat"}""",
         )
         for (binding in bindings) {
             val failure = assertFailsWith<Exception> {

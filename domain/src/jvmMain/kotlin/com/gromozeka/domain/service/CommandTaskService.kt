@@ -59,10 +59,14 @@ data class CommandProcessSpec(
     val startGuard: () -> Unit = {},
     /** Protect output until initial registration (or its terminal reconciliation) is acknowledged. */
     val protectOutputUntilRegistration: Boolean = false,
+    /** The user command remains behind its native gate until releaseStart is called. */
+    val deferStartUntilRegistration: Boolean = false,
+    val startupWaitMillis: Long = 5_000,
 ) {
     init {
         require(executionId.isNotBlank()) { "Command process execution id must not be blank" }
         require(command.isNotBlank()) { "Command process command must not be blank" }
+        require(startupWaitMillis in 1..86_400_000) { "Invalid command startup wait limit" }
         require(environment.keys.all(ENVIRONMENT_NAME_PATTERN::matches)) {
             "Command environment contains an invalid variable name"
         }
@@ -136,6 +140,8 @@ interface RunningCommandProcess {
     val errorFile: String?
     val acceptsInput: Boolean
 
+    /** Release a deferred native start gate once. Recovery must never call this. */
+    fun releaseStart()
     fun isAlive(): Boolean
     fun waitFor(timeoutMillis: Long): Boolean
     fun exitCode(): Int

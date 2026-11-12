@@ -53,7 +53,8 @@ class WorkflowContracts(unittest.TestCase):
 
     def test_script_sdk_and_oauth_storage_are_checked_before_publication(self):
         cross_platform = load_yaml(WORKFLOWS / "windows-worker-service.yml")
-        self.assertIn("*LocalScriptSdkTest", scripts(cross_platform["jobs"]["verify"]))
+        for check in ("*LocalScriptSdkTest", "*LocalScriptSdkTlsTest", "*WorkerCommandScriptBootstrapServiceTest", "*ManagedCommandScriptSdkTest", "*CommandScriptHttpTest"):
+            self.assertIn(check, scripts(cross_platform["jobs"]["verify"]))
         steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}
         step = steps["Verify Server and Worker"]
         self.assertIn(":server:test", step["run"])

@@ -13,6 +13,8 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
+import com.gromozeka.domain.service.CommandScriptBootstrapService
+import com.gromozeka.domain.service.requireSameIdentity
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandMonitor
@@ -79,6 +81,7 @@ class DefaultCommandTaskService(
     private val processRunner: CommandProcessRunner,
     private val runtimeState: CommandRuntimeStateService,
     private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
+    private val scripts: CommandScriptBootstrapService,
     @Value("\${gromozeka.runtime.command-output.retention-hours:168}")
     private val outputRetentionHours: Long = DEFAULT_OUTPUT_RETENTION_HOURS,
     @Value("\${gromozeka.runtime.command-output.max-total-bytes:1073741824}")
@@ -125,7 +128,9 @@ class DefaultCommandTaskService(
             CommandTask.ProcessLifetime.WORKER_BOUND
         }
         val workspaceMountId = context.requiredWorkspaceMountId()
-        val launchReference = context.backgroundActivityLaunchReference()
+        val launchReference = requireNotNull(context.backgroundActivityLaunchReference()) {
+            "Managed command requires a trusted launch request"
+        }
         val launchContext = currentCoroutineContext()
         val startGuard = {
             launchContext.ensureActive()
@@ -134,15 +139,20 @@ class DefaultCommandTaskService(
         val activeCommand = lifecycleMutex.withLock {
             check(!closed.get()) { "Command task service is closed" }
             startGuard()
+            val bootstrap = scripts.create()
+            val startupWaitMillis = (requireNotNull(context.workerRequest).startDeadline - Clock.System.now()).inWholeMilliseconds
+            require(startupWaitMillis > 0) { "Command start deadline expired before SDK registration" }
             val process = processRunner.start(
                 CommandProcessSpec(
                     executionId = taskId.value,
                     command = request.command,
                     workingDirectory = workingDirectory,
-                    environment = context.secretEnvironment() + slotOrigin.commandEnvironment() + context.scriptSdkEnvironment(),
+                    environment = context.secretEnvironment() + slotOrigin.commandEnvironment() + context.scriptSdkEnvironment() + bootstrap.environment,
                     lifetime = processLifetime,
                     startGuard = startGuard,
                     protectOutputUntilRegistration = true,
+                    deferStartUntilRegistration = true,
+                    startupWaitMillis = startupWaitMillis,
                 )
             )
             var created: ActiveCommand? = null
@@ -177,8 +187,18 @@ class DefaultCommandTaskService(
                 command.mutex.withLock {
                     currentCoroutineContext().ensureActive()
                     context.cancellationSignal.throwIfCancellationRequested()
-                    command.task = persistCommandTask(task)
+                    command.task = persistCommandTask(task, bootstrap.tokenHash)
                     context.cancellationSignal.throwIfCancellationRequested()
+                    val current = requireNotNull(runtimeState.findCommandTask(conversationId, task.id)) {
+                        "Registered command disappeared before execution admission"
+                    }
+                    task.requireSameIdentity(current)
+                    command.task = current
+                    if (current.isTerminal || current.cancellationRequestedAt != null || current.timeoutAt?.let { it <= Clock.System.now() } == true) {
+                        throw CancellationException("Command cancelled or expired before execution admission")
+                    }
+                    startGuard()
+                    process.releaseStart()
                     activeCommands[task.id] = command
                     publishSnapshot(conversationId)
                     processRunner.releaseStartupOutputProtection(process.outputFile)
@@ -842,8 +862,9 @@ class DefaultCommandTaskService(
             activeCommand.task
         }
 
-    private suspend fun persistCommandTask(task: CommandTask): CommandTask {
-        val result = runtimeState.upsertCommandTask(task)
+    private suspend fun persistCommandTask(task: CommandTask, registrationTokenHash: String? = null): CommandTask {
+        val result = if (registrationTokenHash != null) scripts.register(task, registrationTokenHash)
+            else runtimeState.upsertCommandTask(task)
         result.evictedTasks.forEach { evictedTask ->
             runCatching { processRunner.deleteOutputArtifacts(evictedTask.outputFile) }
                 .onFailure { error ->
@@ -1059,7 +1080,7 @@ class DefaultCommandTaskService(
         }
     }
 
-    /** Convenient routing defaults only. A script still authenticates with its own explicit MCP credential. */
+    /** Routing defaults do not replace the Server-bound identity of the command SDK grant. */
     private fun ToolExecutionContext.scriptSdkEnvironment(): Map<String, String> = mapOf(
         "GRZ_MCP_CONTEXT" to buildJsonObject {
             mapOf(

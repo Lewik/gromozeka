@@ -20,6 +20,9 @@ internal sealed interface AuthenticatedMcpCaller {
     data class OAuth(val principal: McpOAuthPrincipal) : AuthenticatedMcpCaller {
         override val user = principal.user
     }
+    data class CommandScript(val principal: CommandScriptPrincipal) : AuthenticatedMcpCaller {
+        override val user = principal.user
+    }
 }
 
 internal suspend fun HttpServletRequest.requireMcpCaller(
@@ -27,6 +30,7 @@ internal suspend fun HttpServletRequest.requireMcpCaller(
     personalAccessTokenService: PersonalAccessTokenService,
     settings: ServerHttpSettings,
     oauth: McpOAuthAccessTokens? = null,
+    scripts: CommandScriptGrantService? = null,
 ): AuthenticatedMcpCaller {
     if (!isSecureTransport(settings)) {
         throw HttpAuthenticationException(HttpStatus.UPGRADE_REQUIRED, "MCP authentication requires HTTPS")
@@ -37,7 +41,9 @@ internal suspend fun HttpServletRequest.requireMcpCaller(
         // An explicit token must never borrow an unrelated ambient browser session.
         val token = headers.singleOrNull()?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
             ?.substring(7)?.trim()?.takeIf { it.isNotEmpty() && it.length <= McpOAuthSettings.MAX_TOKEN_LENGTH }
-        if (token != null) {
+        if (token?.startsWith(com.gromozeka.domain.service.CommandScriptTokens.PREFIX) == true) {
+            scripts?.authenticate(token)?.let { return AuthenticatedMcpCaller.CommandScript(it) }
+        } else if (token != null) {
             personalAccessTokenService.authenticate(token, PersonalAccessToken.Scope.MCP_CONTROL)
                 ?.let { return AuthenticatedMcpCaller.PersonalToken(it) }
             oauth?.authenticate(token)?.let { return AuthenticatedMcpCaller.OAuth(it) }

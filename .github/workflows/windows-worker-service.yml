@@ -29,10 +29,10 @@ jobs:
         run: >
           ./gradlew
           :worker:assemble :server:assemble
-          :worker:test --tests '*JvmComputerUseControllerTest'
-          :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*LocalScriptSdkTest' --tests '*JsonSchemaGeneratorTest'
+          :worker:test --tests '*JvmComputerUseControllerTest' --tests '*WorkerCommandScriptBootstrapServiceTest'
+          :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*LocalScriptSdkTest' --tests '*LocalScriptSdkTlsTest' --tests '*JsonSchemaGeneratorTest'
           :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
-          :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest'
+          :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest' --tests '*ManagedCommandScriptSdkTest' --tests '*CommandScriptHttpTest'
           -q
       - name: Verify real Windows service and standard-user permissions
         if: runner.os == 'Windows'

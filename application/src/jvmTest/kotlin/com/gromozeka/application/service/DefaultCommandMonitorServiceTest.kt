@@ -730,6 +730,7 @@ class DefaultCommandMonitorServiceTest {
         errorFile: File,
         private val filterCommand: String,
     ) : RunningCommandProcess {
+        override fun releaseStart(): Unit = error("Monitor fixture does not defer startup")
         override val processStartedAt: Instant = Instant.fromEpochMilliseconds(processId)
         override val processTreeId: Long = processId + 10_000
         override val outputFile: String = outputFile.apply { createNewFile() }.absolutePath

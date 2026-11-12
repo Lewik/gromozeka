@@ -33,13 +33,13 @@ internal class GromozekaMcpServerFactory(private val tools: GromozekaMcpToolServ
             // The native resolver/executor performs the authoritative validation, including
             // trusted context and full contract fingerprints, after current authorization.
             .validateToolInputs(false)
-        for (definition in tools.list(caller.user.id)) {
+        for (definition in tools.list(caller)) {
             server.toolCall(definition.toMcpTool(mapper)) { _, request ->
                 val result = requestScope.async {
                     val arguments = request.arguments()?.let {
                         serverToolJson.parseToJsonElement(mapper.writeValueAsString(it)).jsonObject
                     } ?: JsonObject(emptyMap())
-                    tools.call(caller.user.id, definition.name, arguments).toMcpResult(mapper)
+                    tools.call(caller, definition.name, arguments).toMcpResult(mapper)
                 }
                 result.asMono(Dispatchers.Unconfined).doOnCancel { result.cancel() }
             }

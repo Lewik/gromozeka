@@ -14,6 +14,13 @@ import kotlinx.serialization.encodeToByteArray
 @Serializable
 sealed interface WorkerCommandRuntimeRequest {
     @Serializable
+    @SerialName("register_command_task")
+    data class RegisterCommandTask(
+        val task: CommandTask,
+        val tokenHash: String,
+    ) : WorkerCommandRuntimeRequest
+
+    @Serializable
     @SerialName("upsert_command_task")
     data class UpsertCommandTask(
         val task: CommandTask,
