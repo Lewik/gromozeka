@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import klog.KLogger
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -75,15 +76,22 @@ internal class OpenAiSubscriptionResponseEventCollector(
     }
 
     fun toParsedResponse(): OpenAiSubscriptionParsedResponse {
-        if (outputItems.isEmpty()) {
-            completed?.output?.takeIf { it.isNotEmpty() }?.let(outputItems::addAll)
+        val finalOutputItems = completed?.output?.takeIf { it.isNotEmpty() }
+        if (finalOutputItems != null && outputItems.isNotEmpty() && outputItems != finalOutputItems) {
+            log.warn(
+                "OpenAI subscription streamed output differs from final output; using final output: " +
+                    "streamedItems=${outputItems.size}, finalItems=${finalOutputItems.size}, " +
+                    "streamedToolCalls=${outputItems.toolCallCount()}, finalToolCalls=${finalOutputItems.toolCallCount()}"
+            )
         }
 
         return OpenAiSubscriptionParsedResponse(
-            outputItems = outputItems.toList(),
+            outputItems = finalOutputItems ?: outputItems.toList(),
             completed = completed?.copy(id = responseId ?: completed!!.id),
         )
     }
+
+    private fun List<JsonObject>.toolCallCount(): Int = count { it["type"] == JsonPrimitive("function_call") }
 
     private fun streamFailure(
         payload: String,
