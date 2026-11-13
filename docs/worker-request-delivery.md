@@ -137,14 +137,12 @@ Python **3.9+ must already be installed**; `GRZ_PYTHON` selects an existing exec
 the shell wrapper without changing `PATH`. The wrapper is POSIX `sh`/Bash, not Windows
 cmd/PowerShell; Python and the shared path are also available on Windows.
 
-Authentication is **explicit**, not inherited from Worker Gateway enrollment. Set
-`GRZ_MCP_URL` to the Server HTTPS `/mcp` endpoint. When submitting the command, pass
-`"secret_env":{"GRZ_MCP_TOKEN":"secret://my-mcp-pat"}` alongside `command` to inject
-an existing `mcp:control` PAT. The SDK reads the token directly from the environment;
-do not expand it into shell arguments. The command itself can be:
+Managed commands receive their MCP endpoint, command-scoped credential and optional
+Worker CA bundle **automatically**. No PAT creation or per-command connection setup is
+needed. `GRZ_MCP_URL`, `GRZ_MCP_TOKEN` and `GRZ_MCP_CA_BUNDLE` are Harness-owned process
+variables and are reserved from `secret_env`. The command itself can be:
 
 ```sh
-export GRZ_MCP_URL=https://your-server.example/mcp
 python3 - <<'PY'
 from grz import Client
 with Client.from_env() as client:
@@ -155,13 +153,43 @@ with Client.from_env() as client:
 PY
 ```
 
-`secret_env` is a Gromozeka tool argument, not shell syntax. Inline `secret://…` references
-in command text are rejected. When running outside Gromozeka, provision the environment
-through your existing secret manager. Never put a token in a saved script, command argument,
-log, or checked-in environment file. No PAT is minted automatically; its existing scope,
-lifetime and user authority are unchanged. This is the normal full-host command environment,
-**not a sandbox or a way to constrain a PAT's authority**. Do not provide credentials to
-untrusted scripts. The SDK does not perform OAuth login/refresh or access Keychain.
+`secret_env` remains available for other services, such as `GH_TOKEN`. It is a Gromozeka
+tool argument, not shell syntax; inline `secret://…` references in command text are rejected.
+Never print the SDK credential, dump its environment, or expand a token into command-line
+arguments. The raw command token exists only in the Worker/process environment; Server
+stores its hash, not a PAT or a copy of the Worker enrollment credential. Monitor filters
+and unrelated process launches do not inherit another launch's MCP credentials.
+
+The process remains behind its native start gate until Server has admitted the trusted
+launch origin, persisted the CommandTask and its grant, and acknowledged registration.
+A final cancellation/deadline check precedes gate release. Failed registration, cancellation
+or an uncertain ACK never silently releases the command. Recovery does not open a pending
+gate or issue another credential. An already released resumable process retains its token.
+
+A grant follows the managed CommandTask, **not** the shorter-lived creating Worker RPC or
+Conversation thread. It can remain valid for days and survives Server restart. Every MCP
+request checks the current task state and existing user/project/Worker access. User and
+calling Agent identity are Server-bound; Agent toolAccess applies to discovery and invocation.
+Changing/omitting SDK context cannot widen those rights. Ordinary upserts and recovery do
+not issue credentials. A non-secret issuance marker prevents revival after credential GC.
+
+Confirmed terminal/cancellation/deadline state denies new MCP calls. The PostgreSQL
+coordinator commits command closure, a permanent origin closure marker and credential
+revocation in the same transaction, before terminal inventory can be forgotten. The marker
+also fences a first registration racing with closure. No post-commit callback is required;
+a stale WORKING snapshot cannot revive the credential after retention or a Server crash.
+Maintenance also detects elapsed deadlines and removes revoked token rows after one hour
+in bounded batches. Offline or
+missing state is not treated as completion; missing state authorizes no request. Active
+old grants are not deleted by creation age. After the first day, the existing user inbox
+receives one reminder per age-day, with a durable deduplication key and no catch-up burst.
+`grz_user_notifications_list` reads the authenticated user's inbox without marking it read;
+`grz_user_notification_mark_read` explicitly and idempotently marks one owned notification.
+
+Outside the Harness, `Client(url, token, ...)` and explicit environment configuration remain
+available using an independently provisioned credential. The SDK does not perform OAuth
+login/refresh or access Keychain. This is a full-host command environment, **not an OS
+sandbox**; executing untrusted code can expose credentials readable by that process.
 
 Shell uses the same Python core (one helper process per call in this version):
 
@@ -176,14 +204,15 @@ grz_call "$exact_name" <<'JSON'
 JSON
 ```
 
-Python offers `Client(url, token, context=..., timeout=60)`, `Client.from_env()`,
+Python offers `Client(url, token, context=..., ca_bundle=..., timeout=60)`, `Client.from_env()`,
 `list_tools(refresh=True)`, `describe_tool(exact_name)`, and
 `call(exact_name, arguments, context=..., check=True)`. It is synchronous, not thread-safe.
 Defaults in `GRZ_MCP_CONTEXT` come from that command's project/conversation/agent/mount/Worker;
 no user ID, thread, filesystem root, tool-call ID or credentials are exported there.
 Only selectors declared by the chosen tool's `_grz` schema are forwarded. Explicit
 `context={...}` or `arguments['_grz']` **replaces** defaults rather than mixing two scopes;
-`context={}` disables them. Selectors are routing convenience, not trusted authorization:
+`context={}` disables routing defaults, not the command grant's bound user/Agent/conversation.
+Selectors are routing convenience, not trusted authorization:
 Server checks access and exact contracts on every invocation. A cached tool listing is not
 a permission grant; refresh is explicit, and names are never rebound to another version.
 
@@ -201,13 +230,25 @@ policy. Responses are bounded (default 16 MiB, configurable explicitly).
 This small stdlib-only implementation targets Gromozeka's **stateless HTTP MCP** profile:
 initialize, notifications/initialized, tools/list pagination and tools/call; JSON and POST SSE
 responses; current protocol version 2025-11-25, without legacy negotiation fallback. It is not a general MCP
-SDK, stdio bridge, sampling implementation or server-request executor. TLS uses system trust;
-redirects, ambient proxies and cookies are not used. Plain HTTP is allowed only on loopback.
+SDK, stdio bridge, sampling implementation or server-request executor. TLS keeps default
+Python trust and adds `GRZ_MCP_CA_BUNDLE` (from `gromozeka.worker-gateway.ca-certificate-path`)
+when configured. The CA bundle is loaded for each new HTTPS connection. Invalid trust is an
+explicit configuration error; chain and hostname verification are never disabled. Redirects,
+ambient proxies and cookies are not used. Plain HTTP is allowed only on loopback.
 
 `LocalScriptSdkTest` checks materialization and executes the bundled Python unittest fixture
-(20 cases, synthetic loopback server; shell case skipped on Windows). Command-service and
+(23 cases, synthetic loopback server; shell case skipped on Windows). Command-service and
 real process-runner tests cover per-launch routing, secret separation and path injection.
 Use `GRZ_TEST_PYTHON` to select the test interpreter; these tests never install one.
+`LocalScriptSdkTlsTest` verifies real HTTPS with an additional CA, hostname rejection and
+invalid-bundle rejection. Managed-process tests verify that the first Python SDK request
+cannot precede registration. MVC, permission, daily-reminder and isolated PostgreSQL tests
+cover scoped authentication, RPC retention, credential cleanup and no reissue after GC.
+
+Gateway protocol **27** and migration **V87** introduce registration and durable command
+SDK grants. Upgrade Server and Workers together. Commands launched before this update do
+not acquire SDK credentials retroactively; their existing process lifecycle is unchanged.
+
 
 Real process verification (2026-10-24, source `7a65e43e1`): isolated PostgreSQL 18.6,
 Server and Worker boot JARs, fresh V75 database and synthetic user/PAT. The packaged SDK

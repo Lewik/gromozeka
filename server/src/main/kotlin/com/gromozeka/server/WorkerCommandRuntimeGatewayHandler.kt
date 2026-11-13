@@ -29,13 +29,14 @@ interface WorkerGatewayServerRequestHandler {
 }
 
 @Service
-class WorkerCommandRuntimeGatewayHandler(
+internal class WorkerCommandRuntimeGatewayHandler(
     private val commandRuntimeStateService: CommandRuntimeStateService,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val conversationRepository: ConversationRepository,
     private val workspaceDomainService: WorkspaceDomainService,
     private val workerAccessService: WorkerAccessService,
     private val origins: BackgroundActivityOriginRecorder,
+    private val scriptGrants: CommandScriptGrantService,
 ) : WorkerGatewayServerRequestHandler {
     override val operation = WorkerGatewayOperation.COMMAND_RUNTIME_STATE
 
@@ -49,6 +50,13 @@ class WorkerCommandRuntimeGatewayHandler(
         val response = when (
             val runtimeRequest = WorkerCommandRuntimeGatewayCodec.decodeRequest(request.payload)
         ) {
+            is WorkerCommandRuntimeRequest.RegisterCommandTask -> {
+                val task = validateCommandTask(identity.workerId, runtimeRequest.task)
+                val result = commandRuntimeStateService.upsertCommandTask(task)
+                val registered = scriptGrants.register(result.task, runtimeRequest.tokenHash)
+                WorkerCommandRuntimeResponse.CommandTaskUpserted(registered, result.evictedTasks)
+            }
+
             is WorkerCommandRuntimeRequest.UpsertCommandTask -> {
                 val task = validateCommandTask(identity.workerId, runtimeRequest.task)
                 val result = commandRuntimeStateService.upsertCommandTask(task)

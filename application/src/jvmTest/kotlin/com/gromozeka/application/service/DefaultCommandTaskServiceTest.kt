@@ -70,7 +70,7 @@ class DefaultCommandTaskServiceTest {
                 return delegate.upsertCommandTask(task)
             }
         }
-        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
         try {
             assertTrue(service.prepareForUpdate())
             assertFalse(service.recoverPersistedTasks())
@@ -166,7 +166,7 @@ class DefaultCommandTaskServiceTest {
                 return delegate.upsertCommandTask(task)
             }
         }
-        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
         try {
             val first = async { service.start(ExecuteCommandRequest("blocker", yield_time_ms = 0), context(directory)) }
             withTimeout(3_000) { entered.await() }
@@ -184,7 +184,7 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
-    fun `lost initial registration ACK reconciles the same failed task before or after commit`() = runBlocking {
+    fun `lost initial registration ACK reconciles the same failed task without releasing user code`() = runBlocking {
         for (commit in listOf(false, true)) {
             val directory = Files.createTempDirectory("command-lost-ack-").toFile()
             val runner = FakeCommandProcessRunner(directory).apply { onStart = { it.appendOutput("partial output") } }
@@ -203,7 +203,7 @@ class DefaultCommandTaskServiceTest {
                     return delegate.upsertCommandTask(task)
                 }
             }
-            val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+            val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
             try {
                 val context = context(directory).withValue("toolCallId", "start-call").copy(
                     workerRequest = WorkerRequestExecutionContext("start-request", Clock.System.now() + 30.seconds),
@@ -212,7 +212,8 @@ class DefaultCommandTaskServiceTest {
                 val id = writes.first().id
                 val local = assertNotNull(service.get(conversationId, id, 0, 0))
                 assertEquals(CommandTask.Status.FAILED, local.task.status)
-                assertEquals("partial output", local.output)
+                assertEquals("", local.output)
+                assertFalse(runner.lastProcess.startReleased)
                 assertFalse(runner.lastProcess.isAlive())
                 assertTrue(runner.deletedOutputFiles.isEmpty())
                 assertEquals("start-request", local.task.launchReference?.workerRequestId)
@@ -221,7 +222,7 @@ class DefaultCommandTaskServiceTest {
                 waitUntil(5_000) { delegate.findCommandTask(conversationId, id)?.isTerminal == true }
                 val stored = assertNotNull(delegate.findCommandTask(conversationId, id))
                 assertEquals(CommandTask.Status.FAILED, stored.status)
-                assertEquals("partial output", stored.terminalOutput)
+                assertEquals("", stored.terminalOutput)
                 assertEquals(setOf(id), writes.map { it.id }.toSet())
                 assertEquals(1, runner.startCount)
                 assertTrue(File(stored.outputFile).isFile)
@@ -247,7 +248,7 @@ class DefaultCommandTaskServiceTest {
                 return result
             }
         }
-        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
         try {
             val launch = async { service.start(ExecuteCommandRequest("cancelled", yield_time_ms = 0), context(directory)) }
             assertFailsWith<CancellationException> { launch.await() }
@@ -265,7 +266,7 @@ class DefaultCommandTaskServiceTest {
         val directory = Files.createTempDirectory("command-start-rejected-").toFile()
         val terminationFailure = IllegalStateException("synthetic termination failure")
         val runner = FakeCommandProcessRunner(directory).apply {
-            onStart = { it.appendOutput("diagnostic"); it.terminationFailure = terminationFailure }
+            onPrepared = { it.appendOutput("startup diagnostic"); it.terminationFailure = terminationFailure }
         }
         val delegate = InMemoryConversationRuntimeCoordinator()
         val writes = CopyOnWriteArrayList<CommandTask>()
@@ -275,7 +276,7 @@ class DefaultCommandTaskServiceTest {
                 throw ControlPlaneRequestRejectedException("REJECTED", "Synthetic registration rejection")
             }
         }
-        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
         try {
             val failure = assertFailsWith<ControlPlaneRequestRejectedException> {
                 service.start(ExecuteCommandRequest("rejected", yield_time_ms = 0), context(directory))
@@ -286,7 +287,8 @@ class DefaultCommandTaskServiceTest {
             assertEquals(CommandTask.Status.FAILED, local.task.status)
             assertNotNull(local.task.synchronizationError)
             assertTrue(local.task.statusMessage.orEmpty().contains("termination also failed"))
-            assertEquals("diagnostic", local.output)
+            assertEquals("startup diagnostic", local.output)
+            assertFalse(runner.lastProcess.startReleased)
             delay(1_200)
             assertEquals(2, writes.size) // one initial attempt, one terminal reconciliation, no permanent retry loop
             assertEquals(1, runner.startCount)
@@ -317,7 +319,7 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
-    fun `script defaults contain only current public routing selectors and no credentials`() = runBlocking<Unit> {
+    fun `routing defaults stay public while command credentials remain in process environment`() = runBlocking<Unit> {
         withService { service, runner, _, directory ->
             runner.onStart = { it.complete(0) }
             service.start(ExecuteCommandRequest("first", yield_time_ms = 2_000),
@@ -328,7 +330,11 @@ class DefaultCommandTaskServiceTest {
             val parse = { value: String -> kotlinx.serialization.json.Json.parseToJsonElement(value) }
             assertEquals(parse("""{"project_id":"project-1","conversation_id":"conversation-1","agent_id":"agent-one","workspace_mount_id":"mount-1","worker_id":"command-worker"}"""),
                 parse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT")))
-            assertEquals(setOf("GRZ_MCP_CONTEXT"), runner.lastSpec.environment.keys)
+            assertEquals(setOf("GRZ_MCP_CONTEXT", "GRZ_MCP_URL", "GRZ_MCP_TOKEN"), runner.lastSpec.environment.keys)
+            val token = runner.lastSpec.environment.getValue("GRZ_MCP_TOKEN")
+            assertTrue(com.gromozeka.domain.service.CommandScriptTokens.isCommandToken(token))
+            assertFalse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT").contains(token))
+            assertEquals("https://example.test/mcp", runner.lastSpec.environment["GRZ_MCP_URL"])
             service.start(ExecuteCommandRequest("second", yield_time_ms = 2_000), context(directory))
             assertFalse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT").contains("agent-one"))
         }
@@ -347,7 +353,11 @@ class DefaultCommandTaskServiceTest {
             val result = service.start(ExecuteCommandRequest(command, yield_time_ms = 2_000),
                 context(directory).withValue(com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT, prepared.secretEnvironment))
             assertEquals(command, runner.lastSpec.command)
-            assertEquals(prepared.secretEnvironment, runner.lastSpec.environment - "GRZ_MCP_CONTEXT")
+            assertEquals(setOf("GH_TOKEN", "GRZ_MCP_CONTEXT", "GRZ_MCP_URL", "GRZ_MCP_TOKEN"), runner.lastSpec.environment.keys)
+            assertEquals(prepared.secretEnvironment, runner.lastSpec.environment - "GRZ_MCP_CONTEXT" - com.gromozeka.domain.service.CommandScriptTokens.environmentKeys)
+            val sdkToken = runner.lastSpec.environment.getValue("GRZ_MCP_TOKEN")
+            assertTrue(com.gromozeka.domain.service.CommandScriptTokens.isCommandToken(sdkToken))
+            assertFalse(kotlinx.serialization.json.Json.encodeToString(CommandTask.serializer(), result.task).contains(sdkToken))
             assertFalse(runner.lastSpec.environment.getValue("GRZ_MCP_CONTEXT").contains("private-test-token"))
             assertEquals(original, result.task.command)
             assertEquals(original, coordinator.findCommandTask(conversationId, result.task.id)?.command)
@@ -537,7 +547,7 @@ class DefaultCommandTaskServiceTest {
             val task = service.start(ExecuteCommandRequest("reader", yield_time_ms = 0, survive_worker_restart = true), context(directory)).task
             service.close()
             runner.lastProcess.inputAvailable = false
-            val recovered = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+            val recovered = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
             try {
                 recovered.recoverPersistedTasks()
                 assertFailsWith<IllegalStateException> { recovered.sendInput(conversationId, task.id, byteArrayOf(1)) }
@@ -711,6 +721,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeState = runtimeState(coordinator),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
+                scripts = fakeScripts(coordinator),
             )
             try {
                 recoveredService.recoverPersistedTasks()
@@ -752,6 +763,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeState = runtimeState(coordinator),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
+                scripts = fakeScripts(coordinator),
             )
             try {
                 recoveredService.recoverPersistedTasks()
@@ -787,6 +799,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeState = runtimeState(recoveredCoordinator),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
+                scripts = fakeScripts(recoveredCoordinator),
             )
             try {
                 recoveredService.recoverPersistedTasks()
@@ -886,6 +899,7 @@ class DefaultCommandTaskServiceTest {
             processRunner = runner,
             runtimeState = runtimeState(coordinator),
             runtimeWorkerDescriptor = objectProvider(workerDescriptor),
+            scripts = fakeScripts(coordinator),
         )
         try {
             val result = service.start(
@@ -929,7 +943,7 @@ class DefaultCommandTaskServiceTest {
         val directory = Files.createTempDirectory("command-rejected-result-").toFile()
         val runner = FakeCommandProcessRunner(directory)
         val coordinator = ToggleableCommandTaskCoordinator(InMemoryConversationRuntimeCoordinator())
-        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
         try {
             val started = service.start(ExecuteCommandRequest(command = "binary", yield_time_ms = 0), context(directory))
             coordinator.rejected = true
@@ -959,7 +973,7 @@ class DefaultCommandTaskServiceTest {
         val runner = FakeCommandProcessRunner(directory)
         val stored = InMemoryConversationRuntimeCoordinator()
         val coordinator = ToggleableCommandTaskCoordinator(stored)
-        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor))
+        val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
         try {
             val started = service.start(ExecuteCommandRequest(command = "running", yield_time_ms = 0), context(directory))
             coordinator.rejected = true
@@ -1106,6 +1120,7 @@ class DefaultCommandTaskServiceTest {
             processRunner = runner,
             runtimeState = runtimeState(coordinator, lifecycleEventPublisher),
             runtimeWorkerDescriptor = objectProvider(workerDescriptor),
+            scripts = fakeScripts(coordinator),
         )
         try {
             block(service, runner, coordinator, projectDirectory)
@@ -1136,9 +1151,19 @@ class DefaultCommandTaskServiceTest {
             put("workspaceMountId", "mount-1")
             put("workspaceRootPath", projectDirectory.absolutePath)
             put("workerId", workerDescriptor.id.value)
+            put("toolCallId", "test-call")
             agentDefinitionId?.let { put("agentDefinitionId", it.value) }
-        }
+        },
+        workerRequest = WorkerRequestExecutionContext("test-request", Clock.System.now() + 30.seconds),
     )
+
+    private fun fakeScripts(coordinator: ConversationRuntimeCoordinator) = object : com.gromozeka.domain.service.CommandScriptBootstrapService {
+        override fun create() = com.gromozeka.domain.service.CommandScriptBootstrap("https://example.test/mcp")
+        override suspend fun register(task: CommandTask, tokenHash: String): com.gromozeka.domain.service.CommandTaskUpsertResult {
+            com.gromozeka.domain.service.CommandScriptTokens.requireValidHash(tokenHash)
+            return coordinator.upsertCommandTask(task)
+        }
+    }
 
     private suspend fun waitUntil(timeoutMillis: Long, condition: suspend () -> Boolean) {
         val deadline = System.nanoTime() + timeoutMillis * 1_000_000
@@ -1163,6 +1188,7 @@ class DefaultCommandTaskServiceTest {
         lateinit var lastProcess: FakeRunningCommandProcess
         lateinit var lastSpec: CommandProcessSpec
         var onStart: (FakeRunningCommandProcess) -> Unit = {}
+        var onPrepared: (FakeRunningCommandProcess) -> Unit = {}
         var beforeStart: (CommandProcessSpec) -> Unit = {}
         var startCount = 0
         val deletedOutputFiles = mutableListOf<String>()
@@ -1175,10 +1201,13 @@ class DefaultCommandTaskServiceTest {
             return FakeRunningCommandProcess(
                 processId = nextPid.incrementAndGet(),
                 outputArtifact = File(outputDirectory, "${spec.executionId}.log").apply { createNewFile() },
+                deferredStart = spec.deferStartUntilRegistration,
             ).also { process ->
                 lastSpec = spec
                 lastProcess = process
-                onStart(process)
+                onPrepared(process)
+                if (spec.deferStartUntilRegistration) process.startAction = { spec.startGuard(); onStart(process) }
+                else onStart(process)
             }
         }
 
@@ -1188,7 +1217,9 @@ class DefaultCommandTaskServiceTest {
                     it.processStartedAt == spec.processStartedAt &&
                     it.processTreeId == spec.processTreeId
             } ?: return CommandProcessRecovery.Unavailable("Fake process is unavailable")
-            return if (process.isAlive()) {
+            return if (process.isAlive() && !process.startReleased) {
+                CommandProcessRecovery.UnrecoverableRunning(process, "Command startup was not released")
+            } else if (process.isAlive()) {
                 CommandProcessRecovery.Running(process)
             } else {
                 CommandProcessRecovery.Completed(process.exitCode())
@@ -1245,14 +1276,25 @@ class DefaultCommandTaskServiceTest {
     private class FakeRunningCommandProcess(
         override val processId: Long,
         private val outputArtifact: File,
+        deferredStart: Boolean = false,
     ) : RunningCommandProcess {
+        var startReleased = !deferredStart
+            private set
+        var startAction: (() -> Unit)? = null
+        override fun releaseStart() {
+            check(!startReleased) { "Command is already released" }
+            val action = checkNotNull(startAction)
+            startAction = null
+            action()
+            startReleased = true
+        }
         override val processStartedAt: Instant = Instant.fromEpochMilliseconds(processId)
         override val processTreeId: Long = processId + 10_000
         override val outputFile: String
             get() = outputArtifact.absolutePath
         override val errorFile: String? = null
         var inputAvailable = true
-        override val acceptsInput: Boolean get() = inputAvailable
+        override val acceptsInput: Boolean get() = inputAvailable && startReleased
         val inputs = java.util.Collections.synchronizedList(mutableListOf<ByteArray>())
         var inputCloseCount = 0
         var onInput: (ByteArray) -> Unit = {}

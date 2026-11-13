@@ -26,6 +26,7 @@ internal class SpringHttpTestFixture(
     tokens: PersonalAccessTokenService = Mockito.mock(PersonalAccessTokenService::class.java),
     workers: WorkerGatewayAuthenticationService = WorkerGatewayAuthenticationService(Mockito.mock(WorkerEnrollmentRepository::class.java)),
     settings: ServerHttpSettings = ServerHttpSettings(),
+    scriptGrants: CommandScriptGrantService = Mockito.mock(CommandScriptGrantService::class.java),
     configurations: Array<Class<*>> = emptyArray(),
 ) : AutoCloseable {
     private val context = AnnotationConfigWebApplicationContext()
@@ -38,6 +39,7 @@ internal class SpringHttpTestFixture(
             beans.registerSingleton("testTokens", tokens)
             beans.registerSingleton("testWorkers", workers)
             beans.registerSingleton("testHttpSettings", settings)
+            beans.registerSingleton("testScriptGrants", scriptGrants)
             beans.registerSingleton("testHttpErrors", GromozekaHttpExceptionHandler())
             controllers.forEachIndexed { index, controller -> beans.registerSingleton("testController$index", controller) }
         }

@@ -84,6 +84,11 @@ Protocol 24 separates context inspection and compact-only operations from ordina
 inference, and moves compaction policy to model configurations. Upgrade Server and
 Workers together; finish in-flight AI operations before updating. See
 [blocking compaction](ai-http-settings.md#blocking-conversation-compaction).
+Protocol 27 adds gated command/SDK-grant registration. Managed commands receive MCP URL,
+a scoped credential and the configured Worker CA automatically. Server persists one grant
+per command, enforces the initiating user/Agent scope and publishes daily aging reminders.
+See [the shared SDK contract](worker-request-delivery.md#shared-python-and-shell-sdk).
+
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
 secure-cookie, and explicitly trusted forwarded-HTTPS settings. Framework proxy

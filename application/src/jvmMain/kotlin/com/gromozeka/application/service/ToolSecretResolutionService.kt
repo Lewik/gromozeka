@@ -58,7 +58,8 @@ class ToolSecretResolutionService(
 /** References are public; resolved values are supplied only to the process environment. */
 object CommandSecretEnvironment {
     private val namePattern = Regex("[A-Za-z_][A-Za-z0-9_]*")
-    private val reservedNames = SLOT_ENVIRONMENT_KEYS + setOf("GRZ_SDK_HOME", "GRZ_MCP_CONTEXT")
+    private val reservedNames = SLOT_ENVIRONMENT_KEYS + setOf("GRZ_SDK_HOME", "GRZ_MCP_CONTEXT") +
+        com.gromozeka.domain.service.CommandScriptTokens.environmentKeys
 
     fun secretNames(command: String, references: Map<String, String>): Map<String, String> {
         require(!NamedSecret.REFERENCE_PATTERN.containsMatchIn(command)) {

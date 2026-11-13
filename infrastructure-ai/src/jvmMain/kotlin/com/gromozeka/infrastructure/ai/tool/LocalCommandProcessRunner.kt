@@ -41,6 +41,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         var process: Process? = null
         var workerLifetimeBinding: LocalWorkerLifetimeBinding? = null
         try {
+            if (spec.deferStartUntilRegistration) processStartPendingFile(outputFile).writeText("pending\n", StandardCharsets.UTF_8)
             spec.startGuard()
             process = host.launch(
                 spec = executionSpec,
@@ -65,8 +66,13 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             } else {
                 null
             }
-            spec.startGuard()
-            host.releaseProcessStart(process, processStartFile)
+            val launched = process
+            val releaseStart = {
+                spec.startGuard()
+                check(launched.isAlive) { "Command process stopped before execution admission" }
+                host.releaseProcessStart(launched, processStartFile)
+            }
+            if (spec.deferStartUntilRegistration) spec.startGuard() else releaseStart()
             return LocalRunningCommandProcess(
                 process = process,
                 processHandle = processHandle,
@@ -76,6 +82,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
                 outputArtifact = outputFile,
                 errorArtifact = errorFile,
                 exitCodeArtifact = exitCodeFile,
+                releaseStartAction = releaseStart.takeIf { spec.deferStartUntilRegistration },
             )
         } catch (error: Throwable) {
             runCatching { workerLifetimeBinding?.disarm() }.onFailure(error::addSuppressed)
@@ -134,7 +141,9 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             errorArtifact = errorFile(outputFile).takeIf(File::isFile),
             exitCodeArtifact = exitCodeFile(outputFile),
         )
-        return if (outputFile.isFile) {
+        return if (processStartPendingFile(outputFile).isFile) {
+            CommandProcessRecovery.UnrecoverableRunning(runningProcess, "Command execution was not released before Worker restart")
+        } else if (outputFile.isFile) {
             CommandProcessRecovery.Running(runningProcess)
         } else {
             CommandProcessRecovery.UnrecoverableRunning(
@@ -276,6 +285,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         processTreeFile(outputFile),
         File("${processTreeFile(outputFile).absolutePath}.tmp"),
         processStartFile(outputFile),
+        processStartPendingFile(outputFile),
         exitCodeFile(outputFile),
         File("${exitCodeFile(outputFile).absolutePath}.tmp"),
         errorFile(outputFile),
@@ -324,8 +334,18 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         private val outputArtifact: File,
         private val errorArtifact: File?,
         private val exitCodeArtifact: File,
+        private val releaseStartAction: (() -> Unit)? = null,
     ) : RunningCommandProcess {
         private val inputLock = Any()
+        private val releaseAttempted = AtomicBoolean(false)
+        @Volatile private var startReleased = releaseStartAction == null
+
+        override fun releaseStart() = synchronized(inputLock) {
+            val action = checkNotNull(releaseStartAction) { "Command has no deferred start gate" }
+            check(releaseAttempted.compareAndSet(false, true)) { "Command start release was already attempted" }
+            action()
+            startReleased = true
+        }
 
         override val processId: Long
             get() = processHandle.pid()
@@ -343,7 +363,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             get() = errorArtifact?.absolutePath
 
         override val acceptsInput: Boolean
-            get() = process != null
+            get() = process != null && startReleased
 
         override fun isAlive(): Boolean = processHandle.isAlive
 
@@ -381,6 +401,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             val directProcess = process
                 ?: error("Cannot write input after reconnecting to command process $processId")
             synchronized(inputLock) {
+                check(startReleased) { "Command input is unavailable before execution admission" }
                 directProcess.outputStream.write(bytes)
                 directProcess.outputStream.flush()
             }
@@ -390,6 +411,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             val directProcess = process
                 ?: error("Cannot close input after reconnecting to command process $processId")
             synchronized(inputLock) {
+                check(startReleased) { "Command input is unavailable before execution admission" }
                 directProcess.outputStream.close()
             }
         }
@@ -416,7 +438,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         val OUTPUT_FILE_NAME = Regex("command-[A-Za-z0-9-]+\\.log")
         val OUTPUT_ARTIFACT_NAME = Regex(
             "(command-[A-Za-z0-9-]+\\.log)" +
-                "(?:\\.(?:(?:tree|exit)(?:\\.tmp)?|start|stderr\\.log|(?:command|wrapper|watchdog)\\.cmd))?"
+                "(?:\\.(?:(?:tree|exit)(?:\\.tmp)?|start(?:\\.pending)?|stderr\\.log|(?:command|wrapper|watchdog)\\.cmd))?"
         )
     }
 }
@@ -503,11 +525,13 @@ internal class PosixLocalCommandHost private constructor(
         launcherExecutable.orEmpty(),
         POSIX_MANAGED_COMMAND,
         processStartFile.absolutePath,
+        ((spec.startupWaitMillis - 1) / 10 + 1).toString(),
     )
         .directory(workingDirectory)
         .redirectOutput(outputFile)
         .apply {
-            com.gromozeka.domain.slot.SLOT_ENVIRONMENT_KEYS.forEach { environment().remove(it) }
+            (com.gromozeka.domain.slot.SLOT_ENVIRONMENT_KEYS + com.gromozeka.domain.service.CommandScriptTokens.environmentKeys)
+                .forEach { environment().remove(it) }
             environment().putAll(spec.environment)
             redirectErrorStream(errorFile == null)
             errorFile?.let(::redirectError)
@@ -654,7 +678,8 @@ internal class WindowsLocalCommandHost(
             .apply {
                 redirectErrorStream(errorFile == null)
                 errorFile?.let(::redirectError)
-                com.gromozeka.domain.slot.SLOT_ENVIRONMENT_KEYS.forEach { environment().remove(it) }
+                (com.gromozeka.domain.slot.SLOT_ENVIRONMENT_KEYS + com.gromozeka.domain.service.CommandScriptTokens.environmentKeys)
+                .forEach { environment().remove(it) }
                 environment().putAll(injectedEnvironment)
                 environment()[WINDOWS_COMMAND_FILE_ENV] = commandFile.absolutePath
                 environment()[WINDOWS_EXIT_FILE_ENV] = exitCodeFile.absolutePath
@@ -896,6 +921,7 @@ internal fun String.toWindowsCommandFile(): String {
 private fun processTreeFile(outputFile: File): File = File("${outputFile.absolutePath}.tree")
 
 private fun processStartFile(outputFile: File): File = File("${outputFile.absolutePath}.start")
+private fun processStartPendingFile(outputFile: File): File = File("${outputFile.absolutePath}.start.pending")
 
 private fun exitCodeFile(outputFile: File): File = File("${outputFile.absolutePath}.exit")
 
@@ -1032,14 +1058,14 @@ private val POSIX_COMMAND_WRAPPER = """
     case "${'$'}4" in
         job-control)
             set -m || exit 125
-            /bin/sh -c "${'$'}6" gromozeka-command "${'$'}1" "${'$'}2" "${'$'}3" "${'$'}7" &
+            /bin/sh -c "${'$'}6" gromozeka-command "${'$'}1" "${'$'}2" "${'$'}3" "${'$'}7" "${'$'}8" &
             command_pid=${'$'}!
             set +m
             wait "${'$'}command_pid" 2>/dev/null
             exit_code=${'$'}?
             ;;
         setsid)
-            "${'$'}5" --wait /bin/sh -c "${'$'}6" gromozeka-command "${'$'}1" "${'$'}2" "${'$'}3" "${'$'}7"
+            "${'$'}5" --wait /bin/sh -c "${'$'}6" gromozeka-command "${'$'}1" "${'$'}2" "${'$'}3" "${'$'}7" "${'$'}8"
             exit_code=${'$'}?
             ;;
         *)
@@ -1051,13 +1077,13 @@ private val POSIX_COMMAND_WRAPPER = """
 private val POSIX_MANAGED_COMMAND = """
     printf '%s\n' "${'$'}${'$'}" > "${'$'}2.tmp"
     /bin/mv "${'$'}2.tmp" "${'$'}2"
-    remaining=500
+    remaining="${'$'}5"
     while [ "${'$'}remaining" -gt 0 ] && [ ! -f "${'$'}4" ]; do
         sleep 0.01
         remaining=${'$'}((remaining - 1))
     done
     [ -f "${'$'}4" ] || exit 125
-    /bin/rm -f "${'$'}4"
+    /bin/rm -f "${'$'}4" "${'$'}4.pending" || exit 125
     /bin/sh -c "${'$'}1"
     exit_code=${'$'}?
     printf '%s\n' "${'$'}exit_code" > "${'$'}3.tmp"
@@ -1098,6 +1124,9 @@ private val WINDOWS_COMMAND_WRAPPER = """
     set "GROMOZEKA_START_ACTION="
     > "%GROMOZEKA_START_FILE%.tmp" echo 1
     move /Y "%GROMOZEKA_START_FILE%.tmp" "%GROMOZEKA_START_FILE%" >NUL || exit /B 125
+    if exist "%GROMOZEKA_START_FILE%.pending" (
+        del /Q "%GROMOZEKA_START_FILE%.pending" || exit /B 125
+    )
     chcp 65001 >NUL
     "%ComSpec%" /D /Q /V:OFF /C call "%GROMOZEKA_COMMAND_FILE%"
     set "GROMOZEKA_COMMAND_EXIT_CODE=%ERRORLEVEL%"

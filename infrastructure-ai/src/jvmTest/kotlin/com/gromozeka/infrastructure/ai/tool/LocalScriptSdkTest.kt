@@ -72,7 +72,7 @@ class LocalScriptSdkTest {
             val log = output.readText()
             println(log)
             assertEquals(0, process.exitValue(), log)
-            assertTrue(log.contains("Ran 20 tests"), "All Python test cases must actually execute")
+            assertTrue(log.contains("Ran 23 tests"), "All Python test cases must actually execute")
         } finally {
             process.descendants().forEach { it.destroyForcibly() }
             if (process.isAlive) process.destroyForcibly()

@@ -134,6 +134,7 @@ jobs:
           --tests '*PostgresConversationRuntimeWorkerRegistryTest'
           --tests '*PostgresAiToolContractRepositoryTest'
           --tests '*PostgresBackgroundActivityOriginRepositoryTest'
+          --tests '*PostgresUserNotificationRepositoryTest'
           --tests '*PostgresSlotRepositoryTest'
           --tests '*PostgresConversationPinRepositoryTest'
           --tests '*PostgresWorkerRequestRepositoryTest'

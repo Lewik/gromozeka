@@ -44,6 +44,79 @@ class LocalCommandProcessRunnerTest {
     private val isLinux = System.getProperty("os.name").lowercase().contains("linux")
 
     @Test
+    fun `deferred native gate blocks user code and stdin until explicit release`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(CommandProcessSpec(
+                executionId = "deferred-start",
+                command = platformCommand("printf started > payload; printf done", "echo started > payload & echo done"),
+                workingDirectory = home.absolutePath,
+                deferStartUntilRegistration = true,
+                startupWaitMillis = 15_000,
+                protectOutputUntilRegistration = true,
+            ))
+            Thread.sleep(150)
+            assertTrue(process.isAlive())
+            assertFalse(File(home, "payload").exists(), "The native gate must delay execution, not just output")
+            assertFalse(process.acceptsInput)
+            assertFailsWith<IllegalStateException> { process.writeInput("unapproved\n".toByteArray()) }
+            runner.garbageCollectOutputArtifacts(CommandOutputGarbageCollectionSpec(emptySet(), emptySet(), Instant.parse("2099-01-01T00:00:00Z"), 0))
+            assertTrue(File(process.outputFile + ".start.pending").isFile)
+            process.releaseStart()
+            assertTrue(process.waitFor(5_000))
+            assertEquals(0, process.exitCode())
+            assertTrue(File(home, "payload").isFile)
+            assertContains(File(process.outputFile).readText(), "done")
+            assertFalse(File(process.outputFile + ".start.pending").exists())
+            assertFailsWith<IllegalStateException> { process.releaseStart() }
+        }
+    }
+
+    @Test
+    fun `cancellation after preparation but before release never executes user code`() {
+        withTemporaryGromozekaHome { home ->
+            val cancelled = java.util.concurrent.atomic.AtomicBoolean(false)
+            val process = runner.start(CommandProcessSpec(
+                executionId = "deferred-cancel",
+                command = platformCommand("printf started > payload", "echo started > payload"),
+                workingDirectory = home.absolutePath,
+                deferStartUntilRegistration = true,
+                startupWaitMillis = 15_000,
+                startGuard = { if (cancelled.get()) throw kotlinx.coroutines.CancellationException("cancelled") },
+            ))
+            cancelled.set(true)
+            assertFailsWith<kotlinx.coroutines.CancellationException> { process.releaseStart() }
+            assertFailsWith<IllegalStateException> { process.releaseStart() }
+            process.terminateTree()
+            assertTrue(process.waitFor(5_000))
+            assertFalse(File(home, "payload").exists())
+        }
+    }
+
+    @Test
+    fun `recovery never releases a pending gate but recognizes already started resumable work`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(CommandProcessSpec(
+                executionId = "deferred-recovery",
+                command = platformCommand("printf started > payload; sleep 30", "echo started > payload & ping -n 30 127.0.0.1 >NUL"),
+                workingDirectory = home.absolutePath,
+                deferStartUntilRegistration = true,
+                startupWaitMillis = 15_000,
+                lifetime = CommandTask.ProcessLifetime.RESUMABLE,
+            ))
+            val recovery = CommandProcessRecoverySpec(process.processId, process.processStartedAt, process.processTreeId, process.outputFile)
+            assertIs<CommandProcessRecovery.UnrecoverableRunning>(LocalCommandProcessRunner().recover(recovery))
+            assertFalse(File(home, "payload").exists())
+            process.releaseStart()
+            awaitCommandFixtureValue("released payload", 5_000) { File(home, "payload").takeIf(File::isFile)?.readText() }
+            val recovered = assertIs<CommandProcessRecovery.Running>(LocalCommandProcessRunner().recover(recovery))
+            assertTrue(recovered.process.isAlive())
+            assertFailsWith<IllegalStateException> { recovered.process.releaseStart() }
+            recovered.process.terminateTree()
+            assertTrue(process.waitFor(5_000))
+        }
+    }
+
+    @Test
     fun `expired launch is fenced after SDK setup at native spawn and at payload release`() {
         // Runner entry, after SDK, immediately before ProcessBuilder.start, then barrier release.
         for (deniedCheck in 1..4) withTemporaryGromozekaHome { home ->
