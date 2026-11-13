@@ -76,6 +76,127 @@ class ConversationRuntimeDispatcherTest {
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
+    fun `stop reconciles an ambiguous task start before recovering its incident`() = runBlocking {
+        verifyAmbiguousStartRecovery(ConversationRuntimeControlAction.STOP)
+    }
+
+    @Test
+    fun `interrupt reconciles an ambiguous task start before recovering its incident`() = runBlocking {
+        verifyAmbiguousStartRecovery(ConversationRuntimeControlAction.INTERRUPT)
+    }
+
+    private suspend fun verifyAmbiguousStartRecovery(action: ConversationRuntimeControlAction) {
+        for (committed in listOf(true, false)) {
+            for (unavailableOperation in listOf("none", "write", "read")) {
+                val stored = InMemoryConversationRuntimeCoordinator()
+                val startWriteFinished = CompletableDeferred<Unit>()
+                val releaseAcknowledgement = CompletableDeferred<Unit>()
+                val startAcknowledgementLost = java.util.concurrent.atomic.AtomicBoolean()
+                val incidentWriteFailed = CompletableDeferred<Unit>()
+                val boundaryReadFailed = CompletableDeferred<Unit>()
+                val writesUnavailable = java.util.concurrent.atomic.AtomicBoolean(unavailableOperation == "write")
+                val readsUnavailable = java.util.concurrent.atomic.AtomicBoolean(unavailableOperation == "read")
+                fun requireIncidentStorage() {
+                    if (writesUnavailable.get()) {
+                        incidentWriteFailed.complete(Unit)
+                        error("Synthetic unavailable incident storage")
+                    }
+                }
+                val coordinator = object : ConversationRuntimeCoordinator by stored {
+                    override suspend fun markActiveTaskStarted(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                        executor: ConversationRuntimeExecutorIdentity, startedAt: kotlin.time.Instant): Boolean {
+                        if (committed) check(stored.markActiveTaskStarted(conversationId, taskId, executor, startedAt))
+                        startWriteFinished.complete(Unit)
+                        releaseAcknowledgement.await()
+                        startAcknowledgementLost.set(true)
+                        error("Synthetic lost start acknowledgement")
+                    }
+
+                    override suspend fun find(conversationId: Conversation.Id): ConversationExecutionState? {
+                        if (startAcknowledgementLost.get() && readsUnavailable.get()) {
+                            boundaryReadFailed.complete(Unit)
+                            error("Synthetic unavailable start boundary")
+                        }
+                        return stored.find(conversationId)
+                    }
+
+                    override suspend fun markActiveTaskInDoubt(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                        executor: ConversationRuntimeExecutorIdentity, message: String, errorType: String?): ConversationRuntimeTaskIncident? {
+                        requireIncidentStorage()
+                        return stored.markActiveTaskInDoubt(conversationId, taskId, executor, message, errorType)
+                    }
+
+                    override suspend fun recordClaimedTaskDeliveryFailure(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                        executor: ConversationRuntimeExecutorIdentity, message: String, errorType: String?): ConversationRuntimeTaskIncident? {
+                        requireIncidentStorage()
+                        return stored.recordClaimedTaskDeliveryFailure(conversationId, taskId, executor, message, errorType)
+                    }
+                }
+                val executed = java.util.concurrent.CopyOnWriteArrayList<ConversationRuntimeTask.Id>()
+                val runner = object : ConversationRuntimeTaskRunner {
+                    override suspend fun runRuntimeTask(task: ConversationRuntimeTask, executor: ConversationRuntimeExecutorIdentity,
+                        emitMessage: suspend (Conversation.Message) -> Unit): ConversationRuntimeTaskOutcome {
+                        executed.add(task.id)
+                        return ConversationRuntimeTaskOutcome.CompleteTurn
+                    }
+                }
+                val failures = java.util.concurrent.CopyOnWriteArrayList<Throwable>()
+                val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, error -> failures.add(error) })
+                val eventBus = InMemoryConversationRuntimeEventBus()
+                val dispatcher = ConversationRuntimeDispatcher(coordinator, eventBus,
+                    testConversationRuntimeStateSyncService(coordinator), acceptingArtifactReferenceValidator)
+                val executor = runtimeExecutor(coordinator, eventBus, runner,
+                    serverExecutorDescriptor("lost-start-acknowledgement", ConversationRuntimeCapability.entries.toSet()), scope)
+                val task = runtimeAgentInvocationTask(userMessage("lost-start-ack-task"))
+                val steering = runtimeAgentInvocationTask(userMessage("queued-steering"), QueuedMessagePlacement.AFTER_TOOL_RESULT)
+                val later = runtimeAgentInvocationTask(userMessage("queued-later"))
+                try {
+                    executor.start()
+                    assertTrue(stored.submit(task))
+                    withTimeout(TEST_EVENT_TIMEOUT_MS) { startWriteFinished.await() }
+                    assertTrue(stored.submit(steering))
+                    assertTrue(stored.submit(later))
+                    if (unavailableOperation == "none") {
+                        assertTrue(dispatcher.controlExecution(conversationId, action))
+                        releaseAcknowledgement.complete(Unit)
+                    } else {
+                        releaseAcknowledgement.complete(Unit)
+                        withTimeout(TEST_EVENT_TIMEOUT_MS) {
+                            if (unavailableOperation == "write") incidentWriteFailed.await() else boundaryReadFailed.await()
+                        }
+                        val unresolved = stored.schedulingSnapshot(conversationId)
+                        assertEquals(task.id, unresolved.activeTask?.id)
+                        assertTrue(unresolved.incidents.isEmpty())
+                        writesUnavailable.set(false)
+                        readsUnavailable.set(false)
+                        assertTrue(dispatcher.controlExecution(conversationId, action))
+                    }
+                    waitUntil { stored.schedulingSnapshot(conversationId).activeTask == null }
+                    val snapshot = stored.schedulingSnapshot(conversationId)
+                    assertEquals(ConversationExecutionState.ControlState.PAUSED, snapshot.state?.controlState)
+                    assertEquals(listOf(steering.copy(placement = QueuedMessagePlacement.END_OF_TURN), later), snapshot.pendingTasks)
+                    assertTrue(stored.listReadyWorkItems(10).isEmpty())
+                    assertTrue(executed.isEmpty(), "An ambiguous start must never execute or replay the task or its queued inputs")
+                    val incident = snapshot.incidents.single()
+                    assertEquals(if (committed) ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN else ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, incident.kind)
+                    assertEquals(committed, incident.executionStartedAt != null)
+                    assertEquals(task.id, incident.task.id)
+                    assertEquals(executor.identity, incident.executor)
+                    assertEquals("Synthetic lost start acknowledgement", incident.message)
+                    assertEquals("IllegalStateException", incident.errorType)
+                } finally {
+                    writesUnavailable.set(false)
+                    readsUnavailable.set(false)
+                    releaseAcknowledgement.complete(Unit)
+                    executor.stop()
+                    scope.cancel()
+                }
+                assertEquals(listOf("Synthetic lost start acknowledgement"), failures.map { it.message })
+            }
+        }
+    }
+
+    @Test
     fun `interrupt recovers failed incident persistence without consuming queued inputs`() = runBlocking {
         for (failureMode in listOf("exception", "cancellation", "timeout")) {
             for (action in listOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
