@@ -41,6 +41,7 @@ import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.WorkspaceDomainService
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,6 +51,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -72,6 +74,306 @@ private val acceptingArtifactReferenceValidator = ArtifactReferenceValidator { _
 class ConversationRuntimeDispatcherTest {
     private val conversationId = Conversation.Id("conversation-runtime-dispatcher-test")
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
+
+    @Test
+    fun `interrupt recovers failed incident persistence without consuming queued inputs`() = runBlocking {
+        for (failureMode in listOf("exception", "cancellation", "timeout")) {
+            for (action in listOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
+                verifyIncidentRecovery(failureMode, action)
+            }
+        }
+    }
+
+    private suspend fun verifyIncidentRecovery(failureMode: String, action: ConversationRuntimeControlAction) {
+        val stored = InMemoryConversationRuntimeCoordinator()
+        val persistenceFailed = CompletableDeferred<Unit>()
+        val attempts = java.util.concurrent.atomic.AtomicInteger()
+        val unavailable = java.util.concurrent.atomic.AtomicBoolean(true)
+        val originalFailure = java.util.concurrent.atomic.AtomicReference<Throwable>()
+        val coordinator = object : ConversationRuntimeCoordinator by stored {
+            override suspend fun markActiveTaskInDoubt(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                executor: ConversationRuntimeExecutorIdentity, message: String, errorType: String?): ConversationRuntimeTaskIncident? {
+                attempts.incrementAndGet()
+                if (unavailable.get()) {
+                    persistenceFailed.complete(Unit)
+                    error("Synthetic database failure")
+                }
+                return stored.markActiveTaskInDoubt(conversationId, taskId, executor, message, errorType)
+            }
+        }
+        val started = CompletableDeferred<Unit>()
+        val failTask = CompletableDeferred<Unit>()
+        val executed = java.util.concurrent.CopyOnWriteArrayList<ConversationRuntimeTask.Id>()
+        val runner = object : ConversationRuntimeTaskRunner {
+            override suspend fun runRuntimeTask(task: ConversationRuntimeTask, executor: ConversationRuntimeExecutorIdentity,
+                emitMessage: suspend (Conversation.Message) -> Unit): ConversationRuntimeTaskOutcome {
+                executed.add(task.id)
+                started.complete(Unit)
+                failTask.await()
+                try {
+                    when (failureMode) {
+                        "exception" -> throw IllegalArgumentException("Original task failure")
+                        "cancellation" -> throw kotlinx.coroutines.CancellationException("Original task cancellation")
+                        else -> withTimeout(1) { kotlinx.coroutines.awaitCancellation() }
+                    }
+                } catch (error: Throwable) {
+                    originalFailure.set(error)
+                    throw error
+                }
+            }
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, _ -> })
+        val eventBus = InMemoryConversationRuntimeEventBus()
+        val subscription = eventBus.subscribe(conversationId)
+        val executor = runtimeExecutor(coordinator, eventBus, runner,
+            serverExecutorDescriptor("incident-recovery", ConversationRuntimeCapability.entries.toSet()), scope)
+        val task = runtimeAgentInvocationTask(userMessage("failed-task"))
+        val reserved = runtimeAgentInvocationTask(userMessage("reserved"), QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val queued = runtimeAgentInvocationTask(userMessage("queued"), QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val later = runtimeAgentInvocationTask(userMessage("later"))
+        try {
+            executor.start()
+            assertTrue(coordinator.submit(task))
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { started.await() }
+            assertTrue(coordinator.submit(reserved))
+            assertEquals(listOf(reserved), coordinator.claimActiveInsertions(conversationId, task.id,
+                executor.identity, QueuedMessagePlacement.AFTER_TOOL_RESULT))
+            assertTrue(coordinator.submit(queued))
+            assertTrue(coordinator.submit(later))
+            failTask.complete(Unit)
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { persistenceFailed.await() }
+            val dispatcher = ConversationRuntimeDispatcher(coordinator, eventBus,
+                testConversationRuntimeStateSyncService(coordinator), acceptingArtifactReferenceValidator)
+            assertTrue(dispatcher.controlExecution(conversationId, action))
+            waitUntil { attempts.get() >= 2 }
+            assertEquals(task.id, stored.schedulingSnapshot(conversationId).activeTask?.id)
+            unavailable.set(false)
+            assertTrue(dispatcher.controlExecution(conversationId, action))
+            waitUntil { stored.schedulingSnapshot(conversationId).activeTask == null }
+            val snapshot = stored.schedulingSnapshot(conversationId)
+            assertEquals(ConversationExecutionState.ControlState.PAUSED, snapshot.state?.controlState)
+            assertEquals(listOf(reserved, queued, later).map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }, snapshot.pendingTasks)
+            assertTrue(snapshot.activeInsertions.isEmpty())
+            assertTrue(stored.listReadyWorkItems(10).isEmpty())
+            assertEquals(listOf(task.id), executed)
+            assertEquals(originalFailure.get().message, snapshot.incidents.single().message)
+            assertEquals(originalFailure.get()::class.simpleName, snapshot.incidents.single().errorType)
+            val failure = withTimeout(TEST_EVENT_TIMEOUT_MS) {
+                subscription.events.first { it is ConversationRuntimeEvent.ExecutionFailed }
+            } as ConversationRuntimeEvent.ExecutionFailed
+            assertTrue(failure.message.contains(requireNotNull(originalFailure.get().message)))
+            assertEquals("INCIDENT_PERSISTENCE_FAILED", failure.failureType)
+        } finally {
+            failTask.complete(Unit)
+            subscription.close()
+            executor.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `incident recovery cannot settle a replacement task after its ownership check`() = runBlocking {
+        val stored = InMemoryConversationRuntimeCoordinator()
+        val persistenceFailed = CompletableDeferred<Unit>()
+        val recoveryStarted = CompletableDeferred<Unit>()
+        val releaseRecovery = CompletableDeferred<Unit>()
+        val recoveryReturned = CompletableDeferred<Unit>()
+        val schedulingSuppressed = java.util.concurrent.atomic.AtomicBoolean()
+        val attempts = java.util.concurrent.atomic.AtomicInteger()
+        val coordinator = object : ConversationRuntimeCoordinator by stored {
+            override suspend fun listReadyWorkItems(limit: Int) =
+                if (schedulingSuppressed.get()) emptyList() else stored.listReadyWorkItems(limit)
+            override suspend fun markActiveTaskInDoubt(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                executor: ConversationRuntimeExecutorIdentity, message: String, errorType: String?): ConversationRuntimeTaskIncident? {
+                if (attempts.incrementAndGet() == 1) {
+                    persistenceFailed.complete(Unit)
+                    error("Synthetic database failure")
+                }
+                recoveryStarted.complete(Unit)
+                releaseRecovery.await()
+                return stored.markActiveTaskInDoubt(conversationId, taskId, executor, message, errorType).also {
+                    recoveryReturned.complete(Unit)
+                }
+            }
+        }
+        val failed = runtimeAgentInvocationTask(userMessage("old-failed-task"))
+        val replacement = runtimeAgentInvocationTask(userMessage("replacement-task"))
+        val runner = object : ConversationRuntimeTaskRunner {
+            override suspend fun runRuntimeTask(task: ConversationRuntimeTask, executor: ConversationRuntimeExecutorIdentity,
+                emitMessage: suspend (Conversation.Message) -> Unit): ConversationRuntimeTaskOutcome {
+                check(task.id == failed.id)
+                error("Original task failure")
+            }
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val executor = runtimeExecutor(coordinator, InMemoryConversationRuntimeEventBus(), runner,
+            serverExecutorDescriptor("stale-incident-recovery", ConversationRuntimeCapability.entries.toSet()), scope)
+        try {
+            executor.start()
+            assertTrue(stored.submit(failed))
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { persistenceFailed.await() }
+            assertTrue(stored.requestInterrupt(conversationId))
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { recoveryStarted.await() }
+            schedulingSuppressed.set(true)
+            stored.abort(conversationId)
+            assertTrue(stored.submit(replacement))
+            val otherOwner = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("replacement-owner"))
+            val claimedReplacement = assertNotNull(stored.claimDeliveredTask(conversationId, replacement.id, otherOwner,
+                replacement.requirements.capabilities, emptySet()))
+            assertTrue(stored.markActiveTaskStarted(conversationId, replacement.id, otherOwner, Clock.System.now()))
+            releaseRecovery.complete(Unit)
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { recoveryReturned.await() }
+            val snapshot = stored.schedulingSnapshot(conversationId)
+            assertEquals(claimedReplacement, snapshot.activeTask)
+            assertEquals(otherOwner, snapshot.state?.activeExecutor)
+            assertTrue(snapshot.incidents.isEmpty())
+            assertEquals(2, attempts.get())
+        } finally {
+            releaseRecovery.complete(Unit)
+            executor.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `interrupt recovers delivery incident persistence before the task starts`() = runBlocking {
+        val stored = InMemoryConversationRuntimeCoordinator()
+        val failedWrite = CompletableDeferred<Unit>()
+        val attempts = java.util.concurrent.atomic.AtomicInteger()
+        val coordinator = object : ConversationRuntimeCoordinator by stored {
+            override suspend fun recordClaimedTaskDeliveryFailure(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                executor: ConversationRuntimeExecutorIdentity, message: String, errorType: String?): ConversationRuntimeTaskIncident? {
+                if (attempts.incrementAndGet() == 1) {
+                    failedWrite.complete(Unit)
+                    error("Synthetic database failure")
+                }
+                return stored.recordClaimedTaskDeliveryFailure(conversationId, taskId, executor, message, errorType)
+            }
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val runner = ControllableTaskRunner()
+        val executor = runtimeExecutor(coordinator, InMemoryConversationRuntimeEventBus(), runner,
+            serverExecutorDescriptor("failed-delivery", ConversationRuntimeCapability.entries.toSet()), scope,
+            aiConfigurationService = TestAiConfigurationService(IllegalArgumentException("Original preparation failure")))
+        val task = runtimeAgentInvocationTask(userMessage("unstarted-task"))
+        val queued = runtimeAgentInvocationTask(userMessage("queued-after-preparation"), QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        try {
+            executor.start()
+            assertTrue(stored.submit(task))
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { failedWrite.await() }
+            assertTrue(stored.submit(queued))
+            assertTrue(stored.requestInterrupt(conversationId))
+            waitUntil { stored.schedulingSnapshot(conversationId).activeTask == null }
+            val snapshot = stored.schedulingSnapshot(conversationId)
+            assertEquals(listOf(queued.copy(placement = QueuedMessagePlacement.END_OF_TURN)), snapshot.pendingTasks)
+            assertEquals(ConversationExecutionState.ControlState.PAUSED, snapshot.state?.controlState)
+            assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
+            assertEquals("Original preparation failure", snapshot.incidents.single().message)
+            assertNull(snapshot.incidents.single().executionStartedAt)
+            assertNull(withTimeoutOrNull(100) { runner.awaitStarted() })
+        } finally {
+            executor.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `failed abort is recovered through a guarded incident transition`() = runBlocking {
+        val stored = InMemoryConversationRuntimeCoordinator()
+        val coordinator = object : ConversationRuntimeCoordinator by stored {
+            override suspend fun abort(conversationId: Conversation.Id) = error("Synthetic abort persistence failure")
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val runner = ControllableTaskRunner()
+        val executor = runtimeExecutor(coordinator, InMemoryConversationRuntimeEventBus(), runner,
+            serverExecutorDescriptor("failed-abort", ConversationRuntimeCapability.entries.toSet()), scope)
+        val task = runtimeAgentInvocationTask(userMessage("interrupted-task"))
+        val queued = runtimeAgentInvocationTask(userMessage("queued-after-interrupt"), QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        try {
+            executor.start()
+            assertTrue(stored.submit(task))
+            assertEquals(task.id, runner.awaitStarted().id)
+            assertTrue(stored.submit(queued))
+            assertTrue(stored.requestInterrupt(conversationId))
+            waitUntil { stored.schedulingSnapshot(conversationId).activeTask == null }
+            val snapshot = stored.schedulingSnapshot(conversationId)
+            assertEquals(listOf(queued.copy(placement = QueuedMessagePlacement.END_OF_TURN)), snapshot.pendingTasks)
+            assertEquals(ConversationExecutionState.ControlState.PAUSED, snapshot.state?.controlState)
+            assertEquals(task.id, snapshot.incidents.single().task.id)
+            assertEquals(ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN, snapshot.incidents.single().kind)
+            assertNull(withTimeoutOrNull(100) { runner.awaitStarted() })
+        } finally {
+            executor.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `incident write acknowledgement failure leaves the newer live task untouched`() = runBlocking {
+        val stored = InMemoryConversationRuntimeCoordinator()
+        val successorStarted = CompletableDeferred<Unit>()
+        val releaseSuccessor = CompletableDeferred<Unit>()
+        val releaseAcknowledgement = CompletableDeferred<Unit>()
+        val acknowledgementFailed = CompletableDeferred<Unit>()
+        val ownershipChecked = CompletableDeferred<Unit>()
+        val attempts = java.util.concurrent.atomic.AtomicInteger()
+        val coordinator = object : ConversationRuntimeCoordinator by stored {
+            override suspend fun confirmActiveTaskOwner(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                executor: ConversationRuntimeExecutorIdentity): Boolean =
+                stored.confirmActiveTaskOwner(conversationId, taskId, executor).also { ownershipChecked.complete(Unit) }
+            override suspend fun markActiveTaskInDoubt(conversationId: Conversation.Id, taskId: ConversationRuntimeTask.Id,
+                executor: ConversationRuntimeExecutorIdentity, message: String, errorType: String?): ConversationRuntimeTaskIncident? {
+                attempts.incrementAndGet()
+                stored.markActiveTaskInDoubt(conversationId, taskId, executor, message, errorType)
+                releaseAcknowledgement.await()
+                acknowledgementFailed.complete(Unit)
+                error("Synthetic lost commit acknowledgement")
+            }
+        }
+        val runner = object : ConversationRuntimeTaskRunner {
+            override suspend fun runRuntimeTask(task: ConversationRuntimeTask, executor: ConversationRuntimeExecutorIdentity,
+                emitMessage: suspend (Conversation.Message) -> Unit): ConversationRuntimeTaskOutcome {
+                if (task.payload is ConversationRuntimeTask.Payload.ExecutionIncident) {
+                    successorStarted.complete(Unit)
+                    releaseSuccessor.await()
+                    return ConversationRuntimeTaskOutcome.CompleteTurn
+                }
+                throw IllegalArgumentException("Original task failure")
+            }
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val eventBus = InMemoryConversationRuntimeEventBus()
+        val subscription = eventBus.subscribe(conversationId)
+        val executor = runtimeExecutor(coordinator, eventBus, runner,
+            serverExecutorDescriptor("lost-acknowledgement", ConversationRuntimeCapability.entries.toSet()), scope)
+        val task = runtimeAgentInvocationTask(userMessage("failed-before-successor"))
+        try {
+            executor.start()
+            assertTrue(coordinator.submit(task))
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { successorStarted.await() }
+            val successor = assertNotNull(stored.schedulingSnapshot(conversationId).activeTask)
+            assertTrue(successor.payload is ConversationRuntimeTask.Payload.ExecutionIncident)
+            releaseAcknowledgement.complete(Unit)
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { acknowledgementFailed.await(); ownershipChecked.await() }
+            assertTrue(coordinator.requestPause(conversationId))
+            val state = assertNotNull(stored.find(conversationId))
+            assertEquals(successor.id, state.activeTaskId)
+            assertEquals(executor.identity, state.activeExecutor)
+            assertNull(withTimeoutOrNull(100) {
+                subscription.events.first { it is ConversationRuntimeEvent.ExecutionFailed && it.failureType == "INCIDENT_PERSISTENCE_FAILED" }
+            })
+            releaseSuccessor.complete(Unit)
+            waitUntil { stored.schedulingSnapshot(conversationId).activeTask == null }
+            assertEquals(1, attempts.get())
+            assertEquals("Original task failure", stored.schedulingSnapshot(conversationId).incidents.single().message)
+        } finally {
+            releaseAcknowledgement.complete(Unit)
+            releaseSuccessor.complete(Unit)
+            subscription.close()
+            executor.stop()
+            scope.cancel()
+        }
+    }
 
     @Test
     fun `incident continuation can start before failed-task persistence returns`() = runBlocking {

@@ -37,6 +37,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.SmartLifecycle
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Service
 class ConversationRuntimeExecutor(
@@ -58,6 +59,7 @@ class ConversationRuntimeExecutor(
     private val schedulingMutex = Mutex()
     private val scheduledItems = ConcurrentHashMap.newKeySet<ScheduledWork>()
     private val activeExecutions = ConcurrentHashMap<Conversation.Id, ActiveExecution>()
+    private val pendingIncidents = ConcurrentHashMap<ScheduledWork, PendingIncident>()
     private val lifecycleLock = Any()
 
     @Volatile
@@ -82,11 +84,13 @@ class ConversationRuntimeExecutor(
                         when (signal) {
                             ConversationRuntimeSchedulingSignal.ListenerReady -> {
                                 cancelInterruptedExecutions()
+                                recoverInterruptedIncidents()
                                 scheduleReadyWork(executorScope)
                             }
 
                             is ConversationRuntimeSchedulingSignal.Changed -> {
                                 cancelInterruptedExecutions()
+                                recoverInterruptedIncidents()
                                 scheduleReadyWork(executorScope)
                             }
                         }
@@ -219,13 +223,13 @@ class ConversationRuntimeExecutor(
             if (snapshot.state?.activeTaskStartedAt == null) {
                 recordClaimedTaskDeliveryFailure(
                     task = claimedTask,
-                    message = "Executor stopped after durable task claim but before execution started",
+                    message = error.message ?: "Executor stopped after durable task claim but before execution started",
                     errorType = error::class.simpleName,
                 )
             } else {
                 recordClaimedTaskIncident(
                     task = claimedTask,
-                    message = "Executor stopped while task execution was active; the task outcome is unknown",
+                    message = error.message ?: "Executor stopped while task execution was active; the task outcome is unknown",
                     errorType = error::class.simpleName,
                 )
             }
@@ -342,28 +346,38 @@ class ConversationRuntimeExecutor(
         } catch (error: CancellationException) {
             activeExecutions.remove(task.conversationId, activeExecution)
             val interrupted = withContext(NonCancellable) {
-                val state = runtimeCoordinator.find(task.conversationId)
-                if (state?.activeTaskId == task.id &&
-                    state.activeExecutor == executor &&
-                    state.controlState == ConversationExecutionState.ControlState.INTERRUPTING
-                ) {
-                    runtimeCoordinator.abort(task.conversationId)
-                    publishRuntimeSnapshot(task.conversationId)
-                    publishRuntimeEvent(ConversationRuntimeEvent.ExecutionCompleted(task.conversationId))
-                    true
-                } else {
-                    recordClaimedTaskIncident(
-                        task = task,
-                        message = "Executor stopped while task execution was active; the task outcome is unknown",
-                        errorType = "ExecutorExecutionCancelled",
-                    )
+                val settled = try {
+                    val state = runtimeCoordinator.find(task.conversationId)
+                    if (state?.activeTaskId == task.id &&
+                        state.activeExecutor == executor &&
+                        state.controlState == ConversationExecutionState.ControlState.INTERRUPTING
+                    ) {
+                        runtimeCoordinator.abort(task.conversationId)
+                        publishRuntimeSnapshot(task.conversationId)
+                        publishRuntimeEvent(ConversationRuntimeEvent.ExecutionCompleted(task.conversationId))
+                        true
+                    } else false
+                } catch (persistenceError: Throwable) {
+                    log.error(persistenceError) {
+                        "Failed to settle runtime cancellation: conversation=${task.conversationId.value} task=${task.id.value}"
+                    }
                     false
                 }
+                if (!settled) {
+                    log.warn(error) { "Runtime task cancelled: conversation=${task.conversationId.value} task=${task.id.value}" }
+                    recordClaimedTaskIncident(
+                        task = task,
+                        message = error.message ?: "Executor stopped while task execution was active; the task outcome is unknown",
+                        errorType = error::class.simpleName ?: "ExecutorExecutionCancelled",
+                    )
+                }
+                settled
             }
             if (!interrupted) throw error
         } catch (error: Throwable) {
             // Persisting failure can immediately signal a runnable incident continuation.
             activeExecutions.remove(task.conversationId, activeExecution)
+            log.error(error) { "Runtime task failed: conversation=${task.conversationId.value} task=${task.id.value}" }
             recordClaimedTaskIncident(
                 task = task,
                 message = error.message ?: "Unknown conversation runtime error",
@@ -473,22 +487,7 @@ class ConversationRuntimeExecutor(
         message: String,
         errorType: String?,
     ) {
-        val incident = runtimeCoordinator.markActiveTaskInDoubt(
-            conversationId = task.conversationId,
-            taskId = task.id,
-            executor = executor,
-            message = message,
-            errorType = errorType,
-        ) ?: return
-        notifyBackgroundDeliveryFinished(incident.task)
-        publishRuntimeSnapshot(task.conversationId)
-        publishRuntimeEvent(
-            ConversationRuntimeEvent.ExecutionFailed(
-                conversationId = task.conversationId,
-                message = incident.message,
-                failureType = incident.kind.name,
-            )
-        )
+        recordIncident(PendingIncident(task, message, errorType, started = true))
     }
 
     private suspend fun recordClaimedTaskDeliveryFailure(
@@ -496,22 +495,88 @@ class ConversationRuntimeExecutor(
         message: String,
         errorType: String?,
     ) {
-        val incident = runtimeCoordinator.recordClaimedTaskDeliveryFailure(
-            conversationId = task.conversationId,
-            taskId = task.id,
-            executor = executor,
-            message = message,
-            errorType = errorType,
-        ) ?: return
+        recordIncident(PendingIncident(task, message, errorType, started = false))
+    }
+
+    private suspend fun recordIncident(failure: PendingIncident) = withContext(NonCancellable) {
+        val key = ScheduledWork(failure.task.conversationId, failure.task.id)
+        val retained = pendingIncidents.putIfAbsent(key, failure) ?: failure
+        retained.mutex.withLock { persistIncident(key, retained) }
+        recoverInterruptedIncident(key, retained)
+    }
+
+    private suspend fun recoverInterruptedIncidents() {
+        pendingIncidents.forEach { (key, failure) -> recoverInterruptedIncident(key, failure) }
+    }
+
+    private suspend fun recoverInterruptedIncident(key: ScheduledWork, failure: PendingIncident) {
+        // A committed transition may schedule its successor before the original call returns.
+        failure.recoveryRequested.set(true)
+        do {
+            if (!failure.mutex.tryLock()) return
+            try {
+                failure.recoveryRequested.set(false)
+                if (pendingIncidents[key] !== failure) return
+                val state = runtimeCoordinator.find(key.conversationId)
+                if (state?.activeTaskId != key.taskId || state.activeExecutor != executor) {
+                    pendingIncidents.remove(key, failure)
+                    return
+                }
+                if (state.controlState == ConversationExecutionState.ControlState.INTERRUPTING ||
+                    state.controlState == ConversationExecutionState.ControlState.STOPPING
+                ) {
+                    persistIncident(key, failure)
+                }
+            } catch (error: Throwable) {
+                currentCoroutineContext().ensureActive()
+                log.error(error) {
+                    "Runtime incident recovery failed: conversation=${key.conversationId.value} task=${key.taskId.value}"
+                }
+            } finally {
+                failure.mutex.unlock()
+            }
+        } while (failure.recoveryRequested.get())
+    }
+
+    private suspend fun persistIncident(key: ScheduledWork, failure: PendingIncident) {
+        if (pendingIncidents[key] !== failure) return
+        val incident = try {
+            if (failure.started) {
+                runtimeCoordinator.markActiveTaskInDoubt(key.conversationId, key.taskId, executor, failure.message, failure.errorType)
+            } else {
+                runtimeCoordinator.recordClaimedTaskDeliveryFailure(key.conversationId, key.taskId, executor, failure.message, failure.errorType)
+            }
+        } catch (error: Throwable) {
+            currentCoroutineContext().ensureActive()
+            log.error(error) {
+                "Failed to persist runtime incident: conversation=${key.conversationId.value} task=${key.taskId.value} " +
+                    "originalErrorType=${failure.errorType} originalMessage=${failure.message}"
+            }
+            try {
+                if (!runtimeCoordinator.confirmActiveTaskOwner(key.conversationId, key.taskId, executor)) {
+                    pendingIncidents.remove(key, failure)
+                    return
+                }
+            } catch (readError: Throwable) {
+                currentCoroutineContext().ensureActive()
+                log.warn(readError) { "Could not reconcile failed incident write: conversation=${key.conversationId.value} task=${key.taskId.value}" }
+            }
+            publishLiveRuntimeEvent(ConversationRuntimeEvent.ExecutionFailed(
+                conversationId = key.conversationId,
+                message = "${failure.message}. Failure diagnostics could not be saved; stop or interrupt the conversation to retry recovery.",
+                failureType = "INCIDENT_PERSISTENCE_FAILED",
+            ), durable = false)
+            return
+        }
+        pendingIncidents.remove(key, failure)
+        if (incident == null) return
         notifyBackgroundDeliveryFinished(incident.task)
-        publishRuntimeSnapshot(task.conversationId)
-        publishRuntimeEvent(
-            ConversationRuntimeEvent.ExecutionFailed(
-                conversationId = task.conversationId,
-                message = incident.message,
-                failureType = incident.kind.name,
-            )
-        )
+        publishRuntimeSnapshot(key.conversationId)
+        publishRuntimeEvent(ConversationRuntimeEvent.ExecutionFailed(
+            conversationId = key.conversationId,
+            message = incident.message,
+            failureType = incident.kind.name,
+        ))
     }
 
     private suspend fun finishRuntimeIfIdle(conversationId: Conversation.Id): Boolean {
@@ -529,14 +594,15 @@ class ConversationRuntimeExecutor(
         publishLiveRuntimeEvent(event.withCursorSequence(logEntry.sequence))
     }
 
-    private suspend fun publishLiveRuntimeEvent(event: ConversationRuntimeEvent) {
+    private suspend fun publishLiveRuntimeEvent(event: ConversationRuntimeEvent, durable: Boolean = true) {
         try {
             runtimeEventBus.publish(event)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             log.warn(error) {
-                "Failed to publish live runtime event; durable cursor replay will recover it: " +
+                (if (durable) "Failed to publish live runtime event; durable cursor replay will recover it: "
+                else "Failed to publish unsaved runtime incident; diagnostics remain in Server logs: ") +
                     "conversation=${event.conversationId.value} event=${event::class.simpleName} error=${error.message}"
             }
         }
@@ -590,6 +656,16 @@ class ConversationRuntimeExecutor(
         val taskId: ConversationRuntimeTask.Id,
         val job: Job,
     )
+
+    private class PendingIncident(
+        val task: ConversationRuntimeTask,
+        val message: String,
+        val errorType: String?,
+        val started: Boolean,
+    ) {
+        val mutex = Mutex()
+        val recoveryRequested = AtomicBoolean()
+    }
 
     private companion object {
         const val READY_WORK_BATCH_SIZE = 1_000
