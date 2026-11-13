@@ -46,6 +46,19 @@ class AiModelConfigurationTest {
         assertEquals(AiModelConfiguration.Compaction(), json.decodeFromString(AiModelConfiguration.serializer(), reset.toString()).compaction)
     }
 
+    @Test
+    fun tokenCountingDefaultsAndAlternateReferenceAreExplicit() {
+        val id = AiModelConfiguration.Id("counter")
+        assertEquals(AiModelConfiguration.TokenCounting.Mode.CURRENT, configuration().compaction.tokenCounting.mode)
+        assertFailsWith<IllegalArgumentException> { AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION) }
+        assertFailsWith<IllegalArgumentException> { AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.LOCAL, id) }
+        assertFailsWith<IllegalArgumentException> { AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.CURRENT, id) }
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(tokenCounting =
+            AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, id)))
+        assertEquals(configured, json.decodeFromString(AiModelConfiguration.serializer(), json.encodeToString(AiModelConfiguration.serializer(), configured)))
+    }
+
     private fun configuration(
         requestedEmbeddingDimensions: Int? = null,
     ) =

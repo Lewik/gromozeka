@@ -73,9 +73,9 @@ class TargetedAiRuntimeProvider(
         override val capabilities: AiRuntimeCapabilities
             get() = delegate.capabilities
 
-        override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+        override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
             requireAiPermission(request)
-            return delegate.inspectContext(request)
+            return delegate.inspectContext(request, allowProviderCount)
         }
 
         override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -112,9 +112,9 @@ class TargetedAiRuntimeProvider(
         private val workerId: ConversationRuntimeWorkerId,
         override val capabilities: AiRuntimeCapabilities,
     ) : AiRuntime {
-        override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+        override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
             val target = workerTargetResolver.requireRegistered(workerId, ConversationRuntimeCapability.AI_REQUEST_RESPONSE)
-            return remoteClient().inspectContext(target, runtime, null, request.copy(messages = request.originalCollaborationMessages()))
+            return remoteClient().inspectContext(target, runtime, null, request.copy(messages = request.originalCollaborationMessages()), allowProviderCount)
         }
 
         override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {

@@ -4,6 +4,12 @@
   "name": "繁體中文",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "上下文 token 計數",
+    "ai.compaction.count_current": "目前連線（若支援）",
+    "ai.compaction.count_local": "僅本機估算",
+    "ai.compaction.count_other": "其他模型設定",
+    "ai.compaction.count_model": "token 計數模型",
+    "ai.compaction.count_other_hint": "可攜式上下文會傳送至此設定。對主模型而言，其計數僅為估算；簽章狀態在本機估算。",
     "updates.title": "應用程式更新",
     "updates.thisApp": "更新此應用程式",
     "updates.description": "安裝套件從此伺服器下載。Worker 會在目前的請求完成後更新；桌面用戶端僅在你下達指令或正常結束時重新啟動。",

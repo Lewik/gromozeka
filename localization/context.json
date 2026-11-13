@@ -16034,5 +16034,11 @@
     "args": []
   },
   "ai.spec.chat_schema_empty_tool_calls_as_stop": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "TrueFoundry: repair empty schema tool-call outcome The workaround is OFF by default; preserve TrueFoundry, Chat Completions and JSON Schema identifiers.", "args": []},
-  "ai.spec.chat_schema_empty_tool_calls_as_stop_help": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Opt-in for affected Chat Completions routes only. Accepts only schema-valid content without calls or refusal; forced tools and other errors are not repaired. The workaround is OFF by default; preserve TrueFoundry, Chat Completions and JSON Schema identifiers.", "args": []}
+  "ai.spec.chat_schema_empty_tool_calls_as_stop_help": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Opt-in for affected Chat Completions routes only. Accepts only schema-valid content without calls or refusal; forced tools and other errors are not repaired. The workaround is OFF by default; preserve TrueFoundry, Chat Completions and JSON Schema identifiers.", "args": []},
+  "ai.compaction.count_mode": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Context token counting", "args": []},
+  "ai.compaction.count_current": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Current connection (if supported)", "args": []},
+  "ai.compaction.count_local": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Local estimate only", "args": []},
+  "ai.compaction.count_other": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Another model configuration", "args": []},
+  "ai.compaction.count_model": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Token-counting model", "args": []},
+  "ai.compaction.count_other_hint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Portable context is sent to this configuration. Its count is approximate for the main model; signed state is estimated locally.", "args": []}
 }

@@ -4,6 +4,12 @@
   "name": "한국어",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "컨텍스트 토큰 계산",
+    "ai.compaction.count_current": "현재 연결(지원되는 경우)",
+    "ai.compaction.count_local": "로컬 추정만 사용",
+    "ai.compaction.count_other": "다른 모델 구성",
+    "ai.compaction.count_model": "토큰 계산 모델",
+    "ai.compaction.count_other_hint": "이 구성으로 이식 가능한 컨텍스트를 전송합니다. 계산값은 주 모델에 대한 추정치이며 서명된 상태는 로컬에서 추정합니다.",
     "updates.title": "앱 업데이트",
     "updates.thisApp": "이 앱 업데이트",
     "updates.description": "패키지는 이 서버에서 다운로드됩니다. Worker는 진행 중인 요청이 끝난 뒤 업데이트되며, 데스크톱 클라이언트는 직접 요청하거나 정상 종료할 때만 다시 시작합니다.",

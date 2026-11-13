@@ -94,7 +94,8 @@ Compaction is configured on `AiModelConfiguration`, not `AiModelSpec`:
 {
   "compaction": {
     "thresholdTokens": 140000,
-    "summaryModelConfigurationId": null
+    "summaryModelConfigurationId": null,
+    "tokenCounting": { "mode": "CURRENT", "modelConfigurationId": null }
   }
 }
 ```
@@ -106,7 +107,7 @@ new and migrated configurations). A provider's intrinsic session compaction can
 still occur; its emitted checkpoints also use the COW commit. The optional summary configuration is used only for
 text summarization; null means the active agent's model. Existing Control MCP
 `grz_ai_catalog_get` and `grz_ai_model_configuration_upsert` read and replace these
-settings. `compaction: {}` resets both fields. The global `MESSAGE_SQUASH` runtime
+settings. `compaction: {}` resets the whole policy, including token counting. The global `MESSAGE_SQUASH` runtime
 assignment and model-spec threshold policy have been removed.
 
 Before an ordinary model call, the Conversation Runtime checks the complete next
@@ -116,9 +117,54 @@ history version (COW), and rebuilds the request. If the result still exceeds the
 threshold, it stops with an explicit error instead of repeatedly compacting or
 sending the oversized request. Preparation is not proactive or concurrent.
 
+### Context counting policy
+
+Normal continuation uses the last compatible ordinary response's context usage plus
+local size/4 estimates for the changed overhead and appended messages. Server performs
+this check without a provider request or a separate full-payload Worker inspection RPC.
+Approaching the threshold does not itself request a provider count. The estimate is
+not a tokenizer guarantee; the configured threshold must leave room in the model window.
+A baseline belongs to its original model, connection, request semantics, thread and
+content-bound history prefix, including the covered output. Edits with unchanged IDs,
+shortening, forks and compaction cannot relabel an old measurement as a new one.
+System/tool overhead changes are reflected in the local estimate. Cumulative billing,
+helper usage and compaction-pass usage never substitute for ordinary context usage.
+
+`compaction.tokenCounting` selects what to do when no compatible baseline exists:
+
+- `CURRENT` (default): use the current route's count API when the adapter implements
+  one; otherwise estimate locally. Currently implemented count APIs are OpenAI Responses
+  and direct Anthropic Messages, not OpenAI-compatible Chat routes.
+- `LOCAL`: never call a token-count endpoint, even if the adapter implements one.
+  Ordinary measured usage is still reused; missing measurements use local estimates.
+- `MODEL_CONFIGURATION`: require `modelConfigurationId` identifying an enabled text
+  model configuration with a count API. That configuration selects model, connection,
+  credentials, execution target and quota policy. Its own counting policy is not followed
+  recursively. This is an explicit data transfer to another provider/connection and the
+  count is marked approximate for the main model. Signed thinking and opaque checkpoints
+  are not forwarded across models: their local estimate is added to the portable-window
+  count. Archived pre-compaction sources are not expanded just to count them.
+
+Select an alternate counter, for example:
+
+```json
+"tokenCounting": {
+  "mode": "MODEL_CONFIGURATION",
+  "modelConfigurationId": "corporate-token-counter"
+}
+```
+
+A configured counter failure remains explicit; it does not silently switch to local
+estimation or another endpoint. The next ordinary main-model response supplies the next
+baseline. Legacy measurement metadata is ignored once, without rewriting history.
+Dynamic native-compaction availability is inspected only when compaction is necessary,
+with provider counting explicitly disabled. The main model, not the alternate counter,
+selects the compaction executor. Gateway protocol **28** carries that flag explicitly;
+Server and Workers require a coordinated upgrade.
+
 The executor is selected before execution:
 
-- OpenAI API Responses: `/responses/input_tokens` counts the request, then
+- OpenAI API Responses: `/responses/input_tokens` counts fresh/invalidated contexts when selected, and
   `/responses/compact` returns a complete native replay window. Its order and
   encrypted items are preserved. Compact-only requests omit `instructions` to
   avoid invalidating subsequent preserved reasoning; ordinary generation still
@@ -134,7 +180,7 @@ The executor is selected before execution:
   receipt plus session ID, source IDs and transcript fingerprints authorize
   continuation across the history-version change. A fresh session or incomplete
   tool boundary selects text summarization before any native mutation.
-- Anthropic Messages: `/messages/count_tokens` counts supported API requests;
+- Anthropic Messages: `/messages/count_tokens` counts fresh/invalidated contexts when selected;
   text summarization performs compaction. Bedrock has no universal count endpoint
   in this adapter and uses an explicitly marked estimate.
 - Chat Completions, including TrueFoundry: no speculative count endpoint or header
@@ -162,7 +208,7 @@ another route. Every committed compaction creates a new Thread; canonical source
 messages and original IDs remain archived. Runtime roots, queues and stable
 Conversation/Agent collaboration addresses continue. New provider output after a
 native checkpoint receives the new replay scope; archived opaque state is not
-retagged. Server and Workers must use the matching Gateway protocol (currently version 25).
+retagged. Server and Workers must use the matching Gateway protocol (currently version 28).
 
 Text auto-compaction always uses the continuation-oriented SUMMARIZE prompt.
 There is no preserved raw-message tail and no separate summary-length setting.

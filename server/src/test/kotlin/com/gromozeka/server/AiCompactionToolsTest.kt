@@ -40,7 +40,8 @@ class AiCompactionToolsTest {
         val upsert = tools.single { it.definition.name == "grz_ai_model_configuration_upsert" }
         val read = tools.single { it.definition.name == "grz_ai_catalog_get" }
         assertTrue(tools.none { it.definition.name.startsWith("grz_ai_compaction_") })
-        val configured = original.copy(compaction = AiModelConfiguration.Compaction(1000, summary.id))
+        val configured = original.copy(compaction = AiModelConfiguration.Compaction(1000, summary.id,
+            AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.LOCAL)))
         val args = buildJsonObject {
             put("modelConfiguration", Json.encodeToJsonElement(AiModelConfiguration.serializer(), configured))
             put("expectedRevision", 7)
@@ -50,6 +51,7 @@ class AiCompactionToolsTest {
         assertContains(saved.toString(), "\"summaryModelConfigurationId\":\"compaction-test-summary\"")
         val fetched = read.invokeStructured(testControlMcpContext(), buildJsonObject {})
         assertContains(fetched.toString(), "\"thresholdTokens\":1000")
+        assertContains(fetched.toString(), "\"mode\":\"LOCAL\"")
         assertEquals(8L, snapshot.revision)
         val denied = upsert.invoke(testControlMcpContext(User.Role.entries.first { it != User.Role.OWNER }), args)
         assertEquals(true, denied.isError)

@@ -236,7 +236,7 @@ class SpeechExecutionRoutingTest {
     private class RecordingRemoteClient : AiRequestResponseExecutionClient {
         override suspend fun inspectContext(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
             runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
-            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused context inspection")
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest, allowProviderCount: Boolean): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused context inspection")
         override suspend fun compact(target: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
             runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
             request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compaction")

@@ -66,6 +66,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.hasContextCountApi
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiModelBehavior
 import com.gromozeka.domain.model.ai.AiReasoningCapabilities
@@ -555,7 +556,8 @@ private fun ModelConfigurationsEditor(
                         onEdit = { editing = configuration },
                         onDelete = {
                             if (assignments.isNotEmpty() || draft.modelConfigurations.any {
-                                    it.compaction.summaryModelConfigurationId == configuration.id
+                                    it.compaction.summaryModelConfigurationId == configuration.id ||
+                                    it.compaction.tokenCounting.modelConfigurationId == configuration.id
                                 }) {
                                 onError(translation.text("ai.model.in_use", "name" to configuration.displayName))
                             } else {
@@ -1691,6 +1693,8 @@ private fun ModelConfigurationDialog(
     }
     var compactionValue by remember { mutableStateOf(existing?.compaction?.thresholdTokens?.toString().orEmpty()) }
     var summaryConfigurationId by remember { mutableStateOf(existing?.compaction?.summaryModelConfigurationId) }
+    var countMode by remember { mutableStateOf(existing?.compaction?.tokenCounting?.mode ?: AiModelConfiguration.TokenCounting.Mode.CURRENT) }
+    var counterConfigurationId by remember { mutableStateOf(existing?.compaction?.tokenCounting?.modelConfigurationId) }
     var reasoningMode by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.mode) }
     var reasoningEffort by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.effort) }
     var reasoningDisplay by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.display) }
@@ -1799,6 +1803,34 @@ private fun ModelConfigurationDialog(
                             Modifier.weight(1f),
                             enabled = compactionMode != AutoCompactionEditorMode.None,
                         )
+                    }
+                    LabeledDropdown(
+                        label = translation.text("ai.compaction.count_mode"),
+                        value = countMode,
+                        options = AiModelConfiguration.TokenCounting.Mode.entries,
+                        optionLabel = { mode -> translation.text(when (mode) {
+                            AiModelConfiguration.TokenCounting.Mode.CURRENT -> "ai.compaction.count_current"
+                            AiModelConfiguration.TokenCounting.Mode.LOCAL -> "ai.compaction.count_local"
+                            AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION -> "ai.compaction.count_other"
+                        }) },
+                        onSelect = { countMode = it },
+                    )
+                    if (countMode == AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION) {
+                        LabeledDropdown(
+                            label = translation.text("ai.compaction.count_model"),
+                            value = counterConfigurationId,
+                            options = listOf<AiModelConfiguration.Id?>(null) + configurations.filter { candidate ->
+                                candidate.enabled && candidate.id.value != id.trim() &&
+                                    connections.firstOrNull { it.id == candidate.connectionId }?.kind?.hasContextCountApi == true &&
+                                    modelSpecs.any { spec -> spec.id == candidate.providerModelId && spec.limits.textGeneration != null &&
+                                        spec.provider == connections.firstOrNull { it.id == candidate.connectionId }?.kind?.provider }
+                            }.map { it.id },
+                            optionLabel = { selected -> selected?.let { counter ->
+                                configurations.firstOrNull { it.id == counter }?.displayName ?: counter.value
+                            } ?: translation.text("ai.compaction.count_model") },
+                            onSelect = { counterConfigurationId = it },
+                        )
+                        Text(translation.text("ai.compaction.count_other_hint"), style = MaterialTheme.typography.bodySmall)
                     }
                     LabeledDropdown(
                         label = translation.text("ai.compaction.summary_model"),
@@ -1914,6 +1946,10 @@ private fun ModelConfigurationDialog(
                                 }
                             },
                             summaryModelConfigurationId = summaryConfigurationId,
+                            tokenCounting = AiModelConfiguration.TokenCounting(countMode,
+                                if (countMode == AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION)
+                                    requireNotNull(counterConfigurationId) { translation.text("ai.compaction.count_model") }
+                                else null),
                         ) else AiModelConfiguration.Compaction(),
                         requestedEmbeddingDimensions = if (supportsEmbeddings) {
                             requestedEmbeddingDimensions.optionalInt(translation.text("ai.model.requested_embedding_dimensions"), translation)

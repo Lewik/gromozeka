@@ -58,9 +58,9 @@ class AiInputValidatingRuntime(
 
     override val tokenEstimator: AiRequestTokenEstimator get() = delegate.tokenEstimator
 
-    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+    override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
         val prepared = validatedRequest(request)
-        val inspection = delegate.inspectContext(prepared)
+        val inspection = delegate.inspectContext(prepared, allowProviderCount)
         return if (runtime.connection.kind in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION)) inspection
             else AiContextMeasurements.calibrate(runtime, prepared, inspection, tokenEstimator.id)
     }
@@ -112,8 +112,8 @@ class ModelDefaultAiRuntime(
         override fun output(messages: List<AiAssistantMessage>): Int = delegate.tokenEstimator.output(messages)
     }
 
-    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection =
-        delegate.inspectContext(request.withModelDefaults(defaults))
+    override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection =
+        delegate.inspectContext(request.withModelDefaults(defaults), allowProviderCount)
 
     override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse =
         delegate.compact(request.withModelDefaults(defaults))

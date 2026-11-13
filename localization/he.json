@@ -4,6 +4,12 @@
   "name": "עברית",
   "direction": "RTL",
   "messages": {
+    "ai.compaction.count_mode": "ספירת טוקנים בהקשר",
+    "ai.compaction.count_current": "החיבור הנוכחי (אם נתמך)",
+    "ai.compaction.count_local": "הערכה מקומית בלבד",
+    "ai.compaction.count_other": "תצורת מודל אחרת",
+    "ai.compaction.count_model": "מודל לספירת טוקנים",
+    "ai.compaction.count_other_hint": "ההקשר הנייד נשלח לתצורה זו. הספירה היא הערכה עבור המודל הראשי; מצב חתום מוערך מקומית.",
     "updates.title": "עדכוני יישומים",
     "updates.thisApp": "עדכון היישום הזה",
     "updates.description": "החבילות יורדות מהשרת הזה. Workers מתעדכנים לאחר סיום הבקשות הפעילות; לקוחות מחשב מופעלים מחדש רק לפי בקשתך או בעת יציאה רגילה.",

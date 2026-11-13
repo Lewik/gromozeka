@@ -108,7 +108,7 @@ interface AiRequestResponseExecutionClient {
         actorUserId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ai.AiConnectionModels
 
     suspend fun inspectContext(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
-        workspaceRootPath: String?, request: AiRuntimeRequest): AiContextInspection
+        workspaceRootPath: String?, request: AiRuntimeRequest, allowProviderCount: Boolean = true): AiContextInspection
 
     suspend fun compact(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
         workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse
@@ -148,7 +148,7 @@ interface AiRequestResponseExecutionClient {
 interface AiRequestResponseExecutionHandler {
     suspend fun listModels(connection: AiConnection, deadline: kotlin.time.Instant): com.gromozeka.domain.model.ai.AiConnectionModels
 
-    suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest):
+    suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest, allowProviderCount: Boolean = true):
         AiContextInspection
 
     suspend fun compact(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest):

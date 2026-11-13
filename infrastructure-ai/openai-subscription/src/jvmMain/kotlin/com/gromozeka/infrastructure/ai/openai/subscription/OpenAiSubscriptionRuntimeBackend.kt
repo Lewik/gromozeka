@@ -77,7 +77,7 @@ private class Runtime(
         supportsNativeCompaction = true,
     )
 
-    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+    override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
         val session = authService.getValidSession()
         val profile = modelsClient.getProfile(session, modelName)
         val body = requestMapper.toRequest(request, profile,

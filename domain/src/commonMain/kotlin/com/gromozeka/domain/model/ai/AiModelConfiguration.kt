@@ -47,12 +47,28 @@ data class AiModelConfiguration(
     data class Compaction(
         val thresholdTokens: Int? = null,
         val summaryModelConfigurationId: Id? = null,
+        val tokenCounting: TokenCounting = TokenCounting(),
     ) {
         init {
             require(thresholdTokens == null || thresholdTokens > 0) {
                 "AI compaction threshold must be positive"
             }
         }
+    }
+
+    @Serializable
+    data class TokenCounting(
+        val mode: Mode = Mode.CURRENT,
+        val modelConfigurationId: Id? = null,
+    ) {
+        init {
+            require((mode == Mode.MODEL_CONFIGURATION) == (modelConfigurationId != null)) {
+                "An alternate token counter is required only in MODEL_CONFIGURATION mode"
+            }
+        }
+
+        @Serializable
+        enum class Mode { CURRENT, LOCAL, MODEL_CONFIGURATION }
     }
 
     @Serializable

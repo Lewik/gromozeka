@@ -4,6 +4,12 @@
   "name": "简体中文",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "上下文 token 计数",
+    "ai.compaction.count_current": "当前连接（若支持）",
+    "ai.compaction.count_local": "仅本地估算",
+    "ai.compaction.count_other": "其他模型配置",
+    "ai.compaction.count_model": "token 计数模型",
+    "ai.compaction.count_other_hint": "可移植的上下文会发送到此配置。对于主模型，其计数仅为估算；签名状态在本地估算。",
     "updates.title": "应用更新",
     "updates.thisApp": "更新此应用",
     "updates.description": "安装包从此服务器下载。Worker 会在当前请求完成后更新；桌面客户端仅在你下达指令或正常退出时重启。",

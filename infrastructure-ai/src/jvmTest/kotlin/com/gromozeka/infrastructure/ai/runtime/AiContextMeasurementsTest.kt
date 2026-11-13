@@ -62,7 +62,7 @@ class AiContextMeasurementsTest {
     @Test fun oldOrDifferentEstimatorBaselinesAreDiscardedWithoutRewritingHistory() {
         val stored = persisted(AiContextMeasurements.record(runtime, initial, response))
         val measurement = stored.providerMetadata.getValue("gromozekaContextMeasurement").jsonObject
-        for (modified in listOf(JsonObject(measurement - "estimatorId"),
+        for (modified in listOf(JsonObject(measurement - "estimatorId" - "version"),
             JsonObject(measurement + ("estimatorId" to JsonPrimitive("different-projection"))))) {
             val source = stored.copy(providerMetadata = JsonObject(stored.providerMetadata + ("gromozekaContextMeasurement" to modified)))
             val next = initial.copy(messages = initial.messages + source)
@@ -149,6 +149,42 @@ class AiContextMeasurementsTest {
         val unencodable = initial.copy(messages = listOf(initial.messages.single().copy(content = listOf(invalidNumber))))
         assertFailsWith<SerializationException> { AiRequestTokenEstimate.input(unencodable) }
         assertSame(response, AiContextMeasurements.record(runtime, unencodable, response))
+    }
+
+    @Test fun editsToCoveredInputOrOutputInvalidateEvenWithTheSameIds() {
+        val stored = persisted(AiContextMeasurements.record(runtime, initial, response))
+        val next = initial.copy(messages = initial.messages + stored)
+        for (edited in listOf(
+            next.copy(messages = listOf(user("question", "Q"), stored)),
+            next.copy(messages = initial.messages + stored.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("Edited output")))),
+            next.copy(messages = listOf(user("inserted", "Inserted")) + next.messages),
+        )) assertEquals(estimate(edited), AiContextMeasurements.calibrate(runtime, edited, estimate(edited)))
+    }
+
+    @Test fun damagedCurrentMetadataIsNotSilentlyTreatedAsLegacy() {
+        val stored = persisted(AiContextMeasurements.record(runtime, initial, response))
+        val measurement = stored.providerMetadata.getValue("gromozekaContextMeasurement").jsonObject
+        val broken = stored.copy(providerMetadata = JsonObject(stored.providerMetadata +
+            ("gromozekaContextMeasurement" to JsonObject(measurement - "estimatorId"))))
+        val next = initial.copy(messages = initial.messages + broken)
+        assertFailsWith<SerializationException> { AiContextMeasurements.calibrate(runtime, next, estimate(next)) }
+    }
+
+    @Test fun ordinaryUsageSupportsServerSidePortableInspectionWithoutCallingTheRuntime() = runBlocking {
+        var calls = 0
+        val backend = object : AiRuntime {
+            override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection = error("No preflight needed")
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse { calls++; return response }
+            override fun stream(request: AiRuntimeRequest) = flowOf(response)
+        }
+        val wrapped = AiInputValidatingRuntime(backend, runtime)
+        val received = wrapped.call(initial)
+        val next = initial.copy(messages = initial.messages + persisted(received))
+        val measured = com.gromozeka.domain.service.AiContextMeasurement.portableInspection(runtime, next)
+        assertEquals(120, measured?.inputTokens)
+        assertEquals(1, calls)
+        val changed = next.copy(options = next.options.copy(toolContext = mapOf("threadId" to "fork")))
+        assertNull(com.gromozeka.domain.service.AiContextMeasurement.portableInspection(runtime, changed))
     }
 
     private fun estimate(request: AiRuntimeRequest) = AiContextInspection(AiRequestTokenEstimate.input(request), AiContextInspection.Precision.ESTIMATE)

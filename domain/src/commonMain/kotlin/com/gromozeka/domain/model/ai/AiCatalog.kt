@@ -83,6 +83,16 @@ data class AiCatalog(
                 require(compaction.thresholdTokens == null || compaction.thresholdTokens < limits.contextWindowTokens) {
                     "Compaction threshold must leave room inside the context window: ${configuration.id.value}"
                 }
+                compaction.tokenCounting.modelConfigurationId?.let { counterId ->
+                    require(counterId != configuration.id) { "Use CURRENT to count with the same configuration" }
+                    val counter = modelConfigurations.singleOrNull { it.id == counterId }
+                    require(counter != null && counter.enabled && modelSpecFor(counter)?.limits?.textGeneration != null) {
+                        "Token counting references a missing, disabled or non-text configuration: ${counterId.value}"
+                    }
+                    require(connectionFor(counter)?.kind?.hasContextCountApi == true) {
+                        "The selected token counter has no count API: ${counterId.value}"
+                    }
+                }
                 compaction.summaryModelConfigurationId?.let { summaryId ->
                     val summary = modelConfigurations.singleOrNull { it.id == summaryId }
                     require(summary != null && summary.enabled && modelSpecFor(summary)?.limits?.textGeneration != null) {

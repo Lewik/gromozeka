@@ -36,8 +36,8 @@ class DirectAiRequestResponseExecutionHandler(
     override suspend fun listModels(connection: com.gromozeka.domain.model.ai.AiConnection, deadline: kotlin.time.Instant) =
         connectionModelsExecutor.listModels(connection, deadline)
 
-    override suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest) =
-        runtimeProvider.getRuntime(runtime, workspaceRootPath).inspectContext(request)
+    override suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest, allowProviderCount: Boolean) =
+        runtimeProvider.getRuntime(runtime, workspaceRootPath).inspectContext(request, allowProviderCount)
 
     override suspend fun compact(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest) =
         runtimeProvider.getRuntime(runtime, workspaceRootPath).compact(request)

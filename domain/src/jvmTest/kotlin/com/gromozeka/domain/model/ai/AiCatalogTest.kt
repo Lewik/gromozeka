@@ -267,6 +267,29 @@ class AiCatalogTest {
         }) }
     }
 
+    @Test
+    fun validatesTokenCounterReferencesWithoutFollowingTheirOwnCountingPolicy() {
+        val catalog = testCatalog()
+        val main = catalog.modelConfigurations.first { it.id == CHAT_CONFIGURATION_ID }
+        val counter = main.copy(id = AiModelConfiguration.Id("counter"))
+        val policy = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, counter.id)
+        fun use(id: AiModelConfiguration.Id) = main.copy(compaction = main.compaction.copy(tokenCounting = policy.copy(modelConfigurationId = id)))
+        val configured = catalog.copy(modelConfigurations = catalog.modelConfigurations.map { if (it.id == main.id) use(counter.id) else it } + counter)
+        assertEquals(policy, configured.modelConfigurations.first { it.id == main.id }.compaction.tokenCounting)
+        for (id in listOf(main.id, EMBEDDING_CONFIGURATION_ID, AiModelConfiguration.Id("missing"))) {
+            assertFailsWith<IllegalArgumentException> { catalog.copy(modelConfigurations = catalog.modelConfigurations.map { if (it.id == main.id) use(id) else it }) }
+        }
+        assertFailsWith<IllegalArgumentException> { configured.copy(modelConfigurations = configured.modelConfigurations.filterNot { it.id == counter.id }) }
+        assertFailsWith<IllegalArgumentException> { configured.copy(modelConfigurations = configured.modelConfigurations.map { if (it.id == counter.id) it.copy(enabled = false) else it }) }
+        val noApi = AiConnection.OpenAiCompatible(AiConnection.Id("no-count"), "No count", baseUrl = "https://example.test")
+        assertFailsWith<IllegalArgumentException> { configured.copy(connections = configured.connections + noApi,
+            modelSpecs = configured.modelSpecs + configured.modelSpecFor(main)!!.copy(provider = com.gromozeka.domain.model.AiProvider.CUSTOM),
+            modelConfigurations = configured.modelConfigurations.map { if (it.id == counter.id) it.copy(connectionId = noApi.id) else it }) }
+        // References choose an endpoint/model, not a recursive policy chain.
+        configured.copy(modelConfigurations = configured.modelConfigurations.map { if (it.id == counter.id)
+            it.copy(compaction = it.compaction.copy(tokenCounting = policy.copy(modelConfigurationId = main.id))) else it })
+    }
+
     private fun testCatalog(connectionEnabled: Boolean = true): AiCatalog {
         val configurations = listOf(
             configuration(CHAT_CONFIGURATION_ID, "chat"),

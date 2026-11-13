@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Checkpoint
 import com.gromozeka.domain.model.ai.*
@@ -22,6 +23,7 @@ class ConversationCompactionService internal constructor(
     private val committer: ContextCompactionCommitter,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val events: ConversationRuntimeEventBus,
+    private val runtimes: AiRuntimeProvider,
 ) {
     suspend fun compactIfNeeded(
         task: ConversationRuntimeTask,
@@ -40,7 +42,8 @@ class ConversationCompactionService internal constructor(
         }
         val resolved = configurations.resolveAiRuntime(agent.runtimeSelection)
         val threshold = resolved.modelConfiguration.compaction.thresholdTokens ?: return null
-        val inspection = runtime.inspectContext(request)
+        val inspection = inspectContext(resolved, runtime, request)
+        check(configurations.resolveAiRuntime(agent.runtimeSelection) == resolved) { "Model configuration changed during context counting" }
         require(additionalInputTokens >= 0) { "Additional context estimate cannot be negative" }
         val occupied = inspection.inputTokens.toLong() + additionalInputTokens
         if (occupied < threshold) return null
@@ -50,7 +53,9 @@ class ConversationCompactionService internal constructor(
         }
         val sources = history.getMessagesByThread(conversation.currentThread)
         require(sources.isNotEmpty()) { "There is no history to compact" }
-        val message = if (inspection.nativeCompactionAvailable) {
+        val nativeAvailable = inspection.nativeCompactionAvailable ||
+            (runtime.capabilities.supportsNativeCompaction && runtime.inspectContext(request, allowProviderCount = false).nativeCompactionAvailable)
+        val message = if (nativeAvailable) {
             val response = runtime.compact(request.copy(options = request.options.copy(usagePurpose = "CONTEXT_COMPACTION")))
             check(response.outcome in setOf(AiStepOutcome.COMPLETE, AiStepOutcome.CONTINUE) && response.toolCalls.isEmpty()) {
                 "Native compaction did not complete: ${response.outcome} (${response.finishReason})"
@@ -82,6 +87,45 @@ class ConversationCompactionService internal constructor(
         val updated = committer.commit(conversation.currentThread, message)
         publishHistoryChange(task)
         return updated
+    }
+
+    private suspend fun inspectContext(resolved: ResolvedAiRuntime, runtime: AiRuntime, request: AiRuntimeRequest): AiContextInspection {
+        AiContextMeasurement.portableInspection(resolved, request)?.let { return it }
+        val policy = resolved.modelConfiguration.compaction.tokenCounting
+        val projected = request.copy(messages = request.projectedMessages(resolved.connection.kind.nativeCompactionProvider()))
+        fun local() = AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)
+        return when (policy.mode) {
+            AiModelConfiguration.TokenCounting.Mode.LOCAL -> local()
+            AiModelConfiguration.TokenCounting.Mode.CURRENT ->
+                if (resolved.connection.kind.hasContextCountApi) runtime.inspectContext(request) else local()
+            AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION -> {
+                val selection = AiRuntimeSelection(requireNotNull(policy.modelConfigurationId))
+                val counter = configurations.resolveAiRuntime(selection)
+                check(counter.connection.kind.hasContextCountApi) { "Selected context counter has no count API" }
+                var opaqueTokens = 0L
+                val messages = projected.messages.mapNotNull { message ->
+                    val (opaque, portable) = message.content.partition { item ->
+                        item is Conversation.Message.ContentItem.Thinking ||
+                            (item is Checkpoint && item.payload is Checkpoint.Payload.OpaqueProviderState)
+                    }
+                    if (opaque.isNotEmpty()) opaqueTokens += AiRequestTokenEstimate.message(message.copy(content = opaque, instructions = emptyList()))
+                    if (portable.isEmpty() && message.instructions.isEmpty()) null
+                        else message.copy(content = portable).withoutProviderReplay()
+                }
+                // Signed/opaque state is never forwarded to a different model. Count its
+                // local estimate alongside the portable active window, not its archived sources.
+                if (messages.isEmpty()) return local()
+                val countRequest = projected.copy(messages = messages, options = projected.options.copy(
+                    reasoning = null, maxOutputTokens = null, usagePurpose = "CONTEXT_COUNT",
+                ))
+                val result = runtimes.getRuntime(selection, null).inspectContext(countRequest)
+                check(result.precision == AiContextInspection.Precision.PROVIDER_COUNT) { "Selected context counter did not return a provider count" }
+                check(configurations.resolveAiRuntime(selection) == counter) { "Context counter changed during counting" }
+                val tokens = result.inputTokens.toLong() + opaqueTokens
+                check(tokens <= Int.MAX_VALUE) { "Context count exceeds the supported range" }
+                AiContextInspection(tokens.toInt(), AiContextInspection.Precision.REFERENCE_MODEL_ESTIMATE)
+            }
+        }
     }
 
     /** Native checkpoints emitted by a provider-managed generation use the same COW commit. */

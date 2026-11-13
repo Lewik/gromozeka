@@ -72,8 +72,8 @@ object AiRequestResponseGatewayCodec {
             else -> error("Worker Gateway AI response payload type mismatch: expected model list")
         }
 
-    fun encodeContextInspectionRequest(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): ByteArray =
-        encodeOperation(AiRequestResponseOperation.InspectContext(runtime, workspaceRootPath, request.toWire()))
+    fun encodeContextInspectionRequest(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest, allowProviderCount: Boolean = true): ByteArray =
+        encodeOperation(AiRequestResponseOperation.InspectContext(runtime, workspaceRootPath, request.toWire(), allowProviderCount))
 
     fun encodeCompactionRequest(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): ByteArray =
         encodeOperation(AiRequestResponseOperation.Compact(runtime, workspaceRootPath, request.toWire()))
@@ -173,7 +173,7 @@ object AiRequestResponseGatewayCodec {
             }
             is AiRequestResponseOperation.InspectContext -> {
                 try { AiRequestResponsePayload.ContextInspection(handler.inspectContext(
-                    operation.runtime, operation.workspaceRootPath, operation.request.toRuntime())) }
+                    operation.runtime, operation.workspaceRootPath, operation.request.toRuntime(), operation.allowProviderCount)) }
                 catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
             }
             is AiRequestResponseOperation.Compact -> {
@@ -254,8 +254,8 @@ private sealed interface AiRequestResponseOperation {
     data class Models(val connection: AiConnection, val deadline: kotlin.time.Instant) : AiRequestResponseOperation
 
     @Serializable
-    @SerialName("inspect_context_v1")
-    data class InspectContext(val runtime: ResolvedAiRuntime, val workspaceRootPath: String?, val request: AiRuntimeRequestWire) : AiRequestResponseOperation
+    @SerialName("inspect_context_v2")
+    data class InspectContext(val runtime: ResolvedAiRuntime, val workspaceRootPath: String?, val request: AiRuntimeRequestWire, val allowProviderCount: Boolean) : AiRequestResponseOperation
 
     @Serializable
     @SerialName("compact_v1")

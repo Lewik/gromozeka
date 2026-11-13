@@ -4,6 +4,12 @@
   "name": "Português (Brasil)",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "Contagem de tokens do contexto",
+    "ai.compaction.count_current": "Conexão atual (se compatível)",
+    "ai.compaction.count_local": "Somente estimativa local",
+    "ai.compaction.count_other": "Outra configuração de modelo",
+    "ai.compaction.count_model": "Modelo para contagem de tokens",
+    "ai.compaction.count_other_hint": "O contexto portável é enviado a esta configuração. A contagem é aproximada para o modelo principal; o estado assinado é estimado localmente.",
     "updates.title": "Atualizações de aplicativos",
     "updates.thisApp": "Atualizar este aplicativo",
     "updates.description": "Os pacotes são baixados deste servidor. Workers são atualizados após as solicitações ativas terminarem; clientes desktop reiniciam apenas por sua ordem ou ao sair normalmente.",

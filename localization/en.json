@@ -4,6 +4,12 @@
   "name": "English",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "Context token counting",
+    "ai.compaction.count_current": "Current connection (if supported)",
+    "ai.compaction.count_local": "Local estimate only",
+    "ai.compaction.count_other": "Another model configuration",
+    "ai.compaction.count_model": "Token-counting model",
+    "ai.compaction.count_other_hint": "Portable context is sent to this configuration. Its count is approximate for the main model; signed state is estimated locally.",
     "updates.title": "Application updates",
     "updates.thisApp": "Update this application",
     "updates.description": "Packages are downloaded from this server. Workers update after active requests finish; desktop clients restart only on your command or normal exit.",

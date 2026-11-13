@@ -4,6 +4,12 @@
   "name": "العربية",
   "direction": "RTL",
   "messages": {
+    "ai.compaction.count_mode": "عدّ رموز السياق",
+    "ai.compaction.count_current": "الاتصال الحالي (إن كان مدعومًا)",
+    "ai.compaction.count_local": "تقدير محلي فقط",
+    "ai.compaction.count_other": "إعداد نموذج آخر",
+    "ai.compaction.count_model": "نموذج عدّ الرموز",
+    "ai.compaction.count_other_hint": "يُرسل السياق القابل للنقل إلى هذا الإعداد. العدد تقريبي للنموذج الأساسي؛ وتُقدّر الحالة الموقّعة محليًا.",
     "updates.title": "تحديثات التطبيقات",
     "updates.thisApp": "تحديث هذا التطبيق",
     "updates.description": "تُنزل الحزم من هذا الخادم. تُحدّث Workers بعد انتهاء الطلبات النشطة؛ ولا يُعاد تشغيل تطبيقات سطح المكتب إلا بطلبك أو عند الخروج المعتاد.",

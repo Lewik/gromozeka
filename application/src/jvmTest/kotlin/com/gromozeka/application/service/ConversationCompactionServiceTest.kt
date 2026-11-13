@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Clock
@@ -92,6 +94,129 @@ class ConversationCompactionServiceTest {
         assertEquals(f.sources, f.summarized)
     }
 
+    @Test fun `measured append only continuation has no count call even near the threshold`() = runBlocking {
+        val f = Fixture(150)
+        f.withMeasurement()
+        f.request = f.request.copy(messages = f.request.messages + f.sources.last().copy(id = Conversation.Message.Id("tail"),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("New"))))
+        assertNull(f.apply())
+        assertEquals(0, f.inspections)
+        assertEquals(0, f.counterCalls)
+    }
+
+    @Test fun `editing measured history with the same ids recounts even when text shrinks`() = runBlocking {
+        for (text in listOf("X", "A longer changed question")) {
+            val f = Fixture(1000)
+            f.withMeasurement()
+            f.request = f.request.copy(messages = f.request.messages.mapIndexed { i, message ->
+                if (i == 0) message.copy(content = listOf(Conversation.Message.ContentItem.UserMessage(text))) else message
+            })
+            assertNull(f.apply())
+            assertEquals(listOf(true), f.countPermissions)
+        }
+    }
+
+    @Test fun `disabled count and unsupported API stay local without contacting any runtime`() = runBlocking {
+        for (disabled in listOf(true, false)) {
+            val f = Fixture(1000)
+            f.resolved = if (disabled) f.resolved.copy(modelConfiguration = f.resolved.modelConfiguration.copy(
+                compaction = f.resolved.modelConfiguration.compaction.copy(tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.LOCAL))))
+            else f.resolved.copy(connection = AiConnection.OpenAiCompatible(f.resolved.connection.id, "Gateway", baseUrl = "https://example.test"),
+                modelSpec = f.resolved.modelSpec.copy(provider = AiProvider.CUSTOM))
+            assertNull(f.apply())
+            assertEquals(0, f.inspections + f.counterCalls)
+        }
+    }
+
+    @Test fun `local policy still permits native capability inspection without a count endpoint`() = runBlocking {
+        val f = Fixture(1, native = true)
+        f.resolved = f.resolved.copy(modelConfiguration = f.resolved.modelConfiguration.copy(compaction =
+            f.resolved.modelConfiguration.compaction.copy(tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.LOCAL))))
+        assertNotNull(f.apply())
+        assertEquals(listOf(false), f.countPermissions)
+        assertEquals(1, f.nativeCalls)
+    }
+
+    @Test fun `alternate counter does not replace native selection and actual main usage supersedes it`() = runBlocking {
+        val f = Fixture(100)
+        f.useCounter()
+        assertNotNull(f.apply())
+        assertEquals(1, f.counterCalls)
+        assertEquals(0, f.inspections + f.nativeCalls)
+        assertEquals(1, f.summaryCalls)
+        assertEquals("CONTEXT_COUNT", f.counterRequest?.options?.usagePurpose)
+        assertEquals(f.request.messages.map { it.content }, f.counterRequest?.messages?.map { it.content })
+        val next = Fixture(1000)
+        next.useCounter(); next.withMeasurement()
+        assertNull(next.apply())
+        assertEquals(0, next.counterCalls + next.inspections)
+    }
+
+    @Test fun `enabled counter failures never start generation or silently select local estimation`() = runBlocking {
+        for (alternate in listOf(false, true)) {
+            val f = Fixture(1000)
+            if (alternate) { f.useCounter(); f.counterFailure = IllegalStateException("counter unavailable") }
+            else f.countFailure = IllegalStateException("counter unavailable")
+            assertFailsWith<IllegalStateException> { f.apply() }
+            assertEquals(0, f.nativeCalls + f.summaryCalls + f.commits)
+        }
+    }
+
+    @Test fun `measured ordinary Worker step sends only the generation RPC`() = runBlocking {
+        val f = Fixture(1000)
+        val identity = ConversationRuntimeWorkerIdentity(ConversationRuntimeWorkerId("worker"), ConversationRuntimeWorkerSessionId("session"))
+        f.resolved = f.resolved.copy(connection = (f.resolved.connection as AiConnection.OpenAiApi).copy(
+            executionTarget = AiExecutionTarget.Worker(identity.workerId.value)))
+        f.withMeasurement()
+        var remoteCalls = 0
+        var resolutions = 0
+        val client = Mockito.mock(AiRequestResponseExecutionClient::class.java) { invocation ->
+            when (invocation.method.name.substringBefore('-')) {
+                "inspectContext" -> error("An append-only step must not send an inspection RPC")
+                "call" -> { remoteCalls++; AiRuntimeResponse(emptyList()) }
+                else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
+            }
+        }
+        val direct = Mockito.mock(DirectAiRuntimeProvider::class.java) { invocation ->
+            when (invocation.method.name) {
+                "capabilities" -> AiRuntimeCapabilities()
+                "getRuntime" -> error("The Server must not execute a Worker model")
+                else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
+            }
+        }
+        val targets = object : ConversationRuntimeWorkerTargetResolver {
+            override suspend fun requireRegistered(workerId: ConversationRuntimeWorkerId, capability: ConversationRuntimeCapability): ConversationRuntimeWorkerIdentity {
+                assertEquals(identity.workerId, workerId); resolutions++; return identity
+            }
+            override suspend fun requireOnline(workerId: ConversationRuntimeWorkerId, capability: ConversationRuntimeCapability) = requireRegistered(workerId, capability)
+        }
+        val provider = TargetedAiRuntimeProvider(direct, f.configurations, targets, listOf(client),
+            Mockito.mock(AiUsageRecorder::class.java), Mockito.mock(com.gromozeka.domain.repository.IdentityRepository::class.java))
+        f.routedRuntime = provider.getRuntime(f.selection, null)
+        assertNull(f.apply())
+        assertEquals(0, resolutions)
+        requireNotNull(f.routedRuntime).call(f.request)
+        assertEquals(1, remoteCalls)
+        assertEquals(1, resolutions)
+    }
+
+    @Test fun `alternate count never receives signed reasoning or expands opaque checkpoints`() = runBlocking {
+        val f = Fixture(1000)
+        f.useCounter()
+        val checkpoint = f.sources.last().copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(Checkpoint(Checkpoint.Payload.OpaqueProviderState(JsonObject(mapOf(
+                "replay_item" to JsonObject(mapOf("type" to JsonPrimitive("compaction"), "encrypted_content" to JsonPrimitive("private-ciphertext".repeat(100))))))),
+                Checkpoint.Origin.GROMOZEKA_POLICY, sourceMessageIds = f.sources.map { it.id }, coverage = Checkpoint.Coverage.ALL_PREVIOUS,
+                providerScope = Checkpoint.ProviderScope("OPENAI_API", "connection", "configuration", "model"))))
+        val tail = f.sources.last().copy(id = Conversation.Message.Id("tail"), content = listOf(Conversation.Message.ContentItem.UserMessage("Continue")))
+        f.request = f.request.copy(messages = f.sources + checkpoint + tail)
+        assertNull(f.apply())
+        val counted = requireNotNull(f.counterRequest)
+        assertEquals(listOf(tail.id), counted.messages.map { it.id })
+        assertFalse(counted.toString().contains("private-ciphertext"))
+        assertEquals(1, f.counterCalls)
+    }
+
     private class Fixture(threshold: Int?, native: Boolean = false) {
         private val now = Clock.System.now()
         val conversation = Conversation(id = Conversation.Id("conversation"), projectId = Project.Id("project"), displayName = "Test",
@@ -113,7 +238,14 @@ class ConversationCompactionServiceTest {
             placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "task",
             requirements = ConversationRuntimeTaskRequirements(capabilities = setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE, ConversationRuntimeCapability.MEMORY_PIPELINE), target = ConversationRuntimeTaskTarget.Server), createdAt = now)
         val order = mutableListOf<String>()
+        var routedRuntime: AiRuntime? = null
         var inspections = 0
+        var countFailure: Exception? = null
+        val countPermissions = mutableListOf<Boolean>()
+        var counterCalls = 0
+        var counterRequest: AiRuntimeRequest? = null
+        var counterResolved: ResolvedAiRuntime? = null
+        var counterFailure: Exception? = null
         var summaryCalls = 0
         var nativeCalls = 0
         var commits = 0
@@ -124,9 +256,11 @@ class ConversationCompactionServiceTest {
         var summarized: List<Conversation.Message>? = null
         var committed: Conversation.Message? = null
         val provider = object : AiRuntime {
-            override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
-                inspections++; order += "inspect"
-                return AiContextInspection(200, AiContextInspection.Precision.ESTIMATE, native)
+            override val capabilities = AiRuntimeCapabilities(supportsNativeCompaction = native)
+            override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
+                inspections++; order += "inspect"; countPermissions += allowProviderCount
+                countFailure?.let { throw it }
+                return AiContextInspection(200, if (allowProviderCount) AiContextInspection.Precision.PROVIDER_COUNT else AiContextInspection.Precision.ESTIMATE, native)
             }
             override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
                 nativeCalls++; order += "native"
@@ -142,10 +276,13 @@ class ConversationCompactionServiceTest {
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse = error("Ordinary inference must not run inside compaction")
             override fun stream(request: AiRuntimeRequest) = emptyFlow<AiRuntimeResponse>()
         }
-        private val configurations = object : AiConfigurationProvider {
+        val configurations = object : AiConfigurationProvider {
             override val snapshotFlow = MutableStateFlow<AiCatalogSnapshot?>(null)
             override val snapshot: AiCatalogSnapshot get() = error("Not used")
-            override fun resolveAiRuntime(selection: AiRuntimeSelection) = resolved
+            override fun resolveAiRuntime(selection: AiRuntimeSelection) =
+                if (selection == this@Fixture.selection) resolved else requireNotNull(counterResolved).also {
+                    assertEquals(it.modelConfiguration.id, selection.modelConfigurationId)
+                }
         }
         private val history = Mockito.mock(ThreadMessageRepository::class.java) { invocation ->
             when (invocation.method.name.substringBefore('-')) {
@@ -178,9 +315,44 @@ class ConversationCompactionServiceTest {
         private val events = Mockito.mock(ConversationRuntimeEventBus::class.java) { invocation ->
             if (invocation.method.name == "publish") { order += "event"; Unit } else Mockito.RETURNS_DEFAULTS.answer(invocation)
         }
-        private val service = ConversationCompactionService(configurations, history, summaries, committer, coordinator, events)
+        var request = AiRuntimeRequest(emptyList(), sources, options = AiRuntimeOptions(
+            usagePurpose = "CONVERSATION", toolContext = mapOf("threadId" to conversation.currentThread.value)))
+        private val runtimeProvider = object : AiRuntimeProvider {
+            override fun capabilities(selection: AiRuntimeSelection) = AiRuntimeCapabilities()
+            override fun getRuntime(selection: AiRuntimeSelection, workspaceRootPath: String?): AiRuntime {
+                assertEquals(counterResolved?.modelConfiguration?.id, selection.modelConfigurationId)
+                return object : AiRuntime {
+                    override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
+                        assertTrue(allowProviderCount)
+                        counterCalls++; counterRequest = request
+                        counterFailure?.let { throw it }
+                        return AiContextInspection(200, AiContextInspection.Precision.PROVIDER_COUNT, nativeCompactionAvailable = true)
+                    }
+                    override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse = error("Counter must not generate")
+                    override fun stream(request: AiRuntimeRequest) = emptyFlow<AiRuntimeResponse>()
+                }
+            }
+        }
+        fun withMeasurement() {
+            val response = AiRuntimeResponse(listOf(AiAssistantMessage(listOf(
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Measured answer"))))),
+                contextUsage = AiContextUsage(100, 20))
+            val measurement = requireNotNull(AiContextMeasurement.capture(resolved, request, response, AiRequestTokenEstimate))
+            val answer = sources.last().copy(id = Conversation.Message.Id("answer"), role = Conversation.Message.Role.ASSISTANT,
+                content = response.messages.single().content, providerMetadata = JsonObject(mapOf(
+                    AiContextMeasurement.KEY to Json.encodeToJsonElement(measurement),
+                    AI_REPLAY_THREAD_METADATA_KEY to JsonPrimitive(conversation.currentThread.value))))
+            request = request.copy(messages = request.messages + answer)
+        }
+        fun useCounter() {
+            val counterId = AiModelConfiguration.Id("counter")
+            counterResolved = resolved.copy(modelConfiguration = resolved.modelConfiguration.copy(id = counterId))
+            resolved = resolved.copy(modelConfiguration = resolved.modelConfiguration.copy(compaction = resolved.modelConfiguration.compaction.copy(
+                tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, counterId))))
+        }
+        private val service = ConversationCompactionService(configurations, history, summaries, committer, coordinator, events, runtimeProvider)
         suspend fun apply(alreadyCompacted: Boolean = false, extraTokens: Int = 0, owner: suspend () -> Unit = {}): Conversation? =
-            service.compactIfNeeded(task, conversation, agent, provider, AiRuntimeRequest(emptyList(), sources), alreadyCompacted, extraTokens) {
+            service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted, extraTokens) {
                 order += "owner"; owner()
             }
     }

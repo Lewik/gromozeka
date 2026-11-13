@@ -362,6 +362,33 @@ class SdkHttpExecutionTest {
         }
     }
 
+    @Test
+    fun `disabled context counting performs no HTTP or credential lookup for either count API`() = runBlocking {
+        for (api in Api.entries) {
+            val countBody = """{"object":"response.input_tokens","input_tokens":77}"""
+            SdkHttpTestServer(countBody).use { server ->
+                val connection = api.connection(server.origin)
+                if (!connection.kind.hasContextCountApi) return@use
+                val sources = Sources()
+                val rt = runtime(connection, sources)
+                assertEquals(AiContextInspection.Precision.ESTIMATE, rt.inspectContext(request(), allowProviderCount = false).precision)
+                assertTrue(server.requests.isEmpty())
+                assertEquals(0, sources.reads.get())
+                val measured = rt.inspectContext(request())
+                assertEquals(77, measured.inputTokens)
+                assertEquals(AiContextInspection.Precision.PROVIDER_COUNT, measured.precision)
+                assertEquals(1, server.requests.size)
+                assertTrue(server.requests.single().target.endsWith("count_tokens") || server.requests.single().target.endsWith("input_tokens"))
+            }
+            SdkHttpTestServer(listOf(SdkHttpTestServer.Reply(ERROR, 404))).use { server ->
+                val connection = api.connection(server.origin)
+                if (!connection.kind.hasContextCountApi) return@use
+                assertFailsWith<AiCallException> { runtime(connection).inspectContext(request()) }
+                assertEquals(1, server.requests.size, "A failed enabled counter must not fall back to another API")
+            }
+        }
+    }
+
     private class QuotaAdmission(val rejectMissing: Boolean = false, val gate: CompletableDeferred<Unit>? = null) : AiCallAdmission() {
         val requests = CopyOnWriteArrayList<JsonElement>()
         val feedback = CopyOnWriteArrayList<AiHttpQuotaFeedback?>()

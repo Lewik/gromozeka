@@ -33,7 +33,7 @@ interface AiRuntime {
     val tokenEstimator: AiRequestTokenEstimator
         get() = AiRequestTokenEstimate
 
-    suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection = AiContextInspection(
+    suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean = true): AiContextInspection = AiContextInspection(
         tokenEstimator.input(request), AiContextInspection.Precision.ESTIMATE,
         nativeCompactionAvailable = capabilities.supportsNativeCompaction,
     )

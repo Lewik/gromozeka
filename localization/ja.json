@@ -4,6 +4,12 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "コンテキストのトークン数計測",
+    "ai.compaction.count_current": "現在の接続（対応している場合）",
+    "ai.compaction.count_local": "ローカル推定のみ",
+    "ai.compaction.count_other": "別のモデル設定",
+    "ai.compaction.count_model": "トークン数計測用モデル",
+    "ai.compaction.count_other_hint": "移植可能なコンテキストをこの設定に送信します。計測値はメインモデルに対する概算です。署名付き状態はローカルで推定します。",
     "updates.title": "アプリの更新",
     "updates.thisApp": "このアプリを更新",
     "updates.description": "パッケージはこのサーバーからダウンロードされます。Worker は実行中のリクエストが完了してから更新されます。デスクトップクライアントは指示したとき、または通常の終了時にのみ再起動します。",

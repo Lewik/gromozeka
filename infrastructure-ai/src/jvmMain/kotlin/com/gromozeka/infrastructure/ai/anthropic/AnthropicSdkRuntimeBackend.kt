@@ -240,8 +240,8 @@ private class AnthropicSdkRuntime(
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
 
-    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection =
-        count?.invoke(request) ?: super.inspectContext(request)
+    override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection =
+        if (allowProviderCount && count != null) count.invoke(request) else super.inspectContext(request, false)
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         log.info {

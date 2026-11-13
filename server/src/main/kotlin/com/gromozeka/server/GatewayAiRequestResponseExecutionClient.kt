@@ -70,9 +70,10 @@ class GatewayAiRequestResponseExecutionClient(
     }
 
     override suspend fun inspectContext(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
-        workspaceRootPath: String?, request: AiRuntimeRequest): AiContextInspection =
+        workspaceRootPath: String?, request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection =
         contextOperation(target, runtime, workspaceRootPath, request,
-            AiRequestResponseGatewayCodec::encodeContextInspectionRequest, AiRequestResponseGatewayCodec::decodeContextInspectionResponse)
+            { resolved, root, input -> AiRequestResponseGatewayCodec.encodeContextInspectionRequest(resolved, root, input, allowProviderCount) },
+            AiRequestResponseGatewayCodec::decodeContextInspectionResponse)
 
     override suspend fun compact(target: ConversationRuntimeWorkerIdentity, runtime: ResolvedAiRuntime,
         workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse =

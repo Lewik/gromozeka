@@ -4,6 +4,12 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "Penghitungan token konteks",
+    "ai.compaction.count_current": "Koneksi saat ini (jika didukung)",
+    "ai.compaction.count_local": "Hanya perkiraan lokal",
+    "ai.compaction.count_other": "Konfigurasi model lain",
+    "ai.compaction.count_model": "Model penghitung token",
+    "ai.compaction.count_other_hint": "Konteks portabel dikirim ke konfigurasi ini. Hitungannya merupakan perkiraan untuk model utama; status bertanda tangan diperkirakan secara lokal.",
     "updates.title": "Pembaruan aplikasi",
     "updates.thisApp": "Perbarui aplikasi ini",
     "updates.description": "Paket diunduh dari server ini. Worker diperbarui setelah permintaan aktif selesai; klien desktop dimulai ulang hanya atas perintah Anda atau saat keluar secara normal.",

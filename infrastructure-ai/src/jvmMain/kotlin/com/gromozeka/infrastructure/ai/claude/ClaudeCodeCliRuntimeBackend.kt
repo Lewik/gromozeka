@@ -119,7 +119,7 @@ internal class ClaudeCodeCliRuntime(
         supportsNativeCompaction = true,
     )
 
-    override suspend fun inspectContext(request: AiRuntimeRequest): AiContextInspection {
+    override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
         val key = sessionStateKey(request)
         val projected = request.copy(messages = ConversationContext(request.messages).messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
         if (key == null) return AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)

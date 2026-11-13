@@ -88,6 +88,11 @@ Protocol 27 adds gated command/SDK-grant registration. Managed commands receive 
 a scoped credential and the configured Worker CA automatically. Server persists one grant
 per command, enforces the initiating user/Agent scope and publishes daily aging reminders.
 See [the shared SDK contract](worker-request-delivery.md#shared-python-and-shell-sdk).
+Protocol 28 adds explicit count-endpoint suppression to context inspection. Normal
+conversation steps reuse a content-bound usage baseline and local estimates on Server;
+only missing/invalidated baselines use the configured counter. Model configurations can
+select the current count API, local-only counting, or another model configuration.
+See [context counting policy](ai-http-settings.md#context-counting-policy).
 
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,

@@ -4,6 +4,12 @@
   "name": "Français",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "Comptage des tokens du contexte",
+    "ai.compaction.count_current": "Connexion actuelle (si prise en charge)",
+    "ai.compaction.count_local": "Estimation locale uniquement",
+    "ai.compaction.count_other": "Autre configuration de modèle",
+    "ai.compaction.count_model": "Modèle de comptage des tokens",
+    "ai.compaction.count_other_hint": "Le contexte portable est envoyé à cette configuration. Son comptage est approximatif pour le modèle principal ; l’état signé est estimé localement.",
     "updates.title": "Mises à jour des applications",
     "updates.thisApp": "Mettre à jour cette application",
     "updates.description": "Les paquets sont téléchargés depuis ce serveur. Les Workers sont mis à jour après les requêtes actives ; les clients de bureau redémarrent uniquement sur votre demande ou à leur fermeture normale.",

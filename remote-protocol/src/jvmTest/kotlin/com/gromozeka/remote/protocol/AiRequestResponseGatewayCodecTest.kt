@@ -440,11 +440,12 @@ class AiRequestResponseGatewayCodecTest {
         val handler = object : AiRequestResponseExecutionHandler by fixture {
             override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse =
                 error("Context operations must not start ordinary inference")
-            override suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest):
+            override suspend fun inspectContext(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest, allowProviderCount: Boolean):
                 com.gromozeka.domain.model.ai.AiContextInspection {
                 assertEquals(fixture.runtime, runtime)
                 assertEquals(fixture.runtimeRequest.messages, request.messages)
                 assertEquals(fixture.runtimeRequest.systemPrompts, request.systemPrompts)
+                assertEquals(false, allowProviderCount)
                 inspected = true
                 return inspection
             }
@@ -455,8 +456,8 @@ class AiRequestResponseGatewayCodecTest {
                 return fixture.runtimeResponse
             }
         }
-        val countBytes = AiRequestResponseGatewayCodec.encodeContextInspectionRequest(fixture.runtime, null, fixture.runtimeRequest)
-        kotlin.test.assertTrue(countBytes.decodeToString().contains("inspect_context_v1"))
+        val countBytes = AiRequestResponseGatewayCodec.encodeContextInspectionRequest(fixture.runtime, null, fixture.runtimeRequest, allowProviderCount = false)
+        kotlin.test.assertTrue(countBytes.decodeToString().contains("inspect_context_v2"))
         assertEquals(inspection, AiRequestResponseGatewayCodec.decodeContextInspectionResponse(
             AiRequestResponseGatewayCodec.execute(countBytes, handler)))
         val request = fixture.runtimeRequest.copy(options = fixture.runtimeRequest.options.copy(usagePurpose = "CONTEXT_COMPACTION"))
@@ -469,7 +470,7 @@ class AiRequestResponseGatewayCodecTest {
 
     private class TestHandler : AiRequestResponseExecutionHandler {
         override suspend fun inspectContext(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
-            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest, allowProviderCount: Boolean): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
         override suspend fun compact(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
             request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compact")
 

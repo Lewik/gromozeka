@@ -306,7 +306,9 @@ class TrueFoundryChatCompletionsTest {
             val switched = astra.inspectContext(next)
             assertEquals(AiContextInspection.Precision.ESTIMATE, switched.precision)
             assertEquals(astra.tokenEstimator.input(next), switched.inputTokens)
-            assertTrue(AiRequestTokenEstimate.input(next) > 300_000, "Regression fixture must expose the old overestimate")
+            assertTrue(AiRequestTokenEstimate.text(Json.encodeToString(next.messages.map { it.content })) > 300_000,
+                "Regression fixture must expose the old ciphertext-as-text overestimate")
+            assertTrue(AiRequestTokenEstimate.input(next) < 1_000, "The Server's portable estimate must also exclude ciphertext")
             assertTrue(switched.inputTokens < 1_000, "Discarded replay must not trigger a 1000-token compact threshold")
             assertEquals(1, server.requests.size, "Chat inspection must not probe a different API")
 

@@ -4,6 +4,12 @@
   "name": "Deutsch",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.count_mode": "Kontext-Tokenzählung",
+    "ai.compaction.count_current": "Aktuelle Verbindung (falls unterstützt)",
+    "ai.compaction.count_local": "Nur lokale Schätzung",
+    "ai.compaction.count_other": "Andere Modellkonfiguration",
+    "ai.compaction.count_model": "Modell zur Tokenzählung",
+    "ai.compaction.count_other_hint": "Der portable Kontext wird an diese Konfiguration gesendet. Ihre Zählung ist für das Hauptmodell nur eine Schätzung; signierter Zustand wird lokal geschätzt.",
     "updates.title": "Anwendungsupdates",
     "updates.thisApp": "Diese Anwendung aktualisieren",
     "updates.description": "Pakete werden von diesem Server heruntergeladen. Workers werden nach Abschluss laufender Anfragen aktualisiert; Desktop-Clients starten nur auf deinen Befehl oder beim normalen Beenden neu.",
