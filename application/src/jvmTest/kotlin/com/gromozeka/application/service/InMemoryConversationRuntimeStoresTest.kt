@@ -45,6 +45,40 @@ import kotlin.test.assertTrue
 
 class InMemoryConversationRuntimeStoresTest {
     @Test
+    fun `failed active turn preserves reserved and queued steering as ordinary input`() = runBlocking {
+        for (started in listOf(false, true)) {
+            val coordinator = InMemoryConversationRuntimeCoordinator()
+            val active = task("active", QueuedMessagePlacement.END_OF_TURN)
+            val reserved = task("reserved", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+            val queued = task("queued", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+            val later = task("later", QueuedMessagePlacement.END_OF_TURN)
+            val worker = worker("incident-worker")
+            val owner = executor(worker)
+            assertTrue(coordinator.submit(active))
+            assertEquals(active, coordinator.claimAsEligibleWorker(active, worker))
+            assertTrue(coordinator.submit(reserved))
+            assertEquals(listOf(reserved), coordinator.claimActiveInsertions(
+                conversationId, active.id, owner, QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            ))
+            assertTrue(coordinator.submit(queued))
+            assertTrue(coordinator.submit(later))
+            if (started) {
+                assertTrue(coordinator.markActiveTaskStarted(conversationId, active.id, owner, Clock.System.now()))
+                assertNotNull(coordinator.markActiveTaskInDoubt(conversationId, active.id, owner, "Synthetic timeout"))
+            } else {
+                assertNotNull(coordinator.recordClaimedTaskDeliveryFailure(conversationId, active.id, owner, "Synthetic delivery failure"))
+            }
+            val snapshot = coordinator.snapshot(conversationId)
+            assertNull(snapshot.activeTask)
+            assertTrue(snapshot.activeInsertions.isEmpty())
+            val expected = listOf(reserved, queued, later).map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }
+            assertEquals(expected, snapshot.pendingTasks.filter { it.payload !is ConversationRuntimeTask.Payload.ExecutionIncident })
+            assertEquals(active.id, snapshot.incidents.single().task.id)
+            assertNotNull(coordinator.claimAsEligibleWorker(snapshot.pendingTasks.first(), worker))
+        }
+    }
+
+    @Test
     fun `automatic responders are queued atomically behind the first agent and before later user messages`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val original = task("automatic-message", QueuedMessagePlacement.END_OF_TURN)

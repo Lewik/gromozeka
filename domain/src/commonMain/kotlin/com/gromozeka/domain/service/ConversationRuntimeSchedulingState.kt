@@ -456,7 +456,9 @@ data class ConversationRuntimeSchedulingState(
             it.copy(placement = QueuedMessagePlacement.END_OF_TURN)
         }
         val incidentTask = incidentTaskOrNull(incident)
-        val nextPendingTasks = listOfNotNull(incidentTask) + requeuedInsertions + pendingTasks
+        val nextPendingTasks = listOfNotNull(incidentTask) + requeuedInsertions + pendingTasks.map {
+            it.copy(placement = QueuedMessagePlacement.END_OF_TURN)
+        }
         return changed(
             copy(
                 executionState = if (nextPendingTasks.isEmpty()) {

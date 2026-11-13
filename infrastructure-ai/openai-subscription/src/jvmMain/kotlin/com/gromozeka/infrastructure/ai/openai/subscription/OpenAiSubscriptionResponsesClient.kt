@@ -251,27 +251,32 @@ class OpenAiSubscriptionResponsesClient(
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): OpenAiSubscriptionParsedResponse {
         val sessionState = webSocketSessions.compute(conversationKey) { _, existing ->
-            existing?.takeUnless { it.isExpired(websocketIdleMs) }
-                ?: WebSocketSessionState(
-                    conversationKey = conversationKey,
-                    websocketUrl = websocketUrl,
-                    responseTimeoutMs = websocketResponseTimeoutMs,
-                    transportTimeoutMs = websocketTransportTimeoutMs,
-                )
+            val selected = existing ?: WebSocketSessionState(
+                conversationKey = conversationKey,
+                websocketUrl = websocketUrl,
+                responseTimeoutMs = websocketResponseTimeoutMs,
+                transportTimeoutMs = websocketTransportTimeoutMs,
+            )
+            selected.retainRequest()
+            selected
         }!!
 
-        return sessionState.execute(
-            configuration = configuration,
-            admission = admission,
-            session = session,
-            requestBody = requestBody,
-            json = json,
-            requestMapper = requestMapper,
-            responseMapper = responseMapper,
-            modelProfile = modelProfile,
-            assistantResponseFormat = assistantResponseFormat,
-            userAgent = openAiSubscriptionUserAgent(clientVersion),
-        )
+        return try {
+            sessionState.execute(
+                configuration = configuration,
+                admission = admission,
+                session = session,
+                requestBody = requestBody,
+                json = json,
+                requestMapper = requestMapper,
+                responseMapper = responseMapper,
+                modelProfile = modelProfile,
+                assistantResponseFormat = assistantResponseFormat,
+                userAgent = openAiSubscriptionUserAgent(clientVersion),
+            )
+        } finally {
+            sessionState.releaseRequest()
+        }
     }
 
     private fun parseEventStream(body: String): OpenAiSubscriptionParsedResponse {
@@ -337,16 +342,19 @@ class OpenAiSubscriptionResponsesClient(
     }
 
     private fun evictIdleWebSocketSessions() {
-        val iterator = webSocketSessions.entries.iterator()
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            if (!entry.value.isExpired(websocketIdleMs)) continue
-            entry.value.close("idle_timeout")
-            iterator.remove()
-            log.info(
-                "OpenAI subscription websocket session evicted: " +
-                    "conversationKey=${entry.key}, reason=idle_timeout"
-            )
+        for (conversationKey in webSocketSessions.keys) {
+            webSocketSessions.computeIfPresent(conversationKey) { _, session ->
+                if (session.isExpired(websocketIdleMs)) {
+                    session.close("idle_timeout")
+                    log.info(
+                        "OpenAI subscription websocket session evicted: " +
+                            "conversationKey=$conversationKey, reason=idle_timeout"
+                    )
+                    null
+                } else {
+                    session
+                }
+            }
         }
     }
 
@@ -401,8 +409,8 @@ class OpenAiSubscriptionResponsesClient(
         @Volatile
         private var webSocket: WebSocket? = null
 
-        @Volatile
-        private var lastUsedAt: Long = System.currentTimeMillis()
+        private var retainedRequests = 0
+        private var lastReleasedAtNanos: Long = System.nanoTime()
 
         private val incrementalState = OpenAiSubscriptionIncrementalState()
 
@@ -418,7 +426,6 @@ class OpenAiSubscriptionResponsesClient(
             assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
             userAgent: String,
         ): OpenAiSubscriptionParsedResponse = requestMutex.withLock {
-            lastUsedAt = System.currentTimeMillis()
             ensureOpen(session = session, userAgent = userAgent)
 
             val transportRequest = requestMapper.toTransportRequest(requestBody, modelProfile)
@@ -470,13 +477,26 @@ class OpenAiSubscriptionResponsesClient(
                     ),
                 ),
             ) else incrementalState.clear()
-            lastUsedAt = System.currentTimeMillis()
-
             return parsed
         }
 
+        @Synchronized
+        fun retainRequest() {
+            // Include callers waiting for requestMutex or provider admission, not just socket traffic.
+            retainedRequests++
+        }
+
+        @Synchronized
+        fun releaseRequest() {
+            check(retainedRequests > 0) { "WebSocket request reservation was already released" }
+            retainedRequests--
+            if (retainedRequests == 0) lastReleasedAtNanos = System.nanoTime()
+        }
+
+        @Synchronized
         fun isExpired(maxIdleMs: Long): Boolean {
-            return System.currentTimeMillis() - lastUsedAt > maxIdleMs
+            return retainedRequests == 0 &&
+                System.nanoTime() - lastReleasedAtNanos > TimeUnit.MILLISECONDS.toNanos(maxIdleMs)
         }
 
         fun close(reason: String) {
@@ -484,6 +504,11 @@ class OpenAiSubscriptionResponsesClient(
             webSocket?.abort()
             webSocket = null
             inboundEvents.clear()
+            inboundEvents.offer(
+                WebSocketInboundEvent.Failed(
+                    OpenAiSubscriptionTransportException("OpenAI subscription websocket session closed: reason=$reason")
+                )
+            )
             incrementalState.clear()
             log.info(
                 "OpenAI subscription websocket session closed: " +

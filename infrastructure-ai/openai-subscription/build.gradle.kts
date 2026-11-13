@@ -34,6 +34,8 @@ kotlin {
             dependencies {
                 implementation(project(":domain"))
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.ktor.server.cio)
+                implementation(libs.ktor.server.websockets)
                 implementation(kotlin("test"))
             }
         }
