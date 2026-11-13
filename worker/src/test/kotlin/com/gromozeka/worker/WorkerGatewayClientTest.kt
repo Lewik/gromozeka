@@ -289,7 +289,7 @@ class WorkerGatewayClientTest {
 
 private object UnusedAiRequestResponseHandler : AiRequestResponseExecutionHandler {
         override suspend fun inspectContext(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
-            request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
+            request: com.gromozeka.domain.model.ai.AiRuntimeRequest, allowProviderCount: Boolean): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")
         override suspend fun compact(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
             request: com.gromozeka.domain.model.ai.AiRuntimeRequest): com.gromozeka.domain.model.ai.AiRuntimeResponse = error("Unused compact")
 
