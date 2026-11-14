@@ -176,7 +176,7 @@ class TabViewModelRuntimeReplayTest {
         runCurrent()
         response = page(0..9, 100)
         gate = CompletableDeferred()
-        viewModel.loadOlderHistory()
+        viewModel.loadOlderHistory(message(10).id)
         runCurrent()
         events.emit(ConversationRuntimeEvent.MessageEmitted(
             conversationId, taskId = null, message = message(20), cursorSequence = 101,

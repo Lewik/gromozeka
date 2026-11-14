@@ -1935,7 +1935,6 @@
     "voice.unavailable": "A gravação de voz não está disponível neste cliente",
     "voice.workerAudioRequired": "Selecione um microfone de Worker para capturar áudio em um Worker",
     "voice.workerInputUnavailable": "A entrada de áudio {input} não está disponível no Worker {worker}",
-    "chat.history.loadOlder": "Carregar mensagens anteriores",
     "chat.history.loadFull": "Carregar mensagem completa",
     "chat.composer.placeholder": "Escreva ou dite…",
     "chat.voice.mode.auto": "Auto",

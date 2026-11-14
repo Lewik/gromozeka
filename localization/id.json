@@ -1861,7 +1861,6 @@
     "voice.unavailable": "Perekaman suara tidak tersedia pada klien ini",
     "voice.workerAudioRequired": "Pilih mikrofon Worker untuk merekam audio pada Worker",
     "voice.workerInputUnavailable": "Input audio {input} tidak tersedia pada Worker {worker}",
-    "chat.history.loadOlder": "Muat pesan sebelumnya",
     "chat.history.loadFull": "Muat pesan lengkap",
     "chat.composer.placeholder": "Tulis atau dikte…",
     "chat.voice.mode.auto": "Otomatis",

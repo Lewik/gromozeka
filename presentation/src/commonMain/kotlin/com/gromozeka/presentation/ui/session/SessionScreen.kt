@@ -188,11 +188,6 @@ internal fun SessionScreen(
                                 TextButton(onClick = viewModel::retryHistory) { Text(localization.text("chat.error.retry")) }
                             }
                         }
-                        if (olderHistory != null) {
-                            TextButton(onClick = { viewModel.loadOlderHistory() }, enabled = !historyLoading) {
-                                Text(localization.text("chat.history.loadOlder"))
-                            }
-                        }
                         key(viewModel.conversationId) {
                             FollowLatestLazyColumn(
                                 items = messageEntries,

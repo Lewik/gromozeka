@@ -2046,7 +2046,6 @@
     "voice.unavailable": "التسجيل الصوتي غير متاح على هذا العميل",
     "voice.workerAudioRequired": "اختر ميكروفون عامل تنفيذ لالتقاط الصوت على عامل تنفيذ",
     "voice.workerInputUnavailable": "مدخل الصوت {input} غير متاح على عامل التنفيذ {worker}",
-    "chat.history.loadOlder": "تحميل الرسائل الأقدم",
     "chat.history.loadFull": "تحميل الرسالة كاملة",
     "chat.composer.placeholder": "اكتب أو أمْلِ…",
     "chat.voice.mode.auto": "تلقائي",

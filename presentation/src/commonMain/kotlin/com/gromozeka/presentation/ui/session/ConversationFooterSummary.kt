@@ -96,8 +96,9 @@ internal fun ConversationFooterSummary(
         monitors.take(3).forEach { append("\n${footerPreview(it.filterCommand)}") }
         if (monitors.size > 3) append("\n" + translation.text("chat.activity.more", "count" to monitors.size - 3))
     }
+    val verticalPadding = if (GromozekaTheme.controls == ControlMetrics.Touch) 0.dp else GromozekaTheme.spacing.panelPadding
     Column(modifier.fillMaxWidth().padding(horizontal = GromozekaTheme.spacing.contentPadding,
-        vertical = GromozekaTheme.spacing.panelPadding).testTag("conversation-footer-summary"), verticalArrangement = Arrangement.Center) {
+        vertical = verticalPadding).testTag("conversation-footer-summary"), verticalArrangement = Arrangement.Center) {
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(GromozekaTheme.spacing.controlGap),

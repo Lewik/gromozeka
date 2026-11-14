@@ -1935,7 +1935,6 @@
     "voice.unavailable": "L’enregistrement vocal est indisponible sur ce client",
     "voice.workerAudioRequired": "Sélectionnez un microphone de Worker pour capturer l’audio sur un Worker",
     "voice.workerInputUnavailable": "L’entrée audio {input} est indisponible sur le Worker {worker}",
-    "chat.history.loadOlder": "Charger les messages précédents",
     "chat.history.loadFull": "Charger le message complet",
     "chat.composer.placeholder": "Écrivez ou dictez…",
     "chat.voice.mode.auto": "Auto",
