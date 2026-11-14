@@ -203,11 +203,12 @@ class PostgresConversationForkTest {
 
         suspend fun initialize() {
             ExposedProjectRepository().save(project)
+            sql.update("INSERT INTO users(id,display_name,status,created_at,updated_at) VALUES ('user','Test user','ACTIVE',now(),now())")
             source = newConversation("source")
             sql.update("INSERT INTO conversation_pins(id,conversation_id,text,ordinal,revision,created_at,updated_at) VALUES ('pin',?,'Synthetic pin',0,1,now(),now())", source.id.value)
         }
         suspend fun newConversation(id: String): Conversation {
-            val conversation = Conversation(Conversation.Id(id), project.id, emptySet(), displayName = id,
+            val conversation = Conversation(Conversation.Id(id), project.id, setOf(Conversation.Participant.User(User.Id("user"))), displayName = id,
                 currentThread = Conversation.Thread.Id("thread-$id"), createdAt = now, updatedAt = now)
             conversations.create(conversation)
             threads.save(Conversation.Thread(conversation.currentThread, conversation.id, createdAt = now, updatedAt = now))
