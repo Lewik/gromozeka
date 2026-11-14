@@ -15,6 +15,10 @@ import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.security.MessageDigest
 import java.util.Base64
 
@@ -343,6 +347,11 @@ class ConversationArtifactApplicationService(
         if (references.isEmpty()) return
 
         val artifacts = requireArtifactReferences(conversationId, references)
+        requireMessageArtifactLimits(references, artifacts)
+        artifactRepository.commit(references.map(Artifact.Reference::id), Clock.System.now())
+    }
+
+    private fun requireMessageArtifactLimits(references: List<Artifact.Reference>, artifacts: Map<Artifact.Id, Artifact>) {
         val attachmentCount = references.count { artifacts.getValue(it.id).purpose != Artifact.Purpose.TOOL_OUTPUT }
         require(attachmentCount <= ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE) {
             "A message can contain at most ${ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE} attachments"
@@ -356,7 +365,6 @@ class ConversationArtifactApplicationService(
         require(totalBytes <= ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE) {
             "Message artifacts exceed the ${ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE / (1024 * 1024)} MB total limit"
         }
-        artifactRepository.commit(references.map(Artifact.Reference::id), Clock.System.now())
     }
 
     suspend fun cloneReferences(
@@ -371,33 +379,44 @@ class ConversationArtifactApplicationService(
         require(sourceArtifacts.values.all { it.state == Artifact.State.COMMITTED }) {
             "Only committed artifacts can be cloned with a conversation"
         }
-        val artifactIds = references.map(Artifact.Reference::id).distinct()
-        val clonedReferences = linkedMapOf<Artifact.Id, Artifact.Reference>()
-        for (artifactId in artifactIds) {
-            val source = sourceArtifacts.getValue(artifactId)
-            val clone = if (source.source !is Artifact.ContentSource.Managed) {
-                registerExternal(source.copy(id = Artifact.Id(uuid7()), projectId = targetConversation.projectId,
-                    conversationId = targetConversation.id, state = Artifact.State.DRAFT, committedAt = null))
-            } else upload(
-                conversation = targetConversation,
-                createdByUserId = source.createdByUserId,
-                upload = ArtifactUpload(
-                    fileName = source.fileName,
-                    mediaType = source.mediaType,
-                    content = contentStore.read(source.id),
-                    purpose = source.purpose,
-                ),
-            )
-            clonedReferences[artifactId] = clone.reference()
+        require(sourceArtifacts.values.all { it.projectId == targetConversation.projectId }) {
+            "Artifact fork must stay in the source project"
         }
-
-        val clonedMessages = messages.map { message ->
-            message.copy(content = message.content.replaceArtifactReferences(clonedReferences))
+        messages.forEach { requireMessageArtifactLimits(it.content.contentArtifactReferences(), sourceArtifacts) }
+        val sourceToTargetIds = sourceArtifacts.keys.associateWith { Artifact.Id(uuid7()) }
+        val copies = artifactRepository.cloneBatch(sourceConversationId, targetConversation, sourceToTargetIds, Clock.System.now())
+        val copiedFiles = mutableSetOf<Artifact.Id>()
+        try {
+            check(copies.size == sourceToTargetIds.size && copies.map { it.id }.toSet() == sourceToTargetIds.values.toSet()) { "Incomplete artifact clone batch" }
+            for ((sourceId, targetId) in sourceToTargetIds) {
+                currentCoroutineContext().ensureActive()
+                if (sourceArtifacts.getValue(sourceId).source is Artifact.ContentSource.Managed) {
+                    contentStore.copy(sourceId, targetId)
+                    copiedFiles += targetId
+                }
+            }
+            val clonedReferences = copies.associate { it.id to it.reference() }
+            val replacements = sourceToTargetIds.mapValues { (_, targetId) -> clonedReferences.getValue(targetId) }
+            val clonedMessages = messages.map { message ->
+                message.copy(content = message.content.replaceArtifactReferences(replacements))
+            }
+            currentCoroutineContext().ensureActive()
+            artifactRepository.commit(copies.map { it.id }, Clock.System.now())
+            return clonedMessages
+        } catch (error: Throwable) {
+            // Draft metadata protects in-flight files from orphan GC. Only drafts owned by
+            // this attempt are removed; an uncertain committed result must not be erased.
+            // Do not delete a failed copy's destination: it could be a pre-existing file.
+            // Any unacknowledged new file is handled by the existing orphan collector.
+            withContext(NonCancellable) {
+                copies.forEach { copy ->
+                    runCatching {
+                        if (artifactRepository.deleteDraft(copy.id) && copy.id in copiedFiles) contentStore.delete(copy.id)
+                    }.onFailure(error::addSuppressed)
+                }
+            }
+            throw error
         }
-        clonedMessages.forEach { message ->
-            validateReferences(targetConversation.id, message.content)
-        }
-        return clonedMessages
     }
 
     suspend fun collectGarbage(

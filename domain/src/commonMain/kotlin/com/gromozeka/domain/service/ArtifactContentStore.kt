@@ -7,6 +7,9 @@ interface ArtifactContentStore {
 
     suspend fun read(id: Artifact.Id): ByteArray
 
+    /** Create an independent byte-for-byte copy; never replace an existing target. */
+    suspend fun copy(sourceId: Artifact.Id, targetId: Artifact.Id)
+
     suspend fun readRange(id: Artifact.Id, offset: Long, limit: Int): ByteArray {
         require(offset >= 0 && limit > 0)
         val bytes = read(id)

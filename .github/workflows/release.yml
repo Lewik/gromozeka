@@ -191,6 +191,7 @@ jobs:
           --tests '*SparseModelPreparationTest'
           --tests '*AgentResponseReviewServiceTest'
           --tests '*MessageSquashServiceTest'
+          --tests '*ConversationArtifactApplicationServiceTest'
           --tests '*ConversationCompactionServiceTest'
           --tests '*AgentSessionRuntimeProjectionTest'
           --tests '*DistributedAiToolRoutingTest'

@@ -14,6 +14,8 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Service
@@ -42,6 +44,48 @@ class ExposedArtifactRepository : ArtifactRepository {
         artifact
     }
 
+    override suspend fun cloneBatch(
+        sourceConversationId: Conversation.Id,
+        targetConversation: Conversation,
+        sourceToTargetIds: Map<Artifact.Id, Artifact.Id>,
+        createdAt: Instant,
+    ): List<Artifact> {
+        require(sourceConversationId != targetConversation.id) { "Artifact clones require a different conversation" }
+        require(sourceToTargetIds.values.toSet().size == sourceToTargetIds.size &&
+            sourceToTargetIds.values.none { it in sourceToTargetIds }) { "Artifact clone IDs must be new and distinct" }
+        if (sourceToTargetIds.isEmpty()) return emptyList()
+        return dbQuery {
+            sourceToTargetIds.entries.toList().chunked(BATCH_SIZE).flatMap { batch ->
+                val rows = Artifacts.selectAll().where { Artifacts.id inList batch.map { it.key.value } }
+                    .associateBy { Artifact.Id(it[Artifacts.id]) }
+                require(rows.size == batch.size) { "Some artifact clone sources are missing" }
+                val copies = batch.map { (sourceId, targetId) ->
+                    val source = rows.getValue(sourceId).toArtifact()
+                    require(source.conversationId == sourceConversationId && source.projectId == targetConversation.projectId &&
+                        source.state == Artifact.State.COMMITTED) { "Artifact clone source must be committed and owned by the source conversation and project" }
+                    source.copy(id = targetId, conversationId = targetConversation.id, projectId = targetConversation.projectId,
+                        state = Artifact.State.DRAFT, createdAt = createdAt, committedAt = null) to rows.getValue(sourceId)[Artifacts.searchText]
+                }
+                Artifacts.batchInsert(copies, shouldReturnGeneratedValues = false) { (artifact, text) ->
+                    this[Artifacts.id] = artifact.id.value
+                    this[Artifacts.projectId] = artifact.projectId.value
+                    this[Artifacts.conversationId] = artifact.conversationId.value
+                    this[Artifacts.createdByUserId] = artifact.createdByUserId?.value
+                    this[Artifacts.searchText] = text
+                    this[Artifacts.fileName] = artifact.fileName
+                    this[Artifacts.mediaType] = artifact.mediaType
+                    this[Artifacts.sizeBytes] = artifact.sizeBytes
+                    this[Artifacts.contentSource] = Json.encodeToString(artifact.source)
+                    this[Artifacts.purpose] = artifact.purpose.name
+                    this[Artifacts.state] = artifact.state.name
+                    this[Artifacts.createdAt] = artifact.createdAt
+                    this[Artifacts.committedAt] = artifact.committedAt
+                }
+                copies.map { it.first }
+            }
+        }
+    }
+
     override suspend fun findById(id: Artifact.Id): Artifact? = dbQuery {
         Artifacts.select(metadataColumns)
             .where { Artifacts.id eq id.value }
@@ -52,9 +96,11 @@ class ExposedArtifactRepository : ArtifactRepository {
     override suspend fun findByIds(ids: List<Artifact.Id>): List<Artifact> {
         if (ids.isEmpty()) return emptyList()
         return dbQuery {
-            Artifacts.select(metadataColumns)
-                .where { Artifacts.id inList ids.map(Artifact.Id::value) }
-                .map { it.toArtifact() }
+            ids.distinct().chunked(BATCH_SIZE).flatMap { batch ->
+                Artifacts.select(metadataColumns)
+                    .where { Artifacts.id inList batch.map(Artifact.Id::value) }
+                    .map { it.toArtifact() }
+            }
         }
     }
 
@@ -66,22 +112,17 @@ class ExposedArtifactRepository : ArtifactRepository {
 
     override suspend fun commit(ids: List<Artifact.Id>, committedAt: Instant) {
         if (ids.isEmpty()) return
-        val distinctIds = ids.distinct()
         dbQuery {
-            val values = distinctIds.map(Artifact.Id::value)
-            Artifacts.update({
-                (Artifacts.id inList values) and (Artifacts.state eq Artifact.State.DRAFT.name)
-            }) {
-                it[state] = Artifact.State.COMMITTED.name
-                it[Artifacts.committedAt] = committedAt
-            }
-            val committedIds = Artifacts.select(metadataColumns)
-                .where {
-                    (Artifacts.id inList values) and (Artifacts.state eq Artifact.State.COMMITTED.name)
+            ids.distinct().chunked(BATCH_SIZE).forEach { batch ->
+                val values = batch.map(Artifact.Id::value)
+                Artifacts.update({ (Artifacts.id inList values) and (Artifacts.state eq Artifact.State.DRAFT.name) }) {
+                    it[state] = Artifact.State.COMMITTED.name
+                    it[Artifacts.committedAt] = committedAt
                 }
-                .mapTo(mutableSetOf()) { Artifact.Id(it[Artifacts.id]) }
-            require(committedIds.size == distinctIds.size) {
-                "Cannot commit missing artifacts: expected=${distinctIds.size} committed=${committedIds.size}"
+                val committedIds = Artifacts.select(Artifacts.id)
+                    .where { (Artifacts.id inList values) and (Artifacts.state eq Artifact.State.COMMITTED.name) }
+                    .mapTo(mutableSetOf()) { Artifact.Id(it[Artifacts.id]) }
+                require(committedIds.size == batch.size) { "Cannot commit missing artifacts: expected=${batch.size} committed=${committedIds.size}" }
             }
         }
     }
@@ -104,6 +145,8 @@ class ExposedArtifactRepository : ArtifactRepository {
                 .map { it.toArtifact() }
         }
     }
+
+    private companion object { const val BATCH_SIZE = 256 }
 
     private fun ResultRow.toArtifact(): Artifact = Artifact(
         id = Artifact.Id(this[Artifacts.id]),

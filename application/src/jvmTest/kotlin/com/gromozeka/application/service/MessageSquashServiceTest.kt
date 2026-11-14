@@ -672,6 +672,10 @@ private class InMemoryMessageRepository(
     override suspend fun save(message: Conversation.Message): Conversation.Message = message.also {
         check(values.putIfAbsent(it.id, it) == null)
     }
+    override suspend fun saveBatch(messages: List<Conversation.Message>) {
+        check(messages.map { it.id }.distinct().size == messages.size && messages.none { it.id in values })
+        messages.forEach { values[it.id] = it }
+    }
     override suspend fun findById(id: Conversation.Message.Id): Conversation.Message? = values[id]
     override suspend fun findByIds(ids: List<Conversation.Message.Id>): List<Conversation.Message> = ids.mapNotNull(values::get)
     override suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.Message> =

@@ -60,6 +60,8 @@ dependencies {
     testImplementation(project(":worker-runtime"))
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.flyway.core)
+    testImplementation(libs.exposed.jdbc)
+    testImplementation(libs.hikaricp)
     // Fake protocol peers for the unchanged Ktor Worker/client transport tests only.
     testImplementation(platform(libs.ktor.bom))
     testImplementation(libs.ktor.server.test.host)

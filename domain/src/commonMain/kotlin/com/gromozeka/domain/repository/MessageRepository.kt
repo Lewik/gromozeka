@@ -32,6 +32,9 @@ interface MessageRepository {
      */
     suspend fun save(message: Conversation.Message): Conversation.Message
 
+    /** Insert all immutable messages atomically; a duplicate ID rejects the whole batch. */
+    suspend fun saveBatch(messages: List<Conversation.Message>)
+
     /**
      * Finds message by unique identifier.
      *

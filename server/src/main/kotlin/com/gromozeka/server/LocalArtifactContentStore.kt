@@ -42,6 +42,21 @@ class LocalArtifactContentStore(
         Files.readAllBytes(path(id))
     }
 
+    override suspend fun copy(sourceId: Artifact.Id, targetId: Artifact.Id) = withContext(Dispatchers.IO) {
+        require(sourceId != targetId) { "Artifact copy requires a new identity" }
+        val source = path(sourceId)
+        val target = path(targetId)
+        val temporary = Files.createTempFile(root, ".artifact-", ".tmp")
+        try {
+            Files.copy(source, temporary, StandardCopyOption.REPLACE_EXISTING)
+            // No REPLACE_EXISTING: a collision must not overwrite another artifact.
+            Files.move(temporary, target)
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+        Unit
+    }
+
     override suspend fun readRange(id: Artifact.Id, offset: Long, limit: Int): ByteArray = withContext(Dispatchers.IO) {
         require(offset >= 0 && limit > 0)
         RandomAccessFile(path(id).toFile(), "r").use { file ->
