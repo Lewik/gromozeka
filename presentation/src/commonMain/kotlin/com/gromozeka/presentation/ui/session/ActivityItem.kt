@@ -1,5 +1,9 @@
 package com.gromozeka.presentation.ui.session
 
+import androidx.compose.ui.semantics.contentDescription
+
+import androidx.compose.ui.semantics.semantics
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -133,7 +137,6 @@ internal fun ActivityGroupItem(
     summaryStyle: ActivitySummaryStyle = ActivitySummaryStyle.ICONS,
 ) {
     val localization = LocalTranslation.current
-    val strings = LocalTranslation.current.runtime
     val summaries = summarizeActivities(group.activities.map(ActivityReference::activity))
     DisableSelection {
         Surface(
@@ -144,15 +147,12 @@ internal fun ActivityGroupItem(
             shape = MaterialTheme.shapes.small,
         ) {
             Row(
-                modifier = Modifier.clickable(onClick = onToggleExpanded).padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.clickable(onClick = onToggleExpanded)
+                    .semantics { contentDescription = localization.text("chat.activity.groupCount", "count" to group.activities.size) }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text = localization.text("chat.activity.groupCount", "count" to group.activities.size),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                )
                 ActivitySummaryRow(summaries, summaryStyle, Modifier.weight(1f))
                 ExpansionIcon(isExpanded)
             }

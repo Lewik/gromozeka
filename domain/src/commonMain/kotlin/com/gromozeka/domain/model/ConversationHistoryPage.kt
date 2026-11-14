@@ -38,7 +38,14 @@ data class ConversationHistoryPage(
     val newer: ConversationHistoryCursor? = null,
     val eventSequence: Long = 0,
     val reset: Boolean = false,
+    val lastUserActivity: ConversationUserActivity? = null,
 )
 
 @Serializable
 enum class ConversationMessageSelection { ALL, USER, ASSISTANT, THINKING, TOOL, PLAIN }
+
+/** Last non-synthetic message authored by the reader, regardless of the visible history page. */
+@Serializable
+data class ConversationUserActivity(val position: Int, val createdAt: kotlin.time.Instant) {
+    init { require(position >= 0) }
+}

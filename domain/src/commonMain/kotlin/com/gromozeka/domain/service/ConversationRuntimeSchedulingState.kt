@@ -19,6 +19,7 @@ data class ConversationRuntimeSchedulingState(
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val completedIdempotencyKeys: Set<String> = emptySet(),
     val lastTurn: ConversationRuntimeTurnSummary? = null,
+    val retainedTurnProblems: ConversationRuntimeTurnSummary? = null,
 ) {
     init {
         require(executionState == null || executionState.conversationId == conversationId) {
@@ -258,9 +259,11 @@ data class ConversationRuntimeSchedulingState(
                 activeTask = claimedTask,
                 activeInsertions = batch,
                 // A queued message or safe-point insertion is not a new agent turn.
+                retainedTurnProblems = if (claimedTask.isAgentWork() && lastTurn?.turnId != claimedTask.turnId &&
+                    lastTurn?.problems?.isNotEmpty() == true) lastTurn else retainedTurnProblems,
                 lastTurn = if (claimedTask.isAgentWork() && lastTurn?.turnId != claimedTask.turnId) {
                     ConversationRuntimeTurnSummary(claimedTask.turnId, now)
-                } else lastTurn,
+                } else if (claimedTask.isAgentWork()) lastTurn?.copy(completedAt = null) else lastTurn,
                 continuationTask = continuationTask?.takeUnless { it.id == claimedTask.id },
                 pendingTasks = pendingTasks.filterNot { it.id in claimedIds },
                 pendingTurnTerminationInstructions = if (consumesTurnTerminationInstructions) {
@@ -290,7 +293,12 @@ data class ConversationRuntimeSchedulingState(
                 executionState = currentState.copy(
                     activeTaskStartedAt = startedAt,
                     updatedAt = startedAt,
-                )
+                ),
+                lastTurn = if (activeTask?.turnId == lastTurn?.turnId &&
+                    (activeTask?.payload is ConversationRuntimeTask.Payload.LlmCall ||
+                        activeTask?.payload is ConversationRuntimeTask.Payload.ResponseReview)) {
+                    lastTurn?.copy(modelRequest = ConversationRuntimeTurnSummary.ModelRequestTiming(taskId, startedAt))
+                } else lastTurn,
             ),
             true,
         )
@@ -386,6 +394,12 @@ data class ConversationRuntimeSchedulingState(
                 completedIdempotencyKeys = completedIdempotencyKeys +
                     currentTask.idempotencyKey +
                     activeInsertions.map { it.idempotencyKey },
+                lastTurn = if (lastTurn?.turnId == currentTask.turnId) {
+                    lastTurn.finishTask(taskId, now, terminal || outcome !is ConversationRuntimeTaskOutcome.Continue)
+                } else lastTurn,
+                retainedTurnProblems = if (!terminal && outcome == ConversationRuntimeTaskOutcome.CompleteTurn &&
+                    currentTask.isAgentWork() && lastTurn?.turnId == currentTask.turnId && lastTurn.problems.isEmpty())
+                    null else retainedTurnProblems,
             ),
             true,
         )
@@ -446,6 +460,7 @@ data class ConversationRuntimeSchedulingState(
                     continuationTask = null,
                     pendingTasks = preservedPendingTasks,
                     incidents = incidents + incident,
+                    lastTurn = if (lastTurn?.turnId == currentTask.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
                     completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
                 ),
                 incident,
@@ -481,6 +496,7 @@ data class ConversationRuntimeSchedulingState(
                 continuationTask = null,
                 pendingTasks = nextPendingTasks,
                 incidents = incidents + incident,
+                lastTurn = if (lastTurn?.turnId == currentTask.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
                 completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
             ),
             incident,
@@ -520,6 +536,7 @@ data class ConversationRuntimeSchedulingState(
                 continuationTask = continuationTask?.takeUnless { it.id == task.id },
                 pendingTasks = nextPendingTasks,
                 incidents = incidents + incident,
+                lastTurn = if (lastTurn?.turnId == task.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
                 completedIdempotencyKeys = completedIdempotencyKeys + task.idempotencyKey,
             ),
             incident,
@@ -672,6 +689,7 @@ data class ConversationRuntimeSchedulingState(
                     continuationTask = null,
                     pendingTasks = preservedPendingTasks,
                     pendingTurnTerminationInstructions = nextPendingTurnTerminationInstructions,
+                    lastTurn = if (lastTurn?.turnId == continuationTask?.turnId) lastTurn?.copy(completedAt = now) else lastTurn,
                 ),
                 true,
             )
@@ -718,6 +736,9 @@ data class ConversationRuntimeSchedulingState(
                 activeInsertions = emptyList(),
                 continuationTask = null,
                 pendingTasks = preservedPendingTasks,
+                lastTurn = if (lastTurn?.turnId == (interruptedTask ?: continuationTask)?.turnId) {
+                    lastTurn?.finishTask(checkNotNull(interruptedTask ?: continuationTask).id, now, true)
+                } else lastTurn,
                 completedIdempotencyKeys = interruptedTask?.let {
                     completedIdempotencyKeys + it.idempotencyKey
                 } ?: completedIdempotencyKeys,

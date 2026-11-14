@@ -11,13 +11,21 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.AiRequestWaitReason
+import com.gromozeka.presentation.ui.session.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ConversationNavigationTabsTest {
-    private val alpha = ConversationTabHeader(Conversation.Id("alpha"), "Alpha")
-    private val beta = ConversationTabHeader(Conversation.Id("beta"), "Beta", isUnread = true)
+    private fun activity(phase: ConversationActivity = ConversationActivity.READY, unread: Boolean = false,
+        pressure: ConversationPressure = ConversationPressure.NORMAL) = ConversationActivityPresentation(
+        ConversationIndicatorState(phase, pressure, unread, false,
+            if (pressure == ConversationPressure.LOCAL_WAIT) setOf(AiRequestWaitReason.TPM) else emptySet()),
+        phase.name, phase != ConversationActivity.READY,
+    )
+    private val alpha = ConversationTabHeader(Conversation.Id("alpha"), "Alpha", activity = activity())
+    private val beta = ConversationTabHeader(Conversation.Id("beta"), "Beta", activity = activity(unread = true))
 
     @Test
     fun utilityTabsStaySquareAndHaveNoVisibleLabels() = runComposeUiTest {
@@ -48,7 +56,7 @@ class ConversationNavigationTabsTest {
         val hover = mutableStateOf(-1)
         setContent { Navigation(headers.value, hovered = hover.value) }
         val before = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        runOnIdle { headers.value = listOf(alpha.copy(loadingTone = LoadingIndicatorTone.FOREGROUND), beta); hover.value = 0 }
+        runOnIdle { headers.value = listOf(alpha.copy(activity = activity(ConversationActivity.WORKING)), beta); hover.value = 0 }
         val after = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertEquals(before, after)
         onNodeWithTag(UiTestTag.SessionTabRename(0).value, useUnmergedTree = true).assertExists()
@@ -74,7 +82,7 @@ class ConversationNavigationTabsTest {
     @Test
     fun allFiveWorkingTabsAnimateEvenWhenAUtilityTabIsSelected() = runComposeUiTest {
         mainClock.autoAdvance = false
-        val headers = (0..4).map { ConversationTabHeader(Conversation.Id("busy-$it"), "Task $it", loadingTone = LoadingIndicatorTone.FOREGROUND) }
+        val headers = (0..4).map { ConversationTabHeader(Conversation.Id("busy-$it"), "Task $it", activity = activity(ConversationActivity.WORKING)) }
         setContent { Navigation(headers, selected = 0) }
         mainClock.advanceTimeBy(100)
         val before = headers.map { onNodeWithTag("conversation-activity-slot:${it.conversationId.value}", useUnmergedTree = true).captureToImage().toPixelMap() }
@@ -88,7 +96,7 @@ class ConversationNavigationTabsTest {
     }
 
     @Test
-    fun attentionStaysCenteredAcrossBothLoadingTonesAndCompletionWithoutMovingTheTitle() = runComposeUiTest {
+    fun unreadStaysCenteredAcrossPressureChangesAndCompletionWithoutMovingTheTitle() = runComposeUiTest {
         mainClock.autoAdvance = false
         val header = mutableStateOf(alpha)
         setContent { Navigation(listOf(header.value)) }
@@ -96,11 +104,13 @@ class ConversationNavigationTabsTest {
         val slot = onNodeWithTag("conversation-activity-slot:alpha", useUnmergedTree = true)
         val bounds = slot.fetchSemanticsNode().boundsInRoot
         assertEquals(8f, title.left - bounds.right, "Status and title must keep an eight-dp gap")
-        for (tone in listOf(LoadingIndicatorTone.FOREGROUND, LoadingIndicatorTone.BACKGROUND, null)) {
-            runOnIdle { header.value = alpha.copy(isUnread = true, loadingTone = tone) }
+        for (state in listOf(activity(ConversationActivity.WORKING, true),
+            activity(ConversationActivity.WORKING, true, ConversationPressure.GLOBAL_WAIT),
+            activity(ConversationActivity.WORKING, true, ConversationPressure.LOCAL_WAIT), activity(unread = true))) {
+            runOnIdle { header.value = alpha.copy(activity = state) }
             mainClock.advanceTimeByFrame()
             val dot = onNodeWithTag(UiTestTag.ConversationUnread("alpha").value, useUnmergedTree = true)
-                .assertWidthIsEqualTo(6.dp).assertHeightIsEqualTo(6.dp).fetchSemanticsNode().boundsInRoot
+                .assertWidthIsEqualTo(14.dp).assertHeightIsEqualTo(14.dp).fetchSemanticsNode().boundsInRoot
             assertEquals(bounds.center, dot.center)
             assertEquals(title, onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot)
         }
@@ -121,43 +131,44 @@ class ConversationNavigationTabsTest {
     }
 
     @Test
-    fun ringGrowsAndShrinksUnderTheStationaryAttentionDot() = runComposeUiTest {
+    fun readingAfterCleanCompletionHidesTheIndicatorWithoutMovingTheTitle() = runComposeUiTest {
         mainClock.autoAdvance = false
-        val header = mutableStateOf(alpha.copy(isUnread = true))
+        val header = mutableStateOf(alpha.copy(activity = activity(unread = true)))
         setContent { Navigation(listOf(header.value)) }
         val slot = onNodeWithTag("conversation-activity-slot:alpha", useUnmergedTree = true)
-        val dot = onNodeWithTag(UiTestTag.ConversationUnread("alpha").value, useUnmergedTree = true)
-        val dotBounds = dot.fetchSemanticsNode().boundsInRoot
-        val titleBounds = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        val idle = slot.captureToImage().toPixelMap()
-        fun assertStationaryDot() {
-            val frame = slot.captureToImage().toPixelMap()
-            for (dy in -1..1) for (dx in -1..1) {
-                val x = frame.width / 2 + dx
-                val y = frame.height / 2 + dy
-                assertEquals(idle[x, y], frame[x, y], "The ring must remain underneath the attention dot")
-            }
-            assertEquals(dotBounds, dot.fetchSemanticsNode().boundsInRoot)
-            assertEquals(titleBounds, onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot)
+        val frame = slot.fetchSemanticsNode().boundsInRoot
+        val title = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val unread = slot.captureToImage().toPixelMap()
+        fun green(image: androidx.compose.ui.graphics.PixelMap) = (0 until image.height).sumOf { y ->
+            (0 until image.width).count { x -> image[x,y].green > image[x,y].red + 0.1f && image[x,y].green > image[x,y].blue + 0.1f }
         }
-        runOnIdle { header.value = header.value.copy(loadingTone = LoadingIndicatorTone.FOREGROUND) }
-        for (step in listOf(16L, 32L, 64L, 240L)) { mainClock.advanceTimeBy(step); assertStationaryDot() }
-        val visible = slot.captureToImage().toPixelMap()
-        assertTrue((0 until visible.height).any { y -> (0 until visible.width).any { x -> visible[x, y] != idle[x, y] } })
-        runOnIdle { header.value = header.value.copy(loadingTone = null) }
-        for (step in listOf(16L, 32L, 64L, 240L)) { mainClock.advanceTimeBy(step); assertStationaryDot() }
-        val hidden = slot.captureToImage().toPixelMap()
-        for (y in 0 until hidden.height) for (x in 0 until hidden.width) assertEquals(idle[x, y], hidden[x, y])
+        assertEquals(0, green(unread))
+        runOnIdle { header.value = alpha.copy(activity = activity(ConversationActivity.WORKING, true)) }
+        mainClock.advanceTimeBy(800)
+        val working = slot.captureToImage().toPixelMap()
+        for (y in unread.height / 2 - 1..unread.height / 2 + 1) for (x in unread.width / 2 - 1..unread.width / 2 + 1) {
+            assertEquals(unread[x,y], working[x,y], "The unread dot must remain stationary")
+        }
+        runOnIdle { header.value = alpha }
+        mainClock.advanceTimeByFrame()
+        val ready = slot.captureToImage().toPixelMap()
+        for (y in 0 until ready.height) for (x in 0 until ready.width) {
+            assertEquals(ready[0, 0], ready[x, y], "Clean readiness must leave no circle or check at $x/$y")
+        }
+        assertEquals(frame, slot.fetchSemanticsNode().boundsInRoot)
+        assertEquals(title, onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot)
+        onNodeWithTag(UiTestTag.ConversationUnread("alpha").value, useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
-    fun narrowPickerKeepsAggregateAttentionInsideSelectedActivitySlot() = runComposeUiTest {
-        setContent { Navigation(listOf(alpha.copy(loadingTone = LoadingIndicatorTone.BACKGROUND), beta), width = 393) }
+    fun narrowPickerShowsAggregateUnreadOnItsMenuWithoutChangingTheSelectedIndicator() = runComposeUiTest {
+        setContent { Navigation(listOf(alpha.copy(activity = activity(pressure = ConversationPressure.GLOBAL_WAIT)), beta), width = 393) }
         val slot = onNodeWithTag("conversation-activity-slot:alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val attention = onNodeWithTag("conversation-picker-unread", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val title = onNodeWithText("Alpha", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertEquals(8f, title.left - slot.right)
-        assertEquals(slot.center, attention.center)
+        assertTrue(attention.left > slot.right)
+        onNodeWithTag(UiTestTag.ConversationUnread("alpha").value, useUnmergedTree = true).assertDoesNotExist()
         onNodeWithTag("conversation-tab-picker").performClick()
         val betaSlot = onNodeWithTag("conversation-activity-slot:beta", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val betaDot = onNodeWithTag(UiTestTag.ConversationUnread("beta").value, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
@@ -168,7 +179,7 @@ class ConversationNavigationTabsTest {
     fun fullConversationTitleAppearsOnHoverWithoutChangingTabGeometryOrActions() = runComposeUiTest {
         mainClock.autoAdvance = false
         val title = "Conversation with a long shared prefix and an important distinguishing ending ".repeat(3)
-        val header = alpha.copy(title = title, isUnread = true, loadingTone = LoadingIndicatorTone.BACKGROUND)
+        val header = alpha.copy(title = title, activity = activity(unread = true, pressure = ConversationPressure.GLOBAL_WAIT))
         val selected = mutableListOf<Int?>()
         val renamed = mutableListOf<ConversationTabHeader>()
         setContent { Navigation(listOf(header, beta), hovered = 0, width = 650,

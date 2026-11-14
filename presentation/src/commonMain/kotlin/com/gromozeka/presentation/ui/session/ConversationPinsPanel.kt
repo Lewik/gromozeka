@@ -26,9 +26,7 @@ fun ConversationPinsPanel(
     conversationId: Conversation.Id,
     service: ConversationPinService,
     state: ConversationPinsPanelState,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
 ) {
     val translation = LocalTranslation.current
@@ -47,18 +45,7 @@ fun ConversationPinsPanel(
         exit = if (slideFromRight) slideOutHorizontally(targetOffsetX = { it }) else shrinkHorizontally(),
         modifier = modifier,
     ) {
-        Surface(
-            modifier = (if (fullScreen) Modifier.fillMaxSize() else Modifier.width(400.dp).fillMaxHeight()).testTag("pins-panel"),
-            color = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp,
-        ) {
-            Column(Modifier.fillMaxSize().padding(GromozekaTheme.spacing.contentPadding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(translation.text("pins.title"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    CompactIconButton(onClick = onClose, icon = Icons.Default.Close,
-                        contentDescription = translation.text("pins.hide"), modifier = Modifier.testTag("pins-close"),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = MaterialTheme.colorScheme.onSurface))
-                }
+        ConversationPanelFrame(translation.text("pins.title"), Modifier.testTag("pins-panel")) {
                 if (view.sourceFailed) Text(translation.text("pins.sourceLoadFailed"), color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.testTag("pins-source-error"))
                 if (view.operation != null) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("pins-busy"))
@@ -128,8 +115,7 @@ fun ConversationPinsPanel(
                     PinError(view.loadProblem ?: PinProblem.READ_FAILED, "pins-load-error")
                     TextButton(onClick = { state.retry(conversationId) }, modifier = Modifier.testTag("pins-retry")) { Text(translation.text("pins.retry")) }
                 }
-            }
-        }
+                    }
     }
     if (isVisible && view.deleteTarget != null) {
         AlertDialog(

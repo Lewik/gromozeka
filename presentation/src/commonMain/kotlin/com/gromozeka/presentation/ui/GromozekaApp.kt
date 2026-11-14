@@ -1,9 +1,15 @@
 package com.gromozeka.presentation.ui
 
-import com.gromozeka.presentation.ui.notifications.UserNotificationsState
-import com.gromozeka.presentation.ui.notifications.UserNotificationsDialog
+import com.gromozeka.presentation.ui.session.sidePanelResizeHandleWidth
 
-import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.presentation.ui.session.SidePanelResizeHandle
+
+import com.gromozeka.presentation.ui.session.ConversationSidePanelResizeState
+
+import androidx.compose.foundation.layout.offset
+
+import com.gromozeka.presentation.ui.session.SidePanelToggle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -11,13 +17,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -32,23 +40,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.device.telemetry.DeviceLocationResult
 import com.gromozeka.device.telemetry.DeviceLocationSnapshot
-import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.KeyboardShortcutAction
@@ -57,32 +66,45 @@ import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
 import com.gromozeka.presentation.AppComponents
-import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.services.UiFeedbackEvent
+import com.gromozeka.presentation.services.UnifiedGestureDetector
+import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
+import com.gromozeka.presentation.ui.notifications.UserNotificationsDialog
+import com.gromozeka.presentation.ui.notifications.UserNotificationsState
 import com.gromozeka.presentation.ui.session.ConversationParticipantsPanel
-import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
 import com.gromozeka.presentation.ui.session.ConversationPinsPanel
 import com.gromozeka.presentation.ui.session.ConversationPinsPanelState
+import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
+import com.gromozeka.presentation.ui.session.ConversationSidePanel
+import com.gromozeka.presentation.ui.session.ConversationSidePanelTab
+import com.gromozeka.presentation.ui.session.ConversationSidePanelTab.Section as SidebarSection
+import com.gromozeka.presentation.ui.session.ConversationThreadPanel
+import com.gromozeka.presentation.ui.session.ConversationVisualPanel
+import com.gromozeka.presentation.ui.session.RuntimeAgentTabSelection
+import com.gromozeka.presentation.ui.session.RuntimeInspectionRequest
+import com.gromozeka.presentation.ui.session.RuntimeInspectionSection
+import com.gromozeka.presentation.ui.session.RuntimePanelView
+import com.gromozeka.presentation.ui.session.SessionScreen
+import com.gromozeka.presentation.ui.session.SlotInventoryPanel
+import com.gromozeka.presentation.ui.session.SlotInventoryState
 import com.gromozeka.presentation.ui.session.VisualContent
 import com.gromozeka.presentation.ui.session.VisualPanelState
-import com.gromozeka.presentation.ui.session.RuntimeInspectionRequest
-import com.gromozeka.presentation.ui.session.RuntimeAgentTabSelection
-import com.gromozeka.presentation.ui.session.SessionScreen
+import com.gromozeka.presentation.ui.session.rememberConversationActivityPresentation
+import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
-import kotlinx.coroutines.flow.first
+import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
-import androidx.compose.foundation.layout.size
 
 @Composable
 fun GromozekaApp(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    showRuntimePanelInitially: Boolean = true,
+    showSidePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
@@ -96,7 +118,7 @@ fun GromozekaApp(
             GromozekaAppContent(
                 appComponents = appComponents,
                 skipLoadingScreen = skipLoadingScreen,
-                showRuntimePanelInitially = showRuntimePanelInitially,
+                showSidePanelInitially = showSidePanelInitially,
                 forceCompactLayout = forceCompactLayout,
                 clientPlatform = clientPlatform,
             )
@@ -108,7 +130,7 @@ fun GromozekaApp(
 fun GromozekaAppContent(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    showRuntimePanelInitially: Boolean = true,
+    showSidePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
@@ -120,9 +142,9 @@ fun GromozekaAppContent(
     var recordingShortcut by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
-    var showSettingsPanel by remember { mutableStateOf(false) }
-    var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
-    var showPinsPanel by remember { mutableStateOf(false) }
+    var sidePanelVisible by remember(showSidePanelInitially) { mutableStateOf(showSidePanelInitially) }
+    val sidePanelResize = remember { ConversationSidePanelResizeState() }
+    var sidePanelTab by remember { mutableStateOf<ConversationSidePanelTab>(SidebarSection.RUNTIME) }
     val notificationState = remember(appComponents) { UserNotificationsState(appComponents.authenticatedUser.id) }
     LaunchedEffect(appComponents, notificationState.observationRetry) {
         notificationState.observe(appComponents.userNotificationService, appComponents.userNotificationSink)
@@ -132,19 +154,11 @@ fun GromozekaAppContent(
             ?: error("Notification conversation is not available")
         appComponents.appViewModel.createTab(projectId = conversation.projectId, conversationId = id, setAsCurrent = true)
     }
-    var pinRestartFailed by remember(appComponents) { mutableStateOf(false) }
-    if (pinRestartFailed) {
-        AlertDialog(
-            onDismissRequest = { pinRestartFailed = false },
-            text = { Text(localization.text("pins.restartFailed")) },
-            confirmButton = {
-                TextButton(onClick = { pinRestartFailed = false }) {
-                    Text(localization.text("common.close"))
-                }
-            },
-        )
-    }
     val pinsPanelState = remember(appComponents) { ConversationPinsPanelState() }
+    val slotInventory = remember(appComponents.slotService) { SlotInventoryState() }
+    LaunchedEffect(appComponents.slotService, slotInventory.observationAttempt) {
+        slotInventory.observe(appComponents.slotService)
+    }
     var pinSourceLoads by remember(appComponents) { mutableStateOf(emptySet<Conversation.Id>()) }
     val runtimeAgentTabSelection = remember(appComponents) { RuntimeAgentTabSelection() }
     val visualPanelState = remember(appComponents) { VisualPanelState() }
@@ -156,8 +170,6 @@ fun GromozekaAppContent(
         }
     }
     var runtimeInspectionRequest by remember { mutableStateOf<RuntimeInspectionRequest?>(null) }
-    var showParticipantsPanel by remember { mutableStateOf(false) }
-    var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var hoveredTabIndex by remember { mutableStateOf(-1) }
     var projectArea by remember { mutableStateOf(ProjectArea.CONVERSATIONS) }
@@ -171,13 +183,21 @@ fun GromozekaAppContent(
     val unreadConversationIds by appComponents.appViewModel.unreadConversationIds.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
+    val hideSidePanel: () -> Unit = { sidePanelVisible = false }
+    val openSidePanel: (ConversationSidePanelTab) -> Unit = { tab ->
+        if (tab is ConversationSidePanelTab.VisualPanel) {
+            visualPanelState.select(checkNotNull(currentTab).conversationId, tab.id)
+        }
+        sidePanelTab = tab
+        sidePanelVisible = true
+    }
     LaunchedEffect(currentTab?.conversationId, appComponents.visualService) {
         val conversationId = currentTab?.conversationId ?: return@LaunchedEffect
         try {
             appComponents.visualService.observe(conversationId).collect { snapshots ->
-                if (visualPanelState.accept(conversationId, snapshots)) {
-                    showRuntimePanel = true
-                    showPinsPanel = false
+                if (visualPanelState.accept(conversationId, snapshots) && currentTab?.conversationId == conversationId) {
+                    sidePanelTab = ConversationSidePanelTab.VisualPanel(checkNotNull(visualPanelState.selected(conversationId)))
+                    sidePanelVisible = true
                 }
             }
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
@@ -187,6 +207,14 @@ fun GromozekaAppContent(
     val pttTarget by appComponents.pttService.target.collectAsState()
     val liveVoiceTarget by appComponents.liveVoiceInputService.target.collectAsState()
     val voiceTranscriptions by appComponents.voiceInputDelivery.transcriptions.collectAsState()
+    // The selected-tab flow may lag a tab-list update; keep the actually displayed tab observed until it switches.
+    val conversationActivities = (tabs + listOfNotNull(currentTab)).distinctBy { it.conversationId }.associate { tab ->
+        tab.conversationId to key(tab.conversationId) {
+            rememberConversationActivityPresentation(tab, tab.conversationId in unreadConversationIds,
+                remoteConnectionState.status == RemoteConnectionState.Status.CONNECTED,
+                appComponents.aiRequestActivityService, voiceTranscriptions)
+        }
+    }
     val pttStatusMessage by appComponents.pttService.statusMessage.collectAsState()
     val pttUnavailableReason by appComponents.pttService.unavailableReason.collectAsState()
     val liveVoiceInputState by appComponents.liveVoiceInputService.state.collectAsState()
@@ -358,85 +386,204 @@ fun GromozekaAppContent(
                             with(scaledDensity) { maxWidth.toPx() }.toDp()
                         }
                         val isCompactLayout = forceCompactLayout || unscaledMaxWidth < 700.dp
+                        val availableWidth = maxWidth
+                        val resizable = !isCompactLayout && (clientPlatform == ClientPlatform.DESKTOP || clientPlatform == ClientPlatform.WEB_DESKTOP)
                         val contentPadding = if (isCompactLayout) GromozekaTheme.spacing.panelPadding else GromozekaTheme.spacing.contentPadding
-                        val setSettingsPanel: (Boolean) -> Unit = { visible ->
-                            showSettingsPanel = visible
-                            if (visible && isCompactLayout) {
-                                showRuntimePanel = false
-                                showPinsPanel = false
-                                showParticipantsPanel = false
-                                showMemoryActionItemsPanel = false
-                            }
-                        }
-                        val setRuntimePanel: (Boolean) -> Unit = { visible ->
-                            showRuntimePanel = visible
-                            if (visible) {
-                                showParticipantsPanel = false
-                                showPinsPanel = false
-                            }
-                            if (visible && isCompactLayout) {
-                                showSettingsPanel = false
-                                showMemoryActionItemsPanel = false
-                            }
-                        }
-                        val setParticipantsPanel: (Boolean) -> Unit = { visible ->
-                            showParticipantsPanel = visible
-                            if (visible) {
-                                showRuntimePanel = false
-                                showPinsPanel = false
-                            }
-                            if (visible && isCompactLayout) {
-                                showSettingsPanel = false
-                                showMemoryActionItemsPanel = false
-                            }
-                        }
-                        val setMemoryActionItemsPanel: (Boolean) -> Unit = { visible ->
-                            showMemoryActionItemsPanel = visible
-                            if (visible && isCompactLayout) {
-                                showSettingsPanel = false
-                                showRuntimePanel = false
-                                showPinsPanel = false
-                                showParticipantsPanel = false
-                            }
-                        }
-                        val setPinsPanel: (Boolean) -> Unit = { visible ->
-                            showPinsPanel = visible
-                            if (visible) {
-                                showRuntimePanel = false
-                                showParticipantsPanel = false
-                                if (isCompactLayout) {
-                                    showSettingsPanel = false
-                                    showMemoryActionItemsPanel = false
-                                }
-                            }
-                        }
                         val leaveDisconnectedConversation: () -> Unit = {
-                            setParticipantsPanel(false)
-                            coroutineScope.launch {
-                                appComponents.appViewModel.selectTab(null)
-                            }
+                            hideSidePanel()
+                            coroutineScope.launch { appComponents.appViewModel.selectTab(null) }
                         }
+                        val settingsContent: @Composable (SettingsPanelContentMode) -> Unit = { mode ->
+                            SettingsPanel(
+                                clientPlatform = clientPlatform,
+                                onRecordingShortcutChange = { recordingShortcut = it },
+                                isVisible = true,
+                                settings = currentSettings,
+                                onSettingsChange = onSettingsChange,
+                                remoteClientSettings = remoteClientSettings,
+                                onRemoteClientSettingsChange = onRemoteClientSettingsChange,
+                                translationService = appComponents.translationService,
+                                themeService = appComponents.themeService,
+                                aiThemeGenerator = appComponents.aiThemeGenerator,
+                                settingsService = appComponents.settingsService,
+                                messageDeliveryPreferenceService = appComponents.messageDeliveryPreferenceService,
+                                globalHotkeyController = appComponents.globalHotkeyController,
+                                agentService = appComponents.agentService,
+                                aiConfigurationService = appComponents.aiConfigurationService,
+                                aiUsageReportService = appComponents.aiUsageReportService,
+                                runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
+                                workerCatalogService = appComponents.workerCatalogService,
+                                mcpServerService = appComponents.mcpServerService,
+                                distributionService = appComponents.distributionService,
+                                deviceConnectionService = appComponents.deviceConnectionService,
+                                personalAccessTokenService = appComponents.personalAccessTokenService,
+                                aiUserCredentialService = appComponents.aiUserCredentialService,
+                                namedSecretService = appComponents.namedSecretService,
+                                userAdministrationService = appComponents.userAdministrationService,
+                                telegramService = appComponents.telegramService,
+                                securityAuditService = appComponents.securityAuditService,
+                                userDirectoryService = appComponents.userDirectoryService,
+                                canAdministerUsers =
+                                    appComponents.authenticatedUser.role == User.Role.OWNER,
+                                ollamaModelService = appComponents.ollamaModelService,
+                                coroutineScope = coroutineScope,
+                                onOpenTab = createNewSessionInCurrentProject,
+                                onOpenTabWithMessage = createNewSessionWithMessage,
 
-                        LaunchedEffect(
-                            isCompactLayout,
-                            showSettingsPanel,
-                            showRuntimePanel,
-                            showPinsPanel,
-                            showParticipantsPanel,
-                            showMemoryActionItemsPanel,
-                        ) {
-                            if (isCompactLayout) {
-                                when {
-                                    showSettingsPanel && showRuntimePanel -> showRuntimePanel = false
-                                    showSettingsPanel && showParticipantsPanel -> showParticipantsPanel = false
-                                    showSettingsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
-                                    showSettingsPanel && showPinsPanel -> showPinsPanel = false
-                                    showRuntimePanel && showPinsPanel -> showPinsPanel = false
-                                    showParticipantsPanel && showPinsPanel -> showPinsPanel = false
-                                    showPinsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
-                                    showRuntimePanel && showParticipantsPanel -> showParticipantsPanel = false
-                                    showRuntimePanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
-                                    showParticipantsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
+                                contentMode = mode,
+                            )
+                        }
+                        val sidePanelContent: @Composable () -> Unit = {
+                            val tabViewModel = currentTab
+                            val conversationId = tabViewModel?.conversationId
+                            val visuals = conversationId?.let(visualPanelState::visuals).orEmpty()
+                            // Visual selection belongs to the conversation and may disappear after a remote close.
+                            val requested = sidePanelTab
+                            val selected = if (requested is ConversationSidePanelTab.VisualPanel) {
+                                conversationId?.let(visualPanelState::selected)?.takeIf { id -> visuals.any { it.id == id } }
+                                    ?.let { ConversationSidePanelTab.VisualPanel(it) } ?: SidebarSection.RUNTIME
+                            } else requested
+                            val closeConversation: (() -> Unit)? = conversationId?.let { id ->
+                                { coroutineScope.launch { appComponents.appViewModel.closeConversationTab(id) }; Unit }
+                            }
+                            ConversationSidePanel(
+                                selected = selected,
+                                onSelect = { runtimeInspectionRequest = null; openSidePanel(it) },
+                                conversationAvailable = tabViewModel != null,
+                                visuals = visuals,
+                                dirtyVisualIds = conversationId?.let(visualPanelState::dirtyVisualIds).orEmpty(),
+                                highlightedVisualIds = conversationId?.let(visualPanelState::highlightedVisualIds).orEmpty(),
+                                onCloseVisual = { visualPanelState.close(it, appComponents.visualService, coroutineScope, localization.text("visuals.closeFailed")) },
+                                onClearVisualHighlights = visualPanelState::clearHighlights,
+                                onCloseConversation = closeConversation,
+                            ) {
+                                when (selected) {
+                                    SidebarSection.SETTINGS -> settingsContent(SettingsPanelContentMode.Quick)
+                                    SidebarSection.PINS -> {
+                                        checkNotNull(tabViewModel)
+                                        ConversationPinsPanel(
+                                            isVisible = true,
+                                            conversationId = tabViewModel.conversationId,
+                                            service = appComponents.conversationPinService,
+                                            state = pinsPanelState,
+                                            modifier = Modifier.testTag("conversation-pins-panel"),
+
+                                        )
+                                    }
+                                    SidebarSection.PARTICIPANTS -> {
+                                        checkNotNull(tabViewModel)
+                                        val conversation = conversations[tabViewModel.conversationId]
+                                        if (conversation == null) Text(localization.text("chat.activity.stateLoading"))
+                                        else Box(Modifier.testTag(UiTestTag.ParticipantsPanel.value)) {
+                                            ConversationParticipantsPanel(
+                                                isVisible = true,
+                                                initialConversation = conversation,
+                                                currentUserId = appComponents.authenticatedUser.id,
+                                                conversationService = appComponents.conversationService,
+                                                agentService = appComponents.agentService,
+                                                projectMembershipService = appComponents.projectMembershipService,
+                                                userDirectoryService = appComponents.userDirectoryService,
+                                                onConversationUpdated = {
+                                                    appComponents.appViewModel.mergeConversationSnapshots(listOf(it))
+                                                },
+                                                onCurrentUserDisconnected = leaveDisconnectedConversation,
+
+                                            )
+                                        }
+                                    }
+                                    SidebarSection.THREAD -> {
+                                        checkNotNull(tabViewModel)
+                                        ConversationThreadPanel(
+                                            viewModel = tabViewModel,
+                                            coroutineScope = coroutineScope,
+                                            onNewSession = { createSession(tabViewModel.projectId, null, null) },
+                                            onForkSession = {
+                                                coroutineScope.launch {
+                                                    runCatching {
+                                                        val forked = appComponents.conversationService.fork(tabViewModel.conversationId)
+                                                        val index = appComponents.appViewModel.createTab(projectId = forked.projectId,
+                                                            conversationId = forked.id, initiator = ConversationInitiator.User)
+                                                        appComponents.appViewModel.selectTab(index)
+                                                    }.onFailure { error -> log.warn(error) { "Failed to fork conversation: ${error.message}" } }
+                                                }
+                                            },
+                                            pinMessageEnabled = !pinsPanelState.hasDraft(tabViewModel.conversationId) && tabViewModel.conversationId !in pinSourceLoads,
+                                            onPinMessage = { messageId ->
+                                                val owner = tabViewModel.conversationId
+                                                openSidePanel(SidebarSection.PINS)
+                                                if (!pinsPanelState.hasDraft(owner) && owner !in pinSourceLoads) {
+                                                    pinSourceLoads = pinSourceLoads + owner
+                                                    coroutineScope.launch {
+                                                        try {
+                                                            val text = tabViewModel.loadPinMessageText(messageId)
+                                                            if (text == null) {
+                                                                if (!pinsPanelState.hasDraft(owner)) pinsPanelState.sourceLoadFailed(owner)
+                                                            } else {
+                                                                pinsPanelState.beginCreate(owner, text,
+                                                                    com.gromozeka.domain.model.ConversationPinSource(owner, messageId))
+                                                            }
+                                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                                            throw cancelled
+                                                        } catch (_: Exception) {
+                                                            if (!pinsPanelState.hasDraft(owner)) pinsPanelState.sourceLoadFailed(owner)
+                                                        } finally {
+                                                            pinSourceLoads = pinSourceLoads - owner
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                        )
+                                    }
+                                    SidebarSection.SLOTS -> SlotInventoryPanel(slotInventory, appComponents.slotService) { id ->
+                                        hideSidePanel()
+                                        coroutineScope.launch {
+                                            val target = appComponents.conversationService.findById(id) ?: return@launch
+                                            val index = appComponents.appViewModel.createTab(projectId = target.projectId,
+                                                conversationId = target.id, initiator = ConversationInitiator.User)
+                                            appComponents.appViewModel.selectTab(index)
+                                        }
+                                    }
+                                    SidebarSection.MEMORY -> {
+                                        checkNotNull(tabViewModel)
+                                        val refreshKey by tabViewModel.memoryActionItemsRefreshKey.collectAsState()
+                                        MemoryActionItemsPanel(true, tabViewModel.conversationId, refreshKey,
+                                            appComponents.memoryActionItemService, coroutineScope,
+                                            Modifier.testTag(UiTestTag.MemoryActionItemsPanel.value), )
+                                    }
+                                    SidebarSection.RUNTIME, SidebarSection.TASKS -> {
+                                        checkNotNull(tabViewModel)
+                                        key(tabViewModel.conversationId) {
+                                            val tokenStats by tabViewModel.tokenStats.collectAsState()
+                                            val waiting by tabViewModel.isWaitingForResponse.collectAsState()
+                                            val pending by tabViewModel.pendingMessages.collectAsState()
+                                            val runtime by tabViewModel.runtimeSnapshot.collectAsState()
+                                            ConversationRuntimePanel(
+                                                view = if (selected == SidebarSection.TASKS) RuntimePanelView.TASKS else RuntimePanelView.RUNTIME,
+                                                conversationId = tabViewModel.conversationId,
+                                                participants = conversations[tabViewModel.conversationId]?.participants,
+                                                tabSelection = runtimeAgentTabSelection,
+                                                replyRoutingContent = { RuntimeReplyRouting(tabViewModel) },
+                                                agentService = appComponents.agentService,
+                                                aiConfigurationProvider = appComponents.aiConfigurationService,
+                                                aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
+                                                tokenStats = tokenStats, isWaitingForResponse = waiting, pendingMessages = pending, runtimeSnapshot = runtime,
+                                                inspectionRequest = runtimeInspectionRequest,
+                                                onCancelCommandTask = tabViewModel::cancelCommandTask,
+                                                onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
+                                                onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
+                                                onEditPendingMessage = tabViewModel::editPendingMessage,
+                                                onCancelPendingMessage = tabViewModel::cancelPendingMessage,
+                                                modifier = Modifier.testTag(UiTestTag.RuntimePanel.value),
+                                            )
+                                        }
+                                    }
+                                    is ConversationSidePanelTab.VisualPanel -> {
+                                        val visual = visuals.single { it.id == selected.id }
+                                        ConversationVisualPanel(visual, visualPanelState.loadError) {
+                                            VisualContent(it, visualPanelState.draft(it), appComponents.visualService,
+                                                highlightedIds = visualPanelState.highlightedIds(it), onClearHighlights = { visualPanelState.clearHighlights(it.id) })
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -458,7 +605,7 @@ fun GromozekaAppContent(
                                         isCompactLayout = isCompactLayout,
                                         tabs = tabs,
                                         conversations = conversations,
-                                        unreadConversationIds = unreadConversationIds,
+                                        activities = conversationActivities,
                                         hoveredTabIndex = hoveredTabIndex,
                                         onTabSelect = { tabIndex ->
                                             coroutineScope.launch {
@@ -471,6 +618,11 @@ fun GromozekaAppContent(
                                             appComponents.appViewModel.renameConversation(conversationId, newName)
                                         },
                                         trailingContent = {
+                                            if (currentTab != null || (sidePanelTab == SidebarSection.SETTINGS && currentTabIndex != -2)) {
+                                                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                                                    SidePanelToggle(sidePanelVisible) { sidePanelVisible = !sidePanelVisible }
+                                                }
+                                            }
                                             androidx.compose.material3.BadgedBox(badge = {
                                                 val unread = notificationState.summary?.unreadCount ?: 0
                                                 if (notificationState.summaryFailed || unread > 0) androidx.compose.material3.Badge {
@@ -513,49 +665,13 @@ fun GromozekaAppContent(
                                                     val tabViewModel = currentTab!!
                                                     SessionScreen(
                                                         viewModel = tabViewModel,
-                                                        slotService = appComponents.slotService,
-                                                        onOpenSlotConversation = { id ->
-                                                            coroutineScope.launch {
-                                                                val target = appComponents.conversationService.findById(id) ?: return@launch
-                                                                val index = appComponents.appViewModel.createTab(projectId = target.projectId,
-                                                                    conversationId = target.id, initiator = ConversationInitiator.User)
-                                                                appComponents.appViewModel.selectTab(index)
-                                                            }
-                                                        },
+                                                        activityPresentation = conversationActivities.getValue(tabViewModel.conversationId),
+                                                        conversationSidePanelVisible = !isCompactLayout && sidePanelVisible,
+                                                        conversationSidePanelContent = sidePanelContent,
+                                                        sidePanelResize = sidePanelResize,
+                                                        slotInventory = slotInventory,
+                                                        onOpenSlots = { openSidePanel(SidebarSection.SLOTS) },
                                                         contentPadding = contentPadding,
-                                                        onNewSession = createNewSessionInCurrentProject,
-                                                        onForkSession = {
-                                                            coroutineScope.launch {
-                                                                runCatching {
-                                                                    val currentConversationId =
-                                                                        currentTab!!.uiState.first().conversationId
-                                                                    val forkedConversation =
-                                                                        appComponents.conversationService.fork(currentConversationId)
-                                                                    val tabIndex = appComponents.appViewModel.createTab(
-                                                                        projectId = forkedConversation.projectId,
-                                                                        conversationId = forkedConversation.id,
-                                                                        initiator = ConversationInitiator.User
-                                                                    )
-                                                                    appComponents.appViewModel.selectTab(tabIndex)
-                                                                }.onFailure { error ->
-                                                                    log.warn(error) { "Failed to fork conversation: ${error.message}" }
-                                                                }
-                                                            }
-                                                        },
-                                                        onRestartSession = {
-                                                            val sourceConversationId = tabViewModel.conversationId
-                                                            coroutineScope.launch {
-                                                                performPinPreservingRestart(
-                                                                    restart = { appComponents.appViewModel.restartWithCopiedPins(sourceConversationId) },
-                                                                    reportFailure = { pinRestartFailed = true },
-                                                                )
-                                                            }
-                                                        },
-                                                        onCloseTab = {
-                                                            coroutineScope.launch {
-                                                                currentTabIndex?.let { appComponents.appViewModel.closeTab(it) }
-                                                            }
-                                                        },
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,
@@ -570,86 +686,13 @@ fun GromozekaAppContent(
                                                         voiceTranscriptions = voiceTranscriptions,
                                                         remoteConnectionState = remoteConnectionState,
                                                         settings = currentSettings,
-                                                        showSettingsPanel = showSettingsPanel,
-                                                        onShowSettingsPanelChange = setSettingsPanel,
-                                                        showMemoryActionItemsPanel = showMemoryActionItemsPanel,
-                                                        onShowMemoryActionItemsPanelChange = setMemoryActionItemsPanel,
-                                                        showParticipantsPanel = showParticipantsPanel,
-                                                        onShowParticipantsPanelChange = setParticipantsPanel,
-                                                        showRuntimePanel = showRuntimePanel,
-                                                        onShowRuntimePanelChange = setRuntimePanel,
-                                                        showPinsPanel = showPinsPanel,
-                                                        onShowPinsPanelChange = setPinsPanel,
-                                                        pinMessageEnabled = !pinsPanelState.hasDraft(tabViewModel.conversationId) && tabViewModel.conversationId !in pinSourceLoads,
-                                                        onPinMessage = { messageId ->
-                                                            val owner = tabViewModel.conversationId
-                                                            setPinsPanel(true)
-                                                            if (!pinsPanelState.hasDraft(owner) && owner !in pinSourceLoads) {
-                                                                pinSourceLoads = pinSourceLoads + owner
-                                                                coroutineScope.launch {
-                                                                    try {
-                                                                        val text = tabViewModel.loadPinMessageText(messageId)
-                                                                        if (text == null) {
-                                                                            if (!pinsPanelState.hasDraft(owner)) pinsPanelState.sourceLoadFailed(owner)
-                                                                        } else {
-                                                                            pinsPanelState.beginCreate(owner, text,
-                                                                                com.gromozeka.domain.model.ConversationPinSource(owner, messageId))
-                                                                        }
-                                                                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                                                                        throw cancelled
-                                                                    } catch (_: Exception) {
-                                                                        if (!pinsPanelState.hasDraft(owner)) pinsPanelState.sourceLoadFailed(owner)
-                                                                    } finally {
-                                                                        pinSourceLoads = pinSourceLoads - owner
-                                                                    }
-                                                                }
-                                                            }
-                                                        },
+
+
                                                         onInspectRuntime = { section ->
                                                             runtimeInspectionRequest = RuntimeInspectionRequest(
                                                                 tabViewModel.conversationId, section, (runtimeInspectionRequest?.sequence ?: 0) + 1,
                                                             )
-                                                            setRuntimePanel(true)
-                                                        },
-                                                        onRememberThread = {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.rememberCurrentThread() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Remember thread failed: ${error.message}" }
-                                                                    }
-                                                            }
-                                                        },
-                                                        onConsolidateMemory = {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.consolidateCurrentMemory() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory consolidation failed: ${error.message}" }
-                                                                    }
-                                                            }
-                                                        },
-                                                        onRepairMemory = {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.repairCurrentMemory() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory repair failed: ${error.message}" }
-                                                                    }
-                                                            }
-                                                        },
-                                                        onMaintainMemoryEntities = {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.maintainMemoryEntities() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory entity maintenance failed: ${error.message}" }
-                                                                    }
-                                                            }
-                                                        },
-                                                        onApplyMemoryRetention = {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.applyCurrentMemoryRetention() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory retention failed: ${error.message}" }
-                                                                    }
-                                                            }
+                                                            openSidePanel(if (section == RuntimeInspectionSection.OVERVIEW) SidebarSection.RUNTIME else SidebarSection.TASKS)
                                                         },
                                                         onInsertCurrentLocation = if (appComponents.deviceLocationService.isSupported) {
                                                             {
@@ -691,46 +734,7 @@ fun GromozekaAppContent(
                                                             }
 
                                                             2 -> {
-                                                                SettingsPanel(
-                                                                    clientPlatform = clientPlatform,
-                                                                    onRecordingShortcutChange = { recordingShortcut = it },
-                                                                    isVisible = true,
-                                                                    settings = currentSettings,
-                                                                    onSettingsChange = onSettingsChange,
-                                                                    remoteClientSettings = remoteClientSettings,
-                                                                    onRemoteClientSettingsChange = onRemoteClientSettingsChange,
-                                                                    onClose = {},
-                                                                    translationService = appComponents.translationService,
-                                                                    themeService = appComponents.themeService,
-                                                                    aiThemeGenerator = appComponents.aiThemeGenerator,
-                                                                    settingsService = appComponents.settingsService,
-                                                                    messageDeliveryPreferenceService = appComponents.messageDeliveryPreferenceService,
-                                                                    globalHotkeyController = appComponents.globalHotkeyController,
-                                                                    agentService = appComponents.agentService,
-                                                                    aiConfigurationService = appComponents.aiConfigurationService,
-                                                                    aiUsageReportService = appComponents.aiUsageReportService,
-                                                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
-                                                                    workerCatalogService = appComponents.workerCatalogService,
-                                                                    mcpServerService = appComponents.mcpServerService,
-                                                                    distributionService = appComponents.distributionService,
-                                                                    deviceConnectionService = appComponents.deviceConnectionService,
-                                                                    personalAccessTokenService = appComponents.personalAccessTokenService,
-                                                                    aiUserCredentialService = appComponents.aiUserCredentialService,
-                                                                    namedSecretService = appComponents.namedSecretService,
-                                                                    userAdministrationService = appComponents.userAdministrationService,
-                                                                    telegramService = appComponents.telegramService,
-                                                                    securityAuditService = appComponents.securityAuditService,
-                                                                    userDirectoryService = appComponents.userDirectoryService,
-                                                                    canAdministerUsers =
-                                                                        appComponents.authenticatedUser.role == User.Role.OWNER,
-                                                                    ollamaModelService = appComponents.ollamaModelService,
-                                                                    coroutineScope = coroutineScope,
-                                                                    onOpenTab = createNewSessionInCurrentProject,
-                                                                    onOpenTabWithMessage = createNewSessionWithMessage,
-                                                                    fullScreen = true,
-                                                                    contentMode = SettingsPanelContentMode.Full,
-                                                                    showCloseButton = false
-                                                                )
+                                                                settingsContent(SettingsPanelContentMode.Full)
                                                             }
 
                                                             else -> when (projectArea) {
@@ -742,8 +746,8 @@ fun GromozekaAppContent(
                                                                     conversationTreeService = appComponents.conversationService,
                                                                     appViewModel = appComponents.appViewModel,
                                                                     searchViewModel = appComponents.conversationSearchViewModel,
-                                                                    showSettingsPanel = showSettingsPanel,
-                                                                    onShowSettingsPanelChange = setSettingsPanel,
+                                                                    showSettingsPanel = sidePanelVisible && sidePanelTab == SidebarSection.SETTINGS,
+                                                                    onShowSettingsPanelChange = { if (it) openSidePanel(SidebarSection.SETTINGS) else hideSidePanel() },
                                                                     onManageProjects = { projectArea = ProjectArea.PROJECTS },
                                                                     onManageWorkspaces = {
                                                                         workspaceManagerProjectId = null
@@ -780,74 +784,7 @@ fun GromozekaAppContent(
                                             }
                                         }
 
-                                        if (!isCompactLayout) currentTab?.let { tabViewModel ->
-                                            ConversationPinsPanel(
-                                                isVisible = showPinsPanel,
-                                                conversationId = tabViewModel.conversationId,
-                                                service = appComponents.conversationPinService,
-                                                state = pinsPanelState,
-                                                onClose = { setPinsPanel(false) },
-                                                modifier = Modifier.testTag("conversation-pins-panel"),
-                                            )
-                                            conversations[tabViewModel.conversationId]?.let { conversation ->
-                                                Box(modifier = Modifier.testTag(UiTestTag.ParticipantsPanel.value)) {
-                                                    ConversationParticipantsPanel(
-                                                        isVisible = showParticipantsPanel,
-                                                        initialConversation = conversation,
-                                                        currentUserId = appComponents.authenticatedUser.id,
-                                                        conversationService = appComponents.conversationService,
-                                                        agentService = appComponents.agentService,
-                                                        projectMembershipService = appComponents.projectMembershipService,
-                                                        userDirectoryService = appComponents.userDirectoryService,
-                                                        onConversationUpdated = {
-                                                            appComponents.appViewModel.mergeConversationSnapshots(listOf(it))
-                                                        },
-                                                        onCurrentUserDisconnected = leaveDisconnectedConversation,
-                                                        onClose = { setParticipantsPanel(false) },
-                                                    )
-                                                }
-                                            }
 
-                                            key(tabViewModel.conversationId) {
-                                                val tokenStats by tabViewModel.tokenStats.collectAsState()
-                                                val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
-                                                val pendingMessages by tabViewModel.pendingMessages.collectAsState()
-                                                val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
-
-                                                Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
-                                                    ConversationRuntimePanel(
-                                                        isVisible = showRuntimePanel,
-                                                        conversationId = tabViewModel.conversationId,
-                                                        participants = conversations[tabViewModel.conversationId]?.participants,
-                                                        tabSelection = runtimeAgentTabSelection,
-                                                        visuals = visualPanelState.visuals(tabViewModel.conversationId),
-                                                        selectedVisualId = visualPanelState.selected(tabViewModel.conversationId),
-                                                        dirtyVisualIds = visualPanelState.dirtyVisualIds(tabViewModel.conversationId),
-                                                        highlightedVisualIds = visualPanelState.highlightedVisualIds(tabViewModel.conversationId),
-                                                        onClearVisualHighlights = visualPanelState::clearHighlights,
-                                                        onSelectVisual = { visualPanelState.select(tabViewModel.conversationId, it) },
-                                                        onCloseVisual = { visualPanelState.close(it, appComponents.visualService, coroutineScope, localization.text("visuals.closeFailed")) },
-                                                        visualContent = { VisualContent(it, visualPanelState.draft(it), appComponents.visualService, highlightedIds = visualPanelState.highlightedIds(it), onClearHighlights = { visualPanelState.clearHighlights(it.id) }) },
-                                                        visualLoadError = visualPanelState.loadError,
-                                                        replyRoutingContent = { RuntimeReplyRouting(tabViewModel) },
-                                                        agentService = appComponents.agentService,
-                                                        aiConfigurationProvider = appComponents.aiConfigurationService,
-                                                        aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
-                                                        tokenStats = tokenStats,
-                                                        isWaitingForResponse = isWaitingForResponse,
-                                                        pendingMessages = pendingMessages,
-                                                        runtimeSnapshot = runtimeSnapshot,
-                                                        inspectionRequest = runtimeInspectionRequest,
-                                                        onCancelCommandTask = tabViewModel::cancelCommandTask,
-                                                        onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
-                                                        onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
-                                                        onEditPendingMessage = tabViewModel::editPendingMessage,
-                                                        onCancelPendingMessage = tabViewModel::cancelPendingMessage,
-                                                        onClose = { setRuntimePanel(false) },
-                                                    )
-                                                }
-                                            }
-                                        }
                                     }
                                 }
 
@@ -856,220 +793,25 @@ fun GromozekaAppContent(
                                 }
                             }
 
-                            if (!isCompactLayout) Box(modifier = Modifier.testTag(UiTestTag.SettingsPanel.value)) {
-                                SettingsPanel(
-                                    clientPlatform = clientPlatform,
-                                    onRecordingShortcutChange = { recordingShortcut = it },
-                                    isVisible = showSettingsPanel,
-                                    settings = currentSettings,
-                                    onSettingsChange = onSettingsChange,
-                                    remoteClientSettings = remoteClientSettings,
-                                    onRemoteClientSettingsChange = onRemoteClientSettingsChange,
-                                    onClose = { setSettingsPanel(false) },
-                                    translationService = appComponents.translationService,
-                                    themeService = appComponents.themeService,
-                                    aiThemeGenerator = appComponents.aiThemeGenerator,
-                                    settingsService = appComponents.settingsService,
-                                    messageDeliveryPreferenceService = appComponents.messageDeliveryPreferenceService,
-                                    globalHotkeyController = appComponents.globalHotkeyController,
-                                    agentService = appComponents.agentService,
-                                    aiConfigurationService = appComponents.aiConfigurationService,
-                                    aiUsageReportService = appComponents.aiUsageReportService,
-                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
-                                    workerCatalogService = appComponents.workerCatalogService,
-                                    mcpServerService = appComponents.mcpServerService,
-                                    distributionService = appComponents.distributionService,
-                                    deviceConnectionService = appComponents.deviceConnectionService,
-                                    personalAccessTokenService = appComponents.personalAccessTokenService,
-                                    aiUserCredentialService = appComponents.aiUserCredentialService,
-                                    namedSecretService = appComponents.namedSecretService,
-                                    userAdministrationService = appComponents.userAdministrationService,
-                                    telegramService = appComponents.telegramService,
-                                    securityAuditService = appComponents.securityAuditService,
-                                    userDirectoryService = appComponents.userDirectoryService,
-                                    canAdministerUsers =
-                                        appComponents.authenticatedUser.role == User.Role.OWNER,
-                                    ollamaModelService = appComponents.ollamaModelService,
-                                    coroutineScope = coroutineScope,
-                                    onOpenTab = createNewSessionInCurrentProject,
-                                    onOpenTabWithMessage = createNewSessionWithMessage,
-                                    contentMode = SettingsPanelContentMode.Quick
-                                )
-                            }
-
-                            if (!isCompactLayout) currentTab?.let { tabViewModel ->
-                                val refreshKey by tabViewModel.memoryActionItemsRefreshKey.collectAsState()
-                                Box(modifier = Modifier.testTag(UiTestTag.MemoryActionItemsPanel.value)) {
-                                    MemoryActionItemsPanel(
-                                        isVisible = showMemoryActionItemsPanel,
-                                        conversationId = tabViewModel.conversationId,
-                                        refreshKey = refreshKey,
-                                        memoryActionItemService = appComponents.memoryActionItemService,
-                                        coroutineScope = coroutineScope,
-                                        onClose = { setMemoryActionItemsPanel(false) }
-                                    )
+                            if (!isCompactLayout && sidePanelVisible && currentTab == null &&
+                                sidePanelTab == SidebarSection.SETTINGS && currentTabIndex != -2) {
+                                Box(Modifier.width(sidePanelResize.width(availableWidth)).fillMaxHeight()) {
+                                    sidePanelContent()
+                                    if (resizable) SidePanelResizeHandle(
+                                        Modifier.align(Alignment.CenterStart).offset(x = -sidePanelResizeHandleWidth / 2)
+                                            .width(sidePanelResizeHandleWidth).fillMaxHeight(),
+                                        onReset = sidePanelResize::reset,
+                                    ) { delta -> sidePanelResize.dragBy(availableWidth, with(scaledDensity) { delta.toDp() }) }
                                 }
                             }
                         }
 
-                        if (isCompactLayout) {
-                            currentTab?.let { tabViewModel ->
-                                conversations[tabViewModel.conversationId]?.let { conversation ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .zIndex(3f)
-                                            .testTag(UiTestTag.ParticipantsPanel.value)
-                                    ) {
-                                        ConversationParticipantsPanel(
-                                            isVisible = showParticipantsPanel,
-                                            initialConversation = conversation,
-                                            currentUserId = appComponents.authenticatedUser.id,
-                                            conversationService = appComponents.conversationService,
-                                            agentService = appComponents.agentService,
-                                            projectMembershipService = appComponents.projectMembershipService,
-                                            userDirectoryService = appComponents.userDirectoryService,
-                                            onConversationUpdated = {
-                                                appComponents.appViewModel.mergeConversationSnapshots(listOf(it))
-                                            },
-                                            onCurrentUserDisconnected = leaveDisconnectedConversation,
-                                            onClose = { setParticipantsPanel(false) },
-                                            fullScreen = true,
-                                            slideFromRight = true,
-                                        )
-                                    }
-                                }
-                            }
-
-                            currentTab?.let { tabViewModel ->
-                                Box(Modifier.fillMaxSize().zIndex(2f)) {
-                                    ConversationPinsPanel(
-                                        isVisible = showPinsPanel,
-                                        conversationId = tabViewModel.conversationId,
-                                        service = appComponents.conversationPinService,
-                                        state = pinsPanelState,
-                                        onClose = { setPinsPanel(false) },
-                                        modifier = Modifier.testTag("conversation-pins-panel"),
-                                        fullScreen = true,
-                                        slideFromRight = true,
-                                    )
-                                }
-                                key(tabViewModel.conversationId) {
-                                    val tokenStats by tabViewModel.tokenStats.collectAsState()
-                                    val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
-                                    val pendingMessages by tabViewModel.pendingMessages.collectAsState()
-                                    val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .zIndex(2f)
-                                            .testTag(UiTestTag.RuntimePanel.value)
-                                    ) {
-                                        ConversationRuntimePanel(
-                                            isVisible = showRuntimePanel,
-                                            conversationId = tabViewModel.conversationId,
-                                            participants = conversations[tabViewModel.conversationId]?.participants,
-                                            tabSelection = runtimeAgentTabSelection,
-                                            visuals = visualPanelState.visuals(tabViewModel.conversationId),
-                                            selectedVisualId = visualPanelState.selected(tabViewModel.conversationId),
-                                            dirtyVisualIds = visualPanelState.dirtyVisualIds(tabViewModel.conversationId),
-                                            highlightedVisualIds = visualPanelState.highlightedVisualIds(tabViewModel.conversationId),
-                                            onClearVisualHighlights = visualPanelState::clearHighlights,
-                                            onSelectVisual = { visualPanelState.select(tabViewModel.conversationId, it) },
-                                            onCloseVisual = { visualPanelState.close(it, appComponents.visualService, coroutineScope, localization.text("visuals.closeFailed")) },
-                                            visualContent = { VisualContent(it, visualPanelState.draft(it), appComponents.visualService, highlightedIds = visualPanelState.highlightedIds(it), onClearHighlights = { visualPanelState.clearHighlights(it.id) }) },
-                                            visualLoadError = visualPanelState.loadError,
-                                            replyRoutingContent = { RuntimeReplyRouting(tabViewModel) },
-                                            agentService = appComponents.agentService,
-                                            aiConfigurationProvider = appComponents.aiConfigurationService,
-                                            aiSubscriptionQuotaService = appComponents.aiSubscriptionQuotaService,
-                                            tokenStats = tokenStats,
-                                            isWaitingForResponse = isWaitingForResponse,
-                                            pendingMessages = pendingMessages,
-                                            runtimeSnapshot = runtimeSnapshot,
-                                            inspectionRequest = runtimeInspectionRequest,
-                                            onCancelCommandTask = tabViewModel::cancelCommandTask,
-                                            onCancelCommandMonitor = tabViewModel::cancelCommandMonitor,
-                                            onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
-                                            onEditPendingMessage = tabViewModel::editPendingMessage,
-                                            onCancelPendingMessage = tabViewModel::cancelPendingMessage,
-                                            onClose = { setRuntimePanel(false) },
-                                            fullScreen = true,
-                                            slideFromRight = true,
-                                        )
-                                    }
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .zIndex(4f)
-                                    .testTag(UiTestTag.SettingsPanel.value)
-                            ) {
-                                SettingsPanel(
-                                    clientPlatform = clientPlatform,
-                                    onRecordingShortcutChange = { recordingShortcut = it },
-                                    isVisible = showSettingsPanel,
-                                    settings = currentSettings,
-                                    onSettingsChange = onSettingsChange,
-                                    remoteClientSettings = remoteClientSettings,
-                                    onRemoteClientSettingsChange = onRemoteClientSettingsChange,
-                                    onClose = { setSettingsPanel(false) },
-                                    translationService = appComponents.translationService,
-                                    themeService = appComponents.themeService,
-                                    aiThemeGenerator = appComponents.aiThemeGenerator,
-                                    settingsService = appComponents.settingsService,
-                                    messageDeliveryPreferenceService = appComponents.messageDeliveryPreferenceService,
-                                    globalHotkeyController = appComponents.globalHotkeyController,
-                                    agentService = appComponents.agentService,
-                                    aiConfigurationService = appComponents.aiConfigurationService,
-                                    aiUsageReportService = appComponents.aiUsageReportService,
-                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
-                                    workerCatalogService = appComponents.workerCatalogService,
-                                    mcpServerService = appComponents.mcpServerService,
-                                    distributionService = appComponents.distributionService,
-                                    deviceConnectionService = appComponents.deviceConnectionService,
-                                    personalAccessTokenService = appComponents.personalAccessTokenService,
-                                    aiUserCredentialService = appComponents.aiUserCredentialService,
-                                    namedSecretService = appComponents.namedSecretService,
-                                    userAdministrationService = appComponents.userAdministrationService,
-                                    telegramService = appComponents.telegramService,
-                                    securityAuditService = appComponents.securityAuditService,
-                                    userDirectoryService = appComponents.userDirectoryService,
-                                    canAdministerUsers =
-                                        appComponents.authenticatedUser.role == User.Role.OWNER,
-                                    ollamaModelService = appComponents.ollamaModelService,
-                                    coroutineScope = coroutineScope,
-                                    onOpenTab = createNewSessionInCurrentProject,
-                                    onOpenTabWithMessage = createNewSessionWithMessage,
-                                    fullScreen = true,
-                                    slideFromRight = true,
-                                    contentMode = SettingsPanelContentMode.Quick
-                                )
-                            }
-
-                            currentTab?.let { tabViewModel ->
-                                val refreshKey by tabViewModel.memoryActionItemsRefreshKey.collectAsState()
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .zIndex(5f)
-                                        .testTag(UiTestTag.MemoryActionItemsPanel.value)
-                                ) {
-                                    MemoryActionItemsPanel(
-                                        isVisible = showMemoryActionItemsPanel,
-                                        conversationId = tabViewModel.conversationId,
-                                        refreshKey = refreshKey,
-                                        memoryActionItemService = appComponents.memoryActionItemService,
-                                        coroutineScope = coroutineScope,
-                                        onClose = { setMemoryActionItemsPanel(false) },
-                                        fullScreen = true,
-                                        slideFromRight = true
-                                    )
-                                }
-                            }
+                        if (isCompactLayout && sidePanelVisible &&
+                            (currentTab != null || (sidePanelTab == SidebarSection.SETTINGS && currentTabIndex != -2))) {
+                            Box(Modifier.fillMaxSize().padding(
+                                top = if (currentUiSettings.showTabsAtBottom) 0.dp else 48.dp,
+                                bottom = if (currentUiSettings.showTabsAtBottom) 48.dp else 0.dp,
+                            ).zIndex(3f)) { sidePanelContent() }
                         }
                     }
                 }
@@ -1124,18 +866,4 @@ private fun RuntimeReplyRouting(viewModel: TabViewModel) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-}
-
-/** Local UI boundary: no retry, raw exception text or cause enters the user-facing failure. */
-internal suspend fun performPinPreservingRestart(
-    restart: suspend () -> Unit,
-    reportFailure: () -> Unit,
-) {
-    try {
-        restart()
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (_: Exception) {
-        reportFailure()
-    }
 }

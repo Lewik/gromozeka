@@ -56,6 +56,76 @@ import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
     @Test
+    fun `completed response and request timing survives recreation and background inventory updates`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val id = Conversation.Id("response-timing")
+            val executor = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+            val requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server)
+            val root = agentInvocationTask(id, "input", kotlin.time.Clock.System.now()).copy(requirements = requirements)
+            val request = llmTask(root, kotlin.time.Clock.System.now()).copy(requirements = requirements)
+            assertTrue(coordinator.submit(root))
+            kotlin.test.assertNotNull(coordinator.claimDeliveredTask(id, root.id, executor, requirements.capabilities, emptySet()))
+            assertTrue(coordinator.markActiveTaskStarted(id, root.id, executor, kotlin.time.Clock.System.now()))
+            assertTrue(coordinator.completeActiveTask(id, root.id, executor, ConversationRuntimeTaskOutcome.Continue(request)))
+            kotlin.test.assertNotNull(coordinator.claimDeliveredTask(id, request.id, executor, requirements.capabilities, emptySet()))
+            val started = kotlin.time.Clock.System.now()
+            assertTrue(coordinator.markActiveTaskStarted(id, request.id, executor, started))
+            assertNull(coordinator.snapshot(id).lastTurn!!.modelRequest!!.completedAt)
+            assertTrue(coordinator.completeActiveTask(id, request.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+            assertTrue(coordinator.finishIfIdle(id))
+            val timing = kotlin.test.assertNotNull(coordinator.snapshot(id).lastTurn)
+            assertEquals(started, timing.modelRequest!!.startedAt)
+            assertEquals(timing.completedAt, timing.modelRequest!!.completedAt)
+            assertTrue(kotlin.test.assertNotNull(timing.completedAt) >= started)
+            val restored = PostgresConversationRuntimeCoordinator(source, json)
+            assertEquals(timing, restored.snapshot(id).lastTurn)
+            restored.upsertCommandTask(inventoryTask("background", id.value, ConversationRuntimeWorkerId("worker")))
+            assertEquals(timing, restored.snapshot(id).lastTurn)
+        }
+    }
+
+    @Test
+    fun `turn problem survives new work stop and recreation until a clean completed turn`() = runBlocking {
+        withInventoryDatabase { source, original, json ->
+            val id = Conversation.Id("retained-problem")
+            val now = Instant.fromEpochSeconds(100)
+            val executor = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+            val requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server)
+            var coordinator = original
+            suspend fun start(name: String): ConversationRuntimeTask {
+                val task = agentInvocationTask(id, name, now).copy(requirements = requirements)
+                assertTrue(coordinator.submit(task))
+                val claimed = kotlin.test.assertNotNull(coordinator.claimDeliveredTask(id, task.id, executor, requirements.capabilities, emptySet()))
+                assertTrue(coordinator.markActiveTaskStarted(id, task.id, executor, now))
+                return claimed
+            }
+            val failed = start("failed")
+            coordinator.recordEvent(ConversationRuntimeEvent.MessageEmitted(id, failed.id,
+                Conversation.Message(Conversation.Message.Id("tool-error"), id, role = Conversation.Message.Role.USER,
+                    content = listOf(Conversation.Message.ContentItem.ToolResult(Conversation.Message.ContentItem.ToolCall.Id("call"), "test-tool",
+                        listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("Failure")), isError = true)), createdAt = now),
+                turnId = failed.turnId))
+            assertTrue(coordinator.completeActiveTask(id, failed.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+            val problem = kotlin.test.assertNotNull(coordinator.snapshot(id).lastTurn)
+            assertEquals(1, problem.problems.size)
+            val stopped = start("stopped")
+            assertTrue(coordinator.snapshot(id).lastTurn!!.problems.isEmpty())
+            assertEquals(problem, coordinator.snapshot(id).retainedTurnProblems)
+            assertTrue(coordinator.requestStop(id))
+            assertTrue(coordinator.completeActiveTask(id, stopped.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+            coordinator = PostgresConversationRuntimeCoordinator(source, json)
+            assertEquals(problem, coordinator.snapshot(id).retainedTurnProblems)
+            coordinator.finishIfIdle(id)
+            val clean = start("clean")
+            assertEquals(problem, coordinator.snapshot(id).retainedTurnProblems)
+            assertTrue(coordinator.completeActiveTask(id, clean.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+            val restored = PostgresConversationRuntimeCoordinator(source, json).snapshot(id)
+            assertNull(restored.retainedTurnProblems)
+            assertTrue(restored.lastTurn!!.problems.isEmpty())
+        }
+    }
+
+    @Test
     fun `stale worker snapshots cannot resurrect terminal tasks or monitors after repository recreation`() = runBlocking {
         withInventoryDatabase { source, coordinator, json ->
             val now = Instant.fromEpochSeconds(1)

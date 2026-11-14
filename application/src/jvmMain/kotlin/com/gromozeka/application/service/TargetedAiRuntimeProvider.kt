@@ -21,6 +21,10 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.DirectAiRuntimeProvider
+import com.gromozeka.domain.service.AiAdmissionOrigin
+import com.gromozeka.domain.service.AiAdmissionOriginContext
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -75,23 +79,29 @@ class TargetedAiRuntimeProvider(
 
         override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
             requireAiPermission(request)
-            return delegate.inspectContext(request, allowProviderCount)
+            return withContext(AiAdmissionOriginContext(AiAdmissionOrigin.fromContext(request.options.toolContext))) {
+                delegate.inspectContext(request, allowProviderCount)
+            }
         }
 
         override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
             requireAiPermission(request)
-            return delegate.compact(request).also { usageRecorder.record(runtime, request, it) }
+            return withContext(AiAdmissionOriginContext(AiAdmissionOrigin.fromContext(request.options.toolContext))) {
+                delegate.compact(request)
+            }.also { usageRecorder.record(runtime, request, it) }
         }
 
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
             requireAiPermission(request)
-            return delegate.call(request).also { response -> usageRecorder.record(runtime, request, response) }
+            return withContext(AiAdmissionOriginContext(AiAdmissionOrigin.fromContext(request.options.toolContext))) {
+                delegate.call(request)
+            }.also { response -> usageRecorder.record(runtime, request, response) }
         }
 
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
             requireAiPermission(request)
             var finalResponse: AiRuntimeResponse? = null
-            delegate.stream(request).collect { response ->
+            delegate.stream(request).flowOn(AiAdmissionOriginContext(AiAdmissionOrigin.fromContext(request.options.toolContext))).collect { response ->
                 finalResponse = response
                 emit(response)
             }

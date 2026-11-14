@@ -39,13 +39,15 @@ class WorkerAiAdmissionGatewayHandler(
                         "Background AI admission does not match its capture start"
                     }
                 }
+                val origin = if (original.operation == WorkerGatewayOperation.AI_REQUEST_RESPONSE)
+                    AiRequestResponseGatewayCodec.admissionOrigin(original.payload) else null
                 val ownerDeadline = requireNotNull(owner.executionDeadline) { "Owning Worker request has no execution deadline" }
                 val deadline = command.operation.deadline?.let { minOf(it, ownerDeadline) } ?: ownerDeadline
                 val remaining = (deadline - Clock.System.now()).inWholeMilliseconds
                 require(remaining > 0) { "Owning AI operation deadline has passed" }
                 withTimeout(remaining) {
                     AiAdmissionGatewayCodec.encodeLease(admission.acquireRemote(
-                        command.operation.copy(deadline = deadline), identity.workerId.value, owner.id, command.httpRequest,
+                        command.operation.copy(deadline = deadline), identity.workerId.value, owner.id, command.httpRequest, origin,
                     ))
                 }
             }

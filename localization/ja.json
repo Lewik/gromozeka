@@ -806,7 +806,7 @@
     "client.whisper.startupTimedOut": {
       "other": "Local Whisper の準備が {count} 秒以内に完了しませんでした"
     },
-    "closeTabTooltip": "タブを閉じる",
+    "closeTabTooltip": "会話タブを閉じる",
     "common.close": "閉じる",
     "common.daysAgo": {
       "other": "{count} 日前"
@@ -1082,7 +1082,6 @@
     "recordingTooltip": "録音中…（離すと停止）",
     "refreshSessionsTooltip": "会話一覧を更新",
     "renameConversationTitle": "会話名を変更",
-    "restartButton": "新しい会話を開始",
     "runtime.accessingMemoryActivity": "メモリにアクセス中",
     "runtime.activityGroupLabel": "処理状況",
     "runtime.afterResponseLabel": "応答後",
@@ -1410,6 +1409,7 @@
     },
     "session.runtime.context.reportedUnknown": "コンテキスト情報を利用できません・プロバイダーからトークン数の報告なし",
     "session.runtime.context.threadUsage": "会話全体：{count}",
+    "session.runtime.context.usageTooltip": "コンテキストウィンドウの使用率: {percent}%\n{limitCount} トークン中 {currentCount} トークン",
     "session.runtime.context.withLimit": "コンテキスト {percent}%・{currentCount}／{limitCount}",
     "session.runtime.context.withoutLimit": {
       "other": "コンテキスト・{count} トークン"
@@ -1506,17 +1506,11 @@
     "session.runtime.traceMessage": "{kind}：{message}",
     "session.tokens.recentTurnCount": "最近の呼び出し：{count}",
     "session.toolbar.actionItems": "対応事項",
-    "session.toolbar.consolidate": "統合",
     "session.toolbar.extractContexts": "会話からコンテキストを抽出",
     "session.toolbar.extractContextsShort": "コンテキストを抽出",
     "session.toolbar.hideParticipants": "参加者を隠す",
     "session.toolbar.hideRuntime": "実行状況を隠す",
-    "session.toolbar.maintainEntities": "エンティティの保守",
-    "session.toolbar.memoryActions": "メモリ操作",
     "session.toolbar.messages": "メッセージ",
-    "session.toolbar.remember": "会話を記憶",
-    "session.toolbar.repair": "修復",
-    "session.toolbar.retention": "保存期間ポリシーを適用",
     "session.toolbar.showParticipants": "参加者を表示",
     "session.toolbar.showRuntime": "実行状況を表示",
     "session.toolbar.viewContexts": "保存済みコンテキストを表示",
@@ -2021,7 +2015,6 @@
     "pins.notFound": "このピンは利用できなくなりました。未保存の本文は保持されています。",
     "pins.accessDenied": "これらのピンへのアクセス権がありません。",
     "pins.reloadEdited": "読み込み中に下書きが変更されました。新しい本文は保持されています。",
-    "pins.restartFailed": "固定テキストを保持した会話の再開始を完了できませんでした。再試行する前に会話一覧を確認してください。",
     "notifications.title": "通知",
     "notifications.close": "閉じる",
     "notifications.unreadOnly": "未読のみ",
@@ -2131,6 +2124,24 @@
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "入力と出力予約量の合計",
     "ai.tpm.preset.OPENAI_MAXIMUM": "入力と出力予約量の最大値",
     "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry：スキーマ応答の空のツール呼び出し判定を修正",
-    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "影響のあるChat Completions経路のみで有効にしてください。呼び出しや拒否がなく、スキーマに適合する内容のみ対象です。必須のツール呼び出しや他のエラーは修正しません。"
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "影響のあるChat Completions経路のみで有効にしてください。呼び出しや拒否がなく、スキーマに適合する内容のみ対象です。必須のツール呼び出しや他のエラーは修正しません。",
+    "chat.activity.stateLoading": "会話の状態を読み込み中",
+    "chat.activity.loadLoading": "サーバーの稼働状況を読み込み中",
+    "chat.activity.loadUnavailable": "サーバーの稼働状況を取得できません",
+    "chat.activity.loadRunning": "サーバー上の処理中リクエスト: {count}",
+    "chat.activity.loadTpm": "TPM待ち: {count}",
+    "chat.activity.loadConcurrency": "空きスロット待ち: {count}",
+    "chat.activity.waitingTpm": "TPM待ち",
+    "chat.activity.waitingConcurrency": "空きスロット待ち",
+    "chat.activity.unread": "未読メッセージあり",
+    "chat.footer.elapsedTotal": "メッセージ → 応答: {elapsed}",
+    "chat.footer.elapsedRequest": "モデルリクエスト: {elapsed}",
+    "chat.footer.queued": "待機中のメッセージ: {count}",
+    "chat.footer.commands": "実行中のコマンド: {count}",
+    "chat.footer.monitors": "稼働中のモニター: {count}",
+    "session.sidebar.show": "サイドパネルを表示",
+    "session.sidebar.hide": "サイドパネルを非表示",
+    "session.thread.title": "スレッド",
+    "session.sidebar.resize": "サイドパネルの幅を変更"
   }
 }

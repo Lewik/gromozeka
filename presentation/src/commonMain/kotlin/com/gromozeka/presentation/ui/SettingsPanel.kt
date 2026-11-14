@@ -121,7 +121,6 @@ fun SettingsPanel(
     onSettingsChange: (Settings) -> Unit,
     remoteClientSettings: RemoteClientSettings,
     onRemoteClientSettingsChange: (RemoteClientSettings) -> Unit,
-    onClose: () -> Unit,
     translationService: TranslationService,
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
@@ -148,10 +147,8 @@ fun SettingsPanel(
     onOpenTab: () -> Unit,
     onOpenTabWithMessage: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
-    fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
     contentMode: SettingsPanelContentMode = SettingsPanelContentMode.Quick,
-    showCloseButton: Boolean = true,
     messageDeliveryPreferenceService: com.gromozeka.domain.service.CurrentUserMessageDeliveryPreferenceService? = null,
 ) {
     val translation = LocalTranslation.current
@@ -244,13 +241,7 @@ fun SettingsPanel(
         modifier = modifier // No external padding - panel goes to edge
     ) {
         Surface(
-            modifier = if (fullScreen) {
-                Modifier.fillMaxSize()
-            } else {
-                Modifier
-                    .width(533.dp)
-                    .fillMaxHeight()
-            },
+            modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
@@ -274,11 +265,6 @@ fun SettingsPanel(
                         fontWeight = FontWeight.Bold
                     )
 
-                    if (showCloseButton) {
-                        IconButton(onClick = onClose) {
-                            Icon(Icons.Default.Close, contentDescription = translation.settings.closeSettingsText)
-                        }
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -392,7 +378,7 @@ fun SettingsPanel(
                         }
                     }
 
-                    // Speech Recognition (STT) Settings  
+                    // Speech Recognition (STT) Settings
                     SettingsGroup(title = translation.settings.speechRecognitionTitle) {
                         SwitchSettingItem(
                             label = translation.settings.enableSttLabel,
@@ -1389,7 +1375,7 @@ fun SettingsPanel(
                                     // TODO: Show success notification
                                 } else {
                                     log.warn("Failed to export theme")
-                                    // TODO: Show error notification  
+                                    // TODO: Show error notification
                                 }
                             }
                         )

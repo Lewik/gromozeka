@@ -26,6 +26,9 @@ import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiEmbeddingRequest
+import com.gromozeka.domain.service.AiAdmissionOrigin
+import com.gromozeka.domain.service.AI_ADMISSION_CONVERSATION_CONTEXT_KEY
+import com.gromozeka.domain.service.AI_ADMISSION_TASK_CONTEXT_KEY
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
 import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
@@ -58,6 +61,24 @@ object AiRequestResponseGatewayCodec {
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = false
+    }
+
+    /** Read only the original Server-owned request, never an origin claimed by an admission callback. */
+    fun admissionOrigin(payload: ByteArray): AiAdmissionOrigin? {
+        val context = when (val operation = decodeOperation(payload)) {
+            is AiRequestResponseOperation.Call -> operation.request.options.toolContext
+            is AiRequestResponseOperation.ContextQuery -> operation.request.options.toolContext
+            is AiRequestResponseOperation.Compact -> operation.request.options.toolContext
+            is AiRequestResponseOperation.InspectContext -> operation.request.options.toolContext
+            else -> return null
+        }
+        val originFields = context.filterKeys {
+            it == AI_ADMISSION_CONVERSATION_CONTEXT_KEY || it == AI_ADMISSION_TASK_CONTEXT_KEY
+        }.mapValues { (_, value) ->
+            require(value is JsonPrimitive && value.isString) { "AI admission origin must contain string identifiers" }
+            value.content
+        }
+        return AiAdmissionOrigin.fromContext(originFields)
     }
 
     fun encodeModelsRequest(connection: AiConnection, deadline: kotlin.time.Instant): ByteArray {

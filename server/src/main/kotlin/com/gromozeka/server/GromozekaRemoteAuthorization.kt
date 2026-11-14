@@ -360,6 +360,8 @@ class GromozekaRemoteAuthorization(
                 requireConversation(user, query.conversationId, ProjectPermission.READ)
             is ActiveGenerationStateQuery ->
                 requireConversation(user, query.conversationId, ProjectPermission.READ)
+            is AiRequestActivityStateQuery ->
+                requireConversation(user, query.conversationId, ProjectPermission.READ)
             is DeclarativeStateRevisionQuery -> authorizeDeclarativeStateQuery(user, query)
         }
     }

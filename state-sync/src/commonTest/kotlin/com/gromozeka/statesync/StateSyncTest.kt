@@ -72,6 +72,36 @@ class StateSyncTest {
     }
 
     @Test
+    fun invalidateAllRefreshesEveryLiveKeyIncludingAnInFlightLoad() = runTest {
+        var revision = 0
+        val gate = CompletableDeferred<Unit>()
+        val source = StateSyncSource<String, String>(backgroundScope, "source") { key ->
+            val loadedRevision = revision
+            if (key == "slow" && loadedRevision == 0) gate.await()
+            "$key-$loadedRevision"
+        }
+        val fast = source.subscribe("fast")
+        val slow = source.subscribe("slow")
+        val closed = source.subscribe("closed")
+        val closedEpoch = closed.snapshot().cursor.streamEpoch
+        closed.close()
+        assertEquals("fast-0", fast.snapshot().value)
+        val loading = async { slow.snapshot() }
+        runCurrent()
+        revision = 1
+        source.invalidateAll()
+        assertEquals(1, fast.invalidations.first().cursor.generation)
+        assertEquals(1, slow.invalidations.first().cursor.generation)
+        gate.complete(Unit)
+        assertEquals("slow-1", loading.await().value)
+        assertEquals("fast-1", fast.snapshot().value)
+        val reopened = source.subscribe("closed")
+        assertTrue(reopened.snapshot().cursor.streamEpoch > closedEpoch)
+        assertEquals("closed-1", reopened.snapshot().value)
+        assertEquals(0, reopened.snapshot().cursor.generation)
+    }
+
+    @Test
     fun reconnectingSubscriptionGetsANewerStream() = runTest {
         val source = StateSyncSource<String, Int>(backgroundScope, "source") { 1 }
         val first = source.subscribe("runtime")

@@ -398,8 +398,8 @@ class ConversationRuntimePanelUiTest {
                 )
             }
             onNodeWithText("local draft").assertExists()
-            onNodeWithContentDescription(translation.runtime.closePanelDescription).performClick()
-            onNodeWithTag("visual-tabs").assertDoesNotExist()
+            onNodeWithContentDescription(translation.text("session.sidebar.hide")).performClick()
+            onNodeWithTag("conversation-side-panel-tabs").assertDoesNotExist()
             runOnIdle {
                 assertFalse(visible.value)
                 // Closing the shared Visual (and its handler) must never be requested.
@@ -423,7 +423,7 @@ class ConversationRuntimePanelUiTest {
                 visible.value = true
             }
             onNodeWithText("local draft").assertExists()
-            onNodeWithTag("visual-tabs").assertExists()
+            onNodeWithTag("conversation-side-panel-tabs").assertExists()
             runOnIdle {
                 assertEquals(0, visualCloseRequests)
                 assertSame(draft, firstClient.draft(firstClient.visuals(visual.conversationId).single()))
@@ -454,11 +454,11 @@ class ConversationRuntimePanelUiTest {
     }
 
     @Test
-    fun runtimeHeaderStillDismissesThePanelWithoutAVisual() = runComposeUiTest {
+    fun sharedToggleStillHidesThePanelWithoutAVisual() = runComposeUiTest {
         val fixture = Fixture()
         val visible = mutableStateOf(true)
         setContent { fixture.Panel(null, isVisible = visible.value, fullScreen = true, onClose = { visible.value = false }) }
-        onNodeWithContentDescription(translation.runtime.closePanelDescription).performClick()
+        onNodeWithContentDescription(translation.text("session.sidebar.hide")).performClick()
         onNodeWithTag(UiTestTag.RuntimeAgentTabs.value).assertDoesNotExist()
         runOnIdle { assertFalse(visible.value) }
     }
@@ -473,6 +473,8 @@ class ConversationRuntimePanelUiTest {
             workingDirectory = "/workspace", status = CommandTask.Status.WORKING, processId = null, processStartedAt = null,
             outputFile = "/output", outputBytes = 0, createdAt = now, updatedAt = now))
         setContent { fixture.Panel(fixture.snapshot().copy(commandTasks = listOf(task.value))) }
+        onNodeWithText("Запуск тестов", useUnmergedTree = true).assertDoesNotExist()
+        onNodeWithTag("side-panel-tab-tasks").performClick().assertIsSelected()
         val shortHeight = onNodeWithText("Запуск тестов", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.height
         val long = "Подробное описание: " + "д".repeat(900)
         runOnIdle { task.value = task.value.copy(description = long) }
@@ -578,26 +580,32 @@ class ConversationRuntimePanelUiTest {
             visualContent: @Composable (Visual) -> Unit = {},
         ) {
             MaterialTheme {
-                ConversationRuntimePanel(
-                    isVisible = isVisible,
-                    conversationId = conversationId,
-                    participants = participants,
-                    tabSelection = tabSelection,
-                    replyRoutingContent = replyRoutingContent,
-                    agentService = agentService,
-                    aiConfigurationProvider = provider,
-                    aiSubscriptionQuotaService = quotaService,
-                    tokenStats = tokenStats,
-                    isWaitingForResponse = runtime?.activeTask != null || runtime?.continuationTask != null,
-                    pendingMessages = emptyList(),
-                    runtimeSnapshot = runtime,
-                    onCancelCommandTask = {}, onCancelCommandMonitor = {},
-                    onSendInCurrentTurn = {}, onEditPendingMessage = {}, onCancelPendingMessage = {}, onClose = onClose,
-                    fullScreen = fullScreen,
-                    slideFromRight = fullScreen,
-                    visuals = visuals, selectedVisualId = selectedVisualId,
-                    onCloseVisual = onCloseVisual, visualContent = visualContent,
-                )
+                androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                    SidePanelToggle(isVisible, onClose)
+                    if (!isVisible) return@Column
+                    Box(Modifier.weight(1f)) {
+                val selected = androidx.compose.runtime.remember(conversationId, selectedVisualId) {
+                    mutableStateOf<ConversationSidePanelTab>(selectedVisualId?.let { ConversationSidePanelTab.VisualPanel(it) }
+                        ?: ConversationSidePanelTab.Section.RUNTIME)
+                }
+                ConversationSidePanel(selected.value, { selected.value = it }, true, visuals, emptySet(), emptySet(), onCloseVisual, {}) {
+                    when (val tab = selected.value) {
+                        is ConversationSidePanelTab.VisualPanel -> ConversationVisualPanel(visuals.single { it.id == tab.id }, null, visualContent)
+                        ConversationSidePanelTab.Section.RUNTIME, ConversationSidePanelTab.Section.TASKS -> ConversationRuntimePanel(
+                            view = if (tab == ConversationSidePanelTab.Section.TASKS) RuntimePanelView.TASKS else RuntimePanelView.RUNTIME,
+                            conversationId = conversationId, participants = participants, tabSelection = tabSelection,
+                            replyRoutingContent = replyRoutingContent, agentService = agentService,
+                            aiConfigurationProvider = provider, aiSubscriptionQuotaService = quotaService, tokenStats = tokenStats,
+                            isWaitingForResponse = runtime?.activeTask != null || runtime?.continuationTask != null,
+                            pendingMessages = emptyList(), runtimeSnapshot = runtime,
+                            onCancelCommandTask = {}, onCancelCommandMonitor = {}, onSendInCurrentTurn = {},
+                            onEditPendingMessage = {}, onCancelPendingMessage = {},
+                        )
+                        else -> error("This fixture only provides Runtime, tasks and Visual content")
+                    }
+                }
+                    }
+                }
             }
         }
 

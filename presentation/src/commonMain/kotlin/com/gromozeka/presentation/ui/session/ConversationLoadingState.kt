@@ -2,7 +2,6 @@ package com.gromozeka.presentation.ui.session
 
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
@@ -11,15 +10,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
-
-internal fun conversationLoadingTone(runtime: ConversationRuntimeSnapshot?, waiting: Boolean): LoadingIndicatorTone? = when {
-    runtime?.state?.controlState != ConversationExecutionState.ControlState.PAUSED &&
-        (waiting || runtime?.activeTask != null || runtime?.activeInsertions.orEmpty().isNotEmpty() ||
-            runtime?.continuationTask != null || runtime?.pendingTasks.orEmpty().isNotEmpty()) -> LoadingIndicatorTone.FOREGROUND
-    runtime?.commandTasks.orEmpty().any { !it.isTerminal } ||
-        runtime?.commandMonitors.orEmpty().any { !it.isTerminal } -> LoadingIndicatorTone.BACKGROUND
-    else -> null
-}
 
 internal fun commandLoadingTone(runtime: ConversationRuntimeSnapshot?, command: CommandTask): LoadingIndicatorTone =
     if (runtime.waitsForActivity(command.launchReference?.toolCallId, "grz_get_command_task", "task_id", command.id.value))

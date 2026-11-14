@@ -4,6 +4,8 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationHistoryCursor
 import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.ConversationUserActivity
 import com.gromozeka.domain.repository.ConversationHistoryRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.PositionedConversationMessage
@@ -20,6 +22,7 @@ import kotlin.time.Instant
 class ConversationHistoryReadServiceTest {
     private val conversationId = Conversation.Id("conversation")
     private val threadId = Conversation.Thread.Id("current-thread")
+    private val readerId = User.Id("reader")
     private val now = Instant.parse("2026-09-16T00:00:00Z")
     private val json = Json { encodeDefaults = true }
 
@@ -27,27 +30,27 @@ class ConversationHistoryReadServiceTest {
     fun byteBoundedPagesCoverEveryMessageWithoutGapsInEitherDirection() = runBlocking {
         val service = service(140)
         val visited = mutableListOf<Int>()
-        var page = service.page(conversationId, ConversationHistoryPageRequest())
+        var page = service.page(conversationId, ConversationHistoryPageRequest(), readerId)
         while (true) {
             assertTrue(json.encodeToString(page).encodeToByteArray().size <= ConversationHistoryReadService.MAX_PAGE_BYTES)
             visited += page.messages.map { it.position }
             val older = page.older ?: break
-            page = service.page(conversationId, ConversationHistoryPageRequest(before = older))
+            page = service.page(conversationId, ConversationHistoryPageRequest(before = older), readerId)
         }
         assertEquals((0 until 140).toList(), visited.sorted())
         val forward = mutableListOf<Int>()
-        page = service.page(conversationId, ConversationHistoryPageRequest(around = Conversation.Message.Id("message-0")))
+        page = service.page(conversationId, ConversationHistoryPageRequest(around = Conversation.Message.Id("message-0")), readerId)
         while (true) {
             forward += page.messages.map { it.position }
             val newer = page.newer ?: break
-            page = service.page(conversationId, ConversationHistoryPageRequest(after = newer))
+            page = service.page(conversationId, ConversationHistoryPageRequest(after = newer), readerId)
         }
         assertEquals((0 until 140).toList(), forward)
     }
 
     @Test
     fun boundedSearchWindowIncludesTheRequestedMessage() = runBlocking {
-        val page = service(140).page(conversationId, ConversationHistoryPageRequest(around = Conversation.Message.Id("message-60")))
+        val page = service(140).page(conversationId, ConversationHistoryPageRequest(around = Conversation.Message.Id("message-60")), readerId)
         assertTrue(page.messages.any { it.position == 60 })
         assertNotNull(page.older)
         assertNotNull(page.newer)
@@ -56,7 +59,7 @@ class ConversationHistoryReadServiceTest {
 
     @Test
     fun cursorFromReplacedThreadResetsToLatestPage() = runBlocking {
-        val page = service(140).page(conversationId, ConversationHistoryPageRequest(before = ConversationHistoryCursor(Conversation.Thread.Id("old-thread"), 10)))
+        val page = service(140).page(conversationId, ConversationHistoryPageRequest(before = ConversationHistoryCursor(Conversation.Thread.Id("old-thread"), 10)), readerId)
         assertTrue(page.reset)
         assertEquals(threadId, page.threadId)
         assertEquals(139, page.messages.last().position)
@@ -64,9 +67,21 @@ class ConversationHistoryReadServiceTest {
 
     @Test
     fun removedScrollAnchorUsesItsPositionInTheNewThread() = runBlocking {
-        val page = service(140).page(conversationId, ConversationHistoryPageRequest(around = Conversation.Message.Id("removed-message"), positionHint = 60))
+        val page = service(140).page(conversationId, ConversationHistoryPageRequest(around = Conversation.Message.Id("removed-message"), positionHint = 60), readerId)
         assertFalse(page.reset)
         assertTrue(page.messages.any { it.position == 60 })
+    }
+
+    @Test
+    fun lastUserActivityBelongsToReaderAndIsIndependentOfVisiblePage() = runBlocking {
+        val activity = ConversationUserActivity(139, now)
+        val service = service(140, activity)
+        val latest = service.page(conversationId, ConversationHistoryPageRequest(), readerId)
+        val oldest = service.page(conversationId, ConversationHistoryPageRequest(around = Conversation.Message.Id("message-0")), readerId)
+        assertEquals(activity, latest.lastUserActivity)
+        assertEquals(activity, oldest.lastUserActivity)
+        assertTrue(oldest.messages.none { it.position == activity.position })
+        kotlin.test.assertNull(service(140).page(conversationId, ConversationHistoryPageRequest(), readerId).lastUserActivity)
     }
 
     @Test
@@ -111,7 +126,7 @@ class ConversationHistoryReadServiceTest {
         assertEquals(before, calls.size)
     }
 
-    private fun service(size: Int): ConversationHistoryReadService {
+    private fun service(size: Int, activity: ConversationUserActivity? = null): ConversationHistoryReadService {
         val conversation = Conversation(
             id = conversationId, projectId = Project.Id("project"),
             participants = setOf(Conversation.Participant.User(com.gromozeka.domain.model.User.Id("user"))),
@@ -130,6 +145,11 @@ class ConversationHistoryReadServiceTest {
                 val limit = args[3] as Int
                 val matching = entries.filter { (before == null || it.position < before) && (after == null || it.position > after) }
                 if (after == null) matching.takeLast(limit) else matching.take(limit)
+            }
+            method.startsWith("latestUserActivity") -> {
+                assertEquals(threadId.value, args[0])
+                assertEquals(readerId.value, args[1])
+                activity
             }
             method.startsWith("toolResults") -> emptyList<PositionedConversationMessage>()
             else -> error("Unexpected history call $method")

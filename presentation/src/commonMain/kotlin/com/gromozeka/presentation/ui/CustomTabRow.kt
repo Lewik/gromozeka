@@ -20,24 +20,25 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
-import com.gromozeka.presentation.ui.session.conversationLoadingTone
+import com.gromozeka.presentation.ui.session.ConversationActivityPresentation
+import com.gromozeka.presentation.ui.session.CompactConversationIndicator
+import com.gromozeka.presentation.ui.session.CompactIndicatorMode
 
 internal data class ConversationTabHeader(
     val conversationId: Conversation.Id,
     val title: String,
     val displayName: String = title,
-    val loadingTone: LoadingIndicatorTone? = null,
-    val isUnread: Boolean = false,
+    val activity: ConversationActivityPresentation,
 )
 
 @Composable
-fun CustomTabRow(
+internal fun CustomTabRow(
     selectedTabIndex: Int,
     showTabsAtBottom: Boolean,
     isCompactLayout: Boolean = false,
     tabs: List<TabViewModel>,
     conversations: Map<Conversation.Id, Conversation>,
-    unreadConversationIds: Set<Conversation.Id>,
+    activities: Map<Conversation.Id, ConversationActivityPresentation>,
     hoveredTabIndex: Int,
     onTabSelect: (Int?) -> Unit,
     onTabHover: (Int) -> Unit,
@@ -47,15 +48,12 @@ fun CustomTabRow(
 ) {
     val translation = LocalTranslation.current
     val headers = tabs.map { tab ->
-        val isLoading by tab.isWaitingForResponse.collectAsState()
-        val runtime by tab.runtimeSnapshot.collectAsState()
         val conversation = conversations[tab.conversationId]
         ConversationTabHeader(
             conversationId = tab.conversationId,
             title = conversation?.effectiveDisplayName(translation) ?: translation.text("chat.navigation.conversationFallback"),
             displayName = conversation?.displayName.orEmpty(),
-            loadingTone = conversationLoadingTone(runtime, isLoading),
-            isUnread = tab.conversationId in unreadConversationIds,
+            activity = activities.getValue(tab.conversationId),
         )
     }
     var renaming by remember { mutableStateOf<ConversationTabHeader?>(null) }
@@ -140,7 +138,7 @@ internal fun ConversationNavigationTabs(
                                         onClick = { onTabSelect(index) },
                                         modifier = Modifier.fillMaxSize().testTag(UiTestTag.SessionTab(index).value),
                                     ) {
-                                        ConversationActivitySlot(header, Modifier.size(20.dp))
+                                        ConversationActivitySlot(header, Modifier.size(24.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(header.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         // Both slots stay allocated: activity, attention and hover never move the title.
@@ -185,12 +183,14 @@ private fun ConversationTabPicker(
                 onClick = { expanded = true },
                 modifier = Modifier.fillMaxSize().testTag("conversation-tab-picker"),
             ) {
-                ConversationActivitySlot(current, Modifier.size(20.dp), unread = headers.any { it.isUnread },
-                    unreadTag = "conversation-picker-unread")
+                ConversationActivitySlot(current, Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(current?.title ?: translation.text("chat.navigation.conversations"), Modifier.weight(1f),
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
+                BadgedBox(badge = { if (headers.any { it.activity.indicator.unread })
+                    Badge(Modifier.size(6.dp).testTag("conversation-picker-unread")) }) {
+                    Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
             }
         }
         DropdownMenu(
@@ -207,7 +207,7 @@ private fun ConversationTabPicker(
                                 fontWeight = if (header == current) FontWeight.SemiBold else FontWeight.Normal)
                         },
                         onClick = { expanded = false; onTabSelect(index) },
-                        leadingIcon = { ConversationActivitySlot(header, Modifier.size(20.dp)) },
+                        leadingIcon = { ConversationActivitySlot(header, Modifier.size(24.dp)) },
                         trailingIcon = {
                             IconButton(
                                 onClick = { expanded = false; onRename(header) },
@@ -224,20 +224,18 @@ private fun ConversationTabPicker(
 }
 
 @Composable
-private fun ConversationActivitySlot(
-    header: ConversationTabHeader?,
-    modifier: Modifier,
-    unread: Boolean = header?.isUnread == true,
-    unreadTag: String = UiTestTag.ConversationUnread(header?.conversationId?.value.orEmpty()).value,
-) {
+private fun ConversationActivitySlot(header: ConversationTabHeader?, modifier: Modifier) {
     Box(modifier.testTag("conversation-activity-slot:${header?.conversationId?.value.orEmpty()}"), contentAlignment = Alignment.Center) {
-        GromozekaSimpleLoadingIndicator(Modifier.size(14.dp), tone = header?.loadingTone)
-        if (unread) Badge(Modifier.size(6.dp).testTag(unreadTag))
+        if (header != null) {
+            CompactConversationIndicator(header.activity.indicator, header.activity.tooltip,
+                if (header.activity.indicator.unread) Modifier.testTag(UiTestTag.ConversationUnread(header.conversationId.value).value) else Modifier,
+                mode = CompactIndicatorMode.ACTIVITY_OR_ATTENTION)
+        }
     }
 }
 
 @Composable
-private fun NavigationTab(
+internal fun NavigationTab(
     selected: Boolean,
     showTabsAtBottom: Boolean,
     onClick: () -> Unit,

@@ -7,6 +7,11 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.BackgroundActivityLaunchReference
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.AiRequestActivitySnapshot
+import com.gromozeka.domain.service.AiRequestTaskWait
+import com.gromozeka.domain.service.AiRequestWaitReason
+import com.gromozeka.domain.service.ConversationRuntimeTurnSummary
+import com.gromozeka.domain.service.ConversationRuntimeTurnId
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
@@ -25,6 +30,8 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 import kotlin.time.Instant
 
 class ConversationLoadingStateTest {
@@ -48,36 +55,89 @@ class ConversationLoadingStateTest {
         launchReference = BackgroundActivityLaunchReference("monitor-request", "monitor-launch"),
     )
 
-    @Test
-    fun idleAndTerminalActivitiesDoNotAnimate() {
-        assertNull(conversationLoadingTone(null, false))
-        assertNull(conversationLoadingTone(snapshot(), false))
-        assertNull(conversationLoadingTone(snapshot().copy(
-            commandTasks = listOf(command.copy(status = CommandTask.Status.COMPLETED)),
-            commandMonitors = listOf(monitor.copy(status = CommandMonitor.Status.CANCELLED)),
-        ), false))
-        assertEquals(FOREGROUND, conversationLoadingTone(null, true))
-    }
+    private fun indicator(runtime: ConversationRuntimeSnapshot?, waiting: Boolean = false,
+        unread: Boolean = false, connected: Boolean = true,
+        load: AiRequestActivitySnapshot? = AiRequestActivitySnapshot(0, 0, 0, emptyList())) =
+        conversationIndicatorState(runtime, null, waiting, false, false, unread, connected, load)
 
     @Test
-    fun foregroundWinsOverBackgroundButPausedTurnDoesNotAnimate() {
+    fun unknownStateDoesNotManufactureReadinessAndBackgroundCommandsStaySeparate() {
+        assertEquals(ConversationActivity.UNKNOWN, indicator(null).activity)
+        assertEquals(ConversationActivity.READY, indicator(snapshot()).activity)
         val background = snapshot().copy(commandTasks = listOf(command), commandMonitors = listOf(monitor))
-        assertEquals(BACKGROUND, conversationLoadingTone(background, false))
-        assertEquals(FOREGROUND, conversationLoadingTone(background, true))
-        val paused = background.copy(state = ConversationExecutionState(
-            conversationId, ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now,
-        ))
-        assertEquals(BACKGROUND, conversationLoadingTone(paused, true))
-        assertNull(conversationLoadingTone(paused.copy(commandTasks = emptyList(), commandMonitors = emptyList()), true))
+        assertEquals(ConversationActivity.READY, indicator(background).activity)
+        assertFalse(indicator(background).animated)
+        assertEquals(ConversationActivity.WORKING, indicator(background, waiting = true).activity)
+        assertTrue(indicator(null, waiting = true).animated)
     }
 
     @Test
-    fun queuedAndContinuingWorkRemainForeground() {
+    fun pausedAndPausingStatesKeepTheirActualMotionSemantics() {
+        val paused = snapshot().copy(state = ConversationExecutionState(conversationId,
+            ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
+        assertEquals(ConversationActivity.PAUSED, indicator(paused, waiting = true).activity)
+        assertFalse(indicator(paused, waiting = true).animated)
+        val requested = paused.copy(state = paused.state!!.copy(controlState = ConversationExecutionState.ControlState.PAUSE_REQUESTED))
+        assertEquals(ConversationActivity.PAUSING, indicator(requested).activity)
+        assertTrue(indicator(requested).animated)
+        val stopping = paused.copy(state = paused.state!!.copy(controlState = ConversationExecutionState.ControlState.STOPPING))
+        assertTrue(indicator(stopping).animated)
+        assertEquals(ConversationCenterMark.STOPPING, indicator(stopping, unread = true).centerMark)
+        assertTrue(indicator(stopping, unread = true).cornerUnread)
+    }
+
+    @Test
+    fun queuedAndContinuingWorkRemainActive() {
         val task = waitRuntime().activeTask!!
-        for (runtime in listOf(
-            snapshot().copy(activeTask = task), snapshot().copy(activeInsertions = listOf(task)),
-            snapshot().copy(continuationTask = task), snapshot().copy(pendingTasks = listOf(task)),
-        )) assertEquals(FOREGROUND, conversationLoadingTone(runtime, false))
+        for (runtime in listOf(snapshot().copy(activeTask = task), snapshot().copy(activeInsertions = listOf(task)),
+            snapshot().copy(continuationTask = task), snapshot().copy(pendingTasks = listOf(task)))) {
+            assertEquals(ConversationActivity.WORKING, indicator(runtime).activity)
+            assertTrue(indicator(runtime).animated)
+        }
+    }
+
+    @Test
+    fun localWaitIsMatchedByTaskNotInferredFromOtherConversationsOrOldRequests() {
+        val runtime = waitRuntime()
+        val task = runtime.activeTask!!.id
+        val load = AiRequestActivitySnapshot(3, 2, 1, listOf(AiRequestTaskWait(task, AiRequestWaitReason.TPM)))
+        assertEquals(ConversationPressure.LOCAL_WAIT, indicator(runtime, load = load).pressure)
+        assertTrue(indicator(runtime, load = load).animated)
+        val stale = load.copy(taskWaits = listOf(AiRequestTaskWait(ConversationRuntimeTask.Id("old"), AiRequestWaitReason.TPM)))
+        assertEquals(ConversationPressure.GLOBAL_WAIT, indicator(runtime, load = stale).pressure)
+        assertEquals(ConversationPressure.NORMAL, indicator(runtime).pressure)
+        assertEquals(ConversationPressure.UNKNOWN, indicator(runtime, load = null).pressure)
+        assertEquals(ConversationActivity.UNKNOWN, indicator(runtime, connected = false, load = load).activity)
+    }
+
+    @Test
+    fun unreadReplacesOnlyReadinessAndDoesNotPretendThatWorkFinished() {
+        assertEquals(ConversationCenterMark.UNREAD, indicator(snapshot(), unread = true).centerMark)
+        assertEquals(ConversationCenterMark.READY, indicator(snapshot()).centerMark)
+        assertEquals(ConversationCenterMark.UNREAD, indicator(waitRuntime(), unread = true).centerMark)
+        assertEquals(ConversationCenterMark.NONE, indicator(waitRuntime()).centerMark)
+        assertTrue(indicator(waitRuntime(), unread = true).animated)
+    }
+
+    @Test
+    fun retainedProblemsStayIndependentOfCurrentActivityAndPressure() {
+        val problem = ConversationRuntimeTurnSummary(ConversationRuntimeTurnId("previous"), now,
+            listOf(ConversationRuntimeTurnSummary.Problem("problem", "Failed", now)))
+        val runtime = waitRuntime().copy(lastTurn = ConversationRuntimeTurnSummary(ConversationRuntimeTurnId("current"), now),
+            retainedTurnProblems = problem)
+        val state = indicator(runtime, load = AiRequestActivitySnapshot(1, 1, 0, emptyList()))
+        assertTrue(state.hasTurnProblem)
+        assertEquals(ConversationActivity.WORKING, state.activity)
+        assertEquals(ConversationPressure.GLOBAL_WAIT, state.pressure)
+        assertFalse(indicator(runtime.copy(retainedTurnProblems = null)).hasTurnProblem)
+    }
+
+    @Test
+    fun globalPressureDoesNotTurnAnIdleConversationIntoActiveWork() {
+        val state = indicator(snapshot(), load = AiRequestActivitySnapshot(4, 1, 0, emptyList()))
+        assertEquals(ConversationPressure.GLOBAL_WAIT, state.pressure)
+        assertEquals(ConversationCenterMark.READY, state.centerMark)
+        assertFalse(state.animated)
     }
 
     @Test

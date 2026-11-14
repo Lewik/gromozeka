@@ -81,6 +81,15 @@ class StateSyncSource<K : Any, V>(
         }
     }
 
+    suspend fun invalidateAll() {
+        mutex.withLock {
+            entries.values.forEach { entry ->
+                entry.generation += 1
+                entry.invalidations.value = entry.invalidation()
+            }
+        }
+    }
+
     private fun entry(key: K): Entry<K, V> =
         entries.getOrPut(key) {
             val streamEpoch = nextStreamEpoch++

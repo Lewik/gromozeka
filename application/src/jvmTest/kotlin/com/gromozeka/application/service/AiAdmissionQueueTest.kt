@@ -2,6 +2,11 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.AiAdmissionOrigin
+import com.gromozeka.domain.service.AiRequestTaskWait
+import com.gromozeka.domain.service.AiRequestWaitReason
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.model.ai.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -224,6 +229,56 @@ class AiAdmissionQueueTest {
             Clock.System.now(), "worker", "root")
         assertFailsWith<IllegalArgumentException> {
             AiAdmissionQueue(this, catalog().copy(tpmGroups = listOf(group)), initialLeases = listOf(lease))
+        }
+    }
+
+    @Test
+    fun `activity exposes global counts but only the requested conversations waits`() = test { queue, _ ->
+        val conversation = Conversation.Id("conversation-a")
+        val task = ConversationRuntimeTask.Id("task-a")
+        queue.acquire(operation("active", "a"))
+        val first = async { queue.acquire(operation("first-wait", "a"), origin = AiAdmissionOrigin(conversation, task)) }
+        val second = async { queue.acquire(operation("second-wait", "b"), origin = AiAdmissionOrigin(Conversation.Id("conversation-b"), ConversationRuntimeTask.Id("task-b"))) }
+        val activity = queue.activity.first { it.waiting.size == 2 }.forConversation(conversation)
+        assertEquals(1, activity.runningRequests)
+        assertEquals(0, activity.waitingForTpm)
+        assertEquals(2, activity.waitingForConcurrency)
+        assertEquals(listOf(AiRequestTaskWait(task, AiRequestWaitReason.CONCURRENCY)), activity.taskWaits)
+        first.cancelAndJoin(); second.cancelAndJoin()
+        val cancelled = queue.activity.first { it.waiting.isEmpty() }.forConversation(conversation)
+        assertTrue(cancelled.taskWaits.isEmpty())
+        assertEquals(0, cancelled.waitingForConcurrency)
+        queue.release("active")
+        assertEquals(0, queue.activity.first { it.runningRequests == 0 }.runningRequests)
+    }
+
+    @Test
+    fun `TPM followers report the actual head gate and change reason when it changes`() = runBlocking {
+        withTimeout(5_000) {
+            supervisorScope {
+                val quota = AiTpmGroup(AiTpmGroup.Id("quota"), "quota", "Quota", 100, allowParallelRequests = true)
+                val queue = AiAdmissionQueue(this, catalog(1).copy(tpmGroups = listOf(quota)), nanoTime = { 0L })
+                fun op(id: String, units: Long) = operation(id, "a").copy(tpm =
+                    AiTpmReservation(quota.id, units, AiTpmFeedbackPolicy.Fields(AiQuotaValueSource.Header("quota"))))
+                try {
+                    queue.acquire(operation("holder", "a"))
+                    val head = async { queue.acquire(op("head", 80)) }
+                    queue.activity.first { it.waiting.size == 1 }
+                    val large = async { queue.acquire(op("large", 50)) }
+                    queue.activity.first { it.waiting.size == 2 }
+                    val small = async { queue.acquire(op("small", 5)) }
+                    val capacityBlocked = queue.activity.first { it.waiting.size == 3 }
+                    assertTrue(capacityBlocked.waiting.all { it.reason == AiRequestWaitReason.CONCURRENCY })
+                    queue.release("holder")
+                    assertEquals("head", head.await().operation.id)
+                    val quotaBlocked = queue.activity.first { it.waiting.size == 2 }
+                    assertTrue(quotaBlocked.waiting.all { it.reason == AiRequestWaitReason.TPM })
+                    assertFalse(large.isCompleted); assertFalse(small.isCompleted)
+                    large.cancelAndJoin(); small.cancelAndJoin()
+                    queue.activity.first { it.waiting.isEmpty() }
+                    queue.release("head")
+                } finally { queue.close() }
+            }
         }
     }
 
