@@ -62,7 +62,7 @@ class ConversationRuntimeWorkerConfiguration {
             // This binary understands the isolation contract. Older Workers must fail closed,
             // not silently ignore a new purpose and run native auto-compaction/session handling.
             capabilities = properties.capabilities + if (ConversationRuntimeCapability.AI_REQUEST_RESPONSE in properties.capabilities)
-                setOf(ConversationRuntimeCapability.AI_ISOLATED_CONTEXT_QUERY) else emptySet(),
+                setOf(ConversationRuntimeCapability.AI_ISOLATED_CONTEXT_QUERY, ConversationRuntimeCapability.AI_ISOLATED_CALL) else emptySet(),
             tools = emptyList(),
             environmentProfile = workerEnvironmentProbe.collectProfile(),
         )

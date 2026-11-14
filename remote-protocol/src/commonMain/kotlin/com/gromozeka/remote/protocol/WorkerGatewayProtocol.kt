@@ -167,7 +167,7 @@ enum class WorkerGatewayOperation {
     AI_REQUEST_RESPONSE,
     AI_ADMISSION,
     AUDIO_CAPTURE,
-    WORKSPACE_TEXT_FILE,
+    WORKSPACE_FILE,
     TOOL_EXECUTION,
     COMMAND_RUNTIME_STATE,
     VISUAL_COMMAND,
@@ -178,7 +178,7 @@ enum class WorkerGatewayOperation {
     ARTIFACT_CONTENT,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 28
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 29
 const val MAX_WORKER_GATEWAY_MESSAGE_BYTES = 128 * 1024 * 1024
 
 @OptIn(ExperimentalSerializationApi::class)

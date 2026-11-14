@@ -71,6 +71,14 @@ class WorkflowContracts(unittest.TestCase):
         cross_platform = load_yaml(WORKFLOWS / "windows-worker-service.yml")
         self.assertIn("*LocalArtifactContentStoreTest", scripts(cross_platform["jobs"]["verify"]))
 
+    def test_isolated_ai_calls_are_verified_on_runtime_and_script_platforms(self):
+        cross_platform = scripts(load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"])
+        for check in ("*AiCall*", "*ManagedCommandScriptSdkTest", "*WorkerWorkspaceFileServiceTest", "*WorkspaceTextFileApplicationServiceTest"):
+            self.assertIn(check, cross_platform)
+        runtime = scripts(JOBS["verify-runtime"])
+        for check in (":server:test", ":remote-protocol:jvmTest", "*TargetedAiExecutionTest", "*ClaudeCodeCliRuntimeTest", "*OpenAiSubscriptionContextQueryIsolationTest"):
+            self.assertIn(check, runtime)
+
     def test_manual_windows_recovery_checks_cannot_skip_release_verification(self):
         workflow = load_yaml(WORKFLOWS / "windows-worker-service.yml")
         inputs = workflow["on"]["workflow_dispatch"]["inputs"]

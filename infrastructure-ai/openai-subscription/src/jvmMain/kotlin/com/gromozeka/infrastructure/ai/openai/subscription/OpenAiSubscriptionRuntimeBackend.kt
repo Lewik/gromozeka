@@ -155,6 +155,12 @@ private class Runtime(
 internal fun AiRuntimeRequest.subscriptionTransportNamespace(fallbackKey: String): String {
     val base = options.toolContext["conversationId"] as? String ?: fallbackKey
     return when (options.usagePurpose) {
+        com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE -> {
+            val invocation = requireNotNull(options.toolContext["aiCallDiagnosticId"] as? String) {
+                "Isolated AI call requires an invocation ID"
+            }
+            "$base:isolated-call:$invocation"
+        }
         com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE -> "$base:context-query:$fallbackKey"
         "MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW" -> "$base:message-squash:$fallbackKey"
         else -> base

@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.commonmark)
+    implementation(libs.json.schema.validator)
+    implementation(libs.jackson.module.kotlin)
     testImplementation(libs.mcp.kotlin.sdk.client)
     implementation(libs.klog)
     implementation(libs.spring.security.crypto)

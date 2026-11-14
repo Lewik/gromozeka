@@ -1796,6 +1796,33 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun isolatedAiCallReturnsInvalidSchemaOutputOnceWithoutSessionsOrRepair() = runBlocking {
+        val sessions = object : ClaudeCodeSessionStateRepository {
+            override suspend fun find(key: ClaudeCodeSessionState.Key): ClaudeCodeSessionState? = error("Must not read session")
+            override suspend fun save(state: ClaudeCodeSessionState): ClaudeCodeSessionState = error("Must not save session")
+            override suspend fun delete(key: ClaudeCodeSessionState.Key) { error("Must not delete session") }
+        }
+        val invalid = response(structuredOutput = jsonObject("unexpected" to JsonPrimitive(true)))
+        val executor = FakeClaudeCodeCliExecutor(invalid)
+        val result = runtime(executor, sessions).call(request(listOf(userMessage("Explicit input")), emptyList(), AiRuntimeOptions(
+            usagePurpose = com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE,
+            toolChoice = AiToolChoice.None, toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+            responseFormat = AiResponseFormat.JsonSchema("result", jsonObject("type" to JsonPrimitive("integer"))),
+            toolContext = testToolContext())).copy(systemPrompts = listOf("Explicit instruction")))
+        assertEquals(invalid.result, result.messages.single().text())
+        assertNotNull(result.usage)
+        val command = executor.commands.single()
+        assertNull(command.cacheKey)
+        assertNull(command.resumeSessionId)
+        assertTrue(command.noSessionPersistence)
+        assertTrue(command.disableCompaction)
+        assertTrue(command.nativeTools.isEmpty())
+        assertTrue(command.systemPrompt.startsWith("Explicit instruction"))
+        assertTrue(command.userPrompt.contains("Explicit input"))
+    }
+
+    @Test
     fun selectiveCompactionOmitsCoveredSourcesButKeepsUnrelatedEarlierContext() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
             "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))

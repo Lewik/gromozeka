@@ -425,6 +425,35 @@ class AiRequestResponseGatewayCodecTest {
         assertEquals(0, calls)
     }
 
+    @Test fun `explicit input call is versioned and rejects unsafe options and downgrade`() = runBlocking<Unit> {
+        val fixture = TestHandler()
+        val request = contextQuery(fixture).copy(options = contextQuery(fixture).options.copy(
+            usagePurpose = com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE))
+        var calls = 0
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, actual: AiRuntimeRequest): AiRuntimeResponse {
+                assertEquals(request, actual)
+                assertEquals(null, workspaceRootPath)
+                calls++
+                return fixture.runtimeResponse
+            }
+        }
+        val encoded = AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request)
+        val value = Json.parseToJsonElement(encoded.decodeToString()).jsonObject
+        assertEquals("isolated_ai_call_v1", value.getValue("operationKind").jsonPrimitive.content)
+        assertEquals(fixture.runtimeResponse, AiRequestResponseGatewayCodec.decodeCallResponse(AiRequestResponseGatewayCodec.execute(encoded, handler)))
+        val downgraded = JsonObject(value + ("operationKind" to JsonPrimitive("call"))).toString().encodeToByteArray()
+        assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.execute(downgraded, handler) }
+        assertFailsWith<SerializationException> { Json { ignoreUnknownKeys = true }.decodeFromString(LegacyAiCallOperation.serializer(), encoded.decodeToString()) }
+        assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, "/workspace", request) }
+        for (unsafe in listOf(request.options.copy(toolChoice = AiToolChoice.Auto),
+            request.options.copy(toolAccess = ToolAccessPolicy.DenyListed()),
+            request.options.copy(toolContext = request.options.toolContext + ("threadId" to "parent")))) {
+            assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request.copy(options = unsafe)) }
+        }
+        assertEquals(1, calls)
+    }
+
     private fun contextQuery(fixture: TestHandler) = fixture.runtimeRequest.copy(tools = emptyList(), options = fixture.runtimeRequest.options.copy(
         usagePurpose = AI_CONTEXT_QUERY_PURPOSE, toolChoice = AiToolChoice.None, toolAccess = ToolAccessPolicy.AllowOnly(),
         toolContext = mapOf("conversationId" to "context-query:synthetic"),

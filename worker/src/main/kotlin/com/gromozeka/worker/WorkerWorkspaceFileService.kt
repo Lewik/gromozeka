@@ -1,16 +1,16 @@
 package com.gromozeka.worker
 
-import com.gromozeka.domain.service.WorkerWorkspaceTextFileHandler
-import com.gromozeka.domain.service.WorkerWorkspaceTextFileReadRequest
-import com.gromozeka.domain.service.WorkspaceTextFile
+import com.gromozeka.domain.service.WorkerWorkspaceFileHandler
+import com.gromozeka.domain.service.WorkerWorkspaceFileReadRequest
+import com.gromozeka.domain.service.WorkspaceFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
-class WorkerWorkspaceTextFileService : WorkerWorkspaceTextFileHandler {
-    override suspend fun read(request: WorkerWorkspaceTextFileReadRequest): WorkspaceTextFile =
+class WorkerWorkspaceFileService : WorkerWorkspaceFileHandler {
+    override suspend fun read(request: WorkerWorkspaceFileReadRequest): WorkspaceFile =
         withContext(Dispatchers.IO) {
             val requested = File(request.reference.path)
             val file = if (requested.isAbsolute) {
@@ -27,8 +27,8 @@ class WorkerWorkspaceTextFileService : WorkerWorkspaceTextFileHandler {
             require(bytes.size <= request.maxBytes) {
                 "Workspace file is too large: ${bytes.size} bytes; max=${request.maxBytes}"
             }
-            val content = bytes.decodeToString(throwOnInvalidSequence = true)
-            WorkspaceTextFile(
+            val content = com.gromozeka.domain.model.BinaryContent.fromBytes(bytes)
+            WorkspaceFile(
                 reference = request.reference,
                 resolvedPath = file.path,
                 fileName = file.name,

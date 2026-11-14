@@ -93,6 +93,8 @@ conversation steps reuse a content-bound usage baseline and local estimates on S
 only missing/invalidated baselines use the configured counter. Model configurations can
 select the current count API, local-only counting, or another model configuration.
 See [context counting policy](ai-http-settings.md#context-counting-policy).
+Protocol 29 adds tool-free `isolated_ai_call_v1` inference and binary workspace file
+reads. Server and Workers must be updated together. See [isolated AI calls](ai-call.md).
 
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,

@@ -45,11 +45,11 @@ jobs:
         run: >
           ./gradlew
           :worker:assemble :server:assemble
-          :worker:test --tests '*WorkerUpdatePreparationTest' --tests '*VisualWorkerRuntimeTest' --tests '*JvmComputerUseControllerTest' --tests '*WorkerCommandScriptBootstrapServiceTest'
+          :worker:test --tests '*WorkerUpdatePreparationTest' --tests '*VisualWorkerRuntimeTest' --tests '*JvmComputerUseControllerTest' --tests '*WorkerCommandScriptBootstrapServiceTest' --tests '*WorkerWorkspaceFileServiceTest'
           :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*LocalScriptSdkTest' --tests '*LocalScriptSdkTlsTest' --tests '*JsonSchemaGeneratorTest'
           :application-updates:jvmTest
           :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
-          :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest' --tests '*ManagedCommandScriptSdkTest' --tests '*CommandScriptHttpTest' --tests '*LocalArtifactContentStoreTest'
+          :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest' --tests '*ManagedCommandScriptSdkTest' --tests '*CommandScriptHttpTest' --tests '*LocalArtifactContentStoreTest' --tests '*AiCall*' --tests '*WorkspaceTextFileApplicationServiceTest'
           -q
       - name: Verify real Windows service and standard-user permissions
         if: runner.os == 'Windows'
