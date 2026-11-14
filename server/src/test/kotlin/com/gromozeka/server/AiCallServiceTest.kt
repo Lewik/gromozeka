@@ -197,6 +197,9 @@ class AiCallServiceTest {
         val artifactBytes = linkedMapOf<Artifact.Id, ByteArray>()
         val repository = object : ArtifactRepository {
             override suspend fun save(artifact: Artifact, searchableText: String?) = artifact.also { artifactRows[it.id] = it }
+            override suspend fun cloneBatch(sourceConversationId: Conversation.Id, targetConversation: Conversation,
+                sourceToTargetIds: Map<Artifact.Id, Artifact.Id>, createdAt: Instant): List<Artifact> =
+                error("An isolated AI call must not clone conversation artifacts")
             override suspend fun findById(id: Artifact.Id) = artifactRows[id]
             override suspend fun findByIds(ids: List<Artifact.Id>) = ids.mapNotNull(artifactRows::get)
             override suspend fun findByConversation(conversationId: Conversation.Id) = artifactRows.values.filter { it.conversationId == conversationId }
@@ -206,6 +209,8 @@ class AiCallServiceTest {
         }
         val contentStore = object : ArtifactContentStore {
             override suspend fun write(id: Artifact.Id, content: ByteArray) { artifactBytes[id] = content }
+            override suspend fun copy(sourceId: Artifact.Id, targetId: Artifact.Id): Unit =
+                error("An isolated AI call must not copy conversation artifacts")
             override suspend fun read(id: Artifact.Id) = artifactBytes.getValue(id)
             override suspend fun delete(id: Artifact.Id) { artifactBytes.remove(id) }
             override suspend fun listIds() = artifactBytes.keys.toSet()
