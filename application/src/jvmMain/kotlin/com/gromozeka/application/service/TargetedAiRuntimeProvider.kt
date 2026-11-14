@@ -139,6 +139,11 @@ class TargetedAiRuntimeProvider(
                     "Worker changed during isolated context query authorization"
                 }
             }
+            if (request.options.usagePurpose == com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE) {
+                check(workerTargetResolver.requireRegistered(workerId, ConversationRuntimeCapability.AI_ISOLATED_CALL) == target) {
+                    "Worker changed during isolated AI call authorization"
+                }
+            }
             return client.call(
                 target = target,
                 runtime = runtime,

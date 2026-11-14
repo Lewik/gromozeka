@@ -23,6 +23,14 @@ class OpenAiSubscriptionContextQueryIsolationTest {
         }
     }
 
+    @Test fun `explicit input calls use invocation identity even with reused runtime and parent provenance`() {
+        val base = request("parent", AI_ISOLATED_CALL_PURPOSE)
+        fun isolated(id: String) = base.copy(options = base.options.copy(toolContext = base.options.toolContext + ("aiCallDiagnosticId" to id)))
+        assertEquals("parent:isolated-call:one", isolated("one").subscriptionTransportNamespace("runtime"))
+        assertNotEquals(isolated("one").subscriptionTransportNamespace("runtime"), isolated("two").subscriptionTransportNamespace("runtime"))
+        assertFailsWith<IllegalArgumentException> { base.subscriptionTransportNamespace("runtime") }
+    }
+
     private fun request(id: String, purpose: String?) = AiRuntimeRequest(emptyList(), emptyList(), options = AiRuntimeOptions(
         usagePurpose = purpose, toolContext = mapOf("conversationId" to id, "promptCacheKey" to "target"),
     ))

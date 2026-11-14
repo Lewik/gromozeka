@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.requireGatewayModelListing
 import com.gromozeka.domain.model.ai.AiCallException
 import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.model.ai.AiStepOutcome
+import com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE
 import com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE
 
 import com.gromozeka.domain.model.Conversation
@@ -90,6 +91,10 @@ object AiRequestResponseGatewayCodec {
         workspaceRootPath: String?,
         request: AiRuntimeRequest,
     ): ByteArray {
+        if (request.options.usagePurpose == AI_ISOLATED_CALL_PURPOSE) {
+            requireIsolatedCallContract(workspaceRootPath, request)
+            return encodeOperation(AiRequestResponseOperation.IsolatedCall(runtime, workspaceRootPath, request.toWire()))
+        }
         if (request.options.usagePurpose == AI_CONTEXT_QUERY_PURPOSE) {
             requireContextQueryContract(workspaceRootPath, request)
             // A Worker can reconnect after capability resolution. An old decoder must reject
@@ -182,10 +187,15 @@ object AiRequestResponseGatewayCodec {
                 catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
             }
             is AiRequestResponseOperation.Call -> {
-                require(operation.request.options.usagePurpose != AI_CONTEXT_QUERY_PURPOSE) {
+                require(operation.request.options.usagePurpose !in setOf(AI_CONTEXT_QUERY_PURPOSE, AI_ISOLATED_CALL_PURPOSE)) {
                     "Isolated context query requires its versioned wire operation"
                 }
                 executeCall(handler, operation.runtime, operation.workspaceRootPath, operation.request.toRuntime())
+            }
+            is AiRequestResponseOperation.IsolatedCall -> {
+                val request = operation.request.toRuntime()
+                requireIsolatedCallContract(operation.workspaceRootPath, request)
+                executeCall(handler, operation.runtime, operation.workspaceRootPath, request)
             }
             is AiRequestResponseOperation.ContextQuery -> {
                 val request = operation.request.toRuntime()
@@ -226,6 +236,13 @@ object AiRequestResponseGatewayCodec {
         workspaceRootPath: String?, request: AiRuntimeRequest): AiRequestResponsePayload =
         try { AiRequestResponsePayload.Call(handler.call(runtime, workspaceRootPath, request).toWire()) }
         catch (error: AiCallException) { AiRequestResponsePayload.CallFailure(error.failure) }
+
+    private fun requireIsolatedCallContract(workspaceRootPath: String?, request: AiRuntimeRequest) {
+        require(workspaceRootPath == null && request.options.usagePurpose == AI_ISOLATED_CALL_PURPOSE &&
+            request.tools.isEmpty() && request.options.toolChoice == AiToolChoice.None &&
+            request.options.toolAccess == com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly() &&
+            "threadId" !in request.options.toolContext) { "Unsupported isolated AI call transport contract" }
+    }
 
     private fun requireContextQueryContract(workspaceRootPath: String?, request: AiRuntimeRequest) {
         require(workspaceRootPath == null && request.options.usagePurpose == AI_CONTEXT_QUERY_PURPOSE &&
@@ -268,6 +285,11 @@ private sealed interface AiRequestResponseOperation {
         val workspaceRootPath: String?,
         val request: AiRuntimeRequestWire,
     ) : AiRequestResponseOperation
+
+    @Serializable
+    @SerialName("isolated_ai_call_v1")
+    data class IsolatedCall(val runtime: ResolvedAiRuntime, val workspaceRootPath: String?,
+        val request: AiRuntimeRequestWire) : AiRequestResponseOperation
 
     @Serializable
     @SerialName("isolated_context_query_v1")

@@ -30,6 +30,7 @@ import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
+import com.gromozeka.domain.model.ai.isToolFreeIsolatedCall
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
@@ -109,7 +110,7 @@ internal class GitHubCopilotRuntime(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
 ) : AiRuntime {
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
-        if (request.options.usagePurpose == com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE) {
+        if (request.options.usagePurpose.isToolFreeIsolatedCall()) {
             throw UnsupportedOperationException(
                 "GitHub Copilot does not support a strictly tool-free isolated context query")
         }

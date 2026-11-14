@@ -156,6 +156,33 @@ class TargetedAiExecutionTest {
     }
 
     @Test
+    fun `explicit AI call requires its own isolation capability without fallback`() = runBlocking {
+        val direct = RecordingDirectRuntimeProvider()
+        val remote = RecordingRemoteClient()
+        val supported = RecordingWorkerTargetResolver(workerIdentity)
+        val query = request.copy(options = request.options.copy(usagePurpose = com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE))
+        runtimeProvider(AiExecutionTarget.Worker(workerIdentity.workerId.value), direct, remote, supported)
+            .getRuntime(selection, null).call(query)
+        assertEquals(listOf(workerIdentity.workerId to ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+            workerIdentity.workerId to ConversationRuntimeCapability.AI_ISOLATED_CALL), supported.requests)
+        val oldRemote = RecordingRemoteClient()
+        val old = object : ConversationRuntimeWorkerTargetResolver {
+            override suspend fun requireRegistered(workerId: ConversationRuntimeWorkerId, capability: ConversationRuntimeCapability): ConversationRuntimeWorkerIdentity {
+                if (capability == ConversationRuntimeCapability.AI_ISOLATED_CALL) error("Worker isolation unsupported")
+                return workerIdentity
+            }
+            override suspend fun requireOnline(workerId: ConversationRuntimeWorkerId, capability: ConversationRuntimeCapability) =
+                requireRegistered(workerId, capability)
+        }
+        assertFailsWith<IllegalStateException> {
+            runtimeProvider(AiExecutionTarget.Worker(workerIdentity.workerId.value), direct, oldRemote, old)
+                .getRuntime(selection, null).call(query)
+        }
+        assertNull(oldRemote.callTarget)
+        assertTrue(direct.runtimeRequests.isEmpty())
+    }
+
+    @Test
     fun `Worker-targeted runtime rejects Server workspace path and streaming`() = runBlocking {
         val provider = runtimeProvider(
             target = AiExecutionTarget.Worker(workerIdentity.workerId.value),

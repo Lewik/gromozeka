@@ -194,6 +194,7 @@ jobs:
           --tests '*ConversationCompactionServiceTest'
           --tests '*AgentSessionRuntimeProjectionTest'
           --tests '*DistributedAiToolRoutingTest'
+          --tests '*TargetedAiExecutionTest'
           --tests '*AiAdmissionQueueTest'
           --tests '*AiTpmLedgerTest'
           --tests '*AiQuotaPolicyEvaluatorTest'
@@ -216,6 +217,7 @@ jobs:
           --tests '*DangerousAiTrafficDumpTest'
           :infrastructure-ai:openai-subscription:jvmTest
           --tests '*OpenAiSubscriptionIncrementalReplayTest'
+          --tests '*OpenAiSubscriptionContextQueryIsolationTest'
           --tests '*OpenAiSubscriptionRequestMapperTest'
           --tests '*OpenAiSubscriptionResponseMapperTest'
           --tests '*OpenAiSubscriptionResponsesClientTest'
