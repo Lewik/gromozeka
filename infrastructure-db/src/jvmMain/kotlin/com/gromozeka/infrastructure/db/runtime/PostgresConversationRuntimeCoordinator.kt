@@ -815,7 +815,7 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot =
         readJson(conversationId, """
             SELECT jsonb_build_object('conversationId', conversation_id, 'lastEventSequence', event_sequence)
-                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn')
+                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn' - 'retainedTurnProblems')
             FROM conversation_runtime_records WHERE conversation_id = ?
         """.trimIndent())?.let { json.decodeFromString(it) } ?: ConversationRuntimeSchedulingSnapshot(conversationId)
 
@@ -1438,6 +1438,7 @@ class PostgresConversationRuntimeCoordinator(
                 commandMonitors = commandMonitors,
                 incidents = scheduling.incidents,
                 lastTurn = scheduling.lastTurn,
+                retainedTurnProblems = scheduling.retainedTurnProblems,
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),
                 lastEventSequence = eventSequence,
             )

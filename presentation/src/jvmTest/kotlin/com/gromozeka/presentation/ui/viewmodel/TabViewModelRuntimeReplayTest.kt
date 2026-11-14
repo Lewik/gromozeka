@@ -48,6 +48,52 @@ import kotlinx.coroutines.test.runTest
 @OptIn(ExperimentalCoroutinesApi::class)
 class TabViewModelRuntimeReplayTest {
     @Test
+    fun `elapsed origin ignores scrolling synthetic messages and other users but follows live own messages`() = runTest {
+        val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 8)
+        val id = Conversation.Id("conversation-1")
+        val thread = Conversation.Thread.Id("thread-1")
+        val initial = Instant.fromEpochSeconds(100)
+        fun message(position: Int, owner: String = "user-1", synthetic: Boolean = false) = Conversation.Message(
+            Conversation.Message.Id("message-$position"), id, role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.User(User.Id(owner), owner),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Message $position")),
+            providerMetadata = if (synthetic) kotlinx.serialization.json.buildJsonObject { put("synthetic", kotlinx.serialization.json.JsonPrimitive(true)) } else JsonObject(emptyMap()),
+            createdAt = Instant.fromEpochSeconds(100 + position.toLong()))
+        var response = ConversationHistoryPage(thread, listOf(ConversationHistoryMessage(0, message(0))),
+            newer = ConversationHistoryCursor(thread, 0), eventSequence = 1,
+            lastUserActivity = com.gromozeka.domain.model.ConversationUserActivity(10, initial))
+        var gate: CompletableDeferred<Unit>? = null
+        val vm = viewModel(backgroundScope, events) {
+            val result = response
+            gate?.await()
+            result
+        }
+        runCurrent()
+        assertEquals(initial, vm.lastUserMessageAt.value)
+        events.emit(ConversationRuntimeEvent.ReplayCompleted(id, 1)); runCurrent()
+        gate = CompletableDeferred()
+        vm.loadLatestHistory(); runCurrent()
+        events.emit(ConversationRuntimeEvent.MessageEmitted(id, null, message(20), cursorSequence = 2,
+            historyThreadId = thread, historyPosition = 20)); runCurrent()
+        assertEquals(message(20).createdAt, vm.lastUserMessageAt.value)
+        assertEquals(listOf(message(0)), vm.allMessages.value, "Nonvisible own message still updates the elapsed origin")
+        gate.complete(Unit); runCurrent()
+        assertEquals(message(20).createdAt, vm.lastUserMessageAt.value, "Old page cannot overwrite a newer live event")
+        gate = null
+        for ((position, msg) in listOf(21 to message(21, synthetic = true), 22 to message(22, owner = "other"))) {
+            events.emit(ConversationRuntimeEvent.MessageEmitted(id, null, msg, cursorSequence = position.toLong(),
+                historyThreadId = thread, historyPosition = position)); runCurrent()
+            assertEquals(message(20).createdAt, vm.lastUserMessageAt.value)
+        }
+        events.emit(ConversationRuntimeEvent.SnapshotUpdated(id, ConversationRuntimeSnapshot(1, id, null, pendingTasks = emptyList())))
+        runCurrent()
+        assertEquals(message(20).createdAt, vm.lastUserMessageAt.value)
+        response = response.copy(threadId = Conversation.Thread.Id("new-branch"), messages = emptyList(), newer = null, lastUserActivity = null)
+        vm.loadLatestHistory(); runCurrent()
+        assertNull(vm.lastUserMessageAt.value, "A different branch must not retain the old branch clock")
+    }
+
+    @Test
     fun `historical message replay does not reactivate an idle runtime`() = runTest {
         val conversationId = Conversation.Id("conversation-1")
         val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 4)

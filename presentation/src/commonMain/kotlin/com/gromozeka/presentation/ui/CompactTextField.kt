@@ -94,10 +94,7 @@ fun CompactTextField(
                     isError = isError,
                     placeholder = placeholder,
                     colors = colors,
-                    contentPadding = PaddingValues(
-                        horizontal = controls.horizontalPadding,
-                        vertical = controls.verticalPadding,
-                    ),
+                    contentPadding = PaddingValues(horizontal = controls.horizontalPadding, vertical = controls.verticalPadding),
                     container = {
                         OutlinedTextFieldDefaults.Container(
                             enabled = enabled,

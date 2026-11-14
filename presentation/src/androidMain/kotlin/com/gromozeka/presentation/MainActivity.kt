@@ -252,7 +252,7 @@ private fun GromozekaAndroidApp(
             remoteApp != null -> GromozekaApp(
                 appComponents = remoteApp!!.components,
                 skipLoadingScreen = true,
-                showRuntimePanelInitially = false,
+                showSidePanelInitially = false,
                 forceCompactLayout = true,
                 clientPlatform = ClientPlatform.ANDROID,
             )

@@ -57,6 +57,8 @@ class MessageEditingE2eTest {
 
         waitForTag(UiTestTag.MessageItem(originalMessage.id.value))
         onNodeWithTag(UiTestTag.MessageItem(originalMessage.id.value).value).performClick()
+        onNodeWithTag("side-panel-toggle").performClick()
+        onNodeWithTag("side-panel-tab-thread").performClick()
         onNodeWithTag(UiTestTag.EditSelectedMessageButton.value).assertIsEnabled().performClick()
         waitForTag(UiTestTag.EditMessageInput)
         onNodeWithTag(UiTestTag.EditMessageInput.value).performTextReplacement("Edited message")

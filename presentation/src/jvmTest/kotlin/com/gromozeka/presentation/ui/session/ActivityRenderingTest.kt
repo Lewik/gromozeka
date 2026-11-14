@@ -261,6 +261,8 @@ class ActivityRenderingTest {
                 setContent { ActivityTimelineFixture(listOf(message), summaryStyle = style) }
                 val group = onNodeWithTag(UiTestTag.ActivityGroup("mixed:0:content").value)
                 group.assertIsDisplayed()
+                onNodeWithText("Activity · 2").assertDoesNotExist()
+                onNodeWithContentDescription("Activity · 2", useUnmergedTree = true).assertExists()
                 onNodeWithText("Readable thought").assertDoesNotExist()
                 group.performClick()
                 onNodeWithTag(UiTestTag.ActivityGroupContent("mixed:0:content").value).assertIsDisplayed()

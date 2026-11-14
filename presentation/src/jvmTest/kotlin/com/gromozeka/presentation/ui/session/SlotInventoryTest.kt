@@ -20,16 +20,16 @@ class SlotInventoryTest {
             "worker", "/checkout-$number", mapOf(conversation.value to "Example conversation"))
     }
 
-    @Test fun `header distinguishes held slots from waiting and does not copy them to a fork`() {
+    @Test fun `badge distinguishes held slots from waiting and does not copy them to a fork`() {
         val views = listOf(view(12), view(7), view(15, true))
-        assertEquals(SlotHeaderOccupancy(listOf(7, 12), listOf(15)), slotHeaderOccupancy(views, conversation))
-        assertEquals(SlotHeaderOccupancy(emptyList(), emptyList()), slotHeaderOccupancy(views, Conversation.Id("fork")))
+        assertEquals(ConversationSlotOccupancy(listOf(7, 12), listOf(15)), conversationSlotOccupancy(views, conversation))
+        assertEquals(ConversationSlotOccupancy(emptyList(), emptyList()), conversationSlotOccupancy(views, Conversation.Id("fork")))
     }
 
     @Test fun `opening inventory or preparing reclaim does not approve it`() = runComposeUiTest {
         val service = FakeService(listOf(view(7)))
-        setContent { GromozekaTheme { SlotHeaderButton(service, conversation) {} } }
-        onNodeWithTag("conversation-slots").assertTextContains("7", substring = true).performClick()
+        setContent { GromozekaTheme { InventoryFixture(service) } }
+        onNodeWithTag("conversation-slots").assertTextContains("1", substring = true).performClick()
         onNodeWithTag("slot-inventory").assertExists()
         runOnIdle { assertEquals(0, service.confirmations) }
         onNodeWithTag("reclaim-lease-7").performClick()
@@ -39,17 +39,28 @@ class SlotInventoryTest {
         runOnIdle { assertEquals(1, service.confirmations) }
     }
 
-    @Test fun `unbound automatic waits appear in header and empty catalog and can be cancelled`() = runComposeUiTest {
+    @Test fun `unbound automatic waits appear in the badge and empty catalog and can be cancelled`() = runComposeUiTest {
         val request = SlotRequest("automatic", "key", null, conversation, User.Id("user"), AgentDefinition.Id("agent"), SlotAccess.READ, now, projectId = Project.Id("project"))
         val service = FakeService(emptyList(), listOf(request))
-        assertEquals(SlotHeaderOccupancy(emptyList(), emptyList(), 1), slotHeaderOccupancy(emptyList(), conversation, listOf(request)))
-        assertEquals(0, slotHeaderOccupancy(emptyList(), Conversation.Id("fork"), listOf(request)).automaticPending)
-        setContent { GromozekaTheme { SlotHeaderButton(service, conversation) {} } }
-        onNodeWithTag("conversation-slots").assertTextContains("(1)", substring = true).performClick()
+        assertEquals(ConversationSlotOccupancy(emptyList(), emptyList(), 1), conversationSlotOccupancy(emptyList(), conversation, listOf(request)))
+        assertEquals(0, conversationSlotOccupancy(emptyList(), Conversation.Id("fork"), listOf(request)).automaticPending)
+        setContent { GromozekaTheme { InventoryFixture(service) } }
+        onNode(hasContentDescription("Automatic selection (1)", substring = true) and hasAnyAncestor(hasTestTag("conversation-slots")), useUnmergedTree = true).assertExists()
+        onNodeWithTag("conversation-slots").performClick()
         onNodeWithTag("automatic-slot-request-automatic").assertExists()
         onNodeWithTag("cancel-slot-request-automatic").performClick()
         runOnIdle { assertEquals(listOf("automatic"), service.cancelled) }
         onNodeWithTag("automatic-slot-request-automatic").assertDoesNotExist()
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun InventoryFixture(service: SlotService) {
+        val state = androidx.compose.runtime.remember(service) { SlotInventoryState() }
+        val open = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        androidx.compose.runtime.LaunchedEffect(service, state.observationAttempt) { state.observe(service) }
+        if (open.value) SlotInventoryPanel(state, service, {})
+        else TestFooterSummary(null, emptyList(), null, null, {}, conversationId = conversation,
+            slotLoad = state.load, onOpenSlots = { open.value = true })
     }
 
     private inner class FakeService(views: List<SlotView>, automatic: List<SlotRequest> = emptyList()) : SlotService {

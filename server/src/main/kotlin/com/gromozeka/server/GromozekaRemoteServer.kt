@@ -22,6 +22,7 @@ import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.ActiveGenerationStateSyncService
+import com.gromozeka.domain.service.AiRequestActivityStateSyncService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.application.service.ConversationSearchApplicationService
@@ -113,6 +114,7 @@ class GromozekaRemoteServer(
     private val conversationRuntimeDispatcher: ConversationRuntimeDispatcher,
     private val conversationRuntimeStateSyncService: ConversationRuntimeStateSyncService,
     private val activeGenerationStateSyncService: ActiveGenerationStateSyncService,
+    private val aiRequestActivityStateSyncService: AiRequestActivityStateSyncService,
     private val conversationTabLayoutStateSyncService: ConversationTabLayoutStateSyncService,
     private val declarativeStateSyncService: DeclarativeStateSyncService,
     private val conversationRuntimeIngressService: ConversationRuntimeIngressService,
@@ -1144,6 +1146,11 @@ class GromozekaRemoteServer(
                     authenticatedSession = authenticatedSession,
                     subscription = activeGenerationStateSyncService.subscribe(query.conversationId),
                 )
+                is AiRequestActivityStateQuery -> observeStateSyncSubscription(
+                    sender = sender, command = command, encoding = encoding,
+                    authenticatedSession = authenticatedSession,
+                    subscription = aiRequestActivityStateSyncService.subscribe(query.conversationId),
+                )
                 ConversationTabLayoutStateQuery -> observeStateSyncSubscription(
                     sender = sender,
                     command = command,
@@ -1265,6 +1272,9 @@ class GromozekaRemoteServer(
                     cursor = it.cursor.toRemote(),
                     state = ActiveGenerationStatePayload(it.value),
                 )
+            }
+            is AiRequestActivityStateQuery -> aiRequestActivityStateSyncService.snapshot(query.conversationId).let {
+                StateSyncSnapshotResponse(query = query, cursor = it.cursor.toRemote(), state = AiRequestActivityStatePayload(it.value))
             }
             ConversationTabLayoutStateQuery -> conversationTabLayoutStateSyncService.snapshot(user.id).let {
                 StateSyncSnapshotResponse(

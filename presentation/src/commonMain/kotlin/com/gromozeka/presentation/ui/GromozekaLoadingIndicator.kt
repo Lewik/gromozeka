@@ -26,17 +26,22 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+
+internal const val GromozekaRevolutionMillis = 5_000
 
 internal enum class LoadingIndicatorTone { FOREGROUND, BACKGROUND }
 
@@ -72,18 +77,12 @@ internal fun GromozekaLoadingIndicator(
     )
 }
 
-/** Static readiness mark: the original bulb with a two-stroke green check inside its head. */
 @Composable
-internal fun GromozekaReadyIndicator(modifier: Modifier = Modifier) {
-    GromozekaBulb(modifier.size(28.dp), phase = { null }, ready = true)
-}
-
-@Composable
-private fun rememberGromozekaLoadingPhase() =
+internal fun rememberGromozekaLoadingPhase() =
     rememberInfiniteTransition(label = "Gromozeka loader").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(tween(GromozekaRevolutionMillis, easing = LinearEasing), RepeatMode.Restart),
         label = "Outline gap",
     )
 
@@ -130,9 +129,10 @@ internal fun GromozekaBulb(
     phase: () -> Float?,
     ready: Boolean = false,
     tone: LoadingIndicatorTone = LoadingIndicatorTone.FOREGROUND,
+    outlineColor: Color = loadingIndicatorColor(tone),
+    baseColor: Color = if (tone == LoadingIndicatorTone.BACKGROUND) outlineColor else Color(0xFF1266D0),
+    errorRayColor: Color? = null,
 ) {
-    val outlineColor = loadingIndicatorColor(tone)
-    val baseColor = if (tone == LoadingIndicatorTone.BACKGROUND) outlineColor else Color(0xFF1266D0)
     Spacer(modifier.graphicsLayer().drawWithCache {
         val outline = PathParser().parsePathString(BulbOutline).toPath()
         val base = PathParser().parsePathString(BulbBase).toPath()
@@ -149,6 +149,20 @@ internal fun GromozekaBulb(
         val scale = size.minDimension / 800f
         val left = (size.width - size.minDimension) / 2f - 112f * scale
         val top = (size.height - size.minDimension) / 2f - 112f * scale
+        val rays = if (errorRayColor != null) Path().apply {
+            moveTo(512f, 48f); lineTo(512f, -16f)
+            moveTo(263.1f, 143.1f); lineTo(229.2f, 109.2f)
+            moveTo(760.9f, 143.1f); lineTo(794.8f, 109.2f)
+            moveTo(160f, 392f); lineTo(112f, 392f)
+            moveTo(864f, 392f); lineTo(912f, 392f)
+        } else null
+        // A dedicated paint keeps the ray stroke from changing the ready check's antialiasing.
+        val rayPaint = if (errorRayColor != null) Paint().apply {
+            color = errorRayColor
+            style = PaintingStyle.Stroke
+            strokeWidth = stroke.width
+            strokeCap = stroke.cap
+        } else null
 
         onDrawBehind {
             val offset = phase()
@@ -162,6 +176,7 @@ internal fun GromozekaBulb(
                 translate(left, top)
                 scale(scale, scale, pivot = Offset.Zero)
             }) {
+                if (rays != null && rayPaint != null) drawIntoCanvas { it.drawPath(rays, rayPaint) }
                 drawPath(outline, outlineColor, style = outlineStroke)
                 drawPath(base, baseColor, style = stroke)
                 readyCheck?.let { drawPath(it, Color(0xFF43A047), style = stroke) }

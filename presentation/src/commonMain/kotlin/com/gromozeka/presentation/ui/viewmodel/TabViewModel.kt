@@ -145,6 +145,9 @@ class TabViewModel(
     private val historyEventsDuringLoad = mutableListOf<ConversationRuntimeEvent.MessageEmitted>()
     private val historyPositions = mutableMapOf<Conversation.Message.Id, Int>()
     private var historyThreadId: Conversation.Thread.Id? = null
+    private var lastUserActivityPosition: Int? = null
+    private val _lastUserMessageAt = MutableStateFlow<kotlin.time.Instant?>(null)
+    val lastUserMessageAt = _lastUserMessageAt.asStateFlow()
     private var historySequence = 0L
     private val historyAnchor = MutableStateFlow<Conversation.Message.Id?>(null)
     private var runtimeObservationJob: Job? = null
@@ -389,6 +392,15 @@ class TabViewModel(
     }
 
     private fun applyHistoryPage(page: ConversationHistoryPage, replace: Boolean, preserveAnchor: Boolean) {
+        if (historyThreadId != page.threadId) {
+            lastUserActivityPosition = page.lastUserActivity?.position
+            _lastUserMessageAt.value = page.lastUserActivity?.createdAt
+        } else page.lastUserActivity?.let { activity ->
+            if (lastUserActivityPosition?.let { activity.position >= it } != false) {
+                lastUserActivityPosition = activity.position
+                _lastUserMessageAt.value = activity.createdAt
+            }
+        }
         val anchorPosition = historyAnchor.value?.let { historyPositions[it] }
         val optimistic = _allMessages.value.filter { it.id !in historyPositions }
         val retainedDetails = if (replace) emptyMap() else {
@@ -489,6 +501,14 @@ class TabViewModel(
     }
 
     private fun applyHistoryEvent(event: ConversationRuntimeEvent.MessageEmitted) {
+        val author = event.message.author as? Conversation.Message.Author.User
+        val userPosition = event.historyPosition
+        if (event.message.role == Conversation.Message.Role.USER && author?.userId == currentUserAuthor.userId &&
+            event.message.providerMetadata["synthetic"] != kotlinx.serialization.json.JsonPrimitive(true) && userPosition != null &&
+            lastUserActivityPosition?.let { userPosition > it } != false) {
+            lastUserActivityPosition = userPosition
+            _lastUserMessageAt.value = event.message.createdAt
+        }
         val results = event.message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
         if (results.isNotEmpty()) {
             val resultIds = results.mapTo(mutableSetOf()) { it.toolUseId }

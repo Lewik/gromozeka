@@ -42,6 +42,22 @@ import kotlin.test.assertFailsWith
 
 class GromozekaRemoteAuthorizationTest {
     @Test
+    fun `AI activity requires conversation membership and project read access`() = runBlocking<Unit> {
+        val user = testUser()
+        val conversation = testConversation()
+        val query = com.gromozeka.remote.protocol.AiRequestActivityStateQuery(conversation.id)
+        val request = PullStateSyncRequest(query, RemoteStateSyncCursor("server", 1, 0))
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation)
+        authorization.authorize(user, request)
+        Mockito.verify(projectAccessService).requirePermission(user.id, conversation.projectId, ProjectPermission.READ)
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation.copy(
+            participants = setOf(Conversation.Participant.User(User.Id("other")))))
+        assertFailsWith<ProjectAccessDeniedException> { authorization.authorize(user, request) }
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(null)
+        assertFailsWith<ProjectAccessDeniedException> { authorization.authorize(user, request) }
+    }
+
+    @Test
     fun `delivery preference is personal for both members and owners`() = runBlocking<Unit> {
         for (role in listOf(User.Role.MEMBER, User.Role.OWNER)) {
             val user = testUser(role)

@@ -70,9 +70,7 @@ fun ConversationParticipantsPanel(
     userDirectoryService: RemoteUserDirectoryService,
     onConversationUpdated: (Conversation) -> Unit,
     onCurrentUserDisconnected: () -> Unit,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
 ) {
     val localization = LocalTranslation.current
@@ -198,26 +196,7 @@ fun ConversationParticipantsPanel(
         exit = if (slideFromRight) slideOutHorizontally(targetOffsetX = { it }) else shrinkHorizontally(),
         modifier = modifier,
     ) {
-        Surface(
-            modifier = if (fullScreen) Modifier.fillMaxSize() else Modifier.width(420.dp).fillMaxHeight(),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp,
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = localization.text("session.participants.title"),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = localization.text("session.participants.close"))
-                    }
-                }
+        ConversationPanelFrame(localization.text("session.participants.title"), Modifier.testTag("conversation-participants-content")) {
 
                 val allSourcesLoaded = loadedSources.size == ParticipantSource.entries.size
                 if (!allSourcesLoaded) {
@@ -319,8 +298,7 @@ fun ConversationParticipantsPanel(
                         }
                     }
                 }
-            }
-        }
+                    }
     }
 }
 

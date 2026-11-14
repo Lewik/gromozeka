@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 import org.w3c.dom.events.Event
 
 private data class WebLayoutHints(
-    val showRuntimePanelInitially: Boolean,
+    val showSidePanelInitially: Boolean,
     val forceCompactLayout: Boolean,
     val clientPlatform: ClientPlatform,
 )
@@ -144,7 +144,7 @@ private fun GromozekaWebApp() {
         remoteApp != null -> GromozekaApp(
             appComponents = remoteApp!!.components,
             skipLoadingScreen = true,
-            showRuntimePanelInitially = layoutHints.showRuntimePanelInitially,
+            showSidePanelInitially = layoutHints.showSidePanelInitially,
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
         )
@@ -268,17 +268,17 @@ private fun resolveWebLayoutHints(): WebLayoutHints {
 
     return when {
         compactScreen -> WebLayoutHints(
-            showRuntimePanelInitially = false,
+            showSidePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         hasTouch && tabletScreen -> WebLayoutHints(
-            showRuntimePanelInitially = false,
+            showSidePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         else -> WebLayoutHints(
-            showRuntimePanelInitially = true,
+            showSidePanelInitially = true,
             forceCompactLayout = false,
             clientPlatform = clientPlatform,
         )

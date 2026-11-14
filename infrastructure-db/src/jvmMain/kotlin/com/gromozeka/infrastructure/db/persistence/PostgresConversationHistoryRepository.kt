@@ -105,6 +105,31 @@ class PostgresConversationHistoryRepository(
         listOf(threadId.value),
     ).singleOrNull()
 
+    override suspend fun latestUserActivity(threadId: Conversation.Thread.Id, userId: com.gromozeka.domain.model.User.Id):
+        com.gromozeka.domain.model.ConversationUserActivity? = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("""
+                SELECT tm.position, m.created_at
+                FROM thread_messages tm JOIN messages m ON m.id = tm.message_id
+                WHERE tm.thread_id = ? AND m.role = 'USER'
+                    AND m.message_json::jsonb -> 'author' ->> 'type' = 'user'
+                    AND m.message_json::jsonb -> 'author' ->> 'userId' = ?
+                    AND (m.message_json::jsonb -> 'providerMetadata' -> 'synthetic') IS DISTINCT FROM 'true'::jsonb
+                ORDER BY tm.position DESC LIMIT 1
+            """.trimIndent()).use { statement ->
+                statement.setString(1, threadId.value)
+                statement.setString(2, userId.value)
+                statement.executeQuery().use { rows ->
+                    if (!rows.next()) null else {
+                        val at = rows.getTimestamp(2).toInstant()
+                        com.gromozeka.domain.model.ConversationUserActivity(rows.getInt(1),
+                            kotlin.time.Instant.fromEpochSeconds(at.epochSecond, at.nano.toLong()))
+                    }
+                }
+            }
+        }
+    }
+
     private suspend fun query(sql: String, arguments: List<Any>): List<PositionedConversationMessage> {
         val messages = withContext(Dispatchers.IO) {
             dataSource.connection.use { connection ->

@@ -5,6 +5,8 @@ import com.gromozeka.domain.repository.AiAdmissionRepository
 import com.gromozeka.domain.service.AiQuotaFeedbackException
 import com.gromozeka.domain.service.AiAdmissionException
 import com.gromozeka.domain.service.AiCallAdmission
+import com.gromozeka.domain.service.AiAdmissionOrigin
+import com.gromozeka.domain.service.AiAdmissionOriginContext
 import com.gromozeka.domain.service.AiConfigurationProvider
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
@@ -32,6 +34,7 @@ class ServerAiCallAdmission(
     private val lifecycle = Mutex()
     @Volatile private var storageFailure: Throwable? = null
     val snapshot: AiAdmissionSnapshot get() = queue.snapshot.value
+    val activity: kotlinx.coroutines.flow.StateFlow<AiAdmissionActivity> get() = queue.activity
 
     @PostConstruct
     fun initialize() = runBlocking {
@@ -48,14 +51,15 @@ class ServerAiCallAdmission(
         if (::queue.isInitialized) queue.close()
     }
 
-    override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = acquirePersisted(operation, null, null, null)
+    override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = acquirePersisted(operation, null, null, null, currentCoroutineContext()[AiAdmissionOriginContext]?.origin)
     override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease =
-        acquirePersisted(operation, null, null, request)
+        acquirePersisted(operation, null, null, request, currentCoroutineContext()[AiAdmissionOriginContext]?.origin)
 
-    suspend fun acquireRemote(operation: AiAdmissionOperation, workerId: String, workerRequestId: String, request: JsonElement? = null): AiAdmissionLease =
-        acquirePersisted(operation, workerId, workerRequestId, request)
+    suspend fun acquireRemote(operation: AiAdmissionOperation, workerId: String, workerRequestId: String, request: JsonElement? = null,
+        origin: AiAdmissionOrigin? = null): AiAdmissionLease =
+        acquirePersisted(operation, workerId, workerRequestId, request, origin)
 
-    private suspend fun acquirePersisted(operation: AiAdmissionOperation, workerId: String?, workerRequestId: String?, request: JsonElement?): AiAdmissionLease {
+    private suspend fun acquirePersisted(operation: AiAdmissionOperation, workerId: String?, workerRequestId: String?, request: JsonElement?, origin: AiAdmissionOrigin?): AiAdmissionLease {
         check(storageFailure == null) { "AI admission persistence requires recovery" }
         require(operation.tpm == null) { "TPM reservations are owned by Server" }
         val current = configuration.snapshot
@@ -68,7 +72,7 @@ class ServerAiCallAdmission(
             quotaPolicies.prepare(policy, request, current.catalog)
         }
         queue.updateCatalog(current.catalog, current.revision)
-        val lease = queue.acquire(operation.copy(tpm = reservation), workerId, workerRequestId)
+        val lease = queue.acquire(operation.copy(tpm = reservation), workerId, workerRequestId, origin)
         try {
             // The quota debit and lease are durable before the executor is allowed to send.
             withContext(NonCancellable) { lifecycle.withLock {

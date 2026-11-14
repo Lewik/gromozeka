@@ -41,7 +41,7 @@ internal fun runGromozekaUiTest(
                 GromozekaApp(
                     appComponents = client.components,
                     skipLoadingScreen = true,
-                    showRuntimePanelInitially = false,
+                    showSidePanelInitially = false,
                     forceCompactLayout = forceCompactLayout,
                     clientPlatform = clientPlatform,
                 )

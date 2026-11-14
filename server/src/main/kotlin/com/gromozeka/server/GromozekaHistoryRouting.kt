@@ -30,14 +30,14 @@ internal class GromozekaHistoryRouting(
             request.getParameter("request")?.let { httpJson.decodeFromString<ConversationHistoryPageRequest>(it) }
                 ?: ConversationHistoryPageRequest()
         } catch (_: IllegalArgumentException) { response.status = HttpStatus.BAD_REQUEST.value(); return }
-        response.writeJson(history.page(id, query))
+        response.writeJson(history.page(id.conversationId, query, id.userId))
     }
 
     @GetMapping("/messages/{messageId}")
     suspend fun message(@PathVariable conversationId: String, @PathVariable messageId: String,
         request: HttpServletRequest, response: HttpServletResponse) {
         val id = requireRead(conversationId, request, response)
-        response.writeJson(history.message(id, Conversation.Message.Id(messageId)))
+        response.writeJson(history.message(id.conversationId, Conversation.Message.Id(messageId)))
     }
 
     @GetMapping("/selection/{kind}")
@@ -46,20 +46,22 @@ internal class GromozekaHistoryRouting(
         val id = requireRead(conversationId, request, response)
         val selection = ConversationMessageSelection.entries.firstOrNull { it.name == kind }
             ?: run { response.status = HttpStatus.BAD_REQUEST.value(); return }
-        response.writeJson(history.selectedIds(id, selection))
+        response.writeJson(history.selectedIds(id.conversationId, selection))
     }
 
     @GetMapping("/latest-user-message")
     suspend fun latest(@PathVariable conversationId: String, request: HttpServletRequest, response: HttpServletResponse) {
-        response.writeJson(history.latestUserMessage(requireRead(conversationId, request, response)))
+        response.writeJson(history.latestUserMessage(requireRead(conversationId, request, response).conversationId))
     }
 
-    private suspend fun requireRead(value: String, request: HttpServletRequest, response: HttpServletResponse): Conversation.Id {
+    private data class Reader(val conversationId: Conversation.Id, val userId: com.gromozeka.domain.model.User.Id)
+
+    private suspend fun requireRead(value: String, request: HttpServletRequest, response: HttpServletResponse): Reader {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store")
         val session = request.requireAuthenticated(authentication)
         val id = Conversation.Id(value)
         try { authorization.requireConversation(session.principal.user, id, ProjectPermission.READ) }
         catch (_: ProjectAccessDeniedException) { throw HttpAuthenticationException(HttpStatus.FORBIDDEN, "Conversation access denied") }
-        return id
+        return Reader(id, session.principal.user.id)
     }
 }

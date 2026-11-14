@@ -298,7 +298,6 @@ open class Translation(val content: TranslationPackage) {
     val newSessionButton: String get() = catalog.template("newSessionButton")
     val newButton: String get() = catalog.template("newButton")
     val forkButton: String get() = catalog.template("forkButton")
-    val restartButton: String get() = catalog.template("restartButton")
     val continueButton: String get() = catalog.template("continueButton")
     val newSessionShort: String get() = catalog.template("newSessionShort")
     val cancelButton: String get() = catalog.template("cancelButton")

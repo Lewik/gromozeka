@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.ui.session
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
@@ -21,8 +22,11 @@ class ConversationPinsPanelUiTest {
         for (touch in listOf(false, true)) runComposeUiTest {
             val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
             val visible = mutableStateOf(false); var closes = 0
-            setContent { GromozekaTheme { Box(Modifier.size(700.dp, 640.dp)) {
-                ConversationPinsPanel(visible.value, a, service, state, { closes++; visible.value = false }, fullScreen = touch, slideFromRight = touch)
+            setContent { GromozekaTheme { Column(Modifier.size(700.dp, 640.dp)) {
+                SidePanelToggle(visible.value) { closes++; visible.value = false }
+                Box(Modifier.weight(1f)) {
+                    ConversationPinsPanel(visible.value, a, service, state, slideFromRight = touch)
+                }
             } } }
             onNodeWithTag("pins-panel").assertDoesNotExist()
             runOnIdle {
@@ -31,12 +35,12 @@ class ConversationPinsPanelUiTest {
             }
             onNodeWithTag("pins-panel").assertDoesNotExist() // External changes cannot open the panel.
             runOnIdle { visible.value = true }
-            onNodeWithTag("pins-panel").assertWidthIsEqualTo(if (touch) 700.dp else 400.dp)
+            onNodeWithTag("pins-panel").assertWidthIsEqualTo(700.dp)
             onNodeWithTag("pins-add").performClick()
             onAllNodes(hasSetTextAction()).assertCountEquals(1)
             onNodeWithTag("pins-text").performTextReplacement(" unsaved 🙂 \n")
             val creationKey = runOnIdle { state.snapshot(a).draft!!.creationKey }
-            if (touch) onNodeWithTag("pins-close").performTouchInput { click() } else onNodeWithTag("pins-close").performClick()
+            if (touch) onNodeWithTag("side-panel-toggle").performTouchInput { click() } else onNodeWithTag("side-panel-toggle").performClick()
             onNodeWithTag("pins-panel").assertDoesNotExist()
             runOnIdle {
                 assertEquals(1, closes); assertEquals(0, service.activeObservers)
@@ -57,7 +61,7 @@ class ConversationPinsPanelUiTest {
         val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
         val gate = CompletableDeferred<Unit>(); service.observeGate = gate
         service.readFailure = IllegalStateException("PRIVATE-SERVER-BODY")
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onNodeWithTag("pins-loading").assertExists()
         onNodeWithTag("pins-empty").assertDoesNotExist()
         runOnIdle { gate.complete(Unit) }
@@ -73,7 +77,7 @@ class ConversationPinsPanelUiTest {
 
     @Test fun actualCreateUpdateAndConfirmedDeleteHaveOnlyOneEditableTextField() = runComposeUiTest {
         val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onNodeWithTag("pins-empty").assertExists()
         onAllNodes(hasSetTextAction()).assertCountEquals(0)
         onNodeWithTag("pins-add").performClick()
@@ -116,7 +120,7 @@ class ConversationPinsPanelUiTest {
         val source = ConversationPinSource(Conversation.Id("PRIVATE-SOURCE-CONVERSATION"), Conversation.Message.Id("PRIVATE-SOURCE-MESSAGE"))
         val exact = "  snapshot\r\n🙂\t "
         state.beginCreate(a, exact, source)
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onAllNodes(hasSetTextAction()).assertCountEquals(1)
         onNodeWithText(source.conversationId.value, substring = true).assertDoesNotExist()
         onNodeWithText(source.messageId.value, substring = true).assertDoesNotExist()
@@ -134,7 +138,7 @@ class ConversationPinsPanelUiTest {
     @Test fun observerChangesConflictAndDeletionKeepDraftUntilExplicitReload() = runComposeUiTest {
         val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
         val pin = pinFixture(); service.emit(a, listOf(pin))
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onNodeWithTag("pin-edit-pin-1").performClick()
         onNodeWithTag("pins-text").performTextReplacement("unsaved draft")
         runOnIdle { service.emit(a, listOf(pin.copy(text = "remote text", revision = 2))) }
@@ -159,7 +163,7 @@ class ConversationPinsPanelUiTest {
         val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
         val gate = CompletableDeferred<Unit>(); service.createGate = gate
         state.beginCreate(a, "submitted")
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onNodeWithTag("pins-save").performSemanticsAction(SemanticsActions.OnClick) { click -> click(); click() }
         onNodeWithTag("pins-save").assertIsNotEnabled()
         runOnIdle { assertEquals(1, service.creates.size) }
@@ -182,7 +186,7 @@ class ConversationPinsPanelUiTest {
         service.createFailure = IllegalStateException("PRIVATE-ERROR-PAYLOAD")
         state.beginCreate(a, " retry exactly ")
         val key = state.snapshot(a).draft!!.creationKey
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onNodeWithTag("pins-save").performClick()
         onNodeWithTag("pins-draft-error").assertExists()
         onNodeWithText("PRIVATE-ERROR-PAYLOAD", substring = true).assertDoesNotExist()
@@ -199,7 +203,7 @@ class ConversationPinsPanelUiTest {
         val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
         val selected = mutableStateOf(a); val gate = CompletableDeferred<Unit>(); service.createGate = gate
         state.beginCreate(a, "A's text")
-        setContent { GromozekaTheme { ConversationPinsPanel(true, selected.value, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, selected.value, service, state) } }
         onNodeWithTag("pins-save").performClick()
         runOnIdle { state.beginCreate(b, "B's draft"); selected.value = b }
         onNodeWithTag("pins-text").assertTextEquals("B's draft")
@@ -215,7 +219,7 @@ class ConversationPinsPanelUiTest {
     @Test fun fastFailureDoesNotTurnDuplicateUiCallbacksIntoAnAutomaticRetry() = runComposeUiTest {
         val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
         service.createFailure = ConversationPinOperationFailedException(); state.beginCreate(a, "draft")
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onNodeWithTag("pins-save").performSemanticsAction(SemanticsActions.OnClick) { click -> click(); click() }
         onNodeWithTag("pins-draft-error").assertExists()
         runOnIdle { assertEquals(1, service.creates.size) }
@@ -226,7 +230,7 @@ class ConversationPinsPanelUiTest {
     @Test fun deleteConfirmationRetainsItsObservedRevisionUntilExplicitlySelectedAgain() = runComposeUiTest {
         val service = FakeConversationPinService(); val state = ConversationPinsPanelState()
         val pin = pinFixture(); service.emit(a, listOf(pin))
-        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state, {}) } }
+        setContent { GromozekaTheme { ConversationPinsPanel(true, a, service, state) } }
         onNodeWithTag("pin-delete-pin-1").performClick()
         runOnIdle { service.emit(a, listOf(pin.copy(text = "changed", revision = 2))) }
         onNodeWithTag("pins-delete-confirm").performClick()

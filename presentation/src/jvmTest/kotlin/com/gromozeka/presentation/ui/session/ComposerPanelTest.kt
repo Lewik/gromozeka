@@ -1,5 +1,7 @@
 package com.gromozeka.presentation.ui.session
 
+import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.layout.*
 import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.UiDensity
@@ -11,7 +13,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.unit.dp
-import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
@@ -32,20 +33,20 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme {
                 Box(Modifier.size(390.dp, 600.dp).testTag("host"), contentAlignment = Alignment.BottomCenter) {
-                    Input(draft, { draft = it }, options = options(listOf("Continue")), onSend = { sends++ })
+                    TestMessageInput(draft, { draft = it }, options = options(listOf("Continue")), onSend = { sends++ })
                 }
             }
         }
         val host = onNodeWithTag("host").fetchSemanticsNode().boundsInRoot
         val panel = onNodeWithTag("conversation-composer-panel").fetchSemanticsNode().boundsInRoot
         val suggestions = onNodeWithTag(UiTestTag.SuggestedReplies.value).fetchSemanticsNode().boundsInRoot
-        val status = onNodeWithTag("status").fetchSemanticsNode().boundsInRoot
         val editor = onNodeWithTag(UiTestTag.MessageInput.value).fetchSemanticsNode().boundsInRoot
         assertEquals(host.left, panel.left)
         assertEquals(host.right, panel.right)
         assertEquals(host.bottom, panel.bottom)
         assertTrue(suggestions.bottom <= panel.top)
-        assertTrue(status.top >= panel.top && status.bottom <= editor.top)
+        assertTrue(editor.top >= panel.top)
+        onNodeWithTag("status").assertDoesNotExist()
         onNodeWithTag(UiTestTag.AgentResponseHint.value).assertDoesNotExist()
         onNodeWithTag(UiTestTag.SuggestedReply(0).value).performClick()
         runOnIdle { assertEquals("Continue", draft); assertEquals(0, sends) }
@@ -58,7 +59,7 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme {
                 Box(Modifier.size(390.dp, 350.dp).testTag("host"), contentAlignment = Alignment.BottomCenter) {
-                    Input(draft, { draft = it }, waiting = true, onSend = { sent += draft })
+                    TestMessageInput(draft, { draft = it }, waiting = true, onSend = { sent += draft })
                 }
             }
         }
@@ -70,8 +71,8 @@ class ComposerPanelTest {
         val controls = onNodeWithTag("composer-controls").fetchSemanticsNode().boundsInRoot
         assertTrue(editor.top >= host.top && editor.bottom <= controls.bottom)
         val send = onNodeWithTag(UiTestTag.SendButton.value).fetchSemanticsNode().boundsInRoot
-        assertTrue(send.left >= editor.right)
-        assertEquals(editor.bottom, send.bottom)
+        assertTrue(send.top >= editor.bottom)
+        assertTrue(send.right <= host.right && send.bottom <= host.bottom)
         assertTrue(controls.bottom <= host.bottom)
         assertTrue(editor.height < host.height / 2)
         onNodeWithTag(UiTestTag.MessageInput.value).performTextReplacement("Steering while busy")
@@ -86,7 +87,7 @@ class ComposerPanelTest {
         var regenerated: Conversation.Message.Id? = null
         setContent {
             GromozekaTheme {
-                Input("", {}, options = options(emptyList()), onPick = { picked++ },
+                TestMessageInput("", {}, options = options(emptyList()), onPick = { picked++ },
                     onCapture = { captured++ }, onRegenerate = { regenerated = it })
             }
         }
@@ -109,7 +110,7 @@ class ComposerPanelTest {
     fun menuDisablesOnlyOperationsAlreadyInProgress() = runComposeUiTest {
         setContent {
             GromozekaTheme {
-                Input("draft", {}, options = options(emptyList()), uploading = true, regenerating = true)
+                TestMessageInput("draft", {}, options = options(emptyList()), uploading = true, regenerating = true)
             }
         }
         onNodeWithTag(UiTestTag.MessageInput.value).assertIsEnabled()
@@ -124,7 +125,7 @@ class ComposerPanelTest {
     fun invalidMentionRemainsVisibleWithoutReplyRoutingCaption() = runComposeUiTest {
         setContent {
             GromozekaTheme {
-                Input("@Alpha hi", {}, candidates = listOf(
+                TestMessageInput("@Alpha hi", {}, candidates = listOf(
                     AgentMentionCandidate(AgentDefinition.Id("alpha"), "Alpha", "@Alpha", connected = false),
                 ))
             }
@@ -134,34 +135,20 @@ class ComposerPanelTest {
     }
 
     @Test
-    fun pauseAndResumeUseIconsAndExtraWorkDoesNotGrowPanel() = runComposeUiTest {
+    fun pauseAndResumeUseIconsWithoutChangingTheirFrame() = runComposeUiTest {
         var paused by mutableStateOf(false)
         var stops = 0
-        setContent {
-            GromozekaTheme {
-                ComposerPanel(Modifier.width(880.dp)) {
-                    ConversationActivityBar(
-                        runtime = null, generation = null, isWaiting = true,
-                        pauseRequested = paused, tokenStats = null, voice = emptyList(), tabId = "tab",
-                        voiceError = null, connection = RemoteConnectionState(RemoteConnectionState.Status.CONNECTED),
-                        onPause = { paused = true }, onResume = { paused = false }, onStop = { stops++ }, onDetails = {},
-                        runtimePanelVisible = false, onToggleRuntimePanel = {},
-                        uploadingArtifacts = true, regeneratingSuggestions = true,
-                    )
-                    Text("Editor", Modifier.testTag("editor"))
-                }
-            }
-        }
+        setContent { GromozekaTheme {
+            ConversationExecutionControls(paused, false, true, { paused = true }, { paused = false }, { stops++ })
+        } }
+        val before = onNodeWithTag("composer-pause-execution").fetchSemanticsNode().boundsInRoot
         onNodeWithTag("composer-pause-execution").performClick()
         runOnIdle { assertTrue(paused) }
+        assertEquals(before, onNodeWithTag("composer-pause-execution").fetchSemanticsNode().boundsInRoot)
         onNodeWithTag("composer-pause-execution").performClick()
         runOnIdle { assertTrue(!paused) }
         onNodeWithTag("composer-stop-execution").performClick()
         runOnIdle { assertEquals(1, stops) }
-        val bounds = onNodeWithTag("editor").fetchSemanticsNode().boundsInRoot
-        onNodeWithTag("composer-additional-activities").performClick()
-        onNodeWithText("Generating suggested replies").assertIsDisplayed()
-        assertEquals(bounds, onNodeWithTag("editor").fetchSemanticsNode().boundsInRoot)
     }
 
     @Test
@@ -176,7 +163,7 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme {
                 Box(Modifier.width(390.dp)) {
-                    Input("draft", {}, voiceAvailable = true, autoSend = autoSend, onAutoSend = { autoSend = it },
+                    TestMessageInput("draft", {}, voiceAvailable = true, autoSend = autoSend, onAutoSend = { autoSend = it },
                         pttHandler = handler, pttState = state, onSend = { sends++ })
                 }
             }
@@ -212,7 +199,7 @@ class ComposerPanelTest {
         var state by mutableStateOf(PttState.IDLE)
         setContent {
             GromozekaTheme(density = density) {
-                Input("", {}, voiceAvailable = true, pttState = state)
+                TestMessageInput("", {}, voiceAvailable = true, pttState = state)
             }
         }
         for (profile in UiDensity.entries) {
@@ -232,7 +219,7 @@ class ComposerPanelTest {
 
     @Test
     fun unavailableVoiceKeepsStopButHidesDictationMode() = runComposeUiTest {
-        setContent { GromozekaTheme { Input("", {}, voiceAvailable = false) } }
+        setContent { GromozekaTheme { TestMessageInput("", {}, voiceAvailable = false) } }
         onNodeWithTag("voice-send-mode").assertDoesNotExist()
         onNodeWithTag(UiTestTag.PttButton.value).assertIsDisplayed().assertIsEnabled()
     }
@@ -248,7 +235,7 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme {
                 Box(Modifier.size(390.dp, 350.dp)) {
-                    Input("draft", {}, showLive = true, liveState = state, liveService = service, platform = ClientPlatform.WEB_TOUCH)
+                    TestMessageInput("draft", {}, showLive = true, liveState = state, liveService = service, platform = ClientPlatform.WEB_TOUCH)
                 }
             }
         }
@@ -270,28 +257,26 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme {
                 Column(Modifier.width(600.dp)) {
-                    ConversationActivityBar(
-                        runtime = null, generation = null, isWaiting = false, pauseRequested = false,
-                        tokenStats = null, voice = emptyList(), tabId = "tab", voiceError = null,
-                        connection = RemoteConnectionState(RemoteConnectionState.Status.CONNECTED),
-                        onPause = {}, onResume = {}, onStop = {}, onDetails = { visible = true },
-                        runtimePanelVisible = visible, onToggleRuntimePanel = { visible = !visible },
-                    )
+                    SidePanelToggle(visible, { visible = !visible })
+                    Box(Modifier.size(40.dp).testTag("lamp-open-details").clickable { visible = true }) {
+                        ConversationIndicator(ConversationIndicatorState(ConversationActivity.READY, ConversationPressure.NORMAL, false, false, emptySet()),
+                            ConversationIndicatorDrawing.FULL, "Ready")
+                    }
                     if (visible) Text("Runtime content", Modifier.testTag("runtime-content"))
                 }
             }
         }
-        val toggle = onNodeWithTag("composer-runtime-details")
+        val toggle = onNodeWithTag("side-panel-toggle")
         toggle.assertIsSelected().assertWidthIsEqualTo(40.dp).assertHeightIsEqualTo(40.dp)
         toggle.performClick().assertIsNotSelected()
         onNodeWithTag("runtime-content").assertDoesNotExist()
         toggle.performClick().assertIsSelected()
         onNodeWithTag("runtime-content").assertIsDisplayed()
         // Clicking a status opens details; unlike the dedicated toggle, it never closes them.
-        repeat(2) { onNode(hasText("Ready") and hasClickAction()).performClick() }
+        repeat(2) { onNodeWithTag("lamp-open-details").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() } }
         toggle.assertIsSelected()
         toggle.performClick()
-        onNode(hasText("Ready") and hasClickAction()).performClick()
+        onNodeWithTag("lamp-open-details").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
         toggle.assertIsSelected()
     }
 
@@ -315,7 +300,7 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme(density = density) {
                 Box(Modifier.width(width.dp)) {
-                    Input("draft", {}, voiceAvailable = voiceAvailable, showLive = true,
+                    TestMessageInput("draft", {}, voiceAvailable = voiceAvailable, showLive = true,
                         instructions = MessageInstructionGroup.defaults(), onInsertLocation = {},
                         platform = if (density == UiDensity.TOUCH) ClientPlatform.WEB_TOUCH else ClientPlatform.WEB_DESKTOP)
                 }
@@ -323,13 +308,16 @@ class ComposerPanelTest {
         }
         onNodeWithTag(UiTestTag.MessageInput.value).performClick().assertHeightIsEqualTo(controlSize)
         val editorBottom = onNodeWithTag(UiTestTag.MessageInput.value).fetchSemanticsNode().boundsInRoot.bottom
+        val sendFrame = onNodeWithTag(UiTestTag.SendButton.value).fetchSemanticsNode().boundsInRoot
+        if (width < 600) assertTrue(sendFrame.top >= editorBottom, "Narrow controls belong below the editor")
+        val controlBottom = if (width < 600) sendFrame.bottom else editorBottom
         val tags = mutableListOf("composer-more-actions", UiTestTag.PttButton.value, UiTestTag.SendButton.value, "composer-instruction:write_access")
         if (width >= 600) tags += listOf(UiTestTag.LiveVoiceButton.value, "composer-location")
         if (width >= 600 && density == UiDensity.TOUCH) tags += "composer-hide-keyboard"
         for (tag in tags) {
             val button = onNodeWithTag(tag)
             button.assertIsDisplayed().assertWidthIsEqualTo(controlSize).assertHeightIsEqualTo(controlSize)
-            assertEquals(editorBottom, button.fetchSemanticsNode().boundsInRoot.bottom, tag)
+            assertEquals(controlBottom, button.fetchSemanticsNode().boundsInRoot.bottom, tag)
         }
         if (voiceAvailable) {
             onNodeWithTag("voice-send-mode").assertHeightIsEqualTo(controlSize)
@@ -349,7 +337,7 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme {
                 Box(Modifier.width(width.dp)) {
-                    Input("", {}, showLive = true, liveState = state, liveUnavailableReason = "No transcription provider")
+                    TestMessageInput("", {}, showLive = true, liveState = state, liveUnavailableReason = "No transcription provider")
                 }
             }
         }
@@ -362,58 +350,39 @@ class ComposerPanelTest {
     }
 
     @Test
-    fun compactStatusAndInputShareColumnsAndVerticalSpacing() = verifyStatusGrid(UiDensity.COMPACT)
+    fun compactActivityFramesDoNotMoveWhileStateChanges() = verifyActivityFrames(UiDensity.COMPACT, 880)
 
     @Test
-    fun touchStatusAndInputShareColumnsAndVerticalSpacing() = verifyStatusGrid(UiDensity.TOUCH)
+    fun touchActivityFramesDoNotMoveWhileStateChanges() = verifyActivityFrames(UiDensity.TOUCH, 393)
 
-    private fun verifyStatusGrid(density: UiDensity) = runComposeUiTest {
-        var waiting by mutableStateOf(false)
-        var paused by mutableStateOf(false)
+    private fun verifyActivityFrames(density: UiDensity, width: Int) = runComposeUiTest {
+        var activity by mutableStateOf(ConversationActivity.READY)
         val controlSize = if (density == UiDensity.TOUCH) 48.dp else 40.dp
-        setContent {
-            GromozekaTheme(density = density) {
-                Box(Modifier.width(if (density == UiDensity.TOUCH) 393.dp else 880.dp)) {
-                    Input("", {}, waiting = waiting, statusContent = {
-                        ConversationActivityBar(
-                            runtime = null, generation = null, isWaiting = waiting, pauseRequested = paused,
-                            tokenStats = null, voice = emptyList(), tabId = "tab", voiceError = null,
-                            connection = RemoteConnectionState(RemoteConnectionState.Status.CONNECTED),
-                            onPause = {}, onResume = {}, onStop = {}, onDetails = {},
-                            runtimePanelVisible = false, onToggleRuntimePanel = {},
-                        )
-                    })
-                }
+        setContent { GromozekaTheme(density = density) {
+            Box(Modifier.width(width.dp)) {
+                TestMessageInput("", {}, waiting = activity != ConversationActivity.READY,
+                    leadingContent = {
+                        Box(Modifier.size(controlSize).testTag("lamp-frame"), contentAlignment = Alignment.Center) {
+                            ConversationIndicator(ConversationIndicatorState(activity, ConversationPressure.NORMAL, false, false, emptySet()),
+                                ConversationIndicatorDrawing.FULL, activity.name, Modifier.testTag("lamp"))
+                        }
+                    },
+                    beforeActionsContent = {
+                        ConversationExecutionControls(activity == ConversationActivity.PAUSED, false,
+                            activity != ConversationActivity.READY, {}, {}, {})
+                        })
             }
-        }
-        for (symbol in listOf("composer-ready-symbol", "composer-loading-symbol", "composer-static-symbol")) {
-            runOnIdle {
-                waiting = symbol != "composer-ready-symbol"
-                paused = symbol == "composer-static-symbol"
-            }
+        } }
+        val initialEditor = onNodeWithTag(UiTestTag.MessageInput.value).fetchSemanticsNode().boundsInRoot
+        for (value in listOf(ConversationActivity.READY, ConversationActivity.WORKING, ConversationActivity.PAUSED)) {
+            runOnIdle { activity = value }
             for (tag in listOf("composer-pause-execution", "composer-stop-execution")) {
-                val control = onNodeWithTag(tag)
-                control.assertIsDisplayed().assertWidthIsEqualTo(controlSize).assertHeightIsEqualTo(controlSize)
-                if (waiting) control.assertIsEnabled() else control.assertIsNotEnabled()
+                onNodeWithTag(tag).assertWidthIsEqualTo(controlSize).assertHeightIsEqualTo(controlSize)
             }
-            val squareNode = onNodeWithTag("composer-state-indicator")
-            squareNode.assertWidthIsEqualTo(controlSize).assertHeightIsEqualTo(controlSize)
-            val square = squareNode.fetchSemanticsNode().boundsInRoot
-            val bulb = onNodeWithTag(symbol).fetchSemanticsNode().boundsInRoot
-            val plus = onNodeWithTag("composer-more-actions").fetchSemanticsNode().boundsInRoot
-            val runtime = onNodeWithTag("composer-runtime-details").fetchSemanticsNode().boundsInRoot
-            val send = onNodeWithTag(UiTestTag.SendButton.value).fetchSemanticsNode().boundsInRoot
-            val status = onNodeWithTag("conversation-activity-bar").fetchSemanticsNode().boundsInRoot
-            val controls = onNodeWithTag("composer-controls").fetchSemanticsNode().boundsInRoot
-            val panel = onNodeWithTag("conversation-composer-panel").fetchSemanticsNode().boundsInRoot
-            assertEquals(plus.center.x, square.center.x)
-            assertEquals(square.center.x, bulb.center.x)
-            assertEquals(square.center.y, bulb.center.y)
-            assertEquals(send.center.x, runtime.center.x)
-            assertEquals(8f, controls.top - status.bottom)
-            assertEquals(8f, panel.bottom - controls.bottom)
-            assertEquals(8f, status.top - panel.top - 1f) // divider occupies one dp
-            if (symbol != "composer-ready-symbol") onNodeWithTag("composer-ready-symbol").assertDoesNotExist()
+            val frame = onNodeWithTag("lamp-frame").assertWidthIsEqualTo(controlSize).assertHeightIsEqualTo(controlSize).fetchSemanticsNode().boundsInRoot
+            val bulb = onNodeWithTag("lamp").assertWidthIsEqualTo(28.dp).assertHeightIsEqualTo(28.dp).fetchSemanticsNode().boundsInRoot
+            assertEquals(frame.center, bulb.center)
+            assertEquals(initialEditor, onNodeWithTag(UiTestTag.MessageInput.value).fetchSemanticsNode().boundsInRoot)
         }
     }
 
@@ -429,7 +398,7 @@ class ComposerPanelTest {
         setContent {
             GromozekaTheme {
                 Box(Modifier.width(880.dp)) {
-                    Input("Draft", {}, waiting = waiting, deliveryMode = mode)
+                    TestMessageInput("Draft", {}, waiting = waiting, deliveryMode = mode)
                 }
             }
         }
@@ -452,53 +421,4 @@ class ComposerPanelTest {
 
     private fun options(values: List<String>) = SuggestedReplyOptions(Conversation.Message.Id("source"), values)
 
-    @Composable
-    private fun Input(
-        draft: String,
-        onDraft: (String) -> Unit,
-        options: SuggestedReplyOptions? = null,
-        waiting: Boolean = false,
-        uploading: Boolean = false,
-        regenerating: Boolean = false,
-        candidates: List<AgentMentionCandidate> = emptyList(),
-        instructions: List<MessageInstructionGroup> = emptyList(),
-        onInsertLocation: (() -> Unit)? = null,
-        voiceAvailable: Boolean = false,
-        autoSend: Boolean = true,
-        onAutoSend: (Boolean) -> Unit = {},
-        pttHandler: PttEventHandler = NoOpPttEventHandler,
-        pttState: PttState = PttState.IDLE,
-        showLive: Boolean = false,
-        liveState: LiveVoiceInputState = LiveVoiceInputState.IDLE,
-        liveService: LiveVoiceInputService = NoOpLiveVoiceInputService(),
-        liveUnavailableReason: String? = null,
-        platform: ClientPlatform = ClientPlatform.DESKTOP,
-        deliveryMode: UserMessageDeliveryMode = UserMessageDeliveryMode.STEER,
-        onSend: suspend () -> Unit = {},
-        onPick: () -> Unit = {},
-        onCapture: () -> Unit = {},
-        onRegenerate: (Conversation.Message.Id) -> Unit = {},
-        statusContent: @Composable () -> Unit = { Text("Status", Modifier.testTag("status")) },
-    ) {
-        MessageInput(
-            userInput = draft, onUserInputChange = onDraft,
-            isWaitingForResponse = waiting, pendingMessagesCount = 0,
-            agentMentionCandidates = candidates, messageSubmissionError = null,
-            suggestedReplies = options, suggestedRepliesRegenerating = regenerating,
-            onRegenerateSuggestedReplies = onRegenerate, onSendMessage = onSend,
-            coroutineScope = rememberCoroutineScope(), pttEventHandler = pttHandler,
-            pttState = pttState, pttUnavailableReason = null,
-            voiceAutoSend = autoSend, onVoiceAutoSendChange = onAutoSend,
-            liveVoiceInputService = liveService, liveVoiceInputState = liveState,
-            liveVoiceInputUnavailableReason = liveUnavailableReason, showLiveVoiceButton = showLive, showPttButton = voiceAvailable,
-            clientPlatform = platform, instructionGroups = instructions,
-            activeInstructionIds = emptySet(), onSelectInstruction = { _, _ -> },
-            composerArtifacts = emptyList(), artifactUploadInProgress = uploading, artifactError = null,
-            canPickAttachments = true, canCaptureScreenshot = true, onPickAttachments = onPick,
-            onCaptureScreenshot = onCapture, onRemoveArtifact = {},
-            onInsertCurrentLocation = onInsertLocation,
-            statusContent = statusContent,
-            messageDeliveryMode = deliveryMode,
-        )
-    }
 }

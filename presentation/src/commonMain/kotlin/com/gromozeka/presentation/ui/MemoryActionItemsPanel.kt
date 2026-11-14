@@ -60,9 +60,7 @@ fun MemoryActionItemsPanel(
     refreshKey: Int,
     memoryActionItemService: RemoteMemoryActionItemService,
     coroutineScope: CoroutineScope,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
 ) {
     val translation = LocalTranslation.current
@@ -101,13 +99,7 @@ fun MemoryActionItemsPanel(
         modifier = modifier
     ) {
         Surface(
-            modifier = if (fullScreen) {
-                Modifier.fillMaxSize()
-            } else {
-                Modifier
-                    .width(430.dp)
-                    .fillMaxHeight()
-            },
+            modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
@@ -118,7 +110,6 @@ fun MemoryActionItemsPanel(
                     isLoading = isLoading,
                     onIncludeClosedChange = { includeClosed = it },
                     onRefresh = { coroutineScope.launch { refreshActionItems() } },
-                    onClose = onClose
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -173,7 +164,6 @@ private fun MemoryActionItemsHeader(
     isLoading: Boolean,
     onIncludeClosedChange: (Boolean) -> Unit,
     onRefresh: () -> Unit,
-    onClose: () -> Unit,
 ) {
     val translation = LocalTranslation.current
     Column {
@@ -206,9 +196,6 @@ private fun MemoryActionItemsHeader(
                 Icon(Icons.Default.Refresh, contentDescription = translation.text("memory.actionItems.refreshDescription"))
             }
 
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = translation.text("memory.actionItems.closeDescription"))
-            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

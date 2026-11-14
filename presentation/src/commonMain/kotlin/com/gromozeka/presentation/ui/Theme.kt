@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -10,9 +11,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.presentation.ui.icons.Icon
@@ -149,6 +158,12 @@ fun OptionalTooltip(
         return
     }
 
+    val state = rememberTooltipState(isPersistent = true)
+    var isMouseHovered by remember { mutableStateOf(false) }
+    LaunchedEffect(state, isMouseHovered) {
+        if (isMouseHovered) state.show(MutatePriority.UserInput) else state.dismiss()
+    }
+
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
         tooltip = {
@@ -174,7 +189,27 @@ fun OptionalTooltip(
                 }
             }
         },
-        state = rememberTooltipState(),
+        state = state,
+        focusable = false,
+        enableUserInput = false,
+        // Material3 couples hover with touch long-press; only mouse transitions may open this popup.
+        modifier = Modifier.pointerInput(state) {
+            try {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.changes.any { it.type != PointerType.Mouse }) {
+                            isMouseHovered = false
+                        } else when (event.type) {
+                            PointerEventType.Enter -> isMouseHovered = true
+                            PointerEventType.Exit -> isMouseHovered = false
+                        }
+                    }
+                }
+            } finally {
+                isMouseHovered = false
+            }
+        },
         content = content
     )
 }

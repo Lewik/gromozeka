@@ -806,7 +806,7 @@
     "client.whisper.startupTimedOut": {
       "other": "Local Whisper가 {count}초 안에 준비되지 않았습니다"
     },
-    "closeTabTooltip": "탭 닫기",
+    "closeTabTooltip": "대화 탭 닫기",
     "common.close": "닫기",
     "common.daysAgo": {
       "other": "{count}일 전"
@@ -1082,7 +1082,6 @@
     "recordingTooltip": "녹음 중…(놓으면 중지)",
     "refreshSessionsTooltip": "대화 목록 새로 고침",
     "renameConversationTitle": "대화 이름 변경",
-    "restartButton": "새 대화 시작",
     "runtime.accessingMemoryActivity": "메모리에 접근하는 중",
     "runtime.activityGroupLabel": "활동",
     "runtime.afterResponseLabel": "응답 후",
@@ -1410,6 +1409,7 @@
     },
     "session.runtime.context.reportedUnknown": "컨텍스트 정보 없음 · 제공자가 토큰 수를 보고하지 않음",
     "session.runtime.context.threadUsage": "대화 전체: {count}",
+    "session.runtime.context.usageTooltip": "컨텍스트 창 사용률: {percent}%\n{limitCount}토큰 중 {currentCount}토큰",
     "session.runtime.context.withLimit": "컨텍스트 {percent}% · {currentCount} / {limitCount}",
     "session.runtime.context.withoutLimit": {
       "other": "컨텍스트 · {count}토큰"
@@ -1506,17 +1506,11 @@
     "session.runtime.traceMessage": "{kind}: {message}",
     "session.tokens.recentTurnCount": "최근 호출: {count}",
     "session.toolbar.actionItems": "조치 항목",
-    "session.toolbar.consolidate": "통합",
     "session.toolbar.extractContexts": "대화에서 컨텍스트 추출",
     "session.toolbar.extractContextsShort": "컨텍스트 추출",
     "session.toolbar.hideParticipants": "참여자 숨기기",
     "session.toolbar.hideRuntime": "실행 상태 숨기기",
-    "session.toolbar.maintainEntities": "엔터티 유지 관리",
-    "session.toolbar.memoryActions": "메모리 작업",
     "session.toolbar.messages": "메시지",
-    "session.toolbar.remember": "대화 기억하기",
-    "session.toolbar.repair": "복구",
-    "session.toolbar.retention": "보존 정책 적용",
     "session.toolbar.showParticipants": "참여자 표시",
     "session.toolbar.showRuntime": "실행 상태 표시",
     "session.toolbar.viewContexts": "저장된 컨텍스트 보기",
@@ -2021,7 +2015,6 @@
     "pins.notFound": "이 고정 텍스트를 더 이상 사용할 수 없습니다. 저장하지 않은 내용은 유지됩니다.",
     "pins.accessDenied": "이 고정 텍스트에 접근할 권한이 없습니다.",
     "pins.reloadEdited": "불러오는 동안 초안이 변경되었습니다. 더 최근의 내용은 유지됩니다.",
-    "pins.restartFailed": "고정된 텍스트를 유지한 채 대화 재시작을 완료하지 못했습니다. 다시 시도하기 전에 대화 목록을 확인하세요.",
     "notifications.title": "알림",
     "notifications.close": "닫기",
     "notifications.unreadOnly": "읽지 않은 알림만",
@@ -2131,6 +2124,24 @@
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "입력과 출력 예약량의 합",
     "ai.tpm.preset.OPENAI_MAXIMUM": "입력과 출력 예약량 중 최댓값",
     "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: 스키마 응답의 빈 도구 호출 판정 수정",
-    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "영향받는 Chat Completions 경로에서만 활성화하세요. 호출이나 거부가 없고 스키마에 맞는 내용만 허용합니다. 필수 도구 호출 및 다른 오류는 수정하지 않습니다."
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "영향받는 Chat Completions 경로에서만 활성화하세요. 호출이나 거부가 없고 스키마에 맞는 내용만 허용합니다. 필수 도구 호출 및 다른 오류는 수정하지 않습니다.",
+    "chat.activity.stateLoading": "대화 상태 불러오는 중",
+    "chat.activity.loadLoading": "서버 활동 불러오는 중",
+    "chat.activity.loadUnavailable": "서버 활동을 확인할 수 없음",
+    "chat.activity.loadRunning": "서버의 활성 요청: {count}",
+    "chat.activity.loadTpm": "TPM 대기 중: {count}",
+    "chat.activity.loadConcurrency": "빈 슬롯 대기 중: {count}",
+    "chat.activity.waitingTpm": "TPM 대기 중",
+    "chat.activity.waitingConcurrency": "빈 슬롯 대기 중",
+    "chat.activity.unread": "읽지 않은 메시지",
+    "chat.footer.elapsedTotal": "메시지 → 응답: {elapsed}",
+    "chat.footer.elapsedRequest": "모델 요청: {elapsed}",
+    "chat.footer.queued": "대기 중인 메시지: {count}",
+    "chat.footer.commands": "실행 중인 명령: {count}",
+    "chat.footer.monitors": "활성 모니터: {count}",
+    "session.sidebar.show": "측면 패널 표시",
+    "session.sidebar.hide": "측면 패널 숨기기",
+    "session.thread.title": "대화 스레드",
+    "session.sidebar.resize": "측면 패널 너비 조절"
   }
 }

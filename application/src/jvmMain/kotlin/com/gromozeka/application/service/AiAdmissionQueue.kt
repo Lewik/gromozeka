@@ -1,6 +1,11 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.ai.*
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.AiAdmissionOrigin
+import com.gromozeka.domain.service.AiRequestActivitySnapshot
+import com.gromozeka.domain.service.AiRequestTaskWait
+import com.gromozeka.domain.service.AiRequestWaitReason
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +18,19 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
+
+data class AiAdmissionWait(val origin: AiAdmissionOrigin?, val reason: AiRequestWaitReason)
+
+data class AiAdmissionActivity(val runningRequests: Int, val waiting: List<AiAdmissionWait>) {
+    fun forConversation(conversationId: Conversation.Id) = AiRequestActivitySnapshot(
+        runningRequests = runningRequests,
+        waitingForTpm = waiting.count { it.reason == AiRequestWaitReason.TPM },
+        waitingForConcurrency = waiting.count { it.reason == AiRequestWaitReason.CONCURRENCY },
+        taskWaits = waiting.mapNotNull { wait ->
+            wait.origin?.takeIf { it.conversationId == conversationId }?.let { AiRequestTaskWait(it.taskId, wait.reason) }
+        }.distinct(),
+    )
+}
 
 /** Serializes admission decisions, never provider execution or persistence. */
 class AiAdmissionQueue(
@@ -27,6 +45,7 @@ class AiAdmissionQueue(
         val operation: AiAdmissionOperation,
         val workerId: String?,
         val workerRequestId: String?,
+        val origin: AiAdmissionOrigin?,
         val result: CompletableDeferred<AiAdmissionLease>,
     )
 
@@ -45,6 +64,8 @@ class AiAdmissionQueue(
     private val commands = Channel<Command>(Channel.UNLIMITED)
     private val mutableSnapshot = MutableStateFlow(AiAdmissionSnapshot(active = initialLeases))
     val snapshot = mutableSnapshot.asStateFlow()
+    private val mutableActivity = MutableStateFlow(AiAdmissionActivity(initialLeases.size, emptyList()))
+    val activity = mutableActivity.asStateFlow()
 
     private val ledger = AiTpmLedger(initialCatalog.tpmGroups, initialTpmStates, nanoTime)
     init {
@@ -70,7 +91,8 @@ class AiAdmissionQueue(
         check(active.size == initialLeases.size) { "Duplicate restored AI admission leases" }
 
         fun dispatch() {
-            val blockedTpm = mutableSetOf<AiTpmGroup.Id>()
+            val blockedTpm = mutableMapOf<AiTpmGroup.Id, AiRequestWaitReason>()
+            val waitReasons = mutableMapOf<String, AiRequestWaitReason>()
             val iterator = waiting.iterator()
             while (iterator.hasNext()) {
                 val (id, next) = iterator.next()
@@ -106,11 +128,21 @@ class AiAdmissionQueue(
                     } catch (error: IllegalArgumentException) {
                         iterator.remove(); completions[next.result] = { next.result.completeExceptionally(error) }; continue
                     }
-                    if (!blockedTpm.add(tpm.groupId)) continue
-                    if (!ledger.eligible(tpm, active.values.toList())) continue
+                    // FIFO followers inherit the gate actually blocking the head of their TPM queue.
+                    val precedingReason = blockedTpm[tpm.groupId]
+                    if (precedingReason != null) { waitReasons[id] = precedingReason; continue }
+                    if (!ledger.eligible(tpm, active.values.toList())) {
+                        waitReasons[id] = AiRequestWaitReason.TPM
+                        blockedTpm[tpm.groupId] = AiRequestWaitReason.TPM
+                        continue
+                    }
                 }
                 val limit = group.maxConcurrentCalls
-                if (limit != null && active.values.count { it.groupId == group.id } >= limit) continue
+                if (limit != null && active.values.count { it.groupId == group.id } >= limit) {
+                    waitReasons[id] = AiRequestWaitReason.CONCURRENCY
+                    tpm?.let { blockedTpm[it.groupId] = AiRequestWaitReason.CONCURRENCY }
+                    continue
+                }
                 val prepared = if (tpm == null) next.operation else next.operation.copy(tpm = ledger.reserve(tpm, active.values.toList()))
                 val lease = AiAdmissionLease(prepared, group.id, Clock.System.now(), next.workerId, next.workerRequestId)
                 tpm?.let { blockedTpm.remove(it.groupId) }
@@ -120,6 +152,9 @@ class AiAdmissionQueue(
                 completions[next.result] = { next.result.complete(lease) }
             }
             mutableSnapshot.value = AiAdmissionSnapshot(waiting.values.map { it.operation }, active.values.toList(), ledger.snapshot())
+            mutableActivity.value = AiAdmissionActivity(active.size, waiting.values.map {
+                AiAdmissionWait(it.origin, waitReasons.getValue(it.operation.id))
+            })
             if (waiting.values.none { it.operation.tpm != null }) { wakeup?.cancel(); wakeup = null; wakeupGeneration++ }
             else if (wakeup == null) {
                 val generation = ++wakeupGeneration
@@ -197,11 +232,12 @@ class AiAdmissionQueue(
         }
     }
 
-    suspend fun acquire(operation: AiAdmissionOperation, workerId: String? = null, workerRequestId: String? = null): AiAdmissionLease {
+    suspend fun acquire(operation: AiAdmissionOperation, workerId: String? = null, workerRequestId: String? = null,
+        origin: AiAdmissionOrigin? = null): AiAdmissionLease {
         require((workerId == null) == (workerRequestId == null)) { "Incomplete AI admission owner" }
         val result = CompletableDeferred<AiAdmissionLease>()
         try {
-            commands.send(Command.Acquire(Waiting(operation, workerId, workerRequestId, result)))
+            commands.send(Command.Acquire(Waiting(operation, workerId, workerRequestId, origin, result)))
             return result.await()
         } catch (error: CancellationException) {
             result.cancel()

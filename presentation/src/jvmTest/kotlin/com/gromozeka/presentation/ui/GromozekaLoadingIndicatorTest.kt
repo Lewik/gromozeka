@@ -85,7 +85,7 @@ class GromozekaLoadingIndicatorTest {
     @Test
     fun readyBulbHasGreenCheckWithoutAnimationOrProgressSemantics() = runComposeUiTest {
         mainClock.autoAdvance = false
-        setContent { GromozekaReadyIndicator(Modifier.size(96.dp).testTag("ready")) }
+        setContent { GromozekaBulb(Modifier.size(96.dp).testTag("ready"), phase = { null }, ready = true) }
         val node = onNodeWithTag("ready")
         node.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ProgressBarRangeInfo))
         val before = node.captureToImage().toPixelMap()

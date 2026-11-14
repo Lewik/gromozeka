@@ -19,7 +19,7 @@ class ConversationHistoryReadService(
     private val messages: ConversationHistoryRepository,
     private val runtime: ConversationRuntimeCoordinator,
 ) {
-    suspend fun page(conversationId: Conversation.Id, request: ConversationHistoryPageRequest): ConversationHistoryPage {
+    suspend fun page(conversationId: Conversation.Id, request: ConversationHistoryPageRequest, readerId: com.gromozeka.domain.model.User.Id): ConversationHistoryPage {
         val sequence = runtime.lastEventSequence(conversationId)
         val threadId = currentThread(conversationId)
         val cursorThread = (request.before ?: request.after)?.threadId
@@ -72,7 +72,7 @@ class ConversationHistoryReadService(
         val newer = bounded.lastOrNull()?.let { last ->
             messages.page(threadId, null, last.position, 1).firstOrNull()?.let { ConversationHistoryCursor(threadId, last.position) }
         }
-        return ConversationHistoryPage(threadId, bounded, related, older, newer, sequence, reset)
+        return ConversationHistoryPage(threadId, bounded, related, older, newer, sequence, reset, messages.latestUserActivity(threadId, readerId))
     }
 
     suspend fun message(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message =

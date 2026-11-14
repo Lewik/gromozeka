@@ -217,6 +217,10 @@ open class AppViewModel(
             _tabs.value.getOrNull(index)?.conversationId
         } ?: return
 
+        closeConversationTab(conversationId)
+    }
+
+    suspend fun closeConversationTab(conversationId: Conversation.Id) {
         conversationTabLayoutService.close(conversationId)
         mutex.withLock {
             removeLocalTab(conversationId)
@@ -456,70 +460,6 @@ open class AppViewModel(
         mergeConversationSnapshots(listOf(updatedConversation))
         log.info("Renamed conversation ${conversationId.value} to: ${updatedConversation.displayName}")
         return updatedConversation
-    }
-
-    suspend fun rememberCurrentThread() {
-        val current = currentTab.value ?: return
-
-        try {
-            conversationRuntimeService.rememberCurrentThread(current.conversationId)
-            current.notifyMemoryActionItemsMayHaveChanged()
-            log.info { "Remembered current thread for conversation: ${current.conversationId}" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to remember current thread: ${e.message}" }
-        }
-    }
-
-    suspend fun consolidateCurrentMemory() {
-        val current = currentTab.value ?: return
-
-        try {
-            conversationRuntimeService.consolidateCurrentMemory(current.conversationId)
-            current.notifyMemoryActionItemsMayHaveChanged()
-            log.info { "Consolidated memory for conversation: ${current.conversationId}" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to consolidate memory: ${e.message}" }
-            throw e
-        }
-    }
-
-    suspend fun repairCurrentMemory() {
-        val current = currentTab.value ?: return
-
-        try {
-            conversationRuntimeService.repairCurrentMemory(current.conversationId)
-            current.notifyMemoryActionItemsMayHaveChanged()
-            log.info { "Repaired memory for conversation: ${current.conversationId}" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to repair memory: ${e.message}" }
-            throw e
-        }
-    }
-
-    suspend fun maintainMemoryEntities() {
-        val current = currentTab.value ?: return
-
-        try {
-            conversationRuntimeService.maintainMemoryEntities(current.conversationId)
-            current.notifyMemoryActionItemsMayHaveChanged()
-            log.info { "Maintained memory entities for conversation: ${current.conversationId}" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to maintain memory entities: ${e.message}" }
-            throw e
-        }
-    }
-
-    suspend fun applyCurrentMemoryRetention() {
-        val current = currentTab.value ?: return
-
-        try {
-            conversationRuntimeService.applyCurrentMemoryRetention(current.conversationId)
-            current.notifyMemoryActionItemsMayHaveChanged()
-            log.info { "Applied memory retention for conversation: ${current.conversationId}" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to apply memory retention: ${e.message}" }
-            throw e
-        }
     }
 
     suspend fun cleanup() {

@@ -60,23 +60,23 @@
   "collaboration.completed": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/AgentCollaborationRequests.kt"], "description": "Experimental inter-agent collaboration Runtime panel: completed. Completion indicates a result is stored; it is not a claim that the recipient has read it.", "args": []},
   "collaboration.cancelled": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/AgentCollaborationRequests.kt"], "description": "Experimental inter-agent collaboration Runtime panel: cancelled. Completion indicates a result is stored; it is not a claim that the recipient has read it.", "args": []},
   "collaboration.blocked": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/AgentCollaborationRequests.kt"], "description": "Experimental inter-agent collaboration Runtime panel: blocked. Completion indicates a result is stored; it is not a claim that the recipient has read it.", "args": []},
-  "chat.activity.turnProblems": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt","presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt"],"description":"Problems encountered during the current or most recently completed agent turn; resets only when another turn starts. Used for the status indicator tooltip and Runtime details.","args":["count"]},
+  "chat.activity.turnProblems": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Problems of the current turn or retained previous turn. Starting a new turn does not clear the signal; a successful completion without problems does.", "args": ["count"]},
   "chat.voice.afterDictation.send": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Accessibility state label for the icon-only dictation mode: send recognized text immediately.","args":[]},
   "chat.voice.afterDictation.input": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Accessibility state label for the icon-only dictation mode: keep recognized text in the input field.","args":[]},
   "chat.voice.afterDictation.sendHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Tooltip/accessibility label describing automatic sending after dictation and the click action to switch modes.","args":[]},
   "chat.voice.afterDictation.inputHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Tooltip/accessibility label describing retaining dictated text in the input and the click action to switch modes.","args":[]},
   "chat.input.moreActions": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Composer menu for infrequent actions: attachments, screenshot and regenerating suggested replies.","args":[]},
-  "chat.activity.uploading": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Background status while attachments are being uploaded for this conversation.","args":[]},
-  "chat.activity.suggestions": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Background status while suggested replies are being generated for this conversation.","args":[]},
+  "chat.activity.uploading": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt"], "description": "Background status while attachments are being uploaded for this conversation.", "args": []},
+  "chat.activity.suggestions": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt"], "description": "Background status while suggested replies are being generated for this conversation.", "args": []},
   "chat.navigation.conversations": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/CustomTabRow.kt"],"description":"Title of the open-conversation picker on narrow screens when a utility tab is selected.","args":[]},
   "chat.composer.placeholder": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Composer placeholder inviting typed or dictated input.","args":[]},
   "chat.voice.mode.auto": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Short label: dictated text is sent automatically.","args":[]},
   "chat.voice.mode.draft": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Short label: dictated text is appended to the draft.","args":[]},
   "chat.voice.control.hint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"PTT control gestures: hold for capture; single click stops TTS; double click interrupts the turn.","args":[]},
   "chat.voice.control.interruptHint": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Interruption gestures available even when voice capture is unavailable.","args":[]},
-  "chat.activity.idle": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Status bar when the current conversation has no active execution.","args":[]},
-  "chat.activity.details": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Opens the runtime inspection panel from the status bar.","args":[]},
-  "chat.activity.more": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityBar.kt"],"description":"Number of additional active items beyond the compact status view.","args":["count"]},
+  "chat.activity.idle": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Status bar when the current conversation has no active execution.", "args": []},
+  "chat.activity.details": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt"], "description": "Opens the runtime inspection panel from the status bar.", "args": []},
+  "chat.activity.more": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationFooterSummary.kt"], "description": "Number of additional active items beyond the compact status view.", "args": ["count"]},
   "chat.history.loadOlder": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"],"description":"Load the previous page of conversation history.","args":[]},
   "chat.history.loadFull": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt"],"description":"Fetch the complete message or tool result when the history shows a bounded preview.","args":[]},
   "chat.input.sendWithShortcut": {"source":["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt"],"description":"Composer keyboard shortcut settings: Send message ({shortcut})","args":["shortcut"]},
@@ -3741,43 +3741,9 @@
     "usageStatus": "referencedTypedProperty",
     "translationNotes": "Keep wording neutral because the same key cancels unsaved editing, a queued message, and a running monitor."
   },
-  "chat.activity.groupCount": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt:140"
-    ],
-    "description": "Heading of a collapsed group of assistant thinking/tool activities.",
-    "args": [
-      "count"
-    ],
-    "argumentDescriptions": {
-      "count": "Thinking/tool activity entries collapsed into one chronological group."
-    },
-    "argumentExamples": {
-      "count": 5
-    }
-  },
-  "chat.activity.interrupted": {
-    "description": "Accessibility label for a tool or reasoning activity that was interrupted. Final state, not currently stopping.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt:107"
-    ],
-    "args": []
-  },
-  "chat.activity.thinkingCount": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt:209"
-    ],
-    "description": "Accessibility description for a thinking-activity icon and its count.",
-    "args": [
-      "count"
-    ],
-    "argumentDescriptions": {
-      "count": "Thinking activity entries represented by the icon."
-    },
-    "argumentExamples": {
-      "count": 2
-    }
-  },
+  "chat.activity.groupCount": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt:140", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt"], "description": "Accessible description of a collapsed assistant thinking/tool group. The visible header contains only activity icons and the expansion control.", "args": ["count"], "argumentDescriptions": {"count": "Thinking/tool activity entries collapsed into one chronological group."}, "argumentExamples": {"count": 5}},
+  "chat.activity.interrupted": {"description": "Accessibility label for a tool or reasoning activity that was interrupted. Final state, not currently stopping.", "source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt:107", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt"], "args": []},
+  "chat.activity.thinkingCount": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt:209", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ActivityItem.kt"], "description": "Accessibility description for a thinking-activity icon and its count.", "args": ["count"], "argumentDescriptions": {"count": "Thinking activity entries represented by the icon."}, "argumentExamples": {"count": 2}},
   "chat.attachment.document": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageItem.kt:719",
@@ -4230,184 +4196,25 @@
     "description": "Accessibility label for renaming a conversation tab.",
     "args": []
   },
-  "chat.selection.assistantMessages": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:364"
-    ],
-    "description": "Filter label selecting assistant message content.",
-    "args": []
-  },
-  "chat.selection.concat": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:477",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:479",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:710"
-    ],
-    "description": "Compact action name for concatenating selected messages; also used in operation status.",
-    "args": [],
-    "translationNotes": "Concat means concatenate/join selected messages directly without an AI model; use established software wording, not an unrelated literal abbreviation."
-  },
-  "chat.selection.concatHint": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:474"
-    ],
-    "description": "Tooltip for joining selected messages without a model call.",
-    "args": []
-  },
-  "chat.selection.delete": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:534",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:536"
-    ],
-    "description": "Button label and accessibility description for deleting selected messages.",
-    "args": []
-  },
-  "chat.selection.deleteHint": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:531"
-    ],
-    "description": "Tooltip for deleting selected conversation messages.",
-    "args": []
-  },
-  "chat.selection.distill": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:496",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:498",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:711"
-    ],
-    "description": "Action label for model-assisted context distillation; also used in operation status.",
-    "args": [],
-    "translationNotes": "Distill means extract essential context with an AI model for context transfer; this is not chemical distillation and differs from a conventional history summary."
-  },
-  "chat.selection.distillHint": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:493"
-    ],
-    "description": "Tooltip for model-assisted extraction of essential context from selected messages.",
-    "args": []
-  },
-  "chat.selection.editHint": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:455"
-    ],
-    "description": "Tooltip for editing the one selected message.",
-    "args": []
-  },
-  "chat.selection.operationComplete": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:682"
-    ],
-    "description": "Successful message-squash status; action is a translated action name.",
-    "args": [
-      "action"
-    ],
-    "argumentDescriptions": {
-      "action": "Already translated name of the message transformation, Concat, Distill, or Summarize."
-    },
-    "argumentExamples": {
-      "action": "Summarize"
-    }
-  },
-  "chat.selection.operationFailed": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:683"
-    ],
-    "description": "Failed message-squash status. Preserve the operation error message as data.",
-    "args": [
-      "action",
-      "message"
-    ],
-    "argumentDescriptions": {
-      "action": "Already translated name of the message transformation, Concat, Distill, or Summarize.",
-      "message": "Underlying error or source message supplied by the operation; preserve it as data."
-    },
-    "argumentExamples": {
-      "action": "Summarize",
-      "message": "Operation failed"
-    }
-  },
-  "chat.selection.operationRunning": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:681"
-    ],
-    "description": "Status of the running message-squash operation; action is a translated Concat, Distill, or Summarize label.",
-    "args": [
-      "action"
-    ],
-    "argumentDescriptions": {
-      "action": "Already translated name of the message transformation, Concat, Distill, or Summarize."
-    },
-    "argumentExamples": {
-      "action": "Summarize"
-    }
-  },
-  "chat.selection.plainMessages": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:373"
-    ],
-    "description": "Filter label selecting ordinary plain-message blocks.",
-    "args": []
-  },
-  "chat.selection.selectedCount": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:548"
-    ],
-    "description": "Count of selected messages in the selection toolbar.",
-    "args": [
-      "count"
-    ],
-    "argumentDescriptions": {
-      "count": "Number of conversation messages selected in the selection toolbar."
-    },
-    "argumentExamples": {
-      "count": 3
-    }
-  },
-  "chat.selection.summarize": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:515",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:517",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:712"
-    ],
-    "description": "Action label for model-assisted message summarization; also used in operation status.",
-    "args": [],
-    "translationNotes": "Summarize means compress selected message history into an AI-generated summary. Keep it distinct from distilling essential context for transfer."
-  },
-  "chat.selection.summarizeHint": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:512"
-    ],
-    "description": "Tooltip for model-assisted summarization of selected messages.",
-    "args": []
-  },
-  "chat.selection.thinkingBlocks": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:368"
-    ],
-    "description": "Filter label selecting visible/opaque assistant thinking content.",
-    "args": []
-  },
-  "chat.selection.toggleAll": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:359"
-    ],
-    "description": "Selection toolbar toggle for all message kinds.",
-    "args": []
-  },
-  "chat.selection.toolCalls": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:370"
-    ],
-    "description": "Filter label selecting assistant tool-call content.",
-    "args": []
-  },
-  "chat.selection.userMessages": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:361"
-    ],
-    "description": "Filter label selecting messages authored by users.",
-    "args": []
-  },
+  "chat.selection.assistantMessages": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting assistant message content.", "args": []},
+  "chat.selection.concat": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Compact action name for concatenating selected messages; also used in operation status.", "args": [], "translationNotes": "Concat means concatenate/join selected messages directly without an AI model; use established software wording, not an unrelated literal abbreviation."},
+  "chat.selection.concatHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for joining selected messages without a model call.", "args": []},
+  "chat.selection.delete": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Button label and accessibility description for deleting selected messages.", "args": []},
+  "chat.selection.deleteHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for deleting selected conversation messages.", "args": []},
+  "chat.selection.distill": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Action label for model-assisted context distillation; also used in operation status.", "args": [], "translationNotes": "Distill means extract essential context with an AI model for context transfer; this is not chemical distillation and differs from a conventional history summary."},
+  "chat.selection.distillHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for model-assisted extraction of essential context from selected messages.", "args": []},
+  "chat.selection.editHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for editing the one selected message.", "args": []},
+  "chat.selection.operationComplete": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Successful message-squash status; action is a translated action name.", "args": ["action"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Summarize."}, "argumentExamples": {"action": "Summarize"}},
+  "chat.selection.operationFailed": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Failed message-squash status. Preserve the operation error message as data.", "args": ["action", "message"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Summarize.", "message": "Underlying error or source message supplied by the operation; preserve it as data."}, "argumentExamples": {"action": "Summarize", "message": "Operation failed"}},
+  "chat.selection.operationRunning": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Status of the running message-squash operation; action is a translated Concat, Distill, or Summarize label.", "args": ["action"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Summarize."}, "argumentExamples": {"action": "Summarize"}},
+  "chat.selection.plainMessages": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting ordinary plain-message blocks.", "args": []},
+  "chat.selection.selectedCount": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Count of selected messages in the selection toolbar.", "args": ["count"], "argumentDescriptions": {"count": "Number of conversation messages selected in the selection toolbar."}, "argumentExamples": {"count": 3}},
+  "chat.selection.summarize": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Action label for model-assisted message summarization; also used in operation status.", "args": [], "translationNotes": "Summarize means compress selected message history into an AI-generated summary. Keep it distinct from distilling essential context for transfer."},
+  "chat.selection.summarizeHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for model-assisted summarization of selected messages.", "args": []},
+  "chat.selection.thinkingBlocks": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting visible/opaque assistant thinking content.", "args": []},
+  "chat.selection.toggleAll": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Selection toolbar toggle for all message kinds.", "args": []},
+  "chat.selection.toolCalls": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting assistant tool-call content.", "args": []},
+  "chat.selection.userMessages": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting messages authored by users.", "args": []},
   "chat.suggestions.regenerate": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SuggestedReplies.kt:104"
@@ -5415,14 +5222,7 @@
       "count"
     ]
   },
-  "closeTabTooltip": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/data/Translation.kt:318"
-    ],
-    "description": "Tooltip/accessibility label for closing the current conversation tab without deleting the saved conversation.",
-    "args": [],
-    "usageStatus": "referencedTypedProperty"
-  },
+  "closeTabTooltip": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanel.kt"], "description": "Closes the current conversation tab without deleting its conversation or history. Distinct from hiding the sidebar or closing a shared Visual.", "args": [], "usageStatus": "referencedTypedProperty"},
   "common.close": {
     "description": "Dismiss the currently open informational dialog. Closing the dialog does not save, delete, or otherwise change user data.",
     "args": [],
@@ -7809,15 +7609,6 @@
     "description": "Conversation-renaming dialog title, also used as the rename action's tooltip and accessibility description.",
     "args": [],
     "usageStatus": "referencedTypedProperty"
-  },
-  "restartButton": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/data/Translation.kt:300"
-    ],
-    "description": "Conversation toolbar action opening a fresh conversation in the same project and closing the old tab. It does not restart the server or delete saved history.",
-    "args": [],
-    "usageStatus": "referencedTypedProperty",
-    "translationNotes": "Restart means start over with a fresh conversation tab in the same project, not reboot the application or erase saved history."
   },
   "runtime.accessingMemoryActivity": {
     "source": [
@@ -11403,13 +11194,6 @@
     "description": "Menu item opening memory-derived action items.",
     "args": []
   },
-  "session.toolbar.consolidate": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:281"
-    ],
-    "description": "Memory menu action for consolidating remembered information.",
-    "args": []
-  },
   "session.toolbar.extractContexts": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:192"
@@ -11438,47 +11222,11 @@
     "description": "Tooltip when the runtime panel is open.",
     "args": []
   },
-  "session.toolbar.maintainEntities": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:301"
-    ],
-    "description": "Memory menu action for maintaining memory entities.",
-    "args": []
-  },
-  "session.toolbar.memoryActions": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:249",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:251"
-    ],
-    "description": "Tooltip and accessibility label for the memory operations menu.",
-    "args": []
-  },
   "session.toolbar.messages": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:237"
     ],
     "description": "Accessibility description for the conversation message count.",
-    "args": []
-  },
-  "session.toolbar.remember": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:271"
-    ],
-    "description": "Menu item recording this conversation in project memory.",
-    "args": []
-  },
-  "session.toolbar.repair": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:291"
-    ],
-    "description": "Memory menu action for repairing stored memory.",
-    "args": []
-  },
-  "session.toolbar.retention": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/SessionScreen.kt:311"
-    ],
-    "description": "Memory menu action applying the configured retention policy.",
     "args": []
   },
   "session.toolbar.showParticipants": {
@@ -15630,13 +15378,6 @@
     "description": "Native Conversation pins panel. Pins are independent literal text snapshots included in conversation requests, not Visuals or live message links. Only text is editable. Draft replacement and deletion are explicit; errors must never include raw exception, source or private content. UI: The draft changed while loading. Your newer text is kept.",
     "args": []
   },
-  "pins.restartFailed": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/GromozekaApp.kt"
-    ],
-    "description": "Fixed content-free failure shown by the parent pin-preserving Restart action. No raw error, pin text or source details. The outcome may be uncertain; ask the user to inspect the conversation list before a manual retry. Never promise that no new conversation was created.",
-    "args": []
-  },
   "notifications.title": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/notifications/UserNotificationsDialog.kt"
@@ -16040,5 +15781,24 @@
   "ai.compaction.count_local": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Local estimate only", "args": []},
   "ai.compaction.count_other": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Another model configuration", "args": []},
   "ai.compaction.count_model": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Token-counting model", "args": []},
-  "ai.compaction.count_other_hint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Portable context is sent to this configuration. Its count is approximate for the main model; signed state is estimated locally.", "args": []}
+  "ai.compaction.count_other_hint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Portable context is sent to this configuration. Its count is approximate for the main model; signed state is estimated locally.", "args": []},
+  "chat.activity.loadUnavailable": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Server activity unavailable; real conversation activity UI, never synthetic demo data.", "args": []},
+  "chat.activity.unread": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Unread messages; real conversation activity UI, never synthetic demo data.", "args": []},
+  "session.runtime.context.usageTooltip": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt:209", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt"], "description": "Tooltip for the compact context-window occupancy percentage. Explains the percentage and shows current context tokens out of the model context-window capacity.", "args": ["currentCount", "limitCount", "percent"], "argumentDescriptions": {"currentCount": "Formatted current context token count, not cumulative conversation token usage.", "limitCount": "Formatted maximum model context-window token count.", "percent": "Integer percentage displayed by the context occupancy indicator."}, "argumentExamples": {"currentCount": "24,000", "limitCount": "100,000", "percent": 24}, "translationNotes": "This is context-window occupancy, not TPM throttling or cumulative billing usage. Preserve the line break between the explanation and the token counts."},
+  "chat.footer.elapsedTotal": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationFooterSummary.kt"], "description": "Elapsed time from the authenticated reader’s message to response completion; frozen at the durable Runtime completion timestamp.", "args": ["elapsed"]},
+  "chat.activity.waitingConcurrency": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Waiting for a slot; real conversation activity UI, never synthetic demo data.", "args": []},
+  "chat.activity.stateLoading": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationFooterSummary.kt"], "description": "Loading conversation state; real conversation activity UI, never synthetic demo data.", "args": []},
+  "chat.footer.commands": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationFooterSummary.kt"], "description": "Running commands: {count}; real conversation activity UI, never synthetic demo data.", "args": ["count"]},
+  "chat.activity.loadRunning": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Count of active admitted AI requests across the Server. Does not imply this conversation is running or waiting.", "args": ["count"]},
+  "chat.footer.elapsedRequest": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationFooterSummary.kt"], "description": "Elapsed time of the current or last model-request Runtime task; frozen after completion and retained across reconnects.", "args": ["elapsed"]},
+  "chat.activity.loadConcurrency": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Waiting for a slot: {count}; real conversation activity UI, never synthetic demo data.", "args": ["count"]},
+  "chat.activity.loadLoading": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Loading Server activity; real conversation activity UI, never synthetic demo data.", "args": []},
+  "chat.footer.queued": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationFooterSummary.kt"], "description": "Queued messages: {count}; real conversation activity UI, never synthetic demo data.", "args": ["count"]},
+  "chat.activity.waitingTpm": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Waiting for TPM; real conversation activity UI, never synthetic demo data.", "args": []},
+  "chat.activity.loadTpm": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivityPresentation.kt"], "description": "Waiting for TPM: {count}; real conversation activity UI, never synthetic demo data.", "args": ["count"]},
+  "chat.footer.monitors": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationFooterSummary.kt"], "description": "Active monitors: {count}; real conversation activity UI, never synthetic demo data.", "args": ["count"]},
+  "session.sidebar.show": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanel.kt"], "description": "Show or hide the shared right sidebar while preserving its selected tab. The control is in the main tab bar immediately before notifications.", "args": []},
+  "session.sidebar.hide": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanel.kt"], "description": "Show or hide the shared right sidebar while preserving its selected tab. The control is in the main tab bar immediately before notifications.", "args": []},
+  "session.thread.title": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanel.kt"], "description": "Sidebar tab and page containing conversation creation, fork, history selection, editing, pinning, compaction and deletion actions.", "args": []},
+  "session.sidebar.resize": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanelResize.kt"], "description": "Accessible label for the draggable vertical border that resizes the right sidebar live. Desktop layouts only.", "args": []}
 }

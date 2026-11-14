@@ -133,7 +133,7 @@ private fun GromozekaIosApp() {
             remoteApp != null -> GromozekaApp(
                 appComponents = remoteApp!!.components,
                 skipLoadingScreen = true,
-                showRuntimePanelInitially = false,
+                showSidePanelInitially = false,
                 forceCompactLayout = true,
                 clientPlatform = ClientPlatform.IOS,
             )

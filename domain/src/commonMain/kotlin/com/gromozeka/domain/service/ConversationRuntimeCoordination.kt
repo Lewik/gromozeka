@@ -725,7 +725,23 @@ data class ConversationRuntimeTurnSummary(
     val turnId: ConversationRuntimeTurnId,
     val startedAt: Instant,
     val problems: List<Problem> = emptyList(),
+    val completedAt: Instant? = null,
+    val modelRequest: ModelRequestTiming? = null,
 ) {
+    @Serializable
+    data class ModelRequestTiming(
+        val taskId: ConversationRuntimeTask.Id,
+        val startedAt: Instant,
+        val completedAt: Instant? = null,
+    )
+
+    fun finishTask(taskId: ConversationRuntimeTask.Id, at: Instant, finishesTurn: Boolean): ConversationRuntimeTurnSummary = copy(
+        completedAt = if (finishesTurn) completedAt ?: at else completedAt,
+        modelRequest = modelRequest?.let { request ->
+            if (request.taskId == taskId && request.completedAt == null) request.copy(completedAt = at) else request
+        },
+    )
+
     @Serializable
     data class Problem(
         val key: String,
@@ -756,6 +772,7 @@ data class ConversationRuntimeSnapshot(
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
     val lastTurn: ConversationRuntimeTurnSummary? = null,
+    val retainedTurnProblems: ConversationRuntimeTurnSummary? = null,
     val agentRequests: List<com.gromozeka.domain.model.AgentRequest> = emptyList(),
     val lastEventSequence: Long = 0,
 )
@@ -1133,3 +1150,7 @@ interface ConversationRuntimeCoordinator {
      */
     suspend fun listReadyWorkItems(limit: Int): List<ConversationRuntimeWorkItem>
 }
+
+/** A new turn does not erase the previous problem before it has completed successfully. */
+fun ConversationRuntimeSnapshot.visibleTurnProblems(): List<ConversationRuntimeTurnSummary.Problem> =
+    lastTurn?.problems?.takeIf { it.isNotEmpty() } ?: retainedTurnProblems?.problems.orEmpty()

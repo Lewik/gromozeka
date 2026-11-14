@@ -53,6 +53,7 @@ import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
+import com.gromozeka.domain.service.AiRequestActivitySnapshot
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -895,6 +896,10 @@ data class ActiveGenerationStateQuery(
 ) : RemoteStateSyncQuery
 
 @Serializable
+@SerialName("ai_request_activity")
+data class AiRequestActivityStateQuery(val conversationId: Conversation.Id) : RemoteStateSyncQuery
+
+@Serializable
 @SerialName("conversation_tab_layout")
 data object ConversationTabLayoutStateQuery : RemoteStateSyncQuery
 
@@ -951,6 +956,10 @@ data class ConversationRuntimeStatePayload(
 data class ActiveGenerationStatePayload(
     val snapshot: ActiveGenerationSnapshot?,
 ) : RemoteStateSyncPayload
+
+@Serializable
+@SerialName("ai_request_activity")
+data class AiRequestActivityStatePayload(val snapshot: AiRequestActivitySnapshot) : RemoteStateSyncPayload
 
 @Serializable
 @SerialName("conversation_tab_layout")

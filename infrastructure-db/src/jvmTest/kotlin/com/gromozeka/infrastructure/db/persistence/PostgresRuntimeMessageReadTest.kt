@@ -70,6 +70,39 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `last human activity is reader and branch bound without loading message bodies`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val other = ExposedIdentityRepository().observeTelegramIdentity(UserIdentity.Telegram(456, "Other"), f.now)
+            fun human(id: String, user: com.gromozeka.domain.model.User = f.owner) = f.message(id).copy(
+                author = Conversation.Message.Author.User(user.id, user.displayName),
+                createdAt = kotlin.time.Instant.fromEpochSeconds(100 + id.length.toLong()))
+            val first = human("first")
+            f.save(first, thread, 0)
+            f.save(human("other", other), thread, 1)
+            f.save(human("synthetic").copy(providerMetadata = buildJsonObject { put("synthetic", true) }), thread, 2)
+            f.save(f.message("no-author"), thread, 3)
+            f.save(human("assistant").copy(role = Conversation.Message.Role.ASSISTANT), thread, 4)
+            val read = f.measure {
+                assertEquals(com.gromozeka.domain.model.ConversationUserActivity(0, first.createdAt), f.history.latestUserActivity(thread, f.owner.id))
+            }
+            assertEquals(1, read.rows)
+            assertEquals(0, read.bodies)
+            assertEquals(1, f.history.latestUserActivity(thread, other.id)?.position)
+            val visual = human("visual").copy(content = listOf(ContentItem.VisualInteraction("v", "Title", 1, "e", "b", "Button",
+                buildJsonObject { put("form", buildJsonObject {}); put("data", buildJsonObject {}) })))
+            f.save(visual, thread, 5)
+            assertEquals(com.gromozeka.domain.model.ConversationUserActivity(5, visual.createdAt), f.history.latestUserActivity(thread, f.owner.id))
+            val fork = Conversation.Thread.Id("old-branch")
+            ExposedThreadRepository().save(Conversation.Thread(fork, f.conversation.id, createdAt = f.now, updatedAt = f.now))
+            f.links.add(fork, first.id, 0)
+            assertEquals(0, f.history.latestUserActivity(fork, f.owner.id)?.position)
+            assertNull(f.history.latestUserActivity(fork, other.id))
+            assertNull(f.history.latestUserActivity(Conversation.Thread.Id("missing"), f.owner.id))
+        }
+    }
+
+    @Test
     fun `maximum position is one SQL aggregate and membership reads one link`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread

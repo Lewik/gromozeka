@@ -806,7 +806,7 @@
     "client.whisper.startupTimedOut": {
       "other": "Local Whisper belum siap setelah {count} detik"
     },
-    "closeTabTooltip": "Tutup tab",
+    "closeTabTooltip": "Tutup tab percakapan",
     "common.close": "Tutup",
     "common.daysAgo": {
       "other": "{count} hari lalu"
@@ -1082,7 +1082,6 @@
     "recordingTooltip": "Merekam... (lepaskan untuk berhenti)",
     "refreshSessionsTooltip": "Perbarui daftar percakapan",
     "renameConversationTitle": "Ubah nama percakapan",
-    "restartButton": "Mulai percakapan baru",
     "runtime.accessingMemoryActivity": "Mengakses memori",
     "runtime.activityGroupLabel": "Aktivitas",
     "runtime.afterResponseLabel": "Setelah respons",
@@ -1410,6 +1409,7 @@
     },
     "session.runtime.context.reportedUnknown": "Konteks tidak tersedia · penyedia tidak melaporkan jumlah token",
     "session.runtime.context.threadUsage": "Percakapan: {count}",
+    "session.runtime.context.usageTooltip": "Penggunaan jendela konteks: {percent}%\n{currentCount} dari {limitCount} token",
     "session.runtime.context.withLimit": "Konteks {percent}% · {currentCount} / {limitCount}",
     "session.runtime.context.withoutLimit": {
       "other": "Konteks · {count} token"
@@ -1506,17 +1506,11 @@
     "session.runtime.traceMessage": "{kind}: {message}",
     "session.tokens.recentTurnCount": "Panggilan terbaru: {count}",
     "session.toolbar.actionItems": "Tindak lanjut",
-    "session.toolbar.consolidate": "Konsolidasikan",
     "session.toolbar.extractContexts": "Ekstrak konteks dari percakapan",
     "session.toolbar.extractContextsShort": "Ekstrak konteks",
     "session.toolbar.hideParticipants": "Sembunyikan peserta",
     "session.toolbar.hideRuntime": "Sembunyikan eksekusi",
-    "session.toolbar.maintainEntities": "Pemeliharaan entitas",
-    "session.toolbar.memoryActions": "Aksi memori",
     "session.toolbar.messages": "Pesan",
-    "session.toolbar.remember": "Ingat percakapan",
-    "session.toolbar.repair": "Perbaiki",
-    "session.toolbar.retention": "Terapkan retensi",
     "session.toolbar.showParticipants": "Tampilkan peserta",
     "session.toolbar.showRuntime": "Tampilkan eksekusi",
     "session.toolbar.viewContexts": "Lihat konteks tersimpan",
@@ -2021,7 +2015,6 @@
     "pins.notFound": "Teks tersemat ini tidak lagi tersedia. Teks yang belum disimpan tetap dipertahankan.",
     "pins.accessDenied": "Anda tidak memiliki akses ke teks tersemat ini.",
     "pins.reloadEdited": "Draf berubah saat dimuat. Teks yang lebih baru tetap disimpan.",
-    "pins.restartFailed": "Tidak dapat menyelesaikan mulai ulang percakapan dengan teks yang disematkan. Periksa daftar percakapan sebelum mencoba lagi.",
     "notifications.title": "Notifikasi",
     "notifications.close": "Tutup",
     "notifications.unreadOnly": "Hanya yang belum dibaca",
@@ -2131,6 +2124,24 @@
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "Masukan ditambah cadangan keluaran",
     "ai.tpm.preset.OPENAI_MAXIMUM": "Maksimum masukan dan cadangan keluaran",
     "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry: perbaiki hasil skema tanpa panggilan alat",
-    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "Aktifkan hanya untuk rute Chat Completions yang terdampak. Hanya menerima konten sesuai skema tanpa panggilan atau penolakan; alat wajib dan kesalahan lain tidak diperbaiki."
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "Aktifkan hanya untuk rute Chat Completions yang terdampak. Hanya menerima konten sesuai skema tanpa panggilan atau penolakan; alat wajib dan kesalahan lain tidak diperbaiki.",
+    "chat.activity.stateLoading": "Memuat status percakapan",
+    "chat.activity.loadLoading": "Memuat aktivitas server",
+    "chat.activity.loadUnavailable": "Aktivitas server tidak tersedia",
+    "chat.activity.loadRunning": "Permintaan aktif di server: {count}",
+    "chat.activity.loadTpm": "Menunggu TPM: {count}",
+    "chat.activity.loadConcurrency": "Menunggu slot kosong: {count}",
+    "chat.activity.waitingTpm": "Menunggu TPM",
+    "chat.activity.waitingConcurrency": "Menunggu slot kosong",
+    "chat.activity.unread": "Pesan belum dibaca",
+    "chat.footer.elapsedTotal": "Pesan → respons: {elapsed}",
+    "chat.footer.elapsedRequest": "Permintaan model: {elapsed}",
+    "chat.footer.queued": "Pesan dalam antrean: {count}",
+    "chat.footer.commands": "Perintah berjalan: {count}",
+    "chat.footer.monitors": "Pemantau aktif: {count}",
+    "session.sidebar.show": "Tampilkan panel samping",
+    "session.sidebar.hide": "Sembunyikan panel samping",
+    "session.thread.title": "Utas",
+    "session.sidebar.resize": "Ubah lebar panel samping"
   }
 }

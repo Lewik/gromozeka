@@ -102,7 +102,8 @@ internal fun MessageInput(
     onEditLastUserMessage: () -> Boolean = { false },
     voiceAutoSend: Boolean = true,
     onVoiceAutoSendChange: (Boolean) -> Unit = {},
-    statusContent: @Composable () -> Unit = {},
+    leadingContent: @Composable () -> Unit = {},
+    beforeActionsContent: @Composable () -> Unit = {},
     messageDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode = com.gromozeka.domain.model.UserMessageDeliveryMode.STEER,
     modifier: Modifier = Modifier,
 ) {
@@ -162,8 +163,126 @@ internal fun MessageInput(
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val compactControls = maxWidth < 600.dp
         // Keep the editor's scroll viewport stable when the software keyboard opens.
-        val editorMaxLines = 6
-        Column(Modifier.fillMaxWidth()) {
+        val separateActionRow = compactControls
+        val editorMaxLines = when {
+            separateActionRow && clientPlatform.showSoftwareKeyboardControls -> 4
+            else -> 6
+        }
+        val draftExtras: @Composable () -> Unit = {
+            artifactError?.takeIf(String::isNotBlank)?.let { error ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Text(
+                        text = error,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+
+            inputError?.takeIf(String::isNotBlank)?.let { error ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(UiTestTag.MessageSubmissionError.value),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Text(
+                        text = error,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+
+            if (composerArtifacts.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.controlGap),
+                ) {
+                    composerArtifacts.forEach { artifact ->
+                        InputChip(
+                            selected = false,
+                            onClick = {},
+                            label = {
+                                Text(
+                                    text = "${artifact.fileName} · ${artifact.sizeBytes.formatArtifactSize()}",
+                                    maxLines = 1,
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = localization.text("chat.input.removeAttachment", "fileName" to artifact.fileName),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { onRemoveArtifact(artifact.id) },
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+
+            val mentionSuggestions = remember(textFieldValue, agentMentionCandidates) {
+                findAgentMentionSuggestions(textFieldValue, agentMentionCandidates)
+            }
+            if (mentionSuggestions != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(UiTestTag.AgentMentionSuggestions.value),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = MaterialTheme.shapes.medium,
+                    tonalElevation = 3.dp,
+                ) {
+                    Column(modifier = Modifier.heightIn(max = 160.dp).verticalScroll(rememberScrollState()).padding(vertical = 4.dp)) {
+                        mentionSuggestions.candidates.take(8).forEach { candidate ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        textFieldValue = insertAgentMention(
+                                            textFieldValue,
+                                            mentionSuggestions.markerIndex,
+                                            candidate.mentionText,
+                                        )
+                                        onUserInputChange(textFieldValue.text)
+                                        mentionFocusRequest++
+                                    }
+                                    .testTag(UiTestTag.AgentMentionOption(candidate.agentDefinitionId.value).value)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(candidate.mentionText, style = MaterialTheme.typography.bodyMedium)
+                                    Text(candidate.name, style = MaterialTheme.typography.bodySmall)
+                                }
+                                Text(
+                                    text = localization.text(if (candidate.connected) "chat.mention.participating" else "chat.mention.notParticipating"),
+                                    color = if (candidate.connected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val replySuggestions: @Composable () -> Unit = {
             SuggestedReplyChips(
                 options = suggestedReplies,
                 modifier = Modifier.padding(horizontal = spacing.panelPadding),
@@ -172,264 +291,184 @@ internal fun MessageInput(
                     onUserInputChange(textFieldValue.text)
                 },
             )
-            ComposerPanel {
-                statusContent()
-                artifactError?.takeIf(String::isNotBlank)?.let { error ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Text(
-                            text = error,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
+        }
+        val actionsMenu: @Composable () -> Unit = {
+            ComposerActionsMenu(
+                canPickAttachments = canPickAttachments,
+                canCaptureScreenshot = canCaptureScreenshot,
+                artifactUploadInProgress = artifactUploadInProgress,
+                suggestedReplies = suggestedReplies,
+                suggestedRepliesRegenerating = suggestedRepliesRegenerating,
+                onPickAttachments = onPickAttachments,
+                onPasteAttachments = attachmentReceiver?.takeIf { it.controller.capabilities.clipboardPaste }
+                    ?.let { receiver -> { receiver.paste() } },
+                onCaptureScreenshot = onCaptureScreenshot,
+                onRegenerateSuggestedReplies = onRegenerateSuggestedReplies,
+                onToggleLiveVoice = if (compactControls && showLiveControl && !liveActive) {
+                    { coroutineScope.launch { liveVoiceInputService.toggle() } }
+                } else null,
+                onInsertCurrentLocation = onInsertCurrentLocation.takeIf { compactControls },
+                onHideKeyboard = hideKeyboard.takeIf { compactControls && clientPlatform.showSoftwareKeyboardControls },
+            )
+        }
+        val editor: @Composable (Modifier) -> Unit = { fieldModifier ->
+            Box(fieldModifier) {
+                ComposerAttachmentContextMenu(attachmentReceiver, localization.text("chat.input.pasteAttachments")) {
+                    CompactTextField(
+                        value = textFieldValue,
+                        onValueChange = { value -> textFieldValue = value; onUserInputChange(value.text) },
+                        modifier = Modifier.fillMaxWidth()
+                            .composerAttachmentInput(attachmentReceiver, localization.text("chat.input.pasteAttachments"))
+                            .focusRequester(inputFocusRequester)
+                            .onFocusChanged { inputFocused = it.isFocused }
+                            .messageInputShortcuts(
+                                enterKeyAction = enterKeyAction,
+                                isComposing = { textFieldValue.composition != null },
+                                isEmpty = { textFieldValue.text.isEmpty() },
+                                editLastMessageShortcut = editLastMessageShortcut,
+                                onEditLastUserMessage = onEditLastUserMessage,
+                                onSubmit = submitInput,
+                            ).testTag(UiTestTag.MessageInput.value),
+                        placeholder = {
+                            Text(localization.text("chat.composer.placeholder"), modifier = Modifier.testTag("composer-placeholder"), style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        maxLines = editorMaxLines,
+                        shape = RectangleShape,
+                        errorMessage = inputError,
 
-                inputError?.takeIf(String::isNotBlank)?.let { error ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag(UiTestTag.MessageSubmissionError.value),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Text(
-                            text = error,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-
-                if (composerArtifacts.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(spacing.controlGap),
-                    ) {
-                        composerArtifacts.forEach { artifact ->
-                            InputChip(
-                                selected = false,
-                                onClick = {},
-                                label = {
-                                    Text(
-                                        text = "${artifact.fileName} · ${artifact.sizeBytes.formatArtifactSize()}",
-                                        maxLines = 1,
-                                    )
-                                },
-                                trailingIcon = {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = localization.text("chat.input.removeAttachment", "fileName" to artifact.fileName),
-                                        modifier = Modifier
-                                            .size(18.dp)
-                                            .clickable { onRemoveArtifact(artifact.id) },
-                                    )
-                                },
-                            )
-                        }
-                    }
-                }
-
-                val mentionSuggestions = remember(textFieldValue, agentMentionCandidates) {
-                    findAgentMentionSuggestions(textFieldValue, agentMentionCandidates)
-                }
-                if (mentionSuggestions != null) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag(UiTestTag.AgentMentionSuggestions.value),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = MaterialTheme.shapes.medium,
-                        tonalElevation = 3.dp,
-                    ) {
-                        Column(modifier = Modifier.heightIn(max = 160.dp).verticalScroll(rememberScrollState()).padding(vertical = 4.dp)) {
-                            mentionSuggestions.candidates.take(8).forEach { candidate ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            textFieldValue = insertAgentMention(
-                                                textFieldValue,
-                                                mentionSuggestions.markerIndex,
-                                                candidate.mentionText,
-                                            )
-                                            onUserInputChange(textFieldValue.text)
-                                            mentionFocusRequest++
-                                        }
-                                        .testTag(UiTestTag.AgentMentionOption(candidate.agentDefinitionId.value).value)
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(candidate.mentionText, style = MaterialTheme.typography.bodyMedium)
-                                        Text(candidate.name, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                    Text(
-                                        text = localization.text(if (candidate.connected) "chat.mention.participating" else "chat.mention.notParticipating"),
-                                        color = if (candidate.connected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.error
-                                        },
-                                        style = MaterialTheme.typography.labelSmall,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Row(
-                    Modifier.fillMaxWidth().testTag("composer-controls"),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(spacing.controlGap),
-                ) {
-                    ComposerActionsMenu(
-                        canPickAttachments = canPickAttachments,
-                        canCaptureScreenshot = canCaptureScreenshot,
-                        artifactUploadInProgress = artifactUploadInProgress,
-                        suggestedReplies = suggestedReplies,
-                        suggestedRepliesRegenerating = suggestedRepliesRegenerating,
-                        onPickAttachments = onPickAttachments,
-                        onPasteAttachments = attachmentReceiver?.takeIf { it.controller.capabilities.clipboardPaste }
-                            ?.let { receiver -> { receiver.paste() } },
-                        onCaptureScreenshot = onCaptureScreenshot,
-                        onRegenerateSuggestedReplies = onRegenerateSuggestedReplies,
-                        onToggleLiveVoice = if (compactControls && showLiveControl && !liveActive) {
-                            { coroutineScope.launch { liveVoiceInputService.toggle() } }
-                        } else null,
-                        onInsertCurrentLocation = onInsertCurrentLocation.takeIf { compactControls },
-                        onHideKeyboard = hideKeyboard.takeIf { compactControls && clientPlatform.showSoftwareKeyboardControls },
                     )
-                    ComposerAttachmentContextMenu(attachmentReceiver, localization.text("chat.input.pasteAttachments")) {
-                        CompactTextField(
-                            value = textFieldValue,
-                            onValueChange = { value -> textFieldValue = value; onUserInputChange(value.text) },
-                            modifier = Modifier.weight(1f)
-                                .composerAttachmentInput(attachmentReceiver, localization.text("chat.input.pasteAttachments"))
-                                .focusRequester(inputFocusRequester)
-                                .onFocusChanged { inputFocused = it.isFocused }
-                                .messageInputShortcuts(
-                                    enterKeyAction = enterKeyAction,
-                                    isComposing = { textFieldValue.composition != null },
-                                    isEmpty = { textFieldValue.text.isEmpty() },
-                                    editLastMessageShortcut = editLastMessageShortcut,
-                                    onEditLastUserMessage = onEditLastUserMessage,
-                                    onSubmit = submitInput,
-                                ).testTag(UiTestTag.MessageInput.value),
-                            placeholder = {
-                                Text(localization.text("chat.composer.placeholder"), style = MaterialTheme.typography.bodyLarge,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            },
-                            maxLines = editorMaxLines,
-                            shape = RectangleShape,
-                            errorMessage = inputError,
-                        )
-                    }
-                    Row(Modifier.testTag("composer-voice-controls"), verticalAlignment = Alignment.CenterVertically) {
-                        val recording = pttState == PttState.RECORDING
-                        // Joined styling does not change recording or interruption gestures.
-                        CompactButton(
-                            onClick = { coroutineScope.launch { pttEventHandler.handlePTTEvent(PTTEvent.SINGLE_CLICK) } },
-                            contentPadding = PaddingValues(spacing.controlGap),
-                            modifier = Modifier.size(controls.minHeight)
-                                .advancedPttGestures(pttEventHandler, coroutineScope)
-                                .testTag(UiTestTag.PttButton.value),
-                            shape = joinedButtonShape(0, if (showVoiceMode) 2 else 1),
-                            elevation = null,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (recording) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = if (recording) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
-                            ),
-                            tooltip = listOfNotNull(
-                                localization.text(if (pttAvailable) "chat.voice.control.hint" else "chat.voice.control.interruptHint"),
-                                pttUnavailableReason,
-                            ).joinToString("\n"),
-                        ) {
-                            if (pttState == PttState.PREPARING) GromozekaLoadingIndicator(Modifier.size(controls.iconSize))
-                            else Icon(if (recording || !pttAvailable || pttState == PttState.TRANSCRIBING) Icons.Default.Stop else Icons.Default.Mic,
-                                contentDescription = if (pttAvailable) localization.pushToTalkText else localization.runtime.stopButton,
-                                modifier = Modifier.size(controls.iconSize))
-                        }
-                        if (showVoiceMode) {
-                            val modeLabel = localization.text(if (voiceAutoSend) "chat.voice.afterDictation.send" else "chat.voice.afterDictation.input")
-                            val modeHint = localization.text(if (voiceAutoSend) "chat.voice.afterDictation.sendHint" else "chat.voice.afterDictation.inputHint")
-                            CompactButton(
-                                onClick = { onVoiceAutoSendChange(!voiceAutoSend) },
-                                modifier = Modifier.size(controls.minHeight)
-                                    .testTag("voice-send-mode")
-                                    .semantics { contentDescription = modeHint; stateDescription = modeLabel },
-                                shape = joinedButtonShape(1, 2),
-                                elevation = null,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                contentPadding = PaddingValues(spacing.controlGap),
-                                tooltip = modeHint,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (voiceAutoSend) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = if (voiceAutoSend) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                                ),
-                            ) {
-                                Icon(if (voiceAutoSend) Icons.Default.DictationSend else Icons.Default.DictationInput,
-                                    null, Modifier.size(controls.iconSize))
-                            }
-                        }
-                    }
-                    // On a narrow pane Live starts from the menu; an active session retains its visible stop control.
-                    if (showLiveControl && (!compactControls || liveActive)) {
-                        CompactButton(
-                            onClick = { coroutineScope.launch { liveVoiceInputService.toggle() } },
-                            contentPadding = PaddingValues(spacing.controlGap),
-                            enabled = liveActive || liveVoiceInputUnavailableReason == null,
-                            modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.LiveVoiceButton.value),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (liveActive) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = if (liveActive) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface,
-                            ),
-                            tooltip = if (liveActive) localization.text("chat.voice.continuous.stop")
-                                else liveVoiceInputUnavailableReason ?: localization.text("chat.voice.continuous.start"),
-                        ) {
-                            Icon(Icons.Default.VoiceWave,
-                                localization.text(if (liveActive) "chat.voice.continuous.stop" else "chat.voice.continuous.start"), Modifier.size(controls.iconSize))
-                        }
-                    }
-                    val quickInstructions = instructionGroups.filter { it.showInComposer }
-                    if (quickInstructions.isNotEmpty()) {
-                        Row(Modifier.widthIn(max = controls.minHeight * if (compactControls) 1 else 3).horizontalScroll(rememberScrollState())) {
-                            quickInstructions.forEach { group ->
-                                QuickMessageInstructionButton(group, activeInstructionIds, onSelectInstruction,
-                                    modifier = Modifier.testTag("composer-instruction:${group.id}"))
-                            }
-                        }
-                    }
-                    if (!compactControls) {
-                        onInsertCurrentLocation?.let { insert ->
-                            CompactIconButton(onClick = insert, icon = Icons.Default.LocationOn,
-                                contentDescription = localization.text("chat.input.insertLocation"), modifier = Modifier.testTag("composer-location"))
-                        }
-                        if (clientPlatform.showSoftwareKeyboardControls && inputFocused) {
-                            CompactIconButton(onClick = hideKeyboard, icon = Icons.Default.KeyboardHide,
-                                contentDescription = localization.text("chat.input.hideKeyboard"), modifier = Modifier.testTag("composer-hide-keyboard"))
-                        }
-                    }
-                    BadgedBox(badge = { if (pendingMessagesCount > 0) Badge { Text("$pendingMessagesCount") } }) {
-                        CompactButton(
-                            onClick = submitInput, modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.SendButton.value),
-                            contentPadding = PaddingValues(spacing.controlGap),
-                            tooltip = messageDeliveryMode.displayLabel(localization),
-                        ) { Icon(Icons.Default.Send, localization.text("chat.input.send"), Modifier.size(controls.iconSize)) }
-                    }
                 }
             }
         }
+        val trailingControls: @Composable () -> Unit = {
+            beforeActionsContent()
+            actionsMenu()
+            Row(Modifier.testTag("composer-voice-controls"), verticalAlignment = Alignment.CenterVertically) {
+                val recording = pttState == PttState.RECORDING
+                // Joined styling does not change recording or interruption gestures.
+                CompactButton(
+                    onClick = { coroutineScope.launch { pttEventHandler.handlePTTEvent(PTTEvent.SINGLE_CLICK) } },
+                    contentPadding = PaddingValues(spacing.controlGap),
+                    modifier = Modifier.size(controls.minHeight)
+                        .advancedPttGestures(pttEventHandler, coroutineScope)
+                        .testTag(UiTestTag.PttButton.value),
+                    shape = joinedButtonShape(0, if (showVoiceMode) 2 else 1),
+                    elevation = null,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (recording) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = if (recording) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
+                    ),
+                    tooltip = listOfNotNull(
+                        localization.text(if (pttAvailable) "chat.voice.control.hint" else "chat.voice.control.interruptHint"),
+                        pttUnavailableReason,
+                    ).joinToString("\n"),
+                ) {
+                    if (pttState == PttState.PREPARING) GromozekaLoadingIndicator(Modifier.size(controls.iconSize))
+                    else Icon(if (recording || !pttAvailable || pttState == PttState.TRANSCRIBING) Icons.Default.Stop else Icons.Default.Mic,
+                        contentDescription = if (pttAvailable) localization.pushToTalkText else localization.runtime.stopButton,
+                        modifier = Modifier.size(controls.iconSize))
+                }
+                if (showVoiceMode) {
+                    val modeLabel = localization.text(if (voiceAutoSend) "chat.voice.afterDictation.send" else "chat.voice.afterDictation.input")
+                    val modeHint = localization.text(if (voiceAutoSend) "chat.voice.afterDictation.sendHint" else "chat.voice.afterDictation.inputHint")
+                    CompactButton(
+                        onClick = { onVoiceAutoSendChange(!voiceAutoSend) },
+                        modifier = Modifier.size(controls.minHeight)
+                            .testTag("voice-send-mode")
+                            .semantics { contentDescription = modeHint; stateDescription = modeLabel },
+                        shape = joinedButtonShape(1, 2),
+                        elevation = null,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        contentPadding = PaddingValues(spacing.controlGap),
+                        tooltip = modeHint,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (voiceAutoSend) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = if (voiceAutoSend) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Icon(if (voiceAutoSend) Icons.Default.DictationSend else Icons.Default.DictationInput,
+                            null, Modifier.size(controls.iconSize))
+                    }
+                }
+            }
+            // On a narrow pane Live starts from the menu; an active session retains its visible stop control.
+            if (showLiveControl && (!compactControls || liveActive)) {
+                CompactButton(
+                    onClick = { coroutineScope.launch { liveVoiceInputService.toggle() } },
+                    contentPadding = PaddingValues(spacing.controlGap),
+                    enabled = liveActive || liveVoiceInputUnavailableReason == null,
+                    modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.LiveVoiceButton.value),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (liveActive) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = if (liveActive) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface,
+                    ),
+                    tooltip = if (liveActive) localization.text("chat.voice.continuous.stop")
+                        else liveVoiceInputUnavailableReason ?: localization.text("chat.voice.continuous.start"),
+                ) {
+                    Icon(Icons.Default.VoiceWave,
+                        localization.text(if (liveActive) "chat.voice.continuous.stop" else "chat.voice.continuous.start"), Modifier.size(controls.iconSize))
+                }
+            }
+            val quickInstructions = instructionGroups.filter { it.showInComposer }
+            if (quickInstructions.isNotEmpty()) {
+                Row(Modifier.widthIn(max = controls.minHeight * if (compactControls) 1 else 3).horizontalScroll(rememberScrollState())) {
+                    quickInstructions.forEach { group ->
+                        QuickMessageInstructionButton(group, activeInstructionIds, onSelectInstruction,
+                            modifier = Modifier.testTag("composer-instruction:${group.id}"))
+                    }
+                }
+            }
+            if (!compactControls) {
+                onInsertCurrentLocation?.let { insert ->
+                    CompactIconButton(onClick = insert, icon = Icons.Default.LocationOn,
+                        contentDescription = localization.text("chat.input.insertLocation"), modifier = Modifier.testTag("composer-location"))
+                }
+                if (clientPlatform.showSoftwareKeyboardControls && inputFocused) {
+                    CompactIconButton(onClick = hideKeyboard, icon = Icons.Default.KeyboardHide,
+                        contentDescription = localization.text("chat.input.hideKeyboard"), modifier = Modifier.testTag("composer-hide-keyboard"))
+                }
+            }
+            BadgedBox(badge = { if (pendingMessagesCount > 0) Badge { Text("$pendingMessagesCount") } }) {
+                CompactButton(
+                    onClick = submitInput, modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.SendButton.value),
+                    contentPadding = PaddingValues(spacing.controlGap),
+                    tooltip = messageDeliveryMode.displayLabel(localization),
+                ) { Icon(Icons.Default.Send, localization.text("chat.input.send"), Modifier.size(controls.iconSize)) }
+            }
+        }
+        Column(Modifier.fillMaxWidth()) {
+            replySuggestions()
+            ComposerPanel {
+                // Keep phone actions reachable when the keyboard or draft extras consume the available height.
+                Column(
+                    Modifier.fillMaxWidth().then(if (separateActionRow)
+                        Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState(), reverseScrolling = true)
+                    else Modifier),
+                    verticalArrangement = Arrangement.spacedBy(spacing.rowGap),
+                ) {
+                    draftExtras()
+                    Row(
+                        Modifier.fillMaxWidth().testTag("composer-controls"),
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.controlGap),
+                    ) {
+                        leadingContent()
+                        editor(Modifier.weight(1f))
+                        if (!separateActionRow) trailingControls()
+                    }
+                }
+                if (separateActionRow) {
+                    FlowRow(
+                        Modifier.fillMaxWidth().testTag("composer-mobile-actions"),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.controlGap, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(spacing.rowGap),
+                    ) { trailingControls() }
+                }
+            }
+        }
+
     }
 }
 

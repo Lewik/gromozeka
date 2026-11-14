@@ -806,7 +806,7 @@
     "client.whisper.startupTimedOut": {
       "other": "Local Whisper 未能在 {count} 秒内就绪"
     },
-    "closeTabTooltip": "关闭标签页",
+    "closeTabTooltip": "关闭会话标签页",
     "common.close": "关闭",
     "common.daysAgo": {
       "other": "{count} 天前"
@@ -1082,7 +1082,6 @@
     "recordingTooltip": "正在录音…（松开停止）",
     "refreshSessionsTooltip": "刷新对话列表",
     "renameConversationTitle": "重命名对话",
-    "restartButton": "重新开始对话",
     "runtime.accessingMemoryActivity": "正在访问记忆",
     "runtime.activityGroupLabel": "活动",
     "runtime.afterResponseLabel": "回答后",
@@ -1410,6 +1409,7 @@
     },
     "session.runtime.context.reportedUnknown": "上下文不可用 · 提供商未报告词元数量",
     "session.runtime.context.threadUsage": "对话：{count}",
+    "session.runtime.context.usageTooltip": "上下文窗口使用率：{percent}%\n已用 {currentCount} 个词元，共 {limitCount} 个",
     "session.runtime.context.withLimit": "上下文 {percent}% · {currentCount} / {limitCount}",
     "session.runtime.context.withoutLimit": {
       "other": "上下文 · {count} 个词元"
@@ -1506,17 +1506,11 @@
     "session.runtime.traceMessage": "{kind}：{message}",
     "session.tokens.recentTurnCount": "最近模型调用：{count}",
     "session.toolbar.actionItems": "待办事项",
-    "session.toolbar.consolidate": "整合记忆",
     "session.toolbar.extractContexts": "从对话中提取上下文",
     "session.toolbar.extractContextsShort": "提取上下文",
     "session.toolbar.hideParticipants": "隐藏参与者",
     "session.toolbar.hideRuntime": "隐藏运行状态",
-    "session.toolbar.maintainEntities": "实体维护",
-    "session.toolbar.memoryActions": "记忆操作",
     "session.toolbar.messages": "消息",
-    "session.toolbar.remember": "记住对话",
-    "session.toolbar.repair": "修复",
-    "session.toolbar.retention": "应用保留策略",
     "session.toolbar.showParticipants": "显示参与者",
     "session.toolbar.showRuntime": "显示运行状态",
     "session.toolbar.viewContexts": "查看已保存的上下文",
@@ -2021,7 +2015,6 @@
     "pins.notFound": "此内容已不可用。未保存的正文已保留。",
     "pins.accessDenied": "你无权访问这些置顶内容。",
     "pins.reloadEdited": "草稿在加载期间发生更改。较新的正文已保留。",
-    "pins.restartFailed": "未能完成保留固定文本的对话重启。重试前请检查对话列表。",
     "notifications.title": "通知",
     "notifications.close": "关闭",
     "notifications.unreadOnly": "仅显示未读",
@@ -2131,6 +2124,24 @@
     "ai.tpm.preset.INPUT_PLUS_OUTPUT": "输入加输出预留",
     "ai.tpm.preset.OPENAI_MAXIMUM": "输入与输出预留的最大值",
     "ai.spec.chat_schema_empty_tool_calls_as_stop": "TrueFoundry：修正无工具调用的 Schema 响应状态",
-    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "仅在受影响的 Chat Completions 路由上启用。只接受符合 Schema 且没有调用或拒绝的内容；不修复强制工具调用或其他错误。"
+    "ai.spec.chat_schema_empty_tool_calls_as_stop_help": "仅在受影响的 Chat Completions 路由上启用。只接受符合 Schema 且没有调用或拒绝的内容；不修复强制工具调用或其他错误。",
+    "chat.activity.stateLoading": "正在加载会话状态",
+    "chat.activity.loadLoading": "正在加载服务器活动",
+    "chat.activity.loadUnavailable": "服务器活动不可用",
+    "chat.activity.loadRunning": "服务器上的活跃请求：{count}",
+    "chat.activity.loadTpm": "等待 TPM：{count}",
+    "chat.activity.loadConcurrency": "等待空闲槽位：{count}",
+    "chat.activity.waitingTpm": "等待 TPM",
+    "chat.activity.waitingConcurrency": "等待空闲槽位",
+    "chat.activity.unread": "有未读消息",
+    "chat.footer.elapsedTotal": "消息 → 回复：{elapsed}",
+    "chat.footer.elapsedRequest": "模型请求：{elapsed}",
+    "chat.footer.queued": "排队中的消息：{count}",
+    "chat.footer.commands": "正在运行的命令：{count}",
+    "chat.footer.monitors": "活跃监视器：{count}",
+    "session.sidebar.show": "显示侧边栏",
+    "session.sidebar.hide": "隐藏侧边栏",
+    "session.thread.title": "会话线程",
+    "session.sidebar.resize": "调整侧边栏宽度"
   }
 }

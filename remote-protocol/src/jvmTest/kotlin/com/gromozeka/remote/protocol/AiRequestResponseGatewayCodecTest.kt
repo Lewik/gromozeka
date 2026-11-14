@@ -46,6 +46,33 @@ import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
     @Test
+    fun admissionUsesReservedRuntimeOriginNotTheProviderSessionConversation() {
+        val fixture = TestHandler()
+        val origin = com.gromozeka.domain.service.AiAdmissionOrigin(Conversation.Id("conversation"),
+            com.gromozeka.domain.service.ConversationRuntimeTask.Id("task"))
+        val conversationKey = com.gromozeka.domain.service.AI_ADMISSION_CONVERSATION_CONTEXT_KEY
+        val taskKey = com.gromozeka.domain.service.AI_ADMISSION_TASK_CONTEXT_KEY
+        val context = mapOf("conversationId" to "reviewer-provider-session", conversationKey to "conversation", taskKey to "task")
+        val request = fixture.runtimeRequest.copy(options = fixture.runtimeRequest.options.copy(toolContext = context))
+        assertEquals(origin, com.gromozeka.domain.service.AiAdmissionOrigin.fromContext(context))
+        for (payload in listOf(
+            AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request),
+            AiRequestResponseGatewayCodec.encodeCompactionRequest(fixture.runtime, null, request),
+            AiRequestResponseGatewayCodec.encodeContextInspectionRequest(fixture.runtime, null, request),
+        )) assertEquals(origin, AiRequestResponseGatewayCodec.admissionOrigin(payload))
+        for (invalid in listOf(mapOf(taskKey to "task"), mapOf(conversationKey to "conversation"),
+            mapOf(conversationKey to "conversation", taskKey to 12), mapOf(conversationKey to "", taskKey to "task"))) {
+            assertFailsWith<IllegalArgumentException> { com.gromozeka.domain.service.AiAdmissionOrigin.fromContext(invalid) }
+            val encoded = AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null,
+                request.copy(options = request.options.copy(toolContext = invalid)))
+            assertFailsWith<IllegalArgumentException> { AiRequestResponseGatewayCodec.admissionOrigin(encoded) }
+        }
+        val auxiliary = request.copy(options = request.options.copy(toolContext = mapOf("conversationId" to "unbound")))
+        kotlin.test.assertNull(AiRequestResponseGatewayCodec.admissionOrigin(
+            AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, auxiliary)))
+    }
+
+    @Test
     fun imageAndDocumentContentSurvivesWorkerRequestAndResponseEncoding() = runBlocking {
         val fixture = TestHandler()
         val content = listOf(

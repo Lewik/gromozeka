@@ -16,7 +16,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
-class ConversationActivityBarTest {
+class ExecutionActivityTest {
     private val translation = Translation.builtIn.getValue("en")
     private val now = Instant.fromEpochSeconds(100)
     private val first = VoiceTranscriptionActivity("first", VoiceInputTarget(Tab.Id("a"), MessageInputContext.Source.PUSH_TO_TALK, false), now)
@@ -62,6 +62,31 @@ class ConversationActivityBarTest {
         assertEquals(listOf("upload", "suggestions"), rows.map { it.id })
         assertTrue(rows.all { it.progress == null && it.startedAt == null })
         assertTrue(executionActivities(null, null, false, emptyList(), "a", translation).isEmpty())
+    }
+
+    @Test
+    fun `request wait caption replaces only the agent row and keeps voice activity`() {
+        val waiting = ExecutionActivity("agent", "Waiting for TPM", now, detail = "Request has not been sent")
+        val rows = executionActivities(null, null, true, listOf(first), "a", translation,
+            modelRequestActivityOverride = waiting)
+        assertEquals(listOf("voice:first", "agent"), rows.map { it.id })
+        assertEquals(waiting, rows.last())
+        assertTrue(executionActivities(null, null, false, emptyList(), "a", translation,
+            modelRequestActivityOverride = waiting).isEmpty())
+    }
+
+    @Test
+    fun `context usage occupies three monospaced columns`() {
+        assertEquals(" 0%", contextUsageText(0))
+        assertEquals(" 9%", contextUsageText(9))
+        assertEquals("10%", contextUsageText(10))
+        assertEquals("99%", contextUsageText(99))
+        assertEquals("100", contextUsageText(100))
+    }
+
+    @Test
+    fun `request elapsed time keeps minutes beyond an hour`() {
+        assertEquals("65:00", activityElapsed(Instant.fromEpochSeconds(0), Instant.fromEpochSeconds(3900)))
     }
 
     private fun snapshot() = ConversationRuntimeSnapshot(

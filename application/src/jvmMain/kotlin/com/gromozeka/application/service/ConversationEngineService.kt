@@ -34,6 +34,8 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.ActiveGenerationPublisher
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
+import com.gromozeka.domain.service.AI_ADMISSION_CONVERSATION_CONTEXT_KEY
+import com.gromozeka.domain.service.AI_ADMISSION_TASK_CONTEXT_KEY
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
@@ -383,6 +385,8 @@ class ConversationEngineService(
                 assistantResponseFormat = context.assistantResponseFormat,
                 toolContext = buildMap {
                     put("aiCallDiagnosticId", diagnosticId)
+                    put(AI_ADMISSION_CONVERSATION_CONTEXT_KEY, conversationId.value)
+                    put(AI_ADMISSION_TASK_CONTEXT_KEY, task.id.value)
                     put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
                     put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
                     put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
@@ -731,7 +735,8 @@ class ConversationEngineService(
         val decision = try {
             service.review(draft, context.runtime, AiRuntimeOptions(
                 reasoning = context.agent.runtimeOverrides.reasoning,
-                toolContext = mapOf(TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
+                toolContext = mapOf(AI_ADMISSION_CONVERSATION_CONTEXT_KEY to conversation.id.value,
+                    AI_ADMISSION_TASK_CONTEXT_KEY to task.id.value, TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
                     TOOL_CONTEXT_THREAD_ID to conversation.currentThread.value, TOOL_CONTEXT_PROJECT_ID to conversation.projectId.value,
                     TOOL_CONTEXT_USER_ID to draft.actorUserId.value, TOOL_CONTEXT_AGENT_DEFINITION_ID to payload.agentDefinitionId.value),
             ))
