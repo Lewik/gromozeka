@@ -111,13 +111,13 @@ class ConversationCreationE2eTest {
                     conversation to agents
                 }
                 waitForTag(UiTestTag.MessageInput)
-                onNodeWithTag(UiTestTag.RuntimeButton.value).performClick()
+                onNodeWithTag("side-panel-toggle").performClick()
+                onNodeWithTag("side-panel-tab-runtime").performClick()
                 waitUntil(timeoutMillis = 30_000) {
                     onAllNodesWithText("Replies: Alpha").fetchSemanticsNodes().isNotEmpty()
                 }
                 onNodeWithTag(UiTestTag.AgentResponseHint.value).assertTextContains("Replies: Alpha")
-                onNodeWithTag(UiTestTag.RuntimeButton.value).performClick()
-                onNodeWithTag(UiTestTag.ParticipantsButton.value).performClick()
+                onNodeWithTag("side-panel-tab-participants").performClick()
                 waitForTag(UiTestTag.AgentAutoRespond(agents.first().id.value))
                 saveScreenshot("automatic-responder-checkbox")
                 onNodeWithTag(UiTestTag.AgentAutoRespond(agents.first().id.value).value).performClick()
@@ -166,7 +166,7 @@ class ConversationCreationE2eTest {
                         reconnected.components.conversationService.findById(conversation.id)
                     }!!.autoRespondAgentIds.isEmpty())
                 }
-                onNodeWithTag(UiTestTag.ParticipantsButton.value).performClick()
+                onNodeWithTag("side-panel-toggle").performClick()
                 saveScreenshot("automatic-responder-conversation")
                 runBlocking {
                     val narrowed = components.conversationService.updateParticipants(conversation.id, conversation.participants)

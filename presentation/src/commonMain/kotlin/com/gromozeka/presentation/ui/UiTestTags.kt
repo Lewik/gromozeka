@@ -56,9 +56,7 @@ sealed interface UiTestTag {
     data class RuntimeAgentTab(val agentId: String) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(agentId)
     }
-    data object RuntimeButton : UiTestTag
     data object ParticipantsPanel : UiTestTag
-    data object ParticipantsButton : UiTestTag
     data object PttButton : UiTestTag
     data object VoiceCaptureStatus : UiTestTag
     data object LiveVoiceButton : UiTestTag
