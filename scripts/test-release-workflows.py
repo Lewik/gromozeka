@@ -62,6 +62,23 @@ class WorkflowContracts(unittest.TestCase):
         self.assertEqual("jdbc:postgresql://localhost:5432/gromozeka", step["env"]["GROMOZEKA_POSTGRES_URL"])
         self.assertIn("*PostgresUserNotificationRepositoryTest", scripts(JOBS["verify-runtime"]))
 
+    def test_fork_copy_regressions_run_with_database_and_cross_platform_files(self):
+        steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}
+        verification = steps["Verify Server and Worker"]
+        self.assertIn(":server:test", verification["run"])
+        self.assertEqual("true", verification["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
+        self.assertIn("*ConversationArtifactApplicationServiceTest", verification["run"])
+        cross_platform = load_yaml(WORKFLOWS / "windows-worker-service.yml")
+        self.assertIn("*LocalArtifactContentStoreTest", scripts(cross_platform["jobs"]["verify"]))
+
+    def test_isolated_ai_calls_are_verified_on_runtime_and_script_platforms(self):
+        cross_platform = scripts(load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"])
+        for check in ("*AiCall*", "*ManagedCommandScriptSdkTest", "*WorkerWorkspaceFileServiceTest", "*WorkspaceTextFileApplicationServiceTest"):
+            self.assertIn(check, cross_platform)
+        runtime = scripts(JOBS["verify-runtime"])
+        for check in (":server:test", ":remote-protocol:jvmTest", "*TargetedAiExecutionTest", "*ClaudeCodeCliRuntimeTest", "*OpenAiSubscriptionContextQueryIsolationTest"):
+            self.assertIn(check, runtime)
+
     def test_manual_windows_recovery_checks_cannot_skip_release_verification(self):
         workflow = load_yaml(WORKFLOWS / "windows-worker-service.yml")
         inputs = workflow["on"]["workflow_dispatch"]["inputs"]

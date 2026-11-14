@@ -27,9 +27,9 @@ import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerAudioCaptureHandler
 import com.gromozeka.domain.service.WorkerAudioCaptureRequest
 import com.gromozeka.domain.service.WorkerAudioCaptureResult
-import com.gromozeka.domain.service.WorkerWorkspaceTextFileHandler
-import com.gromozeka.domain.service.WorkerWorkspaceTextFileReadRequest
-import com.gromozeka.domain.service.WorkspaceTextFile
+import com.gromozeka.domain.service.WorkerWorkspaceFileHandler
+import com.gromozeka.domain.service.WorkerWorkspaceFileReadRequest
+import com.gromozeka.domain.service.WorkspaceFile
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -232,8 +232,8 @@ class WorkerGatewayClientTest {
                 override suspend fun handle(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult =
                     error("Unused Worker audio capture request")
             },
-            workerWorkspaceTextFileHandler = object : WorkerWorkspaceTextFileHandler {
-                override suspend fun read(request: WorkerWorkspaceTextFileReadRequest): WorkspaceTextFile =
+            workerWorkspaceFileHandler = object : WorkerWorkspaceFileHandler {
+                override suspend fun read(request: WorkerWorkspaceFileReadRequest): WorkspaceFile =
                     error("Unused workspace text file request")
             },
             visualRuntime = org.mockito.Mockito.mock(VisualWorkerRuntime::class.java),

@@ -12,7 +12,6 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service
@@ -20,28 +19,39 @@ class ExposedMessageRepository(
     private val json: Json
 ) : MessageRepository {
 
-    override suspend fun save(message: Conversation.Message): Conversation.Message = dbQuery {
-        val artifactIds = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-            .flatMap { it.result }
-            .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
-            .map { it.artifact.id.value }
-            .distinct()
-        val artifactText = if (artifactIds.isEmpty()) "" else Artifacts.select(Artifacts.searchText)
-            .where { Artifacts.id inList artifactIds }
-            .mapNotNull { it[Artifacts.searchText] }
-            .joinToString("\n")
-        Messages.insert {
-            it[id] = message.id.value
-            it[conversationId] = message.conversationId.value
-            it[originalIdsJson] = json.encodeToString(message.originalIds.map { id -> id.value })
-            it[replyToId] = message.replyTo?.value
-            it[role] = message.role.name
-            it[createdAt] = message.createdAt
-            it[searchText] = listOf(message.searchText(), artifactText).filter(String::isNotBlank).joinToString("\n")
-            it[messageText] = message.searchText(includeToolResults = false)
-            it[messageJson] = json.encodeToString(message)
+    override suspend fun save(message: Conversation.Message): Conversation.Message {
+        saveBatch(listOf(message))
+        return message
+    }
+
+    override suspend fun saveBatch(messages: List<Conversation.Message>) {
+        if (messages.isEmpty()) return
+        dbQuery {
+            messages.chunked(BATCH_SIZE).forEach { batch ->
+                val artifactIdsByMessage = batch.associate { message ->
+                    message.id to message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+                        .flatMap { it.result }
+                        .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
+                        .map { it.artifact.id.value }.distinct()
+                }
+                val artifactText = artifactIdsByMessage.values.flatten().distinct().chunked(BATCH_SIZE)
+                    .flatMap { ids -> Artifacts.select(Artifacts.id, Artifacts.searchText)
+                        .where { Artifacts.id inList ids }
+                        .map { it[Artifacts.id] to it[Artifacts.searchText] } }.toMap()
+                Messages.batchInsert(batch, shouldReturnGeneratedValues = false) { message ->
+                    val toolText = artifactIdsByMessage.getValue(message.id).mapNotNull(artifactText::get).joinToString("\n")
+                    this[Messages.id] = message.id.value
+                    this[Messages.conversationId] = message.conversationId.value
+                    this[Messages.originalIdsJson] = json.encodeToString(message.originalIds.map { it.value })
+                    this[Messages.replyToId] = message.replyTo?.value
+                    this[Messages.role] = message.role.name
+                    this[Messages.createdAt] = message.createdAt
+                    this[Messages.searchText] = listOf(message.searchText(), toolText).filter(String::isNotBlank).joinToString("\n")
+                    this[Messages.messageText] = message.searchText(includeToolResults = false)
+                    this[Messages.messageJson] = json.encodeToString(message)
+                }
+            }
         }
-        message
     }
 
     override suspend fun findById(id: Conversation.Message.Id): Conversation.Message? = dbQuery {
@@ -51,13 +61,16 @@ class ExposedMessageRepository(
             ?.let { json.decodeFromString<Conversation.Message>(it[Messages.messageJson]) }
     }
 
-    override suspend fun findByIds(ids: List<Conversation.Message.Id>): List<Conversation.Message> = dbQuery {
-        if (ids.isEmpty()) return@dbQuery emptyList()
-
-        Messages.select(Messages.messageJson)
-            .where { Messages.id inList ids.map { it.value } }
-            .map { json.decodeFromString<Conversation.Message>(it[Messages.messageJson]) }
-            .sortedBy { message -> ids.indexOf(message.id) }
+    override suspend fun findByIds(ids: List<Conversation.Message.Id>): List<Conversation.Message> {
+        if (ids.isEmpty()) return emptyList()
+        val orderedIds = ids.distinct()
+        return dbQuery {
+            val found = orderedIds.chunked(BATCH_SIZE).flatMap { batch ->
+                Messages.select(Messages.messageJson).where { Messages.id inList batch.map { it.value } }
+                    .map { json.decodeFromString<Conversation.Message>(it[Messages.messageJson]) }
+            }.associateBy { it.id }
+            orderedIds.mapNotNull(found::get)
+        }
     }
 
     override suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.Message> = dbQuery {
@@ -73,6 +86,8 @@ class ExposedMessageRepository(
             .orderBy(Messages.createdAt, SortOrder.ASC)
             .map { json.decodeFromString<Conversation.Message>(it[Messages.messageJson]) }
     }
+    private companion object { const val BATCH_SIZE = 256 }
+
 }
 
 internal fun Conversation.Message.searchText(includeToolResults: Boolean = true): String = content.mapNotNull { item ->

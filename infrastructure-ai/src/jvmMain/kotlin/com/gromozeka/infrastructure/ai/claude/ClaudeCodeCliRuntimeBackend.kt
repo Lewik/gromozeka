@@ -16,6 +16,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
+import com.gromozeka.domain.model.ai.isToolFreeIsolatedCall
+import com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -302,17 +304,21 @@ internal class ClaudeCodeCliRuntime(
             reasoningMode = request.options.reasoning?.mode,
             resumeSessionId = sessionPlan.resumeSessionId,
             noSessionPersistence = sessionStateKey == null,
-            disableCompaction = request.options.usagePurpose == com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE,
+            disableCompaction = request.options.usagePurpose.isToolFreeIsolatedCall(),
         )
 
         val executionStartedAt = System.nanoTime()
         val cliResponse = try {
-            executeValidated(command, contract)
+            // Explicit-input calls return the original answer for central schema validation.
+            // Do not turn invalid JSON into another generation or lose its usage.
+            executeValidated(command, if (request.options.usagePurpose == AI_ISOLATED_CALL_PURPOSE) null else contract)
         } catch (error: ClaudeCodeSessionUnavailableException) {
             if (sessionStateKey == null || sessionPlan.resumeSessionId == null) throw error
             sessionStateRepository.delete(sessionStateKey)
             return callLocked(request, sessionStateKey, "$diagnosticId-recovered", cleanRetry, rejectedUsage, rejectedAssistantText)
         } catch (error: ClaudeCodeResponseFormatException) {
+            if (request.options.usagePurpose == AI_ISOLATED_CALL_PURPOSE) throw error
+
             // withSession has already evicted/closed the failed process. Never resume its transcript,
             // even if a subsequent formatting correction could produce acceptable JSON.
             if (sessionStateKey != null) sessionStateRepository.delete(sessionStateKey)
@@ -443,7 +449,7 @@ internal class ClaudeCodeCliRuntime(
     private fun sessionStateKey(request: AiRuntimeRequest): ClaudeCodeSessionState.Key? {
         if (request.options.usagePurpose in setOf(
                 "MESSAGE_SQUASH", "AGENT_RESPONSE_REVIEW",
-                com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE,
+                com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE, AI_ISOLATED_CALL_PURPOSE,
             )) return null
         val conversationId = request.options.toolContext["conversationId"].contextString()
             ?.takeIf { it.isNotBlank() }

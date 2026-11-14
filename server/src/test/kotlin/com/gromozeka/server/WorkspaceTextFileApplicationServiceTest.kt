@@ -16,11 +16,11 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.UserDirectoryService
 import com.gromozeka.domain.service.WorkerAccessService
-import com.gromozeka.domain.service.WorkerWorkspaceTextFileClient
-import com.gromozeka.domain.service.WorkerWorkspaceTextFileReadRequest
+import com.gromozeka.domain.service.WorkerWorkspaceFileClient
+import com.gromozeka.domain.service.WorkerWorkspaceFileReadRequest
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkspacePathAccessContext
-import com.gromozeka.domain.service.WorkspaceTextFile
+import com.gromozeka.domain.service.WorkspaceFile
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant
 import org.mockito.Mockito
@@ -66,7 +66,7 @@ class WorkspaceTextFileApplicationServiceTest {
         val workerAccessService = mock<WorkerAccessService>()
         val userDirectoryService = mock<UserDirectoryService>()
         val targetResolver = mock<ConversationRuntimeWorkerTargetResolver>()
-        val workerClient = RecordingWorkerWorkspaceTextFileClient()
+        val workerClient = RecordingWorkerWorkspaceFileClient()
         Mockito.`when`(workspaceService.resolveExecution(mount.id)).thenReturn(execution)
         Mockito.`when`(userDirectoryService.findActiveById(actor.id)).thenReturn(actor)
         Mockito.`when`(
@@ -81,13 +81,14 @@ class WorkspaceTextFileApplicationServiceTest {
             targetResolver.requireRegistered(identity.workerId, ConversationRuntimeCapability.LOCAL_AGENT_TOOL)
         ).thenReturn(identity)
 
-        val result = WorkspaceTextFileApplicationService(
+        val service = WorkspaceTextFileApplicationService(
             workspaceService,
             workerAccessService,
             userDirectoryService,
             targetResolver,
             workerClient,
-        ).read(
+        )
+        val result = service.read(
             reference = reference,
             access = WorkspacePathAccessContext(
                 actorUserId = actor.id,
@@ -101,21 +102,36 @@ class WorkspaceTextFileApplicationServiceTest {
         assertEquals(reference, workerClient.request?.reference)
         assertEquals("/workspace", workerClient.request?.workspaceRootPath)
         assertEquals(WorkspacePathAccessContext(actor.id, project.id), workerClient.access)
+
+        val access = WorkspacePathAccessContext(actor.id, project.id)
+        workerClient.content = com.gromozeka.domain.model.BinaryContent.fromBytes(byteArrayOf(-1, 0, -2))
+        kotlin.test.assertContentEquals(byteArrayOf(-1, 0, -2), service.readFile(reference, access, 10).content.bytes())
+        kotlin.test.assertFailsWith<CharacterCodingException> { service.read(reference, access, 10) }
+        kotlin.test.assertFailsWith<IllegalStateException> { service.readFile(reference, access, 1) }
+        workerClient.request = null
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            service.readFile(reference, access.copy(expectedProjectId = Project.Id("other")), 10)
+        }
+        kotlin.test.assertNull(workerClient.request)
+        Mockito.`when`(userDirectoryService.findActiveById(actor.id)).thenReturn(null)
+        kotlin.test.assertFailsWith<IllegalStateException> { service.readFile(reference, access, 10) }
+        kotlin.test.assertNull(workerClient.request)
     }
 
-    private class RecordingWorkerWorkspaceTextFileClient : WorkerWorkspaceTextFileClient {
-        var request: WorkerWorkspaceTextFileReadRequest? = null
+    private class RecordingWorkerWorkspaceFileClient : WorkerWorkspaceFileClient {
+        var request: WorkerWorkspaceFileReadRequest? = null
         var access: WorkspacePathAccessContext? = null
+        var content = com.gromozeka.domain.model.BinaryContent.fromText("content")
 
-        override suspend fun read(request: WorkerWorkspaceTextFileReadRequest, access: WorkspacePathAccessContext): WorkspaceTextFile {
+        override suspend fun read(request: WorkerWorkspaceFileReadRequest, access: WorkspacePathAccessContext): WorkspaceFile {
             this.request = request
             this.access = access
-            return WorkspaceTextFile(
+            return WorkspaceFile(
                 reference = request.reference,
                 resolvedPath = "/workspace/docs/memory.md",
                 fileName = "memory.md",
-                content = "content",
-                sizeBytes = 7,
+                content = content,
+                sizeBytes = content.bytes().size.toLong(),
             )
         }
     }

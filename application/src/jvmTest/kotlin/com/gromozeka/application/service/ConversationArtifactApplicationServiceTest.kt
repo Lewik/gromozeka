@@ -12,6 +12,7 @@ import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.domain.service.ArtifactContentStore
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant
+import kotlin.time.Clock
 import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -334,6 +335,116 @@ class ConversationArtifactApplicationServiceTest {
     }
 
     @Test
+    fun `fork batches metadata and validation and does not read bytes through upload`() = runBlocking {
+        val bytes = "searchable tool output".encodeToByteArray()
+        val artifact = service.upload(conversation, null, ArtifactUpload("output.txt", "text/plain", bytes, Artifact.Purpose.TOOL_OUTPUT))
+        val message = userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(artifact.reference()))
+        service.validateReferences(conversation.id, message.content)
+        val beforeFind = repository.findBatchCalls
+        val beforeCommit = repository.commitCalls
+        val store = object : ArtifactContentStore by contentStore {
+            override suspend fun read(id: Artifact.Id): ByteArray = error("Cloning must not materialize bytes")
+            override suspend fun write(id: Artifact.Id, content: ByteArray) = error("Cloning must not upload again")
+        }
+        val target = conversation("batch-target", "project-1")
+        val cloned = ConversationArtifactApplicationService(repository, store).cloneReferences(conversation.id, target, List(1000) { message })
+        val copy = repository.findByConversation(target.id).single()
+        assertEquals(1, repository.cloneCalls)
+        assertEquals(beforeFind + 1, repository.findBatchCalls)
+        assertEquals(beforeCommit + 1, repository.commitCalls)
+        assertEquals(1, contentStore.copyCalls)
+        assertEquals(artifact.source, copy.source)
+        assertEquals(repository.searchableText[artifact.id], repository.searchableText[copy.id])
+        assertTrue(cloned.all { (it.content.single() as Conversation.Message.ContentItem.ArtifactItem).artifact.id == copy.id })
+        contentStore.delete(artifact.id)
+        assertContentEquals(bytes, contentStore.read(copy.id), "A fork owns an independent file")
+    }
+
+    @Test
+    fun `fork rejects invalid metadata and limits before allocating copies`() = runBlocking {
+        val artifact = service.upload(conversation, null, ArtifactUpload("data.txt", "text/plain", "x".encodeToByteArray(), Artifact.Purpose.USER_ATTACHMENT))
+        val message = userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(artifact.reference()))
+        val target = conversation("invalid-target", "project-1")
+        assertFailsWith<IllegalArgumentException> { service.cloneReferences(conversation.id, target, listOf(message)) }
+        service.validateReferences(conversation.id, message.content)
+        assertFailsWith<IllegalArgumentException> { service.cloneReferences(Conversation.Id("wrong-owner"), target, listOf(message)) }
+        assertFailsWith<IllegalArgumentException> { service.cloneReferences(conversation.id, target.copy(projectId = Project.Id("other-project")), listOf(message)) }
+        assertFailsWith<IllegalArgumentException> { service.cloneReferences(conversation.id, target, listOf(message.copy(content = List(ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE + 1) { message.content.single() }))) }
+        assertFailsWith<IllegalArgumentException> { service.cloneReferences(conversation.id, target, listOf(message.copy(content = listOf(
+            Conversation.Message.ContentItem.ArtifactItem(artifact.reference().copy(fileName = "spoofed")))))) }
+        assertEquals(0, repository.cloneCalls)
+        assertEquals(0, contentStore.copyCalls)
+        assertTrue(repository.findByConversation(target.id).isEmpty())
+    }
+
+    @Test
+    fun `copy failure or cancellation removes staged clones without changing committed sources`() = runBlocking {
+        for (cancel in listOf(false, true)) {
+            val sources = (0..1).map { index ->
+                service.upload(conversation, null, ArtifactUpload("data-$index.txt", "text/plain", "data-$index".encodeToByteArray(), Artifact.Purpose.USER_ATTACHMENT))
+            }
+            val messages = sources.map { userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(it.reference())) }
+            messages.forEach { service.validateReferences(conversation.id, it.content) }
+            val storedIds = contentStore.listIds()
+            val target = conversation("failed-target-$cancel", "project-1")
+            var copies = 0
+            val broken = object : ArtifactContentStore by contentStore {
+                override suspend fun copy(sourceId: Artifact.Id, targetId: Artifact.Id) {
+                    contentStore.copy(sourceId, targetId)
+                    if (++copies == 2) {
+                        if (cancel) throw kotlinx.coroutines.CancellationException("Synthetic cancellation")
+                        else error("Synthetic IO failure")
+                    }
+                }
+            }
+            val f = ConversationArtifactApplicationService(repository, broken)
+            if (cancel) assertFailsWith<kotlinx.coroutines.CancellationException> { f.cloneReferences(conversation.id, target, messages) }
+            else assertFailsWith<IllegalStateException> { f.cloneReferences(conversation.id, target, messages) }
+            assertTrue(repository.findByConversation(target.id).isEmpty())
+            assertEquals(1, f.collectGarbage(Clock.System.now()).deletedOrphanedContent,
+                "A file created before a lost copy result is cleaned by the orphan collector")
+            assertEquals(storedIds, contentStore.listIds())
+            sources.forEach { assertEquals(Artifact.State.COMMITTED, repository.findById(it.id)?.state) }
+        }
+    }
+
+    @Test
+    fun `uncertain artifact commit never deletes completed copies`() = runBlocking {
+        val source = service.upload(conversation, null, ArtifactUpload("data.txt", "text/plain", "data".encodeToByteArray(), Artifact.Purpose.USER_ATTACHMENT))
+        val message = userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(source.reference()))
+        service.validateReferences(conversation.id, message.content)
+        val target = conversation("uncertain-copy", "project-1")
+        val uncertain = object : ArtifactRepository by repository {
+            override suspend fun commit(ids: List<Artifact.Id>, committedAt: Instant) {
+                repository.commit(ids, committedAt)
+                error("Synthetic lost commit response")
+            }
+        }
+        assertFailsWith<IllegalStateException> {
+            ConversationArtifactApplicationService(uncertain, contentStore).cloneReferences(conversation.id, target, listOf(message))
+        }
+        val copy = repository.findByConversation(target.id).single()
+        assertEquals(Artifact.State.COMMITTED, copy.state)
+        assertContentEquals(contentStore.read(source.id), contentStore.read(copy.id))
+    }
+
+    @Test
+    fun `external references clone metadata without reading or writing content`() = runBlocking {
+        val source = service.registerExternal(Artifact(Artifact.Id("external-source"), conversation.projectId, conversation.id, null,
+            "remote.pdf", "application/pdf", null, Artifact.ContentSource.Telegram("connection", "file", "unique"),
+            Artifact.Purpose.USER_ATTACHMENT, createdAt = Clock.System.now()))
+        val message = userMessage(conversation.id, Conversation.Message.ContentItem.ArtifactItem(source.reference()))
+        service.validateReferences(conversation.id, message.content)
+        val target = conversation("external-copy", "project-1")
+        val cloned = ConversationArtifactApplicationService(repository, FailingArtifactContentStore)
+            .cloneReferences(conversation.id, target, listOf(message))
+        val copy = repository.findByConversation(target.id).single()
+        assertEquals(source.source, copy.source)
+        assertEquals(Artifact.State.COMMITTED, copy.state)
+        assertEquals(copy.reference(), (cloned.single().content.single() as Conversation.Message.ContentItem.ArtifactItem).artifact)
+    }
+
+    @Test
     fun `reference metadata mismatch is rejected without committing draft`() = runBlocking {
         val artifact = service.upload(
             conversation = conversation,
@@ -494,14 +605,31 @@ private class InMemoryArtifactRepository : ArtifactRepository {
         this.searchableText[it.id] = searchableText
     }
 
+    var cloneCalls = 0
+    var findBatchCalls = 0
+    var commitCalls = 0
+    override suspend fun cloneBatch(sourceConversationId: Conversation.Id, targetConversation: Conversation,
+        sourceToTargetIds: Map<Artifact.Id, Artifact.Id>, createdAt: Instant): List<Artifact> {
+        cloneCalls++
+        val copies = sourceToTargetIds.map { (sourceId, targetId) ->
+            val source = requireNotNull(artifacts[sourceId])
+            require(targetId !in artifacts && source.conversationId == sourceConversationId && source.projectId == targetConversation.projectId && source.state == Artifact.State.COMMITTED)
+            source.copy(id = targetId, conversationId = targetConversation.id, projectId = targetConversation.projectId,
+                createdAt = createdAt, state = Artifact.State.DRAFT, committedAt = null) to searchableText[sourceId]
+        }
+        copies.forEach { (artifact, text) -> artifacts[artifact.id] = artifact; searchableText[artifact.id] = text }
+        return copies.map { it.first }
+    }
+
     override suspend fun findById(id: Artifact.Id): Artifact? = artifacts[id]
 
-    override suspend fun findByIds(ids: List<Artifact.Id>): List<Artifact> = ids.mapNotNull(artifacts::get)
+    override suspend fun findByIds(ids: List<Artifact.Id>): List<Artifact> { findBatchCalls++; return ids.distinct().mapNotNull(artifacts::get) }
 
     override suspend fun findByConversation(conversationId: Conversation.Id): List<Artifact> =
         artifacts.values.filter { it.conversationId == conversationId }
 
     override suspend fun commit(ids: List<Artifact.Id>, committedAt: Instant) {
+        commitCalls++
         ids.distinct().forEach { id ->
             val artifact = requireNotNull(artifacts[id])
             if (artifact.state == Artifact.State.DRAFT) {
@@ -537,6 +665,13 @@ private class InMemoryArtifactContentStore : ArtifactContentStore {
         this.content[id] = content.copyOf()
     }
 
+    var copyCalls = 0
+    override suspend fun copy(sourceId: Artifact.Id, targetId: Artifact.Id) {
+        copyCalls++
+        check(targetId !in content)
+        content[targetId] = requireNotNull(content[sourceId]).copyOf()
+    }
+
     override suspend fun read(id: Artifact.Id): ByteArray =
         requireNotNull(content[id]).copyOf()
 
@@ -552,6 +687,7 @@ private object FailingArtifactContentStore : ArtifactContentStore {
         error("Storage unavailable")
     }
 
+    override suspend fun copy(sourceId: Artifact.Id, targetId: Artifact.Id) = error("Storage unavailable")
     override suspend fun read(id: Artifact.Id): ByteArray = error("Storage unavailable")
 
     override suspend fun delete(id: Artifact.Id) = Unit

@@ -12,12 +12,12 @@ import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
 import com.gromozeka.domain.service.WorkerAudioCaptureHandler
-import com.gromozeka.domain.service.WorkerWorkspaceTextFileHandler
+import com.gromozeka.domain.service.WorkerWorkspaceFileHandler
 import com.gromozeka.remote.protocol.MAX_WORKER_GATEWAY_MESSAGE_BYTES
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WorkerAudioCaptureGatewayCodec
-import com.gromozeka.remote.protocol.WorkerWorkspaceTextFileGatewayCodec
+import com.gromozeka.remote.protocol.WorkerWorkspaceFileGatewayCodec
 import com.gromozeka.remote.protocol.AiRequestResponseGatewayCodec
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -236,7 +236,7 @@ class WorkerGatewayOperationHandler(
     private val workerControlHandler: WorkerControlHandler,
     private val aiRequestResponseHandler: AiRequestResponseExecutionHandler,
     private val workerAudioCaptureHandler: WorkerAudioCaptureHandler,
-    private val workerWorkspaceTextFileHandler: WorkerWorkspaceTextFileHandler,
+    private val workerWorkspaceFileHandler: WorkerWorkspaceFileHandler,
     private val parallelToolExecutor: ParallelToolExecutor,
     private val visualRuntime: VisualWorkerRuntime,
 ) {
@@ -276,11 +276,11 @@ class WorkerGatewayOperationHandler(
                     WorkerGatewayOperation.AUDIO_CAPTURE ->
                         WorkerAudioCaptureGatewayCodec.execute(request.payload, identity, workerAudioCaptureHandler)
 
-                    WorkerGatewayOperation.WORKSPACE_TEXT_FILE ->
-                        WorkerWorkspaceTextFileGatewayCodec.execute(
+                    WorkerGatewayOperation.WORKSPACE_FILE ->
+                        WorkerWorkspaceFileGatewayCodec.execute(
                             request.payload,
                             identity,
-                            workerWorkspaceTextFileHandler,
+                            workerWorkspaceFileHandler,
                         )
 
                     WorkerGatewayOperation.VISUAL_COMMAND -> {

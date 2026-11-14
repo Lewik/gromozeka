@@ -93,6 +93,8 @@ conversation steps reuse a content-bound usage baseline and local estimates on S
 only missing/invalidated baselines use the configured counter. Model configurations can
 select the current count API, local-only counting, or another model configuration.
 See [context counting policy](ai-http-settings.md#context-counting-policy).
+Protocol 29 adds tool-free `isolated_ai_call_v1` inference and binary workspace file
+reads. Server and Workers must be updated together. See [isolated AI calls](ai-call.md).
 
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
@@ -946,6 +948,17 @@ manual retry; it does not promise that no new Conversation was created.
 participants and pin catalog in one SQL transaction. All pin mutations/copies lock
 the owner Conversation row. This is **not** a new all-or-nothing guarantee for the
 rest of the pre-existing fork/history/artifact-file pipeline.
+
+Fork keeps independent message and artifact identities, including archived compaction
+sources. Message inserts, artifact metadata cloning, artifact commitment and thread links
+use bounded database batches rather than one transaction per item. Managed files are
+copied byte-for-byte to new files; the existing digest and searchable text are reused,
+without sharing file ownership or downloading external artifacts. Copy failure or cancellation
+cleans up the attempt's drafts; committed artifacts are never removed as speculative cleanup.
+This does not make the whole multi-stage fork atomic. `PostgresConversationForkTest` exercises
+8,000 messages and 3,500 files against isolated PostgreSQL and records elapsed time and JDBC
+execution/commit counts; `LocalArtifactContentStoreTest` checks independent files on Linux
+and Windows. Neither test forks real user conversations.
 
 ### CRUD, limits and authorization
 

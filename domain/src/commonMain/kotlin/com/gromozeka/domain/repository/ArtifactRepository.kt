@@ -7,6 +7,14 @@ import kotlin.time.Instant
 interface ArtifactRepository {
     suspend fun save(artifact: Artifact, searchableText: String? = null): Artifact
 
+    /** Copy committed metadata and search text to new DRAFT identities in one transaction. No file IO. */
+    suspend fun cloneBatch(
+        sourceConversationId: Conversation.Id,
+        targetConversation: Conversation,
+        sourceToTargetIds: Map<Artifact.Id, Artifact.Id>,
+        createdAt: Instant,
+    ): List<Artifact>
+
     suspend fun findById(id: Artifact.Id): Artifact?
 
     suspend fun findByIds(ids: List<Artifact.Id>): List<Artifact>

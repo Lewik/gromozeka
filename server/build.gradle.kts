@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.commonmark)
+    implementation(libs.json.schema.validator)
+    implementation(libs.jackson.module.kotlin)
     testImplementation(libs.mcp.kotlin.sdk.client)
     implementation(libs.klog)
     implementation(libs.spring.security.crypto)
@@ -60,6 +62,8 @@ dependencies {
     testImplementation(project(":worker-runtime"))
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.flyway.core)
+    testImplementation(libs.exposed.jdbc)
+    testImplementation(libs.hikaricp)
     // Fake protocol peers for the unchanged Ktor Worker/client transport tests only.
     testImplementation(platform(libs.ktor.bom))
     testImplementation(libs.ktor.server.test.host)

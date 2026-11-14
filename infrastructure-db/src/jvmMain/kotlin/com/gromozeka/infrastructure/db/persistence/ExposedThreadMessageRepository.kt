@@ -38,10 +38,12 @@ class ExposedThreadMessageRepository(
     }
 
     override suspend fun addBatch(links: List<ThreadMessageLink>): Unit = dbQuery {
-        ThreadMessages.batchInsert(links) { link ->
-            this[ThreadMessages.threadId] = link.threadId.value
-            this[ThreadMessages.messageId] = link.messageId.value
-            this[ThreadMessages.position] = link.position
+        links.chunked(256).forEach { batch ->
+            ThreadMessages.batchInsert(batch, shouldReturnGeneratedValues = false) { link ->
+                this[ThreadMessages.threadId] = link.threadId.value
+                this[ThreadMessages.messageId] = link.messageId.value
+                this[ThreadMessages.position] = link.position
+            }
         }
     }
 

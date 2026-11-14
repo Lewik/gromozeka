@@ -26,7 +26,21 @@ import kotlin.time.Duration.Companion.seconds
 
 /** Real managed shell/Python/SDK against a synthetic MCP peer; no installed application or user credentials. */
 class ManagedCommandScriptSdkTest {
-    @Test fun `first Python SDK call uses automatic environment only after task and hash registration`() = runBlocking<Unit> {
+    @Test fun `first Python SDK call uses automatic environment only after task and hash registration`() = runSdk(false)
+
+    @Test fun `Python reads chunks and invokes isolated model without exposing inputs or intermediate answers`() = runSdk(true)
+
+    private fun runSdk(aiCall: Boolean) = runBlocking<Unit> {
+        val ai = if (aiCall) AiCallServiceTest.Fixture() else null
+        ai?.execute = { request ->
+            val text = (request.messages.single().content.single() as com.gromozeka.domain.model.Conversation.Message.ContentItem.UserMessage).text
+            assertTrue(text.startsWith("PRIVATE_CHUNK_"))
+            ai.response.copy(messages = ai.answer("""{"count":1,"private":"INTERMEDIATE_ANSWER"}"""))
+        }
+        val callback = ai?.let { fixture -> AiCallToolContributor(object : ObjectProvider<AiCallService> {
+            override fun getObject() = fixture.service
+        }).callbacks.single() }
+        val wireName = if (aiCall) "grz_ai_call__v17" else "test_echo"
         val home = Files.createTempDirectory("managed-script-sdk-").toFile()
         val oldHome = System.getProperty("GROMOZEKA_HOME")
         val state = TestCommandState()
@@ -55,12 +69,25 @@ class ManagedCommandScriptSdkTest {
                 }
                 val result = when (method) {
                     "initialize" -> buildJsonObject { put("protocolVersion", "2025-11-25") }
-                    "tools/list" -> Json.parseToJsonElement("""{"tools":[{"name":"test_echo","inputSchema":{"type":"object","properties":{},"additionalProperties":false}}]}""")
+                    "tools/list" -> buildJsonObject { put("tools", buildJsonArray { add(buildJsonObject {
+                        put("name", wireName)
+                        put("inputSchema", Json.parseToJsonElement(callback?.definition?.inputSchema ?: """{"type":"object","properties":{},"additionalProperties":false}"""))
+                    }) }) }
                     "tools/call" -> {
-                        check(request.getValue("params").jsonObject.getValue("name") == JsonPrimitive("test_echo"))
-                        check(request.getValue("params").jsonObject.getValue("arguments").jsonObject.isEmpty())
+                        check(request.getValue("params").jsonObject.getValue("name") == JsonPrimitive(wireName))
+                        val arguments = request.getValue("params").jsonObject.getValue("arguments").jsonObject
                         calls.incrementAndGet()
-                        Json.parseToJsonElement("""{"content":[{"type":"text","text":"ok"}],"structuredContent":{"ok":true},"isError":false}""")
+                        if (callback != null) {
+                            val result = runBlocking { callback.callResult(arguments.toString(), requireNotNull(ai).context) }
+                            buildJsonObject {
+                                put("content", buildJsonArray { add(buildJsonObject { put("type", "text"); put("text", result.renderText()) }) })
+                                put("structuredContent", requireNotNull(result.structuredContent))
+                                put("isError", result.isError == true)
+                            }
+                        } else {
+                            check(arguments.isEmpty())
+                            Json.parseToJsonElement("""{"content":[{"type":"text","text":"ok"}],"structuredContent":{"ok":true},"isError":false}""")
+                        }
                     }
                     else -> error("Unexpected synthetic MCP method")
                 }
@@ -91,13 +118,35 @@ class ManagedCommandScriptSdkTest {
                 environmentProfile = Mockito.mock(WorkerEnvironmentProfile::class.java))
             val provider = object : ObjectProvider<ConversationRuntimeWorkerDescriptor> { override fun getObject() = descriptor }
             service = DefaultCommandTaskService(LocalCommandProcessRunner(), state, provider, scripts)
-            val script = File(home, "invoke.py").apply { writeText("""
+            File(home, "input.txt").writeText("PRIVATE_CHUNK_ONE\nPRIVATE_CHUNK_TWO\n")
+            val code = if (aiCall) """
+                import grz
+                from pathlib import Path
+                with grz.Client.from_env() as client:
+                    tools = [t for t in client.list_tools() if t["name"].startswith("grz_ai_call")]
+                    assert len(tools) == 1
+                    name = tools[0]["name"]
+                    assert name == "grz_ai_call__v17"
+                    counts = []
+                    for chunk in Path(__file__).with_name("input.txt").read_text().splitlines():
+                        response = client.call(name, {
+                            "model_configuration_id": "selected", "prompt": "Count records",
+                            "inputs": [{"type": "text", "text": chunk}],
+                            "response_schema": {"type": "object", "required": ["count"], "properties": {"count": {"type": "integer"}}}
+                        })["structuredContent"]
+                        assert response["success"] is True
+                        assert response["result"]["status"] == "complete"
+                        counts.append(response["result"]["output"]["count"])
+                    assert sum(counts) == 2
+                print("SDK_OK: extracted 2 records")
+            """ else """
                 import grz
                 with grz.Client.from_env() as client:
                     result = client.call("test_echo")
                     assert result["structuredContent"]["ok"] is True
                 print("SDK_OK")
-            """.trimIndent()) }
+            """
+            val script = File(home, "invoke.py").apply { writeText(code.trimIndent()) }
             val windows = System.getProperty("os.name").startsWith("Windows")
             val python = System.getenv("GRZ_TEST_PYTHON") ?: if (windows) "python" else "python3"
             fun quote(value: String) = if (windows) "\"$value\"" else "'" + value.replace("'", "'\\''") + "'"
@@ -111,7 +160,14 @@ class ManagedCommandScriptSdkTest {
             assertEquals(CommandTask.Status.COMPLETED, completed.task.status, completed.output)
             assertEquals(0, completed.task.exitCode, completed.output)
             assertContains(completed.output, "SDK_OK")
-            assertEquals(1, calls.get())
+            assertEquals(if (aiCall) 2 else 1, calls.get())
+            assertFalse(completed.output.contains("PRIVATE_CHUNK"))
+            assertFalse(completed.output.contains("INTERMEDIATE_ANSWER"))
+            if (ai != null) {
+                assertEquals(2, ai.calls.size)
+                assertTrue(ai.artifactRows.isEmpty())
+                assertNotEquals(ai.calls[0].messages.single().conversationId, ai.calls[1].messages.single().conversationId)
+            }
             assertEquals(0, unauthorized.get(), "The child must never race ahead of registration")
             assertNotNull(registeredHash.get())
             assertFalse(completed.output.contains(CommandScriptTokens.PREFIX))

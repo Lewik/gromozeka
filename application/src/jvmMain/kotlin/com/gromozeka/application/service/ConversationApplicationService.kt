@@ -348,8 +348,8 @@ class ConversationApplicationService(
         // Allocate all IDs before copying: coverage and replay-invalidations belong to
         // the fork, while originalIds remain immutable provenance back to the source.
         val messageIdMap = sourceMessages.associate { it.id to Conversation.Message.Id(uuid7()) }
-        for (message in sourceMessages) {
-            val newMessage = message.copy(
+        val newMessages = sourceMessages.map { message ->
+            message.copy(
                 id = messageIdMap.getValue(message.id),
                 conversationId = newConversationId,
                 content = message.content.map { item ->
@@ -361,9 +361,9 @@ class ConversationApplicationService(
                 },
                 createdAt = now
             )
-            messageRepo.save(newMessage)
         }
-        
+        messageRepo.saveBatch(newMessages)
+
         val newLinks = sourceLinks.map { link ->
             link.copy(
                 threadId = newThread.id,

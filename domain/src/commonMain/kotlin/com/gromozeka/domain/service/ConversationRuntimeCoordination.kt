@@ -406,6 +406,7 @@ enum class ConversationRuntimeCapability {
     MEMORY_PIPELINE,
     /** Binary support for isolated tool-free query purpose, not a separate AI permission. */
     AI_ISOLATED_CONTEXT_QUERY,
+    AI_ISOLATED_CALL,
 }
 
 @Serializable

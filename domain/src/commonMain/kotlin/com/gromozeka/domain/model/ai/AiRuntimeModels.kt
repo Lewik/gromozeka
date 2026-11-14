@@ -18,6 +18,12 @@ const val AI_PROVIDER_MANAGED_TOOL_METADATA_KEY = "providerManagedTool"
 /** One application-level, tool-free call over a read-only context view; never a live turn. */
 const val AI_CONTEXT_QUERY_PURPOSE = "AGENT_CONTEXT_QUERY"
 
+/** One tool-free call on explicit inputs, with no conversation inheritance or repair loop. */
+const val AI_ISOLATED_CALL_PURPOSE = "ISOLATED_AI_CALL"
+
+fun String?.isToolFreeIsolatedCall(): Boolean = this == AI_CONTEXT_QUERY_PURPOSE || this == AI_ISOLATED_CALL_PURPOSE
+
+
 /**
  * Canonical request for one model execution step inside Gromozeka.
  *
