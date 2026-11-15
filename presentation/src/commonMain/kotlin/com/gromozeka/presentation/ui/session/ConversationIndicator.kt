@@ -31,19 +31,27 @@ import com.gromozeka.presentation.ui.GromozekaRing
 import com.gromozeka.presentation.ui.gromozekaRingStrokeWidth
 import com.gromozeka.presentation.ui.rememberGromozekaLoadingPhase
 
-internal enum class ConversationActivity { UNKNOWN, READY, WORKING, PAUSING, PAUSED, STOPPING }
+internal enum class ConversationActivity {
+    UNKNOWN, READY, WORKING, PAUSING, PAUSED, STOPPING;
+
+    val isActive: Boolean get() = this == WORKING || this == PAUSING || this == STOPPING
+}
 internal enum class ConversationPressure { UNKNOWN, NORMAL, GLOBAL_WAIT, LOCAL_WAIT }
 internal enum class ConversationIndicatorDrawing(val size: Dp) { FULL(28.dp), COMPACT(14.dp) }
 internal enum class ConversationCenterMark { NONE, READY, UNREAD, PAUSED, STOPPING }
+
+internal enum class CompactIndicatorContent { HIDDEN, UNREAD_ONLY, STATUS }
 
 internal enum class CompactIndicatorMode {
     ALWAYS,
     ACTIVITY_OR_ATTENTION;
 
-    fun isVisible(state: ConversationIndicatorState): Boolean = when (this) {
-        ALWAYS -> true
-        ACTIVITY_OR_ATTENTION -> state.activity != ConversationActivity.READY ||
-            state.pressure != ConversationPressure.NORMAL || state.unread || state.hasTurnProblem || state.waitReasons.isNotEmpty()
+    fun content(state: ConversationIndicatorState): CompactIndicatorContent = when {
+        this == ALWAYS || state.activity != ConversationActivity.READY ||
+            state.pressure != ConversationPressure.NORMAL || state.hasTurnProblem || state.waitReasons.isNotEmpty() ->
+            CompactIndicatorContent.STATUS
+        state.unread -> CompactIndicatorContent.UNREAD_ONLY
+        else -> CompactIndicatorContent.HIDDEN
     }
 }
 
@@ -56,11 +64,25 @@ internal fun CompactConversationIndicator(
 ) {
     // Keep the slot when hidden so changing activity does not move the tab title.
     Box(modifier.size(ConversationIndicatorDrawing.COMPACT.size)) {
-        if (mode.isVisible(state)) {
-            ConversationIndicator(state, ConversationIndicatorDrawing.COMPACT, description)
+        when (mode.content(state)) {
+            CompactIndicatorContent.HIDDEN -> Unit
+            CompactIndicatorContent.UNREAD_ONLY -> {
+                val color = indicatorAttentionColor(MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+                Canvas(Modifier.fillMaxSize().semantics { contentDescription = description }
+                    .testTag("conversation-indicator-mark-UNREAD")) {
+                    drawCircle(color, unreadDotRadius.toPx(), center)
+                }
+            }
+            CompactIndicatorContent.STATUS ->
+                ConversationIndicator(state, ConversationIndicatorDrawing.COMPACT, description)
         }
     }
 }
+
+private val unreadDotRadius = 3.dp
+
+private fun indicatorAttentionColor(dark: Boolean): Color =
+    if (dark) Color(0xFFFF5A64) else Color(0xFFC02030)
 
 internal data class ConversationIndicatorState(
     val activity: ConversationActivity,
@@ -69,7 +91,7 @@ internal data class ConversationIndicatorState(
     val hasTurnProblem: Boolean,
     val waitReasons: Set<AiRequestWaitReason>,
 ) {
-    val animated: Boolean get() = activity == ConversationActivity.WORKING || activity == ConversationActivity.PAUSING || activity == ConversationActivity.STOPPING
+    val animated: Boolean get() = activity.isActive
     val centerMark: ConversationCenterMark get() = when {
         activity == ConversationActivity.PAUSED || activity == ConversationActivity.PAUSING -> ConversationCenterMark.PAUSED
         activity == ConversationActivity.STOPPING -> ConversationCenterMark.STOPPING
@@ -108,7 +130,7 @@ internal fun conversationIndicatorState(
     val pressure = when {
         !connected || load == null -> ConversationPressure.UNKNOWN
         waits.isNotEmpty() -> ConversationPressure.LOCAL_WAIT
-        load.waitingForTpm > 0 || load.waitingForConcurrency > 0 -> ConversationPressure.GLOBAL_WAIT
+        activity.isActive && (load.waitingForTpm > 0 || load.waitingForConcurrency > 0) -> ConversationPressure.GLOBAL_WAIT
         else -> ConversationPressure.NORMAL
     }
     return ConversationIndicatorState(activity, pressure, unread, runtime?.visibleTurnProblems().orEmpty().isNotEmpty() ||
@@ -130,7 +152,7 @@ internal fun ConversationIndicator(
         ConversationPressure.GLOBAL_WAIT -> if (dark) Color(0xFFFFE14A) else Color(0xFF967000)
         ConversationPressure.LOCAL_WAIT -> if (dark) Color(0xFFACB2BC) else Color(0xFF686E78)
     }
-    val red = if (dark) Color(0xFFFF5A64) else Color(0xFFC02030)
+    val red = indicatorAttentionColor(dark)
     Box(modifier.size(drawing.size).then(if (state.animated) Modifier.progressSemantics() else Modifier)
         .semantics { contentDescription = description }) {
         val activityPhase: () -> Float? = { if (state.animated) phase.value else null }
@@ -146,7 +168,7 @@ internal fun ConversationIndicator(
             val center = Offset(size.width / 2f, size.height * if (drawing == ConversationIndicatorDrawing.FULL) 0.35f else 0.5f)
             val stroke = if (drawing == ConversationIndicatorDrawing.FULL) size.minDimension * 48f / 800f else gromozekaRingStrokeWidth.toPx()
             when (state.centerMark) {
-                ConversationCenterMark.UNREAD -> drawCircle(red, 3.dp.toPx(), center)
+                ConversationCenterMark.UNREAD -> drawCircle(red, unreadDotRadius.toPx(), center)
                 ConversationCenterMark.PAUSED -> {
                     val dx = stroke * 1.2f
                     val half = stroke * 1.4f
