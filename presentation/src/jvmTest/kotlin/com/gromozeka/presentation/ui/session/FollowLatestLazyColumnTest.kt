@@ -159,6 +159,7 @@ class FollowLatestLazyColumnTest {
             }
         }
         waitForTag(itemTag(30))
+        runOnIdle { kotlin.test.assertTrue(requestedBoundaries.isEmpty(), "Opening the latest page must not load older history") }
         repeat(5) {
             if (requestedBoundaries.isEmpty()) {
                 onNodeWithTag(UiTestTag.MessageList.value).performTouchInput { swipeDown() }

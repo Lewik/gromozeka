@@ -1977,7 +1977,6 @@
     "voice.unavailable": "Запись голоса недоступна на этом клиенте",
     "voice.workerAudioRequired": "Выберите микрофон воркера, чтобы записывать звук на воркере",
     "voice.workerInputUnavailable": "Аудиовход {input} недоступен на воркере {worker}",
-    "chat.history.loadOlder": "Загрузить старые сообщения",
     "chat.history.loadFull": "Загрузить сообщение полностью",
     "chat.composer.placeholder": "Напишите или надиктуйте…",
     "chat.voice.mode.auto": "Авто",

@@ -1903,7 +1903,6 @@
     "voice.unavailable": "Sprachaufnahme ist auf diesem Client nicht verfügbar",
     "voice.workerAudioRequired": "Wähle ein Worker-Mikrofon aus, um Audio auf einem Worker aufzunehmen",
     "voice.workerInputUnavailable": "Der Audioeingang {input} ist auf Worker {worker} nicht verfügbar",
-    "chat.history.loadOlder": "Ältere Nachrichten laden",
     "chat.history.loadFull": "Vollständige Nachricht laden",
     "chat.composer.placeholder": "Schreiben oder diktieren…",
     "chat.voice.mode.auto": "Auto",

@@ -168,7 +168,6 @@ class TabViewModel(
 
     fun rememberHistoryAnchor(messageId: Conversation.Message.Id?) { historyAnchor.value = messageId }
 
-    fun loadOlderHistory() { loadAdjacentHistory(null, older = true) }
     fun loadNewerHistory() { loadAdjacentHistory(null, older = false) }
 
     fun loadOlderHistory(expectedFirstMessageId: Conversation.Message.Id) {
