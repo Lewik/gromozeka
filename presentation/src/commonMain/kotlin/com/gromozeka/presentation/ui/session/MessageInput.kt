@@ -73,7 +73,7 @@ internal fun MessageInput(
     suggestedReplies: SuggestedReplyOptions?,
     suggestedRepliesRegenerating: Boolean,
     onRegenerateSuggestedReplies: (Conversation.Message.Id) -> Unit,
-    onSendMessage: suspend () -> Unit,
+    onSendMessage: () -> Unit,
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState,
@@ -100,6 +100,7 @@ internal fun MessageInput(
     enterKeyAction: EnterKeyAction = EnterKeyAction.NEW_LINE,
     editLastMessageShortcut: KeyboardShortcutBinding? = null,
     onEditLastUserMessage: () -> Boolean = { false },
+    isSubmittingMessage: Boolean = false,
     voiceAutoSend: Boolean = true,
     onVoiceAutoSendChange: (Boolean) -> Unit = {},
     leadingContent: @Composable () -> Unit = {},
@@ -145,10 +146,9 @@ internal fun MessageInput(
         previousPttState = pttState
     }
 
+    val canSubmit = (userInput.isNotBlank() || composerArtifacts.isNotEmpty()) && !artifactUploadInProgress
     val submitInput: () -> Unit = {
-        if ((userInput.isNotBlank() || composerArtifacts.isNotEmpty()) && !artifactUploadInProgress) {
-            coroutineScope.launch { onSendMessage() }
-        }
+        if (canSubmit) onSendMessage()
     }
 
     val hideKeyboard: () -> Unit = { keyboardController?.hide(); focusManager.clearFocus(force = true) }
@@ -432,10 +432,19 @@ internal fun MessageInput(
             }
             BadgedBox(badge = { if (pendingMessagesCount > 0) Badge { Text("$pendingMessagesCount") } }) {
                 CompactButton(
-                    onClick = submitInput, modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.SendButton.value),
+                    onClick = submitInput,
+                    enabled = canSubmit,
+                    modifier = Modifier.size(controls.minHeight).testTag(UiTestTag.SendButton.value)
+                        .semantics { contentDescription = localization.text("chat.input.send") },
                     contentPadding = PaddingValues(spacing.controlGap),
                     tooltip = messageDeliveryMode.displayLabel(localization),
-                ) { Icon(Icons.Default.Send, localization.text("chat.input.send"), Modifier.size(controls.iconSize)) }
+                ) {
+                    if (isSubmittingMessage) {
+                        GromozekaLoadingIndicator(Modifier.size(controls.iconSize).testTag("composer-submitting"))
+                    } else {
+                        Icon(Icons.Default.Send, null, Modifier.size(controls.iconSize))
+                    }
+                }
             }
         }
         Column(Modifier.fillMaxWidth()) {

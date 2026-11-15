@@ -100,6 +100,7 @@ internal fun SessionScreen(
     val lastUserMessageAt by viewModel.lastUserMessageAt.collectAsState()
     val agentMentionCandidates by viewModel.agentMentionCandidates.collectAsState()
     val messageSubmissionError by viewModel.messageSubmissionError.collectAsState()
+    val isSubmittingMessage by viewModel.isSubmittingMessage.collectAsState()
     val suggestedRepliesOverride by viewModel.suggestedRepliesOverride.collectAsState()
     val suggestedRepliesRegeneratingFor by viewModel.suggestedRepliesRegeneratingFor.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -284,6 +285,7 @@ internal fun SessionScreen(
                                 suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor != null,
                                 onRegenerateSuggestedReplies = viewModel::regenerateSuggestedReplies,
                                 onSendMessage = viewModel::submitUserInputToSession,
+                                isSubmittingMessage = isSubmittingMessage,
                                 coroutineScope = coroutineScope,
                                 pttEventHandler = pttEventHandler,
                                 pttState = pttState,
