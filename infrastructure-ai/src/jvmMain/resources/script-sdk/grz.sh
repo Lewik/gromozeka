@@ -1,12 +1,16 @@
 # Source with: . "$GRZ_SDK_HOME/grz.sh"
 # POSIX sh (also Bash). No eval, daemon, downloads, venv or second MCP implementation.
-# GRZ_PYTHON optionally selects an existing executable (a path, NOT shell arguments).
+# GRZ_PYTHON is the Harness-provided interpreter, not a system-Python fallback.
 _grz_sdk_run() {
     if [ -z "${GRZ_SDK_HOME:-}" ] || [ ! -f "$GRZ_SDK_HOME/grz.py" ]; then
         printf '%s\n' 'GRZ_SDK_HOME must point to the shared SDK directory' >&2
         return 1
     fi
-    "${GRZ_PYTHON:-python3}" "$GRZ_SDK_HOME/grz.py" "$@"
+    if [ -z "${GRZ_PYTHON:-}" ] || [ ! -x "$GRZ_PYTHON" ]; then
+        printf '%s\n' 'Managed Python is unavailable; start this script through a prepared Worker' >&2
+        return 1
+    fi
+    "$GRZ_PYTHON" -I -B -u -X utf8 "$GRZ_SDK_HOME/grz.py" "$@"
 }
 
 grz_list_tools() {

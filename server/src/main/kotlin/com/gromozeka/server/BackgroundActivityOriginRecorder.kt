@@ -8,9 +8,12 @@ import com.gromozeka.domain.service.*
 import com.gromozeka.domain.slot.SlotCommandOrigin
 import com.gromozeka.domain.tool.*
 import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_PYTHON_TOOL_NAME
 import com.gromozeka.remote.protocol.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.springframework.stereotype.Service
@@ -79,15 +82,37 @@ class BackgroundActivityOriginRecorder(
         val callId = requireNotNull(launch.reference.toolCallId) { "Tool launch requires a tool call id" }
         val call = toolRequest.toolCalls.singleOrNull { it.id.value == callId }
             ?: error("Unknown background activity tool call")
-        val expectedTool = when (launch.kind) {
-            BackgroundActivityOrigin.Kind.COMMAND -> GRZ_EXECUTE_COMMAND_TOOL_NAME
-            BackgroundActivityOrigin.Kind.MONITOR -> "grz_monitor_command"
-        }
-        require(call.call.name == expectedTool) { "Tool call does not create this activity kind" }
         val input = call.call.input as? JsonObject ?: error("Launch tool input must be an object")
         fun text(name: String) = (input[name] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
-        val commandKey = if (launch.kind == BackgroundActivityOrigin.Kind.COMMAND) "command" else "filter_command"
-        require(text(commandKey) == launch.command) { "Background activity command does not match its request" }
+        val expectedCommand = when (launch.kind) {
+            BackgroundActivityOrigin.Kind.COMMAND -> when (call.call.name) {
+                GRZ_EXECUTE_COMMAND_TOOL_NAME -> text("command")
+                GRZ_EXECUTE_PYTHON_TOOL_NAME -> {
+                    fun source(name: String): String? = when (val value = input[name]) {
+                        null, JsonNull -> null
+                        is JsonPrimitive -> {
+                            require(value.isString) { "$name must be a string" }
+                            value.content
+                        }
+                        else -> error("$name must be a string")
+                    }
+                    val arguments = input["arguments"]?.let { value ->
+                        require(value is JsonArray) { "Python arguments must be an array" }
+                        value.map {
+                            require(it is JsonPrimitive && it.isString) { "Python arguments must be strings" }
+                            it.content
+                        }
+                    }.orEmpty()
+                    PythonProgram(source("code"), source("file_path"), arguments).commandIdentity
+                }
+                else -> error("Tool call does not create a command")
+            }
+            BackgroundActivityOrigin.Kind.MONITOR -> {
+                require(call.call.name == "grz_monitor_command") { "Tool call does not create a monitor" }
+                text("filter_command")
+            }
+        }
+        require(expectedCommand == launch.command) { "Background activity command does not match its request" }
         if (launch.kind == BackgroundActivityOrigin.Kind.MONITOR) {
             require(text("task_id") == launch.sourceTaskId?.value) { "Monitor request names another source command" }
         } else {

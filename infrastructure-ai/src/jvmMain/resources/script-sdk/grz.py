@@ -1,13 +1,20 @@
-"""Dependency-free synchronous client for Gromozeka's stateless HTTP MCP profile.
+"""Async client for Gromozeka's stateless HTTP MCP profile.
 
-Python 3.9+. No OAuth/browser/Keychain, stdio transport, automatic retries or polling.
-Managed commands receive GRZ_MCP_URL and GRZ_MCP_TOKEN automatically from the Harness.
-Outside the Harness, supply an explicit MCP credential and endpoint.
-GRZ_MCP_CONTEXT contains routing defaults, NOT an authorization grant.
-GRZ_MCP_CA_BUNDLE optionally adds the Worker's configured CA bundle to default TLS trust.
+Use the Worker's managed Python environment. The Harness supplies the endpoint,
+command-scoped credential, routing context and configured CA automatically.
+
+    async with Client.from_env() as client:
+        tools = await client.list_tools()
+        schema = await client.describe_tool(exact_name)
+        result = await client.call(exact_name, arguments)
+
+Independent calls on one client can run with asyncio.gather. Calls are never
+retried automatically. A cancelled await does not undo a remote tool's effects.
+The client belongs to one event loop; close it with async with or await close().
 """
+import asyncio
 import copy
-import http.client
+import http.cookiejar
 import ipaddress
 import json
 import math
@@ -15,6 +22,9 @@ import os
 import ssl
 import sys
 import urllib.parse
+
+import certifi
+import httpx
 
 __all__ = ["Client", "Error", "ConfigurationError", "TransportError", "HttpError",
            "ProtocolError", "ToolError"]
@@ -62,6 +72,14 @@ class ToolError(Error):
         super().__init__("MCP tool returned isError=true; inspect exception.result explicitly")
 
 
+class _StatelessCookiePolicy(http.cookiejar.DefaultCookiePolicy):
+    def set_ok(self, cookie, request):
+        return False
+
+    def return_ok(self, cookie, request):
+        return False
+
+
 def _object(value, label):
     if not isinstance(value, dict) or any(not isinstance(k, str) for k in value):
         raise ConfigurationError(label + " must be a JSON object")
@@ -71,6 +89,7 @@ def _object(value, label):
 def _json_loads(text):
     def invalid_constant(_):
         raise ValueError("Non-JSON constant")
+
     def unique_keys(pairs):
         result = {}
         for key, value in pairs:
@@ -78,11 +97,12 @@ def _json_loads(text):
                 raise ValueError("Duplicate JSON key")
             result[key] = value
         return result
+
     return json.loads(text, parse_constant=invalid_constant, object_pairs_hook=unique_keys)
 
 
 class Client:
-    """One script's synchronous client, not thread-safe. Close via `with`.
+    """One script's async MCP client. Use async with and await its operations.
 
     call() returns the COMPLETE MCP result dict (content, structuredContent, isError,
     and extension fields). PENDING/task receipts remain receipts, not completed work.
@@ -92,7 +112,7 @@ class Client:
     def __init__(self, url, token, *, context=None, ca_bundle=None, timeout=60, max_response_bytes=_MAX_RESPONSE_BYTES):
         try:
             parts = urllib.parse.urlsplit(url)
-            port = parts.port
+            parts.port
             host = parts.hostname
             loopback = host == "localhost"
             if host and not loopback:
@@ -116,10 +136,7 @@ class Client:
             raise ConfigurationError("MCP response limit must be a positive integer")
         if ca_bundle is not None and (not isinstance(ca_bundle, str) or not ca_bundle.strip() or "\x00" in ca_bundle):
             raise ConfigurationError("MCP CA bundle must be a nonempty file path")
-        self._ca_bundle = ca_bundle
-        self._scheme, self._host, self._port = parts.scheme, host, port
-        self._path = parts.path or "/"
-        self._token = token
+        self._url, self._token, self._ca_bundle = url, token, ca_bundle
         self._context = _object(context if context is not None else {}, "Context")
         if self._context.keys() - _CONTEXT_FIELDS:
             raise ConfigurationError("Unsupported context selector")
@@ -128,10 +145,14 @@ class Client:
         self._next_id = 0
         self._tools = None
         self._closed = False
+        self._http = None
+        self._loop = None
+        self._initialize_lock = asyncio.Lock()
+        self._catalog_lock = asyncio.Lock()
 
     @classmethod
     def from_env(cls, *, context=None, **options):
-        """context={} deliberately disables ALL inherited routing defaults."""
+        """context={} disables inherited routing defaults, not Server-bound identity."""
         if context is None:
             try:
                 context = _json_loads(os.environ.get("GRZ_MCP_CONTEXT", "{}"))
@@ -142,67 +163,86 @@ class Client:
         return cls(os.environ.get("GRZ_MCP_URL", ""), os.environ.get("GRZ_MCP_TOKEN", ""),
                    context=context, **options)
 
-    def __enter__(self):
-        self.initialize()
+    async def __aenter__(self):
+        try:
+            await self.initialize()
+        except BaseException:
+            await self.close()
+            raise
         return self
 
-    def __exit__(self, *_):
-        self.close()
+    async def __aexit__(self, *_):
+        await self.close()
 
-    def close(self):
+    async def close(self):
         self._closed = True
         self._token = None
         self._tools = None
+        if self._http is not None:
+            await self._http.aclose()
 
-    def initialize(self):
+    def _require_open(self):
         if self._closed:
             raise ConfigurationError("MCP client is closed")
-        if self._version is None:
-            result = self._request("initialize", {
-                "protocolVersion": _SUPPORTED_VERSIONS[0], "capabilities": {},
-                "clientInfo": {"name": "gromozeka-script-sdk", "version": "1"}})
-            version = result.get("protocolVersion")
-            if version not in _SUPPORTED_VERSIONS:
-                raise ProtocolError("Unsupported MCP protocol version")
-            self._version = version
-            try:
-                self._request("notifications/initialized", notification=True)
-            except Error:
-                self._version = None
-                raise
-        return self._version
+        loop = asyncio.get_running_loop()
+        if self._loop is None:
+            self._loop = loop
+        elif self._loop is not loop:
+            raise ConfigurationError("MCP client cannot be shared between event loops")
 
-    def list_tools(self, *, refresh=False):
-        self.initialize()
-        if self._tools is None or refresh:
-            tools, seen, cursor = {}, set(), None
-            for _ in range(1000):
-                page = self._request("tools/list", {} if cursor is None else {"cursor": cursor})
-                if not isinstance(page.get("tools"), list):
-                    raise ProtocolError()
-                for tool in page["tools"]:
-                    if (not isinstance(tool, dict) or not isinstance(tool.get("name"), str) or
-                            not tool["name"] or not isinstance(tool.get("inputSchema"), dict) or tool["name"] in tools):
+    async def initialize(self):
+        self._require_open()
+        async with self._initialize_lock:
+            self._require_open()
+            if self._version is None:
+                result = await self._request("initialize", {
+                    "protocolVersion": _SUPPORTED_VERSIONS[0], "capabilities": {},
+                    "clientInfo": {"name": "gromozeka-script-sdk", "version": "2"}})
+                version = result.get("protocolVersion")
+                if version not in _SUPPORTED_VERSIONS:
+                    raise ProtocolError("Unsupported MCP protocol version")
+                self._version = version
+                try:
+                    await self._request("notifications/initialized", notification=True)
+                except BaseException:
+                    self._version = None
+                    raise
+            return self._version
+
+    async def list_tools(self, *, refresh=False):
+        await self.initialize()
+        async with self._catalog_lock:
+            self._require_open()
+            if self._tools is None or refresh:
+                tools, seen, cursor = {}, set(), None
+                for _ in range(1000):
+                    page = await self._request("tools/list", {} if cursor is None else {"cursor": cursor})
+                    if not isinstance(page.get("tools"), list):
                         raise ProtocolError()
-                    tools[tool["name"]] = tool
-                cursor = page.get("nextCursor")
-                if cursor is None:
-                    self._tools = tools
-                    break
-                if not isinstance(cursor, str) or not cursor or cursor in seen:
-                    raise ProtocolError("Invalid MCP tools pagination")
-                seen.add(cursor)
-            else:
-                raise ProtocolError("MCP tools pagination limit exceeded")
-        return copy.deepcopy(list(self._tools.values()))
+                    for tool in page["tools"]:
+                        if (not isinstance(tool, dict) or not isinstance(tool.get("name"), str) or
+                                not tool["name"] or not isinstance(tool.get("inputSchema"), dict) or tool["name"] in tools):
+                            raise ProtocolError()
+                        tools[tool["name"]] = tool
+                    cursor = page.get("nextCursor")
+                    if cursor is None:
+                        self._tools = tools
+                        break
+                    if not isinstance(cursor, str) or not cursor or cursor in seen:
+                        raise ProtocolError("Invalid MCP tools pagination")
+                    seen.add(cursor)
+                else:
+                    raise ProtocolError("MCP tools pagination limit exceeded")
+            return copy.deepcopy(list(self._tools.values()))
 
-    def describe_tool(self, name):
-        self.list_tools()
-        if name not in self._tools:
-            raise ConfigurationError("Exact tool name is not in this catalog; explicitly refresh list_tools()")
-        return copy.deepcopy(self._tools[name])
+    async def describe_tool(self, name):
+        tools = await self.list_tools()
+        for tool in tools:
+            if tool["name"] == name:
+                return tool
+        raise ConfigurationError("Exact tool name is not in this catalog; explicitly refresh list_tools()")
 
-    def call(self, name, arguments=None, *, context=None, check=True):
+    async def call(self, name, arguments=None, *, context=None, check=True):
         """Explicit context or arguments['_grz'] REPLACES defaults, never merges scopes.
 
         Without an override, only defaults declared by this tool's _grz schema are
@@ -212,7 +252,7 @@ class Client:
         args = _object(arguments if arguments is not None else {}, "Arguments")
         if context is not None and "_grz" in args:
             raise ConfigurationError("Supply context or _grz, not both")
-        tool = self.describe_tool(name)
+        tool = await self.describe_tool(name)
         properties = tool["inputSchema"].get("properties", {})
         if not isinstance(properties, dict):
             raise ProtocolError("Invalid MCP tool schema")
@@ -228,7 +268,7 @@ class Client:
             selected = {k: v for k, v in self._context.items() if k in allowed}
         if selected:
             args["_grz"] = selected
-        result = self._request("tools/call", {"name": name, "arguments": args})
+        result = await self._request("tools/call", {"name": name, "arguments": args})
         if (not isinstance(result.get("content"), list) or
                 not isinstance(result.get("isError", False), bool)):
             raise ProtocolError(outcome_unknown=True)
@@ -236,9 +276,8 @@ class Client:
             raise ToolError(result)
         return result
 
-    def _request(self, method, params=None, *, notification=False):
-        if self._closed:
-            raise ConfigurationError("MCP client is closed")
+    async def _request(self, method, params=None, *, notification=False):
+        self._require_open()
         self._next_id += 1
         request_id = self._next_id
         message = {"jsonrpc": "2.0", "method": method}
@@ -251,115 +290,133 @@ class Client:
         except (TypeError, ValueError, UnicodeError):
             raise ConfigurationError("Request must contain valid JSON and Unicode") from None
         headers = {"Authorization": "Bearer " + self._token, "Content-Type": "application/json",
-                   "Accept": "application/json, text/event-stream", "Connection": "close"}
+                   "Accept": "application/json, text/event-stream", "Accept-Encoding": "identity",
+                   "Connection": "close"}
         if self._version:
             headers["MCP-Protocol-Version"] = self._version
-        # A fresh connection per HTTP request avoids implicit stale-connection replays.
-        # http.client does not follow redirects, send cookies, or use ambient proxies.
-        connection = (http.client.HTTPSConnection(self._host, self._port, timeout=self._timeout,
-                                                 context=self._ssl_context())
-                      if self._scheme == "https" else
-                      http.client.HTTPConnection(self._host, self._port, timeout=self._timeout))
+        if self._http is None:
+            # Stateless requests never replay through a stale pooled connection or carry cookies.
+            self._http = httpx.AsyncClient(
+                verify=self._ssl_context(), timeout=self._timeout, trust_env=False,
+                follow_redirects=False, cookies=http.cookiejar.CookieJar(policy=_StatelessCookiePolicy()),
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=0),
+            )
         uncertain = method == "tools/call"
         try:
-            connection.request("POST", self._path, body, headers)
-            response = connection.getresponse()
-            if notification:
-                if response.status not in (202, 204):
-                    raise HttpError(response.status)
-                return {}
-            if response.status != 200:
-                raise HttpError(response.status, outcome_unknown=uncertain and response.status not in (401, 403))
-            media = response.getheader("Content-Type", "").split(";", 1)[0].strip().lower()
-            if media == "application/json":
-                data = response.read(self._max_bytes + 1)
-                if len(data) > self._max_bytes:
-                    raise ProtocolError("MCP response limit exceeded", outcome_unknown=uncertain)
-                value = _json_loads(data.decode("utf-8"))
-            elif media == "text/event-stream":
-                value = self._sse_response(response, request_id)
-            else:
-                raise ProtocolError("Unsupported MCP response type", outcome_unknown=uncertain)
-            if (not isinstance(value, dict) or value.get("jsonrpc") != "2.0" or
-                    type(value.get("id")) is not int or value["id"] != request_id):
-                raise ProtocolError(outcome_unknown=uncertain)
-            if "error" in value:
-                if "result" in value or not isinstance(value["error"], dict):
+            async with self._http.stream("POST", self._url, content=body, headers=headers) as response:
+                if notification:
+                    if response.status_code not in (202, 204):
+                        raise HttpError(response.status_code)
+                    return {}
+                if response.status_code != 200:
+                    raise HttpError(response.status_code,
+                                    outcome_unknown=uncertain and response.status_code not in (401, 403))
+                media = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+                if media == "application/json":
+                    data = b"".join([chunk async for chunk in self._response_chunks(response)])
+                    value = _json_loads(data.decode("utf-8"))
+                elif media == "text/event-stream":
+                    value = await self._sse_response(response, request_id)
+                else:
+                    raise ProtocolError("Unsupported MCP response type", outcome_unknown=uncertain)
+                if (not isinstance(value, dict) or value.get("jsonrpc") != "2.0" or
+                        type(value.get("id")) is not int or value["id"] != request_id):
                     raise ProtocolError(outcome_unknown=uncertain)
-                code = value["error"].get("code")
-                raise ProtocolError("MCP JSON-RPC error", code=code if type(code) is int else None,
-                                    outcome_unknown=uncertain)
-            if not isinstance(value.get("result"), dict):
-                raise ProtocolError(outcome_unknown=uncertain)
-            return value["result"]
+                if "error" in value:
+                    if "result" in value or not isinstance(value["error"], dict):
+                        raise ProtocolError(outcome_unknown=uncertain)
+                    code = value["error"].get("code")
+                    raise ProtocolError("MCP JSON-RPC error", code=code if type(code) is int else None,
+                                        outcome_unknown=uncertain)
+                if not isinstance(value.get("result"), dict):
+                    raise ProtocolError(outcome_unknown=uncertain)
+                return value["result"]
         except ProtocolError as error:
             if uncertain and not error.outcome_unknown:
                 raise ProtocolError("Invalid MCP response", code=error.code, outcome_unknown=True) from None
             raise
         except Error:
             raise
-        except (OSError, http.client.HTTPException):
+        except (OSError, httpx.HTTPError):
             raise TransportError(outcome_unknown=uncertain) from None
         except (ValueError, UnicodeError):
             raise ProtocolError(outcome_unknown=uncertain) from None
-        finally:
-            connection.close()
 
     def _ssl_context(self):
         try:
             context = ssl.create_default_context()
+            # A private Python distribution may not have a usable system CA file.
+            context.load_verify_locations(cafile=certifi.where())
             if self._ca_bundle is not None:
                 context.load_verify_locations(cafile=self._ca_bundle)
             return context
         except (OSError, ValueError):
             raise ConfigurationError("MCP TLS trust configuration is invalid") from None
 
-    def _sse_response(self, response, request_id):
-        # POST response only. Never opens GET, resumes event IDs, polls, or retries.
-        data, total = [], 0
-        while True:
-            raw = response.readline(self._max_bytes - total + 1)
-            total += len(raw)
+    async def _response_chunks(self, response):
+        total = 0
+        async for chunk in response.aiter_raw():
+            total += len(chunk)
             if total > self._max_bytes:
-                raise ProtocolError("MCP response limit exceeded", outcome_unknown=True)
-            line = raw.decode("utf-8").rstrip("\r\n")
-            if not line:
-                if data:
-                    event = _json_loads("\n".join(data))
-                    data = []
-                    if not isinstance(event, dict):
-                        raise ProtocolError()
-                    if "id" in event:
-                        if "method" in event or event["id"] != request_id:
-                            raise ProtocolError("Unsupported MCP server request or response ID", outcome_unknown=True)
-                        return event
-                    if event.get("jsonrpc") != "2.0" or "method" not in event:
-                        raise ProtocolError()
-                    # Notifications may precede the single response; no tool execution here.
-                if not raw:
-                    raise ProtocolError("MCP stream ended before response", outcome_unknown=True)
-            elif line.startswith("data:"):
-                data.append(line[5:].removeprefix(" "))
+                raise ProtocolError("MCP response limit exceeded")
+            yield chunk
+
+    async def _sse_response(self, response, request_id):
+        # POST response only. Never opens GET, resumes event IDs, polls, or retries.
+        data, pending = [], b""
+
+        def consume(line):
+            if line:
+                if line.startswith("data:"):
+                    data.append(line[5:].removeprefix(" "))
+                return None
+            if not data:
+                return None
+            event = _json_loads("\n".join(data))
+            data.clear()
+            if not isinstance(event, dict):
+                raise ProtocolError()
+            if "id" in event:
+                if "method" in event or event["id"] != request_id:
+                    raise ProtocolError("Unsupported MCP server request or response ID")
+                return event
+            if event.get("jsonrpc") != "2.0" or "method" not in event:
+                raise ProtocolError()
+            return None
+
+        async for chunk in self._response_chunks(response):
+            pending += chunk
+            while b"\n" in pending:
+                line, pending = pending.split(b"\n", 1)
+                value = consume(line.rstrip(b"\r").decode("utf-8"))
+                if value is not None:
+                    return value
+        if pending:
+            consume(pending.rstrip(b"\r").decode("utf-8"))
+        value = consume("")
+        if value is not None:
+            return value
+        raise ProtocolError("MCP stream ended before response")
 
 
-def _main(argv):
+async def _main(argv):
     try:
         if not argv or argv[0] not in ("list", "describe", "call"):
             raise ConfigurationError("Usage: grz.py list | describe NAME | call NAME (JSON arguments on stdin)")
         operation = argv[0]
         if len(argv) != (1 if operation == "list" else 2):
             raise ConfigurationError("Invalid SDK command arguments")
-        with Client.from_env() as client:
+        async with Client.from_env() as client:
             if operation == "list":
-                result = client.list_tools()
+                result = await client.list_tools()
             elif operation == "describe":
-                result = client.describe_tool(argv[1])
+                result = await client.describe_tool(argv[1])
             else:
                 try:
                     args = _json_loads(sys.stdin.read())
                 except (ValueError, UnicodeError):
                     raise ConfigurationError("Arguments on stdin must be JSON") from None
-                result = client.call(argv[1], args)
+                result = await client.call(argv[1], args)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
         return 0
     except ToolError as error:
@@ -372,4 +429,4 @@ def _main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(_main(sys.argv[1:]))
+    sys.exit(asyncio.run(_main(sys.argv[1:])))

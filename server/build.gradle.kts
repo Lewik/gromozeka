@@ -170,6 +170,8 @@ tasks.named("processTestResources") {
 }
 
 tasks.withType<Test> {
+    dependsOn(rootProject.tasks.named("preparePythonRuntime"))
+    systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
     useJUnitPlatform()
 
     if (providers.environmentVariable("GROMOZEKA_ANDROID_LIFECYCLE_TEST").orNull == "true") {

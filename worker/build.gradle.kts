@@ -76,6 +76,7 @@ tasks.named<Jar>("jar") {
 }
 
 tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }.configureEach {
+    dependsOn(rootProject.tasks.named("preparePythonRuntime"))
     systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
     environment(
         "GROMOZEKA_BROWSER_MCP_LAUNCHER",
@@ -131,6 +132,8 @@ listOf("startScripts", "installDist", "distZip", "distTar").forEach { taskName -
 }
 
 tasks.withType<Test> {
+    dependsOn(rootProject.tasks.named("preparePythonRuntime"))
+    systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
     useJUnitPlatform()
     providers.systemProperty("gromozeka.computer-use.live").orNull?.let { value ->
         systemProperty("gromozeka.computer-use.live", value)

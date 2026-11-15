@@ -18,6 +18,34 @@ import kotlinx.serialization.json.jsonPrimitive
 
 class SecretArgumentSubstitutorTest {
     @Test
+    fun `Python source and argv remain literal while named secrets go only to environment`() {
+        val input = """{"code":"reference = 'secret://github-pat'","arguments":["secret://github-pat"],"secret_env":{"TOKEN":"secret://github-pat"}}"""
+        val prepared = SecretArgumentSubstitutor().prepare(
+            com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_PYTHON_TOOL_NAME,
+            input, mapOf("github-pat" to "private-python-token"),
+        )
+        val arguments = Json.parseToJsonElement(prepared.arguments).jsonObject
+        assertEquals("reference = 'secret://github-pat'", arguments.getValue("code").jsonPrimitive.content)
+        assertEquals("secret://github-pat", arguments.getValue("arguments").jsonArray.single().jsonPrimitive.content)
+        assertFalse(arguments.containsKey("secret_env"))
+        assertFalse(prepared.arguments.contains("private-python-token"))
+        assertEquals(mapOf("TOKEN" to "private-python-token"), prepared.secretEnvironment)
+    }
+
+    @Test
+    fun `Python cannot replace Harness-owned interpreter and script credentials through secret_env`() {
+        for (name in listOf("GRZ_PYTHON", "grz_python", "GRZ_MCP_TOKEN", "GRZ_SDK_HOME", "GROMOZEKA_PYTHON_LAUNCH")) {
+            assertFailsWith<IllegalArgumentException> {
+                SecretArgumentSubstitutor().prepare(
+                    com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_PYTHON_TOOL_NAME,
+                    """{"code":"print(1)","secret_env":{"$name":"secret://github-pat"}}""",
+                    mapOf("github-pat" to "private-python-token"),
+                )
+            }
+        }
+    }
+
+    @Test
     fun `substitutes only exact named secret string values for ordinary tools`() {
         val result = SecretArgumentSubstitutor().substitute(
             arguments = """{"token":"secret://github-pat","command":"echo secret://github-pat","nested":["secret://github-pat"]}""",

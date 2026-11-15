@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.NamedSecret
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.slot.SLOT_ENVIRONMENT_KEYS
 import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_PYTHON_TOOL_NAME
 import com.gromozeka.domain.tool.filesystem.GRZ_MONITOR_COMMAND_TOOL_NAME
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -38,6 +39,9 @@ class ToolSecretResolutionService(
             val input = call.call.input.jsonObject
             return CommandSecretEnvironment.secretNames(input.command(), input.secretEnvironmentReferences()).values.toSet()
         }
+        if (call.call.name == GRZ_EXECUTE_PYTHON_TOOL_NAME) {
+            return CommandSecretEnvironment.secretNames(call.call.input.jsonObject.secretEnvironmentReferences()).values.toSet()
+        }
         if (call.call.name == GRZ_MONITOR_COMMAND_TOOL_NAME) {
             requireLiteralFilter(call.call.input.jsonObject)
         }
@@ -58,13 +62,17 @@ class ToolSecretResolutionService(
 /** References are public; resolved values are supplied only to the process environment. */
 object CommandSecretEnvironment {
     private val namePattern = Regex("[A-Za-z_][A-Za-z0-9_]*")
-    private val reservedNames = SLOT_ENVIRONMENT_KEYS + setOf("GRZ_SDK_HOME", "GRZ_MCP_CONTEXT") +
+    private val reservedNames = SLOT_ENVIRONMENT_KEYS + setOf("GRZ_SDK_HOME", "GRZ_MCP_CONTEXT", "GRZ_PYTHON") +
         com.gromozeka.domain.service.CommandScriptTokens.environmentKeys
 
     fun secretNames(command: String, references: Map<String, String>): Map<String, String> {
         require(!NamedSecret.REFERENCE_PATTERN.containsMatchIn(command)) {
             "Named secret references are not allowed in command. Use secret_env, for example {\"GH_TOKEN\":\"secret://github-pat\"}, and let the program read its environment directly."
         }
+        return secretNames(references)
+    }
+
+    fun secretNames(references: Map<String, String>): Map<String, String> {
         val names = mutableSetOf<String>()
         return references.mapValues { (name, reference) ->
             require(namePattern.matches(name)) { "secret_env keys must be valid environment variable names" }
@@ -80,7 +88,13 @@ object CommandSecretEnvironment {
     }
 
     fun resolve(command: String, references: Map<String, String>, values: Map<String, String>): Map<String, String> =
-        secretNames(command, references).mapValues { (_, secretName) ->
+        resolveNames(secretNames(command, references), values)
+
+    fun resolve(references: Map<String, String>, values: Map<String, String>): Map<String, String> =
+        resolveNames(secretNames(references), values)
+
+    private fun resolveNames(names: Map<String, String>, values: Map<String, String>): Map<String, String> =
+        names.mapValues { (_, secretName) ->
             val value = values[secretName] ?: error("Named secret was not resolved: $secretName")
             require('\u0000' !in value) { "Named secret contains NUL and cannot be passed through an environment variable" }
             value
@@ -100,6 +114,11 @@ class SecretArgumentSubstitutor {
         if (toolName == GRZ_EXECUTE_COMMAND_TOOL_NAME) {
             val input = json.parseToJsonElement(arguments).jsonObject
             val environment = CommandSecretEnvironment.resolve(input.command(), input.secretEnvironmentReferences(), values)
+            return PreparedToolArguments(JsonObject(input - "secret_env").toString(), environment)
+        }
+        if (toolName == GRZ_EXECUTE_PYTHON_TOOL_NAME) {
+            val input = json.parseToJsonElement(arguments).jsonObject
+            val environment = CommandSecretEnvironment.resolve(input.secretEnvironmentReferences(), values)
             return PreparedToolArguments(JsonObject(input - "secret_env").toString(), environment)
         }
         if (toolName == GRZ_MONITOR_COMMAND_TOOL_NAME) {

@@ -6,6 +6,8 @@ import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.WorkerRequestExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.tool.filesystem.ExecutePythonRequest
+import com.gromozeka.infrastructure.ai.tool.BundledPythonRuntime
 import com.gromozeka.infrastructure.ai.tool.LocalCommandProcessRunner
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
@@ -16,6 +18,7 @@ import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -26,11 +29,15 @@ import kotlin.time.Duration.Companion.seconds
 
 /** Real managed shell/Python/SDK against a synthetic MCP peer; no installed application or user credentials. */
 class ManagedCommandScriptSdkTest {
-    @Test fun `first Python SDK call uses automatic environment only after task and hash registration`() = runSdk(false)
+    @Test fun `first Python SDK call uses automatic environment only after task and hash registration`() = runSdk(false, shell = true)
 
     @Test fun `Python reads chunks and invokes isolated model without exposing inputs or intermediate answers`() = runSdk(true)
 
-    private fun runSdk(aiCall: Boolean) = runBlocking<Unit> {
+    @Test fun `Python Code Mode starts inline with automatic SDK access`() = runSdk(false)
+
+    @Test fun `Python Code Mode calls independent MCP tools concurrently`() = runSdk(false, parallel = true)
+
+    private fun runSdk(aiCall: Boolean, shell: Boolean = false, parallel: Boolean = false) = runBlocking<Unit> {
         val ai = if (aiCall) AiCallServiceTest.Fixture() else null
         ai?.execute = { request ->
             val text = (request.messages.single().content.single() as com.gromozeka.domain.model.Conversation.Message.ContentItem.UserMessage).text
@@ -48,7 +55,8 @@ class ManagedCommandScriptSdkTest {
         val calls = AtomicInteger()
         val unauthorized = AtomicInteger()
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        val executor = Executors.newSingleThreadExecutor()
+        val executor = Executors.newFixedThreadPool(4)
+        val simultaneous = CountDownLatch(2)
         server.executor = executor
         server.createContext("/mcp") { exchange ->
             try {
@@ -77,6 +85,10 @@ class ManagedCommandScriptSdkTest {
                         check(request.getValue("params").jsonObject.getValue("name") == JsonPrimitive(wireName))
                         val arguments = request.getValue("params").jsonObject.getValue("arguments").jsonObject
                         calls.incrementAndGet()
+                        if (parallel) {
+                            simultaneous.countDown()
+                            check(simultaneous.await(5, TimeUnit.SECONDS)) { "Independent SDK calls did not overlap" }
+                        }
                         if (callback != null) {
                             val result = runBlocking { callback.callResult(arguments.toString(), requireNotNull(ai).context) }
                             buildJsonObject {
@@ -122,45 +134,59 @@ class ManagedCommandScriptSdkTest {
             val code = if (aiCall) """
                 import grz
                 from pathlib import Path
-                with grz.Client.from_env() as client:
-                    tools = [t for t in client.list_tools() if t["name"].startswith("grz_ai_call")]
+                async with grz.Client.from_env() as client:
+                    tools = [t for t in await client.list_tools() if t["name"].startswith("grz_ai_call")]
                     assert len(tools) == 1
                     name = tools[0]["name"]
                     assert name == "grz_ai_call__v17"
                     counts = []
                     for chunk in Path(__file__).with_name("input.txt").read_text().splitlines():
-                        response = client.call(name, {
+                        response = (await client.call(name, {
                             "model_configuration_id": "selected", "prompt": "Count records",
                             "inputs": [{"type": "text", "text": chunk}],
                             "response_schema": {"type": "object", "required": ["count"], "properties": {"count": {"type": "integer"}}}
-                        })["structuredContent"]
+                        }))["structuredContent"]
                         assert response["success"] is True
                         assert response["result"]["status"] == "complete"
                         counts.append(response["result"]["output"]["count"])
                     assert sum(counts) == 2
                 print("SDK_OK: extracted 2 records")
+            """ else if (parallel) """
+                import asyncio, grz
+                async with grz.Client.from_env() as client:
+                    first, second = await asyncio.gather(client.call("test_echo"), client.call("test_echo"))
+                    assert first["structuredContent"]["ok"] is True
+                    assert second["structuredContent"]["ok"] is True
+                print("SDK_OK")
             """ else """
                 import grz
-                with grz.Client.from_env() as client:
-                    result = client.call("test_echo")
+                async with grz.Client.from_env() as client:
+                    result = await client.call("test_echo")
                     assert result["structuredContent"]["ok"] is True
                 print("SDK_OK")
             """
-            val script = File(home, "invoke.py").apply { writeText(code.trimIndent()) }
+            val source = if (shell) "import asyncio\nasync def main():\n" +
+                code.trimIndent().prependIndent("    ") + "\nasyncio.run(main())\n" else code.trimIndent()
+            val script = File(home, "invoke.py").apply { writeText(source) }
             val windows = System.getProperty("os.name").startsWith("Windows")
-            val python = System.getenv("GRZ_TEST_PYTHON") ?: if (windows) "python" else "python3"
+            val python = BundledPythonRuntime.executable().absolutePath
             fun quote(value: String) = if (windows) "\"$value\"" else "'" + value.replace("'", "'\\''") + "'"
             val context = ToolExecutionContext(mapOf("conversationId" to "conversation", "projectId" to "project",
                 "workspaceId" to "workspace", "workspaceMountId" to "mount", "workspaceRootPath" to home.absolutePath,
                 "workerId" to descriptor.id.value, "userId" to "user", "agentDefinitionId" to "agent", "toolCallId" to "launch-call"),
                 workerRequest = WorkerRequestExecutionContext("launch-request", Clock.System.now() + 60.seconds))
-            val initial = service.start(ExecuteCommandRequest("${quote(python)} ${quote(script.absolutePath)}", yield_time_ms = 10_000,
-                timeout_seconds = 20), context)
+            val initial = if (shell) {
+                service.start(ExecuteCommandRequest("${quote(python)} -B ${quote(script.absolutePath)}", yield_time_ms = 10_000,
+                    timeout_seconds = 20), context)
+            } else {
+                service.startPython(ExecutePythonRequest(code = source.takeUnless { aiCall },
+                    file_path = script.absolutePath.takeIf { aiCall }, yield_time_ms = 10_000, timeout_seconds = 20), context)
+            }
             val completed = if (initial.task.isTerminal) initial else assertNotNull(service.get(initial.task.conversationId, initial.task.id, 0, 15_000))
             assertEquals(CommandTask.Status.COMPLETED, completed.task.status, completed.output)
             assertEquals(0, completed.task.exitCode, completed.output)
             assertContains(completed.output, "SDK_OK")
-            assertEquals(if (aiCall) 2 else 1, calls.get())
+            assertEquals(if (aiCall || parallel) 2 else 1, calls.get())
             assertFalse(completed.output.contains("PRIVATE_CHUNK"))
             assertFalse(completed.output.contains("INTERMEDIATE_ANSWER"))
             if (ai != null) {

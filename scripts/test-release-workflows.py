@@ -62,6 +62,24 @@ class WorkflowContracts(unittest.TestCase):
         self.assertEqual("jdbc:postgresql://localhost:5432/gromozeka", step["env"]["GROMOZEKA_POSTGRES_URL"])
         self.assertIn("*PostgresUserNotificationRepositoryTest", scripts(JOBS["verify-runtime"]))
 
+    def test_code_mode_native_checks_and_worker_packaging_use_pinned_python(self):
+        cross_platform = load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"]
+        self.assertEqual({"ubuntu-latest", "windows-latest", "macos-latest"},
+                         set(cross_platform["strategy"]["matrix"]["os"]))
+        for check in ("*ManagedPythonProcessTest", "*BundledPythonRuntimeTest", "*WindowsPythonLicenseAcceptanceTest",
+                      "*WorkerEnrollmentClientTest", "scripts/test-prepare-python-runtime.py", "scripts/test-worker-license-setup.ps1"):
+            self.assertIn(check, scripts(cross_platform))
+        for job in (cross_platform, JOBS["verify-runtime"], JOBS["standalone"]):
+            setup = [step for step in job["steps"] if step.get("uses", "").startswith("actions/setup-python@")]
+            self.assertEqual(1, len(setup))
+            self.assertEqual("3.14.10", setup[0]["with"]["python-version"])
+        packaging = scripts(JOBS["standalone"])
+        self.assertIn("/runtime/python/gromozeka-runtime.json$", packaging)
+        self.assertIn("/runtime/python/legal/python-build-standalone/PYTHON.json$", packaging)
+        self.assertIn("/runtime/(node|python)/", packaging)
+        for filename in ("prepare-bundled-runtimes.sh", "prepare-bundled-runtimes.ps1"):
+            self.assertIn("scripts/prepare-python-runtime.py", (ROOT / "deploy/distribution" / filename).read_text())
+
     def test_fork_copy_regressions_run_with_database_and_cross_platform_files(self):
         steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}
         verification = steps["Verify Server and Worker"]

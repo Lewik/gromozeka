@@ -34,6 +34,8 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.requiredWorkspaceMountId
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.tool.filesystem.ExecutePythonRequest
+import com.gromozeka.domain.service.PythonProgram
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_INITIAL_YIELD_MILLIS
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_TASK_WAIT_MILLIS
 import com.gromozeka.shared.uuid.uuid7
@@ -123,6 +125,32 @@ class DefaultCommandTaskService(
     override suspend fun start(
         request: ExecuteCommandRequest,
         context: ToolExecutionContext,
+    ): CommandTaskOutput = startManaged(request, context, null)
+
+    override suspend fun startPython(
+        request: ExecutePythonRequest,
+        context: ToolExecutionContext,
+    ): CommandTaskOutput {
+        val program = request.program()
+        return startManaged(
+            ExecuteCommandRequest(
+                command = program.commandIdentity,
+                working_directory = request.working_directory,
+                yield_time_ms = request.yield_time_ms,
+                timeout_seconds = request.timeout_seconds,
+                survive_worker_restart = request.survive_worker_restart,
+                secret_env = request.secret_env,
+                description = request.description,
+            ),
+            context,
+            program,
+        )
+    }
+
+    private suspend fun startManaged(
+        request: ExecuteCommandRequest,
+        context: ToolExecutionContext,
+        pythonProgram: PythonProgram?,
     ): CommandTaskOutput {
         check(!closed.get()) { "Command task service is closed" }
         validateRequest(request)
@@ -163,6 +191,7 @@ class DefaultCommandTaskService(
                     protectOutputUntilRegistration = true,
                     deferStartUntilRegistration = true,
                     startupWaitMillis = startupWaitMillis,
+                    pythonProgram = pythonProgram,
                 )
             )
             var created: ActiveCommand? = null

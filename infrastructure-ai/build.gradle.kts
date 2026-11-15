@@ -76,8 +76,12 @@ tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("jvmProcessResources
     from(rootProject.layout.projectDirectory.file("THIRD_PARTY_NOTICES.md")) {
         into("META-INF")
     }
+    from(rootProject.layout.projectDirectory.file("deploy/distribution/python-runtime.json")) {
+        into("script-sdk")
+    }
 }
 
 tasks.withType<Test>().configureEach {
+    dependsOn(rootProject.tasks.named("preparePythonRuntime"))
     systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
 }

@@ -92,6 +92,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.14.10'
       - name: Start PostgreSQL for runtime checks
         timeout-minutes: 5
         shell: bash
@@ -161,7 +164,7 @@ jobs:
           :remote-protocol:jvmTest
           :worker-runtime:jvmTest
           :shared:jvmTest --tests '*JsonPointerTest'
-          :domain:jvmTest --tests '*AiTpmPolicyTest' --tests '*AiConcurrencyGroupTest' --tests '*AiModelBehaviorTest' --tests '*CommandTaskDescriptionTest'
+          :domain:jvmTest --tests '*AiTpmPolicyTest' --tests '*AiConcurrencyGroupTest' --tests '*AiModelBehaviorTest' --tests '*CommandTaskDescriptionTest' --tests '*PythonProgramTest'
           --tests '*ConversationPinTest'
           --tests '*ConversationContextTest'
           --tests '*AiCatalogTest'
@@ -172,6 +175,7 @@ jobs:
           --tests '*Visual*'
           :application:jvmTest
           --tests '*SecretArgumentSubstitutorTest'
+          --tests '*AiToolDiscoveryTest'
           --tests '*NamedSecretApplicationServiceTest'
           --tests '*BackgroundActivityCompletionApplicationServiceTest'
           --tests '*BackgroundActivityLifecycleApplicationServiceTest'
@@ -748,6 +752,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.14.10'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24.19.0"
@@ -811,18 +818,24 @@ jobs:
             grep -q '/runtime/java/.*legal/' "$listing"
             if [[ "$component" == server ]]; then
               grep -q '/web/index.html$' "$listing"
-              if grep -q '/runtime/node/' "$listing"; then
-                echo "Server archive unexpectedly contains the unused Node.js runtime" >&2
+              if grep -Eq '/runtime/(node|python)/' "$listing"; then
+                echo "Server archive unexpectedly contains a Worker-only runtime" >&2
                 exit 2
               fi
             else
               grep -q '/app/browser-mcp/node_modules/@playwright/mcp/cli.js$' "$listing"
               grep -q '/runtime/node/LICENSE$' "$listing"
+              grep -q '/runtime/python/gromozeka-runtime.json$' "$listing"
+              grep -q '/runtime/python/legal/python-runtime-lock.json$' "$listing"
+              grep -q '/runtime/python/legal/python-build-standalone/PYTHON.json$' "$listing"
+              grep -q '/runtime/python/.*httpx-.*dist-info/.*LICENSE' "$listing"
               if [[ "$PLATFORM" == windows ]]; then
                 grep -q '/runtime/node/node.exe$' "$listing"
+                grep -q '/runtime/python/python.exe$' "$listing"
                 grep -q '/bin/gromozeka-worker-service.ps1$' "$listing"
               else
                 grep -q '/runtime/node/bin/node$' "$listing"
+                grep -q '/runtime/python/bin/python3.14$' "$listing"
               fi
               if [[ "$PLATFORM" == macos ]]; then
                 grep -q '/app/native/gromozeka-worker-launcher$' "$listing"

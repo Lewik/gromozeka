@@ -85,9 +85,61 @@ commands are `start-service`, `stop-service`, `service-status`, and
 installed files and private configuration. Logs are under
 `%ProgramData%\Gromozeka\Worker\logs\workers`.
 
-The package includes pinned, checksum-verified Eclipse Temurin 21 and Node.js
-runtimes. Launchers always use those private runtimes, do not change system
-Java or Node.js, and do not download executable code during startup.
+The package includes pinned, checksum-verified Eclipse Temurin 21, Node.js and
+CPython runtimes. Launchers and Code Mode use these private runtimes, do not
+change system installations, and do not download executable code during startup.
+
+## Windows Python conditions
+
+Before the first Windows connection, configuration or manual Worker start, the
+terminal displays Python's additional Windows redistribution conditions. Type
+`yes` to accept; blank input, EOF or any other answer stops before configuration
+or connection. A non-interactive process never assumes acceptance or reads a
+piped bootstrap document as an answer.
+
+After reviewing the bundled `runtime/python/LICENSE.txt`, unattended provisioning
+can record acceptance explicitly, using the same `GROMOZEKA_HOME` as the Worker:
+
+```powershell
+bin\gromozeka-worker.cmd accept-licenses --yes
+```
+
+Without `--yes`, `accept-licenses` asks in an interactive terminal. Acceptance is
+stored privately under `GROMOZEKA_HOME/licenses/windows-python`, keyed by the
+conditions' content, not the Worker or Python version. Unchanged conditions do
+not ask again. Older acknowledgements remain valid for rollback to an older
+installation; genuinely changed conditions need a new agreement.
+
+The Windows service installer validates and carries a matching acknowledgement
+from the provisioning user's home into the service home. It checks conditions
+before importing configuration, stopping the old service or replacing program
+files. For unattended service setup, after reviewing the terms, use
+`install-service --accept-licenses` (also available for `update-service` and
+`start-service`). Automatic updates never add that flag. An existing installation
+with no matching acknowledgement needs manual confirmation before its first
+update to this version. Normal service restarts and script calls show no dialogs.
+
+## Python Code Mode
+
+`grz_execute_python` runs inline code or an existing `.py` file in a separate
+managed process, using the bundled Python, async `grz` SDK and HTTPX. It accepts
+ordinary scripts and top-level `await`. Discover exact MCP tool names and schemas
+with `await client.list_tools()` and `await client.describe_tool(name)`; use
+`await client.call(name, arguments)` sequentially or `asyncio.gather` for
+independent calls. `async with grz.Client.from_env() as client` connects using
+the launching user's and Agent's permissions without manual connection setup.
+
+Output, timeouts, cancellation and background completion use the same command
+tasks as shell execution. Cancellation stops the process tree, but cannot undo
+completed tool calls or guarantee that a remote side effect stopped. Failed or
+interrupted MCP calls are never retried automatically. This is not a sandbox.
+
+There is no per-script virtual environment or package installation. The stock
+Python and its packages are updated with the Worker; active managed commands
+block automatic Worker replacement. Custom interpreters, extra packages and
+independent runtime updates are not supported by Code Mode. The package lock
+and bundled license texts are under `runtime/python/legal`; package licenses
+are also retained in their original `*.dist-info` directories.
 
 The Worker connects outbound to the Server over WSS. It does not receive
 PostgreSQL credentials and does not share the Server data directory. Remote

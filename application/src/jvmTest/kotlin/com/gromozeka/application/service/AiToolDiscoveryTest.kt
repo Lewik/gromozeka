@@ -370,6 +370,24 @@ class AiToolRuntimeCatalogServiceTest {
     }
 
     @Test
+    fun `Python Code Mode is present before discovery but still respects Agent access`() {
+        val python = object : com.gromozeka.domain.tool.filesystem.GrzExecutePythonTool {
+            override fun execute(request: com.gromozeka.domain.tool.filesystem.ExecutePythonRequest,
+                context: ToolExecutionContext?): List<com.gromozeka.domain.tool.AiToolResult> = error("Not executed")
+        }
+        val callback = object : AiToolCallback {
+            override val metadata = python.metadata
+            override val definition = AiToolDefinition(python.name, python.description, """{"type":"object","properties":{}}""")
+            override fun call(toolInput: String, context: ToolExecutionContext?): String = error("Not executed")
+        }
+        val snapshot = catalog(callback)
+        val selected = service.selectTools(agent(), snapshot, emptyList(), memoryEnabled = false)
+        assertEquals(listOf(python.name), selected.tools.map { it.definition.name })
+        val denied = agent().copy(toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly())
+        assertTrue(service.selectTools(denied, snapshot, emptyList(), memoryEnabled = false).tools.isEmpty())
+    }
+
+    @Test
     fun `preloads available tools marked by runtime policy`() {
         val catalog = catalog(
             tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),

@@ -42,7 +42,7 @@ class GatewayWorkerToolExecutionClient(
     ): WorkerToolExecutionResult {
         val actor = toolContext.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID)?.let(com.gromozeka.domain.model.User::Id)
         val conversation = toolContext.getString(com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID)?.let(Conversation::Id)
-        val isLaunch = toolCalls.any { it.call.name == com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME }
+        val isLaunch = toolCalls.any { com.gromozeka.domain.tool.filesystem.isManagedCommandLaunchTool(it.call.name) }
         val origin = if (isLaunch && actor != null && conversation != null && executionTarget.workspaceMountId != null)
             slots.origin(actor, conversation, requireNotNull(executionTarget.workspaceMountId)) else null
         val trustedContext = toolContext.asMap().minus(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN).toMutableMap()

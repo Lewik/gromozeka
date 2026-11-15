@@ -149,6 +149,8 @@ class VisualWorkerRuntimeTest {
             starts++; this.request = request; this.context = context
             return CommandTaskOutput(task, BinaryContent.EMPTY, 0, 0, false)
         }
+        override suspend fun startPython(request: com.gromozeka.domain.tool.filesystem.ExecutePythonRequest,
+            context: ToolExecutionContext): CommandTaskOutput = error("Unexpected Python start")
         override suspend fun get(conversationId: Conversation.Id, taskId: CommandTask.Id, afterByte: Long, waitMillis: Long) = output.receive()
         override suspend fun cancel(conversationId: Conversation.Id, taskId: CommandTask.Id): Boolean { cancelled.complete(Unit); return true }
         override suspend fun cancelAll(conversationId: Conversation.Id) = 0

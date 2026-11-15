@@ -11,6 +11,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import com.gromozeka.domain.tool.filesystem.CancelCommandTaskRequest
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.tool.filesystem.ExecutePythonRequest
+import com.gromozeka.domain.tool.filesystem.GrzExecutePythonTool
 import com.gromozeka.domain.tool.filesystem.GetCommandTaskRequest
 import com.gromozeka.domain.tool.filesystem.GrzCancelCommandTaskTool
 import com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool
@@ -29,6 +31,17 @@ class GrzExecuteCommandToolImpl(
     override fun execute(request: ExecuteCommandRequest, context: ToolExecutionContext?): List<AiToolResult> =
         runBlocking {
             commandTaskService.start(request, context ?: error("Tool execution context is required")).toResult()
+        }
+}
+
+@Service
+@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
+class GrzExecutePythonToolImpl(
+    private val commandTaskService: CommandTaskService,
+) : GrzExecutePythonTool {
+    override fun execute(request: ExecutePythonRequest, context: ToolExecutionContext?): List<AiToolResult> =
+        runBlocking {
+            commandTaskService.startPython(request, context ?: error("Tool execution context is required")).toResult()
         }
 }
 
