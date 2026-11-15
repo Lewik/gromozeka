@@ -91,10 +91,11 @@ class ConversationHistoryE2eTest {
         val firstIndex = client.components.appViewModel.tabs.value.indexOf(tab)
         val otherIndex = client.components.appViewModel.tabs.value.indexOf(otherTab)
         onNodeWithTag(UiTestTag.SessionTab(firstIndex).value).performClick()
+        waitUntil(timeoutMillis = 10_000) { tab.historyContent.value.firstLoadedMessageId != null }
         val gate = CompletableDeferred<Unit>()
         client.historyNetwork.gate = gate
         try {
-            tab.loadOlderHistory()
+            tab.loadOlderHistory(requireNotNull(tab.historyContent.value.firstLoadedMessageId))
             waitUntil(timeoutMillis = 10_000) { tab.historyLoading.value }
             onNodeWithTag(UiTestTag.MessageInput.value).performTextInput("Message while history is loading")
             onNodeWithTag(UiTestTag.SessionTab(otherIndex).value).performClick()
