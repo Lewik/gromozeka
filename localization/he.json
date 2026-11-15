@@ -4,6 +4,11 @@
   "name": "עברית",
   "direction": "RTL",
   "messages": {
+    "ai.compaction.proactive_threshold": "סף דחיסה מקדימה (טוקנים)",
+    "ai.compaction.proactive_hint": "ערך ריק מבטל הכנה לאחר תשובות. חייב להיות נמוך מהסף החוסם.",
+    "chat.activity.compactionPreparing": "מכין דחיסה",
+    "chat.activity.compactionReady": "הדחיסה מוכנה",
+    "chat.activity.compactionFailed": "הכנת הדחיסה נכשלה",
     "ai.compaction.count_mode": "ספירת טוקנים בהקשר",
     "ai.compaction.count_current": "החיבור הנוכחי (אם נתמך)",
     "ai.compaction.count_local": "הערכה מקומית בלבד",

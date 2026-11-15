@@ -408,7 +408,8 @@ class ConversationEngineService(
         context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
 
         val compacted = compactions.compactIfNeeded(task, conversation, context.agent, context.runtime, runtimeRequest,
-            payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId)) {
+            payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId),
+            promptScope = context.runtimeSystemPrompts) {
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             check(agentDomainService.findById(context.agent.id) == context.agent) { "Agent changed during compaction" }
         }
@@ -693,9 +694,13 @@ class ConversationEngineService(
             automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
             actorUserId = task.actorUserId,
         )
-        return memoryRecallTask
-            ?.let { ConversationRuntimeTaskOutcome.Continue(it) }
-            ?: ConversationRuntimeTaskOutcome.CompleteTurn
+        if (memoryRecallTask != null) return ConversationRuntimeTaskOutcome.Continue(memoryRecallTask)
+        if (assistantMessages.any { message -> message.content.any { it is ContentItem.AssistantMessage && it.structured.fullText.isNotBlank() } }) {
+            compactions.prepareAfterResponse(task, executor, conversation, context.agent,
+                runtimeRequest.copy(messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages),
+                promptScope = context.runtimeSystemPrompts)
+        }
+        return ConversationRuntimeTaskOutcome.CompleteTurn
     }
 
     private suspend fun runResponseReviewStep(
@@ -766,7 +771,18 @@ class ConversationEngineService(
             ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
                 payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
         } else if (decision.userText == null) ConversationRuntimeTaskOutcome.CompleteWithoutNotification
-        else ConversationRuntimeTaskOutcome.CompleteTurn
+        else {
+            if (aiConfigurationProvider.resolveAiRuntime(context.agent.runtimeSelection).modelConfiguration.compaction.proactiveThresholdTokens != null) {
+                compactions.prepareAfterResponse(task, executor, conversation, context.agent,
+                    AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind), options = AiRuntimeOptions(
+                        toolContext = mapOf(TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
+                            TOOL_CONTEXT_THREAD_ID to conversation.currentThread.value, TOOL_CONTEXT_PROJECT_ID to conversation.projectId.value,
+                            TOOL_CONTEXT_USER_ID to draft.actorUserId.value, TOOL_CONTEXT_AGENT_DEFINITION_ID to context.agent.id.value,
+                            AI_ADMISSION_CONVERSATION_CONTEXT_KEY to conversation.id.value, AI_ADMISSION_TASK_CONTEXT_KEY to task.id.value),
+                        usagePurpose = "CONVERSATION")), promptScope = context.runtimeSystemPrompts)
+            }
+            ConversationRuntimeTaskOutcome.CompleteTurn
+        }
     }
 
     private suspend fun publishActiveGeneration(snapshot: ActiveGenerationSnapshot) {

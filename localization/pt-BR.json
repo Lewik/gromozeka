@@ -4,6 +4,11 @@
   "name": "Português (Brasil)",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "Limite de compactação antecipada (tokens)",
+    "ai.compaction.proactive_hint": "Vazio desativa a preparação após as respostas. Deve ser inferior ao limite de bloqueio.",
+    "chat.activity.compactionPreparing": "Preparando compactação",
+    "chat.activity.compactionReady": "Compactação pronta",
+    "chat.activity.compactionFailed": "Falha na preparação da compactação",
     "ai.compaction.count_mode": "Contagem de tokens do contexto",
     "ai.compaction.count_current": "Conexão atual (se compatível)",
     "ai.compaction.count_local": "Somente estimativa local",

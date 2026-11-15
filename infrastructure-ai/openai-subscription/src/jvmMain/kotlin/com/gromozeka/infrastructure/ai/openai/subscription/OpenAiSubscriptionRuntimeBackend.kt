@@ -33,7 +33,7 @@ class OpenAiSubscriptionRuntimeBackend(
     override fun capabilities(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsNativeCompaction = true)
+    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsNativeCompaction = true, supportsDetachedNativeCompaction = true)
 
     override fun createRuntime(
         runtime: ResolvedAiRuntime,
@@ -74,7 +74,7 @@ private class Runtime(
     private val modelName get() = configuration.providerModelId
     private val fallbackConversationKey = UUID.randomUUID().toString()
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
-        supportsNativeCompaction = true,
+        supportsNativeCompaction = true, supportsDetachedNativeCompaction = true,
     )
 
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
@@ -154,6 +154,10 @@ private class Runtime(
 /** Transport state is separate from the request's promptCacheKey. */
 internal fun AiRuntimeRequest.subscriptionTransportNamespace(fallbackKey: String): String {
     val base = options.toolContext["conversationId"] as? String ?: fallbackKey
+    (options.toolContext["compactionTransportId"] as? String)?.let {
+        require(options.usagePurpose == "CONTEXT_COMPACTION" && it.isNotBlank()) { "Invalid detached compaction transport scope" }
+        return "$base:compaction:$it"
+    }
     return when (options.usagePurpose) {
         com.gromozeka.domain.model.ai.AI_ISOLATED_CALL_PURPOSE -> {
             val invocation = requireNotNull(options.toolContext["aiCallDiagnosticId"] as? String) {

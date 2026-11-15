@@ -4,6 +4,11 @@
   "name": "Español",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "Umbral de compactación anticipada (tokens)",
+    "ai.compaction.proactive_hint": "Vacío desactiva la preparación después de responder. Debe ser inferior al umbral de bloqueo.",
+    "chat.activity.compactionPreparing": "Preparando compactación",
+    "chat.activity.compactionReady": "Compactación lista",
+    "chat.activity.compactionFailed": "Falló la preparación de la compactación",
     "ai.compaction.count_mode": "Recuento de tokens del contexto",
     "ai.compaction.count_current": "Conexión actual (si se admite)",
     "ai.compaction.count_local": "Solo estimación local",

@@ -4,6 +4,11 @@
   "name": "繁體中文",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "預壓縮閾值（權杖）",
+    "ai.compaction.proactive_hint": "留空可停用回覆後的背景準備。必須低於阻塞閾值。",
+    "chat.activity.compactionPreparing": "正在準備壓縮",
+    "chat.activity.compactionReady": "壓縮已就緒",
+    "chat.activity.compactionFailed": "壓縮準備失敗",
     "ai.compaction.count_mode": "上下文 token 計數",
     "ai.compaction.count_current": "目前連線（若支援）",
     "ai.compaction.count_local": "僅本機估算",

@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.service.ProactiveCompaction
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorSyncResult
@@ -68,6 +69,34 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override val schedulingSignals: Flow<ConversationRuntimeSchedulingSignal> = flow {
         emit(ConversationRuntimeSchedulingSignal.ListenerReady)
         emitAll(schedulingSignalChannel.receiveAsFlow())
+    }
+
+    override suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean = mutex.withLock {
+        val current = schedulingByConversation[preparation.conversationId] ?: return@withLock false
+        val transition = current.beginProactiveCompaction(preparation)
+        if (transition.changed) {
+            schedulingByConversation[preparation.conversationId] = transition.state
+            bumpRevision(preparation.conversationId)
+        }
+        transition.result
+    }
+
+    override suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean = mutex.withLock {
+        val current = schedulingByConversation[expected.conversationId] ?: return@withLock false
+        val transition = current.updateProactiveCompaction(expected, updated)
+        if (transition.changed) {
+            schedulingByConversation[expected.conversationId] = transition.state
+            bumpRevision(expected.conversationId)
+        }
+        transition.result
+    }
+
+    override suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction? = mutex.withLock {
+        schedulingByConversation[conversationId]?.proactiveCompaction
+    }
+
+    override suspend fun runningProactiveCompactions(): List<ProactiveCompaction> = mutex.withLock {
+        schedulingByConversation.values.mapNotNull { it.proactiveCompaction }.filter { it.status == ProactiveCompaction.Status.RUNNING }
     }
 
     override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
@@ -785,6 +814,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 trace = traceByConversation[conversationId]?.takeLast(TRACE_SNAPSHOT_LIMIT).orEmpty(),
                 lastTurn = scheduling?.lastTurn,
                 retainedTurnProblems = scheduling?.retainedTurnProblems,
+                proactiveCompaction = scheduling?.proactiveCompaction?.activity(),
                 lastEventSequence = eventSequencesByConversation[conversationId] ?: 0L,
             )
         }

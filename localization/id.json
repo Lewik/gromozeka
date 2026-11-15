@@ -4,6 +4,11 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "Ambang pemadatan proaktif (token)",
+    "ai.compaction.proactive_hint": "Kosongkan untuk menonaktifkan persiapan setelah jawaban. Harus di bawah ambang pemblokiran.",
+    "chat.activity.compactionPreparing": "Menyiapkan pemadatan",
+    "chat.activity.compactionReady": "Pemadatan siap",
+    "chat.activity.compactionFailed": "Persiapan pemadatan gagal",
     "ai.compaction.count_mode": "Penghitungan token konteks",
     "ai.compaction.count_current": "Koneksi saat ini (jika didukung)",
     "ai.compaction.count_local": "Hanya perkiraan lokal",

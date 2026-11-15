@@ -71,6 +71,13 @@ class WorkflowContracts(unittest.TestCase):
         cross_platform = load_yaml(WORKFLOWS / "windows-worker-service.yml")
         self.assertIn("*LocalArtifactContentStoreTest", scripts(cross_platform["jobs"]["verify"]))
 
+    def test_proactive_compaction_checks_keep_atomic_pg_and_background_regressions(self):
+        runtime = scripts(JOBS["verify-runtime"])
+        for check in ("*ProactiveCompactionTest", "*CompactionHistoryWindowTest", "*ConversationCompactionServiceTest", "*PostgresConversationCompactionRepositoryTest", "*PostgresConversationRuntimeCoordinatorTest"):
+            self.assertIn(check, runtime)
+        cross_platform = scripts(load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"])
+        self.assertIn("*ProactiveCompactionTest", cross_platform)
+
     def test_isolated_ai_calls_are_verified_on_runtime_and_script_platforms(self):
         cross_platform = scripts(load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"])
         for check in ("*AiCall*", "*ManagedCommandScriptSdkTest", "*WorkerWorkspaceFileServiceTest", "*WorkspaceTextFileApplicationServiceTest"):

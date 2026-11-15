@@ -40,6 +40,7 @@ class ConversationRuntimeDispatcher(
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val artifactReferenceValidator: ArtifactReferenceValidator,
+    private val proactiveCompactionJobs: ProactiveCompactionJobs? = null,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -131,6 +132,12 @@ class ConversationRuntimeDispatcher(
             ConversationRuntimeControlAction.RESUME -> runtimeCoordinator.requestResume(conversationId)
             ConversationRuntimeControlAction.STOP -> runtimeCoordinator.requestStop(conversationId)
             ConversationRuntimeControlAction.INTERRUPT -> runtimeCoordinator.requestInterrupt(conversationId, expectedTurnId)
+        }
+        if (action == ConversationRuntimeControlAction.STOP || action == ConversationRuntimeControlAction.INTERRUPT) {
+            val preparation = runtimeCoordinator.proactiveCompaction(conversationId)
+            if (preparation?.status == com.gromozeka.domain.service.ProactiveCompaction.Status.CANCELLED) {
+                proactiveCompactionJobs?.cancel(conversationId, preparation.id)
+            }
         }
         val accepted = runtimeControlAccepted || cancelledCommands > 0
         if (accepted) {

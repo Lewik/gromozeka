@@ -6,6 +6,12 @@ import com.gromozeka.infrastructure.db.persistence.tables.Conversations
 import com.gromozeka.infrastructure.db.persistence.tables.Messages
 import com.gromozeka.infrastructure.db.persistence.tables.ThreadMessages
 import com.gromozeka.infrastructure.db.persistence.tables.Threads
+import kotlinx.serialization.decodeFromString
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingState
+import com.gromozeka.domain.service.ProactiveCompaction
+import com.gromozeka.domain.model.compactions
+import org.jetbrains.exposed.v1.core.TextColumnType
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -26,7 +32,27 @@ class ExposedConversationCompactionRepository(
         compactionMessage: Conversation.Message,
         newThread: Conversation.Thread,
         insertionAnchorId: Conversation.Message.Id,
+        preparedCompactionId: String?,
     ): Boolean = dbQuery {
+        // Lock Runtime before Conversation, matching collaboration's admission order.
+        // Stop and COW publication have one linearization point, not a check-then-write race.
+        val preparedState = if (preparedCompactionId != null) {
+            require(preparedCompactionId == compactionMessage.id.value)
+            val state = TransactionManager.current().exec(
+                "SELECT scheduling::text FROM conversation_runtime_records WHERE conversation_id = ? FOR UPDATE",
+                listOf(TextColumnType() to compactionMessage.conversationId.value),
+            ) { rows -> if (rows.next()) json.decodeFromString<ConversationRuntimeSchedulingState>(rows.getString(1)) else null }
+                ?: return@dbQuery false
+            val prepared = state.proactiveCompaction
+            if (prepared?.id != preparedCompactionId || prepared.status != ProactiveCompaction.Status.READY) return@dbQuery false
+            val captured = requireNotNull(prepared.checkpoint).compactions().single()
+            val actual = compactionMessage.compactions().single()
+            check(captured.payload == actual.payload && captured.sourceMessageIds == actual.sourceMessageIds &&
+                captured.strategy == actual.strategy && captured.origin == actual.origin && captured.providerScope == actual.providerScope) {
+                "Prepared checkpoint does not match the committed compaction"
+            }
+            state
+        } else null
         require(newThread.conversationId == compactionMessage.conversationId && newThread.originalThread == expectedThreadId) {
             "Compaction thread must derive from the captured conversation history"
         }
@@ -73,6 +99,14 @@ class ExposedConversationCompactionRepository(
             this[ThreadMessages.threadId] = newThread.id.value
             this[ThreadMessages.messageId] = messageId
             this[ThreadMessages.position] = position
+        }
+        if (preparedState != null) {
+            val completed = preparedState.copy(proactiveCompaction = requireNotNull(preparedState.proactiveCompaction)
+                .copy(status = ProactiveCompaction.Status.APPLIED, checkpoint = null, updatedAt = newThread.createdAt))
+            TransactionManager.current().exec(
+                "UPDATE conversation_runtime_records SET scheduling = ?::jsonb, revision = revision + 1 WHERE conversation_id = ?",
+                listOf(TextColumnType() to json.encodeToString(completed), TextColumnType() to compactionMessage.conversationId.value),
+            )
         }
         true
     }

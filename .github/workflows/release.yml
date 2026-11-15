@@ -193,6 +193,8 @@ jobs:
           --tests '*MessageSquashServiceTest'
           --tests '*ConversationArtifactApplicationServiceTest'
           --tests '*ConversationCompactionServiceTest'
+          --tests '*ProactiveCompactionTest'
+          --tests '*CompactionHistoryWindowTest'
           --tests '*AgentSessionRuntimeProjectionTest'
           --tests '*DistributedAiToolRoutingTest'
           --tests '*TargetedAiExecutionTest'

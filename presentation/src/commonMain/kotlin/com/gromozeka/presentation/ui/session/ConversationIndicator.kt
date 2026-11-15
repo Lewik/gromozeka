@@ -97,11 +97,13 @@ internal fun conversationIndicatorState(
         control == ConversationExecutionState.ControlState.PAUSED -> ConversationActivity.PAUSED
         pauseRequested || control == ConversationExecutionState.ControlState.PAUSE_REQUESTED -> ConversationActivity.PAUSING
         locallyBusy || waiting || generation != null || runtime?.activeTask != null || runtime?.continuationTask != null ||
-            runtime?.activeInsertions.orEmpty().isNotEmpty() || runtime?.pendingTasks.orEmpty().isNotEmpty() -> ConversationActivity.WORKING
+            runtime?.activeInsertions.orEmpty().isNotEmpty() || runtime?.pendingTasks.orEmpty().isNotEmpty() ||
+            runtime?.proactiveCompaction?.status == com.gromozeka.domain.service.ProactiveCompaction.Status.RUNNING -> ConversationActivity.WORKING
         runtime == null -> ConversationActivity.UNKNOWN
         else -> ConversationActivity.READY
     }
-    val activeTaskIds = (listOfNotNull(runtime?.activeTask?.id) + runtime?.activeInsertions.orEmpty().map { it.id }).toSet()
+    val activeTaskIds = (listOfNotNull(runtime?.activeTask?.id,
+        runtime?.proactiveCompaction?.takeIf { it.pending }?.sourceTaskId) + runtime?.activeInsertions.orEmpty().map { it.id }).toSet()
     val waits = if (connected) load?.taskWaits.orEmpty().filter { it.taskId in activeTaskIds }.mapTo(mutableSetOf()) { it.reason } else emptySet()
     val pressure = when {
         !connected || load == null -> ConversationPressure.UNKNOWN
@@ -109,7 +111,8 @@ internal fun conversationIndicatorState(
         load.waitingForTpm > 0 || load.waitingForConcurrency > 0 -> ConversationPressure.GLOBAL_WAIT
         else -> ConversationPressure.NORMAL
     }
-    return ConversationIndicatorState(activity, pressure, unread, runtime?.visibleTurnProblems().orEmpty().isNotEmpty(), waits)
+    return ConversationIndicatorState(activity, pressure, unread, runtime?.visibleTurnProblems().orEmpty().isNotEmpty() ||
+        runtime?.proactiveCompaction?.status == com.gromozeka.domain.service.ProactiveCompaction.Status.FAILED, waits)
 }
 
 @Composable

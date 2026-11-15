@@ -410,6 +410,34 @@ class MessageSquashServiceTest {
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
 
+    @Test fun `full manual compaction keeps whole recent messages while partial selection adds no suffix`() = runBlocking {
+        for (strategy in listOf(SquashType.SUMMARIZE, SquashType.DISTILL)) {
+            val f = Fixture()
+            val crossing = f.third.copy(id = Conversation.Message.Id("crossing"), content = listOf(Conversation.Message.ContentItem.UserMessage("a".repeat(45_000))))
+            val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
+            f.append(crossing); f.append(latest)
+            val all = f.threadMessages.messages(f.initialThread.id)
+            val compacted = f.service().compactRuntimeHistory(f.conversation.id, all.map { it.id }, strategy)
+            val active = ConversationContext(f.threadMessages.messages(compacted.currentThread)).messages()
+            assertEquals(3, active.size)
+            assertEquals(listOf(crossing, latest), active.takeLast(2))
+            assertEquals(all.take(3).map { it.id }, active.first().compactions().single().sourceMessageIds)
+            val selection = f.service().compactRuntimeHistory(f.conversation.id, listOf(crossing.id), strategy)
+            val after = ConversationContext(f.threadMessages.messages(selection.currentThread)).messages()
+            assertTrue(after.none { it.id == crossing.id })
+            assertTrue(after.any { it.id == latest.id && it.content == latest.content })
+        }
+    }
+
+    @Test fun `full manual compaction with only the raw suffix fails explicitly without generation`() = runBlocking {
+        val f = Fixture()
+        val history = f.threadMessages.messages(f.initialThread.id)
+        val before = f.storageCounts()
+        assertFailsWith<IllegalArgumentException> { f.service().compactRuntimeHistory(f.conversation.id, history.map { it.id }, SquashType.SUMMARIZE) }
+        assertEquals(before, f.storageCounts())
+        assertTrue(f.runtimeProvider.requests.isEmpty())
+    }
+
     private class Fixture(
         runtimeFailure: Throwable? = null,
         commitConflict: Boolean = false,
@@ -754,7 +782,9 @@ private class InMemoryConversationCompactionRepository(
         compactionMessage: Conversation.Message,
         newThread: Conversation.Thread,
         insertionAnchorId: Conversation.Message.Id,
+        preparedCompactionId: String?,
     ): Boolean {
+        require(preparedCompactionId == null) { "This fixture is for manual compaction" }
         if (forceConflict) return false
         val conversation = conversations.values[compactionMessage.conversationId] ?: return false
         if (conversation.currentThread != expectedThreadId) return false

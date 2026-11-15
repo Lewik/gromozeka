@@ -4,6 +4,11 @@
   "name": "한국어",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "사전 압축 임계값(토큰)",
+    "ai.compaction.proactive_hint": "비워 두면 응답 후 준비를 비활성화합니다. 차단 임계값보다 작아야 합니다.",
+    "chat.activity.compactionPreparing": "압축 준비 중",
+    "chat.activity.compactionReady": "압축 준비 완료",
+    "chat.activity.compactionFailed": "압축 준비 실패",
     "ai.compaction.count_mode": "컨텍스트 토큰 계산",
     "ai.compaction.count_current": "현재 연결(지원되는 경우)",
     "ai.compaction.count_local": "로컬 추정만 사용",

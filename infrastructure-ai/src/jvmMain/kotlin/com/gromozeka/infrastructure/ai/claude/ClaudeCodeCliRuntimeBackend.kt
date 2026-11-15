@@ -93,6 +93,7 @@ internal class ClaudeCodeCliRuntimeBackend(
             workspaceDirectory = resolveWorkspaceDirectory(workspaceRootPath),
             sessionStateRepository = sessionStateRepository,
             sessionLocks = sessionLocks,
+            harnessCompactionEnabled = modelConfiguration.compaction.thresholdTokens != null,
         )
     }
 
@@ -115,6 +116,7 @@ internal class ClaudeCodeCliRuntime(
     private val workspaceDirectory: File?,
     private val sessionStateRepository: ClaudeCodeSessionStateRepository,
     private val sessionLocks: ConcurrentHashMap<String, Mutex>,
+    private val harnessCompactionEnabled: Boolean = false,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
     override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
@@ -304,7 +306,8 @@ internal class ClaudeCodeCliRuntime(
             reasoningMode = request.options.reasoning?.mode,
             resumeSessionId = sessionPlan.resumeSessionId,
             noSessionPersistence = sessionStateKey == null,
-            disableCompaction = request.options.usagePurpose.isToolFreeIsolatedCall(),
+            disableCompaction = harnessCompactionEnabled || request.options.usagePurpose == "MESSAGE_SQUASH" ||
+                request.options.usagePurpose.isToolFreeIsolatedCall(),
         )
 
         val executionStartedAt = System.nanoTime()

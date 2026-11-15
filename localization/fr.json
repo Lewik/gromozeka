@@ -4,6 +4,11 @@
   "name": "Français",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "Seuil de compactage anticipé (tokens)",
+    "ai.compaction.proactive_hint": "Laisser vide désactive la préparation après les réponses. Doit être inférieur au seuil bloquant.",
+    "chat.activity.compactionPreparing": "Préparation du compactage",
+    "chat.activity.compactionReady": "Compactage prêt",
+    "chat.activity.compactionFailed": "Échec de préparation du compactage",
     "ai.compaction.count_mode": "Comptage des tokens du contexte",
     "ai.compaction.count_current": "Connexion actuelle (si prise en charge)",
     "ai.compaction.count_local": "Estimation locale uniquement",

@@ -4,6 +4,11 @@
   "name": "Русский",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "Порог прекомпактификации (токены)",
+    "ai.compaction.proactive_hint": "Пустое значение отключает подготовку после ответа. Порог должен быть ниже блокирующего.",
+    "chat.activity.compactionPreparing": "Подготовка компакта",
+    "chat.activity.compactionReady": "Компакт готов",
+    "chat.activity.compactionFailed": "Ошибка подготовки компакта",
     "ai.compaction.count_mode": "Подсчёт токенов контекста",
     "ai.compaction.count_current": "Текущее подключение (если поддерживается)",
     "ai.compaction.count_local": "Только локальная оценка",

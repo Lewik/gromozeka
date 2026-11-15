@@ -60,6 +60,24 @@ class ConversationLoadingStateTest {
         load: AiRequestActivitySnapshot? = AiRequestActivitySnapshot(0, 0, 0, emptyList())) =
         conversationIndicatorState(runtime, null, waiting, false, false, unread, connected, load)
 
+    @Test fun proactiveCompactionRemainsVisibleAndCancellableAfterTheAnswer() {
+        val preparation = com.gromozeka.domain.service.ProactiveCompactionActivity("compaction", ConversationRuntimeTask.Id("source"),
+            com.gromozeka.domain.service.ProactiveCompaction.Status.RUNNING, 100_000, 10, 2, now, now)
+        val running = snapshot().copy(proactiveCompaction = preparation)
+        assertTrue(running.hasControllableWork())
+        assertEquals(ConversationActivity.WORKING, indicator(running).activity)
+        val load = AiRequestActivitySnapshot(1, 0, 1, listOf(AiRequestTaskWait(preparation.sourceTaskId, AiRequestWaitReason.CONCURRENCY)))
+        assertEquals(setOf(AiRequestWaitReason.CONCURRENCY), indicator(running, load = load).waitReasons)
+        val ready = running.copy(proactiveCompaction = preparation.copy(status = com.gromozeka.domain.service.ProactiveCompaction.Status.READY))
+        assertTrue(ready.hasControllableWork())
+        assertEquals(ConversationActivity.READY, indicator(ready).activity)
+        val cancelled = running.copy(proactiveCompaction = preparation.copy(status = com.gromozeka.domain.service.ProactiveCompaction.Status.CANCELLED))
+        assertFalse(cancelled.hasControllableWork())
+        assertEquals(ConversationActivity.READY, indicator(cancelled).activity)
+        val unknown = running.copy(proactiveCompaction = preparation.copy(status = com.gromozeka.domain.service.ProactiveCompaction.Status.FAILED, outcomeUnknown = true))
+        assertTrue(unknown.hasControllableWork())
+    }
+
     @Test
     fun unknownStateDoesNotManufactureReadinessAndBackgroundCommandsStaySeparate() {
         assertEquals(ConversationActivity.UNKNOWN, indicator(null).activity)

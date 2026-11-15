@@ -4,6 +4,11 @@
   "name": "العربية",
   "direction": "RTL",
   "messages": {
+    "ai.compaction.proactive_threshold": "حد الضغط الاستباقي (الرموز)",
+    "ai.compaction.proactive_hint": "تركه فارغًا يعطل التحضير بعد الردود. يجب أن يكون أقل من حد الحظر.",
+    "chat.activity.compactionPreparing": "جارٍ تحضير الضغط",
+    "chat.activity.compactionReady": "الضغط جاهز",
+    "chat.activity.compactionFailed": "فشل تحضير الضغط",
     "ai.compaction.count_mode": "عدّ رموز السياق",
     "ai.compaction.count_current": "الاتصال الحالي (إن كان مدعومًا)",
     "ai.compaction.count_local": "تقدير محلي فقط",

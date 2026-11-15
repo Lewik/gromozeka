@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.service.ProactiveCompaction
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorSyncResult
@@ -85,6 +86,32 @@ class PostgresConversationRuntimeCoordinator(
             } catch (error: Throwable) {
                 log.warn(error) { "Conversation runtime scheduling listener disconnected; reconnecting" }
                 delay(SCHEDULING_LISTENER_RECONNECT_DELAY_MILLIS)
+            }
+        }
+    }
+
+    override suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean =
+        mutateRecord(preparation.conversationId, createIfMissing = false) { record ->
+            val transition = record.scheduling.beginProactiveCompaction(preparation)
+            if (transition.changed) { record.scheduling = transition.state; record.bumpRevision() }
+            transition.result
+        }
+
+    override suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean =
+        mutateRecord(expected.conversationId, createIfMissing = false) { record ->
+            val transition = record.scheduling.updateProactiveCompaction(expected, updated)
+            if (transition.changed) { record.scheduling = transition.state; record.bumpRevision() }
+            transition.result
+        }
+
+    override suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction? =
+        readJson(conversationId, "SELECT scheduling -> 'proactiveCompaction' FROM conversation_runtime_records WHERE conversation_id = ?")
+            ?.let { json.decodeFromString(it) }
+
+    override suspend fun runningProactiveCompactions(): List<ProactiveCompaction> = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("SELECT scheduling -> 'proactiveCompaction' FROM conversation_runtime_records WHERE jsonb_typeof(scheduling -> 'proactiveCompaction') = 'object' AND COALESCE(scheduling -> 'proactiveCompaction' ->> 'status', 'RUNNING') = 'RUNNING'").use { statement ->
+                statement.executeQuery().use { rows -> buildList { while (rows.next()) add(json.decodeFromString<ProactiveCompaction>(rows.getString(1))) } }
             }
         }
     }
@@ -815,7 +842,7 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot =
         readJson(conversationId, """
             SELECT jsonb_build_object('conversationId', conversation_id, 'lastEventSequence', event_sequence)
-                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn' - 'retainedTurnProblems')
+                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn' - 'retainedTurnProblems' - 'proactiveCompaction')
             FROM conversation_runtime_records WHERE conversation_id = ?
         """.trimIndent())?.let { json.decodeFromString(it) } ?: ConversationRuntimeSchedulingSnapshot(conversationId)
 
@@ -1439,6 +1466,7 @@ class PostgresConversationRuntimeCoordinator(
                 incidents = scheduling.incidents,
                 lastTurn = scheduling.lastTurn,
                 retainedTurnProblems = scheduling.retainedTurnProblems,
+                proactiveCompaction = scheduling.proactiveCompaction?.activity(),
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),
                 lastEventSequence = eventSequence,
             )

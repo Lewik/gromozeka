@@ -83,6 +83,7 @@ internal class OpenAiSdkRuntimeBackend(
         modelConfiguration: AiModelConfiguration,
     ) = AiRuntimeCapabilities(
         supportsNativeCompaction = connection.kind == AiConnection.Kind.OPENAI_API,
+        supportsDetachedNativeCompaction = connection.kind == AiConnection.Kind.OPENAI_API,
     )
 
     override fun createRuntime(

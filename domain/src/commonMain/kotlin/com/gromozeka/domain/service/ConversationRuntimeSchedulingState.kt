@@ -20,6 +20,7 @@ data class ConversationRuntimeSchedulingState(
     val completedIdempotencyKeys: Set<String> = emptySet(),
     val lastTurn: ConversationRuntimeTurnSummary? = null,
     val retainedTurnProblems: ConversationRuntimeTurnSummary? = null,
+    val proactiveCompaction: ProactiveCompaction? = null,
 ) {
     init {
         require(executionState == null || executionState.conversationId == conversationId) {
@@ -70,6 +71,28 @@ data class ConversationRuntimeSchedulingState(
         ) {
             "Conversation runtime safe-point input cannot remain without an active turn"
         }
+    }
+
+    fun beginProactiveCompaction(preparation: ProactiveCompaction): ConversationRuntimeStateTransition<Boolean> {
+        require(preparation.conversationId == conversationId && preparation.status == ProactiveCompaction.Status.RUNNING)
+        if (proactiveCompaction?.cancellable == true || proactiveCompaction?.id == preparation.id) return unchanged(false)
+        if (executionState?.controlState != ConversationExecutionState.ControlState.RUNNING ||
+            !confirmActiveTaskOwner(preparation.sourceTaskId, preparation.executor)) return unchanged(false)
+        return changed(copy(proactiveCompaction = preparation), true)
+    }
+
+    fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): ConversationRuntimeStateTransition<Boolean> {
+        require(expected.conversationId == conversationId && updated.conversationId == conversationId && expected.id == updated.id)
+        require(updated.copy(status = expected.status, checkpoint = expected.checkpoint, updatedAt = expected.updatedAt,
+            failureCode = expected.failureCode, outcomeUnknown = expected.outcomeUnknown) == expected) {
+            "Compaction completion cannot change the captured input or owner"
+        }
+        if (proactiveCompaction != expected) return unchanged(false)
+        if (!expected.pending && !(expected.status == ProactiveCompaction.Status.FAILED && updated.status == ProactiveCompaction.Status.DISCARDED)) {
+            return unchanged(expected == updated)
+        }
+        require(updated.status != ProactiveCompaction.Status.RUNNING || updated == expected)
+        return changed(copy(proactiveCompaction = updated), true)
     }
 
     fun submit(
@@ -628,6 +651,12 @@ data class ConversationRuntimeSchedulingState(
             controlState == ConversationExecutionState.ControlState.INTERRUPTING
         ) {
             "Conversation runtime terminal request must stop or interrupt"
+        }
+        val prepared = proactiveCompaction
+        if (prepared?.cancellable == true && (expectedTurnId == null || prepared.sourceTurnId == expectedTurnId)) {
+            val cancelled = copy(proactiveCompaction = prepared.cancel(now))
+            val transition = cancelled.requestTerminalState(controlState, now, expectedTurnId)
+            return changed(transition.state, true)
         }
         if (expectedTurnId != null && (activeTask ?: continuationTask)?.turnId != expectedTurnId) {
             val removed = pendingTasks.filter { it.turnId == expectedTurnId }

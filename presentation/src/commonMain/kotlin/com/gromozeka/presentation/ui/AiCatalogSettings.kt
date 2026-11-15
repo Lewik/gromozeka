@@ -1692,6 +1692,7 @@ private fun ModelConfigurationDialog(
         mutableStateOf(if (existing?.compaction?.thresholdTokens == null) AutoCompactionEditorMode.None else AutoCompactionEditorMode.Absolute)
     }
     var compactionValue by remember { mutableStateOf(existing?.compaction?.thresholdTokens?.toString().orEmpty()) }
+    var proactiveThreshold by remember { mutableStateOf(existing?.compaction?.proactiveThresholdTokens?.toString().orEmpty()) }
     var summaryConfigurationId by remember { mutableStateOf(existing?.compaction?.summaryModelConfigurationId) }
     var countMode by remember { mutableStateOf(existing?.compaction?.tokenCounting?.mode ?: AiModelConfiguration.TokenCounting.Mode.CURRENT) }
     var counterConfigurationId by remember { mutableStateOf(existing?.compaction?.tokenCounting?.modelConfigurationId) }
@@ -1804,6 +1805,12 @@ private fun ModelConfigurationDialog(
                             enabled = compactionMode != AutoCompactionEditorMode.None,
                         )
                     }
+                    OptionalNumberField(
+                        proactiveThreshold, { proactiveThreshold = it },
+                        translation.text("ai.compaction.proactive_threshold"), Modifier.fillMaxWidth(),
+                        enabled = compactionMode != AutoCompactionEditorMode.None,
+                    )
+                    Text(translation.text("ai.compaction.proactive_hint"), style = MaterialTheme.typography.bodySmall)
                     LabeledDropdown(
                         label = translation.text("ai.compaction.count_mode"),
                         value = countMode,
@@ -1945,6 +1952,8 @@ private fun ModelConfigurationDialog(
                                     (requireNotNull(selectedModelSpec.contextWindowTokens).toLong() * percent / 100).toInt()
                                 }
                             },
+                            proactiveThresholdTokens = if (compactionMode == AutoCompactionEditorMode.None) null else
+                                proactiveThreshold.optionalInt(translation.text("ai.compaction.proactive_threshold"), translation),
                             summaryModelConfigurationId = summaryConfigurationId,
                             tokenCounting = AiModelConfiguration.TokenCounting(countMode,
                                 if (countMode == AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION)

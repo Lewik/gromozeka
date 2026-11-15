@@ -4,6 +4,11 @@
   "name": "English",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "Proactive compaction threshold (tokens)",
+    "ai.compaction.proactive_hint": "Empty disables background preparation after answers. Must be below the blocking threshold.",
+    "chat.activity.compactionPreparing": "Preparing compaction",
+    "chat.activity.compactionReady": "Compaction ready",
+    "chat.activity.compactionFailed": "Compaction preparation failed",
     "ai.compaction.count_mode": "Context token counting",
     "ai.compaction.count_current": "Current connection (if supported)",
     "ai.compaction.count_local": "Local estimate only",

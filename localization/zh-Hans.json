@@ -4,6 +4,11 @@
   "name": "简体中文",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "预压缩阈值（令牌）",
+    "ai.compaction.proactive_hint": "留空可禁用回复后的后台准备。必须低于阻塞阈值。",
+    "chat.activity.compactionPreparing": "正在准备压缩",
+    "chat.activity.compactionReady": "压缩已就绪",
+    "chat.activity.compactionFailed": "压缩准备失败",
     "ai.compaction.count_mode": "上下文 token 计数",
     "ai.compaction.count_current": "当前连接（若支持）",
     "ai.compaction.count_local": "仅本地估算",

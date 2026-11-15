@@ -74,6 +74,8 @@ sealed class AiResponseFormat {
 
 data class AiRuntimeCapabilities(
     val supportsNativeCompaction: Boolean = false,
+    /** Can compact a captured prefix without changing the live provider session. */
+    val supportsDetachedNativeCompaction: Boolean = false,
 )
 
 data class AiRuntimeResponse(

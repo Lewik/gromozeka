@@ -4,6 +4,11 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
+    "ai.compaction.proactive_threshold": "事前圧縮のしきい値（トークン）",
+    "ai.compaction.proactive_hint": "空欄にすると応答後の準備を無効にします。ブロックしきい値より小さくしてください。",
+    "chat.activity.compactionPreparing": "圧縮を準備中",
+    "chat.activity.compactionReady": "圧縮の準備完了",
+    "chat.activity.compactionFailed": "圧縮の準備に失敗しました",
     "ai.compaction.count_mode": "コンテキストのトークン数計測",
     "ai.compaction.count_current": "現在の接続（対応している場合）",
     "ai.compaction.count_local": "ローカル推定のみ",

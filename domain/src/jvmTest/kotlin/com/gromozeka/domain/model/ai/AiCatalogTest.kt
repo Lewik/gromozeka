@@ -259,7 +259,7 @@ class AiCatalogTest {
         val second = catalog.modelConfigurations.first().copy(id = AiModelConfiguration.Id("summary"))
         val withSummary = catalog.copy(modelConfigurations = catalog.modelConfigurations + second)
         val used = withSummary.copy(modelConfigurations = withSummary.modelConfigurations.map {
-            if (it.id == CHAT_CONFIGURATION_ID) it.copy(compaction = AiModelConfiguration.Compaction(100_000, second.id)) else it
+            if (it.id == CHAT_CONFIGURATION_ID) it.copy(compaction = AiModelConfiguration.Compaction(100_000, summaryModelConfigurationId = second.id)) else it
         })
         assertFailsWith<IllegalArgumentException> { used.copy(modelConfigurations = used.modelConfigurations.filterNot { it.id == second.id }) }
         assertFailsWith<IllegalArgumentException> { used.copy(modelConfigurations = used.modelConfigurations.map {

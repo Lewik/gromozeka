@@ -87,11 +87,11 @@ internal class OpenAiResponsesSdkRuntime(
         generation = generation,
     ),
 ) : AiRuntime {
-    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(supportsNativeCompaction = true)
+    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(supportsNativeCompaction = true, supportsDetachedNativeCompaction = true)
     private val log = KLoggers.logger(this)
 
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
-        if (!allowProviderCount) return super.inspectContext(request, false)
+        if (!allowProviderCount) return super.inspectContext(request, false).copy(nativeCompactionAvailable = true)
         val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
         val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
         val countBody = jsonMapper().readValue(JsonObject(fields.filterKeys {

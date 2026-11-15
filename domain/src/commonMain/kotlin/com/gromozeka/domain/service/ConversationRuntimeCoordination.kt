@@ -774,6 +774,7 @@ data class ConversationRuntimeSnapshot(
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
     val lastTurn: ConversationRuntimeTurnSummary? = null,
     val retainedTurnProblems: ConversationRuntimeTurnSummary? = null,
+    val proactiveCompaction: ProactiveCompactionActivity? = null,
     val agentRequests: List<com.gromozeka.domain.model.AgentRequest> = emptyList(),
     val lastEventSequence: Long = 0,
 )
@@ -892,6 +893,11 @@ data class ConversationRuntimeEventLogEntry(
 )
 
 interface ConversationRuntimeCoordinator {
+    suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean
+    suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean
+    suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction?
+    suspend fun runningProactiveCompactions(): List<ProactiveCompaction>
+
     suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot {
         val snapshot = snapshot(conversationId)
         return ConversationRuntimeSchedulingSnapshot(

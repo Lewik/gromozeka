@@ -95,6 +95,9 @@ select the current count API, local-only counting, or another model configuratio
 See [context counting policy](ai-http-settings.md#context-counting-policy).
 Protocol 29 adds tool-free `isolated_ai_call_v1` inference and binary workspace file
 reads. Server and Workers must be updated together. See [isolated AI calls](ai-call.md).
+Protocol 30 adds proactive compaction configuration and detached native-prefix
+capability. Full compactions retain a whole-message suffix; prepared-result
+publication and cancellation are fenced by Runtime storage. See [proactive compaction](proactive-compaction.md).
 
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,

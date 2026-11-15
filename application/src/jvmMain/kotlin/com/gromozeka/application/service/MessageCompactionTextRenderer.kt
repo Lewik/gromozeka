@@ -14,6 +14,13 @@ internal object MessageCompactionTextRenderer {
                 ?.let { "[${message.role.name.lowercase()} id=${message.id.value} at=${message.createdAt}]\n$it" }
         }.joinToString("\n\n").trim().also { require(it.isNotBlank()) { "Selected messages contain no readable content" } }
 
+    fun characterCount(message: Conversation.Message): Long =
+        message.content.sumOf {
+            if (it is Conversation.Message.ContentItem.ContextCompactionResult) 0L else renderContentItem(it)?.length?.toLong() ?: 0L
+        } +
+            message.instructions.filterNot { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
+                .sumOf { it.toXmlLine().length.toLong() }
+
     fun attachments(messages: List<Conversation.Message>): List<Conversation.Message.ContentItem> = buildList {
         messages.flatMap { it.content }.forEach { item ->
             when (item) {

@@ -38,6 +38,22 @@ class ConversationEngineDeliveryTest {
     private fun answer(outcome: AiStepOutcome = AiStepOutcome.COMPLETE) = AiRuntimeResponse(
         listOf(AiAssistantMessage(listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Answer"))))), outcome = outcome)
 
+    @Test fun `background preparation begins only after a final answer is emitted`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        var emitted = false
+        f.onPrepare = { assertTrue(emitted, "Preparation must follow answer delivery") }
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) { message ->
+            if (message.content.any { it is ContentItem.AssistantMessage }) emitted = true
+        })
+        assertEquals(1, f.preparations.size)
+        assertTrue(f.preparations.single().messages.any { message -> message.content.any { it is ContentItem.AssistantMessage } })
+        for (outcome in listOf(AiStepOutcome.CONTINUE, AiStepOutcome.FAILED, AiStepOutcome.REFUSED)) {
+            val other = Fixture(); val active = other.begin(); other.onCall = { answer(outcome) }
+            other.engine.runRuntimeTask(active, executor) {}
+            assertTrue(other.preparations.isEmpty(), outcome.name)
+        }
+    }
+
     @Test fun `queued idle bursts produce one request containing every distinct message in either mode`() = runBlocking {
         for (mode in UserMessageDeliveryMode.entries) {
             val f = Fixture(); f.messages.clear()
@@ -216,6 +232,25 @@ class ConversationEngineDeliveryTest {
         val next = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {}).nextTask
         assertNull(next.actorUserId)
         assertEquals(listOf("a", "b"), f.messages.takeLast(2).map { it.id.value })
+    }
+
+    @Test fun `reviewed visible answer prepares compaction but silent routing completion does not`() = runBlocking {
+        for (text in listOf("Visible final", null)) {
+            val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
+            val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Original answer"))), createdAt = now)
+            f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
+                Conversation.Message.Id("root"), model.turnId.value, 1, listOf(candidate), emptyList(), emptyList(), emptyList(), "", listOf("root"), now,
+                decision = AgentResponseDecision(text, AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()))
+            f.acceptReview = true
+            val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
+                payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
+            f.advance(model, task)
+            f.onPrepare = { assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } }) }
+            val result = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
+            if (text == null) { assertIs<ConversationRuntimeTaskOutcome.CompleteWithoutNotification>(result); assertTrue(f.preparations.isEmpty()) }
+            else { assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(result); assertEquals(1, f.preparations.size) }
+        }
     }
 
     @Test fun `steer invalidates an unpublished response review and preserves replay without stale visible answer`() = runBlocking {
@@ -457,17 +492,21 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
     }
 
-    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false) {
+    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
         var onCompact: (AiRuntimeRequest) -> Conversation? = { null }
         val compactionChecks = mutableListOf<Pair<AiRuntimeRequest, Boolean>>()
+        val preparations = mutableListOf<AiRuntimeRequest>()
+        var onPrepare: () -> Unit = {}
         private val compactions = responding<ConversationCompactionService> {
             if (it.method.name.startsWith("compactIfNeeded")) {
                 val request = it.arguments[4] as AiRuntimeRequest
                 compactionChecks += request to (it.arguments[5] as Boolean)
                 onCompact(request)
+            } else if (it.method.name.startsWith("prepareAfterResponse")) {
+                onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; Unit
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
         val pins = ReadOnlyTestPins()
@@ -495,7 +534,8 @@ class ConversationEngineDeliveryTest {
             type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
         private val connection = AiConnection.OpenAiSubscription(AiConnection.Id("test"), "Test", enabled = true)
         private val resolved = ResolvedAiRuntime(connection,
-            AiModelConfiguration(selection.modelConfigurationId, connection.id, "test-model", "Test"),
+            AiModelConfiguration(selection.modelConfigurationId, connection.id, "test-model", "Test",
+                compaction = if (proactive) AiModelConfiguration.Compaction(900, 500) else AiModelConfiguration.Compaction()),
             AiModelSpec("test-model", AiProvider.OPENAI, capabilities = setOf(AiModelCapability.TEXT_GENERATION),
                 limits = AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 1000))))
         private val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
@@ -567,8 +607,13 @@ class ConversationEngineDeliveryTest {
             artifactService = artifacts, toolSecretResolutionService = responding { emptyMap<String, String>() },
         )
         var draft: AgentResponseDraft? = null
+        var acceptReview = false
         val reviewRepository = responding<com.gromozeka.domain.repository.AgentCollaborationRepository> {
-            if (it.method.name.startsWith("findDraft")) draft else Mockito.RETURNS_DEFAULTS.answer(it)
+            when {
+                it.method.name.startsWith("findDraft") -> draft
+                it.method.name.startsWith("applyDecision") -> acceptReview
+                else -> Mockito.RETURNS_DEFAULTS.answer(it)
+            }
         }
         private val collaboration = responding<AgentCollaborationService> {
             when (it.method.name.substringBefore('-')) {

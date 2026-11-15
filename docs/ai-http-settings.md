@@ -94,6 +94,7 @@ Compaction is configured on `AiModelConfiguration`, not `AiModelSpec`:
 {
   "compaction": {
     "thresholdTokens": 140000,
+    "proactiveThresholdTokens": 100000,
     "summaryModelConfigurationId": null,
     "tokenCounting": { "mode": "CURRENT", "modelConfigurationId": null }
   }
@@ -115,7 +116,10 @@ request, including system prompts, tools, response schema and projected history.
 At the threshold it blocks generation, executes one compaction, commits a new
 history version (COW), and rebuilds the request. If the result still exceeds the
 threshold, it stops with an explicit error instead of repeatedly compacting or
-sending the oversized request. Preparation is not proactive or concurrent.
+sending the oversized request. An optional earlier `proactiveThresholdTokens` starts
+one preparation after a completed answer. At the blocking threshold an existing
+preparation is awaited, not duplicated. See [proactive compaction](proactive-compaction.md)
+for cancellation, recovery, retained suffixes and native-adapter restrictions.
 
 ### Context counting policy
 
@@ -174,12 +178,12 @@ The executor is selected before execution:
   Other profiles use text summarization. The adapter's decoded-opaque estimate
   is calibrated to scoped usage; it is not a provider token count. Native replay
   may retain raw items according to its protocol, independently of text policy.
-- Claude Code: an existing compatible session can execute `/compact` exclusively,
-  without also generating the next answer. Coverage ends at the session's actual
-  input boundary; unseen user/tool messages remain outside it. An explicit COW
-  receipt plus session ID, source IDs and transcript fingerprints authorize
-  continuation across the history-version change. A fresh session or incomplete
-  tool boundary selects text summarization before any native mutation.
+- Claude Code: live-session `/compact` is not a detached prefix operation. Harness
+  full compactions retain a suffix and therefore select the configured text
+  summarizer before any native session mutation. With a Harness threshold enabled,
+  competing intrinsic auto-compaction is disabled; summary calls disable it too.
+  When the Harness trigger is disabled, provider-emitted checkpoints retain their
+  native COW/replay contract rather than being rewritten to manufacture a tail.
 - Anthropic Messages: `/messages/count_tokens` counts fresh/invalidated contexts when selected;
   text summarization performs compaction. Bedrock has no universal count endpoint
   in this adapter and uses an explicitly marked estimate.
@@ -203,17 +207,20 @@ feedback must be compatible with those endpoint responses. Quota calculators tha
 need an output reserve must configure it explicitly when the request omits an
 output limit; the Harness does not invent a summary cap or bypass quota policy.
 
-A failed counter or native operation is an error, not permission to retry through
-another route. Every committed compaction creates a new Thread; canonical source
+A failed blocking counter or native operation is an error, not permission to retry
+through another route. Confirmed failures of background preparation follow the
+explicit ordinary-compaction fallback; cancellation and unknown outcomes do not. Every committed compaction creates a new Thread; canonical source
 messages and original IDs remain archived. Runtime roots, queues and stable
 Conversation/Agent collaboration addresses continue. New provider output after a
 native checkpoint receives the new replay scope; archived opaque state is not
-retagged. Server and Workers must use the matching Gateway protocol (currently version 28).
+retagged. Server and Workers must use the matching Gateway protocol (currently version 30).
 
 Text auto-compaction always uses the continuation-oriented SUMMARIZE prompt.
-There is no preserved raw-message tail and no separate summary-length setting.
-Recent work, current instructions, verified results, open obligations, constraints
-and next actions are preserved semantically. Readable material and supported
+Full compactions retain approximately 80,000 recent text characters as whole
+messages and complete tool groups; the boundary-crossing message remains whole.
+Partial explicit selections do not gain an extra suffix. The older prefix is
+summarized semantically, preserving current instructions, verified results,
+obligations, constraints and next actions. There is no separate summary-length setting. Readable material and supported
 committed image/PDF attachments are sent to the helper, not raw provider replay.
 One-shot revealed secrets are reserved for the ordinary request and are not sent
 to the counter or summary model. DISTILL remains a manual-only prompt variant;
