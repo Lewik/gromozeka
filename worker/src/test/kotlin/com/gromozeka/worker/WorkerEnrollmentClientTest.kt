@@ -5,6 +5,8 @@ import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.springframework.boot.env.YamlPropertySourceLoader
+import org.springframework.core.io.FileSystemResource
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Path
@@ -98,7 +100,9 @@ class WorkerEnrollmentClientTest {
             }
             start()
         }
+        // Backslashes exercise YAML escaping on Unix as filename characters and on Windows as separators.
         val configPath = Files.createTempDirectory("gromozeka-worker-ca-enrollment")
+            .resolve("worker\\location")
             .resolve("worker.yaml")
         val sourceCa = Path.of(requireNotNull(javaClass.getResource("/gromozeka-test-ca.pem")).toURI())
 
@@ -117,9 +121,9 @@ class WorkerEnrollmentClientTest {
         }
 
         val persistedCa = configPath.parent.resolve("trust/server-ca.pem").toAbsolutePath()
-        val config = Files.readString(configPath)
+        val properties = YamlPropertySourceLoader().load("worker", FileSystemResource(configPath)).single()
         assertTrue(Files.isRegularFile(persistedCa))
-        assertContains(config, persistedCa.toString())
+        assertEquals(persistedCa.toString(), properties.getProperty("gromozeka.worker-gateway.ca-certificate-path"))
         workerTrustManager(persistedCa.toString())
     }
 
