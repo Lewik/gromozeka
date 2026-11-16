@@ -12,6 +12,7 @@ internal enum class ActivityState {
 internal sealed interface ActivityKind {
     data class Tool(val name: String) : ActivityKind
     data object Reasoning : ActivityKind
+    data class Service(val type: ServiceMessageKind) : ActivityKind
 }
 
 internal sealed interface ChatActivity {
@@ -34,6 +35,13 @@ internal sealed interface ChatActivity {
             }
         override val kind: ActivityKind = ActivityKind.Tool(call.call.name)
         override val canExpand: Boolean get() = true
+    }
+
+    data class Service(val block: Conversation.Message.ContentItem) : ChatActivity {
+        override val state: ActivityState = if (block is Conversation.Message.ContentItem.RuntimeNotification &&
+            block.level == Conversation.Message.ContentItem.RuntimeNotification.Level.ERROR) ActivityState.FAILED else ActivityState.COMPLETE
+        override val kind: ActivityKind = ActivityKind.Service(block.serviceKind())
+        override val canExpand: Boolean = true
     }
 
     data class Reasoning(val block: Conversation.Message.ContentItem.Thinking) : ChatActivity {
@@ -93,7 +101,7 @@ internal fun groupActivityEntries(entries: List<MessageListEntry>, preservedGrou
 
     for (entry in entries) {
         val reference = entry.activityReferenceOrNull()
-        if (reference == null || reference.activity.state != ActivityState.COMPLETE) {
+        if (reference == null || reference.activity is ChatActivity.Service || reference.activity.state != ActivityState.COMPLETE) {
             flushPending()
             result += entry
             continue

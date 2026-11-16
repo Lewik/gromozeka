@@ -63,7 +63,7 @@ internal class ConversationSearchToolContributor(
                             )
                         }
                         .also {
-                            if (it == Conversation.Message.Role.SYSTEM) {
+                            if (it == Conversation.Message.Role.RUNTIME_NOTIFICATION) {
                                 throw ServerToolException(
                                     "invalid_argument",
                                     "'roles' accepts only USER and ASSISTANT",

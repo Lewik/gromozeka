@@ -27,6 +27,37 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
+    fun `typed message migration preserves escaped NUL and refreshes prompt metadata`() = runBlocking {
+        withFixture(target = "87") { f ->
+            val notification = f.message("legacy-notice").copy(role = Conversation.Message.Role.RUNTIME_NOTIFICATION, author = null,
+                content = listOf(ContentItem.RuntimeNotification(ContentItem.RuntimeNotification.Level.WARNING, "before\u0000after")),
+                providerMetadata = buildJsonObject { put("native_role", "SYSTEM") })
+            f.insertRaw(notification, 0)
+            val legacy = Json.encodeToString(notification).replace("\"RUNTIME_NOTIFICATION\"", "\"SYSTEM\"")
+                .replace("\"runtime_notification\"", "\"com.gromozeka.domain.model.Conversation.Message.ContentItem.System\"")
+            f.source.connection.use { connection -> connection.prepareStatement(
+                "UPDATE messages SET role='SYSTEM', message_json=? WHERE id=?").use {
+                it.setString(1, legacy); it.setString(2, notification.id.value); it.executeUpdate()
+            } }
+            f.migrate()
+            assertEquals(notification, ExposedMessageRepository(Json).findById(notification.id))
+            assertNull(f.metadata(notification.id)) // Exact Kotlin extraction handles the valid escaped NUL body.
+            f.source.connection.use { connection -> connection.prepareStatement("SELECT role FROM messages WHERE id=?").use {
+                it.setString(1, notification.id.value)
+                it.executeQuery().use { rows -> assertTrue(rows.next()); assertEquals("RUNTIME_NOTIFICATION", rows.getString(1)) }
+            } }
+            val agent = com.gromozeka.domain.model.AgentDefinition.Id("agent")
+            val prompt = f.message("prompt").copy(role = Conversation.Message.Role.PROMPT, author = Conversation.Message.Author.Runtime(),
+                content = listOf(ContentItem.PromptMessage(agent, "Agent", com.gromozeka.domain.model.PromptSnapshot(
+                    listOf(com.gromozeka.domain.model.PromptSnapshot.Entry.Catalog(com.gromozeka.domain.model.Prompt.Id("rules"), "Rules", "instructions")),
+                    "a".repeat(64)), ContentItem.PromptMessage.Action.ATTACH)))
+            f.save(prompt, f.conversation.currentThread, 1)
+            assertEquals(agent, f.metadata(prompt.id)?.promptAgentId)
+            assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(prompt), f.metadata(prompt.id))
+        }
+    }
+
+    @Test
     fun `point reads preserve full messages and author projection while isolating threads`() = runBlocking {
         withFixture { f ->
             val current = f.conversation.currentThread
@@ -81,7 +112,7 @@ class PostgresRuntimeMessageReadTest {
             f.save(first, thread, 0)
             f.save(human("other", other), thread, 1)
             f.save(human("synthetic").copy(providerMetadata = buildJsonObject { put("synthetic", true) }), thread, 2)
-            f.save(f.message("no-author"), thread, 3)
+            f.save(f.message("no-author").copy(author = null), thread, 3)
             f.save(human("assistant").copy(role = Conversation.Message.Role.ASSISTANT), thread, 4)
             val read = f.measure {
                 assertEquals(com.gromozeka.domain.model.ConversationUserActivity(0, first.createdAt), f.history.latestUserActivity(thread, f.owner.id))
@@ -132,7 +163,7 @@ class PostgresRuntimeMessageReadTest {
                 f.message("normal").copy(instructions = listOf(Conversation.Message.Instruction.UserInstruction("mode", "Mode", "Value"))),
                 f.message("synthetic").copy(providerMetadata = buildJsonObject { put("synthetic", true) }),
                 f.message("synthetic-string").copy(providerMetadata = buildJsonObject { put("synthetic", "true") }),
-                f.message("agent-source").copy(instructions = listOf(Conversation.Message.Instruction.Source.Agent("peer"))),
+                f.message("peer").copy(role = Conversation.Message.Role.PEER, author = Conversation.Message.Author.Agent(com.gromozeka.domain.model.AgentDefinition.Id("peer"), "Peer")),
                 f.message("binary").copy(content = listOf(ContentItem.UserMessage("escaped\u0000payload"))),
                 f.message("visual").copy(content = listOf(ContentItem.VisualInteraction("v", "Title", 1, "e", "b", "Button",
                     buildJsonObject { put("form", buildJsonObject {}); put("data", buildJsonObject {}) }))),
@@ -305,7 +336,7 @@ class PostgresRuntimeMessageReadTest {
             ExposedThreadRepository().save(Conversation.Thread(conversation.currentThread, conversation.id, createdAt = now, updatedAt = now))
         }
         fun message(id: String) = Conversation.Message(Conversation.Message.Id(id), conversation.id,
-            role = Conversation.Message.Role.USER, content = listOf(ContentItem.UserMessage(id)), createdAt = now)
+            role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(owner.id, owner.displayName), content = listOf(ContentItem.UserMessage(id)), createdAt = now)
         suspend fun save(message: Conversation.Message, thread: Conversation.Thread.Id, position: Int) {
             ExposedMessageRepository(Json).save(message)
             links.add(thread, message.id, position)

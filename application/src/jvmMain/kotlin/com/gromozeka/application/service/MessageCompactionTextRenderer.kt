@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.serviceHistoryTextOrNull
 
 internal object MessageCompactionTextRenderer {
     fun render(messages: List<Conversation.Message>): String =
@@ -44,11 +45,14 @@ internal object MessageCompactionTextRenderer {
     }
 
     private fun renderContentItem(item: Conversation.Message.ContentItem): String? = when (item) {
+        is Conversation.Message.ContentItem.RuntimeNotification,
+        is Conversation.Message.ContentItem.PeerMessage,
+        is Conversation.Message.ContentItem.PromptMessage,
+        is Conversation.Message.ContentItem.VisualUpdated -> checkNotNull(item.serviceHistoryTextOrNull())
         is Conversation.Message.ContentItem.UserMessage -> item.text
         is Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
         is Conversation.Message.ContentItem.Thinking -> item.thinking.takeIf(String::isNotBlank)
-        is Conversation.Message.ContentItem.System -> item.content
         is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${item.call.name}] id=${item.id.value} ${item.call.input}"
         is Conversation.Message.ContentItem.ToolResult -> buildString {
             append("[tool_result:${item.toolName} error=${item.isError} call_id=${item.toolUseId.value}]")

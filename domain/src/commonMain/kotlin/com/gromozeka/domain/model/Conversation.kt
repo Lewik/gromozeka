@@ -53,11 +53,7 @@ data class Conversation(
     }
 
     fun autoRespondersFor(message: Message): Set<AgentDefinition.Id> =
-        autoRespondAgentIds.takeIf {
-            message.role == Message.Role.USER &&
-                message.author !is Message.Author.Agent &&
-                message.instructions.none { it is Message.Instruction.Source.Agent }
-        }.orEmpty()
+        autoRespondAgentIds.takeIf { message.isHumanInput() }.orEmpty()
 
     fun withParticipants(updatedParticipants: Set<Participant>): Conversation {
         if (participants == updatedParticipants) return this
@@ -155,7 +151,7 @@ data class Conversation(
      * @property conversationId parent conversation
      * @property originalIds messages this immutable version was derived from
      * @property replyTo if not null, this message is a response to another message
-     * @property role provider-facing message role (USER, ASSISTANT, SYSTEM)
+     * @property role canonical message category; provider wire roles are selected by adapters
      * @property author actor that created the message, when known
      * @property content list of content items (text, tool calls, images, thinking blocks, etc.)
      * @property instructions list of instructions attached to this message (user instructions, response expected tags, source metadata)
@@ -200,18 +196,16 @@ data class Conversation(
         value class Id(val value: String)
 
         /**
-         * Provider-facing message role.
+         * Canonical conversation category, independent of a provider's wire roles.
          */
         @Serializable
         enum class Role {
-            /** Human user input */
             USER,
-
-            /** AI assistant response */
             ASSISTANT,
-
-            /** System notification or instruction */
-            SYSTEM
+            PEER,
+            RUNTIME_NOTIFICATION,
+            PROMPT,
+            VISUAL_UPDATED,
         }
 
         @Serializable
@@ -233,6 +227,10 @@ data class Conversation(
                 val agentDefinitionId: AgentDefinition.Id,
                 override val displayName: String,
             ) : Author()
+
+            @Serializable
+            @SerialName("runtime")
+            data class Runtime(override val displayName: String = "Runtime") : Author()
         }
 
         /**
@@ -437,26 +435,85 @@ data class Conversation(
                 enum class Kind { THINKING, REDACTED }
             }
 
-            /**
-             * System notification or message.
-             *
-             * @property level severity level (INFO, WARNING, ERROR)
-             * @property content notification text
-             * @property toolUseId if not null, this notification is related to specific tool call
-             */
             @Serializable
-            data class System(
-                val level: SystemLevel,
+            @SerialName("peer_message")
+            data class PeerMessage(
+                val kind: Kind,
+                val sender: PeerMessageEndpoint,
+                val recipient: PeerMessageEndpoint,
+                val text: String,
+                val requestId: String? = null,
+                override val state: BlockState = BlockState.COMPLETE,
+            ) : ContentItem() {
+                init {
+                    require(text.isNotBlank()) { "Peer message cannot be empty" }
+                    require((kind == Kind.REQUEST || kind == Kind.RESULT) == (requestId != null)) {
+                        "Peer requests and results require their request ID"
+                    }
+                    require(requestId == null || requestId.isNotBlank())
+                }
+
+                @Serializable
+                enum class Kind { INFORMATION, ACTIVATION, REQUEST, RESULT }
+            }
+
+            @Serializable
+            @SerialName("runtime_notification")
+            data class RuntimeNotification(
+                val level: Level,
                 val content: String,
                 val toolUseId: ToolCall.Id? = null,
-                override val state: BlockState = BlockState.COMPLETE
+                override val state: BlockState = BlockState.COMPLETE,
+                val kind: Kind = Kind.NOTICE,
+                val referenceId: String? = null,
+                val details: JsonObject = JsonObject(emptyMap()),
+                val attachments: List<ToolResult.Data> = emptyList(),
             ) : ContentItem() {
-                /**
-                 * System notification severity level.
-                 */
                 @Serializable
-                enum class SystemLevel {
-                    INFO, WARNING, ERROR
+                enum class Level { INFO, WARNING, ERROR }
+
+                @Serializable
+                enum class Kind {
+                    NOTICE, COMMAND_COMPLETED, MONITOR_OUTPUT, EXECUTION_INCIDENT,
+                    TURN_CONTINUATION, SLOT_UPDATED,
+                }
+            }
+
+            @Serializable
+            @SerialName("prompt_message")
+            data class PromptMessage(
+                val agentId: AgentDefinition.Id,
+                val agentName: String,
+                val snapshot: PromptSnapshot,
+                val action: Action,
+                val previousMessageId: Message.Id? = null,
+                override val state: BlockState = BlockState.COMPLETE,
+            ) : ContentItem() {
+                init {
+                    require((action == Action.ATTACH) == (previousMessageId == null)) {
+                        "A prompt replacement or removal must identify its predecessor"
+                    }
+                    require(action != Action.DETACH || snapshot.entries.none { it is PromptSnapshot.Entry.Catalog }) {
+                        "A detached prompt snapshot cannot contain catalog instructions"
+                    }
+                }
+
+                @Serializable
+                enum class Action { ATTACH, REPLACE, DETACH }
+            }
+
+            @Serializable
+            @SerialName("visual_updated")
+            data class VisualUpdated(
+                val observedAt: Instant,
+                val visuals: List<VisualObservation>,
+                val closedVisualIds: List<String> = emptyList(),
+                override val state: BlockState = BlockState.COMPLETE,
+            ) : ContentItem() {
+                init {
+                    require(visuals.map { it.id }.distinct().size == visuals.size)
+                    require(closedVisualIds.distinct().size == closedVisualIds.size)
+                    require(visuals.none { it.id in closedVisualIds })
                 }
             }
 
@@ -877,23 +934,6 @@ data class Conversation(
             }
 
             /**
-             * Response expected instruction for inter-agent communication.
-             *
-             * Tells agent that another agent expects response back via tell_agent.
-             *
-             * @property targetTabId tab ID to send response to
-             */
-            @Serializable
-            data class ResponseExpected(
-                val targetTabId: String
-            ) : Instruction() {
-                override val title = "Response Expected"
-                override val description = "Use tell_agent with target_tab_id: $targetTabId"
-                override fun serializeContent() = "response_expected:$targetTabId"
-                override fun toXmlLine() = "<instruction>response_expected:${title}:${description}</instruction>"
-            }
-
-            /**
              * Message source metadata.
              */
             @Serializable
@@ -910,19 +950,6 @@ data class Conversation(
                     override fun toXmlLine() = "<source>user</source>"
                 }
 
-                /**
-                 * Message from another agent.
-                 *
-                 * @property tabId source agent's tab ID
-                 */
-                @Serializable
-                @SerialName("agent")
-                data class Agent(val tabId: String) : Source() {
-                    override val title = "Agent"
-                    override val description = "Message from agent (Tab ID: $tabId)"
-                    override fun serializeContent() = "agent:$tabId"
-                    override fun toXmlLine() = "<source>agent:$tabId</source>"
-                }
             }
         }
     }

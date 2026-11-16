@@ -706,10 +706,10 @@ class MemoryMessageRoutingApplicationService(
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
 
     private fun Conversation.Message.isMemoryRouteableTarget(): Boolean =
-        role != Conversation.Message.Role.SYSTEM && error == null
+        role != Conversation.Message.Role.RUNTIME_NOTIFICATION && error == null
 
     private fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
-        role != Conversation.Message.Role.SYSTEM && error == null
+        role != Conversation.Message.Role.RUNTIME_NOTIFICATION && error == null
 
     private fun memoryIdFactory(
         prefix: String,

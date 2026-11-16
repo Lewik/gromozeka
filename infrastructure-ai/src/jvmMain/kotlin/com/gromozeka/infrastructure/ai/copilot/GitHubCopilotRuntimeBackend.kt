@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.copilot
 
+import com.gromozeka.domain.model.projectServiceMessages
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.github.copilot.generated.AssistantReasoningEvent
 import com.github.copilot.generated.SessionEvent
@@ -578,7 +579,7 @@ private class GitHubCopilotRequestMapper {
             prompt = buildString {
                 appendLine("Gromozeka conversation transcript:")
                 appendLine()
-                append(messages.joinToString("\n\n", transform = ::messageToTranscript))
+                append(messages.projectServiceMessages().joinToString("\n\n", transform = ::messageToTranscript))
             },
             attachments = attachments.toList(),
         )
@@ -603,7 +604,10 @@ private class GitHubCopilotRequestMapper {
             is Conversation.Message.ContentItem.VisualInteraction -> xmlBlock("visual_interaction", item.modelText())
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
             is Conversation.Message.ContentItem.Thinking -> xmlBlock("thinking", item.thinking)
-            is Conversation.Message.ContentItem.System -> xmlBlock("system", item.content)
+            is Conversation.Message.ContentItem.RuntimeNotification -> xmlBlock("runtime_notification", item.content)
+            is Conversation.Message.ContentItem.PeerMessage,
+            is Conversation.Message.ContentItem.PromptMessage,
+            is Conversation.Message.ContentItem.VisualUpdated -> error("Service content was not projected before CLI input")
             is Conversation.Message.ContentItem.ToolCall ->
                 "<tool_call id=\"${xmlEscape(item.id.value)}\" name=\"${xmlEscape(item.call.name)}\">" +
                     xmlEscape(item.call.input.toString()) +

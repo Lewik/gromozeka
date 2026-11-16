@@ -134,6 +134,6 @@ class SparseConversationHistoryTest {
         return selectModelHistoryMessageIds(headers, checkpoints, provider)
     }
 
-    private fun text(id: String) = Message(Message.Id(id), Conversation.Id("conversation"), role = Message.Role.USER,
+    private fun text(id: String) = Message(Message.Id(id), Conversation.Id("conversation"), role = Message.Role.USER, author = Message.Author.User(User.Id("user"), "User"),
         content = listOf(ContentItem.UserMessage(id)), createdAt = Instant.parse("2026-11-08T00:00:00.123456789Z"))
 }

@@ -671,6 +671,10 @@ fun GromozekaAppContent(
                                                         sidePanelResize = sidePanelResize,
                                                         slotInventory = slotInventory,
                                                         onOpenSlots = { openSidePanel(SidebarSection.SLOTS) },
+                                                        onOpenConversation = { source -> coroutineScope.launch {
+                                                            appComponents.appViewModel.createTab(projectId = tabViewModel.projectId,
+                                                                conversationId = source, setAsCurrent = true, initiator = ConversationInitiator.User)
+                                                        } },
                                                         contentPadding = contentPadding,
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,

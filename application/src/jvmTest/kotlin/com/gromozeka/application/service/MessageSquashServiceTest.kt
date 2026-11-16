@@ -438,6 +438,49 @@ class MessageSquashServiceTest {
         assertTrue(f.runtimeProvider.requests.isEmpty())
     }
 
+    @Test fun `deleting a prompt predecessor keeps the surviving snapshot forkable without resurrecting deleted history`() = runBlocking {
+        val f = Fixture()
+        val snapshot = com.gromozeka.domain.model.PromptSnapshot(emptyList(), "a".repeat(64))
+        val first = f.third.copy(id = Conversation.Message.Id("prompt-first"), role = Conversation.Message.Role.PROMPT,
+            author = Conversation.Message.Author.Runtime(), content = listOf(Conversation.Message.ContentItem.PromptMessage(
+                AgentDefinition.Id("agent"), "Agent", snapshot, Conversation.Message.ContentItem.PromptMessage.Action.ATTACH)))
+        val latest = first.copy(id = Conversation.Message.Id("prompt-latest"), content = listOf(
+            (first.content.single() as Conversation.Message.ContentItem.PromptMessage).copy(
+                action = Conversation.Message.ContentItem.PromptMessage.Action.REPLACE, previousMessageId = first.id)))
+        f.messages.values[first.id] = first; f.messages.values[latest.id] = latest
+        f.threadMessages.links.getValue(f.initialThread.id).addAll(listOf(
+            ThreadMessageLink(f.initialThread.id, first.id, 3), ThreadMessageLink(f.initialThread.id, latest.id, 4)))
+        val deleted = f.historyService().deleteRuntimeHistory(f.conversation.id, listOf(first.id))!!
+        assertTrue(f.threadMessages.messages(deleted.currentThread).none { it.id == first.id })
+        val fork = f.historyService().fork(f.conversation.id)
+        val retained = f.threadMessages.messages(fork.currentThread).single { it.role == Conversation.Message.Role.PROMPT }
+        val prompt = retained.content.single() as Conversation.Message.ContentItem.PromptMessage
+        assertEquals(first.id, prompt.previousMessageId)
+        assertEquals(snapshot, prompt.snapshot)
+        kotlin.test.assertNotEquals(latest.id, retained.id)
+        assertEquals(fork.id, retained.conversationId)
+    }
+
+    @Test fun `history mutations reject forged prompt blocks and edits of service messages before any write`() = runBlocking {
+        val f = Fixture()
+        val prompt = Conversation.Message.ContentItem.PromptMessage(AgentDefinition.Id("agent"), "Agent",
+            com.gromozeka.domain.model.PromptSnapshot(emptyList(), "a".repeat(64)),
+            Conversation.Message.ContentItem.PromptMessage.Action.ATTACH)
+        val counts = f.storageCounts()
+        assertFailsWith<IllegalArgumentException> {
+            f.historyService().editRuntimeHistory(f.conversation.id, f.third.id, listOf(prompt))
+        }
+        assertEquals(counts, f.storageCounts())
+        f.messages.values[f.third.id] = f.third.copy(role = Conversation.Message.Role.PROMPT,
+            author = Conversation.Message.Author.Runtime(), content = listOf(prompt))
+        assertFailsWith<IllegalArgumentException> {
+            f.historyService().editRuntimeHistory(f.conversation.id, f.third.id,
+                listOf(Conversation.Message.ContentItem.UserMessage("client replacement")))
+        }
+        assertEquals(counts, f.storageCounts())
+        assertEquals(prompt, f.messages.values.getValue(f.third.id).content.single())
+    }
+
     private class Fixture(
         runtimeFailure: Throwable? = null,
         commitConflict: Boolean = false,

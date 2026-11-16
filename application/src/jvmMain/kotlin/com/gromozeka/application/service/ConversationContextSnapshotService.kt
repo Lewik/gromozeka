@@ -20,7 +20,7 @@ class ConversationContextSnapshotService(
     private val conversations: ConversationDomainService,
     private val history: ThreadMessageRepository,
     private val configuration: AiConfigurationProvider,
-    private val prompts: AgentPromptAssemblyService,
+    private val prompts: PromptApplicationService,
     private val settings: SettingsProvider,
     private val toolCatalog: DistributedAiToolCatalog,
     private val skills: AgentSkillRuntimeCatalogService,
@@ -79,7 +79,7 @@ class ConversationContextSnapshotService(
         )
         val projectionRequest = AiRuntimeRequest(emptyList(), original, options = options)
         val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
-        val projected = projectionRequest.projectedMessages(nativeProvider)
+        val projected = projectionRequest.contextMessages(nativeProvider)
         val prefix = completeToolGroupPrefix(projected)
         // Empty projection is not proof of empty usable history: a checkpoint in the discarded
         // tail may already have hidden a complete canonical prefix. Fail closed in that case.
@@ -100,7 +100,7 @@ class ConversationContextSnapshotService(
             temporal.enrich(original.take(rawBoundary + 1), profile.agentSettings.includeMessageTemporalContext),
             profile.messageInstructionGroups,
         )
-        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(nativeProvider)
+        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).contextMessages(nativeProvider)
         if (materializedPrefix.map { it.id } != prefix.map { it.id }) throw ContextSnapshotUnavailableException(
             "Incomplete history checkpoint prevents a stable projected context prefix")
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)
@@ -113,9 +113,13 @@ class ConversationContextSnapshotService(
             )
         val selectedTools = toolSelection.selectTools(agent, catalog, prefix, memoryEnabled)
         val peerContext = collaboration.takeIf { conversation.externalChannel == null }
+        val capturedPrompt = original.take(rawBoundary + 1).asReversed()
+            .firstNotNullOfOrNull { it.promptSnapshotOrNull()?.takeIf { prompt -> prompt.agentId == agent.id } }
+        val basePrompts = if (capturedPrompt == null) prompts.assembleSystemPrompt(agent.prompts, context)
+            else prompts.assembleSnapshot(capturedPrompt.snapshot, context)
         val systemPrompts = buildList {
             addAll(assembleConversationSystemPrompts(
-                base = prompts.assembleSystemPrompt(agent, context),
+                base = basePrompts,
                 agent = agent,
                 capabilityCatalog = capabilities.cachedPromptFor(definitions),
                 environment = catalog.environmentPrompt,

@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.domain.model.projectServiceMessages
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
@@ -639,7 +640,7 @@ internal class ClaudeCodeCliRuntime(
         }
         val attachments = ClaudeCodeAttachmentCollector()
         val replayMessages = ConversationContext(plan.messagesToSend)
-            .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name)
+            .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name).projectServiceMessages()
         val prompt = listOf(
             "$header\n\n${messagesToTranscript(replayMessages, attachments)}",
             contract?.reminder(),
@@ -811,7 +812,10 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.VisualInteraction -> xmlBlock("visual_interaction", item.modelText())
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
             is Conversation.Message.ContentItem.Thinking -> xmlBlock("thinking", item.thinking)
-            is Conversation.Message.ContentItem.System -> xmlBlock("system", item.content)
+            is Conversation.Message.ContentItem.RuntimeNotification -> xmlBlock("runtime_notification", item.content)
+            is Conversation.Message.ContentItem.PeerMessage,
+            is Conversation.Message.ContentItem.PromptMessage,
+            is Conversation.Message.ContentItem.VisualUpdated -> error("Service content was not projected before CLI input")
             is Conversation.Message.ContentItem.ToolCall -> {
                 "<tool_call id=\"${xmlEscape(item.id.value)}\" name=\"${xmlEscape(item.call.name)}\">" +
                     xmlEscape(item.call.input.toString()) +
@@ -936,7 +940,10 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.ToolCall -> "tool_call:${item.id.value}:${item.call.name}:${item.call.input}"
             is Conversation.Message.ContentItem.ToolResult -> "tool_result:${item.toolUseId.value}:${item.toolName}:${item.isError}:${toolResultText(item)}"
             is Conversation.Message.ContentItem.Thinking -> "thinking:${item.thinking}:${item.signature}"
-            is Conversation.Message.ContentItem.System -> "system:${item.level}:${item.content}:${item.toolUseId?.value}"
+            is Conversation.Message.ContentItem.RuntimeNotification,
+            is Conversation.Message.ContentItem.PeerMessage,
+            is Conversation.Message.ContentItem.PromptMessage,
+            is Conversation.Message.ContentItem.VisualUpdated -> "service:${sha256(Json.encodeToString(Conversation.Message.ContentItem.serializer(), item))}"
             is Conversation.Message.ContentItem.ImageItem -> "image:${imageSourceSignature(item.source)}"
             is Conversation.Message.ContentItem.DocumentItem -> "document:${documentSourceSignature(item.source)}"
             is Conversation.Message.ContentItem.ArtifactItem -> "artifact:${item.artifact}"

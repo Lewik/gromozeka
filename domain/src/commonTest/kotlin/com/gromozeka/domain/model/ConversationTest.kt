@@ -51,14 +51,16 @@ class ConversationTest {
         val conversation = conversation(setOf(user, agent)).copy(autoRespondAgentIds = setOf(agent.agentDefinitionId))
         val message = Conversation.Message(
             id = Conversation.Message.Id("message"), conversationId = conversation.id,
-            role = Conversation.Message.Role.USER,
+            role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(user.userId, "User"),
             content = listOf(Conversation.Message.ContentItem.UserMessage("Hello")), createdAt = Clock.System.now(),
         )
         assertEquals(conversation.autoRespondAgentIds, conversation.autoRespondersFor(message))
+        assertEquals(conversation.autoRespondAgentIds, conversation.autoRespondersFor(message.copy(content = listOf(
+            Conversation.Message.ContentItem.ImageItem(Conversation.Message.ImageSource.UrlImageSource("https://example.test/image.png"))))))
         assertEquals(emptySet(), conversation.autoRespondersFor(message.copy(role = Conversation.Message.Role.ASSISTANT)))
-        assertEquals(emptySet(), conversation.autoRespondersFor(message.copy(role = Conversation.Message.Role.SYSTEM)))
+        assertEquals(emptySet(), conversation.autoRespondersFor(message.copy(role = Conversation.Message.Role.RUNTIME_NOTIFICATION)))
         assertEquals(emptySet(), conversation.autoRespondersFor(message.copy(
-            instructions = listOf(Conversation.Message.Instruction.Source.Agent("source")),
+            role = Conversation.Message.Role.PEER,
         )))
         assertEquals(emptySet(), conversation.autoRespondersFor(message.copy(
             author = Conversation.Message.Author.Agent(agent.agentDefinitionId, "Agent"),

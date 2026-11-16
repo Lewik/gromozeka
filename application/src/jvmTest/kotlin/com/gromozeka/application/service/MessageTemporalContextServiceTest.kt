@@ -7,7 +7,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.time.Instant
-import kotlinx.serialization.json.JsonPrimitive
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.AgentDefinition
 
 class MessageTemporalContextServiceTest {
     private val service = MessageTemporalContextService()
@@ -32,13 +33,13 @@ class MessageTemporalContextServiceTest {
     }
 
     @Test
-    fun `ignores synthetic and agent-authored user messages`() {
+    fun `ignores runtime and peer messages`() {
         val first = userMessage("first", "2026-08-17T10:00:00Z")
         val synthetic = userMessage("synthetic", "2026-08-17T10:01:00Z").copy(
-            providerMetadata = kotlinx.serialization.json.buildJsonObject { put("synthetic", JsonPrimitive(true)) },
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION, author = Conversation.Message.Author.Runtime(),
         )
         val fromAgent = userMessage("agent", "2026-08-17T10:02:00Z").copy(
-            instructions = listOf(Conversation.Message.Instruction.Source.Agent("tab-1")),
+            role = Conversation.Message.Role.PEER, author = Conversation.Message.Author.Agent(AgentDefinition.Id("peer"), "Peer"),
         )
         val second = userMessage("second", "2026-08-17T10:04:00Z")
 
@@ -78,7 +79,7 @@ class MessageTemporalContextServiceTest {
     private fun userMessage(id: String, createdAt: String) = Conversation.Message(
         id = Conversation.Message.Id(id),
         conversationId = CONVERSATION_ID,
-        role = Conversation.Message.Role.USER,
+        role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(User.Id("user"), "User"),
         content = listOf(Conversation.Message.ContentItem.UserMessage(id)),
         createdAt = Instant.parse(createdAt),
     )

@@ -27,7 +27,7 @@ class MessagePinningTest {
                 "private_tool", JsonObject(mapOf("text" to JsonPrimitive("PRIVATE_INPUT"))),
             )),
             readable,
-            ContentItem.System(ContentItem.System.SystemLevel.INFO, "PRIVATE_SYSTEM"),
+            ContentItem.RuntimeNotification(ContentItem.RuntimeNotification.Level.INFO, "PRIVATE_SYSTEM"),
         )).copy(
             providerMetadata = JsonObject(mapOf("nativePayload" to JsonPrimitive("PRIVATE_NATIVE_PAYLOAD"))),
             instructions = listOf(Conversation.Message.Instruction.UserInstruction("instruction", "PRIVATE_TITLE", "PRIVATE_INSTRUCTION")),

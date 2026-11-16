@@ -213,7 +213,7 @@ explicit ordinary-compaction fallback; cancellation and unknown outcomes do not.
 messages and original IDs remain archived. Runtime roots, queues and stable
 Conversation/Agent collaboration addresses continue. New provider output after a
 native checkpoint receives the new replay scope; archived opaque state is not
-retagged. Server and Workers must use the matching Gateway protocol (currently version 30).
+retagged. Server and Workers must use the matching Gateway protocol (currently version 31).
 
 Text auto-compaction always uses the continuation-oriented SUMMARIZE prompt.
 Full compactions retain approximately 80,000 recent text characters as whole

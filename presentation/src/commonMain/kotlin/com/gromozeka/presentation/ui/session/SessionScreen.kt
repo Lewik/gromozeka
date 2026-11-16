@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.promptSnapshotOrNull
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutScope
 import com.gromozeka.domain.model.Settings
@@ -77,6 +78,7 @@ internal fun SessionScreen(
     contentPadding: Dp = 16.dp,
     slotInventory: SlotInventoryState,
     onOpenSlots: () -> Unit,
+    onOpenConversation: ((Conversation.Id) -> Unit)? = null,
 ) {
     val localization = LocalTranslation.current
     val spacing = GromozekaTheme.spacing
@@ -85,6 +87,9 @@ internal fun SessionScreen(
     // Capture one immutable emission: paging callbacks must not re-read a newer State.value.
     val historyContent = viewModel.historyContent.collectAsState().value
     val filteredHistory = historyContent.messages
+    val promptReplacements = remember(filteredHistory) {
+        filteredHistory.mapNotNull { message -> message.promptSnapshotOrNull()?.previousMessageId?.let { it to message.id } }.toMap()
+    }
     val olderHistory by viewModel.olderHistory.collectAsState()
     val newerHistory by viewModel.newerHistory.collectAsState()
     val historyLoading by viewModel.historyLoading.collectAsState()
@@ -236,7 +241,10 @@ internal fun SessionScreen(
                                     },
                                     onManualContentResize = pauseFollowingLatest,
                                     expandedActivityKeys = uiState.expandedActivityKeys,
-                                    onToggleActivityExpansion = viewModel::toggleActivityExpansion,
+                                    onToggleActivityExpansion = { key -> viewModel.toggleActivityExpansion(key, entry.message.id) },
+                                    onOpenConversation = onOpenConversation,
+                                    onOpenMessage = viewModel::requestMessageFocus,
+                                    replacementPromptId = promptReplacements[entry.message.id],
                                     loadArtifactContent = viewModel::loadArtifactContent,
                                 )
                             }

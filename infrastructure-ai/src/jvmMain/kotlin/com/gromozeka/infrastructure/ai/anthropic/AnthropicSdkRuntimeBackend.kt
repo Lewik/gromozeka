@@ -384,7 +384,9 @@ internal class AnthropicSdkMessageMapper(
         return when (message.role) {
             Conversation.Message.Role.USER -> toUserMessageParam(message)
             Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, modelName)
-            Conversation.Message.Role.SYSTEM -> null
+            Conversation.Message.Role.PEER, Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                Conversation.Message.Role.PROMPT, Conversation.Message.Role.VISUAL_UPDATED ->
+                error("Service messages must be projected before native mapping")
         }
     }
 

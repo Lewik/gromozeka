@@ -176,14 +176,10 @@ open class AppViewModel(
         }
         mergeConversationSnapshots(listOf(conversation))
 
-        val parentTabId =
-            initialMessage?.instructions?.filterIsInstance<Conversation.Message.Instruction.Source.Agent>()
-                ?.firstOrNull()?.tabId
-
         val initialTabUiState = newTabUiState(
             conversation = conversation,
             tabId = tabId.value,
-            parentTabId = parentTabId,
+            parentTabId = null,
             initiator = initiator,
         )
         val tabViewModel = createTabViewModel(conversation, initialTabUiState)
@@ -270,18 +266,6 @@ open class AppViewModel(
     override suspend fun switchToTab(tabId: Tab.Id): TabManager.TabInfo? {
         val tab = selectTab(tabId)
         return tab?.toTabInfo()
-    }
-
-    override suspend fun sendMessageToTab(
-        tabId: Tab.Id,
-        message: String,
-        instructions: List<Conversation.Message.Instruction>,
-    ) {
-        val tab = findTabByTabId(tabId)
-            ?: throw IllegalArgumentException("Tab not found: ${tabId.value}")
-        val targetAgentId = tab.requireConversation().connectedAgentIds().singleOrNull()
-            ?: error("Sending to a tab requires exactly one connected agent")
-        tab.invokeAgent(message, instructions, targetAgentId)
     }
 
     override suspend fun listTabs(): List<TabManager.TabInfo> {

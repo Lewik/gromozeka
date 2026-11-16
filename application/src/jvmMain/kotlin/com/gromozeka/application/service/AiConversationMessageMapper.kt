@@ -84,10 +84,10 @@ object AiConversationMessageMapper {
         return Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
-            role = Conversation.Message.Role.SYSTEM,
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
             content = listOf(
-                Conversation.Message.ContentItem.System(
-                    level = Conversation.Message.ContentItem.System.SystemLevel.ERROR,
+                Conversation.Message.ContentItem.RuntimeNotification(
+                    level = Conversation.Message.ContentItem.RuntimeNotification.Level.ERROR,
                     content = message,
                     state = Conversation.Message.BlockState.COMPLETE
                 )

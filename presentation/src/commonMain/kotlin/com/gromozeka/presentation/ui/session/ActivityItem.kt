@@ -43,9 +43,14 @@ internal fun ChatActivityItem(
     onToggleExpanded: () -> Unit,
     workspaceRootPath: String?,
     loadArtifactContent: suspend (Artifact.Id) -> ByteArray,
+    onOpenConversation: ((com.gromozeka.domain.model.Conversation.Id) -> Unit)? = null,
+    onOpenMessage: ((com.gromozeka.domain.model.Conversation.Message.Id) -> Unit)? = null,
+    replacementPromptId: com.gromozeka.domain.model.Conversation.Message.Id? = null,
 ) {
     val modifier = Modifier.testTag(UiTestTag.ActivityItem(activityKey).value)
     when (activity) {
+        is ChatActivity.Service -> ServiceMessageItem(activity.block, activityKey, isExpanded, onToggleExpanded,
+            loadArtifactContent, onOpenConversation, onOpenMessage, replacementPromptId)
         is ChatActivity.Tool -> ToolCallItem(
             toolCall = activity.call.call,
             toolResult = activity.result,
@@ -166,10 +171,10 @@ private fun ActivitySummaryRow(
     style: ActivitySummaryStyle,
     modifier: Modifier,
 ) {
-    val strings = LocalTranslation.current.runtime
+    val translation = LocalTranslation.current
     when (style) {
         ActivitySummaryStyle.TEXT -> Text(
-            text = summaries.joinToString(" · ") { summaryLabel(it, strings) },
+            text = summaries.joinToString(" · ") { summaryLabel(it, translation) },
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -183,7 +188,7 @@ private fun ActivitySummaryRow(
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     ActivityIcon(summary.kind, Modifier.size(24.dp))
-                    Text(summaryLabel(summary, strings), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    Text(summaryLabel(summary, translation), maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall)
                 }
             }
@@ -204,10 +209,12 @@ private fun ActivitySummaryRow(
     }
 }
 
-private fun summaryLabel(summary: ActivitySummary, strings: Translation.RuntimeTranslation): String {
+private fun summaryLabel(summary: ActivitySummary, translation: Translation): String {
+    val strings = translation.runtime
     val label = when (val kind = summary.kind) {
         is ActivityKind.Tool -> toolDisplayName(kind.name, strings)
         ActivityKind.Reasoning -> strings.thinkingLabel
+        is ActivityKind.Service -> translation.text(kind.type.titleKey)
     }
     return if (summary.count > 1) "$label ×${summary.count}" else label
 }
@@ -217,6 +224,7 @@ private fun ActivityIcon(kind: ActivityKind, modifier: Modifier = Modifier, coun
     val localization = LocalTranslation.current
     when (kind) {
         is ActivityKind.Tool -> ToolSemanticIcon(kind.name, "${toolDisplayName(kind.name, localization.runtime)}: $count", modifier, count)
+        is ActivityKind.Service -> SemanticActivityIcon(serviceIconSpec(kind.type), localization.text(kind.type.titleKey), modifier, count)
         ActivityKind.Reasoning -> SemanticActivityIcon(
             spec = ToolIconSpec(Icons.Default.Psychology),
             contentDescription = localization.text("chat.activity.thinkingCount", "count" to count),

@@ -199,7 +199,9 @@ class OpenAiSubscriptionRequestMapper {
         return when (message.role) {
             Conversation.Message.Role.USER -> message.toUserInputItems()
             Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly, replayReasoning)
-            Conversation.Message.Role.SYSTEM -> message.toSystemInputItems()
+            Conversation.Message.Role.PEER, Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                Conversation.Message.Role.PROMPT, Conversation.Message.Role.VISUAL_UPDATED ->
+                error("Service messages must be projected before native mapping")
         }
     }
 
@@ -379,23 +381,6 @@ class OpenAiSubscriptionRequestMapper {
                 retainedInput + replayItem.normalizeHiddenReasoningItem()
             }
         }
-    }
-
-    private fun Conversation.Message.toSystemInputItems(): List<JsonObject> {
-        if (error != null) return emptyList()
-
-        val text = content
-            .filterIsInstance<Conversation.Message.ContentItem.System>()
-            .joinToString("\n") { it.content }
-            .trim()
-
-        if (text.isBlank()) return emptyList()
-
-        val content = buildJsonArray {
-            add(inputTextItem(text))
-        }
-
-        return listOf(messageItem(role = "developer", content = content))
     }
 
     private fun buildUserMessageText(message: Conversation.Message): String? {

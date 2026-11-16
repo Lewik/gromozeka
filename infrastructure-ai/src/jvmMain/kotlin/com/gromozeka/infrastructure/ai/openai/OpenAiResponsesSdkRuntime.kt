@@ -362,9 +362,9 @@ internal class OpenAiResponsesMessageMapper(
                     .forEach(::add)
             }
 
-            Conversation.Message.Role.SYSTEM -> systemText(message).takeIf(String::isNotBlank)?.let { text ->
-                add(easyMessage(EasyInputMessage.Role.DEVELOPER, text))
-            }
+            Conversation.Message.Role.PEER, Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                Conversation.Message.Role.PROMPT, Conversation.Message.Role.VISUAL_UPDATED ->
+                error("Service messages must be projected before native mapping")
         }
 
         message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
@@ -397,14 +397,6 @@ internal class OpenAiResponsesMessageMapper(
         }
         return listOf(jsonMapper().readValue(item.toString(), ResponseInputItem::class.java))
     }
-
-    private fun easyMessage(role: EasyInputMessage.Role, text: String): ResponseInputItem =
-        ResponseInputItem.ofEasyInputMessage(
-            EasyInputMessage.builder()
-                .content(text)
-                .role(role)
-                .build()
-        )
 
     private fun Conversation.Message.ContentItem.ImageItem.toOpenAiInputImage(): ResponseInputImage {
         val builder = ResponseInputImage.builder().detail(ResponseInputImage.Detail.AUTO)
@@ -476,13 +468,6 @@ internal class OpenAiResponsesMessageMapper(
         val text = message.content.mapNotNull { it.userInputTextOrNull() }
             .joinToString("\n")
         return listOf(instructions, text).filter(String::isNotBlank).joinToString("\n").trim()
-    }
-
-    private fun systemText(message: Conversation.Message): String {
-        if (message.error != null) return ""
-        return message.content.filterIsInstance<Conversation.Message.ContentItem.System>()
-            .joinToString("\n") { it.content }
-            .trim()
     }
 
     private fun Conversation.Message.ContentItem.ContextCompactionResult.readableText(): String? =

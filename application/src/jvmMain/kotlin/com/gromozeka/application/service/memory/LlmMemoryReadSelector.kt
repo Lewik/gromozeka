@@ -1,5 +1,6 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.serviceDataTextOrNull
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -695,12 +696,15 @@ private fun MemoryReadRequest.targetTextForReadSelector(): String {
 
     return target.content.mapNotNull { item ->
         when (item) {
+            is Conversation.Message.ContentItem.PeerMessage -> item.serviceDataTextOrNull()
+            is Conversation.Message.ContentItem.PromptMessage,
+            is Conversation.Message.ContentItem.VisualUpdated -> null
             is Conversation.Message.ContentItem.UserMessage -> item.text
             is Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             is Conversation.Message.ContentItem.ToolCall -> "Tool call: ${item.call.name}"
             is Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
-            is Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
+            is Conversation.Message.ContentItem.RuntimeNotification -> "[${item.level.name}] ${item.content}"
             is Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
             is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
                 is Conversation.Message.DocumentSource.Base64DocumentSource ->

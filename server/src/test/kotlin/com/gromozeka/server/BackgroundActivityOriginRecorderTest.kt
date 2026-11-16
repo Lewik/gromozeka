@@ -247,11 +247,10 @@ class BackgroundActivityOriginRecorderTest {
         val artifacts = mock<ConversationArtifactApplicationService>()
         batch.messages.forEach { message ->
             Mockito.`when`(history.containsMessage(conversation.id, message.id)).thenReturn(false)
-            val results = message.content.filterIsInstance<ContentItem.ToolResult>()
-            Mockito.`when`(artifacts.persistAndCommitToolResults(conversation, batch.actorUserId, results)).thenReturn(results)
+            Mockito.`when`(artifacts.persistAndCommitMessageOutputs(conversation, batch.actorUserId, message)).thenReturn(message)
         }
         val engine = ConversationEngineService(
-            aiRuntimeProvider = mock(), aiToolProvider = mock(), agentDomainService = mock(), agentPromptAssemblyService = mock(),
+            aiRuntimeProvider = mock(), aiToolProvider = mock(), agentDomainService = mock(), turnPrompts = mock(),
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = mock(),
             conversationMessageAppender = mock(), historyMutationExecutor = mock(), compactions = mock(), memoryApplicationService = mock(),
             memoryToolApplicationService = mock(), backgroundActivityCompletionApplicationService = f.completions,

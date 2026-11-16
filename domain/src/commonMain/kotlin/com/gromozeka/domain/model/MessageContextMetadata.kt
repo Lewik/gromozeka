@@ -12,16 +12,15 @@ data class MessageContextMetadata(
     val userText: Boolean,
     val userInstructionIds: List<String>,
     val nativeUsage: JsonObject?,
+    val promptAgentId: AgentDefinition.Id? = null,
 ) {
     companion object {
         fun from(message: Message): MessageContextMetadata = MessageContextMetadata(
             hasCompaction = message.compactions().isNotEmpty() || message.originalCollaborationMessage().compactions().isNotEmpty(),
-            humanInput = message.role == Message.Role.USER &&
-                message.content.any { it is Message.ContentItem.UserMessage || it is Message.ContentItem.VisualInteraction } &&
-                message.providerMetadata["synthetic"] != JsonPrimitive(true) &&
-                message.instructions.none { it is Message.Instruction.Source.Agent },
+            humanInput = message.isHumanInput(),
             userText = message.role == Message.Role.USER && message.content.any { it is Message.ContentItem.UserMessage },
             userInstructionIds = message.instructions.filterIsInstance<Message.Instruction.UserInstruction>().map { it.id },
+            promptAgentId = message.promptSnapshotOrNull()?.agentId,
             nativeUsage = if (message.providerMetadata["provider"] == JsonPrimitive("OPENAI_SUBSCRIPTION")) buildJsonObject {
                 put("connectionId", message.providerMetadata["connectionId"] ?: JsonNull)
                 put("model", message.providerMetadata["model"] ?: JsonNull)
@@ -73,6 +72,9 @@ fun selectModelHistoryMessageIds(
         }
     }
 
+    val latestPromptMessages = mutableMapOf<AgentDefinition.Id, Message.Id>()
+    headers.forEach { header -> header.metadata.promptAgentId?.let { latestPromptMessages[it] = header.id } }
+    required += latestPromptMessages.values
     val latestInstructionMessages = mutableMapOf<String, Message.Id>()
     val previousHumanMessages = mutableMapOf<Message.Id, Message.Id>()
     var previousHuman: Message.Id? = null

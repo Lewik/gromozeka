@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiStepOutcome
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.isHumanInput
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.AiProvider
@@ -31,7 +32,6 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.requireSupportsInputs
 import com.gromozeka.domain.service.AgentDomainService
-import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.ActiveGenerationPublisher
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.AI_ADMISSION_CONVERSATION_CONTEXT_KEY
@@ -71,6 +71,8 @@ import kotlin.time.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import com.gromozeka.shared.uuid.uuid7
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -99,7 +101,7 @@ class ConversationEngineService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val aiToolProvider: AiToolProvider,
     private val agentDomainService: AgentDomainService,
-    private val agentPromptAssemblyService: AgentPromptAssemblyService,
+    private val turnPrompts: ConversationTurnPromptAssembler,
     private val toolApprovalService: ToolApprovalService,
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
     private val conversationService: ConversationDomainService,
@@ -246,7 +248,7 @@ class ConversationEngineService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         requireActorConnected(task, conversation)
         if (collaboration?.validateMessage(payload.userMessage) == false) return ConversationRuntimeTaskOutcome.Cancelled
-        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor, task, emitMessage)
         appendUserMessageWithAutomaticMemory(
             conversationId = conversationId,
             conversation = conversation,
@@ -303,7 +305,7 @@ class ConversationEngineService(
         var conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         requireActorConnected(task, conversation)
-        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor, task, emitMessage)
         log.debug {
             "AI_TURN_TRACE call=$diagnosticId phase=context_ready " +
                 "elapsedMs=${(System.nanoTime() - diagnosticStartedAt) / 1_000_000}"
@@ -401,9 +403,22 @@ class ConversationEngineService(
             )
         )
 
+        val existingInputIds = runtimeRequest.messages.mapTo(mutableSetOf()) { it.id }
         for (enricher in requestEnrichers) {
             runtimeRequest = enricher.enrich(conversationId, payload.rootUserMessageId, task.turnId, context.modelSpec, runtimeRequest)
         }
+        val observations = runtimeRequest.messages.filter { it.id !in existingInputIds }
+        for (observation in observations) {
+            check(observation.conversationId == conversationId &&
+                observation.role == Conversation.Message.Role.VISUAL_UPDATED &&
+                observation.author is Conversation.Message.Author.Runtime &&
+                observation.content.singleOrNull() is ContentItem.VisualUpdated) {
+                "Request enrichers may append only typed Visual observations"
+            }
+            ensureRuntimeTaskOwner(conversationId, task.id, executor)
+            if (addRuntimeMessageIfMissing(conversationId, observation)) emitMessage(observation)
+        }
+        currentMessages = currentMessages + observations
         runtimeRequest = runtimeRequest.copy(messages = artifactService.materialize(conversationId, runtimeRequest.messages))
         runtimeRequest = conversationPins.append(conversationId, runtimeRequest)
         context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
@@ -419,8 +434,10 @@ class ConversationEngineService(
             // also provides a user input anchor for one-shot secrets without preserving a raw history tail.
             val continuation = Conversation.Message(
                 id = runtimeMessageId(task.id, "compaction-continuation"), conversationId = conversationId,
-                role = Conversation.Message.Role.USER, createdAt = Clock.System.now(),
-                content = listOf(ContentItem.UserMessage("Continue the active task from the compacted context. Follow the latest user instructions; do not repeat completed work.")),
+                role = Conversation.Message.Role.RUNTIME_NOTIFICATION, author = Conversation.Message.Author.Runtime(), createdAt = Clock.System.now(),
+                content = listOf(ContentItem.RuntimeNotification(ContentItem.RuntimeNotification.Level.INFO,
+                    "Continue the active task from the compacted context. Follow the latest user instructions; do not repeat completed work.",
+                    kind = ContentItem.RuntimeNotification.Kind.TURN_CONTINUATION, referenceId = task.turnId.value)),
                 providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "compaction_continuation") },
             )
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
@@ -512,7 +529,7 @@ class ConversationEngineService(
                 ),
             )
             .withRuntimeMessageIds(task.id, "assistant")
-            .map { artifactService.persistAndCommitMessageToolResults(conversation, task.actorUserId, it) }
+            .map { artifactService.persistAndCommitMessageOutputs(conversation, task.actorUserId, it) }
         val nativeCheckpoints = mappedAssistantMessages.takeWhile { it.content.singleOrNull() is ContentItem.ContextCompactionResult }
         check(mappedAssistantMessages.drop(nativeCheckpoints.size).none { message ->
             message.content.any { it is ContentItem.ContextCompactionResult }
@@ -722,7 +739,7 @@ class ConversationEngineService(
         val conversation = requireNotNull(conversationService.findById(task.conversationId))
         require(draft.endpoint.threadId == conversation.currentThread && draft.actorUserId == task.actorUserId && draft.endpoint.agentId == payload.agentDefinitionId)
         requireActorConnected(task, conversation)
-        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor, task, emitMessage)
         suspend fun continueAfterNewInput(): ConversationRuntimeTaskOutcome {
             // Keep the actual provider output for replay, but do not publish this stale draft as an answer.
             service.acceptedMessages(draft, AgentResponseDecision(null, AgentResponseDecision.Next.CONTINUE, emptyList(), emptyList())).forEach {
@@ -768,8 +785,9 @@ class ConversationEngineService(
         // This receipt describes real committed routing, not a fabricated tool result.
         val receipt = Conversation.Message(
             id = Conversation.Message.Id("${draft.id}:receipt"), conversationId = conversation.id,
-            role = Conversation.Message.Role.SYSTEM,
-            content = listOf(ContentItem.System(ContentItem.System.SystemLevel.INFO,
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeNotification(ContentItem.RuntimeNotification.Level.INFO,
                 "Collaboration decision: next=${decision.next}; results queued=${decision.requests.filter { it.state == com.gromozeka.domain.model.AgentRequest.State.COMPLETED }.map { it.requestId }}; waitFor=${decision.waitFor}. This is a runtime receipt, not a new user request.")),
             providerMetadata = buildJsonObject { put("synthetic", true); put("collaborationReceipt", true) },
             createdAt = Clock.System.now(),
@@ -828,7 +846,7 @@ class ConversationEngineService(
         val conversationId = task.conversationId
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor, task, emitMessage)
         val toolResultMessage = conversationHistory.findMessage(conversationId, payload.toolResultMessageId)
             ?: throw IllegalStateException(
                 "Tool result message not found: conversation=${conversationId.value} " +
@@ -890,7 +908,7 @@ class ConversationEngineService(
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor, task, emitMessage)
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
         if (!currentMessages.hasPendingMemoryRecall(payload.targetMessageId)) {
             log.info {
@@ -1034,10 +1052,15 @@ class ConversationEngineService(
                 val notification = Conversation.Message(
                     id = runtimeMessageId(task.id, "notification"),
                     conversationId = conversationId,
-                    role = Conversation.Message.Role.SYSTEM,
-                    content = listOf(
-                        ContentItem.UserMessage(executionIncidentSystemNotification(incident))
-                    ),
+                    role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                    author = Conversation.Message.Author.Runtime(),
+                    content = listOf(ContentItem.RuntimeNotification(
+                        level = ContentItem.RuntimeNotification.Level.ERROR,
+                        content = executionIncidentSystemNotification(incident),
+                        kind = ContentItem.RuntimeNotification.Kind.EXECUTION_INCIDENT,
+                        referenceId = incident.task.id.value,
+                        details = Json.parseToJsonElement(executionIncidentResult(incident)).jsonObject,
+                    )),
                     providerMetadata = buildJsonObject {
                         put("synthetic", true)
                         put("syntheticKind", "runtime_execution_incident")
@@ -1119,21 +1142,11 @@ class ConversationEngineService(
         )
         if (batch.isEmpty) return ConversationRuntimeTaskOutcome.CompleteTurn
 
-        val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
-        batch.messages.forEach { syntheticMessage ->
+        batch.messages.forEach { notification ->
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
-                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
-                    result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
-                }
-                val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
-                val iterator = persisted.iterator()
-                val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
-                    if (it is ContentItem.ToolResult) iterator.next() else it
-                })
-                if (addRuntimeMessageIfMissing(conversationId, storedMessage)) emitMessage(storedMessage)
-            } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
-                replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
+            if (!conversationHistory.containsMessage(conversationId, notification.id)) {
+                val stored = artifactService.persistAndCommitMessageOutputs(conversation, batch.actorUserId, notification)
+                if (addRuntimeMessageIfMissing(conversationId, stored)) emitMessage(stored)
             }
         }
 
@@ -1192,7 +1205,6 @@ class ConversationEngineService(
 
     private fun executionIncidentSystemNotification(incident: ConversationRuntimeTaskIncident): String =
         buildString {
-            append("<system-reminder>\n")
             append("A runtime execution incident occurred. ")
             append("Task ")
             append(incident.task.id.value)
@@ -1209,7 +1221,6 @@ class ConversationEngineService(
                     append("without an explicit result.\n")
                 }
             }
-            append("</system-reminder>")
         }
 
     private data class ConversationRuntimeStepContext(
@@ -1242,6 +1253,8 @@ class ConversationEngineService(
         agentDefinitionId: AgentDefinition.Id,
         conversation: Conversation,
         executor: ConversationRuntimeExecutorIdentity,
+        task: ConversationRuntimeTask,
+        emitMessage: suspend (Conversation.Message) -> Unit,
     ): ConversationRuntimeStepContext {
         val agent = agentDomainService.findById(agentDefinitionId)
             ?: throw IllegalStateException(
@@ -1285,7 +1298,8 @@ class ConversationEngineService(
         val toolCapabilityCatalogPrompt = aiToolCapabilityCatalogService.promptFor(capabilityCatalogDefinitions)
         val memoryPipelineTools = aiToolProvider.getTools()
             .forMemoryPipeline(agent.toolAccess)
-        val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
+        val baseSystemPrompts = turnPrompts.assemble(conversation, agent, runtimeContext, task, executor,
+            resolvedRuntime.connection.kind.nativeCompactionProvider(), emitMessage)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
         val memorySettings = settingsProvider.userProfile.memorySettings
         val suggestedRepliesMode = if (conversation.externalChannel != null) UserProfile.SuggestedRepliesSettings.Mode.DISABLED
@@ -1763,8 +1777,7 @@ class ConversationEngineService(
         }
         val originalMessage = invocation.userMessage
         val userMessage = if (queued.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT &&
-            originalMessage.author is Conversation.Message.Author.User &&
-            originalMessage.instructions.none { it is Conversation.Message.Instruction.Source.Agent }) {
+            originalMessage.isHumanInput()) {
             originalMessage.copy(instructions = originalMessage.instructions.filterNot {
                 it is Conversation.Message.Instruction.UserInstruction && it.id == "mid_turn_steer"
             } + com.gromozeka.domain.model.liveSteeringInstruction)

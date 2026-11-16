@@ -619,10 +619,10 @@ class TabViewModel(
             } else if (settings.userDeviceSettings.showSystemMessages) {
                 true
             } else {
-                message.role != Conversation.Message.Role.SYSTEM ||
+                message.role != Conversation.Message.Role.RUNTIME_NOTIFICATION ||
                         message.content.any { content ->
-                            content is Conversation.Message.ContentItem.System &&
-                                    content.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
+                            content is Conversation.Message.ContentItem.RuntimeNotification &&
+                                    content.level == Conversation.Message.ContentItem.RuntimeNotification.Level.ERROR
                         }
             }
         }
@@ -999,11 +999,7 @@ class TabViewModel(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
-            author = currentUserAuthor.takeUnless {
-                instructions.any { instruction ->
-                    instruction is Conversation.Message.Instruction.Source.Agent
-                }
-            },
+            author = currentUserAuthor,
             content = content,
             createdAt = Clock.System.now(),
             instructions = instructions
@@ -1387,10 +1383,8 @@ class TabViewModel(
         }
     }
 
-    fun toggleActivityExpansion(key: String) {
-        if (key !in _uiState.value.expandedActivityKeys) {
-            key.split(':').getOrNull(1)?.let { loadHistoryDetails(Conversation.Message.Id(it)) }
-        }
+    fun toggleActivityExpansion(key: String, messageId: Conversation.Message.Id) {
+        if (key !in _uiState.value.expandedActivityKeys) loadHistoryDetails(messageId)
         _uiState.update { current ->
             val expanded = current.expandedActivityKeys
             current.copy(expandedActivityKeys = if (key in expanded) expanded - key else expanded + key)

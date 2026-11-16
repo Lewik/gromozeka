@@ -34,8 +34,8 @@ class MessageSearchTextTest {
                 Conversation.Message.ContentItem.AssistantMessage(
                     Conversation.Message.StructuredText(fullText = "Visible assistant text")
                 ),
-                Conversation.Message.ContentItem.System(
-                    level = Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                Conversation.Message.ContentItem.RuntimeNotification(
+                    level = Conversation.Message.ContentItem.RuntimeNotification.Level.INFO,
                     content = "System notification",
                 ),
             ),
@@ -43,9 +43,9 @@ class MessageSearchTextTest {
         )
 
         assertEquals(
-            "Visible user text\ntool\\u0000output\nVisible assistant text",
+            "Visible user text\ntool\\u0000output\nVisible assistant text\nSystem notification",
             message.searchText(),
         )
-        assertEquals("Visible user text\nVisible assistant text", message.searchText(includeToolResults = false))
+        assertEquals("Visible user text\nVisible assistant text\nSystem notification", message.searchText(includeToolResults = false))
     }
 }

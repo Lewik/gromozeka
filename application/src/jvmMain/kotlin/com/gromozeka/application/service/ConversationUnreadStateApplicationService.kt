@@ -56,11 +56,14 @@ class ConversationUnreadStateApplicationService(
             is Conversation.Message.ContentItem.ToolCall,
             is Conversation.Message.ContentItem.ToolResult,
             is Conversation.Message.ContentItem.Thinking,
+            is Conversation.Message.ContentItem.PromptMessage,
+            is Conversation.Message.ContentItem.VisualUpdated,
             -> false
 
+            is Conversation.Message.ContentItem.PeerMessage,
             is Conversation.Message.ContentItem.UserMessage,
             is Conversation.Message.ContentItem.VisualInteraction,
-            is Conversation.Message.ContentItem.System,
+            is Conversation.Message.ContentItem.RuntimeNotification,
             is Conversation.Message.ContentItem.AssistantMessage,
             is Conversation.Message.ContentItem.ImageItem,
             is Conversation.Message.ContentItem.DocumentItem,

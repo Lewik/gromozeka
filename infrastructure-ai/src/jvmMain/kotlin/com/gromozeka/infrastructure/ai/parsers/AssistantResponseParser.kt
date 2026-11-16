@@ -14,11 +14,8 @@ object AssistantResponseParser {
     private val xmlInline = XmlInlineParser()
     private val text = PlainTextParser()
 
-    fun providerBlock(raw: JsonElement): Conversation.Message.ContentItem.System =
-        Conversation.Message.ContentItem.System(
-            level = Conversation.Message.ContentItem.System.SystemLevel.INFO,
-            content = Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), redactProviderSignatures(raw)),
-        )
+    fun providerBlock(raw: JsonElement): Conversation.Message.ContentItem.UnknownJson =
+        Conversation.Message.ContentItem.UnknownJson(redactProviderSignatures(raw))
 
     private fun redactProviderSignatures(value: JsonElement): JsonElement = when (value) {
         is JsonObject -> JsonObject(value.mapValues { (key, item) ->

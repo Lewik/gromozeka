@@ -42,9 +42,7 @@ internal fun Conversation.Message.Instruction.displayTitle(translation: Translat
             TurnTerminationReason.INTERRUPTED -> "client.instructions.previousInterrupted"
         }
         is Conversation.Message.Instruction.WorkspaceContext -> "client.instructions.workspaceContext"
-        is Conversation.Message.Instruction.ResponseExpected -> "client.instructions.responseExpected"
         is Conversation.Message.Instruction.Source.User -> "search.role.user"
-        is Conversation.Message.Instruction.Source.Agent -> "settingsUi.agent"
         is Conversation.Message.Instruction.UserInstruction -> null
     }
     if (resourceKey != null) return translation.text(resourceKey)

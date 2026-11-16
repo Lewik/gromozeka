@@ -353,11 +353,18 @@ class ConversationApplicationService(
                 id = messageIdMap.getValue(message.id),
                 conversationId = newConversationId,
                 content = message.content.map { item ->
-                    if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
-                        sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
-                        invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
-                        historyTransition = null,
-                    ) else item
+                    when (item) {
+                        is Conversation.Message.ContentItem.ContextCompactionResult -> item.copy(
+                            sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
+                            invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
+                            historyTransition = null,
+                        )
+                        is Conversation.Message.ContentItem.PromptMessage -> item.copy(
+                            // A predecessor deleted from this branch remains an immutable historical reference.
+                            previousMessageId = item.previousMessageId?.let { messageIdMap[it] ?: it },
+                        )
+                        else -> item
+                    }
                 },
                 createdAt = now
             )
@@ -531,6 +538,7 @@ class ConversationApplicationService(
 
         val targetMessage = messages.find { it.id == messageId }
             ?: throw IllegalArgumentException("Message $messageId not found in thread $currentThreadId")
+        requireEditableConversationMessage(targetMessage, newContent)
         ensureMessagesAreNotCoveredByCompaction(messages, setOf(messageId), "edit")
         artifactService.validateReferences(conversationId, newContent)
 

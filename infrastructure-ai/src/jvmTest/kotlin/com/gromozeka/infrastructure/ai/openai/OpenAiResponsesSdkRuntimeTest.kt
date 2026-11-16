@@ -118,7 +118,7 @@ class OpenAiResponsesSdkRuntimeTest {
         assertEquals("web_search", call.call.name)
         assertEquals(call.id, result.toolUseId)
         assertFalse(result.isError)
-        assertTrue(activity.content.none { it is Conversation.Message.ContentItem.System })
+        assertTrue(activity.content.none { it is Conversation.Message.ContentItem.RuntimeNotification })
         assertTrue((result.result.single() as Conversation.Message.ContentItem.ToolResult.Data.Text).content.contains("https://example.com/unused"))
         val answer = response.messages.last().content.filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>().single()
         assertEquals("[Example](https://example.com/cited)", answer.structured.fullText)
