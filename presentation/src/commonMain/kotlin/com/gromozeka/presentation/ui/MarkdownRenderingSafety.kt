@@ -1,10 +1,8 @@
 package com.gromozeka.presentation.ui
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -189,7 +187,7 @@ internal fun GromozekaHighlightedCode(code: String, language: String?, style: Te
         MarkdownBasicText(
             text = highlighted,
             style = style,
-            modifier = Modifier.horizontalScroll(rememberScrollState()).padding(LocalMarkdownPadding.current.codeBlock),
+            modifier = Modifier.fillMaxWidth().padding(LocalMarkdownPadding.current.codeBlock),
         )
     }
 }
