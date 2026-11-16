@@ -56,6 +56,7 @@ class VisualApplicationService(
             agentDefinitionId = agentId ?: conversation.autoRespondAgentIds.singleOrNull()
                 ?: conversation.participants.filterIsInstance<Conversation.Participant.Agent>().singleOrNull()?.agentDefinitionId,
             document = request.document, title = document.title, state = request.state,
+            includeStateInContext = request.includeStateInContext,
             handler = handler, status = if (handler == null) VisualStatus.ACTIVE else VisualStatus.STARTING,
             createdAt = now, updatedAt = now,
         )
@@ -71,7 +72,7 @@ class VisualApplicationService(
 
     suspend fun update(actor: User, conversationId: Conversation.Id, id: String, request: VisualUpdate): Visual {
         val conversation = authorize(actor, conversationId)
-        require(request.document != null || request.state != null || request.updateHandler) { "No visual update was supplied" }
+        require(request.document != null || request.state != null || request.updateHandler || request.includeStateInContext != null) { "No visual update was supplied" }
         require(request.updateHandler || request.handler == null) { "Changing handler requires updateHandler" }
         val nextDocument = request.document?.let(VisualDocumentCompiler::compile)
         val prepared = if (request.updateHandler) request.handler?.let { commands.prepare(actor, conversation, it) } else null
@@ -86,6 +87,7 @@ class VisualApplicationService(
                 document = request.document ?: old.document,
                 title = document.title,
                 state = state,
+                includeStateInContext = request.includeStateInContext ?: old.includeStateInContext,
                 revision = old.revision + 1,
                 documentRevision = old.documentRevision + if (request.document != null) 1 else 0,
                 formRevision = old.formRevision + if (request.state?.containsKey("form") == true) 1 else 0,

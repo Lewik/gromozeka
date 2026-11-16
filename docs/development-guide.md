@@ -1228,9 +1228,27 @@ and client reload clears them. Neither snapshots, handler input, `get`, reminder
 nor dismissal acknowledgements carry highlight state. Dirty-form dots remain
 separate noninteractive indicators.
 
+`include_state_in_context` is an optional boolean on `grz_visual create/update`.
+It defaults to true on create; omission on update preserves the saved setting.
+It can be changed alone, without replacing the document, state or handler, and
+without resetting client drafts. Compact receipts and list summaries return
+`include_state_in_context`; the full `get.visual` exposes `includeStateInContext`.
+The persisted/read model requires this field explicitly. V88 fills missing fields
+on existing panels with true and enforces a boolean storage constraint. There is
+no reader fallback for old records; the default belongs only to new-panel creation.
+
 Before each conversation LLM request, `VisualRequestEnricher` adds saved
-`form + data` observations for all current Visuals. Updates coalesce between
-requests and do not trigger model work. Full snapshots are sent when state changes;
+`form + data` observations only for Visuals with this setting enabled. Disabled
+Visuals remain in the inventory as `state-status=disabled`, with metadata but no
+state or snapshot ID; they are not reported as closed. Opting out also discards
+cached snapshot replay, so earlier automatic state is not re-injected. Other
+Visuals receive fresh full baselines where needed, and reenabling a Visual can
+resume normal state snapshots. This is not a privacy/permission boundary: it does
+not erase previously delivered model context or chat history. Explicit `get` and
+button submissions still carry full state, and handler output cannot change the
+setting through `form/data` updates.
+
+Updates coalesce between requests and do not trigger model work. Full snapshots are sent when state changes;
 short unchanged markers refer to full snapshots reconstructed earlier in the same
 request. Canonical JSON hashing ignores object-key order and transport revisions.
 The request-only replay cache is bounded and isolated by conversation, thread,
@@ -1248,11 +1266,11 @@ fresh reads, markup and diagnostics.
 contains one or both complete sections: omitted roots remain unchanged, supplied
 roots replace their entire previous objects. Members omitted inside a supplied
 section disappear at every depth. An empty section clears it if schema and
-bindings permit; an empty update with no sections is rejected. The same rules
+bindings permit; an empty `update.state` object is rejected. The same rules
 apply to handler output. The resulting full state is validated atomically before
 publication. Send `document` only for structural/control/schema changes, not for
 ordinary content updates. Model-facing create/update results contain compact
-acknowledgements (ID, revisions, status, handler task and diagnostics), never HTML
+acknowledgements (ID, revisions, status, context setting, handler task and diagnostics), never HTML
 or state. Only `get` returns the full document and saved state; `list` is compact.
 Schema or rendering errors leave the last valid state intact. Runtime diagnostics
 are shown in host-owned panel chrome outside the document and are available via

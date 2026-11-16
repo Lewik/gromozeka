@@ -22,7 +22,7 @@ class VisualBoundaryTest {
     private val document = """<html><head><title>Test</title><state-schema><![CDATA[{"type":"object","properties":{"form":{"type":"object"},"data":{"type":"object"}},"required":["form","data"]}]]></state-schema></head><body><button id="submit">Submit</button></body></html>"""
     private val state = Json.parseToJsonElement("""{"form":{"query":"hello"},"data":{"count":1}}""").jsonObject
     private val visual = Visual("visual", conversation.id, user.id, AgentDefinition.Id("agent"), document, "Test", state,
-        createdAt = now, updatedAt = now)
+        createdAt = now, updatedAt = now, includeStateInContext = true)
     private val service = Mockito.mock(VisualApplicationService::class.java)
     private val tool = VisualToolContributor(service, object : UserDirectoryService {
         override suspend fun findActiveById(id: User.Id) = user.takeIf { it.id == id }
@@ -48,12 +48,48 @@ class VisualBoundaryTest {
         val response = result(tool.call(buildJsonObject { put("action", "create"); put("document", document); put("state", state) }.toString(), context))
         assertTrue(response.getValue("success").jsonPrimitive.boolean)
         assertEquals(visual.id, response.getValue("visual_id").jsonPrimitive.content)
+        assertTrue(response.getValue("include_state_in_context").jsonPrimitive.boolean)
         assertEquals(visual.revision, response.getValue("revision").jsonPrimitive.long)
         assertFalse("visual" in response)
         assertFalse("document" in response)
         assertFalse("state" in response)
         assertFalse(response.toString().contains("<html>"))
         Mockito.verify(service).create(user, conversation.id, VisualCreate(document, state), AgentDefinition.Id("agent"))
+    }
+
+    @Test fun `context inclusion can be set on create updated alone and read back`() = runBlocking<Unit> {
+        val disabled = visual.copy(includeStateInContext = false)
+        val create = VisualCreate(document, state, includeStateInContext = false)
+        Mockito.`when`(service.create(user, conversation.id, create, AgentDefinition.Id("agent"))).thenReturn(disabled)
+        val created = result(tool.call(buildJsonObject {
+            put("action", "create"); put("document", document); put("state", state); put("include_state_in_context", false)
+        }.toString(), context))
+        assertFalse(created.getValue("include_state_in_context").jsonPrimitive.boolean)
+        Mockito.`when`(service.update(user, conversation.id, visual.id, VisualUpdate(includeStateInContext = false))).thenReturn(disabled)
+        val changed = result(tool.call("""{"action":"update","visual_id":"visual","include_state_in_context":false}""", context))
+        assertFalse(changed.getValue("include_state_in_context").jsonPrimitive.boolean)
+        Mockito.verify(service).update(user, conversation.id, visual.id, VisualUpdate(includeStateInContext = false))
+        Mockito.`when`(service.list(user, conversation.id)).thenReturn(listOf(disabled))
+        val listed = result(tool.call("""{"action":"list"}""", context)).getValue("visuals").jsonArray.single().jsonObject
+        assertFalse(listed.getValue("include_state_in_context").jsonPrimitive.boolean)
+        assertFalse("state" in listed)
+        val full = result(tool.call("""{"action":"get","visual_id":"visual"}""", context)).getValue("visual").jsonObject
+        assertFalse(full.getValue("includeStateInContext").jsonPrimitive.boolean)
+        assertEquals(state, full.getValue("state"))
+    }
+
+    @Test fun `context inclusion rejects null strings numbers and use on read operations`() {
+        for (value in listOf(JsonNull, JsonPrimitive("false"), JsonPrimitive(0), JsonObject(emptyMap()))) {
+            val response = result(tool.call(buildJsonObject {
+                put("action", "update"); put("visual_id", visual.id); put("include_state_in_context", value)
+            }.toString(), context))
+            assertFalse(response.getValue("success").jsonPrimitive.boolean)
+        }
+        assertFalse(result(tool.call("""{"action":"list","include_state_in_context":false}""", context)).getValue("success").jsonPrimitive.boolean)
+        Mockito.verifyNoInteractions(service)
+        val property = result(VisualToolContributor.SCHEMA).getValue("properties").jsonObject.getValue("include_state_in_context").jsonObject
+        assertEquals("boolean", property.getValue("type").jsonPrimitive.content)
+        assertFalse("default" in property, "A schema-wide default must not reset the setting on update")
     }
 
     @Test fun `handler accepts named secret environment without resolving values into public data`() = runBlocking<Unit> {

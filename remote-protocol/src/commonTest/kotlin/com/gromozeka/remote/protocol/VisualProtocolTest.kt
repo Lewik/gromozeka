@@ -22,7 +22,7 @@ class VisualProtocolTest {
 
     @Test fun visualSnapshotsRoundTripWithoutChangingJsonTypes() {
         val time = Instant.fromEpochMilliseconds(0)
-        val visual = Visual("visual-1",conversation,User.Id("user-1"),document="<html/>",title="Visual",state=state,createdAt=time,updatedAt=time)
+        val visual = Visual("visual-1",conversation,User.Id("user-1"),document="<html/>",title="Visual",state=state,createdAt=time,updatedAt=time, includeStateInContext = true)
         val response = GromozekaServerEnvelope("response-1",VisualsResponse(listOf(visual)))
         assertEquals(response,RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(response)))
         assertEquals(response,RemoteProtocolCodec.decodeServerText(RemoteProtocolCodec.encodeServerText(response)))

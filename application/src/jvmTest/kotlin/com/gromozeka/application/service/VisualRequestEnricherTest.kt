@@ -201,6 +201,96 @@ class VisualRequestEnricherTest {
         assertReferencesHaveFullSnapshots(frames(live))
     }
 
+    @Test fun `disabled context keeps metadata without state fingerprints or state change signals`() = runBlocking<Unit> {
+        val f = Fixture()
+        f.visuals = listOf(VISUAL.copy(includeStateInContext = false,
+            state = obj("""{"form":{"query":"HIDDEN_FIRST"},"data":{"count":1}}""")))
+        val input = request(listOf(user("u1")))
+        val first = f.enrich(input)
+        val item = record(frames(first).single())
+        assertEquals("disabled", item["state-status"]!!.jsonPrimitive.content)
+        assertEquals("ACTIVE", item["status"]!!.jsonPrimitive.content)
+        assertEquals(VISUAL.id, item["visual-id"]!!.jsonPrimitive.content)
+        assertFalse("state" in item)
+        assertFalse("snapshot-id" in item)
+        assertTrue(frames(first).single()["closed-visual-ids"]!!.jsonArray.isEmpty())
+        assertFalse(first.toString().contains("HIDDEN_FIRST"))
+        f.visuals = listOf(f.visuals.single().copy(state = obj("""{"form":{"query":"HIDDEN_CHANGED"},"data":{"count":99}}""")))
+        assertEquals(first, f.enrich(input), "Disabled data changes must not create a new state observation")
+    }
+
+    @Test fun `opting out drops cached state replay while keeping current inventory and other snapshots`() = runBlocking<Unit> {
+        val f = Fixture()
+        val hidden = VISUAL.copy(state = obj("""{"form":{"query":"PREVIOUS_HIDDEN_STATE"},"data":{"count":0}}"""))
+        val other = VISUAL.copy(id = "other", title = "Other")
+        f.visuals = listOf(hidden, other, VISUAL.copy(id = "closed"))
+        val first = request(listOf(user("u1")))
+        f.enrich(first)
+        f.visuals = listOf(hidden.copy(includeStateInContext = false,
+            state = obj("""{"form":{"query":"CURRENT_HIDDEN_STATE"},"data":{"count":2}}""")), other)
+        val history = first.messages + assistant("a1") + user("u2")
+        val actual = f.enrich(request(history))
+        assertFalse(actual.toString().contains("PREVIOUS_HIDDEN_STATE"))
+        assertFalse(actual.toString().contains("CURRENT_HIDDEN_STATE"))
+        val frame = frames(actual).single()
+        val records = frame["visuals"]!!.jsonArray.map { it.jsonObject }.associateBy { it["visual-id"]!!.jsonPrimitive.content }
+        assertEquals("disabled", records.getValue(hidden.id)["state-status"]!!.jsonPrimitive.content)
+        assertEquals(other.state, records.getValue(other.id)["state"])
+        assertEquals(listOf(JsonPrimitive("closed")), frame["closed-visual-ids"]!!.jsonArray.toList())
+        assertReferencesHaveFullSnapshots(frames(actual))
+        val next = f.enrich(request(history + assistant("a2") + user("u3")))
+        assertReferencesHaveFullSnapshots(frames(next))
+        assertFalse(next.toString().contains("HIDDEN_STATE"))
+    }
+
+    @Test fun `reenabling context sends the current full snapshot before using unchanged markers`() = runBlocking<Unit> {
+        val f = Fixture()
+        f.visuals = listOf(VISUAL.copy(includeStateInContext = false))
+        val first = request(listOf(user("u1")))
+        f.enrich(first)
+        f.visuals = listOf(VISUAL.copy(state = obj("""{"form":{"query":"latest"},"data":{"count":42}}""")))
+        val history = first.messages + assistant("a1") + user("u2")
+        val enabled = f.enrich(request(history))
+        assertEquals("snapshot", record(frames(enabled).last())["state-status"]!!.jsonPrimitive.content)
+        assertEquals(f.visuals.single().state, record(frames(enabled).last())["state"])
+        assertReferencesHaveFullSnapshots(frames(enabled))
+        val next = f.enrich(request(history + assistant("a2") + user("u3")))
+        assertEquals("unchanged", record(frames(next).last())["state-status"]!!.jsonPrimitive.content)
+        assertReferencesHaveFullSnapshots(frames(next))
+    }
+
+    @Test fun `snapshot reads and assistant continuations also respect disabled automatic state`() = runBlocking<Unit> {
+        val f = Fixture()
+        f.visuals = listOf(VISUAL.copy(state = obj("""{"form":{"query":"HIDDEN_STATE"},"data":{"count":0}}""")))
+        val first = request(listOf(user("u1")))
+        f.enrich(first)
+        f.visuals = listOf(f.visuals.single().copy(includeStateInContext = false))
+        val snapshot = f.snapshot(request(first.messages + assistant("a1") + user("u2")))
+        assertFalse(snapshot.toString().contains("HIDDEN_STATE"))
+        val tail = assistant("continuation")
+        val continuation = f.enrich(request(first.messages + tail))
+        assertSame(tail, continuation.messages.last())
+        assertFalse(continuation.toString().contains("HIDDEN_STATE"))
+        assertEquals("disabled", record(parseFrame(continuation.systemPrompts.last()))["state-status"]!!.jsonPrimitive.content)
+        val unbound = first.copy(options = first.options.copy(toolContext = mapOf(TOOL_CONTEXT_CONVERSATION_ID to CONVERSATION.value)))
+        val fallback = f.enrich(unbound)
+        assertFalse(fallback.toString().contains("HIDDEN_STATE"))
+        assertEquals("disabled", record(parseFrame(fallback.systemPrompts.last()))["state-status"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun `closing a disabled panel does not resurrect its former snapshots`() = runBlocking<Unit> {
+        val f = Fixture()
+        val history = listOf(user("u1"))
+        f.enrich(request(history))
+        f.visuals = listOf(VISUAL.copy(includeStateInContext = false))
+        f.enrich(request(history + user("u2")))
+        f.visuals = emptyList()
+        val result = f.enrich(request(history + user("u2") + user("u3")))
+        assertEquals(listOf(JsonPrimitive(VISUAL.id)), frames(result).last()["closed-visual-ids"]!!.jsonArray.toList())
+        assertTrue(frames(result).flatMap { it["visuals"]!!.jsonArray }.none { "state" in it.jsonObject })
+        assertReferencesHaveFullSnapshots(frames(result))
+    }
+
     private class Fixture {
         var visuals = listOf(VISUAL)
         val repository = Mockito.mock(VisualRepository::class.java)
@@ -216,8 +306,16 @@ class VisualRequestEnricherTest {
             frame["closed-visual-ids"]!!.jsonArray.forEach { known.remove(it.jsonPrimitive.content) }
             for (r in frame["visuals"]!!.jsonArray.map { it.jsonObject }) {
                 val id = r["visual-id"]!!.jsonPrimitive.content
-                if (r["state-status"]!!.jsonPrimitive.content == "snapshot") known[id] = r.getValue("snapshot-id")
-                else assertEquals(known[id], r["snapshot-id"], "Unchanged marker without a retained full snapshot")
+                when (r["state-status"]!!.jsonPrimitive.content) {
+                    "snapshot" -> known[id] = r.getValue("snapshot-id")
+                    "unchanged" -> assertEquals(known[id], r.getValue("snapshot-id"), "Unchanged marker without a retained full snapshot")
+                    "disabled" -> {
+                        assertFalse("state" in r)
+                        assertFalse("snapshot-id" in r)
+                        known.remove(id)
+                    }
+                    else -> error("Unknown Visual state status")
+                }
             }
         }
     }
@@ -233,7 +331,7 @@ class VisualRequestEnricherTest {
         private val NOW = Instant.fromEpochMilliseconds(0)
         private val TURN = ConversationRuntimeTurnId("turn")
         private val MODEL = AiModelSpec("model", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION), AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(1_000_000)))
-        private val VISUAL = Visual("visual", CONVERSATION, User.Id("user"), document = "document", title = "Panel", state = obj("""{"form":{"query":"saved"},"data":{"count":0}}"""), createdAt = NOW, updatedAt = NOW)
+        private val VISUAL = Visual("visual", CONVERSATION, User.Id("user"), document = "document", title = "Panel", state = obj("""{"form":{"query":"saved"},"data":{"count":0}}"""), createdAt = NOW, updatedAt = NOW, includeStateInContext = true)
         private fun obj(text: String) = Json.parseToJsonElement(text).jsonObject
         private fun user(id: String) = Conversation.Message(Conversation.Message.Id(id), CONVERSATION, role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("input $id")), createdAt = NOW)
         private fun assistant(id: String) = Conversation.Message(Conversation.Message.Id(id), CONVERSATION, role = Conversation.Message.Role.ASSISTANT, content = listOf(Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("reply"))), createdAt = NOW)
