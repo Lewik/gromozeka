@@ -34,6 +34,32 @@ import kotlin.time.Duration.Companion.milliseconds
 /** Real migrated PostgreSQL and independent local files; unrelated application services are not started. */
 @EnabledIfEnvironmentVariable(named = "GROMOZEKA_POSTGRES_RUNTIME_TEST", matches = "true")
 class PostgresConversationForkTest {
+    @Test fun `fork copies prompt history and remaps its predecessor into the new conversation`() = runBlocking<Unit> {
+        database { f ->
+            f.seed(messageCount = 6, artifactCount = 1)
+            val agent = com.gromozeka.domain.model.AgentDefinition.Id("prompt-agent")
+            val snapshot = com.gromozeka.domain.model.PromptSnapshot(listOf(
+                com.gromozeka.domain.model.PromptSnapshot.Entry.Catalog(com.gromozeka.domain.model.Prompt.Id("rules"), "Rules", "Instructions")), "a".repeat(64))
+            val first = Conversation.Message(Conversation.Message.Id("prompt-first"), f.source.id,
+                role = Conversation.Message.Role.PROMPT, author = Conversation.Message.Author.Runtime(),
+                content = listOf(ContentItem.PromptMessage(agent, "Agent", snapshot, ContentItem.PromptMessage.Action.ATTACH)), createdAt = Clock.System.now())
+            val replacement = first.copy(id = Conversation.Message.Id("prompt-replacement"), content = listOf(
+                ContentItem.PromptMessage(agent, "Agent", snapshot, ContentItem.PromptMessage.Action.REPLACE, first.id)))
+            val position = (f.links.getMaxPosition(f.source.currentThread) ?: -1) + 1
+            val repository = ExposedMessageRepository(Json)
+            repository.saveBatch(listOf(first, replacement))
+            f.links.add(f.source.currentThread, first.id, position)
+            f.links.add(f.source.currentThread, replacement.id, position + 1)
+            val fork = f.service.fork(f.source.id)
+            val prompts = f.links.getMessagesByThread(fork.currentThread).filter { it.role == Conversation.Message.Role.PROMPT }
+            assertEquals(2, prompts.size)
+            assertEquals(snapshot, (prompts.first().content.single() as ContentItem.PromptMessage).snapshot)
+            assertEquals(prompts.first().id, (prompts.last().content.single() as ContentItem.PromptMessage).previousMessageId)
+            assertNotEquals(first.id, prompts.first().id)
+            assertTrue(prompts.all { it.conversationId == fork.id })
+        }
+    }
+
     @Test fun `large fork preserves history coverage artifacts search and independent ownership with bounded database calls`() = runBlocking<Unit> {
         database { f ->
             val history = f.seed(messageCount = 8000, artifactCount = 3500)

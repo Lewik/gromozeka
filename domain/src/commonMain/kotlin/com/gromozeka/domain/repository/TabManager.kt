@@ -80,26 +80,6 @@ interface TabManager {
      */
     suspend fun switchToTab(tabId: Tab.Id): TabInfo?
     
-    /**
-     * Send message to specific tab.
-     * 
-     * **Tool exposure:** `tell_agent` (MCP tool)
-     * 
-     * Appends message to tab's conversation with instructions for routing:
-     * - Source.Agent(senderTabId) → identifies sender
-     * - ResponseExpected(targetTabId) → indicates response routing
-     * 
-     * Used for inter-agent communication via MCP tools.
-     * 
-     * @param tabId target tab identifier
-     * @param message message text
-     * @param instructions message instructions (source, response routing, etc)
-     */
-    suspend fun sendMessageToTab(
-        tabId: Tab.Id,
-        message: String,
-        instructions: List<Conversation.Message.Instruction>
-    )
     
     /**
      * List all active tabs.

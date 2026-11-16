@@ -1534,8 +1534,8 @@ private fun ConversationRuntimeSnapshot.hasPresentableActivity(): Boolean =
 private fun Conversation.Message.containsUserVisibleError(): Boolean =
     error != null || content.any { item ->
         when (item) {
-            is Conversation.Message.ContentItem.System ->
-                item.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
+            is Conversation.Message.ContentItem.RuntimeNotification ->
+                item.level == Conversation.Message.ContentItem.RuntimeNotification.Level.ERROR
             is Conversation.Message.ContentItem.ToolResult -> item.isError
             else -> false
         }

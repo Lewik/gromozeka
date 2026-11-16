@@ -375,13 +375,9 @@ internal class OpenAiSdkMessageMapper(
                 }
 
                 Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, targetModelName)?.let(::add)
-                Conversation.Message.Role.SYSTEM -> systemText(message).takeIf { it.isNotBlank() }?.let { text ->
-                    if (connectionKind == AiConnection.Kind.OPENAI_API) {
-                        add(ChatCompletionMessageParam.ofDeveloper(developerMessageParam(text)))
-                    } else {
-                        add(ChatCompletionMessageParam.ofSystem(systemMessageParam(text)))
-                    }
-                }
+                Conversation.Message.Role.PEER, Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                Conversation.Message.Role.PROMPT, Conversation.Message.Role.VISUAL_UPDATED ->
+                error("Service messages must be projected before native mapping")
             }
 
             message.content
@@ -447,16 +443,6 @@ internal class OpenAiSdkMessageMapper(
             }
         }
 
-    private fun developerMessageParam(text: String): ChatCompletionDeveloperMessageParam =
-        ChatCompletionDeveloperMessageParam.builder()
-            .content(text)
-            .build()
-
-    private fun systemMessageParam(text: String): ChatCompletionSystemMessageParam =
-        ChatCompletionSystemMessageParam.builder()
-            .content(text)
-            .build()
-
     private fun toAssistantMessageParam(message: Conversation.Message, targetModelName: String): ChatCompletionMessageParam? {
         val metadata = message.providerMetadata
         val raw = metadata["openaiCompatibleMessage"] as? JsonObject
@@ -511,15 +497,6 @@ internal class OpenAiSdkMessageMapper(
         return listOf(instructionsPrefix, text)
             .filter { it.isNotBlank() }
             .joinToString("\n")
-            .trim()
-    }
-
-    private fun systemText(message: Conversation.Message): String {
-        if (message.error != null) return ""
-
-        return message.content
-            .filterIsInstance<Conversation.Message.ContentItem.System>()
-            .joinToString("\n") { it.content }
             .trim()
     }
 

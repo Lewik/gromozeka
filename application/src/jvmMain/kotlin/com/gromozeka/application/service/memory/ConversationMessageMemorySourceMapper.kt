@@ -1,6 +1,7 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.serviceDataTextOrNull
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemorySource
 import java.security.MessageDigest
@@ -25,7 +26,7 @@ class ConversationMessageMemorySourceMapper {
             threadId = threadId,
             sourceMessageId = message.id,
             speakerRole = message.role.toMemoryActorRole(),
-            authorLabel = message.role.name.lowercase(),
+            authorLabel = message.author?.displayName ?: message.role.name.lowercase(),
             contentText = contentText,
             contentPayload = message.providerMetadata.takeIf { it.isNotEmpty() },
             contentHash = contentText.sha256(),
@@ -49,8 +50,10 @@ class ConversationMessageMemorySourceMapper {
                     else -> null
                 }
 
-                Conversation.Message.Role.SYSTEM -> when (item) {
-                    is Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
+                Conversation.Message.Role.PEER -> (item as? Conversation.Message.ContentItem.PeerMessage)?.serviceDataTextOrNull()
+                Conversation.Message.Role.PROMPT, Conversation.Message.Role.VISUAL_UPDATED -> null
+                Conversation.Message.Role.RUNTIME_NOTIFICATION -> when (item) {
+                    is Conversation.Message.ContentItem.RuntimeNotification -> "[${item.level.name}] ${item.content}"
                     else -> null
                 }
             }
@@ -66,8 +69,9 @@ class ConversationMessageMemorySourceMapper {
     private fun Conversation.Message.Role.toMemoryActorRole(): MemorySource.ActorRole =
         when (this) {
             Conversation.Message.Role.USER -> MemorySource.ActorRole.USER
-            Conversation.Message.Role.ASSISTANT -> MemorySource.ActorRole.ASSISTANT
-            Conversation.Message.Role.SYSTEM -> MemorySource.ActorRole.SYSTEM
+            Conversation.Message.Role.ASSISTANT, Conversation.Message.Role.PEER -> MemorySource.ActorRole.ASSISTANT
+            Conversation.Message.Role.RUNTIME_NOTIFICATION, Conversation.Message.Role.PROMPT,
+            Conversation.Message.Role.VISUAL_UPDATED -> MemorySource.ActorRole.SYSTEM
         }
 
     private fun String.sha256(): String {

@@ -3,6 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.requireEditableHistoryContent
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.Prompt
@@ -286,6 +287,7 @@ class GromozekaRemoteAuthorization(
             is MemoryActionRequest,
             -> requireConversation(user, request.conversationId(), ProjectPermission.WRITE).also {
                 require(it.externalChannel == null) { "Manage messages through the connected external channel; detach it before editing history" }
+                if (request is EditMessageRequest) requireEditableHistoryContent(request.newContent)
             }
 
             is UpdateConversationDisplayNameRequest,

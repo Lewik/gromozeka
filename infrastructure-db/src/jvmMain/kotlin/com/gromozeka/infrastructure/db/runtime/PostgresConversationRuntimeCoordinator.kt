@@ -236,6 +236,20 @@ class PostgresConversationRuntimeCoordinator(
             true
         }
 
+    override suspend fun bindTurnPromptMessage(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        messageId: Conversation.Message.Id,
+    ): Boolean = mutateRecord(conversationId, createIfMissing = false) { record ->
+        val transition = record.scheduling.bindTurnPromptMessage(taskId, executor, messageId)
+        if (transition.changed) {
+            record.scheduling = transition.state
+            record.bumpRevision()
+        }
+        transition.result
+    }
+
     override suspend fun confirmActiveTaskOwner(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
@@ -842,7 +856,7 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot =
         readJson(conversationId, """
             SELECT jsonb_build_object('conversationId', conversation_id, 'lastEventSequence', event_sequence)
-                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn' - 'retainedTurnProblems' - 'proactiveCompaction')
+                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'retainedTurnProblems' - 'proactiveCompaction')
             FROM conversation_runtime_records WHERE conversation_id = ?
         """.trimIndent())?.let { json.decodeFromString(it) } ?: ConversationRuntimeSchedulingSnapshot(conversationId)
 

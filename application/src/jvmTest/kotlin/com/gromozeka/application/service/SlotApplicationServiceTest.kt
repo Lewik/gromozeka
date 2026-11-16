@@ -109,7 +109,10 @@ class SlotApplicationServiceTest {
         restarted.deliverPending(); f.newService().deliverPending()
         val task = f.coordinator.schedulingSnapshot(f.conversation.id).pendingTasks.single()
         val payload = task.payload as ConversationRuntimeTask.Payload.AgentInvocation
-        val text = (payload.userMessage.content.single() as Conversation.Message.ContentItem.UserMessage).text
+        assertEquals(Conversation.Message.Role.RUNTIME_NOTIFICATION, payload.userMessage.role)
+        val notification = payload.userMessage.content.single() as Conversation.Message.ContentItem.RuntimeNotification
+        assertEquals(Conversation.Message.ContentItem.RuntimeNotification.Kind.SLOT_UPDATED, notification.kind)
+        val text = notification.content
         assertContains(text, "workspace_mount_id=${slot.mountId.value}")
         assertContains(text, "lease_id=${granted.leaseId}")
         assertEquals(granted.leaseId, restarted.origin(f.user.id, f.conversation.id, slot.mountId)?.leaseId)

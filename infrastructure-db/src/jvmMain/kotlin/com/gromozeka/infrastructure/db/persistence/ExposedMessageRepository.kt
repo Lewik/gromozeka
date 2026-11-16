@@ -29,8 +29,11 @@ class ExposedMessageRepository(
         dbQuery {
             messages.chunked(BATCH_SIZE).forEach { batch ->
                 val artifactIdsByMessage = batch.associate { message ->
-                    message.id to message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-                        .flatMap { it.result }
+                    message.id to message.content.flatMap { item -> when (item) {
+                        is Conversation.Message.ContentItem.ToolResult -> item.result
+                        is Conversation.Message.ContentItem.RuntimeNotification -> item.attachments
+                        else -> emptyList()
+                    } }
                         .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
                         .map { it.artifact.id.value }.distinct()
                 }
@@ -92,6 +95,13 @@ class ExposedMessageRepository(
 
 internal fun Conversation.Message.searchText(includeToolResults: Boolean = true): String = content.mapNotNull { item ->
     when (item) {
+        is Conversation.Message.ContentItem.PeerMessage -> item.text
+        is Conversation.Message.ContentItem.PromptMessage -> item.snapshot.entries
+            .filterIsInstance<com.gromozeka.domain.model.PromptSnapshot.Entry.Catalog>().joinToString("\n") { it.text }
+        is Conversation.Message.ContentItem.RuntimeNotification -> if (includeToolResults)
+            listOfNotNull(item.content, item.details.takeIf { it.isNotEmpty() }?.toString(), item.attachments
+                .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
+                .joinToString("\n") { it.content }.takeIf(String::isNotBlank)).joinToString("\n") else item.content
         is Conversation.Message.ContentItem.UserMessage -> item.text
         is Conversation.Message.ContentItem.VisualInteraction -> "[Visual button action] ${item.caption()}"
         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText

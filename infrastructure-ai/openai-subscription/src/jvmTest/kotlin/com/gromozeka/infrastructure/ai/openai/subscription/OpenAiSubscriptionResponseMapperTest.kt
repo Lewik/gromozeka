@@ -216,7 +216,8 @@ class OpenAiSubscriptionResponseMapperTest {
         )
 
         assertEquals(2, response.messages.size)
-        assertIs<Conversation.Message.ContentItem.System>(response.messages.first().content.single())
+        val providerBlock = assertIs<Conversation.Message.ContentItem.UnknownJson>(response.messages.first().content.single())
+        assertEquals(JsonPrimitive("web_search_call"), providerBlock.json.jsonObject["type"])
         val message = assertIs<Conversation.Message.ContentItem.AssistantMessage>(response.messages.last().content.single())
         assertEquals(
             "Kotlin 2.3 was released.\n\nSources:\n" +

@@ -15,7 +15,8 @@ internal fun Conversation.Message.editableText(): String? =
             ?.structured
             ?.fullText
 
-        Conversation.Message.Role.SYSTEM -> null
+        Conversation.Message.Role.PEER, Conversation.Message.Role.RUNTIME_NOTIFICATION,
+        Conversation.Message.Role.PROMPT, Conversation.Message.Role.VISUAL_UPDATED -> null
     }
 
 internal fun Conversation.Message.withEditedText(newText: String): List<Conversation.Message.ContentItem> {

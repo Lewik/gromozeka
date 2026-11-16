@@ -234,6 +234,21 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             true
         }
 
+    override suspend fun bindTurnPromptMessage(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        messageId: Conversation.Message.Id,
+    ): Boolean = mutex.withLock {
+        val current = schedulingByConversation[conversationId] ?: return@withLock false
+        val transition = current.bindTurnPromptMessage(taskId, executor, messageId)
+        if (transition.changed) {
+            schedulingByConversation[conversationId] = transition.state
+            bumpRevision(conversationId)
+        }
+        transition.result
+    }
+
     override suspend fun confirmActiveTaskOwner(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,

@@ -48,10 +48,16 @@ class PendingSecretRevealService {
         val owner = userId ?: return messages
         val values = pending.remove(Key(conversationId, owner)) ?: return messages
         val index = messages.indexOfLast { message ->
-            message.role == Conversation.Message.Role.USER &&
-                message.content.any { it is Conversation.Message.ContentItem.UserMessage }
+            when (message.role) {
+                Conversation.Message.Role.USER -> message.content.any {
+                    it is Conversation.Message.ContentItem.UserMessage || it is Conversation.Message.ContentItem.VisualInteraction
+                }
+                Conversation.Message.Role.PEER, Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                Conversation.Message.Role.VISUAL_UPDATED -> true
+                Conversation.Message.Role.PROMPT, Conversation.Message.Role.ASSISTANT -> false
+            }
         }
-        check(index >= 0) { "Cannot reveal a secret without a user message" }
+        check(index >= 0) { "Cannot reveal a secret without a model input message" }
         return messages.toMutableList().also { enriched ->
             enriched[index] = enriched[index].copy(
                 instructions = enriched[index].instructions +

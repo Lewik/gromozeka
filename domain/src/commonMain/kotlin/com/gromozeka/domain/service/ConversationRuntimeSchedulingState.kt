@@ -328,6 +328,21 @@ data class ConversationRuntimeSchedulingState(
         )
     }
 
+    fun bindTurnPromptMessage(
+        taskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        messageId: Conversation.Message.Id,
+    ): ConversationRuntimeStateTransition<Boolean> {
+        if (!confirmActiveTaskOwner(taskId, executor)) return unchanged(false)
+        val turn = checkNotNull(lastTurn) { "Agent turn must exist before its prompts are bound" }
+        check(turn.turnId == activeTask?.turnId) { "Prompt snapshot belongs to another active turn" }
+        turn.promptMessageId?.let {
+            check(it == messageId) { "An active turn cannot change its prompt snapshot" }
+            return unchanged(true)
+        }
+        return changed(copy(lastTurn = turn.copy(promptMessageId = messageId)), true)
+    }
+
     fun confirmActiveTaskOwner(
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,
@@ -869,7 +884,6 @@ data class ConversationRuntimeSchedulingState(
         if (actorUserId == null || externalChannel != null ||
             message.role != Conversation.Message.Role.USER ||
             (message.author as? Conversation.Message.Author.User)?.userId != actorUserId ||
-            message.instructions.any { it is Conversation.Message.Instruction.Source.Agent } ||
             "syntheticKind" in message.providerMetadata
         ) return null
         return when (val input = payload) {

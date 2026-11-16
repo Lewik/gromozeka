@@ -434,24 +434,20 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.requests.isEmpty()); assertTrue(f.emitted.isEmpty())
     }
 
-    @Test fun `background replay preserves an old call ID when only its call was stored before upgrade`() = runBlocking {
+    @Test fun `background notification replay is idempotent without fabricated tool pairs`() = runBlocking {
         val f = Fixture(); f.allowFullHistoryLoad = false
-        val oldId = ContentItem.ToolCall.Id("cmd_legacy_long_identifier_status")
-        val shortId = syntheticToolCallId(oldId.value)
-        val call = f.messages.single().copy(id = Conversation.Message.Id("completion-call"), role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(ContentItem.ToolCall(shortId, ContentItem.ToolCall.Data("grz_get_command_task", kotlinx.serialization.json.JsonObject(emptyMap())))))
-        val result = call.copy(id = Conversation.Message.Id("completion-result"), role = Conversation.Message.Role.USER,
-            content = listOf(ContentItem.ToolResult(shortId, "grz_get_command_task", listOf(ContentItem.ToolResult.Data.Text("done")))))
-        f.messages += call.copy(content = listOf((call.content.single() as ContentItem.ToolCall).copy(id = oldId)))
-        f.backgroundBatch = BackgroundActivityCompletionApplicationService.Batch(listOf(mock<CommandTask>()), emptyList(), listOf(call, result))
-        val task = input("background").copy(
-            payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion("command-task:legacy"))
+        val notification = f.messages.single().copy(id = Conversation.Message.Id("completion:notification"),
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION, author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeNotification(ContentItem.RuntimeNotification.Level.INFO, "Tests completed",
+                kind = ContentItem.RuntimeNotification.Kind.COMMAND_COMPLETED, referenceId = "command")))
+        f.messages += notification
+        f.backgroundBatch = BackgroundActivityCompletionApplicationService.Batch(listOf(mock<CommandTask>()), emptyList(), listOf(notification))
+        val task = input("background").copy(payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion("command-task:command"))
         assertTrue(f.coordinator.submit(task)); f.claim(task)
         repeat(2) { assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {}) }
-        assertEquals(1, f.messages.count { it.id == call.id })
-        val stored = f.messages.single { it.id == result.id }.content.single() as ContentItem.ToolResult
-        assertEquals(oldId, stored.toolUseId)
-        assertEquals(1, f.messages.count { it.id == result.id })
+        assertEquals(1, f.messages.count { it.id == notification.id })
+        assertEquals(notification, f.messages.single { it.id == notification.id })
+        assertTrue(f.messages.flatMap { it.content }.none { it is ContentItem.ToolCall || it is ContentItem.ToolResult })
     }
 
     @Test fun `synthetic memory pairs use short IDs and retain stored legacy IDs on replay`() = runBlocking {
@@ -525,7 +521,45 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
     }
 
-    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false) {
+    @Test fun `automatic post responses bind real snapshots on first and subsequent turns`() = runBlocking {
+        val f = Fixture(realPrompts = true); f.messages.clear()
+        for (id in listOf("first-post", "second-post")) {
+            assertTrue(f.coordinator.submit(input(id, broadcast = true)))
+            f.drain()
+            assertContains(f.requests.last().systemPrompts, "Captured rules")
+        }
+        assertEquals(2, f.requests.size)
+        assertEquals(listOf("first-post", "second-post"), f.messages.filter { it.isHumanInput() }.map { it.id.value })
+        val prompt = f.messages.single { it.role == Conversation.Message.Role.PROMPT }
+        assertEquals(prompt.id, f.coordinator.schedulingSnapshot(conversation.id).lastTurn?.promptMessageId)
+    }
+
+    @Test fun `posting without an automatic responder does not create an agent turn or a snapshot`() = runBlocking {
+        val f = Fixture(realPrompts = true); f.messages.clear()
+        val input = input("post-only", broadcast = true)
+        val task = input.copy(payload = (input.payload as ConversationRuntimeTask.Payload.PostMessage).copy(autoRespondAgentIds = emptySet()))
+        assertTrue(f.coordinator.submit(task)); f.drain()
+        assertNull(f.coordinator.schedulingSnapshot(conversation.id).lastTurn)
+        assertEquals(listOf("post-only"), f.messages.map { it.id.value })
+        assertTrue(f.requests.isEmpty())
+    }
+
+    @Test fun `broadcast responders keep independent prompt bindings across repeated posts`() = runBlocking {
+        val f = Fixture(realPrompts = true); f.messages.clear()
+        for (id in listOf("broadcast-one", "broadcast-two")) {
+            val input = input(id, broadcast = true)
+            val task = input.copy(payload = (input.payload as ConversationRuntimeTask.Payload.PostMessage)
+                .copy(autoRespondAgentIds = setOf(agentId, otherAgentId)))
+            assertTrue(f.coordinator.submit(task)); f.drain()
+        }
+        assertEquals(4, f.requests.size)
+        assertTrue(f.requests.all { "Captured rules" in it.systemPrompts })
+        val prompts = f.messages.mapNotNull { it.promptSnapshotOrNull() }
+        assertEquals(setOf(agentId, otherAgentId), prompts.map { it.agentId }.toSet())
+        assertEquals(2, prompts.size)
+    }
+
+    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false, realPrompts: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -563,7 +597,7 @@ class ConversationEngineDeliveryTest {
             override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("No streaming")
         }
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("config"))
-        private val agent = AgentDefinition(agentId, name = "Test", prompts = emptyList(), runtimeSelection = selection,
+        private val agent = AgentDefinition(agentId, name = "Test", prompts = if (realPrompts) listOf(Prompt.Id("rules")) else emptyList(), runtimeSelection = selection,
             type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
         private val connection = AiConnection.OpenAiSubscription(AiConnection.Id("test"), "Test", enabled = true)
         private val resolved = ResolvedAiRuntime(connection,
@@ -590,7 +624,7 @@ class ConversationEngineDeliveryTest {
         private val artifacts = responding<ConversationArtifactApplicationService> {
             when (it.method.name.substringBefore('-')) {
                 "materialize" -> it.arguments[1]
-                "persistAndCommitMessageToolResults", "persistAndCommitToolResults" -> it.arguments[2]
+                "persistAndCommitMessageOutputs", "persistAndCommitToolResults" -> it.arguments[2]
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
@@ -655,11 +689,18 @@ class ConversationEngineDeliveryTest {
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
+        private val promptAssembler: ConversationTurnPromptAssembler = if (realPrompts) ConversationTurnPromptService(
+            PromptApplicationService(responding<com.gromozeka.domain.repository.PromptRepository> {
+                check(it.method.name.startsWith("findById"))
+                Prompt(Prompt.Id("rules"), name = "Rules", content = "Captured rules", type = Prompt.Type.Global,
+                    createdAt = now, updatedAt = now)
+            }, mock(), mock(), responding { UserProfile() }), contextHistory, history, appender, coordinator,
+        ) else responding { emptyList<String>() }
         val engine = ConversationEngineService(
             aiRuntimeProvider = responding { runtime }, aiToolProvider = responding { emptyList<Any>() },
             agentDomainService = responding { invocation ->
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
-            }, agentPromptAssemblyService = responding { emptyList<String>() },
+            }, turnPrompts = promptAssembler,
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
             conversationMessageAppender = appender, historyMutationExecutor = mock(), compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)

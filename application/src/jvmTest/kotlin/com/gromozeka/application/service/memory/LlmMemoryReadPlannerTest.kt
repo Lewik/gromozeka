@@ -426,7 +426,7 @@ class LlmMemoryReadPlannerTest {
                     when (item) {
                         is Conversation.Message.ContentItem.UserMessage -> item.text
                         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
-                        is Conversation.Message.ContentItem.System -> item.content
+                        is Conversation.Message.ContentItem.RuntimeNotification -> item.content
                         else -> item.toString()
                     }
                 }

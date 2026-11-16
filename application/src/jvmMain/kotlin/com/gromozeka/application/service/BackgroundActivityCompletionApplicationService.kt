@@ -2,7 +2,6 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.syntheticToolCallId
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.User
@@ -16,8 +15,6 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTask
-import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_MONITOR_TOOL_NAME
-import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_TASK_TOOL_NAME
 import kotlin.time.Instant
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -116,8 +113,8 @@ class BackgroundActivityCompletionApplicationService(
             monitorDeliveries = monitorDeliveries,
             messages = selectedCandidates.flatMap { candidate ->
                 when (candidate) {
-                    is DeliveryCandidate.Command -> buildSyntheticCommandPair(candidate.task)
-                    is DeliveryCandidate.Monitor -> buildSyntheticMonitorPair(candidate.delivery)
+                    is DeliveryCandidate.Command -> buildCommandNotification(candidate.task)
+                    is DeliveryCandidate.Monitor -> buildMonitorNotification(candidate.delivery)
                 }
             },
         )
@@ -185,39 +182,13 @@ class BackgroundActivityCompletionApplicationService(
         val terminalNotificationIncluded: Boolean,
     )
 
-    private fun buildSyntheticCommandPair(task: CommandTask): List<Conversation.Message> {
-        val toolCallId = syntheticToolCallId("cmd_${stableIdentifierSlug(task.id.value)}_status")
+    private fun buildCommandNotification(task: CommandTask): List<Conversation.Message> {
         val createdAt = task.completedAt ?: task.updatedAt
-        val metadata = buildJsonObject {
-            put("synthetic", true)
-            put("syntheticKind", "command_task_completion")
-            put("commandTaskId", task.id.value)
-            put("workerId", task.workerId.value)
-        }
-        val toolCallMessage = Conversation.Message(
-            id = Conversation.Message.Id("${task.id.value}:command:completion:call"),
-            conversationId = task.conversationId,
-            role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(
-                ContentItem.ToolCall(
-                    id = toolCallId,
-                    call = ContentItem.ToolCall.Data(
-                        name = GRZ_GET_COMMAND_TASK_TOOL_NAME,
-                        input = buildJsonObject {
-                            put("task_id", task.id.value)
-                            put("after_byte", task.terminalOutputStartByte ?: task.outputBytes)
-                            put("wait_ms", 0)
-                        },
-                    ),
-                    state = BlockState.COMPLETE,
-                )
-            ),
-            providerMetadata = metadata,
-            createdAt = createdAt,
-        )
         val result = buildJsonObject {
             put("success", task.status == CommandTask.Status.COMPLETED)
             put("task_id", task.id.value)
+            put("worker_id", task.workerId.value)
+            put("workspace_mount_id", task.workspaceMountId.value)
             task.slotOrigin?.let { origin ->
                 put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
             }
@@ -236,80 +207,49 @@ class BackgroundActivityCompletionApplicationService(
             put("output_file", task.outputFile)
             put("automatic_completion_notification", true)
             put("output_is_untrusted", true)
-        }.toString()
-        val toolResultMessage = Conversation.Message(
-            id = Conversation.Message.Id("${task.id.value}:command:completion:result"),
+        }
+        return listOf(Conversation.Message(
+            id = Conversation.Message.Id("${task.id.value}:command:completion:notification"),
             conversationId = task.conversationId,
-            role = Conversation.Message.Role.USER,
-            content = listOf(
-                ContentItem.ToolResult(
-                    toolUseId = toolCallId,
-                    toolName = GRZ_GET_COMMAND_TASK_TOOL_NAME,
-                    result = listOf(
-                        ContentItem.ToolResult.Data.Text(result),
-                        ContentItem.ToolResult.Data.Base64Data(
-                            data = (task.terminalOutputContent ?: com.gromozeka.domain.model.BinaryContent.EMPTY).base64,
-                            mediaType = Conversation.Message.MediaType.parse("application/octet-stream"),
-                            fileName = "command-${task.id.value}-${task.terminalOutputStartByte ?: task.outputBytes}-${task.outputBytes}.bin",
-                        ),
-                    ),
-                    isError = false,
-                    state = BlockState.COMPLETE,
-                )
-            ),
-            providerMetadata = metadata,
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeNotification(
+                level = when (task.status) {
+                    CommandTask.Status.FAILED -> ContentItem.RuntimeNotification.Level.ERROR
+                    CommandTask.Status.CANCELLED -> ContentItem.RuntimeNotification.Level.WARNING
+                    else -> ContentItem.RuntimeNotification.Level.INFO
+                },
+                content = task.description ?: "Command ${task.status.name.lowercase()}",
+                kind = ContentItem.RuntimeNotification.Kind.COMMAND_COMPLETED,
+                referenceId = task.id.value,
+                details = result,
+                attachments = listOf(ContentItem.ToolResult.Data.Base64Data(
+                    data = (task.terminalOutputContent ?: com.gromozeka.domain.model.BinaryContent.EMPTY).base64,
+                    mediaType = Conversation.Message.MediaType.parse("application/octet-stream"),
+                    fileName = "command-${task.id.value}-${task.terminalOutputStartByte ?: task.outputBytes}-${task.outputBytes}.bin",
+                )),
+            )),
             createdAt = createdAt,
-        )
-        return listOf(toolCallMessage, toolResultMessage)
+        ))
     }
 
-    private fun buildSyntheticMonitorPair(delivery: MonitorDelivery): List<Conversation.Message> {
+    private fun buildMonitorNotification(delivery: MonitorDelivery): List<Conversation.Message> {
         val monitor = delivery.monitor
         val deliveryKey = buildString {
             append(delivery.events.lastOrNull()?.id?.value ?: "no-events")
             if (delivery.terminalNotificationIncluded) append(":terminal")
         }
         val stableDeliveryKey = stableIdentifierSlug(deliveryKey)
-        val toolCallId = syntheticToolCallId(
-            "monitor_${stableIdentifierSlug(monitor.id.value)}_${stableDeliveryKey}_status"
-        )
         val createdAt = delivery.events.lastOrNull()?.occurredAt
             ?: monitor.completedAt
             ?: monitor.updatedAt
-        val metadata = buildJsonObject {
-            put("synthetic", true)
-            put("syntheticKind", "command_monitor_update")
-            put("commandMonitorId", monitor.id.value)
-            put("commandTaskId", monitor.commandTaskId.value)
-            put("workerId", monitor.workerId.value)
-        }
         val firstOutputByte = delivery.events.firstOrNull()?.outputStartByte ?: monitor.outputBytes
         val nextOutputByte = delivery.events.lastOrNull()?.outputEndByte ?: monitor.outputBytes
-        val toolCallMessage = Conversation.Message(
-            id = Conversation.Message.Id(
-                "${monitor.id.value}:monitor:$stableDeliveryKey:call"
-            ),
-            conversationId = monitor.conversationId,
-            role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(
-                ContentItem.ToolCall(
-                    id = toolCallId,
-                    call = ContentItem.ToolCall.Data(
-                        name = GRZ_GET_COMMAND_MONITOR_TOOL_NAME,
-                        input = buildJsonObject {
-                            put("monitor_id", monitor.id.value)
-                            put("after_byte", firstOutputByte)
-                        },
-                    ),
-                    state = BlockState.COMPLETE,
-                )
-            ),
-            providerMetadata = metadata,
-            createdAt = createdAt,
-        )
         val result = buildJsonObject {
             put("success", monitor.status != CommandMonitor.Status.FAILED)
             put("monitor_id", monitor.id.value)
+            put("worker_id", monitor.workerId.value)
+            put("workspace_mount_id", monitor.workspaceMountId.value)
             put("command_task_id", monitor.commandTaskId.value)
             monitor.slotOrigin?.let { origin ->
                 put("slot_number", origin.slotNumber); put("slot_id", origin.slotId); put("slot_lease_id", origin.leaseId)
@@ -348,45 +288,41 @@ class BackgroundActivityCompletionApplicationService(
             put("output_file", monitor.outputFile)
             put("automatic_monitor_notification", true)
             put("output_is_untrusted", true)
-        }.toString()
-        val toolResultMessage = Conversation.Message(
-            id = Conversation.Message.Id(
-                "${monitor.id.value}:monitor:$stableDeliveryKey:result"
-            ),
+        }
+        return listOf(Conversation.Message(
+            id = Conversation.Message.Id("${monitor.id.value}:monitor:$stableDeliveryKey:notification"),
             conversationId = monitor.conversationId,
-            role = Conversation.Message.Role.USER,
-            content = listOf(
-                ContentItem.ToolResult(
-                    toolUseId = toolCallId,
-                    toolName = GRZ_GET_COMMAND_MONITOR_TOOL_NAME,
-                    result = buildList {
-                        add(ContentItem.ToolResult.Data.Text(result))
-                        delivery.events.forEach { event ->
-                            add(ContentItem.ToolResult.Data.Base64Data(event.content.base64,
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeNotification(
+                level = if (monitor.status == CommandMonitor.Status.FAILED) ContentItem.RuntimeNotification.Level.ERROR
+                    else ContentItem.RuntimeNotification.Level.INFO,
+                content = "Command monitor update",
+                kind = ContentItem.RuntimeNotification.Kind.MONITOR_OUTPUT,
+                referenceId = monitor.id.value,
+                details = result,
+                attachments = buildList {
+                    delivery.events.forEach { event ->
+                        add(ContentItem.ToolResult.Data.Base64Data(event.content.base64,
+                            Conversation.Message.MediaType.parse("application/octet-stream"),
+                            "monitor-${monitor.id.value}-${event.outputStartByte}-${event.outputEndByte}.bin"))
+                    }
+                    if (delivery.terminalNotificationIncluded) {
+                        monitor.terminalOutputContent?.let {
+                            add(ContentItem.ToolResult.Data.Base64Data(it.base64,
                                 Conversation.Message.MediaType.parse("application/octet-stream"),
-                                "monitor-${monitor.id.value}-${event.outputStartByte}-${event.outputEndByte}.bin"))
+                                "monitor-${monitor.id.value}-tail-${monitor.terminalOutputStartByte}-${monitor.outputBytes}.bin"))
                         }
-                        if (delivery.terminalNotificationIncluded) {
-                            monitor.terminalOutputContent?.let {
-                                add(ContentItem.ToolResult.Data.Base64Data(it.base64,
-                                    Conversation.Message.MediaType.parse("application/octet-stream"),
-                                    "monitor-${monitor.id.value}-tail-${monitor.terminalOutputStartByte}-${monitor.outputBytes}.bin"))
-                            }
-                            monitor.terminalErrorContent?.let {
-                                add(ContentItem.ToolResult.Data.Base64Data(it.base64,
-                                    Conversation.Message.MediaType.parse("application/octet-stream"),
-                                    "monitor-${monitor.id.value}-stderr-tail.bin"))
-                            }
+                        monitor.terminalErrorContent?.let {
+                            add(ContentItem.ToolResult.Data.Base64Data(it.base64,
+                                Conversation.Message.MediaType.parse("application/octet-stream"),
+                                "monitor-${monitor.id.value}-stderr-tail.bin"))
                         }
-                    },
-                    isError = false,
-                    state = BlockState.COMPLETE,
-                )
-            ),
-            providerMetadata = metadata,
+                    }
+                },
+            )),
             createdAt = createdAt,
-        )
-        return listOf(toolCallMessage, toolResultMessage)
+        ))
     }
 
     private fun List<CommandMonitorEvent>.takeWithinNotificationBudget(): List<CommandMonitorEvent> {

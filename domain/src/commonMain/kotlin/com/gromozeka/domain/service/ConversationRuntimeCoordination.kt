@@ -209,7 +209,8 @@ data class ConversationRuntimeTask(
 
     fun isContinuation(): Boolean = !isRootInput()
 
-    fun isAgentWork(): Boolean = when (payload) {
+    fun isAgentWork(): Boolean = when (val input = payload) {
+        is Payload.PostMessage -> input.autoRespondAgentIds.isNotEmpty()
         is Payload.AgentInvocation, is Payload.AgentResponse, is Payload.LlmCall,
         is Payload.ToolExecution, is Payload.ToolResultProcessing, is Payload.MemoryRecall, is Payload.ResponseReview -> true
         else -> false
@@ -732,6 +733,7 @@ data class ConversationRuntimeTurnSummary(
     val problems: List<Problem> = emptyList(),
     val completedAt: Instant? = null,
     val modelRequest: ModelRequestTiming? = null,
+    val promptMessageId: Conversation.Message.Id? = null,
 ) {
     @Serializable
     data class ModelRequestTiming(
@@ -795,6 +797,7 @@ data class ConversationRuntimeSchedulingSnapshot(
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val lastEventSequence: Long = 0,
     val lastCompletion: ConversationRuntimeCompletion? = null,
+    val lastTurn: ConversationRuntimeTurnSummary? = null,
 ) {
     fun containsTask(taskId: ConversationRuntimeTask.Id): Boolean =
         activeTask?.id == taskId || activeInsertions.any { it.id == taskId } ||
@@ -908,7 +911,8 @@ interface ConversationRuntimeCoordinator {
         val snapshot = snapshot(conversationId)
         return ConversationRuntimeSchedulingSnapshot(
             conversationId, snapshot.state, snapshot.activeTask, snapshot.activeInsertions,
-            snapshot.continuationTask, snapshot.pendingTasks, snapshot.incidents, snapshot.lastEventSequence, snapshot.lastCompletion,
+            snapshot.continuationTask, snapshot.pendingTasks, snapshot.incidents, snapshot.lastEventSequence,
+            lastCompletion = snapshot.lastCompletion, lastTurn = snapshot.lastTurn,
         )
     }
 
@@ -981,6 +985,13 @@ interface ConversationRuntimeCoordinator {
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,
         startedAt: Instant,
+    ): Boolean
+
+    suspend fun bindTurnPromptMessage(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        messageId: Conversation.Message.Id,
     ): Boolean
 
     suspend fun confirmActiveTaskOwner(

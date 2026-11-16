@@ -266,19 +266,31 @@ class AgentCollaborationService(
             if (page.isEmpty()) return
             for (delivery in page) {
                 try {
-                    agentAccess.sameBoundary(delivery.source.address, delivery.target.address, delivery.actorUserId)
+                    val boundary = agentAccess.sameBoundary(delivery.source.address, delivery.target.address, delivery.actorUserId)
                     val r = delivery.requestId?.let { repository.findRequest(it) ?: error("Request unavailable") }
                     if (delivery.kind == AgentDelivery.Kind.REQUEST && r?.isOpen != true) error("Request is no longer active")
                     val snapshot = coordinator.schedulingSnapshot(delivery.target.conversationId)
                     val control = snapshot.state?.controlState
                     if (control != null && control != ConversationExecutionState.ControlState.RUNNING) continue
                     val placement = if (delivery.kind == AgentDelivery.Kind.RESULT && snapshot.activeTask != null) QueuedMessagePlacement.AFTER_TOOL_RESULT else QueuedMessagePlacement.END_OF_TURN
-                    val name = agents.findById(delivery.source.agentId)?.name ?: delivery.source.agentId.value
                     val message = Conversation.Message(
                         id = Conversation.Message.Id(delivery.id), conversationId = delivery.target.conversationId,
-                        role = Conversation.Message.Role.USER,
-                        author = Conversation.Message.Author.Agent(delivery.source.agentId, name),
-                        content = listOf(Conversation.Message.ContentItem.UserMessage(delivery.text)),
+                        role = Conversation.Message.Role.PEER,
+                        author = Conversation.Message.Author.Agent(delivery.source.agentId, boundary.sourceAgent.name),
+                        content = listOf(Conversation.Message.ContentItem.PeerMessage(
+                            kind = when (delivery.kind) {
+                                AgentDelivery.Kind.MESSAGE -> Conversation.Message.ContentItem.PeerMessage.Kind.INFORMATION
+                                AgentDelivery.Kind.ACTIVATION -> Conversation.Message.ContentItem.PeerMessage.Kind.ACTIVATION
+                                AgentDelivery.Kind.REQUEST -> Conversation.Message.ContentItem.PeerMessage.Kind.REQUEST
+                                AgentDelivery.Kind.RESULT -> Conversation.Message.ContentItem.PeerMessage.Kind.RESULT
+                            },
+                            sender = PeerMessageEndpoint(delivery.source.conversationId, delivery.source.threadId,
+                                delivery.source.agentId, boundary.sourceConversation.displayName, boundary.sourceAgent.name),
+                            recipient = PeerMessageEndpoint(delivery.target.conversationId, delivery.target.threadId,
+                                delivery.target.agentId, boundary.targetConversation.displayName, boundary.targetAgent.name),
+                            text = delivery.text,
+                            requestId = delivery.requestId,
+                        )),
                         instructions = if (delivery.readOnly && delivery.kind != AgentDelivery.Kind.MESSAGE) listOf(
                             Conversation.Message.Instruction.UserInstruction("collaboration_readonly", "Read-only delegation",
                                 "The originating user request is read-only: do not modify files, run mutating commands, or delegate around this restriction. Ask the user if changes are necessary.")

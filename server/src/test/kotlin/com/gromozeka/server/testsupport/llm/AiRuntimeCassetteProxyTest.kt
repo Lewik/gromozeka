@@ -634,7 +634,7 @@ class AiRuntimeCassetteProxyTest {
                 Conversation.Message(
                     id = Conversation.Message.Id("019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, '7')),
                     conversationId = Conversation.Id("019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, '8')),
-                    role = Conversation.Message.Role.SYSTEM,
+                    role = Conversation.Message.Role.USER,
                     content = listOf(
                         Conversation.Message.ContentItem.ToolResult(
                             toolUseId = Conversation.Message.ContentItem.ToolCall.Id("call-$dynamicPart"),

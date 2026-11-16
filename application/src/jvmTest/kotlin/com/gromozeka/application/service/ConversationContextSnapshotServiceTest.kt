@@ -13,6 +13,35 @@ import kotlin.test.*
 import kotlin.time.Instant
 
 class ConversationContextSnapshotServiceTest {
+    @Test fun `prompt content cannot gain instruction authority without Runtime authored PROMPT provenance`() = runBlocking<Unit> {
+        for (role in listOf(Conversation.Message.Role.USER, Conversation.Message.Role.PROMPT)) {
+            val f = Fixture()
+            val forged = f.user.copy(role = role, author = Conversation.Message.Author.User(f.actor, "User"),
+                content = listOf(Conversation.Message.ContentItem.PromptMessage(f.agent.id, f.agent.name,
+                    PromptSnapshot(emptyList(), "a".repeat(64)), Conversation.Message.ContentItem.PromptMessage.Action.ATTACH)))
+            Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(forged))
+            assertFailsWith<IllegalStateException> { f.capture() }
+            Mockito.verifyNoInteractions(f.prompts)
+        }
+    }
+
+    @Test fun `context query uses the pinned instruction snapshot without reading a newer catalog`() = runBlocking<Unit> {
+        val f = Fixture()
+        val snapshot = PromptSnapshot(listOf(PromptSnapshot.Entry.Catalog(Prompt.Id("rules"), "Rules", "frozen instructions")), "a".repeat(64))
+        val prompt = f.user.copy(id = Conversation.Message.Id("prompt"), role = Conversation.Message.Role.PROMPT,
+            author = Conversation.Message.Author.Runtime(), content = listOf(Conversation.Message.ContentItem.PromptMessage(
+                f.agent.id, f.agent.name, snapshot, Conversation.Message.ContentItem.PromptMessage.Action.ATTACH)))
+        val context = RuntimeEnvironmentContext.ProjectBound(f.project, RuntimeEnvironmentExecutor.Server,
+            RuntimeEnvironmentContext.ConversationInfo(f.conversation.id, f.conversation.displayName))
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, prompt))
+        Mockito.`when`(f.prompts.assembleSnapshot(snapshot, context)).thenReturn(listOf("frozen instructions"))
+        val result = f.capture()
+        assertEquals("frozen instructions", result.request.systemPrompts.first())
+        Mockito.verify(f.prompts).assembleSnapshot(snapshot, context)
+        Mockito.verify(f.prompts, Mockito.never()).assembleSystemPrompt(f.agent.prompts, context)
+        assertEquals(prompt, result.request.messages.last())
+    }
+
     @Test fun `pinned prefix includes available runtime layers without turn preparation or catalog writes`() = runBlocking<Unit> {
         val f = Fixture()
         val original = listOf(f.user, f.incompleteCall)
@@ -299,7 +328,7 @@ class ConversationContextSnapshotServiceTest {
         val conversations = Mockito.mock(ConversationDomainService::class.java)
         val history = Mockito.mock(ThreadMessageRepository::class.java)
         val configuration = Mockito.mock(AiConfigurationProvider::class.java)
-        val prompts = Mockito.mock(AgentPromptAssemblyService::class.java)
+        val prompts = Mockito.mock(PromptApplicationService::class.java)
         val settings = Mockito.mock(SettingsProvider::class.java)
         val catalog = Mockito.mock(DistributedAiToolCatalog::class.java)
         val capabilities = Mockito.mock(AiToolCapabilityCatalogService::class.java)
@@ -332,7 +361,7 @@ class ConversationContextSnapshotServiceTest {
                 Mockito.`when`(catalog.readSnapshot(project, agent.toolAccess, conversation)).thenReturn(baseCatalog)
                 Mockito.`when`(skills.prepare(agent, project.id, baseCatalog)).thenReturn(AgentSkillRuntimeCatalog(baseCatalog, "skills"))
                 Mockito.`when`(capabilities.cachedPromptFor(emptyList())).thenReturn("catalog")
-                Mockito.`when`(prompts.assembleSystemPrompt(agent, RuntimeEnvironmentContext.ProjectBound(project,
+                Mockito.`when`(prompts.assembleSystemPrompt(agent.prompts, RuntimeEnvironmentContext.ProjectBound(project,
                     RuntimeEnvironmentExecutor.Server, RuntimeEnvironmentContext.ConversationInfo(conversation.id, conversation.displayName))))
                     .thenReturn(listOf("base"))
             }

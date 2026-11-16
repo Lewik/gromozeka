@@ -267,8 +267,20 @@ class SlotApplicationService(
                 val activityNote = if (leftovers.isEmpty()) "" else " Known activity (observed state, not a process guarantee): " + Json.encodeToString(leftovers)
                 val message = Conversation.Message(
                     id = Conversation.Message.Id(event.id), conversationId = conversation.id,
-                    role = Conversation.Message.Role.USER,
-                    content = listOf(Conversation.Message.ContentItem.UserMessage("Runtime slot event (not a user instruction): $text$activityNote Current registry state takes precedence over delayed notifications.")),
+                    role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                    author = Conversation.Message.Author.Runtime(),
+                    content = listOf(Conversation.Message.ContentItem.RuntimeNotification(
+                        level = Conversation.Message.ContentItem.RuntimeNotification.Level.INFO,
+                        content = "$text$activityNote Current registry state takes precedence over delayed notifications.",
+                        kind = Conversation.Message.ContentItem.RuntimeNotification.Kind.SLOT_UPDATED,
+                        referenceId = event.id,
+                        details = buildJsonObject {
+                            put("event_kind", event.kind.name)
+                            event.slotNumber?.let { put("slot_number", it) }
+                            event.leaseId?.let { put("lease_id", it) }
+                            slot?.let { put("workspace_mount_id", it.mountId.value) }
+                        },
+                    )),
                     providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "slot_event"); put("slotEventId", event.id) },
                     createdAt = event.createdAt,
                 )

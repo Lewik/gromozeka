@@ -34,9 +34,11 @@ class UserMessageDeliveryIngressTest {
         runtime.invokeAgent(user, conversation.id, message, agent)
         runtime.postMessage(conversation.id, message)
         runtime.invokeAgent(conversation.id, message, agent)
-        runtime.postMessage(user, conversation.id, message.copy(instructions = listOf(Conversation.Message.Instruction.Source.Agent("peer"))))
+        assertFailsWith<IllegalArgumentException> {
+            runtime.postMessage(user, conversation.id, message.copy(role = Conversation.Message.Role.PEER))
+        }
         assertEquals(listOf(user.id, user.id), lookups)
-        assertEquals(listOf(listOf(UserMessageDeliveryMode.STEER), listOf(UserMessageDeliveryMode.AFTER_CURRENT_TURN), emptyList(), emptyList(), emptyList()), calls)
+        assertEquals(listOf(listOf(UserMessageDeliveryMode.STEER), listOf(UserMessageDeliveryMode.AFTER_CURRENT_TURN), emptyList(), emptyList()), calls)
     }
     private inline fun <reified T : Any> mock(): T = Mockito.mock(T::class.java)
 }

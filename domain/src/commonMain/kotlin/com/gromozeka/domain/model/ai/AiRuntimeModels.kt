@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import com.gromozeka.domain.model.originalCollaborationMessage
+import com.gromozeka.domain.model.projectServiceMessages
 
 const val AI_PROVIDER_MANAGED_TOOL_METADATA_KEY = "providerManagedTool"
 
@@ -150,7 +151,8 @@ fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
     else -> null
 }
 
-fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Conversation.Message> {
+/** Complete canonical context before materializing artifacts or lowering semantic message types. */
+fun AiRuntimeRequest.contextMessages(nativeProvider: String? = null): List<Conversation.Message> {
     val currentThread = options.toolContext["threadId"] as? String
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
@@ -164,6 +166,10 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
         } else message
     }
 }
+
+/** Final provider input; service attachments must have been materialized first. */
+fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Conversation.Message> =
+    contextMessages(nativeProvider).projectServiceMessages()
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */
 fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> =

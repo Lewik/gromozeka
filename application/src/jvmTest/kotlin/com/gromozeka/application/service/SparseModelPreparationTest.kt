@@ -92,6 +92,6 @@ class SparseModelPreparationTest {
         content = listOf(Compaction(Compaction.Payload.ReadableSummary("summary"), Compaction.Origin.USER_REQUESTED,
             sourceMessageIds = sources.map { it.id },
             coverage = if (full) Compaction.Coverage.ALL_PREVIOUS else Compaction.Coverage.SELECTED_MESSAGES)))
-    private fun text(id: String, at: Int) = Message(Message.Id(id), conversation, role = Message.Role.USER,
+    private fun text(id: String, at: Int) = Message(Message.Id(id), conversation, role = Message.Role.USER, author = Message.Author.User(actor, "User"),
         content = listOf(ContentItem.UserMessage(id)), createdAt = Instant.parse("2026-11-08T00:00:00.123456789Z") + at.seconds)
 }

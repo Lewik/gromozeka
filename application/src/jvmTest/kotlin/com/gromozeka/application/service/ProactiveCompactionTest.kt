@@ -14,6 +14,30 @@ import kotlin.test.*
 import kotlin.time.Clock
 
 class ProactiveCompactionTest {
+    @Test fun `proactive inspection materializes retained runtime output before service projection`() = runBlocking {
+        Fixture().use { f ->
+            val reference = Artifact.Reference(Artifact.Id("output"), "stdout.txt", "text/plain", 12,
+                Artifact.Purpose.TOOL_OUTPUT, Artifact.Kind.DOCUMENT)
+            val notification = f.message("notification", "").copy(role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
+                author = Conversation.Message.Author.Runtime(), content = listOf(ContentItem.RuntimeNotification(
+                    ContentItem.RuntimeNotification.Level.INFO, "Command finished", attachments = listOf(ContentItem.ToolResult.Data.ArtifactData(reference)))))
+            f.messages = f.messages + notification
+            var observedOutput = false
+            f.materialize = { messages -> messages.map { message ->
+                if (message.id != notification.id) message else {
+                    observedOutput = true
+                    message.copy(content = listOf((message.content.single() as ContentItem.RuntimeNotification)
+                        .copy(attachments = listOf(ContentItem.ToolResult.Data.Text("saved stdout")))))
+                }
+            } }
+            f.startTurn(); f.prepare()
+            assertTrue(observedOutput)
+            assertEquals(ProactiveCompaction.Status.READY, f.preparation().status)
+            assertEquals(notification, f.messages.last())
+            assertEquals(0, f.counts)
+        }
+    }
+
     @Test fun `ready summary preserves the retained suffix and concurrent append and applies only once`() = runBlocking {
         Fixture().use { f ->
             f.startTurn()
@@ -289,8 +313,12 @@ class ProactiveCompactionTest {
             invocation.method.name.startsWith("getMessagesByThread") -> messages
             else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
         } }
+        var materialize: (List<Conversation.Message>) -> List<Conversation.Message> = { it }
         val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
-            if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1] else Mockito.RETURNS_DEFAULTS.answer(invocation)
+            if (invocation.method.name.startsWith("materializeSnapshot")) {
+                @Suppress("UNCHECKED_CAST")
+                materialize(invocation.arguments[1] as List<Conversation.Message>)
+            } else Mockito.RETURNS_DEFAULTS.answer(invocation)
         }
         val committer = object : ContextCompactionCommitter {
             override suspend fun commit(expectedThreadId: Conversation.Thread.Id, message: Conversation.Message, preparedCompactionId: String?): Conversation {

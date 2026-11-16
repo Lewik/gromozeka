@@ -81,10 +81,10 @@ class MessageEditingTest {
     @Test
     fun `system message is not editable`() {
         val message = message(
-            role = Conversation.Message.Role.SYSTEM,
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
             content = listOf(
-                Conversation.Message.ContentItem.System(
-                    level = Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                Conversation.Message.ContentItem.RuntimeNotification(
+                    level = Conversation.Message.ContentItem.RuntimeNotification.Level.INFO,
                     content = "status",
                 )
             ),

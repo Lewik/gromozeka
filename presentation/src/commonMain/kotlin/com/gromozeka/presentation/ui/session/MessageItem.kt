@@ -191,6 +191,16 @@ internal fun rememberMessageListEntries(
                         }
                     }
 
+                    is Conversation.Message.ContentItem.PeerMessage,
+                    is Conversation.Message.ContentItem.PromptMessage,
+                    is Conversation.Message.ContentItem.VisualUpdated ->
+                        segments += MessageSegment.Activity(contentIndex, ChatActivity.Service(content))
+
+                    is Conversation.Message.ContentItem.RuntimeNotification ->
+                        if (message.role == Conversation.Message.Role.RUNTIME_NOTIFICATION)
+                            segments += MessageSegment.Activity(contentIndex, ChatActivity.Service(content))
+                        else segments += MessageSegment.Content(contentIndex, content)
+
                     is Conversation.Message.ContentItem.Thinking ->
                         segments += MessageSegment.Activity(contentIndex, ChatActivity.Reasoning(content))
 
@@ -368,6 +378,9 @@ internal fun MessageItem(
     expandedActivityKeys: Set<String> = emptySet(),
     onToggleActivityExpansion: (String) -> Unit = {},
     activitySummaryStyle: ActivitySummaryStyle = ActivitySummaryStyle.ICONS,
+    onOpenConversation: ((Conversation.Id) -> Unit)? = null,
+    onOpenMessage: ((Conversation.Message.Id) -> Unit)? = null,
+    replacementPromptId: Conversation.Message.Id? = null,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     val message = entry.message
@@ -448,7 +461,7 @@ internal fun MessageItem(
                     end = 4.dp,
                 )
             ) {
-                if (entry.isFirstInMessage) {
+                if (entry.isFirstInMessage && message.role in setOf(Conversation.Message.Role.USER, Conversation.Message.Role.ASSISTANT)) {
                     message.author?.displayName?.takeIf(String::isNotBlank)?.let { displayName ->
                         Text(
                             text = displayName,
@@ -467,6 +480,9 @@ internal fun MessageItem(
                         expandedActivityKeys = expandedActivityKeys,
                         onToggleActivityExpansion = onToggleActivityExpansion,
                         activitySummaryStyle = activitySummaryStyle,
+                        onOpenConversation = onOpenConversation,
+                        onOpenMessage = onOpenMessage,
+                        replacementPromptId = replacementPromptId,
                         loadArtifactContent = loadArtifactContent,
                     )
                 }
@@ -517,6 +533,9 @@ private fun MessageSegmentContent(
     expandedActivityKeys: Set<String>,
     onToggleActivityExpansion: (String) -> Unit,
     activitySummaryStyle: ActivitySummaryStyle,
+    onOpenConversation: ((Conversation.Id) -> Unit)?,
+    onOpenMessage: ((Conversation.Message.Id) -> Unit)?,
+    replacementPromptId: Conversation.Message.Id?,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (val segment = entry.segment) {
@@ -589,6 +608,9 @@ private fun MessageSegmentContent(
             },
             workspaceRootPath = workspaceRootPath,
             loadArtifactContent = loadArtifactContent,
+            onOpenConversation = onOpenConversation,
+            onOpenMessage = onOpenMessage,
+            replacementPromptId = replacementPromptId,
         )
 
         is MessageSegment.ActivityGroup -> ActivityGroupItem(
@@ -712,7 +734,7 @@ private fun CollapseButton(
 }
 
 @Composable
-private fun GenericContentItem(
+internal fun GenericContentItem(
     content: Conversation.Message.ContentItem,
     providerMetadata: JsonObject,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
@@ -793,7 +815,7 @@ private fun GenericContentItem(
             }
         }
 
-        is Conversation.Message.ContentItem.System -> Text(text = content.content)
+        is Conversation.Message.ContentItem.RuntimeNotification -> Text(text = content.content)
         is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content, providerMetadata["compactionBoundary"] as? JsonObject)
         is Conversation.Message.ContentItem.UnknownJson -> Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -810,6 +832,9 @@ private fun GenericContentItem(
             }
         }
 
+        is Conversation.Message.ContentItem.PeerMessage,
+        is Conversation.Message.ContentItem.PromptMessage,
+        is Conversation.Message.ContentItem.VisualUpdated -> error("Service blocks require a service-message header")
         is Conversation.Message.ContentItem.UserMessage,
         is Conversation.Message.ContentItem.Thinking,
         is Conversation.Message.ContentItem.AssistantMessage,

@@ -2,6 +2,10 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.PromptSnapshot
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.security.MessageDigest
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.PromptRepository
@@ -26,20 +30,33 @@ class PromptApplicationService(
     override suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
         runtimeContext: RuntimeEnvironmentContext,
-    ): List<String> =
-        promptIds.map { id ->
-            if (id.value == ENV_PROMPT_ID) {
-                systemPromptBuilder.buildEnvironmentInfo(
-                    runtimeContext = runtimeContext,
-                    includeCurrentTime = settingsProvider.userProfile.agentSettings.includeCurrentTime,
-                )
-            } else {
+    ): List<String> = assembleSnapshot(snapshot(promptIds, runtimeContext), runtimeContext)
+
+    suspend fun snapshot(promptIds: List<Prompt.Id>, runtimeContext: RuntimeEnvironmentContext): PromptSnapshot {
+        val entries = promptIds.map { id ->
+            if (id.value == ENV_PROMPT_ID) PromptSnapshot.Entry.Environment
+            else {
                 val prompt = promptRepository.findById(id)
                     ?: error("Required prompt '${id.value}' is unavailable")
                 require(prompt.type is Prompt.Type.Global || prompt.projectId == runtimeContext.projectId()) {
                     "Prompt '${id.value}' does not belong to the runtime project"
                 }
-                prompt.content
+                PromptSnapshot.Entry.Catalog(prompt.id, prompt.name, prompt.content)
+            }
+        }
+        val fingerprint = MessageDigest.getInstance("SHA-256")
+            .digest(Json.encodeToString(entries).encodeToByteArray()).joinToString("") { "%02x".format(it) }
+        return PromptSnapshot(entries, fingerprint)
+    }
+
+    suspend fun assembleSnapshot(snapshot: PromptSnapshot, runtimeContext: RuntimeEnvironmentContext): List<String> =
+        snapshot.entries.map { entry ->
+            when (entry) {
+                is PromptSnapshot.Entry.Catalog -> entry.text
+                PromptSnapshot.Entry.Environment -> systemPromptBuilder.buildEnvironmentInfo(
+                    runtimeContext = runtimeContext,
+                    includeCurrentTime = settingsProvider.userProfile.agentSettings.includeCurrentTime,
+                )
             }
         }
 

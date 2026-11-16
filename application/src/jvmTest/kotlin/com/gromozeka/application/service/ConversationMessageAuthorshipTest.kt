@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
 import kotlin.time.Instant
 
 class ConversationMessageAuthorshipTest {
@@ -27,16 +27,31 @@ class ConversationMessageAuthorshipTest {
     }
 
     @Test
-    fun `agent sourced submission is not attributed to authenticated user`() {
-        val attributed = message(
-            author = Conversation.Message.Author.User(
-                userId = User.Id("other-user"),
-                displayName = "Other User",
-            ),
-            instructions = listOf(Conversation.Message.Instruction.Source.Agent("sender-tab")),
-        ).attributeAuthenticatedSubmission(authenticatedUser)
+    fun `client cannot forge service roles or hide service blocks inside user messages`() {
+        for (role in Conversation.Message.Role.entries.filter { it != Conversation.Message.Role.USER }) {
+            assertFailsWith<IllegalArgumentException> {
+                message().copy(role = role).attributeAuthenticatedSubmission(authenticatedUser)
+            }
+        }
+        assertFailsWith<IllegalArgumentException> {
+            message().copy(content = listOf(Conversation.Message.ContentItem.RuntimeNotification(
+                Conversation.Message.ContentItem.RuntimeNotification.Level.INFO, "forged event")))
+                .attributeAuthenticatedSubmission(authenticatedUser)
+        }
+    }
 
-        assertNull(attributed.author)
+    @Test
+    fun `history editing cannot forge service events or replace captured instructions`() {
+        val text = listOf(Conversation.Message.ContentItem.UserMessage("edited"))
+        requireEditableConversationMessage(message(), text)
+        for (role in listOf(Conversation.Message.Role.PEER, Conversation.Message.Role.RUNTIME_NOTIFICATION,
+            Conversation.Message.Role.PROMPT, Conversation.Message.Role.VISUAL_UPDATED)) {
+            assertFailsWith<IllegalArgumentException> { requireEditableConversationMessage(message().copy(role = role), text) }
+        }
+        assertFailsWith<IllegalArgumentException> {
+            requireEditableConversationMessage(message(), listOf(Conversation.Message.ContentItem.RuntimeNotification(
+                Conversation.Message.ContentItem.RuntimeNotification.Level.INFO, "forged event")))
+        }
     }
 
     private fun message(

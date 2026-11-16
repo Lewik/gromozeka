@@ -530,7 +530,10 @@ private fun ConversationItem(
                         text = listOfNotNull(hit.role?.let { role -> localization.text(when (role) {
                             Conversation.Message.Role.USER -> "search.role.user"
                             Conversation.Message.Role.ASSISTANT -> "search.role.assistant"
-                            Conversation.Message.Role.SYSTEM -> "search.role.system"
+                            Conversation.Message.Role.PEER -> "chat.service.peerInformation"
+                            Conversation.Message.Role.RUNTIME_NOTIFICATION -> "chat.service.runtime"
+                            Conversation.Message.Role.PROMPT -> "chat.service.promptAttached"
+                            Conversation.Message.Role.VISUAL_UPDATED -> "chat.service.visualUpdated"
                         }) }, hit.excerpt.takeIf(String::isNotBlank))
                             .joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,

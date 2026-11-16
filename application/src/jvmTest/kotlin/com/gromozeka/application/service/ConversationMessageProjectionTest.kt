@@ -55,9 +55,9 @@ class ConversationMessageProjectionTest {
 
     @Test
     fun collaborationReceiptFlagSurvivesBothNormalAndOversizedTimelineProjection() {
-        val original = message(listOf(Conversation.Message.ContentItem.System(
-            Conversation.Message.ContentItem.System.SystemLevel.INFO, "Routing receipt",
-        ))).copy(role = Conversation.Message.Role.SYSTEM, providerMetadata = buildJsonObject {
+        val original = message(listOf(Conversation.Message.ContentItem.RuntimeNotification(
+            Conversation.Message.ContentItem.RuntimeNotification.Level.INFO, "Routing receipt",
+        ))).copy(role = Conversation.Message.Role.RUNTIME_NOTIFICATION, providerMetadata = buildJsonObject {
             put("collaborationReceipt", true)
             put("gromozekaCollaborationOriginalContent", "private-original-response")
             put("providerReplay", "private-replay")

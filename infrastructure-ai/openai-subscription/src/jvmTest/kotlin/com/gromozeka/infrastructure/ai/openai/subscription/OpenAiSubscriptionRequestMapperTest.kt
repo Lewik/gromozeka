@@ -35,6 +35,32 @@ import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
     @Test
+    fun lowersServiceDataWithoutReinjectingHistoricalPromptText() {
+        val endpoint = com.gromozeka.domain.model.PeerMessageEndpoint(conversationId, Conversation.Thread.Id("thread"),
+            com.gromozeka.domain.model.AgentDefinition.Id("agent"), "Review", "Reviewer")
+        fun message(role: Conversation.Message.Role, content: Conversation.Message.ContentItem) = Conversation.Message(
+            Conversation.Message.Id(role.name), conversationId, role = role, author = Conversation.Message.Author.Runtime(),
+            content = listOf(content), createdAt = createdAt)
+        val prompt = message(Conversation.Message.Role.PROMPT, Conversation.Message.ContentItem.PromptMessage(
+            endpoint.agentId, endpoint.agentName, com.gromozeka.domain.model.PromptSnapshot(listOf(
+                com.gromozeka.domain.model.PromptSnapshot.Entry.Catalog(com.gromozeka.domain.model.Prompt.Id("p"), "Old", "obsolete instructions")),
+                "a".repeat(64)), Conversation.Message.ContentItem.PromptMessage.Action.ATTACH))
+        val peer = message(Conversation.Message.Role.PEER, Conversation.Message.ContentItem.PeerMessage(
+            Conversation.Message.ContentItem.PeerMessage.Kind.RESULT, endpoint, endpoint, "Peer result", "request"))
+        val runtime = message(Conversation.Message.Role.RUNTIME_NOTIFICATION, Conversation.Message.ContentItem.RuntimeNotification(
+            Conversation.Message.ContentItem.RuntimeNotification.Level.ERROR, "Command failed"))
+        val visual = message(Conversation.Message.Role.VISUAL_UPDATED, Conversation.Message.ContentItem.VisualUpdated(createdAt, emptyList(), listOf("closed-panel")))
+        val request = mapper.toRequest(AiRuntimeRequest(listOf("effective instructions"), listOf(prompt, peer, runtime, visual)),
+            modelName = "gpt-5", conversationKey = "test")
+        assertEquals("effective instructions", request.instructions)
+        assertEquals(3, request.input.size)
+        assertTrue(request.input.all { it.string("role") == "user" })
+        assertTrue(request.input.toString().contains("peer_agent"))
+        assertTrue(request.input.toString().contains("closed-panel"))
+        assertFalse(request.input.toString().contains("obsolete instructions"))
+    }
+
+    @Test
     fun visualActionIsUserInputWithTheFullSnapshotAndExplicitProvenance() {
         val snapshot = Json.parseToJsonElement("""{"form":{"query":"saved"},"data":{"count":7}}""").jsonObject
         val event = Conversation.Message.ContentItem.VisualInteraction("v", "Pipeline Runs", 3, "event-1", "refresh", "Refresh", snapshot)
@@ -449,7 +475,7 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
-    fun mapsSystemMessagesAsDeveloperInputItemsForSubscriptionEndpoint() {
+    fun mapsRuntimeNotificationsAsDataRatherThanDeveloperInstructions() {
         val request = mapper.toRequest(
             request = AiRuntimeRequest(
                 systemPrompts = emptyList(),
@@ -460,12 +486,13 @@ class OpenAiSubscriptionRequestMapperTest {
         )
 
         assertEquals(listOf("message"), request.input.map { it.string("type") })
-        assertEquals("developer", request.input.single().string("role"))
+        assertEquals("user", request.input.single().string("role"))
+        assertTrue(request.input.single().toString().contains("not a message authored by the user"))
         assertEquals("input_text", request.input.single().jsonArray("content").single().jsonObject.string("type"))
     }
 
     @Test
-    fun dropsErrorSystemMessagesFromSubscriptionReplayInput() {
+    fun keepsRuntimeErrorsAsDataInSubscriptionReplayInput() {
         val request = mapper.toRequest(
             request = AiRuntimeRequest(
                 systemPrompts = emptyList(),
@@ -475,7 +502,8 @@ class OpenAiSubscriptionRequestMapperTest {
             conversationKey = "test-conversation",
         )
 
-        assertEquals(emptyList(), request.input)
+        assertEquals("user", request.input.single().string("role"))
+        assertTrue(request.input.single().toString().contains("Previous API error."))
     }
 
     @Test
@@ -752,10 +780,10 @@ class OpenAiSubscriptionRequestMapperTest {
         Conversation.Message(
             id = Conversation.Message.Id(id),
             conversationId = conversationId,
-            role = Conversation.Message.Role.SYSTEM,
+            role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
             content = listOf(
-                Conversation.Message.ContentItem.System(
-                    level = Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                Conversation.Message.ContentItem.RuntimeNotification(
+                    level = Conversation.Message.ContentItem.RuntimeNotification.Level.INFO,
                     content = text,
                 )
             ),
