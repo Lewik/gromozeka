@@ -12,6 +12,7 @@ class VisualPanelStateTest {
         id = "visual-1", conversationId = Conversation.Id("conversation-1"), createdBy = User.Id("user-1"),
         document = "document", title = "Counter", state = obj("""{"form":{"query":""},"data":{"count":0}}"""),
         createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0),
+        includeStateInContext = true,
     )
 
     @Test fun dataUpdatesDoNotResetLocalTyping() {

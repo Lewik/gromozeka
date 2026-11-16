@@ -261,6 +261,46 @@ class VisualApplicationServiceTest {
         assertEquals(visual, f.repository.find(f.conversation.id, visual.id))
     }
 
+    @Test fun `context inclusion is independently writable without resetting form or handler`() = fixture { f ->
+        val visual = f.create(handler = true)
+        assertTrue(visual.includeStateInContext)
+        val disabled = f.service.update(f.user, f.conversation.id, visual.id, VisualUpdate(includeStateInContext = false))
+        assertFalse(disabled.includeStateInContext)
+        assertEquals(visual.state, disabled.state)
+        assertEquals(visual.documentRevision, disabled.documentRevision)
+        assertEquals(visual.formRevision, disabled.formRevision)
+        assertEquals(visual.handler, disabled.handler)
+        assertEquals(1, f.commands.starts)
+        assertTrue(f.commands.cancelled.isEmpty())
+        val updated = f.service.update(f.user, f.conversation.id, visual.id, VisualUpdate(state = obj("""{"data":{"count":7}}""")))
+        assertFalse(updated.includeStateInContext)
+        val enabled = f.service.update(f.user, f.conversation.id, visual.id, VisualUpdate(includeStateInContext = true))
+        assertTrue(enabled.includeStateInContext)
+        assertEquals(updated.state, enabled.state)
+        assertEquals(updated.formRevision, enabled.formRevision)
+    }
+
+    @Test fun `disabled automatic context preserves explicit button submissions and saved state`() = fixture { f ->
+        val visual = f.create(includeStateInContext = false)
+        assertFalse(visual.includeStateInContext)
+        val submitted = obj("""{"form":{"query":"submitted"},"data":{"count":0}}""")
+        assertTrue(f.service.act(f.user, f.conversation.id, VisualAction("event-disabled-context", visual.id, visual.documentRevision, "save", submitted)).accepted)
+        assertEquals(submitted, f.events.single().snapshot)
+        val saved = f.service.list(f.user, f.conversation.id).single()
+        assertFalse(saved.includeStateInContext)
+        assertEquals(submitted, saved.state)
+    }
+
+    @Test fun `handler output does not reenable automatic context`() = fixture { f ->
+        val visual = f.create(handler = true, includeStateInContext = false)
+        val handler = visual.handler!!
+        assertTrue(f.service.acceptOutput(handler.worker, visual.id, f.conversation.id, handler.generation,
+            f.commands.tasks.getValue(visual.id), listOf(VisualOutputRecord(100, """{"data":{"count":9}}""")), false))
+        val saved = f.repository.find(f.conversation.id, visual.id)!!
+        assertFalse(saved.includeStateInContext)
+        assertEquals(9, saved.state["data"]!!.jsonObject["count"]!!.jsonPrimitive.int)
+    }
+
     private fun fixture(block: suspend CoroutineScope.(Fixture) -> Unit) = runBlocking {
         val f=Fixture()
         try { block(f) } finally { f.scope.cancel() }
@@ -284,7 +324,8 @@ class VisualApplicationServiceTest {
                 VisualInteractionDelivery { _,_,input -> events.add(input);true },scope,
                 VisualHighlightDelivery { actor, command -> assertEquals(user.id, actor); highlights.add(command); 1 })
         }
-        suspend fun create(handler: Boolean=false)=service.create(user,conversation.id,VisualCreate(markup(),obj("""{"form":{"query":""},"data":{"count":0}}"""),if(handler)spec else null))
+        suspend fun create(handler: Boolean=false, includeStateInContext: Boolean=true)=service.create(user,conversation.id,
+            VisualCreate(markup(),obj("""{"form":{"query":""},"data":{"count":0}}"""),if(handler)spec else null,includeStateInContext))
     }
 
     private class FakeCommands : VisualCommandRuntime {

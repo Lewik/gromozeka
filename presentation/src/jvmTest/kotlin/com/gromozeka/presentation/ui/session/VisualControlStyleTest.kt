@@ -104,7 +104,7 @@ class VisualControlStyleTest {
             </div></body></html>"""
         return Visual("styles", Conversation.Id("conversation"), User.Id("user"), document = markup, title = "Styles",
             state = Json.parseToJsonElement("""{"form":{"query":"text","amount":1,"choice":"one","notes":"notes"},"data":{}}""").jsonObject,
-            createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0))
+            createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0), includeStateInContext = true)
     }
 
     private object NoRemoteCalls : VisualService {
