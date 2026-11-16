@@ -1580,6 +1580,43 @@ is not deleted or marked delivered. Other notifications continue after completio
 or failure, including bounded-batch overflow without another Worker event. This
 neither retries the failed delivery nor re-executes the command or monitor.
 
+Command completion is observed locally, independently of cancellation polling and
+Server synchronization. The initial yield makes one atomic delivery decision:
+a terminated process returns its terminal result inline and does not request a
+background notification; a running process returns a stable `WORKING` snapshot
+and requests one eventual completion. A late working-state acknowledgement must
+not replace a newer local terminal state. Process exit, not stdout availability,
+determines completion.
+
+Completion notifications for the active agent and the same authenticated creator
+use the next safe input boundary, including the gap before a model continuation;
+they do not wait for the whole turn to end. Tool call/result pairs remain intact.
+A notification for another agent/creator remains a separate queued input, and an
+idle notification is immediately runnable. The existing durable insertion
+reservation handles replay, Stop, Interrupt and executor ownership. Bounded
+notification batches continue draining after inserted deliveries as well as root
+deliveries. All ready results for the same recipient are delivered together and
+trigger an ordinary model continuation, including failed or cancelled commands.
+An ordinary tool result and an already-ready completion event join the same safe
+input boundary; inspecting a result does not silently consume its completion event.
+There is no additional coalescing timer. A later event triggers another normal
+continuation. Only a transport duplicate whose event was already delivered is a
+no-op. Pending unrelated work does not suppress a completion's model invocation.
+Delivery prepares all artifacts before atomically appending the complete message
+packet; a failed append cannot leave half a synthetic tool-call/result pair in
+history. Source acknowledgements are part of the Runtime step outcome and commit
+in the same coordinator transaction as the model continuation. A rollback commits
+neither. Stop/Interrupt keep unacknowledged background inputs pending and paused
+when their continuation is discarded.
+
+A failure is recorded against the specific background input whose delivery was
+attempted, not every input reserved by its parent. Untouched inputs survive parent
+failure. Command results awaiting delivery are protected from terminal-inventory
+retention. Runtime admission binds the notification recipient, so another result
+arriving during delivery can join the next safe point too.
+Worker Gateway protocol **31** includes this notification contract; update Server,
+Workers and clients together.
+
 Managed shell commands accept an optional `description`: a short user-facing
 purpose in the user's language, preferably **at most 50 characters including
 spaces**. This is prompt guidance, not an acceptance limit: longer labels remain

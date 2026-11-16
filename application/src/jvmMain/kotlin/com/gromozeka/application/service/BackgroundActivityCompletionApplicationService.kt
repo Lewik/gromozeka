@@ -13,12 +13,13 @@ import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.UserDirectoryService
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
+import com.gromozeka.domain.service.BackgroundActivityDeliveryReceipt
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_MONITOR_TOOL_NAME
 import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_TASK_TOOL_NAME
 import kotlin.time.Instant
+import klog.KLoggers
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -31,14 +32,17 @@ class BackgroundActivityCompletionApplicationService(
     private val origins: BackgroundActivityOriginRepository,
     private val continuationPolicy: BackgroundActivityContinuationPolicy,
 ) {
+    private val log = KLoggers.logger(this)
+
     suspend fun prepareBatch(
         conversationId: Conversation.Id,
         sourceKey: String,
+        sourcesInCurrentPacket: Set<String> = emptySet(),
     ): Batch {
         val failedSources = runtimeCoordinator.schedulingSnapshot(conversationId).failedBackgroundActivitySourceKeys()
         val commandCandidates = runtimeCoordinator.findCommandTasks(conversationId)
             .asSequence()
-            .filter { it.hasPendingNotification(failedSources) }
+            .filter { it.hasPendingNotification(failedSources) && it.notificationSourceKey() !in sourcesInCurrentPacket }
             .map { task ->
                 DeliveryCandidate.Command(
                     task = task,
@@ -50,14 +54,14 @@ class BackgroundActivityCompletionApplicationService(
             .filter { it.agentDefinitionId != null }
         val pendingEvents = runtimeCoordinator.findCommandMonitorEvents(conversationId)
             .asSequence()
-            .filter { it.hasPendingNotification(failedSources) }
+            .filter { it.hasPendingNotification(failedSources) && it.notificationSourceKey() !in sourcesInCurrentPacket }
             .groupBy(CommandMonitorEvent::monitorId)
         val monitorCandidates = monitors.asSequence().mapNotNull { monitor ->
             val allEvents = pendingEvents[monitor.id].orEmpty().sortedBy { it.occurredAt }
             val sourceEventIndex = allEvents.indexOfFirst { it.notificationSourceKey() == sourceKey }
             val selectedEvents = (if (sourceEventIndex >= 0) allEvents.drop(sourceEventIndex) else allEvents)
                 .takeWithinNotificationBudget()
-            val includeTerminal = monitor.hasPendingNotification(failedSources)
+            val includeTerminal = monitor.hasPendingNotification(failedSources) && monitor.notificationSourceKey() !in sourcesInCurrentPacket
             if (selectedEvents.isEmpty() && !includeTerminal) {
                 null
             } else {
@@ -110,6 +114,7 @@ class BackgroundActivityCompletionApplicationService(
         val monitorDeliveries = selectedCandidates
             .filterIsInstance<DeliveryCandidate.Monitor>()
             .map(DeliveryCandidate.Monitor::delivery)
+        log.debug { "BACKGROUND_DELIVERY phase=prepared source=$sourceKey commands=${commandTasks.size} monitors=${monitorDeliveries.size}" }
         return Batch(
             actorUserId = selectedActor,
             commandTasks = commandTasks,
@@ -126,40 +131,6 @@ class BackgroundActivityCompletionApplicationService(
     suspend fun canContinue(batch: Batch, conversation: Conversation): Boolean =
         batch.actorUserId?.let { continuationPolicy.allowed(it, conversation) } ?: false
 
-    suspend fun hasPendingConversationWork(conversationId: Conversation.Id): Boolean =
-        runtimeCoordinator.schedulingSnapshot(conversationId).pendingTasks
-            .any { it.payload !is ConversationRuntimeTask.Payload.BackgroundActivityCompletion }
-
-    suspend fun markDelivered(batch: Batch, deliveredAt: Instant) {
-        batch.commandTasks.forEach { task ->
-            runtimeCoordinator.upsertCommandTask(
-                task.copy(
-                    completionNotificationDeliveredAt = deliveredAt,
-                    updatedAt = maxOf(task.updatedAt, deliveredAt),
-                )
-            )
-        }
-        val deliveredEventIds = batch.monitorDeliveries
-            .flatMapTo(mutableSetOf()) { delivery -> delivery.events.map(CommandMonitorEvent::id) }
-        if (deliveredEventIds.isNotEmpty()) {
-            val conversationId = batch.monitorDeliveries.first().monitor.conversationId
-            runtimeCoordinator.markCommandMonitorEventsDelivered(
-                conversationId = conversationId,
-                eventIds = deliveredEventIds,
-                deliveredAt = deliveredAt,
-            )
-        }
-        batch.monitorDeliveries
-            .filter(MonitorDelivery::terminalNotificationIncluded)
-            .forEach { delivery ->
-                runtimeCoordinator.markCommandMonitorTerminalNotificationDelivered(
-                    conversationId = delivery.monitor.conversationId,
-                    monitorId = delivery.monitor.id,
-                    deliveredAt = deliveredAt,
-                )
-            }
-    }
-
     data class Batch(
         val commandTasks: List<CommandTask>,
         val monitorDeliveries: List<MonitorDelivery>,
@@ -168,6 +139,22 @@ class BackgroundActivityCompletionApplicationService(
     ) {
         val isEmpty: Boolean
             get() = commandTasks.isEmpty() && monitorDeliveries.isEmpty()
+
+        val receipt: BackgroundActivityDeliveryReceipt
+            get() = BackgroundActivityDeliveryReceipt(
+                commandTasks.mapTo(mutableSetOf()) { it.id },
+                monitorDeliveries.flatMap { it.events }.mapTo(mutableSetOf()) { it.id },
+                monitorDeliveries.filter { it.terminalNotificationIncluded }.mapTo(mutableSetOf()) { it.monitor.id },
+            )
+
+        val sourceKeys: Set<String>
+            get() = buildSet {
+                commandTasks.forEach { add(it.notificationSourceKey()) }
+                monitorDeliveries.forEach { delivery ->
+                    delivery.events.forEach { add(it.notificationSourceKey()) }
+                    if (delivery.terminalNotificationIncluded) add(delivery.monitor.notificationSourceKey())
+                }
+            }
 
         val resultMessageId: Conversation.Message.Id
             get() = messages.last().id

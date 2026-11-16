@@ -94,7 +94,7 @@ class ConversationPinCopyLifecycleTest {
         val suggestions = mock<SuggestedRepliesGenerationService>()
         val service = ConversationApplicationService(conversations, threadRepository, messages, links,
             responding { project }, mock(), responding { defaultAgent }, ToolCallPairingService(), mock(), mock(), artifacts,
-            suggestions, mock(), DeclarativeStateChangePublisher { keys -> events += keys })
+            suggestions, mock(), mock(), DeclarativeStateChangePublisher { keys -> events += keys })
     }
     private inline fun <reified T> mock(): T = Mockito.mock(T::class.java)
     private inline fun <reified T> responding(noinline answer: (InvocationOnMock) -> Any?): T = Mockito.mock(T::class.java) { answer(it) }

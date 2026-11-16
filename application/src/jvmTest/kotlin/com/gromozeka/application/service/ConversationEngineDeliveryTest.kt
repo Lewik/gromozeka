@@ -434,6 +434,185 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.requests.isEmpty()); assertTrue(f.emitted.isEmpty())
     }
 
+    @Test fun `idle completion batch including failure triggers one ordinary model invocation`() = runBlocking {
+        val f = Fixture(realBackground = true)
+        f.queueCommandCompletion("failed", CommandTask.Status.FAILED)
+        f.queueCommandCompletion("successful")
+        f.drain()
+        val request = f.requests.single()
+        assertEquals(user.value, request.options.toolContext[TOOL_CONTEXT_USER_ID])
+        for (id in listOf("failed", "successful")) {
+            assertEquals(2, request.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(id) })
+        }
+        assertTrue(request.messages.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>()
+            .flatMap { it.result }.filterIsInstance<ContentItem.ToolResult.Data.Text>().any { it.content.contains("\"exit_code\":23") })
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    @Test fun `pending work from another actor cannot suppress the completion trigger`() = runBlocking {
+        val f = Fixture(realBackground = true)
+        f.queueCommandCompletion("failed", CommandTask.Status.FAILED)
+        assertTrue(f.coordinator.submit(input("bob-next", bob)))
+        f.drain()
+        assertEquals(listOf(user.value, bob.value), f.requests.map { it.options.toolContext[TOOL_CONTEXT_USER_ID] })
+        assertEquals(2, f.requests.first().messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive("failed") })
+    }
+
+    @Test fun `ready command completion joins the next model request without another turn`() = runBlocking {
+        val f = Fixture(realBackground = true)
+        val running = f.begin()
+        val command = f.queueCommandCompletion("ready")
+        val delivery = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) { f.emitted += it })
+        assertTrue(f.requests.isEmpty())
+        assertEquals(user, delivery.nextTask.actorUserId)
+        assertEquals(running.turnId, delivery.nextTask.turnId)
+        assertNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, delivery))
+        assertNotNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        f.drain()
+        assertEquals(1, f.requests.size)
+        assertEquals(user.value, f.requests.single().options.toolContext[TOOL_CONTEXT_USER_ID])
+        assertEquals(2, f.requests.single().messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(command.id.value) })
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    @Test fun `owner failure after packet append cannot lose the model continuation obligation`(): Unit = runBlocking {
+        val f = Fixture(realBackground = true)
+        val running = f.begin()
+        val command = f.queueCommandCompletion("before-commit")
+        val prepared = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) { f.emitted += it })
+        assertTrue(prepared.backgroundDeliveryReceipts.isNotEmpty())
+        assertTrue(f.requests.isEmpty())
+        assertNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        assertNotNull(f.coordinator.markActiveTaskInDoubt(conversation.id, running.id, executor, "Synthetic failure before commit", "SyntheticFailure"))
+        f.drain()
+        assertEquals(1, f.requests.size)
+        assertEquals(2, f.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(command.id.value) })
+        assertNotNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+    }
+
+    @Test fun `stop before packet acknowledgement preserves it until explicit resume`(): Unit = runBlocking {
+        val f = Fixture(realBackground = true)
+        val running = f.begin()
+        val command = f.queueCommandCompletion("stopped-before-commit")
+        val prepared = f.engine.runRuntimeTask(running, executor) { f.emitted += it }
+        assertTrue(f.coordinator.requestStop(conversation.id))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, prepared))
+        assertNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        assertTrue(f.coordinator.listReadyWorkItems(10).isEmpty())
+        assertTrue(f.requests.isEmpty())
+        assertTrue(f.coordinator.requestResume(conversation.id))
+        f.drain()
+        assertEquals(1, f.requests.size)
+        assertEquals(2, f.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(command.id.value) })
+        assertNotNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+    }
+
+    @Test fun `completion received during inference is consumed in the same turn at the next boundary`() = runBlocking {
+        val f = Fixture(realBackground = true)
+        val running = f.begin()
+        f.onCall = {
+            if (f.requests.size == 1) f.queueCommandCompletion("during-model")
+            answer()
+        }
+        val delivery = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) { f.emitted += it })
+        assertEquals(1, f.requests.size)
+        assertEquals(running.turnId, delivery.nextTask.turnId)
+        assertEquals(user, delivery.nextTask.actorUserId)
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, delivery))
+        f.drain()
+        assertEquals(2, f.requests.size)
+        assertEquals(2, f.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive("during-model") })
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    @Test fun `duplicate delivery of an already delivered event cannot create another model request`() = runBlocking {
+        val f = Fixture(realBackground = true)
+        val running = f.begin()
+        f.onCall = {
+            val command = f.queueCommandCompletion("observed-during-model")
+            f.coordinator.upsertCommandTask(command.copy(completionNotificationDeliveredAt = now))
+            answer()
+        }
+        val outcome = f.engine.runRuntimeTask(running, executor) { f.emitted += it }
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
+        f.drain()
+        assertEquals(1, f.requests.size)
+        assertFalse(f.messages.any { it.providerMetadata["syntheticKind"] == JsonPrimitive("command_task_completion") })
+    }
+
+    @Test fun `terminal query and completion event reach the model together even for return-direct tools`() = runBlocking {
+        for (returnDirect in listOf(false, true)) {
+            val f = Fixture(realBackground = true)
+            val running = f.begin()
+            val command = f.queueCommandCompletion("queried")
+            val toolId = ContentItem.ToolCall.Id("query")
+            val call = Conversation.Message(Conversation.Message.Id("query-call"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ToolCall(toolId, ContentItem.ToolCall.Data("grz_get_command_task__v3", buildJsonObject { put("task_id", command.id.value) }))), createdAt = now)
+            val result = call.copy(id = Conversation.Message.Id("query-result"), role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.ToolResult(toolId, "grz_get_command_task__v3", listOf(ContentItem.ToolResult.Data.Text(
+                    buildJsonObject { put("task_id", command.id.value); put("status", "COMPLETED") }.toString())), executionToolName = "grz_get_command_task")))
+            f.messages += listOf(call, result)
+            val task = running.copy(id = ConversationRuntimeTask.Id("tool-result"), parentTaskId = running.id, idempotencyKey = "tool-result",
+                payload = ConversationRuntimeTask.Payload.ToolResultProcessing(Conversation.Message.Id("root"), result.id, agentId, 1, returnDirect))
+            f.advance(running, task)
+            val outcome = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
+            assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, outcome))
+            f.drain()
+            assertEquals(1, f.requests.size)
+            assertEquals(2, f.requests.single().messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(command.id.value) })
+            assertTrue(f.requests.single().messages.any { it.id == result.id })
+            assertNotNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        }
+    }
+
+    @Test fun `working tool output and completion are combined before inference without splitting the tool pair`() = runBlocking {
+        val f = Fixture(realBackground = true)
+        val running = f.begin()
+        val command = f.queueCommandCompletion("quick-background")
+        val toolId = ContentItem.ToolCall.Id("launch-quick-background")
+        val call = Conversation.Message(Conversation.Message.Id("launch-call"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ToolCall(toolId, ContentItem.ToolCall.Data("grz_execute_command__v9", buildJsonObject { put("command", command.command) }))), createdAt = now)
+        val result = call.copy(id = Conversation.Message.Id("launch-result"), role = Conversation.Message.Role.USER,
+            content = listOf(ContentItem.ToolResult(toolId, "grz_execute_command__v9", listOf(ContentItem.ToolResult.Data.Text(
+                buildJsonObject { put("task_id", command.id.value); put("status", "WORKING") }.toString())), executionToolName = "grz_execute_command")))
+        f.messages += listOf(call, result)
+        val task = running.copy(id = ConversationRuntimeTask.Id("tool-result"), parentTaskId = running.id, idempotencyKey = "tool-result",
+            payload = ConversationRuntimeTask.Payload.ToolResultProcessing(Conversation.Message.Id("root"), result.id, agentId, 1, false))
+        f.advance(running, task)
+        val outcome = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, outcome))
+        f.drain()
+        val request = f.requests.single()
+        assertEquals(2, request.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(command.id.value) })
+        val originalResultIndex = request.messages.indexOfFirst { it.id == result.id }
+        val completionIndex = request.messages.indexOfFirst { it.providerMetadata["commandTaskId"] == JsonPrimitive(command.id.value) }
+        assertTrue(originalResultIndex >= 0 && completionIndex > originalResultIndex)
+        assertEquals(user.value, request.options.toolContext[TOOL_CONTEXT_USER_ID])
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    @Test fun `failed inserted delivery remains undelivered and excluded from automatic retry`() = runBlocking {
+        val f = Fixture(realBackground = true)
+        val running = f.begin()
+        val command = f.queueCommandCompletion("failed-insertion")
+        val untouched = f.queueCommandCompletion("untouched")
+        f.onAppend = { message ->
+            if (message.providerMetadata["commandTaskId"] == JsonPrimitive(command.id.value)) error("Synthetic insertion failure")
+        }
+        assertFailsWith<IllegalStateException> { f.engine.runRuntimeTask(running, executor) {} }
+        val incident = assertNotNull(f.coordinator.markActiveTaskInDoubt(conversation.id, running.id, executor, "Delivery failed", "SyntheticFailure"))
+        assertEquals(setOf(command.notificationSourceKey()), f.coordinator.schedulingSnapshot(conversation.id).failedBackgroundActivitySourceKeys())
+        assertNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        val service = BackgroundActivityCompletionApplicationService(f.coordinator, f.backgroundOrigins, BackgroundActivityContinuationPolicy { _, _ -> true })
+        assertTrue(service.prepareBatch(conversation.id, command.notificationSourceKey()).isEmpty)
+        assertEquals(listOf(untouched.notificationSourceKey()), f.coordinator.listPending(conversation.id)
+            .mapNotNull { (it.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion)?.sourceKey })
+        assertTrue(f.messages.none { it.providerMetadata["syntheticKind"] == JsonPrimitive("command_task_completion") })
+        assertTrue(f.requests.isEmpty())
+    }
+
     @Test fun `background replay preserves an old call ID when only its call was stored before upgrade`() = runBlocking {
         val f = Fixture(); f.allowFullHistoryLoad = false
         val oldId = ContentItem.ToolCall.Id("cmd_legacy_long_identifier_status")
@@ -443,11 +622,14 @@ class ConversationEngineDeliveryTest {
         val result = call.copy(id = Conversation.Message.Id("completion-result"), role = Conversation.Message.Role.USER,
             content = listOf(ContentItem.ToolResult(shortId, "grz_get_command_task", listOf(ContentItem.ToolResult.Data.Text("done")))))
         f.messages += call.copy(content = listOf((call.content.single() as ContentItem.ToolCall).copy(id = oldId)))
-        f.backgroundBatch = BackgroundActivityCompletionApplicationService.Batch(listOf(mock<CommandTask>()), emptyList(), listOf(call, result))
+        f.backgroundBatch = BackgroundActivityCompletionApplicationService.Batch(listOf(CommandTask(CommandTask.Id("legacy"), conversation.id,
+            ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"), agentId, command = "unused", workingDirectory = "/tmp", status = CommandTask.Status.COMPLETED,
+            completedAt = now, completionNotificationRequestedAt = now,
+            processId = 1, processStartedAt = now, outputFile = "/tmp/unused", outputBytes = 0, createdAt = now, updatedAt = now)), emptyList(), listOf(call, result))
         val task = input("background").copy(
             payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion("command-task:legacy"))
         assertTrue(f.coordinator.submit(task)); f.claim(task)
-        repeat(2) { assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {}) }
+        repeat(2) { assertIs<ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery>(f.engine.runRuntimeTask(task, executor) {}) }
         assertEquals(1, f.messages.count { it.id == call.id })
         val stored = f.messages.single { it.id == result.id }.content.single() as ContentItem.ToolResult
         assertEquals(oldId, stored.toolUseId)
@@ -525,7 +707,7 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
     }
 
-    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false) {
+    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false, realBackground: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -550,11 +732,13 @@ class ConversationEngineDeliveryTest {
         var onAppend: suspend (Conversation.Message) -> Unit = {}
         var allowFullHistoryLoad = true
         var backgroundBatch: BackgroundActivityCompletionApplicationService.Batch? = null
-        private val backgroundActivities = responding<BackgroundActivityCompletionApplicationService> {
+        val backgroundOrigins = TestBackgroundActivityOrigins()
+        private val backgroundActivities = if (realBackground) BackgroundActivityCompletionApplicationService(
+            coordinator, backgroundOrigins, BackgroundActivityContinuationPolicy { actor, _ -> actor == user },
+        ) else responding<BackgroundActivityCompletionApplicationService> {
             when (it.method.name.substringBefore('-')) {
                 "prepareBatch" -> checkNotNull(backgroundBatch)
-                "hasPendingConversationWork", "canContinue" -> false
-                "markDelivered" -> Unit
+                "canContinue" -> false
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
@@ -583,6 +767,12 @@ class ConversationEngineDeliveryTest {
             }
         }
         private val appender = object : ConversationRuntimeMessageAppender {
+            override suspend fun appendRuntimeMessages(conversationId: Conversation.Id, batch: List<Conversation.Message>): List<Conversation.Message> {
+                val appended = batch.filter { candidate -> messages.none { it.id == candidate.id } }
+                appended.forEach { onAppend(it) }
+                messages.addAll(appended)
+                return appended
+            }
             override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation {
                 messages += message; onAppend(message); return currentConversation
             }
@@ -590,7 +780,17 @@ class ConversationEngineDeliveryTest {
         private val artifacts = responding<ConversationArtifactApplicationService> {
             when (it.method.name.substringBefore('-')) {
                 "materialize" -> it.arguments[1]
-                "persistAndCommitMessageToolResults", "persistAndCommitToolResults" -> it.arguments[2]
+                "persistAndCommitMessageToolResults" -> it.arguments[2]
+                "persistAndCommitToolResults" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val results = it.arguments[2] as List<ContentItem.ToolResult>
+                    results.map { result -> result.copy(result = result.result.map { data ->
+                        if (data is ContentItem.ToolResult.Data.Base64Data && data.mediaType.value == "application/octet-stream") {
+                            // Represent the stdout text preview; this fixture does not persist binary artifacts.
+                            ContentItem.ToolResult.Data.Text(java.util.Base64.getDecoder().decode(data.data).decodeToString())
+                        } else data
+                    }) }
+                }
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
@@ -682,6 +882,23 @@ class ConversationEngineDeliveryTest {
             collaboration = collaboration.takeIf { enableReview },
             responseReview = if (enableReview) AgentResponseReviewService(collaboration, reviewRepository, coordinator, ConversationPinnedPrompt(pins), mock()) else null,
         )
+        suspend fun queueCommandCompletion(id: String, status: CommandTask.Status = CommandTask.Status.COMPLETED): CommandTask {
+            val command = CommandTask(CommandTask.Id(id), conversation.id, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
+                agentDefinitionId = agentId, command = "echo done", workingDirectory = "/tmp", status = status,
+                processId = 1, processStartedAt = now, outputFile = "/tmp/$id", outputBytes = 4,
+                exitCode = when (status) { CommandTask.Status.FAILED -> 23; CommandTask.Status.CANCELLED -> null; else -> 0 },
+                createdAt = now, updatedAt = now, completedAt = now, completionNotificationRequestedAt = now,
+                terminalOutputStartByte = 0, terminalOutputContent = BinaryContent.fromText("done"),
+                launchReference = BackgroundActivityLaunchReference("request-$id", "launch-$id"))
+            coordinator.upsertCommandTask(command)
+            backgroundOrigins.bindWhileRequestPending(com.gromozeka.domain.repository.BackgroundActivityOrigin(
+                com.gromozeka.domain.repository.BackgroundActivityOrigin.Kind.COMMAND, id, conversation.id, agentId, user,
+                command.workerId, command.workspaceMountId, "request-$id", "launch-$id"), now)
+            val notification = input("notification-$id").copy(payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(command.notificationSourceKey()))
+            assertTrue(coordinator.submitBackgroundActivity(notification, agentId))
+            return command
+        }
+
         suspend fun begin(): ConversationRuntimeTask {
             val root = input("root")
             coordinator.submit(root)

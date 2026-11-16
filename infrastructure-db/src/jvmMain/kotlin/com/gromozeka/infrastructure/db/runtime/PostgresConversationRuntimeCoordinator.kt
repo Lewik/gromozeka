@@ -122,10 +122,14 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean =
         submitInternal(task, false, mode)
 
+    override suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id): Boolean =
+        submitInternal(task, false, null, agentDefinitionId)
+
     private suspend fun submitInternal(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean,
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?): Boolean =
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?,
+        backgroundActivityAgentId: com.gromozeka.domain.model.AgentDefinition.Id? = null): Boolean =
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
-            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode)
+            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode, backgroundActivityAgentId)
             if (!transition.changed) return@mutateRecord transition.result
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
@@ -192,7 +196,10 @@ class PostgresConversationRuntimeCoordinator(
         executor: ConversationRuntimeExecutorIdentity,
         outcome: ConversationRuntimeTaskOutcome,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(conversationId, createIfMissing = false,
+            components = if (outcome.backgroundDeliveryReceipts.isEmpty()) setOf(RuntimeComponent.SCHEDULING)
+                else setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.COMMANDS, RuntimeComponent.MONITORS, RuntimeComponent.MONITOR_EVENTS),
+        ) { record ->
             val transition = record.scheduling.completeActiveTask(
                 taskId = taskId,
                 executor = executor,
@@ -200,6 +207,15 @@ class PostgresConversationRuntimeCoordinator(
                 now = Clock.System.now(),
             )
             if (!transition.result) return@mutateRecord false
+            val stopped = record.scheduling.executionState?.controlState in setOf(
+                ConversationExecutionState.ControlState.STOPPING, ConversationExecutionState.ControlState.INTERRUPTING)
+            if (!stopped && outcome.backgroundDeliveryReceipts.isNotEmpty()) {
+                val acknowledged = com.gromozeka.domain.service.acknowledgeBackgroundActivities(outcome.backgroundDeliveryReceipts,
+                    record.commandTasks, record.commandMonitors, record.commandMonitorEvents, Clock.System.now())
+                record.commandTasks = acknowledged.commands
+                record.commandMonitors = acknowledged.monitors
+                record.commandMonitorEvents = acknowledged.events
+            }
             record.scheduling = transition.state
             record.appendTrace(
                 conversationId = conversationId,
@@ -242,6 +258,16 @@ class PostgresConversationRuntimeCoordinator(
         executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
         find(conversationId)?.let { it.activeTaskId == taskId && it.activeExecutor == executor } ?: false
+
+    override suspend fun recordBackgroundInsertionFailure(
+        conversationId: Conversation.Id, ownerTaskId: ConversationRuntimeTask.Id, insertionTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity, deliveryStartedAt: Instant?, message: String, errorType: String?,
+    ): ConversationRuntimeTaskIncident? = mutateRecord(conversationId, createIfMissing = false) { record ->
+        val transition = record.scheduling.recordBackgroundInsertionFailure(ownerTaskId, insertionTaskId, executor,
+            deliveryStartedAt, message, errorType, Clock.System.now())
+        if (transition.changed) { record.scheduling = transition.state; record.bumpRevision() }
+        transition.result
+    }
 
     override suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
@@ -467,7 +493,8 @@ class PostgresConversationRuntimeCoordinator(
                 .mapTo(mutableSetOf()) { it.commandTaskId }
             val retainedTasks = tasks
                 .partition {
-                    it.status == CommandTask.Status.WORKING || it.id in monitoredTaskIds
+                    it.status == CommandTask.Status.WORKING || it.id in monitoredTaskIds ||
+                        (it.completionNotificationRequestedAt != null && it.completionNotificationDeliveredAt == null)
                 }
                 .let { (working, terminal) ->
                     working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)

@@ -314,11 +314,14 @@ class ConversationRuntimeDispatcher(
     suspend fun submitBackgroundActivityCompletion(
         conversationId: Conversation.Id,
         sourceKey: String,
+        agentDefinitionId: AgentDefinition.Id,
+        actorUserId: com.gromozeka.domain.model.User.Id?,
     ): Boolean =
         submitRuntimeTask(
             ConversationRuntimeTask(
                 id = ConversationRuntimeTask.Id("background-activity:${stableIdentifier(sourceKey)}"),
                 conversationId = conversationId,
+                actorUserId = actorUserId,
                 payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(
                     sourceKey = sourceKey,
                 ),
@@ -330,7 +333,8 @@ class ConversationRuntimeDispatcher(
                     target = ConversationRuntimeTaskTarget.Server,
                 ),
                 createdAt = Clock.System.now(),
-            )
+            ),
+            backgroundActivityAgentId = agentDefinitionId,
         )
 
     private fun stableIdentifier(value: String): String =
@@ -380,9 +384,13 @@ class ConversationRuntimeDispatcher(
         task: ConversationRuntimeTask,
         acceptPreviouslySubmitted: Boolean = false,
         userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
+        backgroundActivityAgentId: AgentDefinition.Id? = null,
     ): Boolean {
-        val accepted = if (userDeliveryMode == null) runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
-            else runtimeCoordinator.submitUserInput(task, userDeliveryMode)
+        val accepted = when {
+            backgroundActivityAgentId != null -> runtimeCoordinator.submitBackgroundActivity(task, backgroundActivityAgentId)
+            userDeliveryMode != null -> runtimeCoordinator.submitUserInput(task, userDeliveryMode)
+            else -> runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
+        }
         if (accepted) {
             publishRuntimeSnapshot(task.conversationId)
         }

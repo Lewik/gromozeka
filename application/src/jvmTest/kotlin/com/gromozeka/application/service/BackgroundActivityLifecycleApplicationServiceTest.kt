@@ -177,6 +177,7 @@ class BackgroundActivityLifecycleApplicationServiceTest {
             runtimeCoordinator = coordinator,
             runtimeDispatcher = dispatcher,
             coroutineScope = scope,
+            origins = TestBackgroundActivityOrigins(),
         )
     }
 

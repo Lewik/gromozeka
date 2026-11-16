@@ -574,6 +574,15 @@ class MessageSquashServiceTest {
                 else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
             }, suggestedRepliesGenerationService = mock(),
             settingsProvider = mock(),
+            messageBatchRepo = object : com.gromozeka.domain.repository.ConversationMessageBatchRepository {
+                override suspend fun append(conversationId: Conversation.Id, expectedThreadId: Conversation.Thread.Id,
+                    batch: List<Conversation.Message>, at: kotlin.time.Instant): List<Conversation.Message> {
+                    val linked = threadMessages.links.getValue(expectedThreadId).map { it.messageId }.toSet()
+                    val appended = batch.filterNot { it.id in linked }
+                    appended.forEach { append(it) }
+                    return appended
+                }
+            },
         )
 
         fun storageCounts(): List<Int> = listOf(

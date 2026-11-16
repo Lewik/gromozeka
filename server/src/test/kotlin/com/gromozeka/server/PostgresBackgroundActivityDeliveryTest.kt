@@ -51,14 +51,14 @@ class PostgresBackgroundActivityDeliveryTest {
                 completionNotificationRequestedAt = at, terminalOutputStartByte = 0, terminalOutputContent = BinaryContent.fromText("kept"))
             coordinator.upsertCommandTask(failed)
             val sourceKey = "command-task:${failed.id.value}"
-            assertTrue(dispatcher(coordinator).submitBackgroundActivityCompletion(conversation, sourceKey))
+            assertTrue(dispatcher(coordinator).submitBackgroundActivityCompletion(conversation, sourceKey, AgentDefinition.Id("agent"), null))
             val failedTask = coordinator.listPending(conversation).single()
             claim(coordinator, failedTask, executor)
             assertNotNull(coordinator.markActiveTaskInDoubt(conversation, failedTask.id, executor,
                 "Synthetic delivery failure", "IllegalStateException"))
 
             val restarted = PostgresConversationRuntimeCoordinator(dataSource, json)
-            assertFalse(dispatcher(restarted).submitBackgroundActivityCompletion(conversation, sourceKey))
+            assertFalse(dispatcher(restarted).submitBackgroundActivityCompletion(conversation, sourceKey, AgentDefinition.Id("agent"), null))
             val monitor = CommandMonitor(CommandMonitor.Id("monitor"), conversation, failed.id, failed.workerId, failed.workspaceMountId,
                 agent, filterCommand = "never executed by this test", mode = CommandMonitor.Mode.CONTINUOUS,
                 startFrom = CommandMonitor.StartFrom.BEGINNING, status = CommandMonitor.Status.WORKING,
@@ -93,8 +93,8 @@ class PostgresBackgroundActivityDeliveryTest {
                 val batch = completions.prepareBatch(conversation, "command-monitor-event:${event.id.value}")
                 assertTrue(batch.commandTasks.isEmpty())
                 assertEquals(listOf(event.id), batch.monitorDeliveries.single().events.map { it.id })
-                completions.markDelivered(batch, Clock.System.now())
-                assertTrue(restarted.completeActiveTask(conversation, delivery.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+                assertTrue(restarted.completeActiveTask(conversation, delivery.id, executor,
+                    ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery(listOf(batch.receipt))))
             } finally {
                 scope.coroutineContext.job.cancelAndJoin()
             }
@@ -115,6 +115,123 @@ class PostgresBackgroundActivityDeliveryTest {
         }
     }
 
+    @Test
+    fun `safe point commit and undelivered reservations survive coordinator recreation`(): Unit = runBlocking {
+        database { dataSource ->
+            for (failDelivery in listOf(false, true)) {
+                val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
+                val conversation = Conversation.Id("safe-point-$failDelivery")
+                val agent = AgentDefinition.Id("agent")
+                val actor = com.gromozeka.domain.model.User.Id("creator")
+                val executor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server"))
+                val at = Instant.fromEpochSeconds(1)
+                val coordinator = PostgresConversationRuntimeCoordinator(dataSource, json)
+                val root = ConversationRuntimeTask(ConversationRuntimeTask.Id("root-$failDelivery"), conversation, actorUserId = actor,
+                    payload = ConversationRuntimeTask.Payload.AgentInvocation(Conversation.Message(Conversation.Message.Id("root"), conversation,
+                        role = Conversation.Message.Role.USER, content = emptyList(), createdAt = at), agent),
+                    placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "root-$failDelivery",
+                    requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server), createdAt = at)
+                assertTrue(coordinator.submit(root)); claim(coordinator, root, executor)
+                val model = root.copy(id = ConversationRuntimeTask.Id("model-$failDelivery"), parentTaskId = root.id, idempotencyKey = "model-$failDelivery",
+                    payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("root"), agent, 1))
+                assertTrue(coordinator.completeActiveTask(conversation, root.id, executor, ConversationRuntimeTaskOutcome.Continue(model)))
+                val command = CommandTask(CommandTask.Id("command-$failDelivery"), conversation, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"), agent,
+                    command = "not executed", workingDirectory = "/tmp", status = CommandTask.Status.COMPLETED,
+                    processId = 1, processStartedAt = at, outputFile = "/tmp/not-opened", outputBytes = 0, exitCode = 0,
+                    createdAt = at, updatedAt = at, completedAt = at, completionNotificationRequestedAt = at)
+                coordinator.upsertCommandTask(command)
+                val key = "command-task:${command.id.value}"
+                assertTrue(dispatcher(coordinator).submitBackgroundActivityCompletion(conversation, key, agent, actor))
+                val restarted = PostgresConversationRuntimeCoordinator(dataSource, json)
+                val queued = restarted.listPending(conversation).single { it.payload is ConversationRuntimeTask.Payload.BackgroundActivityCompletion }
+                assertEquals(QueuedMessagePlacement.AFTER_TOOL_RESULT, queued.placement)
+                assertEquals(actor, queued.actorUserId)
+                claim(restarted, model, executor)
+                assertEquals(listOf(queued), restarted.claimActiveInsertions(conversation, model.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT))
+                val reserved = PostgresConversationRuntimeCoordinator(dataSource, json)
+                assertEquals(listOf(queued), reserved.claimActiveInsertions(conversation, model.id, executor, QueuedMessagePlacement.AFTER_TOOL_RESULT))
+                val service = BackgroundActivityCompletionApplicationService(reserved, emptyOrigins(), BackgroundActivityContinuationPolicy { _, _ -> false })
+                if (failDelivery) {
+                    val incident = assertNotNull(reserved.markActiveTaskInDoubt(conversation, model.id, executor, "Delivery failed", "SyntheticFailure"))
+                    assertEquals(model.id, incident.task.id)
+                } else {
+                    val batch = service.prepareBatch(conversation, key)
+                    assertNull(reserved.findCommandTask(conversation, command.id)?.completionNotificationDeliveredAt)
+                    val next = model.copy(id = ConversationRuntimeTask.Id("next"), parentTaskId = model.id, idempotencyKey = "next")
+                    assertTrue(reserved.completeActiveTask(conversation, model.id, executor,
+                        ConversationRuntimeTaskOutcome.Continue(next, backgroundDeliveryReceipts = listOf(batch.receipt))))
+                }
+                val verified = PostgresConversationRuntimeCoordinator(dataSource, json)
+                val finalService = BackgroundActivityCompletionApplicationService(verified, emptyOrigins(), BackgroundActivityContinuationPolicy { _, _ -> false })
+                assertEquals(!failDelivery, finalService.prepareBatch(conversation, key).isEmpty)
+                assertTrue(verified.schedulingSnapshot(conversation).activeInsertions.isEmpty())
+                assertEquals(failDelivery, verified.listPending(conversation).any { it.payload is ConversationRuntimeTask.Payload.BackgroundActivityCompletion })
+                if (failDelivery) {
+                    assertEquals(model.id, verified.schedulingSnapshot(conversation).incidents.single().task.id)
+                    assertNull(verified.findCommandTask(conversation, command.id)?.completionNotificationDeliveredAt)
+                } else assertNotNull(verified.findCommandTask(conversation, command.id)?.completionNotificationDeliveredAt)
+            }
+        }
+    }
+
+    @Test
+    fun `acknowledgements and continuation roll back together and stop never consumes the input`(): Unit = runBlocking {
+        database { dataSource ->
+            for (stop in listOf(false, true)) {
+                val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
+                val conversation = Conversation.Id("atomic-ack-$stop")
+                val agent = AgentDefinition.Id("agent")
+                val actor = com.gromozeka.domain.model.User.Id("creator")
+                val executor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server"))
+                val at = Instant.fromEpochSeconds(1)
+                val coordinator = PostgresConversationRuntimeCoordinator(dataSource, json)
+                val command = CommandTask(CommandTask.Id("command-$stop"), conversation, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"), agent,
+                    command = "not executed", workingDirectory = "/tmp", status = CommandTask.Status.COMPLETED,
+                    processId = 1, processStartedAt = at, outputFile = "/tmp/unused", outputBytes = 0, exitCode = 0,
+                    createdAt = at, updatedAt = at, completedAt = at, completionNotificationRequestedAt = at)
+                coordinator.upsertCommandTask(command)
+                assertTrue(dispatcher(coordinator).submitBackgroundActivityCompletion(conversation, "command-task:${command.id.value}", agent, actor))
+                val task = coordinator.listPending(conversation).single()
+                claim(coordinator, task, executor)
+                val next = task.copy(id = ConversationRuntimeTask.Id("next"), parentTaskId = task.id, idempotencyKey = "next",
+                    payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("result"), agent, 1),
+                    requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server))
+                val valid = ConversationRuntimeTaskOutcome.Continue(next,
+                    backgroundDeliveryReceipts = listOf(BackgroundActivityDeliveryReceipt(commands = setOf(command.id))))
+                val invalid = valid.copy(backgroundDeliveryReceipts = listOf(BackgroundActivityDeliveryReceipt(
+                    commands = setOf(command.id, CommandTask.Id("missing")))))
+                assertFailsWith<IllegalArgumentException> { coordinator.completeActiveTask(conversation, task.id, executor, invalid) }
+                val afterFailure = PostgresConversationRuntimeCoordinator(dataSource, json)
+                assertEquals(task.id, afterFailure.schedulingSnapshot(conversation).activeTask?.id)
+                assertNull(afterFailure.schedulingSnapshot(conversation).continuationTask)
+                assertNull(afterFailure.findCommandTask(conversation, command.id)?.completionNotificationDeliveredAt)
+                val sql = JdbcTemplate(dataSource)
+                sql.execute("""CREATE OR REPLACE FUNCTION reject_continuation_commit() RETURNS trigger LANGUAGE plpgsql AS ${'$'}${'$'}
+                    BEGIN IF NEW.scheduling -> 'continuationTask' ->> 'id' = 'next' THEN RAISE EXCEPTION 'Synthetic commit failure'; END IF; RETURN NEW; END
+                    ${'$'}${'$'}""")
+                sql.execute("CREATE TRIGGER reject_continuation BEFORE UPDATE ON conversation_runtime_records FOR EACH ROW EXECUTE FUNCTION reject_continuation_commit()")
+                assertFailsWith<Exception> { afterFailure.completeActiveTask(conversation, task.id, executor, valid) }
+                val rolledBack = PostgresConversationRuntimeCoordinator(dataSource, json)
+                assertNull(rolledBack.findCommandTask(conversation, command.id)?.completionNotificationDeliveredAt)
+                assertNull(rolledBack.schedulingSnapshot(conversation).continuationTask)
+                assertEquals(task.id, rolledBack.schedulingSnapshot(conversation).activeTask?.id)
+                sql.execute("DROP TRIGGER reject_continuation ON conversation_runtime_records")
+                if (stop) assertTrue(afterFailure.requestStop(conversation))
+                assertTrue(afterFailure.completeActiveTask(conversation, task.id, executor, valid))
+                val committed = PostgresConversationRuntimeCoordinator(dataSource, json)
+                if (stop) {
+                    assertNull(committed.findCommandTask(conversation, command.id)?.completionNotificationDeliveredAt)
+                    assertNull(committed.schedulingSnapshot(conversation).continuationTask)
+                    assertEquals(task.id, committed.listPending(conversation).single().id)
+                    assertEquals(ConversationExecutionState.ControlState.PAUSED, committed.schedulingSnapshot(conversation).state?.controlState)
+                } else {
+                    assertNotNull(committed.findCommandTask(conversation, command.id)?.completionNotificationDeliveredAt)
+                    assertEquals(next.id, committed.schedulingSnapshot(conversation).continuationTask?.id)
+                }
+            }
+        }
+    }
+
     private suspend fun claim(coordinator: ConversationRuntimeCoordinator, task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity) {
         assertEquals(task, coordinator.claimDeliveredTask(task.conversationId, task.id, executor, task.requirements.capabilities, emptySet()))
@@ -129,7 +246,7 @@ class PostgresBackgroundActivityDeliveryTest {
     private fun lifecycle(coordinator: ConversationRuntimeCoordinator, scope: CoroutineScope) = BackgroundActivityLifecycleApplicationService(
         object : CommandTaskLifecycleEventStream { override val events = emptyFlow<CommandTaskLifecycleEvent>() },
         object : CommandMonitorLifecycleEventStream { override val events = emptyFlow<CommandMonitorLifecycleEvent>() },
-        coordinator, dispatcher(coordinator), scope,
+        coordinator, dispatcher(coordinator), scope, emptyOrigins(),
     )
 
     private fun emptyOrigins() = object : BackgroundActivityOriginRepository {

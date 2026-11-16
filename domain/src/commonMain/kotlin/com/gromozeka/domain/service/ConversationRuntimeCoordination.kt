@@ -180,6 +180,7 @@ data class ConversationRuntimeTask(
         @SerialName("background_activity_completion")
         data class BackgroundActivityCompletion(
             val sourceKey: String,
+            val agentDefinitionId: AgentDefinition.Id? = null,
         ) : Payload {
             init {
                 require(sourceKey.isNotBlank()) { "Background activity completion source key must not be blank" }
@@ -285,6 +286,14 @@ value class ConversationRuntimeTurnId(val value: String) {
 }
 
 sealed interface ConversationRuntimeTaskOutcome {
+    val backgroundDeliveryReceipts: List<BackgroundActivityDeliveryReceipt> get() = emptyList()
+
+    data class CompleteBackgroundDelivery(
+        override val backgroundDeliveryReceipts: List<BackgroundActivityDeliveryReceipt>,
+    ) : ConversationRuntimeTaskOutcome {
+        init { require(backgroundDeliveryReceipts.isNotEmpty()) }
+    }
+
     data object CompleteTurn : ConversationRuntimeTaskOutcome
 
     data object CompleteWithoutNotification : ConversationRuntimeTaskOutcome
@@ -300,6 +309,7 @@ sealed interface ConversationRuntimeTaskOutcome {
     data class Continue(
         val nextTask: ConversationRuntimeTask,
         val queuedAgentResponses: List<ConversationRuntimeTask> = emptyList(),
+        override val backgroundDeliveryReceipts: List<BackgroundActivityDeliveryReceipt> = emptyList(),
     ) : ConversationRuntimeTaskOutcome {
         init {
             require(nextTask.isContinuation()) {
@@ -950,6 +960,9 @@ interface ConversationRuntimeCoordinator {
     /** Captures a human preference atomically with admission; never changes already queued input. */
     suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean
 
+    /** Resolve safe-point placement atomically against the current agent and authenticated actor. */
+    suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: AgentDefinition.Id): Boolean
+
     suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
 
     /**
@@ -995,6 +1008,16 @@ interface ConversationRuntimeCoordinator {
      * This never requeues or re-executes the source task. It records an incident and schedules incident handling so
      * the user or the main model can decide what to do next.
      */
+    suspend fun recordBackgroundInsertionFailure(
+        conversationId: Conversation.Id,
+        ownerTaskId: ConversationRuntimeTask.Id,
+        insertionTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        deliveryStartedAt: Instant?,
+        message: String,
+        errorType: String?,
+    ): ConversationRuntimeTaskIncident?
+
     suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,

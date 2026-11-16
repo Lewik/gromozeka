@@ -563,7 +563,7 @@ class ConversationRuntimeDispatcherTest {
                 },
                 object : com.gromozeka.domain.service.CommandMonitorLifecycleEventStream {
                     override val events = kotlinx.coroutines.flow.emptyFlow<com.gromozeka.domain.service.CommandMonitorLifecycleEvent>()
-                }, coordinator, dispatcher, scope,
+                }, coordinator, dispatcher, scope, TestBackgroundActivityOrigins(),
             )
             val completions = BackgroundActivityCompletionApplicationService(coordinator,
                 object : com.gromozeka.domain.repository.BackgroundActivityOriginRepository {
@@ -594,7 +594,7 @@ class ConversationRuntimeDispatcherTest {
                             }
                             val batch = completions.prepareBatch(conversationId, payload.sourceKey)
                             assertFalse(batch.isEmpty)
-                            completions.markDelivered(batch, Clock.System.now())
+                            return ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery(listOf(batch.receipt))
                         }
                         is ConversationRuntimeTask.Payload.ExecutionIncident -> Unit
                         else -> error("Unexpected runtime task: ${task.payload}")

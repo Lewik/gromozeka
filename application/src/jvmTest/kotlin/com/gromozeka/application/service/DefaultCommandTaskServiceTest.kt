@@ -816,6 +816,157 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
+    fun `cancellation after yield still stops the process while notification persistence is blocked`() = runBlocking {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val blocked = AtomicBoolean(false)
+        withService(decorateState = { state -> object : com.gromozeka.domain.service.CommandRuntimeStateService by state {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                if (task.completionNotificationRequestedAt != null && blocked.compareAndSet(false, true)) {
+                    entered.complete(Unit); release.await()
+                }
+                return state.upsertCommandTask(task)
+            }
+        } }) { service, runner, _, directory ->
+            val call = async { service.start(ExecuteCommandRequest("cancelled-during-receipt", yield_time_ms = 0),
+                context(directory, AgentDefinition.Id("agent-1"))) }
+            try {
+                withTimeout(3_000) { entered.await() }
+                call.cancel()
+                waitUntil(2_000) { runner.lastProcess.terminateTreeCalled }
+                assertFalse(runner.lastProcess.isAlive())
+                release.complete(Unit)
+                withTimeout(3_000) { call.join() }
+                assertTrue(call.isCancelled)
+            } finally { release.complete(Unit) }
+        }
+    }
+
+    @Test
+    fun `initial delivery keeps synchronization rejection visible without changing its selected status`() = runBlocking {
+        withService(decorateState = { state -> object : com.gromozeka.domain.service.CommandRuntimeStateService by state {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                if (task.completionNotificationRequestedAt != null) {
+                    throw ControlPlaneRequestRejectedException("REJECTED", "Synthetic synchronization rejection")
+                }
+                return state.upsertCommandTask(task)
+            }
+        } }) { service, _, _, directory ->
+            val result = service.start(ExecuteCommandRequest("rejected-receipt", yield_time_ms = 0),
+                context(directory, AgentDefinition.Id("agent-1")))
+            assertEquals(CommandTask.Status.WORKING, result.task.status)
+            assertNotNull(result.task.synchronizationError)
+            assertNotNull(result.task.completionNotificationRequestedAt)
+        }
+    }
+
+    @Test
+    fun `exit at the initial decision returns only the terminal result`() = runBlocking {
+        val events = Channel<CommandTaskLifecycleEvent>(Channel.UNLIMITED)
+        withService(lifecycleEventPublisher = CommandTaskLifecycleEventPublisher(events::send)) { service, runner, _, directory ->
+            runner.onPrepared = { process -> process.onWaitFor = { timeout -> if (timeout == 0L) process.complete(23) } }
+            val result = service.start(ExecuteCommandRequest("boundary", yield_time_ms = 0),
+                context(directory, AgentDefinition.Id("agent-1")))
+            assertEquals(CommandTask.Status.FAILED, result.task.status)
+            assertEquals(23, result.task.exitCode)
+            assertNull(result.task.completionNotificationRequestedAt)
+            waitUntil(3_000) { service.prepareForUpdate() }
+            assertTrue(events.tryReceive().isFailure)
+        }
+    }
+
+    @Test
+    fun `local exit does not wait for a blocked cancellation lookup`() = runBlocking {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val started = AtomicBoolean(false)
+        val blocked = AtomicBoolean(false)
+        withService(decorateState = { state -> object : com.gromozeka.domain.service.CommandRuntimeStateService by state {
+            override suspend fun findCommandTask(conversationId: Conversation.Id, taskId: CommandTask.Id): CommandTask? {
+                if (started.get() && blocked.compareAndSet(false, true)) { entered.complete(Unit); release.await() }
+                return state.findCommandTask(conversationId, taskId)
+            }
+        } }) { service, runner, coordinator, directory ->
+            runner.onStart = { started.set(true) }
+            val call = async { service.start(ExecuteCommandRequest("control-blocked", yield_time_ms = 10_000),
+                context(directory, AgentDefinition.Id("agent-1"))) }
+            try {
+                withTimeout(3_000) { entered.await() }
+                runner.lastProcess.complete(0)
+                val result = withTimeout(2_000) { call.await() }
+                assertFalse(release.isCompleted)
+                assertEquals(CommandTask.Status.COMPLETED, result.task.status)
+                assertNull(result.task.completionNotificationRequestedAt)
+                assertEquals(CommandTask.Status.COMPLETED, coordinator.findCommandTask(conversationId, result.task.id)?.status)
+            } finally { release.complete(Unit) }
+        }
+    }
+
+    @Test
+    fun `local terminal state survives an in-flight working snapshot acknowledgement`() = runBlocking {
+        val entered = CompletableDeferred<CommandTask>()
+        val release = CompletableDeferred<Unit>()
+        val blocked = AtomicBoolean(false)
+        withService(decorateState = { state -> object : com.gromozeka.domain.service.CommandRuntimeStateService by state {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                if (!task.isTerminal && blocked.compareAndSet(false, true)) { entered.complete(task); release.await() }
+                return state.upsertCommandTask(task)
+            }
+        } }) { service, runner, coordinator, directory ->
+            val call = async { service.start(ExecuteCommandRequest("write-blocked", yield_time_ms = 10_000),
+                context(directory, AgentDefinition.Id("agent-1"))) }
+            try {
+                val running = withTimeout(3_000) { entered.await() }
+                runner.lastProcess.complete(7)
+                waitUntil(2_000) { service.get(conversationId, running.id, 0, 0)?.task?.status == CommandTask.Status.FAILED }
+                assertFalse(release.isCompleted)
+                release.complete(Unit)
+                val result = withTimeout(3_000) { call.await() }
+                assertEquals(CommandTask.Status.FAILED, result.task.status)
+                assertEquals(7, result.task.exitCode)
+                assertNull(result.task.completionNotificationRequestedAt)
+                waitUntil(3_000) { service.prepareForUpdate() }
+                assertEquals(CommandTask.Status.FAILED, coordinator.findCommandTask(conversationId, running.id)?.status)
+            } finally { release.complete(Unit) }
+        }
+    }
+
+    @Test
+    fun `exit while the background receipt is persisted cannot change the initial delivery mode`() = runBlocking {
+        val entered = CompletableDeferred<CommandTask>()
+        val release = CompletableDeferred<Unit>()
+        val blocked = AtomicBoolean(false)
+        val events = Channel<CommandTaskLifecycleEvent>(Channel.UNLIMITED)
+        withService(lifecycleEventPublisher = CommandTaskLifecycleEventPublisher(events::send), decorateState = { state ->
+            object : com.gromozeka.domain.service.CommandRuntimeStateService by state {
+                override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                    if (task.completionNotificationRequestedAt != null && blocked.compareAndSet(false, true)) {
+                        entered.complete(task); release.await()
+                    }
+                    return state.upsertCommandTask(task)
+                }
+            }
+        }) { service, runner, _, directory ->
+            val call = async { service.start(ExecuteCommandRequest("yielded", yield_time_ms = 0),
+                context(directory, AgentDefinition.Id("agent-1"))) }
+            try {
+                val running = withTimeout(3_000) { entered.await() }
+                assertEquals(CommandTask.Status.WORKING, running.status)
+                runner.lastProcess.complete(0)
+                waitUntil(2_000) { service.get(conversationId, running.id, 0, 0)?.task?.isTerminal == true }
+                release.complete(Unit)
+                val initial = withTimeout(3_000) { call.await() }
+                assertEquals(CommandTask.Status.WORKING, initial.task.status)
+                assertNotNull(initial.task.completionNotificationRequestedAt)
+                val completed = withTimeout(3_000) { events.receive() }
+                assertEquals(CommandTask.Status.COMPLETED, completed.status)
+                waitUntil(3_000) { service.prepareForUpdate() }
+                assertTrue(events.tryReceive().isFailure)
+            } finally { release.complete(Unit) }
+        }
+    }
+
+    @Test
     fun `working command requests one completion event with bounded terminal output`() = runBlocking {
         val events = Channel<CommandTaskLifecycleEvent>(Channel.UNLIMITED)
         withService(lifecycleEventPublisher = CommandTaskLifecycleEventPublisher(events::send)) {
@@ -1106,6 +1257,7 @@ class DefaultCommandTaskServiceTest {
 
     private suspend fun withService(
         lifecycleEventPublisher: CommandTaskLifecycleEventPublisher = noOpLifecycleEventPublisher(),
+        decorateState: (com.gromozeka.domain.service.CommandRuntimeStateService) -> com.gromozeka.domain.service.CommandRuntimeStateService = { it },
         block: suspend (
             service: DefaultCommandTaskService,
             runner: FakeCommandProcessRunner,
@@ -1118,7 +1270,7 @@ class DefaultCommandTaskServiceTest {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val service = DefaultCommandTaskService(
             processRunner = runner,
-            runtimeState = runtimeState(coordinator, lifecycleEventPublisher),
+            runtimeState = decorateState(runtimeState(coordinator, lifecycleEventPublisher)),
             runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             scripts = fakeScripts(coordinator),
         )
@@ -1312,7 +1464,9 @@ class DefaultCommandTaskServiceTest {
 
         override fun isAlive(): Boolean = alive
 
+        var onWaitFor: (Long) -> Unit = {}
         override fun waitFor(timeoutMillis: Long): Boolean {
+            onWaitFor(timeoutMillis)
             if (alive) {
                 Thread.sleep(timeoutMillis)
             }

@@ -342,7 +342,8 @@ class ConversationEngineService(
         if (beforeModel.consumedTasks) {
             beforeModel.messages.forEach { emitMessage(it) }
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
-                payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId, payload.afterCompaction))
+                payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId, payload.afterCompaction),
+                backgroundDeliveryReceipts = beforeModel.backgroundDeliveryReceipts)
         }
 
         // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
@@ -603,10 +604,11 @@ class ConversationEngineService(
                 conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
                 context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled,
             )
-            if (afterModel.consumedTasks) {
+            if (afterModel.requiresModelResponse) {
                 afterModel.messages.forEach { emitMessage(it) }
                 return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
-                    payload.agentDefinitionId, payload.iteration + 1, afterModel.actorUserId))
+                    payload.agentDefinitionId, payload.iteration + 1, afterModel.actorUserId),
+                    backgroundDeliveryReceipts = afterModel.backgroundDeliveryReceipts)
             }
         }
         if (outcome == AiStepOutcome.CONTINUE) {
@@ -733,7 +735,8 @@ class ConversationEngineService(
                 context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled)
             steering.messages.forEach { emitMessage(it) }
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
-                payload.agentDefinitionId, draft.iteration + 1, if (steering.consumedTasks) steering.actorUserId else task.actorUserId))
+                payload.agentDefinitionId, draft.iteration + 1, if (steering.consumedTasks) steering.actorUserId else task.actorUserId),
+                backgroundDeliveryReceipts = steering.backgroundDeliveryReceipts)
         }
         ensureRuntimeTaskOwner(conversation.id, task.id, executor)
         if (runtimeCoordinator.listPending(conversation.id).any { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }) return continueAfterNewInput()
@@ -862,7 +865,7 @@ class ConversationEngineService(
         queuedMessageEmission.messages.forEach { queuedMessage ->
             emitMessage(queuedMessage)
         }
-        if (payload.returnDirect && !queuedMessageEmission.consumedTasks) return ConversationRuntimeTaskOutcome.CompleteTurn
+        if (payload.returnDirect && !queuedMessageEmission.requiresModelResponse) return ConversationRuntimeTaskOutcome.CompleteTurn
 
         return ConversationRuntimeTaskOutcome.Continue(
             llmCallTask(
@@ -877,6 +880,7 @@ class ConversationEngineService(
                     task.actorUserId
                 },
             ),
+            backgroundDeliveryReceipts = queuedMessageEmission.backgroundDeliveryReceipts,
         )
     }
 
@@ -1119,28 +1123,10 @@ class ConversationEngineService(
         )
         if (batch.isEmpty) return ConversationRuntimeTaskOutcome.CompleteTurn
 
-        val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
-        batch.messages.forEach { syntheticMessage ->
-            ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
-                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
-                    result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
-                }
-                val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
-                val iterator = persisted.iterator()
-                val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
-                    if (it is ContentItem.ToolResult) iterator.next() else it
-                })
-                if (addRuntimeMessageIfMissing(conversationId, storedMessage)) emitMessage(storedMessage)
-            } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
-                replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
-            }
-        }
+        appendBackgroundBatch(conversation, task.id, executor, batch).forEach { emitMessage(it) }
 
-        val pendingConversationWork =
-            backgroundActivityCompletionApplicationService.hasPendingConversationWork(conversationId)
-        val outcome = if (pendingConversationWork || !backgroundActivityCompletionApplicationService.canContinue(batch, conversation)) {
-            ConversationRuntimeTaskOutcome.CompleteTurn
+        val outcome = if (!backgroundActivityCompletionApplicationService.canContinue(batch, conversation)) {
+            ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery(listOf(batch.receipt))
         } else {
             ConversationRuntimeTaskOutcome.Continue(
                 llmCallTask(
@@ -1151,14 +1137,45 @@ class ConversationEngineService(
                     iteration = 1,
                     actorUserId = batch.actorUserId,
                 ),
+                backgroundDeliveryReceipts = listOf(batch.receipt),
             )
         }
 
-        val deliveredAt = Clock.System.now()
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
-        backgroundActivityCompletionApplicationService.markDelivered(batch, deliveredAt)
         publishRuntimeSnapshot(conversationId)
         return outcome
+    }
+
+    private suspend fun appendBackgroundBatch(
+        conversation: Conversation,
+        runtimeTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        batch: BackgroundActivityCompletionApplicationService.Batch,
+    ): List<Conversation.Message> {
+        val conversationId = conversation.id
+        val prepared = mutableListOf<Conversation.Message>()
+        val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
+        batch.messages.forEach { syntheticMessage ->
+            ensureRuntimeTaskOwner(conversationId, runtimeTaskId, executor)
+            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
+                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
+                    result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
+                }
+                val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
+                val iterator = persisted.iterator()
+                val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
+                    if (it is ContentItem.ToolResult) iterator.next() else it
+                })
+                prepared += storedMessage
+            } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
+                replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
+            }
+        }
+
+        ensureRuntimeTaskOwner(conversationId, runtimeTaskId, executor)
+        return conversationMessageAppender.appendRuntimeMessages(conversationId, prepared).also {
+            if (it.isNotEmpty()) publishRuntimeSnapshot(conversationId)
+        }
     }
 
     private fun executionIncidentResult(incident: ConversationRuntimeTaskIncident): String =
@@ -1717,24 +1734,50 @@ class ConversationEngineService(
             return QueuedRuntimeMessageEmission()
         }
 
+        var requiresModelResponse = false
+        val receipts = mutableListOf<com.gromozeka.domain.service.BackgroundActivityDeliveryReceipt>()
+        val sourcesInCurrentPacket = mutableSetOf<String>()
+        val messages = queuedMessages.flatMap { queued ->
+            val completion = queued.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion
+            if (completion != null) {
+                var deliveryStartedAt: kotlin.time.Instant? = null
+                try {
+                    val batch = backgroundActivityCompletionApplicationService.prepareBatch(conversationId, completion.sourceKey, sourcesInCurrentPacket)
+                    if (batch.isEmpty) emptyList()
+                    else {
+                        check(batch.actorUserId == queued.actorUserId && batch.agentDefinitionId == completion.agentDefinitionId) {
+                            "Background activity recipient changed after admission"
+                        }
+                        deliveryStartedAt = Clock.System.now()
+                        val emitted = appendBackgroundBatch(conversation, runtimeTaskId, executor, batch)
+                        receipts += batch.receipt
+                        sourcesInCurrentPacket += batch.sourceKeys
+                        requiresModelResponse = true
+                        emitted
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    try {
+                        checkNotNull(runtimeCoordinator.recordBackgroundInsertionFailure(conversationId, runtimeTaskId, queued.id,
+                            executor, deliveryStartedAt, "Background delivery failed: ${completion.sourceKey}", error::class.simpleName)) {
+                            "Background insertion ownership was lost"
+                        }
+                    } catch (recordingError: Exception) { error.addSuppressed(recordingError) }
+                    throw error
+                }
+            } else {
+                requiresModelResponse = true
+                appendQueuedUserMessage(conversationId, conversation, runtimeContext, queued,
+                    memorySystemPrompts, memoryPipelineTools, automaticMemoryRememberEnabled, automaticMemoryRecallEnabled)
+            }
+        }
         return QueuedRuntimeMessageEmission(
-            messages = queuedMessages.flatMap { queued ->
-                appendQueuedUserMessage(
-                    conversationId = conversationId,
-                    conversation = conversation,
-                    runtimeContext = runtimeContext,
-                    queued = queued,
-                    memorySystemPrompts = memorySystemPrompts,
-                    memoryPipelineTools = memoryPipelineTools,
-                    automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
-                    automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
-                )
-            },
-            actorUserId = queuedMessages
-                .map(ConversationRuntimeTask::actorUserId)
-                .distinct()
-                .singleOrNull(),
+            messages = messages,
+            actorUserId = queuedMessages.map(ConversationRuntimeTask::actorUserId).distinct().singleOrNull(),
             consumedTasks = true,
+            requiresModelResponse = requiresModelResponse,
+            backgroundDeliveryReceipts = receipts,
         )
     }
 
@@ -1742,6 +1785,8 @@ class ConversationEngineService(
         val messages: List<Conversation.Message> = emptyList(),
         val actorUserId: User.Id? = null,
         val consumedTasks: Boolean = false,
+        val requiresModelResponse: Boolean = false,
+        val backgroundDeliveryReceipts: List<com.gromozeka.domain.service.BackgroundActivityDeliveryReceipt> = emptyList(),
     )
 
     private suspend fun appendQueuedUserMessage(
