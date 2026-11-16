@@ -38,6 +38,39 @@ class ConversationEngineDeliveryTest {
     private fun answer(outcome: AiStepOutcome = AiStepOutcome.COMPLETE) = AiRuntimeResponse(
         listOf(AiAssistantMessage(listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Answer"))))), outcome = outcome)
 
+    @Test fun `handled provider failure records a failed completion instead of success`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        f.onCall = { throw IllegalStateException("PRIVATE_PROVIDER_ERROR_BODY") }
+        val outcome = assertIs<ConversationRuntimeTaskOutcome.Failed>(f.engine.runRuntimeTask(task, executor) {})
+        assertEquals(ConversationRuntimeCompletion.Reason.MODEL_ERROR, outcome.reason)
+        assertEquals("IllegalStateException", outcome.errorType)
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, outcome))
+        val completion = assertNotNull(f.coordinator.schedulingSnapshot(conversation.id).lastCompletion)
+        assertEquals(ConversationRuntimeCompletion.Status.FAILED, completion.status)
+        assertEquals(outcome.reason, completion.reason)
+        assertFalse(completion.toString().contains("PRIVATE_PROVIDER_ERROR_BODY"))
+    }
+
+    @Test fun `model failure and refusal have explicit distinct completion reasons`() = runBlocking {
+        for ((step, reason) in listOf(AiStepOutcome.FAILED to ConversationRuntimeCompletion.Reason.MODEL_RESPONSE_INCOMPLETE,
+            AiStepOutcome.REFUSED to ConversationRuntimeCompletion.Reason.MODEL_REFUSED)) {
+            val f = Fixture(); val task = f.begin()
+            f.onCall = { answer(step) }
+            val outcome = assertIs<ConversationRuntimeTaskOutcome.Failed>(f.engine.runRuntimeTask(task, executor) {})
+            assertEquals(reason, outcome.reason)
+            assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, outcome))
+            assertEquals(ConversationRuntimeCompletion.Status.FAILED, f.coordinator.snapshot(conversation.id).lastCompletion?.status)
+        }
+    }
+
+    @Test fun `iteration limit is a failed turn and performs no extra model call`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        val exhausted = task.copy(payload = (task.payload as ConversationRuntimeTask.Payload.LlmCall).copy(iteration = Int.MAX_VALUE))
+        val outcome = assertIs<ConversationRuntimeTaskOutcome.Failed>(f.engine.runRuntimeTask(exhausted, executor) {})
+        assertEquals(ConversationRuntimeCompletion.Reason.ITERATION_LIMIT, outcome.reason)
+        assertTrue(f.requests.isEmpty())
+    }
+
     @Test fun `background preparation begins only after a final answer is emitted`() = runBlocking {
         val f = Fixture(); val task = f.begin()
         var emitted = false

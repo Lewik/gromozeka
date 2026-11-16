@@ -262,6 +262,7 @@ private class SessionsSmokeRepository : AgentCollaborationRepository {
     override suspend fun pendingDeliveries(after: AgentCollaborationRepository.DeliveryCursor?): List<AgentDelivery> = error("Unexpected delivery scan")
     override suspend fun findDelivery(id: String): AgentDelivery? = error("Unexpected outbox lookup")
     override suspend fun settleDelivery(delivery: AgentDelivery): Unit = error("Unexpected outbox write")
+    override suspend fun blockPendingActivations(conversationId: Conversation.Id, reason: String): Boolean = error("Unexpected activation cancellation")
     override suspend fun saveDraft(draft: AgentResponseDraft): Unit = error("Unexpected checker draft")
     override suspend fun findDraft(id: String): AgentResponseDraft? = error("Unexpected checker lookup")
     override suspend fun failDraft(id: String, reason: String): Unit = error("Unexpected checker write")

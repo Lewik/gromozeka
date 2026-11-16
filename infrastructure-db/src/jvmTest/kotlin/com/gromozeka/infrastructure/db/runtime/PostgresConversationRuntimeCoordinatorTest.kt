@@ -55,6 +55,36 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
+    @Test fun `recorded completion survives recreation in both snapshot paths and absent facts remain unknown`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val id = Conversation.Id("completion")
+            val now = kotlin.time.Clock.System.now()
+            val owner = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+            val root = agentInvocationTask(id, "completion-message", now).let {
+                it.copy(requirements = it.requirements.copy(target = ConversationRuntimeTaskTarget.Server))
+            }
+            assertTrue(coordinator.submit(root))
+            kotlin.test.assertNotNull(coordinator.claimDeliveredTask(id, root.id, owner, root.requirements.capabilities, emptySet()))
+            assertTrue(coordinator.markActiveTaskStarted(id, root.id, owner, now))
+            assertTrue(coordinator.completeActiveTask(id, root.id, owner, ConversationRuntimeTaskOutcome.Failed(
+                com.gromozeka.domain.service.ConversationRuntimeCompletion.Reason.MODEL_ERROR, "SyntheticProviderFailure")))
+            coordinator.finishIfIdle(id)
+            val completion = kotlin.test.assertNotNull(coordinator.snapshot(id).lastCompletion)
+            assertEquals(com.gromozeka.domain.service.ConversationRuntimeCompletion.Status.FAILED, completion.status)
+            assertEquals(root.turnId, completion.turnId)
+            val restored = PostgresConversationRuntimeCoordinator(source, json)
+            assertEquals(completion, restored.snapshot(id).lastCompletion)
+            assertEquals(completion, restored.schedulingSnapshot(id).lastCompletion)
+            source.connection.use { c -> c.prepareStatement("UPDATE conversation_runtime_records SET scheduling = scheduling - 'lastCompletion' WHERE conversation_id = ?").use { s ->
+                s.setString(1, id.value)
+                assertEquals(1, s.executeUpdate())
+            } }
+            assertNull(restored.schedulingSnapshot(id).lastCompletion)
+            assertNull(restored.snapshot(id).lastCompletion)
+            assertEquals(root.turnId, restored.snapshot(id).lastTurn?.turnId)
+        }
+    }
+
     @Test fun `proactive preparation survives recreation and idle Stop fences late completion in both orders`() = runBlocking {
         withInventoryDatabase { source, coordinator, json ->
             for (readyFirst in listOf(false, true)) {

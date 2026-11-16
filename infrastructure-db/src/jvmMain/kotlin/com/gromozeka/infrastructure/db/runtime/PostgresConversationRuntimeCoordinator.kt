@@ -1465,6 +1465,7 @@ class PostgresConversationRuntimeCoordinator(
                 commandMonitors = commandMonitors,
                 incidents = scheduling.incidents,
                 lastTurn = scheduling.lastTurn,
+                lastCompletion = scheduling.lastCompletion,
                 retainedTurnProblems = scheduling.retainedTurnProblems,
                 proactiveCompaction = scheduling.proactiveCompaction?.activity(),
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),

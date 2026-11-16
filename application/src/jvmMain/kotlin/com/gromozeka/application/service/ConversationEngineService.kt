@@ -47,6 +47,7 @@ import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
+import com.gromozeka.domain.service.ConversationRuntimeCompletion
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
@@ -244,7 +245,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         requireActorConnected(task, conversation)
-        if (collaboration?.validateMessage(payload.userMessage) == false) return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+        if (collaboration?.validateMessage(payload.userMessage) == false) return ConversationRuntimeTaskOutcome.Cancelled
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
         appendUserMessageWithAutomaticMemory(
             conversationId = conversationId,
@@ -330,7 +331,7 @@ class ConversationEngineService(
                     context.memoryPipelineTools,
                 )
             }
-            return ConversationRuntimeTaskOutcome.CompleteTurn
+            return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.ITERATION_LIMIT)
         }
 
         val beforeModel = emitQueuedRuntimeMessagesAtSafePoint(
@@ -483,7 +484,7 @@ class ConversationEngineService(
                         context.memoryPipelineTools,
                     )
                 }
-                return ConversationRuntimeTaskOutcome.CompleteTurn
+                return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_ERROR, e::class.simpleName)
             }
         } finally {
             clearActiveGeneration(activeGeneration)
@@ -584,17 +585,15 @@ class ConversationEngineService(
             }
         }
         if (outcome.isFailure) {
-            collaboration?.failRequest(payload.rootUserMessageId, "Recipient model response was incomplete or failed")
             val errorMessage = AiConversationMessageMapper.createErrorMessage(
                 conversationId,
                 "Model response ${outcome.name.lowercase()}: ${runtimeResponse.finishReason ?: "unspecified reason"}. No actions were executed.",
             ).copy(id = runtimeMessageId(task.id, "llm-incomplete"))
             if (addRuntimeMessageIfMissing(conversationId, errorMessage)) emitMessage(errorMessage)
-            return ConversationRuntimeTaskOutcome.CompleteTurn
+            return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_RESPONSE_INCOMPLETE)
         }
         if (outcome == AiStepOutcome.REFUSED) {
-            collaboration?.failRequest(payload.rootUserMessageId, "Recipient model refused the request")
-            return ConversationRuntimeTaskOutcome.CompleteTurn
+            return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_REFUSED)
         }
         // A model-only answer has no tool-result step. Do not strand human steering until a new turn.
         // If the model returned tool calls, keep their call/result pairs intact and use the existing tool boundary.
@@ -701,6 +700,15 @@ class ConversationEngineService(
                 promptScope = context.runtimeSystemPrompts)
         }
         return ConversationRuntimeTaskOutcome.CompleteTurn
+    }
+
+    private suspend fun failAgentTurn(
+        rootMessageId: Conversation.Message.Id,
+        reason: ConversationRuntimeCompletion.Reason,
+        errorType: String? = null,
+    ): ConversationRuntimeTaskOutcome.Failed {
+        collaboration?.failRequest(rootMessageId, reason.summary)
+        return ConversationRuntimeTaskOutcome.Failed(reason, errorType)
     }
 
     private suspend fun runResponseReviewStep(

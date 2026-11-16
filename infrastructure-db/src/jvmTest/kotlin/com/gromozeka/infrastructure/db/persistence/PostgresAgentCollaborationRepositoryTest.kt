@@ -119,6 +119,37 @@ class PostgresAgentCollaborationRepositoryTest {
         assertNull(repo.findRequest("r"))
         assertTrue(repo.pendingDeliveries().isEmpty())
     }
+    @Test fun `activation persists without a request and its mode cannot change on retry`() = database { source, repo ->
+        val activation = delivery.copy(requestId = null, kind = AgentDelivery.Kind.ACTIVATION, readOnly = true)
+        repo.create(null, activation)
+        val restored = PostgresAgentCollaborationRepository(source, json)
+        restored.create(null, activation.copy(target = b.copy(threadId = Conversation.Thread.Id("new-thread"))))
+        assertEquals(listOf(activation), restored.pendingDeliveries())
+        assertNull(restored.findRequest(r.id))
+        assertTrue(restored.findDelivery(activation.id)!!.readOnly)
+        assertFailsWith<IllegalArgumentException> { restored.create(null, activation.copy(kind = AgentDelivery.Kind.MESSAGE)) }
+        assertFailsWith<IllegalArgumentException> { restored.create(r, delivery) }
+        assertNull(restored.findRequest(r.id), "A mode conflict must roll back request creation")
+        assertEquals(listOf(activation), restored.pendingDeliveries())
+    }
+
+    @Test fun `stop blocks only pending activations and stale acknowledgement cannot undo it`() = database { _, repo ->
+        val activation = delivery.copy(requestId = null, kind = AgentDelivery.Kind.ACTIVATION)
+        val passive = activation.copy(id = "passive", kind = AgentDelivery.Kind.MESSAGE)
+        val other = activation.copy(id = "other", target = a)
+        val queued = activation.copy(id = "queued", state = AgentDelivery.State.QUEUED)
+        for (message in listOf(activation, passive, other, queued)) repo.create(null, message)
+        assertTrue(repo.blockPendingActivations(b.conversationId, "User stopped"))
+        repo.settleDelivery(activation.copy(state = AgentDelivery.State.QUEUED))
+        val blocked = repo.findDelivery(activation.id)!!
+        assertEquals(AgentDelivery.State.BLOCKED, blocked.state)
+        assertEquals("User stopped", blocked.error)
+        assertEquals(passive, repo.findDelivery(passive.id))
+        assertEquals(other, repo.findDelivery(other.id))
+        assertEquals(queued, repo.findDelivery(queued.id))
+        assertFalse(repo.blockPendingActivations(b.conversationId, "User stopped"))
+    }
+
     private fun database(block: suspend (PGSimpleDataSource, PostgresAgentCollaborationRepository) -> Unit) = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") return@runBlocking
         val schema = "agent_collab_" + UUID.randomUUID().toString().replace("-", "")

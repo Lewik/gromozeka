@@ -289,6 +289,10 @@ sealed interface ConversationRuntimeTaskOutcome {
 
     data object CompleteWithoutNotification : ConversationRuntimeTaskOutcome
 
+    data class Failed(val reason: ConversationRuntimeCompletion.Reason, val errorType: String? = null) : ConversationRuntimeTaskOutcome
+
+    data object Cancelled : ConversationRuntimeTaskOutcome
+
     data class HistoryChanged(
         val kind: ConversationHistoryMutationKind,
     ) : ConversationRuntimeTaskOutcome
@@ -777,6 +781,7 @@ data class ConversationRuntimeSnapshot(
     val proactiveCompaction: ProactiveCompactionActivity? = null,
     val agentRequests: List<com.gromozeka.domain.model.AgentRequest> = emptyList(),
     val lastEventSequence: Long = 0,
+    val lastCompletion: ConversationRuntimeCompletion? = null,
 )
 
 @Serializable
@@ -789,6 +794,7 @@ data class ConversationRuntimeSchedulingSnapshot(
     val pendingTasks: List<ConversationRuntimeTask> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val lastEventSequence: Long = 0,
+    val lastCompletion: ConversationRuntimeCompletion? = null,
 ) {
     fun containsTask(taskId: ConversationRuntimeTask.Id): Boolean =
         activeTask?.id == taskId || activeInsertions.any { it.id == taskId } ||
@@ -902,7 +908,7 @@ interface ConversationRuntimeCoordinator {
         val snapshot = snapshot(conversationId)
         return ConversationRuntimeSchedulingSnapshot(
             conversationId, snapshot.state, snapshot.activeTask, snapshot.activeInsertions,
-            snapshot.continuationTask, snapshot.pendingTasks, snapshot.incidents, snapshot.lastEventSequence,
+            snapshot.continuationTask, snapshot.pendingTasks, snapshot.incidents, snapshot.lastEventSequence, snapshot.lastCompletion,
         )
     }
 

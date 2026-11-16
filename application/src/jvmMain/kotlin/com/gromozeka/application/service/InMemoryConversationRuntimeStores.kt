@@ -813,6 +813,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 incidents = scheduling?.incidents.orEmpty(),
                 trace = traceByConversation[conversationId]?.takeLast(TRACE_SNAPSHOT_LIMIT).orEmpty(),
                 lastTurn = scheduling?.lastTurn,
+                lastCompletion = scheduling?.lastCompletion,
                 retainedTurnProblems = scheduling?.retainedTurnProblems,
                 proactiveCompaction = scheduling?.proactiveCompaction?.activity(),
                 lastEventSequence = eventSequencesByConversation[conversationId] ?: 0L,

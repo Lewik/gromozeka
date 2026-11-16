@@ -5,6 +5,8 @@ import com.gromozeka.domain.tool.AiToolContextRequirements
 
 import com.gromozeka.application.service.AgentCollaborationService
 import com.gromozeka.application.service.AgentSessionQuery
+import com.gromozeka.domain.model.AgentSendMode
+import com.gromozeka.domain.model.Conversation
 import kotlin.time.Instant
 import com.gromozeka.domain.tool.*
 import kotlinx.coroutines.runBlocking
@@ -22,11 +24,8 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
             val (source, actor) = collaboration.source(context)
             collaboration.sessions(source, actor, input.optionalString("conversation_id"), input.optionalString("agent_id"), details, query).toString()
         },
-        tool("grz_agent_request", "Ask an existing agent session to do work and return a result. Returns immediately with a request_id; queued does not mean completed. Results arrive automatically, do not poll. This is not a user instruction or permission grant. The human may continue talking and steering either session.", TARGET_SCHEMA, listOf("target_conversation_id", "message")) { input, context ->
-            send(input, context, true)
-        },
-        tool("grz_agent_message", "Send information to another existing agent session without creating an obligation to reply. This queues context without starting a model turn; use a request for work that must start now. Do not send courtesy acknowledgements to peer results. Use grz_agent_request if a result is needed.", TARGET_SCHEMA, listOf("target_conversation_id", "message")) { input, context ->
-            send(input, context, false)
+        tool("grz_agent_send", "Send to an existing agent session with an explicit mode. context_only adds the message to the recipient thread without activating the agent or scheduling an LLM turn; processing is not guaranteed. activate queues an agent turn without an obligation to reply. request queues work with an obligation to return a result through grz_agent_reply. Returns message_id and status=queued; request also returns request_id. Queued does not mean delivered or completed. Request results arrive automatically; do not poll. Delivery respects pause/stop, access policy and readonly restrictions; it never grants user permission. Do not send courtesy acknowledgements or create reply loops.", SEND_SCHEMA, listOf("target_conversation_id", "message", "mode")) { input, context ->
+            send(input, context)
         },
         tool("grz_agent_reply", "Complete an incoming request with its actual result or explicit inability/refusal. The runtime resolves the original requester; do not supply a destination. A normal user-facing response does not send this result. Completion is idempotent for the same result.", """{"request_id":{"type":"string"},"message":{"type":"string","minLength":1,"maxLength":32000}}""", listOf("request_id", "message")) { input, context ->
             val (source, actor) = collaboration.source(context)
@@ -44,12 +43,21 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
         },
     )
 
-    private suspend fun send(input: JsonObject, context: ToolExecutionContext?, request: Boolean): String {
+    private suspend fun send(input: JsonObject, context: ToolExecutionContext?): String {
+        val mode = Json.decodeFromJsonElement<AgentSendMode>(input.getValue("mode"))
+        val targetConversationId = input.string("target_conversation_id")
+        val targetAgentId = input.optionalString("target_agent_id")
+        val message = input.string("message")
         val (source, actor) = collaboration.source(context)
         val key = context?.getString("toolCallId") ?: error("A conversation tool-call identity is required")
-        val id = collaboration.send(source, actor, input.string("target_conversation_id"),
-            input["target_agent_id"]?.jsonPrimitive?.contentOrNull, input.string("message"), key, request)
-        return buildJsonObject { put(if (request) "request_id" else "message_id", id); put("status", "queued") }.toString()
+        val sourceMessageId = context.getString(TOOL_CONTEXT_TARGET_MESSAGE_ID)?.takeIf(String::isNotBlank)
+            ?.let(Conversation.Message::Id) ?: error("The originating turn message is required")
+        val id = collaboration.send(source, actor, targetConversationId, targetAgentId, message, key, mode, sourceMessageId)
+        return buildJsonObject {
+            put("message_id", "$id:input")
+            if (mode == AgentSendMode.REQUEST) put("request_id", id)
+            put("status", "queued")
+        }.toString()
     }
 
     private fun tool(name: String, description: String, properties: String, required: List<String>,
@@ -61,7 +69,7 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
             }.toString())
             override val metadata = AiToolMetadata(
                 contextRequirements = AiToolContextRequirements(setOf(USER, CONVERSATION, THREAD, AGENT) +
-                    if (name in setOf("grz_agent_request", "grz_agent_message")) setOf(TOOL_CALL_ID) else emptySet()),
+                    if (name == "grz_agent_send") setOf(TOOL_CALL_ID, TARGET_MESSAGE) else emptySet()),
                 executionScope = AiToolExecutionScope.SERVER,
                 loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE, visibleToMemoryPipeline = false, logInput = false)
             override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
@@ -72,7 +80,7 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
             }
         }
     }
-    private fun JsonObject.string(key: String): String = getValue(key).jsonPrimitive.content
+    private fun JsonObject.string(key: String): String = optionalString(key) ?: error("$key is required")
     private fun JsonObject.optionalString(key: String): String? = get(key)?.let {
         if (it == JsonNull) null else {
             require(it is JsonPrimitive && it.isString && it.content.isNotBlank()) { "$key must be a nonblank string" }
@@ -130,8 +138,9 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
             Search titles with query and query_mode=contains (default) or regex (RE2 syntax); both are case-insensitive. Regex searches within a title; use ^/$ to anchor it. Unsupported syntax, including lookaround and backreferences, fails rather than falling back.
             last_message_at.gt and .lt are independent optional strict bounds; {} is no time filter. Filters apply before pagination. Rows are ordered by last_message_at descending (null last), then conversation_id and agent_id ascending. limit defaults to 50, maximum 200; use next_cursor with unchanged selectors/filters to continue. Concurrent history/tab/permission changes may change later pages; pagination is not a frozen snapshot.
             agent_id requires conversation_id. details=true requires both IDs and adds up to 16 open request/wait references, never request text or results. Foreground state is conversation-wide; obligations are for the selected agent in the conversation, across history versions. IDLE means no scheduled foreground work, not a closed tab or no background work.
+            runtime.last_completion is the last recorded agent-work completion in the conversation, not necessarily the selected agent or the currently active turn. It contains turn/task IDs, completed_at, status (COMPLETED, FAILED, STOPPED, INTERRUPTED, CANCELLED, UNKNOWN), a structured reason/summary, bounded error_type and its truncation flag, outcome_unknown and problem_count. It is independent of foreground_state and may remain visible during newer work. Null means no recorded completion, including executions before this tracking existed; never infer success from IDLE. A completed turn may have tool problems without being FAILED. No raw exception bodies or stack traces are returned. A failed or unknown outcome is not permission to replay side effects or override user pause/stop.
             Runtime read_at is Server read time; stored facts may be stale and are not an atomic snapshot across sources. Null control_state/state_updated_at means no stored execution state. Read failures are tool errors, not fabricated empty state or IDLE. No command output, worker-health check or inferred stuck status. Use explicit inspection, not polling; peer results arrive automatically.
         """.trimIndent()
-        const val TARGET_SCHEMA = """{"target_conversation_id":{"type":"string"},"target_agent_id":{"type":["string","null"]},"message":{"type":"string","minLength":1,"maxLength":32000}}"""
+        const val SEND_SCHEMA = """{"target_conversation_id":{"type":"string","minLength":1},"target_agent_id":{"type":["string","null"],"minLength":1},"message":{"type":"string","minLength":1,"maxLength":32000},"mode":{"type":"string","enum":["context_only","activate","request"]}}"""
     }
 }

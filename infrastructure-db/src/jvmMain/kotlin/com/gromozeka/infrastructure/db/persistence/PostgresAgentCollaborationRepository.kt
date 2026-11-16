@@ -85,6 +85,12 @@ class PostgresAgentCollaborationRepository(private val dataSource: DataSource, p
     override suspend fun settleDelivery(delivery: AgentDelivery) = transaction { c ->
         c.execute("UPDATE agent_deliveries SET state = ?, record_json = ?::jsonb WHERE id = ? AND state = 'PENDING'", delivery.state.name, json.encodeToString(delivery), delivery.id); Unit
     }
+    override suspend fun blockPendingActivations(conversationId: Conversation.Id, reason: String): Boolean = transaction { c ->
+        c.execute("""UPDATE agent_deliveries SET state = 'BLOCKED',
+            record_json = record_json || jsonb_build_object('state', 'BLOCKED', 'error', ?::text)
+            WHERE target_conversation_id = ? AND state = 'PENDING' AND record_json ->> 'kind' = 'ACTIVATION'""",
+            reason, conversationId.value) > 0
+    }
     override suspend fun saveDraft(draft: AgentResponseDraft) = transaction { c ->
         c.execute("INSERT INTO agent_response_drafts(id, conversation_id, record_json) VALUES (?, ?, ?::jsonb) ON CONFLICT (id) DO NOTHING", draft.id, draft.endpoint.conversationId.value, json.encodeToString(draft)); Unit
     }

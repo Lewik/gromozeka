@@ -21,6 +21,7 @@ data class ConversationRuntimeSchedulingState(
     val lastTurn: ConversationRuntimeTurnSummary? = null,
     val retainedTurnProblems: ConversationRuntimeTurnSummary? = null,
     val proactiveCompaction: ProactiveCompaction? = null,
+    val lastCompletion: ConversationRuntimeCompletion? = null,
 ) {
     init {
         require(executionState == null || executionState.conversationId == conversationId) {
@@ -420,6 +421,16 @@ data class ConversationRuntimeSchedulingState(
                 lastTurn = if (lastTurn?.turnId == currentTask.turnId) {
                     lastTurn.finishTask(taskId, now, terminal || outcome !is ConversationRuntimeTaskOutcome.Continue)
                 } else lastTurn,
+                lastCompletion = when {
+                    terminal -> completedAgentWork(currentTask, now, checkNotNull(terminalStatus(completedControlState)))
+                    outcome is ConversationRuntimeTaskOutcome.Failed -> completedAgentWork(currentTask, now,
+                        ConversationRuntimeCompletion.Status.FAILED, outcome.reason, outcome.errorType)
+                    outcome == ConversationRuntimeTaskOutcome.Cancelled -> completedAgentWork(currentTask, now,
+                        ConversationRuntimeCompletion.Status.CANCELLED, ConversationRuntimeCompletion.Reason.COLLABORATION_CANCELLED)
+                    outcome !is ConversationRuntimeTaskOutcome.Continue -> completedAgentWork(currentTask, now,
+                        ConversationRuntimeCompletion.Status.COMPLETED)
+                    else -> lastCompletion
+                },
                 retainedTurnProblems = if (!terminal && outcome == ConversationRuntimeTaskOutcome.CompleteTurn &&
                     currentTask.isAgentWork() && lastTurn?.turnId == currentTask.turnId && lastTurn.problems.isEmpty())
                     null else retainedTurnProblems,
@@ -459,6 +470,11 @@ data class ConversationRuntimeSchedulingState(
         )
         val terminal = currentState.controlState == ConversationExecutionState.ControlState.STOPPING ||
             currentState.controlState == ConversationExecutionState.ControlState.INTERRUPTING
+        val completion = completedAgentWork(currentTask, occurredAt,
+            terminalStatus(currentState.controlState) ?: ConversationRuntimeCompletion.Status.FAILED,
+            if (kind == ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN) ConversationRuntimeCompletion.Reason.EXECUTION_OUTCOME_UNKNOWN
+            else ConversationRuntimeCompletion.Reason.DELIVERY_FAILED,
+            errorType, kind == ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN)
         if (terminal) {
             val preservedPendingTasks = (
                 activeInsertions.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +
@@ -484,6 +500,7 @@ data class ConversationRuntimeSchedulingState(
                     pendingTasks = preservedPendingTasks,
                     incidents = incidents + incident,
                     lastTurn = if (lastTurn?.turnId == currentTask.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
+                    lastCompletion = completion,
                     completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
                 ),
                 incident,
@@ -520,6 +537,7 @@ data class ConversationRuntimeSchedulingState(
                 pendingTasks = nextPendingTasks,
                 incidents = incidents + incident,
                 lastTurn = if (lastTurn?.turnId == currentTask.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
+                lastCompletion = completion,
                 completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
             ),
             incident,
@@ -560,6 +578,8 @@ data class ConversationRuntimeSchedulingState(
                 pendingTasks = nextPendingTasks,
                 incidents = incidents + incident,
                 lastTurn = if (lastTurn?.turnId == task.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
+                lastCompletion = completedAgentWork(task, occurredAt, ConversationRuntimeCompletion.Status.FAILED,
+                    ConversationRuntimeCompletion.Reason.DELIVERY_FAILED, errorType),
                 completedIdempotencyKeys = completedIdempotencyKeys + task.idempotencyKey,
             ),
             incident,
@@ -719,6 +739,8 @@ data class ConversationRuntimeSchedulingState(
                     pendingTasks = preservedPendingTasks,
                     pendingTurnTerminationInstructions = nextPendingTurnTerminationInstructions,
                     lastTurn = if (lastTurn?.turnId == continuationTask?.turnId) lastTurn?.copy(completedAt = now) else lastTurn,
+                    lastCompletion = continuationTask?.let { completedAgentWork(it, now, checkNotNull(terminalStatus(effectiveControlState))) }
+                        ?: lastCompletion,
                 ),
                 true,
             )
@@ -768,6 +790,12 @@ data class ConversationRuntimeSchedulingState(
                 lastTurn = if (lastTurn?.turnId == (interruptedTask ?: continuationTask)?.turnId) {
                     lastTurn?.finishTask(checkNotNull(interruptedTask ?: continuationTask).id, now, true)
                 } else lastTurn,
+                lastCompletion = (interruptedTask ?: continuationTask)?.let {
+                    val status = terminalStatus(executionState?.controlState)
+                    completedAgentWork(it, now, status ?: ConversationRuntimeCompletion.Status.UNKNOWN,
+                        if (status == null) ConversationRuntimeCompletion.Reason.ABORTED else null,
+                        outcomeUnknown = executionState?.activeTaskStartedAt != null)
+                } ?: lastCompletion,
                 completedIdempotencyKeys = interruptedTask?.let {
                     completedIdempotencyKeys + it.idempotencyKey
                 } ?: completedIdempotencyKeys,
@@ -876,6 +904,26 @@ data class ConversationRuntimeSchedulingState(
 
     fun findIncident(taskId: ConversationRuntimeTask.Id): ConversationRuntimeTaskIncident? =
         incidents.lastOrNull { it.task.id == taskId }
+
+    private fun terminalStatus(control: ConversationExecutionState.ControlState?): ConversationRuntimeCompletion.Status? = when (control) {
+        ConversationExecutionState.ControlState.STOPPING -> ConversationRuntimeCompletion.Status.STOPPED
+        ConversationExecutionState.ControlState.INTERRUPTING -> ConversationRuntimeCompletion.Status.INTERRUPTED
+        else -> null
+    }
+
+    private fun completedAgentWork(
+        task: ConversationRuntimeTask,
+        at: Instant,
+        status: ConversationRuntimeCompletion.Status,
+        reason: ConversationRuntimeCompletion.Reason? = null,
+        errorType: String? = null,
+        outcomeUnknown: Boolean = false,
+    ): ConversationRuntimeCompletion? {
+        if (!task.isAgentWork()) return lastCompletion
+        val problems = lastTurn?.takeIf { it.turnId == task.turnId }?.problems.orEmpty()
+        return ConversationRuntimeCompletion(task.turnId, task.id, at, status, reason, errorType,
+            outcomeUnknown || problems.any { it.outcomeUnknown }, problems.size)
+    }
 
     private fun idleRunningState(now: Instant): ConversationExecutionState =
         ConversationExecutionState(

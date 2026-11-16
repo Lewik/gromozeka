@@ -789,9 +789,24 @@ Enable only on an isolated Server with `GROMOZEKA_COLLABORATION_ENABLED=true`.
 The default is off. Open two conversations in one project with identical tool
 access policies and name them. Agents may use different AI connections, providers,
 models and preloaded tool lists; each session uses its own configured runtime.
-`grz_agent_sessions` discovers eligible endpoints; `grz_agent_request` submits
-work without waiting; `grz_agent_reply` completes a request. `grz_agent_message`
-is context-only and does not start a model turn. Results are queued automatically.
+`grz_agent_sessions` discovers eligible endpoints. `grz_agent_send` requires an
+explicit `mode` (there is no default):
+
+- `context_only` adds the message to the recipient thread without activating the
+  agent or scheduling an LLM turn. Processing is not guaranteed.
+- `activate` queues a turn for the addressed agent without creating an obligation
+  to reply to the sender.
+- `request` queues work and creates an obligation completed by `grz_agent_reply`.
+
+Every send returns `message_id` and `status=queued`; only `request` also returns
+`request_id`. Queued does not mean delivered or completed. Request results are
+queued automatically. Delivery stays behind existing work and revalidates access
+before execution. User Stop/Interrupt blocks undelivered activations even when no
+request or foreground task exists; a racing submit is rejected by invocation-time
+validation. Already queued work follows the ordinary Runtime pause/stop controls.
+Retries of the same tool call preserve
+one delivery; changing the mode with the same identity is an explicit conflict.
+Only the unified send tool is registered; removed send-tool names have no aliases.
 Discovery returns a display-only `title` (`New conversation` for blank stored titles),
 `stored_title`, and `title_is_fallback`. The fallback corresponds to the UI's
 `common.newConversation` label; tools use its stable English form. `agent_name`
@@ -822,20 +837,24 @@ tool access policies. Telegram and other externally bound
 conversations keep their ordinary turn lifecycle: no collaboration prompt or response
 review, and collaboration tools are hidden from both the catalog and tool discovery.
 Direct collaboration calls from those channels remain rejected.
-Completed peer results are not human TTS. Read-only delegation constraints are copied into the recipient context;
-ordinary tool execution still uses the existing approval/policy mechanisms.
+Completed peer results are not human TTS. Read-only constraints are copied into
+requested turns, obligation-free activations, and returned results. The trusted
+originating message ID in tool context propagates those constraints through further
+sends, even when no parent request remains open. Ordinary tool execution still uses the
+existing approval/policy mechanisms; peer messages never grant user permission.
 The experiment does not enable external protocols, create agents, or move
 workspace files between sessions. Do not enable it in production yet.
 
 ### Read-only A2A session inspection
 
-`grz_agent_sessions` keeps its JSON-array result and accepts optional
-`conversation_id`, `agent_id`, and `details` (default false). Without a selector it
-returns at most 200 eligible session rows from the existing first-200-conversation
-scan. An explicit conversation selector bypasses that scan, not authorization;
+`grz_agent_sessions` returns `{sessions:[...],next_cursor:string|null}` with
+optional conversation/agent selectors, `details`, saved-open-tab filtering, title
+search (literal or RE2), strict last-message time bounds, and keyset pagination.
+`limit` defaults to 50 and is capped at 200; filters apply before pagination.
+`open_only` defaults to true; explicitly set false to inspect a closed tab.
 `agent_id` requires `conversation_id`, and `details=true` requires both IDs.
 Missing conversation IDs, unmatched agents, ineligible and current-conversation
-selections return an empty array.
+selections return an empty page. An explicit selector never bypasses authorization.
 The project/user/tool-policy checks and exclusion of external channels are unchanged.
 
 Each row adds `thread_id` and a compact `runtime` object. Foreground facts describe
@@ -845,7 +864,23 @@ Each row adds `thread_id` and a compact `runtime` object. Foreground facts descr
 payload class name; task bodies/arguments and other agents' identities are omitted.
 Queue count, continuation presence, active insertion count and last event sequence
 come from the same scheduling read. `IDLE` only means no observed scheduled foreground
-work: background commands/monitors, slots and failures are not queried by this view.
+work: it does not prove success, liveness, or absence of background commands/monitors.
+
+`last_completion` is the last recorded terminal fact for agent work in the
+conversation, not necessarily for the selected agent or the currently active turn.
+It survives newer work and passive context delivery. Its status is `COMPLETED`,
+`FAILED`, `STOPPED`, `INTERRUPTED`, `CANCELLED`, or `UNKNOWN`, with turn/task IDs,
+completion time, a structured reason and summary, a bounded `error_type` and its
+truncation flag, `outcome_unknown`, and `problem_count`. Raw exception bodies,
+stack traces, model input and command output are not exposed. A completed turn can
+still have tool problems; these do not classify the entire turn as failed.
+
+The completion fact is persisted by the same scheduling transitions as the task
+termination. Historical records without this fact remain null/unknown; neither
+IDLE nor old completion timestamps are used to invent an outcome. Existing
+requests, deliveries and history are retained without data rewrites or tool aliases.
+A failed/unknown outcome is not permission to replay effects or override a human
+pause/stop; inspection never schedules recovery itself.
 
 `agent_requests` describes open obligations for the authenticated user and selected
 agent in the conversation, across history versions: incoming/outgoing counts and incoming `WAITING_USER` /
