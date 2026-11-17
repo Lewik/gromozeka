@@ -750,7 +750,54 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
     }
 
-    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false, realBackground: Boolean = false) {
+    @Test fun `running command observations reach ordinary requests without changing history or acknowledgement`() = runBlocking {
+        val f = Fixture(withCommandContext = true)
+        val running = f.begin()
+        val root = f.messages.single()
+        val command = CommandTask(CommandTask.Id("background"), conversation.id, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
+            agentDefinitionId = agentId, command = "PRIVATE_COMMAND", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
+            processId = 1, processStartedAt = now, outputFile = "/tmp/background", outputBytes = 0,
+            createdAt = now, updatedAt = now, completionNotificationRequestedAt = now, description = "Analyze data")
+        f.coordinator.upsertCommandTask(command)
+        val outcome = f.engine.runRuntimeTask(running, executor) { f.emitted += it }
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
+        assertEquals(JsonArray(listOf(buildJsonObject { put("task_id", "background"); put("description", "Analyze data") })), recordedCommands(f.requests.single()))
+        assertEquals(1, f.requests.single().systemPrompts.count { it == RecordedRunningCommandsRequestEnricher.INSTRUCTION })
+        assertFalse(f.requests.single().toString().contains("PRIVATE_COMMAND"))
+        assertEquals(root, f.messages.single { it.id == root.id })
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
+        f.coordinator.upsertCommandTask(command.copy(status = CommandTask.Status.COMPLETED, completedAt = now, updatedAt = now))
+        assertTrue(f.coordinator.submit(input("next")))
+        f.drain()
+        assertEquals(2, f.requests.size)
+        assertTrue(recordedCommands(f.requests.last()).isEmpty())
+        assertNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        assertEquals(0, f.toolEffects)
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    @Test fun `command observations preserve automatic batched completion and its one model continuation`() = runBlocking {
+        val f = Fixture(realBackground = true, withCommandContext = true)
+        f.queueCommandCompletion("successful")
+        f.queueCommandCompletion("failed", CommandTask.Status.FAILED)
+        f.drain()
+        val request = f.requests.single()
+        assertTrue(recordedCommands(request).isEmpty())
+        for (id in listOf("successful", "failed")) {
+            assertEquals(2, request.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(id) })
+            assertNotNull(f.coordinator.findCommandTask(conversation.id, CommandTask.Id(id))?.completionNotificationDeliveredAt)
+        }
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    private fun recordedCommands(request: AiRuntimeRequest): JsonArray = (request.messages.flatMap { it.instructions }
+        .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().map { it.text } + request.systemPrompts)
+        .last { it.startsWith("<runtime-command-context>") }
+        .substringAfter("<runtime-command-context>").substringBefore("</runtime-command-context>")
+        .let { Json.parseToJsonElement(it).jsonObject.getValue("recorded_running_commands").jsonArray }
+
+    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
+        realBackground: Boolean = false, withCommandContext: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -929,11 +976,14 @@ class ConversationEngineDeliveryTest {
                 } }, ConversationPinnedPrompt(pins), responding { agent.runtimeSelection },
             ),
             conversationPins = ConversationPinnedPrompt(pins),
-            requestEnrichers = if (withEnricher) listOf(object : ConversationRequestEnricher {
-                override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
-                    turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
-                    request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
-            }) else emptyList(),
+            requestEnrichers = buildList {
+                if (withEnricher) add(object : ConversationRequestEnricher {
+                    override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+                        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+                        request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
+                })
+                if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
+            },
             collaboration = collaboration.takeIf { enableReview },
             responseReview = if (enableReview) AgentResponseReviewService(collaboration, reviewRepository, coordinator, ConversationPinnedPrompt(pins), mock()) else null,
         )

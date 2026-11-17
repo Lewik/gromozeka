@@ -1660,6 +1660,29 @@ arriving during delivery can join the next safe point too.
 Worker Gateway protocol **31** includes this notification contract; update Server,
 Workers and clients together.
 
+Model requests also receive a request-only `recorded_running_commands` inventory
+from the Server's saved command state. Each entry contains only `task_id` and an
+optional nonblank `description`, limited to 160 Unicode code points. Missing
+labels never fall back to the shell command. Only recorded `WORKING` commands in
+the authorized conversation are included; an empty list replaces a previous list.
+This is not a Worker liveness check, does not enumerate detached external services,
+and does not request action or status polling. It does not wake the model, append
+history, or acknowledge automatic completion delivery.
+
+The shared system-prompt assembler supplies the static interpretation contract.
+Dynamic blocks contain only JSON in `<runtime-command-context>`. Observations use
+the distinct request-only `Instruction.RuntimeObservation` type, not user text;
+semantic consumers such as pending WebSearch and recent human-input selection do
+not mistake them for a new human turn. Authenticated submissions reject this type.
+Bounded replay keeps observations on retained canonical USER anchors without
+synthetic message IDs. Branch, actor, Agent and provider/model changes isolate
+replay. Native continuations ending in signed assistant state, and changed views
+on an already-sent USER anchor, receive the current block in system instructions
+without rewriting that anchor; the current block takes precedence over older
+observations. Isolated snapshots never seed or mutate the live observation cache.
+Worker Gateway protocol **32** carries the new instruction variant; update Server
+and Workers together.
+
 Managed shell commands accept an optional `description`: a short user-facing
 purpose in the user's language, preferably **at most 50 characters including
 spaces**. This is prompt guidance, not an acceptance limit: longer labels remain
