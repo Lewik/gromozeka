@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.AgentContextRef
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -71,13 +72,14 @@ internal fun assembleConversationSystemPrompts(
     skills: String?,
     responseFormat: AiModelConfiguration.AssistantResponseFormat,
     includeSuggestedReplies: Boolean,
+    inlineSuggestedRepliesPrompt: String = UserProfile.SuggestedRepliesSettings.DEFAULT_PROMPT,
 ): List<String> = buildList {
     addAll(base)
     add(currentAgentRuntimePrompt(agent))
     capabilityCatalog?.let(::add)
     add(environment)
     skills?.let(::add)
-    AssistantResponseFormatContract.instruction(responseFormat, includeSuggestedReplies)?.let(::add)
+    AssistantResponseFormatContract.instruction(responseFormat, includeSuggestedReplies, inlineSuggestedRepliesPrompt)?.let(::add)
 }
 
 private fun currentAgentRuntimePrompt(agent: AgentDefinition): String {

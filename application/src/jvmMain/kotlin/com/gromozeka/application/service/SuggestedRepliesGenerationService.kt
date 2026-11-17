@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserProfile.SuggestedRepliesSettings
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -31,6 +32,7 @@ class SuggestedRepliesGenerationService(
         runtimeSelection: AiRuntimeSelection,
         actorUserId: User.Id?,
         usageId: String,
+        settings: SuggestedRepliesSettings,
     ): List<String> {
         val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null)
         val requestMessage = Conversation.Message(
@@ -39,7 +41,7 @@ class SuggestedRepliesGenerationService(
             role = Conversation.Message.Role.USER,
             content = listOf(
                 Conversation.Message.ContentItem.UserMessage(
-                    buildSuggestionPrompt(messages),
+                    buildSuggestionPrompt(messages, settings),
                 )
             ),
             createdAt = Clock.System.now(),
@@ -75,27 +77,27 @@ class SuggestedRepliesGenerationService(
         return suggestions
     }
 
-    private fun buildSuggestionPrompt(messages: List<Conversation.Message>): String {
+    private fun buildSuggestionPrompt(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): String {
+        val fullThread = settings.contextMode == SuggestedRepliesSettings.ContextMode.FULL_THREAD
         val context = messages.asSequence()
             .filter { it.role == Conversation.Message.Role.USER || it.role == Conversation.Message.Role.ASSISTANT }
             .mapNotNull { message ->
                 message.visibleText().takeIf(String::isNotBlank)?.let { text ->
-                    "${message.role.name}: ${text.take(MAX_MESSAGE_CHARACTERS)}"
+                    "${message.role.name}: ${if (fullThread) text else text.take(MAX_MESSAGE_CHARACTERS)}"
                 }
             }
             .toList()
-            .takeLast(MAX_CONTEXT_MESSAGES)
+            .let { if (fullThread) it else it.takeLast(MAX_CONTEXT_MESSAGES) }
             .joinToString("\n\n")
-        return """
-            Conversation context:
-            <conversation>
-            $context
-            </conversation>
-
-            Generate zero to four concise replies that the user might naturally send next.
-            Preserve the user's language. Do not answer the assistant and do not explain your choices.
-            Return only <suggested_replies><reply>First reply</reply></suggested_replies>.
-        """.trimIndent()
+        return buildString {
+            appendLine("Conversation context:")
+            appendLine("<conversation>")
+            appendLine(context)
+            appendLine("</conversation>")
+            appendLine()
+            appendLine(settings.separatePrompt)
+            append("Return only <suggested_replies><reply>First reply</reply></suggested_replies>.")
+        }
     }
 
     private fun Conversation.Message.visibleText(): String = content.mapNotNull { item ->

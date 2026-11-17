@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import kotlinx.serialization.json.buildJsonObject
@@ -29,9 +30,11 @@ internal object AssistantResponseFormatContract {
     fun instruction(
         format: AiModelConfiguration.AssistantResponseFormat,
         includeSuggestedReplies: Boolean = true,
+        inlinePrompt: String = UserProfile.SuggestedRepliesSettings.DEFAULT_PROMPT,
     ): String? {
+        require(inlinePrompt.isNotBlank()) { "Inline suggested replies prompt must not be blank" }
         val suggestedRepliesInstruction = if (includeSuggestedReplies) {
-            "suggestedReplies: zero to four concise replies the user might naturally send next. Keep it empty during tool use or when no obvious choices would help."
+            "suggestedReplies: $inlinePrompt"
         } else {
             ""
         }
@@ -54,20 +57,20 @@ internal object AssistantResponseFormatContract {
                   ${if (includeSuggestedReplies) "<suggested_replies><reply>First optional user reply</reply><reply>Second optional user reply</reply></suggested_replies>" else ""}
                 </response>
                 Request attention only for a needed answer, decision, action, important result, or failure. Use false for ordinary progress, background work, monitor setup, and routine completion.
-                ${if (includeSuggestedReplies) "Include zero to four concise replies the user might naturally send next. Keep suggested_replies empty during tool use or when no obvious choices would help." else ""}
+                ${if (includeSuggestedReplies) "suggested_replies: $inlinePrompt" else ""}
             """.trimIndent()
 
             AiModelConfiguration.AssistantResponseFormat.XML_INLINE -> """
                 Write the visible answer normally. Wrap only the short speakable voice part in inline <tts tone="short English voice style">...</tts> tags.
                 If nothing should be spoken, omit <tts> tags.
                 Add <attention/> anywhere when the user should look now to answer, decide, act, or notice an important result or failure. Omit it for ordinary progress, background work, monitor setup, and routine completion. The marker is removed before display.
-                ${if (includeSuggestedReplies) "At the end, optionally add <suggested_replies><reply>First user reply</reply><reply>Second user reply</reply></suggested_replies>. Include zero to four concise replies the user might naturally send next. Omit the block during tool use or when no obvious choices would help. The block is removed before display." else ""}
+                ${if (includeSuggestedReplies) "At the end, optionally add <suggested_replies><reply>First user reply</reply><reply>Second user reply</reply></suggested_replies>. The block is removed before display.\nsuggested_replies: $inlinePrompt" else ""}
             """.trimIndent()
 
             AiModelConfiguration.AssistantResponseFormat.TEXT -> """
                 Write the visible answer normally.
                 Add <attention/> anywhere when the user should look now to answer, decide, act, or notice an important result or failure. Omit it for ordinary progress, background work, monitor setup, and routine completion. The marker is removed before display.
-                ${if (includeSuggestedReplies) "At the end, optionally add <suggested_replies><reply>First user reply</reply><reply>Second user reply</reply></suggested_replies>. Include zero to four concise replies the user might naturally send next. Omit the block during tool use or when no obvious choices would help. The block is removed before display." else ""}
+                ${if (includeSuggestedReplies) "At the end, optionally add <suggested_replies><reply>First user reply</reply><reply>Second user reply</reply></suggested_replies>. The block is removed before display.\nsuggested_replies: $inlinePrompt" else ""}
             """.trimIndent()
         }
         val copyableBlockInstruction = """
@@ -103,7 +106,7 @@ internal object AssistantResponseFormatContract {
             if (includeSuggestedReplies) {
                 putJsonObject("suggestedReplies") {
                     put("type", "array")
-                    put("description", "Zero to four concise replies the user might naturally send next. Empty during tool use or when no obvious choices would help.")
+                    put("description", "Suggested next messages for the user.")
                     putJsonObject("items") {
                         put("type", "string")
                     }

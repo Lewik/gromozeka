@@ -137,7 +137,8 @@ class ConversationPinnedPromptTest {
         val message = Conversation.Message(Conversation.Message.Id("message"), owner, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Answer"))), createdAt = now)
         assertEquals(listOf("Next"), service.generate(conversation, listOf(message), message, agent,
-            AiRuntimeSelection(AiModelConfiguration.Id("model")), User.Id("user"), "suggestions"))
+            AiRuntimeSelection(AiModelConfiguration.Id("model")), User.Id("user"), "suggestions",
+            com.gromozeka.domain.model.UserProfile.SuggestedRepliesSettings()))
         assertEquals(listOf(owner), pins.reads)
         assertTrue(seen.single().systemPrompts.last().contains("SUGGESTION_PIN"))
         assertEquals(AiToolChoice.None, seen.single().options.toolChoice)
