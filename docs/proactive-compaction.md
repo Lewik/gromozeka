@@ -46,25 +46,37 @@ at least two source messages and never calls a model.
 
 ## Preparation and application
 
-After a completed, user-visible answer, the Runtime may start one preparation for
-the conversation. Intermediate tool steps, failed/refused answers, and unpublished
-response-review drafts do not start it. The trigger reuses ordinary-response
-measurements when applicable and otherwise uses the local estimate; it does not
-add a count API call after each answer. Foreground blocking checks retain the
-configured counting policy.
+After a successful ordinary model response has been persisted, the Runtime may
+start one preparation for the conversation, including tool-use and continuation
+responses. It does not wait for a final, user-visible answer. Failed/refused
+responses and unpublished response-review drafts do not start preparation; the
+review path reaches this boundary after accepting and storing its output.
+The trigger reuses ordinary-response measurements when applicable and otherwise
+uses the local estimate; it does not add a count API call after each response.
+Foreground blocking checks retain the configured counting policy.
 
 Preparation captures an immutable prefix and its retained suffix. It runs under
 ordinary model admission and quota policies, with no special priority or reserved
-capacity. It can consume the last available model slot. The intended benefit is
-using the time while the human reads the answer, not a guarantee of zero waiting.
+capacity. It can consume the last available model slot. Preparation can overlap
+foreground work or idle reading time; it does not guarantee zero waiting.
 
-A result is not applied by the background coroutine. It is stored as READY and
-consumed at the next safe model-request boundary by the normal Conversation
-Runtime owner. New messages appended after capture are preserved. Input edits,
-thread changes, Agent/configuration/pin changes and access revocation prevent
-stale application. Credentials are not stored in preparation receipts; scope
-fingerprints are hashes, and public Runtime snapshots expose status, not prepared
-content.
+A result is not applied by the background coroutine. Publishing READY atomically
+queues a Server-owned application task with no AI capability requirement. While
+foreground work is active, the ordinary model-response boundary applies an
+already-ready result after persisting the response and before choosing tools,
+continuation or completion. Applying does not depend on another model request.
+A result arriving after that check remains queued; when the foreground is idle,
+the same serialized Runtime claim mechanism applies it without invoking an agent.
+The maintenance task does not replace the recorded completion of agent work.
+
+Application removes its queued maintenance work atomically with the checkpoint
+and APPLIED receipt. New messages appended after capture are preserved. Input
+edits, thread changes, Agent/configuration/pin changes and access revocation
+prevent stale application. No synthetic user continuation is written or emitted.
+One-use revealed secrets remain request-only input even if their original user
+anchor is covered; archived user text is not restored to deliver them. Credentials
+are not stored in preparation receipts; scope fingerprints are hashes, and public
+Runtime snapshots expose status, not prepared content.
 
 At the blocking threshold, a running preparation is awaited rather than duplicated.
 A confirmed preparation failure allows the ordinary blocking compact of the

@@ -89,11 +89,17 @@ data class ConversationRuntimeSchedulingState(
             "Compaction completion cannot change the captured input or owner"
         }
         if (proactiveCompaction != expected) return unchanged(false)
-        if (!expected.pending && !(expected.status == ProactiveCompaction.Status.FAILED && updated.status == ProactiveCompaction.Status.DISCARDED)) {
+        if (!expected.pending && !(expected.status == ProactiveCompaction.Status.FAILED && updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED))) {
             return unchanged(expected == updated)
         }
         require(updated.status != ProactiveCompaction.Status.RUNNING || updated == expected)
-        return changed(copy(proactiveCompaction = updated), true)
+        val application = updated.applicationTask()
+        val pending = pendingTasks.filterNot { it.id == application.id }
+        return changed(copy(
+            proactiveCompaction = updated,
+            executionState = if (updated.status == ProactiveCompaction.Status.READY) executionState ?: idleRunningState(updated.updatedAt) else executionState,
+            pendingTasks = if (updated.status == ProactiveCompaction.Status.READY) listOf(application) + pending else pending,
+        ), true)
     }
 
     fun submit(
@@ -718,7 +724,7 @@ data class ConversationRuntimeSchedulingState(
         }
         val prepared = proactiveCompaction
         if (prepared?.cancellable == true && (expectedTurnId == null || prepared.sourceTurnId == expectedTurnId)) {
-            val cancelled = copy(proactiveCompaction = prepared.cancel(now))
+            val cancelled = updateProactiveCompaction(prepared, prepared.cancel(now)).state
             val transition = cancelled.requestTerminalState(controlState, now, expectedTurnId)
             return changed(transition.state, true)
         }
@@ -742,7 +748,7 @@ data class ConversationRuntimeSchedulingState(
         } else {
             ConversationExecutionState.ControlState.STOPPING
         }
-        val currentTurnInstruction = (activeTask ?: continuationTask)?.let { currentTask ->
+        val currentTurnInstruction = (activeTask ?: continuationTask)?.takeUnless { it.payload is ConversationRuntimeTask.Payload.ApplyPreparedCompaction }?.let { currentTask ->
             Conversation.Message.Instruction.PreviousTurnTerminated(
                 turnId = currentTask.turnId.value,
                 reason = when (effectiveControlState) {

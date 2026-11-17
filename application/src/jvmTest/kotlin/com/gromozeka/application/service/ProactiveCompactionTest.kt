@@ -24,8 +24,8 @@ class ProactiveCompactionTest {
             assertContains(f.summaryRequests.single().messages.single().content.filterIsInstance<ContentItem.UserMessage>().single().text, "OLD_WORK")
             assertFalse(f.summaryRequests.single().toString().contains("RAW_TAIL"))
             f.messages = f.messages + f.message("new", "New user instruction")
-            f.finishTurn(); f.startTurn("next")
-            assertNotNull(f.apply())
+            f.finishTurn(); f.startApplication()
+            assertNotNull(f.applyReady())
             val active = ConversationContext(f.messages).messages()
             assertEquals(listOf("handoff", "RAW_TAIL" + "t".repeat(80_000), "New user instruction"), active.map { item ->
                 when (val content = item.content.single()) {
@@ -35,7 +35,7 @@ class ProactiveCompactionTest {
                 }
             })
             assertEquals(ProactiveCompaction.Status.APPLIED, f.preparation().status)
-            assertNull(f.apply())
+            assertNull(f.applyReady())
             assertEquals(1, f.generations)
             assertEquals(1, f.commits)
         }
@@ -227,6 +227,53 @@ class ProactiveCompactionTest {
         }
     }
 
+    @Test fun `preparation finishing after the agent becomes idle schedules application without AI capability or counting`() = runBlocking {
+        Fixture().use { f ->
+            val started = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
+            f.generate = { started.complete(Unit); release.await(); "handoff" }
+            f.startTurn(); f.prepare(); started.await(); f.finishTurn()
+            val finishedAgent = f.coordinator.snapshot(f.conversation.id).lastCompletion
+            assertTrue(f.coordinator.listReadyWorkItems(10).isEmpty())
+            release.complete(Unit); yield()
+            val preparation = f.preparation()
+            val work = f.coordinator.listReadyWorkItems(10).single()
+            assertEquals(preparation.applicationTask().id, work.taskId)
+            assertFalse(ConversationRuntimeCapability.AI_REQUEST_RESPONSE in work.requirements.capabilities)
+            f.startApplication()
+            assertFalse(f.task!!.isAgentWork())
+            assertNotNull(f.applyReady())
+            assertTrue(f.coordinator.completeActiveTask(f.conversation.id, f.task!!.id, f.executor, ConversationRuntimeTaskOutcome.CompleteWithoutNotification))
+            assertTrue(f.coordinator.finishIfIdle(f.conversation.id))
+            assertEquals(finishedAgent, f.coordinator.snapshot(f.conversation.id).lastCompletion)
+            assertEquals(1, f.generations); assertEquals(0, f.counts); assertEquals(1, f.commits)
+            assertTrue(f.coordinator.listPending(f.conversation.id).isEmpty())
+        }
+    }
+
+    @Test fun `Stop removes queued application and preserves the completed agent turn`() = runBlocking {
+        Fixture().use { f ->
+            f.startTurn(); f.prepare(); f.finishTurn()
+            val finishedAgent = f.coordinator.snapshot(f.conversation.id).lastCompletion
+            assertEquals(1, f.coordinator.listReadyWorkItems(10).size)
+            assertTrue(f.coordinator.requestStop(f.conversation.id))
+            assertEquals(ProactiveCompaction.Status.CANCELLED, f.preparation().status)
+            assertTrue(f.coordinator.listReadyWorkItems(10).isEmpty())
+            assertTrue(f.coordinator.listPending(f.conversation.id).isEmpty())
+            assertEquals(finishedAgent, f.coordinator.snapshot(f.conversation.id).lastCompletion)
+        }
+    }
+
+    @Test fun `foreground application removes its queued idle work and leaves a new user input intact`() = runBlocking {
+        Fixture().use { f ->
+            f.startTurn(); f.prepare()
+            val queued = f.task!!.copy(id = ConversationRuntimeTask.Id("new-user"), turnId = ConversationRuntimeTurnId("new-user"), idempotencyKey = "new-user")
+            assertTrue(f.coordinator.submit(queued))
+            assertNotNull(f.applyReady())
+            assertEquals(listOf(queued.id), f.coordinator.listPending(f.conversation.id).map { it.id })
+            assertEquals(1, f.commits)
+        }
+    }
+
     internal class Fixture(private val native: Boolean = false) : AutoCloseable {
         val now = Clock.System.now()
         var user = User(User.Id("user"), displayName = "User", status = User.Status.ACTIVE, createdAt = now, updatedAt = now)
@@ -322,6 +369,14 @@ class ProactiveCompactionTest {
         suspend fun finishTurn() {
             assertTrue(coordinator.completeActiveTask(conversation.id, task!!.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
             coordinator.finishIfIdle(conversation.id)
+        }
+        suspend fun startApplication() {
+            val application = preparation().applicationTask()
+            task = assertNotNull(coordinator.claimDeliveredTask(conversation.id, application.id, executor, descriptor.capabilities, emptySet()))
+            assertTrue(coordinator.markActiveTaskStarted(conversation.id, application.id, executor, now))
+        }
+        suspend fun applyReady() = service.applyPreparedIfReady(task!!, conversation, agent, prompts) {
+            check(coordinator.confirmActiveTaskOwner(conversation.id, task!!.id, executor))
         }
         suspend fun prepare() = service.prepareAfterResponse(task!!, executor, conversation, agent, request())
         suspend fun preparation() = assertNotNull(coordinator.proactiveCompaction(conversation.id))

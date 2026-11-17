@@ -67,11 +67,14 @@ class PostgresConversationCompactionRepositoryTest {
         for (cancelFirst in listOf(false, true)) withDatabase { f ->
             f.installPreparation()
             val coordinator = PostgresConversationRuntimeCoordinator(f.source, json)
+            assertEquals(f.summary.id.value + ":apply", coordinator.listReadyWorkItems(10).single().taskId.value)
             if (cancelFirst) assertTrue(coordinator.requestStop(f.conversation.id))
             assertEquals(!cancelFirst, f.commit(preparedId = f.summary.id.value))
             val preparation = assertNotNull(coordinator.proactiveCompaction(f.conversation.id))
             assertEquals(if (cancelFirst) ProactiveCompaction.Status.CANCELLED else ProactiveCompaction.Status.APPLIED, preparation.status)
             assertNull(preparation.checkpoint)
+            assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+            assertTrue(coordinator.listPending(f.conversation.id).isEmpty())
             if (cancelFirst) {
                 assertEquals(f.original.id, f.conversations.findById(f.conversation.id)?.currentThread)
                 assertNull(f.messages.findById(f.summary.id))
@@ -125,6 +128,31 @@ class PostgresConversationCompactionRepositoryTest {
         }
     }
 
+    @Test fun `receipt update failure rolls back history publication and preserves indexed READY work`() = runBlocking {
+        withDatabase { f ->
+            f.installPreparation()
+            f.source.connection.use { connection -> connection.createStatement().use { statement ->
+                statement.execute("""
+                    CREATE FUNCTION reject_compaction_receipt() RETURNS trigger LANGUAGE plpgsql AS ${'$'}${'$'}
+                    BEGIN
+                        IF NEW.scheduling -> 'proactiveCompaction' ->> 'status' = 'APPLIED' THEN
+                            RAISE EXCEPTION 'synthetic receipt failure';
+                        END IF;
+                        RETURN NEW;
+                    END
+                    ${'$'}${'$'}
+                """.trimIndent())
+                statement.execute("CREATE TRIGGER reject_receipt BEFORE UPDATE ON conversation_runtime_records FOR EACH ROW EXECUTE FUNCTION reject_compaction_receipt()")
+            } }
+            assertFails { f.commit(preparedId = f.summary.id.value) }
+            val restored = PostgresConversationRuntimeCoordinator(f.source, json)
+            assertEquals(ProactiveCompaction.Status.READY, restored.proactiveCompaction(f.conversation.id)?.status)
+            assertEquals(f.summary.id.value + ":apply", restored.listReadyWorkItems(10).single().taskId.value)
+            assertEquals(f.original.id, f.conversations.findById(f.conversation.id)?.currentThread)
+            assertNull(f.threads.findById(f.derived.id)); assertNull(f.messages.findById(f.summary.id))
+        }
+    }
+
     private inner class Fixture(val source: PGSimpleDataSource) {
         val conversations = ExposedConversationRepository()
         val threads = ExposedThreadRepository()
@@ -162,9 +190,15 @@ class PostgresConversationCompactionRepositoryTest {
             val prepared = ProactiveCompaction(summary.id.value, conversation.id, ConversationRuntimeTask.Id("source"), ConversationRuntimeTurnId("turn"),
                 ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server")), AgentDefinition.Id("agent"), User.Id("actor"),
                 original.id, 2, "a".repeat(64), "b".repeat(64), 100_000, 1, 1, now, status = ProactiveCompaction.Status.READY, checkpoint = summary)
-            source.connection.use { c -> c.prepareStatement("INSERT INTO conversation_runtime_records(conversation_id, scheduling) VALUES (?, ?::jsonb)").use { statement ->
+            val running = prepared.copy(status = ProactiveCompaction.Status.RUNNING, checkpoint = null)
+            val state = ConversationRuntimeSchedulingState(conversation.id, proactiveCompaction = running)
+                .updateProactiveCompaction(running, prepared).state
+            val work = requireNotNull(state.readyWorkItem())
+            source.connection.use { c -> c.prepareStatement("INSERT INTO conversation_runtime_records(conversation_id, scheduling, ready_task_id, ready_at) VALUES (?, ?::jsonb, ?, ?::timestamptz)").use { statement ->
                 statement.setString(1, conversation.id.value)
-                statement.setString(2, json.encodeToString(ConversationRuntimeSchedulingState(conversation.id, proactiveCompaction = prepared)))
+                statement.setString(2, json.encodeToString(state))
+                statement.setString(3, work.taskId.value)
+                statement.setString(4, work.createdAt.toString())
                 statement.executeUpdate()
             } }
             return prepared

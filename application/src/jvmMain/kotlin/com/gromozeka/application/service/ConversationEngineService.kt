@@ -47,6 +47,7 @@ import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
+import com.gromozeka.domain.service.ProactiveCompaction
 import com.gromozeka.domain.service.ConversationRuntimeCompletion
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -155,6 +156,7 @@ class ConversationEngineService(
             }
             is ConversationRuntimeTask.Payload.HistoryMutation ->
                 runHistoryMutationStep(task, executor, payload)
+            is ConversationRuntimeTask.Payload.ApplyPreparedCompaction -> runPreparedCompactionStep(task, executor, payload)
             is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.ResponseReview -> runResponseReviewStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.ToolExecution ->
@@ -169,6 +171,50 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ExecutionIncident ->
                 runExecutionIncidentStep(task, executor, payload, emitMessage)
         }
+
+    private suspend fun runPreparedCompactionStep(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        payload: ConversationRuntimeTask.Payload.ApplyPreparedCompaction,
+    ): ConversationRuntimeTaskOutcome {
+        ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        val prepared = runtimeCoordinator.proactiveCompaction(task.conversationId)
+            ?.takeIf { it.id == payload.preparationId && it.status == ProactiveCompaction.Status.READY }
+            ?: return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+        check(task.actorUserId == prepared.actorUserId) { "Compaction application actor changed" }
+        val conversation = requireNotNull(conversationService.findById(task.conversationId))
+        requireActorConnected(task, conversation)
+        val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor)
+        compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts) {
+            ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        }
+        return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+    }
+
+    private suspend fun afterCommittedModelResponse(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        conversation: Conversation,
+        context: ConversationRuntimeStepContext,
+        request: AiRuntimeRequest,
+    ): Conversation {
+        suspend fun apply() = compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts) {
+            ensureRuntimeTaskOwner(conversation.id, task.id, executor)
+        }
+        apply()?.let { return it }
+        val captured = request.copy(options = request.options.copy(toolContext = request.options.toolContext + buildMap {
+            put(TOOL_CONTEXT_CONVERSATION_ID, conversation.id.value)
+            put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
+            put(TOOL_CONTEXT_PROJECT_ID, conversation.projectId.value)
+            put(TOOL_CONTEXT_AGENT_DEFINITION_ID, context.agent.id.value)
+            task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
+            put(AI_ADMISSION_CONVERSATION_CONTEXT_KEY, conversation.id.value)
+            put(AI_ADMISSION_TASK_CONTEXT_KEY, task.id.value)
+        }))
+        compactions.prepareAfterResponse(task, executor, conversation, context.agent, captured, promptScope = context.runtimeSystemPrompts)
+        // A fast preparation can become READY at this same boundary. A later result has its durable application task.
+        return apply() ?: conversation
+    }
 
     private suspend fun runHistoryMutationStep(
         task: ConversationRuntimeTask,
@@ -416,16 +462,6 @@ class ConversationEngineService(
             check(agentDomainService.findById(context.agent.id) == context.agent) { "Agent changed during compaction" }
         }
         if (compacted != null) {
-            // A portable handoff can end with an assistant summary. This explicit Runtime continuation
-            // also provides a user input anchor for one-shot secrets without preserving a raw history tail.
-            val continuation = Conversation.Message(
-                id = runtimeMessageId(task.id, "compaction-continuation"), conversationId = conversationId,
-                role = Conversation.Message.Role.USER, createdAt = Clock.System.now(),
-                content = listOf(ContentItem.UserMessage("Continue the active task from the compacted context. Follow the latest user instructions; do not repeat completed work.")),
-                providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "compaction_continuation") },
-            )
-            ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (addRuntimeMessageIfMissing(conversationId, continuation)) emitMessage(continuation)
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
                 payload.agentDefinitionId, payload.iteration + 1, task.actorUserId, afterCompaction = true))
         }
@@ -597,6 +633,8 @@ class ConversationEngineService(
         if (outcome == AiStepOutcome.REFUSED) {
             return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_REFUSED)
         }
+        conversation = afterCommittedModelResponse(task, executor, conversation, context,
+            runtimeRequest.copy(messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages))
         // A model-only answer has no tool-result step. Do not strand human steering until a new turn.
         // If the model returned tool calls, keep their call/result pairs intact and use the existing tool boundary.
         if (allToolCalls.isEmpty()) {
@@ -697,11 +735,6 @@ class ConversationEngineService(
             actorUserId = task.actorUserId,
         )
         if (memoryRecallTask != null) return ConversationRuntimeTaskOutcome.Continue(memoryRecallTask)
-        if (assistantMessages.any { message -> message.content.any { it is ContentItem.AssistantMessage && it.structured.fullText.isNotBlank() } }) {
-            compactions.prepareAfterResponse(task, executor, conversation, context.agent,
-                runtimeRequest.copy(messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages),
-                promptScope = context.runtimeSystemPrompts)
-        }
         return ConversationRuntimeTaskOutcome.CompleteTurn
     }
 
@@ -722,7 +755,7 @@ class ConversationEngineService(
         val service = requireNotNull(responseReview) { "Collaboration review is disabled; draft retained" }
         val collaboration = requireNotNull(collaboration)
         val draft = requireNotNull(collaboration.repository.findDraft(payload.draftId)) { "Missing response draft" }
-        val conversation = requireNotNull(conversationService.findById(task.conversationId))
+        var conversation = requireNotNull(conversationService.findById(task.conversationId))
         require(draft.endpoint.threadId == conversation.currentThread && draft.actorUserId == task.actorUserId && draft.endpoint.agentId == payload.agentDefinitionId)
         requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
@@ -735,6 +768,8 @@ class ConversationEngineService(
                 conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
                 context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled)
             steering.messages.forEach { emitMessage(it) }
+            conversation = afterCommittedModelResponse(task, executor, conversation, context,
+                AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind)))
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
                 payload.agentDefinitionId, draft.iteration + 1, if (steering.consumedTasks) steering.actorUserId else task.actorUserId),
                 backgroundDeliveryReceipts = steering.backgroundDeliveryReceipts)
@@ -779,20 +814,13 @@ class ConversationEngineService(
             createdAt = Clock.System.now(),
         )
         if (addRuntimeMessageIfMissing(conversation.id, receipt)) emitMessage(receipt)
+        conversation = afterCommittedModelResponse(task, executor, conversation, context,
+            AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind)))
         return if (decision.next == AgentResponseDecision.Next.CONTINUE) {
             ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
                 payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
         } else if (decision.userText == null) ConversationRuntimeTaskOutcome.CompleteWithoutNotification
         else {
-            if (aiConfigurationProvider.resolveAiRuntime(context.agent.runtimeSelection).modelConfiguration.compaction.proactiveThresholdTokens != null) {
-                compactions.prepareAfterResponse(task, executor, conversation, context.agent,
-                    AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind), options = AiRuntimeOptions(
-                        toolContext = mapOf(TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
-                            TOOL_CONTEXT_THREAD_ID to conversation.currentThread.value, TOOL_CONTEXT_PROJECT_ID to conversation.projectId.value,
-                            TOOL_CONTEXT_USER_ID to draft.actorUserId.value, TOOL_CONTEXT_AGENT_DEFINITION_ID to context.agent.id.value,
-                            AI_ADMISSION_CONVERSATION_CONTEXT_KEY to conversation.id.value, AI_ADMISSION_TASK_CONTEXT_KEY to task.id.value),
-                        usagePurpose = "CONVERSATION")), promptScope = context.runtimeSystemPrompts)
-            }
             ConversationRuntimeTaskOutcome.CompleteTurn
         }
     }

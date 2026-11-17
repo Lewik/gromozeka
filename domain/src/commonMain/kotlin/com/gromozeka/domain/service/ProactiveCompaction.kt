@@ -43,6 +43,13 @@ data class ProactiveCompaction(
     val cancellable: Boolean get() = pending || (status == Status.FAILED && outcomeUnknown)
     fun cancel(now: Instant): ProactiveCompaction =
         if (cancellable) copy(status = Status.CANCELLED, checkpoint = null, updatedAt = now) else this
+    fun applicationTask() = ConversationRuntimeTask(
+        id = ConversationRuntimeTask.Id("$id:apply"), conversationId = conversationId, actorUserId = actorUserId,
+        payload = ConversationRuntimeTask.Payload.ApplyPreparedCompaction(id), placement = QueuedMessagePlacement.END_OF_TURN,
+        idempotencyKey = "compaction:$id:apply",
+        requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.CONVERSATION_TURN), ConversationRuntimeTaskTarget.Server),
+        createdAt = updatedAt,
+    )
     fun activity() = ProactiveCompactionActivity(id, sourceTaskId, status, inputTokens, sourceCount, retainedCount, createdAt, updatedAt, failureCode, outcomeUnknown)
 }
 
