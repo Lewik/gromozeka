@@ -33,6 +33,7 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(project(":domain"))
+                implementation(project(":application"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.ktor.server.cio)
                 implementation(libs.ktor.server.websockets)

@@ -244,7 +244,7 @@ class ActivityRenderingTest {
         header.assertHasNoClickAction()
         onNodeWithText("Thinking").assertIsDisplayed()
         onNodeWithText("Hidden thinking").assertDoesNotExist()
-        runOnIdle { thinking.value = thinking.value.copy(thinking = "Readable thought") }
+        runOnIdle { thinking.value = thinking.value.copy(thinking = "**Readable summary**\n\nReadable thought") }
         header.performClick()
         onNodeWithText("Readable thought").assertIsDisplayed()
         runOnIdle { thinking.value = thinking.value.copy(thinking = "", state = Conversation.Message.BlockState.COMPLETE) }
@@ -257,7 +257,7 @@ class ActivityRenderingTest {
     fun compactMixedGroupsExpandInEverySummaryStyle() {
         for (style in ActivitySummaryStyle.entries) {
             runDesktopComposeUiTest(width = 390, height = 844) {
-                val message = activityTestMessage("mixed", Conversation.Message.ContentItem.Thinking("Readable thought"), activityTestCall("read"))
+                val message = activityTestMessage("mixed", Conversation.Message.ContentItem.Thinking("**Readable summary**\n\nReadable thought"), activityTestCall("read"))
                 setContent { ActivityTimelineFixture(listOf(message), summaryStyle = style) }
                 val group = onNodeWithTag(UiTestTag.ActivityGroup("mixed:0:content").value)
                 group.assertIsDisplayed()
@@ -281,13 +281,13 @@ class ActivityRenderingTest {
 
     @Test
     fun expandedLongReasoningUsesDistinctLazyEntries() = runDesktopComposeUiTest(width = 390, height = 500) {
-        val text = (1..60).joinToString("\n\n") { "Paragraph $it of the reasoning." }
+        val text = "# Reasoning summary\n\n" + (1..60).joinToString("\n\n") { "Paragraph $it of the reasoning." }
         val message = activityTestMessage("long", Conversation.Message.ContentItem.Thinking(text), activityTestCall("read"))
         var entries = emptyList<MessageListEntry>()
         setContent { ActivityTimelineFixture(listOf(message), onEntries = { entries = it }) }
         onNodeWithTag(UiTestTag.ActivityGroup("long:0:content").value).performClick()
         onNodeWithTag(UiTestTag.ActivityItem("long:0:content").value).performClick()
-        waitUntil(timeoutMillis = 10_000) { entries.count { it.segment is MessageSegment.MarkdownBlock } == 60 }
+        waitUntil(timeoutMillis = 10_000) { entries.count { it.segment is MessageSegment.MarkdownBlock } == 61 }
         runOnIdle { assertEquals(entries.size, entries.map { it.key }.distinct().size) }
         onNodeWithText("Paragraph 1 of the reasoning.").assertIsDisplayed()
         onNodeWithText("Paragraph 60 of the reasoning.").assertDoesNotExist()
@@ -295,7 +295,7 @@ class ActivityRenderingTest {
 
     @Test
     fun reasoningExpansionSurvivesToolCompletionAndRegrouping() = runDesktopComposeUiTest {
-        val message = activityTestMessage("evolving", Conversation.Message.ContentItem.Thinking("Keep this open"), activityTestCall("read"))
+        val message = activityTestMessage("evolving", Conversation.Message.ContentItem.Thinking("**Reasoning summary**\n\nKeep this open"), activityTestCall("read"))
         val results = mutableStateOf(emptyMap<String, Conversation.Message.ContentItem.ToolResult>())
         var entries = emptyList<MessageListEntry>()
         setContent { ActivityTimelineFixture(listOf(message), results.value, onEntries = { entries = it }) }

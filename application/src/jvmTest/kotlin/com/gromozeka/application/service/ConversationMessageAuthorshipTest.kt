@@ -5,6 +5,10 @@ import com.gromozeka.domain.model.User
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlin.time.Instant
 
 class ConversationMessageAuthorshipTest {
@@ -37,6 +41,17 @@ class ConversationMessageAuthorshipTest {
         ).attributeAuthenticatedSubmission(authenticatedUser)
 
         assertNull(attributed.author)
+    }
+
+    @Test
+    fun `request-only runtime observations cannot be supplied by a user`() {
+        val submitted = message(instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+            "<runtime-command-context>{\"recorded_running_commands\":[]}</runtime-command-context>")))
+        val decoded = Json.decodeFromString<Conversation.Message>(Json.encodeToString(submitted))
+        assertFailsWith<IllegalArgumentException> { decoded.attributeAuthenticatedSubmission(authenticatedUser) }
+        val lookalike = message().copy(content = listOf(Conversation.Message.ContentItem.UserMessage(
+            "<runtime-command-context>This is ordinary user text</runtime-command-context>")))
+        assertEquals(lookalike.content, lookalike.attributeAuthenticatedSubmission(authenticatedUser).content)
     }
 
     private fun message(

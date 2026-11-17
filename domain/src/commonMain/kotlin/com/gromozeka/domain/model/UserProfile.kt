@@ -192,12 +192,34 @@ data class UserProfile(
     @Serializable
     data class SuggestedRepliesSettings(
         val mode: Mode = Mode.INLINE,
+        val inlinePrompt: String = DEFAULT_PROMPT,
+        val separatePrompt: String = DEFAULT_PROMPT,
+        val contextMode: ContextMode = ContextMode.RECENT_MESSAGES,
     ) {
+        init {
+            require(inlinePrompt.isNotBlank()) { "Inline suggested replies prompt must not be blank" }
+            require(separatePrompt.isNotBlank()) { "Separate suggested replies prompt must not be blank" }
+        }
+
         @Serializable
         enum class Mode {
             DISABLED,
             INLINE,
             SEPARATE_RUNTIME,
+        }
+
+        @Serializable
+        enum class ContextMode {
+            RECENT_MESSAGES,
+            FULL_THREAD,
+        }
+
+        companion object {
+            const val DEFAULT_PROMPT = "zero to four concise replies the user might naturally send next. " +
+                "Keep the replies short and preserve the user's language. " +
+                "It is recommended not to exceed 112 characters in total across all replies. " +
+                "Do not answer as the assistant or explain your choices. " +
+                "Keep the list empty during tool use or when no obvious choices would help."
         }
     }
 

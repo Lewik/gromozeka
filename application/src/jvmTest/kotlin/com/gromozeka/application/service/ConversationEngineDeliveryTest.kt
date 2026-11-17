@@ -360,6 +360,49 @@ class ConversationEngineDeliveryTest {
         assertFalse(f.messages.any { message -> message.content.any { it is ContentItem.UserMessage && "PIN_" in it.text } })
     }
 
+    @Test fun `custom inline suggestions instruction reaches the main model without a second call`() = runBlocking {
+        val f = Fixture()
+        f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
+            inlinePrompt = "CUSTOM_INLINE_INSTRUCTION", separatePrompt = "SEPARATE_ONLY_INSTRUCTION",
+        ))
+        val task = f.begin()
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+        val prompts = f.requests.single().systemPrompts.joinToString("\n")
+        assertContains(prompts, "suggestedReplies: CUSTOM_INLINE_INSTRUCTION")
+        assertFalse("SEPARATE_ONLY_INSTRUCTION" in prompts)
+        assertTrue(f.suggestionRequests.isEmpty())
+    }
+
+    @Test fun `full suggestions context loads actual thread history rather than the compacted model prefix`() = runBlocking {
+        for (mode in UserProfile.SuggestedRepliesSettings.ContextMode.entries) {
+            val f = Fixture()
+            f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
+                mode = UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME,
+                separatePrompt = "CUSTOM_SEPARATE_INSTRUCTION", contextMode = mode,
+            ))
+            f.allowFullHistoryLoad = mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD
+            val root = f.messages.single()
+            val old = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("ARCHIVE_VISIBLE_SENTINEL")))
+            val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )))
+            val replayAnchor = old.copy(id = Conversation.Message.Id("replay-anchor"), content = listOf(ContentItem.UserMessage("REPLAY_ANCHOR")))
+            f.messages.clear(); f.messages += listOf(old, replayAnchor, checkpoint, root)
+            val task = f.begin()
+            assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+            assertFalse(f.requests.single().messages.any { it.id == old.id })
+            val request = f.suggestionRequests.single()
+            val text = (request.messages.single().content.single() as ContentItem.UserMessage).text
+            assertEquals(mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD, "ARCHIVE_VISIBLE_SENTINEL" in text)
+            assertContains(text, "CUSTOM_SEPARATE_INSTRUCTION")
+            assertContains(text, "ASSISTANT: Answer")
+            assertFalse("CUSTOM_SEPARATE_INSTRUCTION" in f.requests.single().systemPrompts.joinToString("\n"))
+            assertEquals(listOf("Next"), f.messages.last().content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.suggestedReplies)
+        }
+    }
+
     @Test fun `model preparation loads checkpoint context rather than the archive`() = runBlocking {
         val f = Fixture(); f.allowFullHistoryLoad = false
         val root = f.messages.single()
@@ -830,10 +873,59 @@ class ConversationEngineDeliveryTest {
         assertEquals(Conversation.Thread.Id("reviewed-and-compacted"), f.currentConversation.currentThread)
     }
 
-    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false, realBackground: Boolean = false) {
+    @Test fun `running command observations reach ordinary requests without changing history or acknowledgement`() = runBlocking {
+        val f = Fixture(withCommandContext = true)
+        val running = f.begin()
+        val root = f.messages.single()
+        val command = CommandTask(CommandTask.Id("background"), conversation.id, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
+            agentDefinitionId = agentId, command = "PRIVATE_COMMAND", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
+            processId = 1, processStartedAt = now, outputFile = "/tmp/background", outputBytes = 0,
+            createdAt = now, updatedAt = now, completionNotificationRequestedAt = now, description = "Analyze data")
+        f.coordinator.upsertCommandTask(command)
+        val outcome = f.engine.runRuntimeTask(running, executor) { f.emitted += it }
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
+        assertEquals(JsonArray(listOf(buildJsonObject { put("task_id", "background"); put("description", "Analyze data") })), recordedCommands(f.requests.single()))
+        assertEquals(1, f.requests.single().systemPrompts.count { it == RecordedRunningCommandsRequestEnricher.INSTRUCTION })
+        assertFalse(f.requests.single().toString().contains("PRIVATE_COMMAND"))
+        assertEquals(root, f.messages.single { it.id == root.id })
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
+        f.coordinator.upsertCommandTask(command.copy(status = CommandTask.Status.COMPLETED, completedAt = now, updatedAt = now))
+        assertTrue(f.coordinator.submit(input("next")))
+        f.drain()
+        assertEquals(2, f.requests.size)
+        assertTrue(recordedCommands(f.requests.last()).isEmpty())
+        assertNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
+        assertEquals(0, f.toolEffects)
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    @Test fun `command observations preserve automatic batched completion and its one model continuation`() = runBlocking {
+        val f = Fixture(realBackground = true, withCommandContext = true)
+        f.queueCommandCompletion("successful")
+        f.queueCommandCompletion("failed", CommandTask.Status.FAILED)
+        f.drain()
+        val request = f.requests.single()
+        assertTrue(recordedCommands(request).isEmpty())
+        for (id in listOf("successful", "failed")) {
+            assertEquals(2, request.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(id) })
+            assertNotNull(f.coordinator.findCommandTask(conversation.id, CommandTask.Id(id))?.completionNotificationDeliveredAt)
+        }
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
+    private fun recordedCommands(request: AiRuntimeRequest): JsonArray = (request.messages.flatMap { it.instructions }
+        .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().map { it.text } + request.systemPrompts)
+        .last { it.startsWith("<runtime-command-context>") }
+        .substringAfter("<runtime-command-context>").substringBefore("</runtime-command-context>")
+        .let { Json.parseToJsonElement(it).jsonObject.getValue("recorded_running_commands").jsonArray }
+
+    private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
+        realBackground: Boolean = false, withCommandContext: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
+        var profile = UserProfile()
+        val suggestionRequests = mutableListOf<AiRuntimeRequest>()
         var onCompact: (AiRuntimeRequest) -> Conversation? = { null }
         var onApply: () -> Conversation? = { null }
         val compactionChecks = mutableListOf<Pair<AiRuntimeRequest, Boolean>>()
@@ -1000,20 +1092,33 @@ class ConversationEngineDeliveryTest {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)
             },
             backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),
-            toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { UserProfile() },
+            toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { profile },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
             aiToolCapabilityCatalogService = mock(), toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
-            suggestedRepliesGenerationService = mock(),
+            suggestedRepliesGenerationService = SuggestedRepliesGenerationService(
+                responding { object : AiRuntime {
+                    override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                        suggestionRequests += request
+                        return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(ContentItem.AssistantMessage(
+                            Conversation.Message.StructuredText("", suggestedReplies = listOf("Next")),
+                        )))))
+                    }
+                    override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("Unexpected suggestions stream")
+                } }, ConversationPinnedPrompt(pins), responding { agent.runtimeSelection },
+            ),
             conversationPins = ConversationPinnedPrompt(pins),
-            requestEnrichers = if (withEnricher) listOf(object : ConversationRequestEnricher {
-                override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
-                    turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
-                    request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
-            }) else emptyList(),
+            requestEnrichers = buildList {
+                if (withEnricher) add(object : ConversationRequestEnricher {
+                    override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+                        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+                        request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
+                })
+                if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
+            },
             collaboration = collaboration.takeIf { enableReview },
             responseReview = if (enableReview) AgentResponseReviewService(collaboration, reviewRepository, coordinator, ConversationPinnedPrompt(pins), mock()) else null,
         )

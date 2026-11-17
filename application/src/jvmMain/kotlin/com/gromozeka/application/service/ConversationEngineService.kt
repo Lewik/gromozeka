@@ -427,7 +427,7 @@ class ConversationEngineService(
                 toolChoice = AiToolChoice.Auto,
                 responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(
                     context.assistantResponseFormat,
-                    includeSuggestedReplies = context.suggestedRepliesMode ==
+                    includeSuggestedReplies = context.suggestedRepliesSettings.mode ==
                         UserProfile.SuggestedRepliesSettings.Mode.INLINE,
                 ),
                 assistantResponseFormat = context.assistantResponseFormat,
@@ -584,15 +584,16 @@ class ConversationEngineService(
         }
         val assistantMessages = when {
             outcome != AiStepOutcome.COMPLETE -> mappedAssistantMessages.withSuggestedReplies(emptyList())
-            context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.DISABLED ->
+            context.suggestedRepliesSettings.mode == UserProfile.SuggestedRepliesSettings.Mode.DISABLED ->
                 mappedAssistantMessages.withSuggestedReplies(emptyList())
-            context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE ->
+            context.suggestedRepliesSettings.mode == UserProfile.SuggestedRepliesSettings.Mode.INLINE ->
                 mappedAssistantMessages
             else -> generateSeparateSuggestedReplies(
                 task = task,
                 conversation = conversation,
                 currentMessages = currentMessages,
                 assistantMessages = mappedAssistantMessages,
+                settings = context.suggestedRepliesSettings,
                 agentDefinitionId = context.agent.id,
                 actorUserId = task.actorUserId,
             )
@@ -1273,7 +1274,7 @@ class ConversationEngineService(
         val automaticMemoryRememberEnabled: Boolean,
         val automaticMemoryRecallEnabled: Boolean,
         val includeMessageTemporalContext: Boolean,
-        val suggestedRepliesMode: UserProfile.SuggestedRepliesSettings.Mode,
+        val suggestedRepliesSettings: UserProfile.SuggestedRepliesSettings,
     ) {
         val project get() = runtimeContext.project
     }
@@ -1333,8 +1334,9 @@ class ConversationEngineService(
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
         val memorySettings = settingsProvider.userProfile.memorySettings
-        val suggestedRepliesMode = if (conversation.externalChannel != null) UserProfile.SuggestedRepliesSettings.Mode.DISABLED
-            else settingsProvider.userProfile.suggestedRepliesSettings.mode
+        val suggestedRepliesSettings = settingsProvider.userProfile.suggestedRepliesSettings.let {
+            if (conversation.externalChannel != null) it.copy(mode = UserProfile.SuggestedRepliesSettings.Mode.DISABLED) else it
+        }
         val automaticMemoryRememberEnabled = conversation.externalChannel == null && memorySettings.autoRemember &&
             aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null
         val automaticMemoryRecallEnabled = conversation.externalChannel == null && memorySettings.autoRecall &&
@@ -1346,7 +1348,8 @@ class ConversationEngineService(
             environment = toolCatalog.environmentPrompt,
             skills = agentSkillRuntime.systemPrompt,
             responseFormat = assistantResponseFormat,
-            includeSuggestedReplies = suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+            includeSuggestedReplies = suggestedRepliesSettings.mode == UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+            inlineSuggestedRepliesPrompt = suggestedRepliesSettings.inlinePrompt,
         )
 
         return ConversationRuntimeStepContext(
@@ -1366,7 +1369,7 @@ class ConversationEngineService(
             automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
             includeMessageTemporalContext =
                 settingsProvider.userProfile.agentSettings.includeMessageTemporalContext,
-            suggestedRepliesMode = suggestedRepliesMode,
+            suggestedRepliesSettings = suggestedRepliesSettings,
         )
     }
 
@@ -1388,6 +1391,7 @@ class ConversationEngineService(
         conversation: Conversation,
         currentMessages: List<Conversation.Message>,
         assistantMessages: List<Conversation.Message>,
+        settings: UserProfile.SuggestedRepliesSettings,
         agentDefinitionId: AgentDefinition.Id,
         actorUserId: User.Id?,
     ): List<Conversation.Message> {
@@ -1399,12 +1403,16 @@ class ConversationEngineService(
         return try {
             val suggestions = suggestedRepliesGenerationService.generate(
                 conversation = conversation,
-                messages = currentMessages + assistantMessages,
+                messages = when (settings.contextMode) {
+                    UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> currentMessages
+                    UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD -> conversationService.loadCurrentMessages(conversation.id)
+                } + assistantMessages,
                 sourceMessage = sourceMessage,
                 agentDefinitionId = agentDefinitionId,
                 runtimeSelection = suggestedRepliesGenerationService.requireConfiguredRuntimeSelection(),
                 actorUserId = actorUserId,
                 usageId = "suggested-replies:${sourceMessage.id.value}:initial",
+                settings = settings,
             )
             assistantMessages.withSuggestedReplies(suggestions)
         } catch (error: CancellationException) {
