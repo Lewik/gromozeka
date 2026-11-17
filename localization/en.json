@@ -779,6 +779,7 @@
     "client.instructions.inputContext": "Message input context",
     "client.instructions.liveSteering": "Live steering update",
     "client.instructions.messageTime": "Message time",
+    "client.instructions.runtimeObservation": "Runtime observation",
     "client.instructions.previousInterrupted": "Previous turn interrupted",
     "client.instructions.previousStopped": "Previous turn stopped",
     "client.instructions.readOnly": "Read only",

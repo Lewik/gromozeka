@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.WorkspacePathReference
 import com.gromozeka.domain.service.WorkspacePathAccessContext
 import com.gromozeka.domain.model.Conversation
@@ -8,8 +11,6 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.service.ConversationDomainService
 import java.security.MessageDigest
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
 
 @Service
@@ -261,7 +262,7 @@ class MemoryOperationPreparer(
         content.any { it is Conversation.Message.ContentItem.UserMessage }
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
-        providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+        syntheticKind == SyntheticMessageKind.MEMORY
 
     private fun MemoryRememberContentInput.identityValue(): String =
         when (this) {

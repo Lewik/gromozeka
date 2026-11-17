@@ -1,5 +1,9 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.putSyntheticMessageMetadata
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.AgentAddress
 import com.gromozeka.domain.model.AgentResponseDecision
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -701,8 +705,7 @@ class ConversationEngineService(
                             )
                         },
                         providerMetadata = buildJsonObject {
-                            put("synthetic", true)
-                            put("syntheticKind", "tool_routing_error")
+                            putSyntheticMessageMetadata(SyntheticMessageKind.TOOL_ROUTING_ERROR)
                         },
                         createdAt = Clock.System.now(),
                     )
@@ -1029,8 +1032,7 @@ class ConversationEngineService(
                             )
                         },
                         providerMetadata = buildJsonObject {
-                            put("synthetic", true)
-                            put("syntheticKind", "runtime_execution_incident")
+                            putSyntheticMessageMetadata(SyntheticMessageKind.RUNTIME_EXECUTION_INCIDENT)
                             put("sourceRuntimeTaskId", incident.task.id.value)
                             put("incidentKind", incident.kind.name)
                         },
@@ -1072,8 +1074,7 @@ class ConversationEngineService(
                         ContentItem.UserMessage(executionIncidentSystemNotification(incident))
                     ),
                     providerMetadata = buildJsonObject {
-                        put("synthetic", true)
-                        put("syntheticKind", "runtime_execution_incident")
+                        putSyntheticMessageMetadata(SyntheticMessageKind.RUNTIME_EXECUTION_INCIDENT)
                         put("sourceRuntimeTaskId", incident.task.id.value)
                         put("incidentKind", incident.kind.name)
                     },
@@ -1446,7 +1447,7 @@ class ConversationEngineService(
             return emptyList()
         }
         emittedMessages.add(userMessage)
-        if (userMessage.providerMetadata.stringValue("syntheticKind") == "slot_event") {
+        if (userMessage.syntheticKind == SyntheticMessageKind.SLOT_EVENT) {
             return emittedMessages
         }
 
@@ -1991,8 +1992,7 @@ class ConversationEngineService(
                 )
             ),
             providerMetadata = buildJsonObject {
-                put("synthetic", true)
-                put("syntheticKind", "memory")
+                putSyntheticMessageMetadata(SyntheticMessageKind.MEMORY)
                 put("syntheticToolName", toolName)
                 put("syntheticPhase", syntheticPhase)
                 put(targetMetadataName, syntheticTargetId)
@@ -2014,8 +2014,7 @@ class ConversationEngineService(
                 )
             ),
             providerMetadata = buildJsonObject {
-                put("synthetic", true)
-                put("syntheticKind", "memory")
+                putSyntheticMessageMetadata(SyntheticMessageKind.MEMORY)
                 put("syntheticToolName", toolName)
                 put("syntheticPhase", syntheticPhase)
                 put(targetMetadataName, syntheticTargetId)
@@ -2063,7 +2062,7 @@ class ConversationEngineService(
         toolName: String,
         phase: String,
     ): Conversation.Message.Id? {
-        if (providerMetadata.stringValue("syntheticKind") != "memory") {
+        if (syntheticKind != SyntheticMessageKind.MEMORY) {
             return null
         }
         if (providerMetadata.stringValue("syntheticToolName") != toolName) {

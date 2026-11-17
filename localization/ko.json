@@ -760,6 +760,7 @@
     "client.instructions.inputContext": "메시지 입력 맥락",
     "client.instructions.liveSteering": "작업 중 추가 지시",
     "client.instructions.messageTime": "메시지 전송 시각",
+    "client.instructions.runtimeObservation": "런타임 관측 정보",
     "client.instructions.previousInterrupted": "이전 턴 중단됨",
     "client.instructions.previousStopped": "이전 턴 중지됨",
     "client.instructions.readOnly": "읽기 전용",

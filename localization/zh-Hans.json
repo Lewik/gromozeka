@@ -760,6 +760,7 @@
     "client.instructions.inputContext": "消息输入信息",
     "client.instructions.liveSteering": "工作中的补充指示",
     "client.instructions.messageTime": "消息发送时间",
+    "client.instructions.runtimeObservation": "运行时观察信息",
     "client.instructions.previousInterrupted": "上一轮已中断",
     "client.instructions.previousStopped": "上一轮已停止",
     "client.instructions.readOnly": "只读",

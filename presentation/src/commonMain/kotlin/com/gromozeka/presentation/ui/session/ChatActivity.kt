@@ -1,5 +1,10 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.backgroundActivitySource
+import com.gromozeka.domain.model.isBackgroundActivity
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.Conversation
 
 internal enum class ActivityState {
@@ -104,13 +109,24 @@ internal fun groupActivityEntries(entries: List<MessageListEntry>, preservedGrou
             val canJoin = previous.message.id in activityOnlyMessageIds &&
                 reference.message.id in activityOnlyMessageIds &&
                 previous.message.role == reference.message.role &&
-                previous.message.author == reference.message.author
+                canGroupActivityOwners(previous.message, reference.message)
             if (!canJoin) flushPending()
         }
         pending += reference
     }
     flushPending()
     return result
+}
+
+private fun canGroupActivityOwners(first: Conversation.Message, second: Conversation.Message): Boolean {
+    if (!first.syntheticKind.isBackgroundActivity() && !second.syntheticKind.isBackgroundActivity()) {
+        return first.author == second.author
+    }
+    fun agent(message: Conversation.Message): AgentDefinition.Id? =
+        if (message.syntheticKind.isBackgroundActivity()) message.backgroundActivitySource?.agentDefinitionId
+        else (message.author as? Conversation.Message.Author.Agent)?.agentDefinitionId
+    val owner = agent(first) ?: return false
+    return owner == agent(second)
 }
 
 internal fun activityExpansionKey(entryKey: String): String = "activity:$entryKey"

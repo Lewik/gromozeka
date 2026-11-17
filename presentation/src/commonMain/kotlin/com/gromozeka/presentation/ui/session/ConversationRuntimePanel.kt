@@ -1015,7 +1015,8 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
         is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
         is ConversationRuntimeTask.Payload.AgentInvocation -> translation.agentInvocationTask
         is ConversationRuntimeTask.Payload.AgentResponse -> translation.agentInvocationTask
-        is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationTask
+        is ConversationRuntimeTask.Payload.HistoryMutation,
+        is ConversationRuntimeTask.Payload.ApplyPreparedCompaction -> translation.historyMutationTask
         is ConversationRuntimeTask.Payload.LlmCall, is ConversationRuntimeTask.Payload.ResponseReview -> translation.llmCallTask
         is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionTask
         is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingTask
@@ -1036,7 +1037,8 @@ internal fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
         is ConversationRuntimeTask.Payload.AgentResponse -> agentName?.let {
             localization.text("session.runtime.agentWorking", "agentName" to it)
         } ?: translation.agentInvocationTask
-        is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationStatus
+        is ConversationRuntimeTask.Payload.HistoryMutation,
+        is ConversationRuntimeTask.Payload.ApplyPreparedCompaction -> translation.historyMutationStatus
         is ConversationRuntimeTask.Payload.LlmCall, is ConversationRuntimeTask.Payload.ResponseReview -> translation.modelRequestStatus
         is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus
         is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingStatus
@@ -1058,6 +1060,7 @@ private fun ConversationRuntimeTask.Payload.agentDefinitionIdOrNull(): AgentDefi
     is ConversationRuntimeTask.Payload.MemoryRunCompletion -> agentDefinitionId
     is ConversationRuntimeTask.Payload.PostMessage,
     is ConversationRuntimeTask.Payload.HistoryMutation,
+    is ConversationRuntimeTask.Payload.ApplyPreparedCompaction,
     is ConversationRuntimeTask.Payload.BackgroundActivityCompletion,
     is ConversationRuntimeTask.Payload.ExecutionIncident,
     -> null

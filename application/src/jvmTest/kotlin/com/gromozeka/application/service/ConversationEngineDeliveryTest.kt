@@ -590,7 +590,7 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
         f.drain()
         assertEquals(1, f.requests.size)
-        assertFalse(f.messages.any { it.providerMetadata["syntheticKind"] == JsonPrimitive("command_task_completion") })
+        assertFalse(f.messages.any { it.syntheticKind == SyntheticMessageKind.COMMAND_TASK_COMPLETION })
     }
 
     @Test fun `terminal query and completion event reach the model together even for return-direct tools`() = runBlocking {
@@ -660,7 +660,7 @@ class ConversationEngineDeliveryTest {
         assertTrue(service.prepareBatch(conversation.id, command.notificationSourceKey()).isEmpty)
         assertEquals(listOf(untouched.notificationSourceKey()), f.coordinator.listPending(conversation.id)
             .mapNotNull { (it.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion)?.sourceKey })
-        assertTrue(f.messages.none { it.providerMetadata["syntheticKind"] == JsonPrimitive("command_task_completion") })
+        assertTrue(f.messages.none { it.syntheticKind == SyntheticMessageKind.COMMAND_TASK_COMPLETION })
         assertTrue(f.requests.isEmpty())
     }
 
@@ -697,7 +697,7 @@ class ConversationEngineDeliveryTest {
             val callMessageId = Conversation.Message.Id("${runId.value}:memory:$toolName:$phase:call")
             if (withLegacyCall) f.messages += f.messages.single().copy(id = callMessageId,
                 role = Conversation.Message.Role.ASSISTANT,
-                providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "memory") },
+                providerMetadata = buildJsonObject { putSyntheticMessageMetadata(SyntheticMessageKind.MEMORY) },
                 content = listOf(ContentItem.ToolCall(legacyId, ContentItem.ToolCall.Data(toolName, JsonObject(emptyMap())))))
             val task = input("memory-completed").copy(payload = ConversationRuntimeTask.Payload.MemoryRunCompletion(runId, agentId, toolName))
             assertTrue(f.coordinator.submit(task)); f.claim(task)
@@ -779,7 +779,7 @@ class ConversationEngineDeliveryTest {
         assertEquals(1, applications)
         assertTrue(f.preparations.isEmpty())
         assertEquals(listOf("root"), f.messages.filter { it.content.any { c -> c is ContentItem.UserMessage } }.map { it.id.value })
-        assertFalse(f.emitted.any { it.providerMetadata["syntheticKind"] == JsonPrimitive("compaction_continuation") })
+        assertFalse(f.emitted.any { it.syntheticKind == SyntheticMessageKind.COMPACTION_CONTINUATION })
     }
 
     @Test fun `ready preparation preserves an ordinary CONTINUE and never applies during the model call`() = runBlocking {

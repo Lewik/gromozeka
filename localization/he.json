@@ -798,6 +798,7 @@
     "client.instructions.inputContext": "הקשר הזנת ההודעה",
     "client.instructions.liveSteering": "הנחיה במהלך העבודה",
     "client.instructions.messageTime": "זמן ההודעה",
+    "client.instructions.runtimeObservation": "נתוני זמן ריצה",
     "client.instructions.previousInterrupted": "מחזור התשובה הקודם נקטע",
     "client.instructions.previousStopped": "מחזור התשובה הקודם הופסק",
     "client.instructions.readOnly": "קריאה בלבד",

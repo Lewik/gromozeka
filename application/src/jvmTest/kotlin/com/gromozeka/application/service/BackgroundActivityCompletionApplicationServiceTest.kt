@@ -1,5 +1,12 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.BackgroundActivityMessageSource
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.backgroundActivitySource
+import com.gromozeka.domain.model.syntheticKind
+import com.gromozeka.domain.repository.BackgroundActivityOrigin
+
 import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
@@ -27,6 +34,47 @@ import kotlin.test.assertTrue
 class BackgroundActivityCompletionApplicationServiceTest {
     private val conversationId = Conversation.Id("conversation-1")
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
+
+    @Test
+    fun `command and monitor messages preserve validated launch identity without attributing runtime output to an agent`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val origins = TestBackgroundActivityOrigins()
+        val service = BackgroundActivityCompletionApplicationService(coordinator, origins, BackgroundActivityContinuationPolicy { _, _ -> true })
+        val at = Instant.fromEpochMilliseconds(1000)
+        val command = terminalCommand("task", agentDefinitionId, "done", at)
+        val monitor = commandMonitor("monitor", CommandMonitor.Status.COMPLETED, at, agentDefinitionId)
+        val actor = User.Id("user")
+        origins.bindWhileRequestPending(BackgroundActivityOrigin(BackgroundActivityOrigin.Kind.COMMAND, command.id.value, conversationId,
+            agentDefinitionId, actor, command.workerId, command.workspaceMountId, "request-command", "original-command-call"), at)
+        origins.bindWhileRequestPending(BackgroundActivityOrigin(BackgroundActivityOrigin.Kind.MONITOR, monitor.id.value, conversationId,
+            agentDefinitionId, actor, monitor.workerId, monitor.workspaceMountId, "request-monitor", "original-monitor-call"), at)
+        coordinator.upsertCommandTask(command)
+        coordinator.synchronizeCommandMonitor(monitor, emptyList())
+        val batch = service.prepareBatch(conversationId, command.notificationSourceKey())
+        assertEquals(4, batch.messages.size)
+        assertEquals(actor, batch.actorUserId)
+        for (message in batch.messages) {
+            val expectedCall = if (message.syntheticKind == SyntheticMessageKind.COMMAND_TASK_COMPLETION) "original-command-call" else "original-monitor-call"
+            assertEquals(BackgroundActivityMessageSource(ContentItem.ToolCall.Id(expectedCall), agentDefinitionId), message.backgroundActivitySource)
+            assertEquals(null, message.author)
+        }
+    }
+
+    @Test
+    fun `mismatched provenance does not become a grouping identity`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val origins = TestBackgroundActivityOrigins()
+        val service = BackgroundActivityCompletionApplicationService(coordinator, origins, BackgroundActivityContinuationPolicy { _, _ -> true })
+        val at = Instant.fromEpochMilliseconds(1000)
+        val command = terminalCommand("task", agentDefinitionId, "done", at)
+        origins.bindWhileRequestPending(BackgroundActivityOrigin(BackgroundActivityOrigin.Kind.COMMAND, command.id.value, conversationId,
+            AgentDefinition.Id("unrelated"), User.Id("user"), command.workerId, command.workspaceMountId, "request", "wrong-call"), at)
+        coordinator.upsertCommandTask(command)
+        val batch = service.prepareBatch(conversationId, command.notificationSourceKey())
+        assertEquals(2, batch.messages.size)
+        assertTrue(batch.messages.all { it.backgroundActivitySource == null && it.author == null })
+        assertEquals(null, batch.actorUserId)
+    }
 
     @Test
     fun `synthetic pairs have stable nine-character IDs without changing command or message identity`() = runBlocking {

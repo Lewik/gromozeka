@@ -817,6 +817,7 @@
     "client.instructions.inputContext": "Контекст ввода сообщения",
     "client.instructions.liveSteering": "Уточнение по ходу работы",
     "client.instructions.messageTime": "Время сообщения",
+    "client.instructions.runtimeObservation": "Наблюдение Runtime",
     "client.instructions.previousInterrupted": "Предыдущий цикл ответа прерван",
     "client.instructions.previousStopped": "Предыдущий цикл ответа остановлен",
     "client.instructions.readOnly": "Только чтение",

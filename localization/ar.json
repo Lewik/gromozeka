@@ -855,6 +855,7 @@
     "client.instructions.inputContext": "سياق إدخال الرسالة",
     "client.instructions.liveSteering": "توجيه أثناء العمل",
     "client.instructions.messageTime": "وقت الرسالة",
+    "client.instructions.runtimeObservation": "ملاحظة وقت التشغيل",
     "client.instructions.previousInterrupted": "تمت مقاطعة دورة الرد السابقة",
     "client.instructions.previousStopped": "أُوقفت دورة الرد السابقة",
     "client.instructions.readOnly": "للقراءة فقط",

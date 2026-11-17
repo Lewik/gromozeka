@@ -1,5 +1,9 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.BackgroundActivityMessageSource
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.putSyntheticMessageMetadata
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.syntheticToolCallId
@@ -89,14 +93,15 @@ class BackgroundActivityCompletionApplicationService(
             )
             .toList()
         val provenance = origins.find(conversationId, sortedCandidates.mapTo(mutableSetOf()) { it.originKey })
-        fun actor(candidate: DeliveryCandidate): User.Id? = provenance[candidate.originKey]
+        fun origin(candidate: DeliveryCandidate): BackgroundActivityOrigin? = provenance[candidate.originKey]
             ?.takeIf { origin ->
                 origin.conversationId == conversationId && origin.agentDefinitionId == candidate.agentDefinitionId &&
                     when (candidate) {
                         is DeliveryCandidate.Command -> origin.workerId == candidate.task.workerId && origin.workspaceMountId == candidate.task.workspaceMountId
                         is DeliveryCandidate.Monitor -> origin.workerId == candidate.delivery.monitor.workerId && origin.workspaceMountId == candidate.delivery.monitor.workspaceMountId
                     }
-            }?.actorUserId
+            }
+        fun actor(candidate: DeliveryCandidate): User.Id? = origin(candidate)?.actorUserId
         val source = sortedCandidates.singleOrNull { candidate ->
             when (candidate) {
                 is DeliveryCandidate.Command -> candidate.task.notificationSourceKey() == sourceKey
@@ -121,8 +126,8 @@ class BackgroundActivityCompletionApplicationService(
             monitorDeliveries = monitorDeliveries,
             messages = selectedCandidates.flatMap { candidate ->
                 when (candidate) {
-                    is DeliveryCandidate.Command -> buildSyntheticCommandPair(candidate.task)
-                    is DeliveryCandidate.Monitor -> buildSyntheticMonitorPair(candidate.delivery)
+                    is DeliveryCandidate.Command -> buildSyntheticCommandPair(candidate.task, origin(candidate).messageSource())
+                    is DeliveryCandidate.Monitor -> buildSyntheticMonitorPair(candidate.delivery, origin(candidate).messageSource())
                 }
             },
         )
@@ -172,12 +177,17 @@ class BackgroundActivityCompletionApplicationService(
         val terminalNotificationIncluded: Boolean,
     )
 
-    private fun buildSyntheticCommandPair(task: CommandTask): List<Conversation.Message> {
+    private fun BackgroundActivityOrigin?.messageSource(): BackgroundActivityMessageSource? {
+        val callId = this?.toolCallId ?: return null
+        val agentId = agentDefinitionId ?: return null
+        return BackgroundActivityMessageSource(ContentItem.ToolCall.Id(callId), agentId)
+    }
+
+    private fun buildSyntheticCommandPair(task: CommandTask, source: BackgroundActivityMessageSource?): List<Conversation.Message> {
         val toolCallId = syntheticToolCallId("cmd_${stableIdentifierSlug(task.id.value)}_status")
         val createdAt = task.completedAt ?: task.updatedAt
         val metadata = buildJsonObject {
-            put("synthetic", true)
-            put("syntheticKind", "command_task_completion")
+            putSyntheticMessageMetadata(SyntheticMessageKind.COMMAND_TASK_COMPLETION, source)
             put("commandTaskId", task.id.value)
             put("workerId", task.workerId.value)
         }
@@ -250,7 +260,7 @@ class BackgroundActivityCompletionApplicationService(
         return listOf(toolCallMessage, toolResultMessage)
     }
 
-    private fun buildSyntheticMonitorPair(delivery: MonitorDelivery): List<Conversation.Message> {
+    private fun buildSyntheticMonitorPair(delivery: MonitorDelivery, source: BackgroundActivityMessageSource?): List<Conversation.Message> {
         val monitor = delivery.monitor
         val deliveryKey = buildString {
             append(delivery.events.lastOrNull()?.id?.value ?: "no-events")
@@ -264,8 +274,7 @@ class BackgroundActivityCompletionApplicationService(
             ?: monitor.completedAt
             ?: monitor.updatedAt
         val metadata = buildJsonObject {
-            put("synthetic", true)
-            put("syntheticKind", "command_monitor_update")
+            putSyntheticMessageMetadata(SyntheticMessageKind.COMMAND_MONITOR_UPDATE, source)
             put("commandMonitorId", monitor.id.value)
             put("commandTaskId", monitor.commandTaskId.value)
             put("workerId", monitor.workerId.value)

@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
@@ -41,7 +44,7 @@ class MemoryThreadContextCompactorTest {
 
         assertTrue(runtime.requests.isNotEmpty())
         assertTrue(compacted.messages.size < context.messages.size)
-        assertEquals("memory_focused_context", compacted.messages.first().providerMetadata["syntheticKind"]?.jsonPrimitiveContent())
+        assertEquals(SyntheticMessageKind.MEMORY_FOCUSED_CONTEXT, compacted.messages.first().syntheticKind)
         assertEquals(context.targetMessageId, compacted.messages.last().id)
     }
 

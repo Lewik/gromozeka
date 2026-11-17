@@ -1,5 +1,9 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.putSyntheticMessageMetadata
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.ai.*
@@ -75,7 +79,7 @@ class OpenAiSubscriptionIncrementalReplayTest {
         for (lite in listOf(false, true)) {
             val s = Scenario(lite, null)
             val oldId = ContentItem.ToolCall.Id("cmd_legacy_long_identifier_status")
-            val metadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "command_task_completion") }
+            val metadata = buildJsonObject { putSyntheticMessageMetadata(SyntheticMessageKind.COMMAND_TASK_COMPLETION) }
             val call = Conversation.Message(Conversation.Message.Id("background-call"), conversationId,
                 role = Conversation.Message.Role.ASSISTANT, createdAt = now, providerMetadata = metadata,
                 content = listOf(ContentItem.ToolCall(oldId, ContentItem.ToolCall.Data("synthetic_tool", JsonObject(emptyMap())))))

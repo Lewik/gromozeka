@@ -798,6 +798,7 @@
     "client.instructions.inputContext": "Contexte de saisie du message",
     "client.instructions.liveSteering": "Consigne pendant le travail",
     "client.instructions.messageTime": "Heure du message",
+    "client.instructions.runtimeObservation": "Observation du runtime",
     "client.instructions.previousInterrupted": "Cycle de réponse précédent interrompu",
     "client.instructions.previousStopped": "Cycle de réponse précédent arrêté",
     "client.instructions.readOnly": "Lecture seule",

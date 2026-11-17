@@ -1660,6 +1660,29 @@ arriving during delivery can join the next safe point too.
 Worker Gateway protocol **31** includes this notification contract; update Server,
 Workers and clients together.
 
+Synthetic message metadata uses the shared `SyntheticMessageKind` enum and standard
+Kotlin serialization names (`COMMAND_TASK_COMPLETION`, `COMMAND_MONITOR_UPDATE`,
+`MEMORY`, and the other declared kinds). Producers use `putSyntheticMessageMetadata`;
+readers use the typed `syntheticKind` accessor. There are no lowercase aliases,
+case-insensitive readers, custom enum values, or unknown-kind defaults.
+
+Command/monitor delivery includes a typed `backgroundActivitySource` containing the
+initiating `toolCallId` and `agentDefinitionId`, taken only from validated Server-owned
+launch provenance. These fields identify activity ownership, not message authorship:
+automatic messages retain `author = null`, their separate message IDs and their
+synthetic call/result pair. UI grouping uses this ownership to join adjacent completed
+activity-only messages with the same agent, without crossing text, role, failure or
+running-activity boundaries. Missing trusted provenance stays unlinked rather than
+being inferred from the most recent agent or command text.
+
+Migration **V89** converts old lowercase kinds in canonical history, queued runtime
+messages, runtime event copies and response-review drafts, and fills launch links
+where trusted origin records exist. It preserves IDs, content, authors, tool payloads
+and opaque provider replay metadata. Unknown kinds fail explicitly. This is a one-time
+Kotlin/Flyway migration, not a runtime compatibility path.
+Worker Gateway protocol **33** requires the updated Server, Workers and clients;
+drain in-flight calls before the coordinated upgrade.
+
 Model requests also receive a request-only `recorded_running_commands` inventory
 from the Server's saved command state. Each entry contains only `task_id` and an
 optional nonblank `description`, limited to 160 Unicode code points. Missing

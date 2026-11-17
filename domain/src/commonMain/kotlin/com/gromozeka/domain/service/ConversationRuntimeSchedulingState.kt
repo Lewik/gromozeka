@@ -1,5 +1,7 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserMessageDeliveryMode
@@ -920,7 +922,7 @@ data class ConversationRuntimeSchedulingState(
             message.role != Conversation.Message.Role.USER ||
             (message.author as? Conversation.Message.Author.User)?.userId != actorUserId ||
             message.instructions.any { it is Conversation.Message.Instruction.Source.Agent } ||
-            "syntheticKind" in message.providerMetadata
+            message.syntheticKind != null
         ) return null
         return when (val input = payload) {
             is ConversationRuntimeTask.Payload.AgentInvocation -> setOf(input.agentDefinitionId)

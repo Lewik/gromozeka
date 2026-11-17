@@ -760,6 +760,7 @@
     "client.instructions.inputContext": "メッセージ入力の状況",
     "client.instructions.liveSteering": "作業中の追加指示",
     "client.instructions.messageTime": "メッセージの送信時刻",
+    "client.instructions.runtimeObservation": "ランタイムの観測情報",
     "client.instructions.previousInterrupted": "前のターンの中断",
     "client.instructions.previousStopped": "前のターンの停止",
     "client.instructions.readOnly": "読み取り専用",

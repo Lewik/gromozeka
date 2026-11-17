@@ -760,6 +760,7 @@
     "client.instructions.inputContext": "Konteks input pesan",
     "client.instructions.liveSteering": "Arahan saat pekerjaan berlangsung",
     "client.instructions.messageTime": "Waktu pesan",
+    "client.instructions.runtimeObservation": "Observasi runtime",
     "client.instructions.previousInterrupted": "Giliran sebelumnya diinterupsi",
     "client.instructions.previousStopped": "Giliran sebelumnya dihentikan",
     "client.instructions.readOnly": "Hanya baca",

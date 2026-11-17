@@ -4856,6 +4856,14 @@
     ],
     "args": []
   },
+  "client.instructions.runtimeObservation": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
+    ],
+    "description": "Label for request-only Runtime observation data attached to a model request, not a human instruction or utterance.",
+    "args": [],
+    "literal": "Runtime observation"
+  },
   "client.instructions.previousInterrupted": {
     "description": "History chip stating that the user interrupted the previous agent turn; operations may have been partially cancelled. Preserve distinction from stop.",
     "source": [

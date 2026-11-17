@@ -63,7 +63,7 @@ class SyntheticToolCallIdsTest {
         val native = pair("native", "call_provider_generated_long_id", kind = null)
         val result = request(generated + native).projectedMessages()
         assertEquals(generated + native, result)
-        val routingError = pair("routing", "call_real_model_id", kind = "tool_routing_error")
+        val routingError = pair("routing", "call_real_model_id", kind = SyntheticMessageKind.TOOL_ROUTING_ERROR)
         assertEquals(routingError, request(routingError).projectedMessages())
     }
 
@@ -83,8 +83,8 @@ class SyntheticToolCallIdsTest {
 
     @Test
     fun monitorAndCommandLegacyIdsUseTheSameContract() {
-        for (kind in listOf("command_task_completion", "command_monitor_update", "memory")) {
-            val input = pair(kind, "long-legacy-id:with:punctuation", kind)
+        for (kind in listOf(SyntheticMessageKind.COMMAND_TASK_COMPLETION, SyntheticMessageKind.COMMAND_MONITOR_UPDATE, SyntheticMessageKind.MEMORY)) {
+            val input = pair(kind.name, "long-legacy-id:with:punctuation", kind)
             val projected = request(input).projectedMessages()
             assertTrue(Regex("[A-Za-z0-9]{9}").matches(callId(projected).value))
             assertEquals(callId(projected), resultId(projected))
@@ -95,10 +95,10 @@ class SyntheticToolCallIdsTest {
     private fun callId(messages: List<Message>) = (messages[0].content.single() as ContentItem.ToolCall).id
     private fun resultId(messages: List<Message>) = (messages[1].content.single() as ContentItem.ToolResult).toolUseId
 
-    private fun pair(prefix: String, id: String, kind: String? = "command_task_completion"): List<Message> {
+    private fun pair(prefix: String, id: String, kind: SyntheticMessageKind? = SyntheticMessageKind.COMMAND_TASK_COMPLETION): List<Message> {
         val callId = ContentItem.ToolCall.Id(id)
         val metadata = if (kind == null) JsonObject(emptyMap()) else buildJsonObject {
-            put("synthetic", true); put("syntheticKind", kind)
+            putSyntheticMessageMetadata(kind)
         }
         val call = Message(Message.Id("$prefix:call"), Conversation.Id("conversation"), role = Message.Role.ASSISTANT,
             content = listOf(ContentItem.ToolCall(callId, ContentItem.ToolCall.Data("tool", JsonObject(emptyMap())))),

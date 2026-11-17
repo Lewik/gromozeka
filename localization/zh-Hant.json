@@ -760,6 +760,7 @@
     "client.instructions.inputContext": "訊息輸入資訊",
     "client.instructions.liveSteering": "工作中的補充指示",
     "client.instructions.messageTime": "訊息傳送時間",
+    "client.instructions.runtimeObservation": "執行階段觀測資訊",
     "client.instructions.previousInterrupted": "上一輪已中斷",
     "client.instructions.previousStopped": "上一輪已停止",
     "client.instructions.readOnly": "唯讀",

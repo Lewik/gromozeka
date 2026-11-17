@@ -87,7 +87,7 @@ class UserMessageDeliverySchedulingTest {
             source.copy(payload = ConversationRuntimeTask.Payload.AgentInvocation(
                 message.copy(instructions = listOf(Conversation.Message.Instruction.Source.Agent("peer"))), agent)),
             source.copy(payload = ConversationRuntimeTask.Payload.AgentInvocation(message.copy(
-                providerMetadata = kotlinx.serialization.json.buildJsonObject { put("syntheticKind", kotlinx.serialization.json.JsonPrimitive("command_task_completion")) }), agent)),
+                providerMetadata = kotlinx.serialization.json.buildJsonObject { putSyntheticMessageMetadata(SyntheticMessageKind.COMMAND_TASK_COMPLETION) }), agent)),
             source.copy(payload = ConversationRuntimeTask.Payload.HistoryMutation(ConversationHistoryMutation.Delete(emptyList()))),
             source.copy(requirements = requirements.copy(target = ConversationRuntimeTaskTarget.Worker(ConversationRuntimeWorkerId("worker")))),
         )

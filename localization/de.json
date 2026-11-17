@@ -779,6 +779,7 @@
     "client.instructions.inputContext": "Kontext der Nachrichteneingabe",
     "client.instructions.liveSteering": "Anweisung während der Ausführung",
     "client.instructions.messageTime": "Zeitpunkt der Nachricht",
+    "client.instructions.runtimeObservation": "Runtime-Beobachtung",
     "client.instructions.previousInterrupted": "Vorheriger Antwortdurchlauf unterbrochen",
     "client.instructions.previousStopped": "Vorheriger Antwortdurchlauf gestoppt",
     "client.instructions.readOnly": "Nur lesen",
