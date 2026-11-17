@@ -71,7 +71,7 @@ class ActivityRenderingTest {
                         ActivityTimelineFixture(listOf(message), results.value)
                     }
                 }
-                onNodeWithText("grz_execute_command__v4: echo first").assertIsDisplayed()
+                onNodeWithText("echo first").assertIsDisplayed()
                 onNodeWithText("grz_read_file__v4: second.txt").assertIsDisplayed()
                 onNodeWithText(toolDisplayName(call.call.name, translation.runtime) + ": echo first").assertDoesNotExist()
                 onNodeWithContentDescription(translation.text("runtime.runningTaskLabel")).assertDoesNotExist()
@@ -84,12 +84,12 @@ class ActivityRenderingTest {
                     state = Conversation.Message.BlockState.STREAMING)
                 runOnIdle { results.value = mapOf(call.id.value to partial) }
                 onNodeWithText("Partial output").assertIsDisplayed()
-                onNodeWithText("grz_execute_command__v4: echo first").assertIsDisplayed()
+                onNodeWithText("echo first").assertIsDisplayed()
                 onNodeWithContentDescription(translation.text("runtime.runningTaskLabel")).assertDoesNotExist()
                 runOnIdle { results.value = mapOf(call.id.value to partial.copy(state = Conversation.Message.BlockState.COMPLETE, isError = true)) }
                 onNodeWithText("Partial output").assertIsDisplayed()
                 onNodeWithContentDescription(translation.text("runtime.failedTaskLabel")).assertIsDisplayed()
-                onNodeWithText(toolDisplayName(call.call.name, translation.runtime) + ": echo first").assertIsDisplayed()
+                onNodeWithText("echo first").assertIsDisplayed()
             }
         }
     }

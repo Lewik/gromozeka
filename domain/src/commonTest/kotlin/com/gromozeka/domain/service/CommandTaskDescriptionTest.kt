@@ -17,6 +17,15 @@ class CommandTaskDescriptionTest {
         outputFile = "/output", outputBytes = 0, createdAt = now, updatedAt = now,
     )
 
+    @Test fun storedAndInvocationLabelsUseTheSamePurposeSelection() {
+        for ((description, expected) in listOf(null to "echo original", " \n " to "echo original", "Проверить сборку" to "Проверить сборку")) {
+            val command = task(description)
+            assertEquals(expected, commandDisplayLabel(command.command, description))
+            assertEquals(expected, command.displayLabel)
+            assertEquals("echo original", command.command)
+        }
+    }
+
     @Test fun labelSurvivesSerializationAndTerminalTransition() {
         val description = "д".repeat(1000)
         val original = task(description)

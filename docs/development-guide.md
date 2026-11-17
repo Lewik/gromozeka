@@ -1644,8 +1644,14 @@ claim results ("Tests passed"), and must not contain secrets.
 
 The exact command stays separate and unchanged. Description is persisted with the
 command task, included in get/list/completion metadata, and cannot change during
-state synchronization. Runtime captions prefer it, with the original command
-available in the tooltip; missing or blank task labels display the command.
+state synchronization. Runtime task labels and chat invocation headers share
+one selection rule: a nonblank description takes precedence over the command.
+Chat headers show only that label beside the tool icon, without a technical-name
+prefix. Missing/blank descriptions use a compact command preview; the expanded
+invocation keeps the exact tool name/version, full command, directory, parameters
+and output. Runtime task tooltips retain the full command. Activity groups stay
+icon-only. Live activity captions without a description retain their generic
+localized wording rather than exposing shell arguments.
 This adds no shell argument/environment value or extra model call. Existing JSON
 records default description to null; no database migration is required.
 Worker Gateway protocol **26** adds this command metadata. Update Server, Workers

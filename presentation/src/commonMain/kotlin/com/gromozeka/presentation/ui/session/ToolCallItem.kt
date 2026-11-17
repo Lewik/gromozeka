@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.commandDisplayLabel
 import com.gromozeka.presentation.ui.format
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.services.translation.data.Translation
@@ -129,8 +130,11 @@ private fun extractKeyParameters(
                 localization.text("chat.tool.replaceAllSummary", "path" to path)
             } else path
         }
-        "grz_execute_command" -> json["command"]?.jsonPrimitive?.content.orEmpty().let {
-            if (it.length > 60) it.take(57) + "..." else it
+        "grz_execute_command" -> {
+            val command = json["command"]?.jsonPrimitive?.content.orEmpty()
+            val description = commandDescription(input)
+            val label = commandDisplayLabel(command, description)
+            if (description == null && label.length > 60) label.take(57) + "..." else label
         }
         "brave_web_search", "brave_local_search" -> json["query"]?.jsonPrimitive?.content.orEmpty()
         "web_search" -> (json["queries"] as? JsonArray)?.map { it.jsonPrimitive.content }
@@ -169,9 +173,14 @@ internal fun ToolCallItem(
     val localization = LocalTranslation.current
     // Get tool display information
     val toolName = toolCall.name
+    val commandCall = toolName.replace(Regex("__v\\d+$"), "") == "grz_execute_command"
     val displayName = if (activityState == ActivityState.RUNNING) toolName else toolDisplayName(toolName, localization.runtime)
     val keyParameters = extractKeyParameters(toolName, toolCall.input, workspaceRootPath, localization)
-    val toolDescription = if (keyParameters.isNotEmpty()) "$displayName: $keyParameters" else displayName
+    val toolDescription = when {
+        keyParameters.isEmpty() -> displayName
+        commandCall -> keyParameters
+        else -> "$displayName: $keyParameters"
+    }
     val detailedParameters = buildDetailedParameters(toolName, toolCall.input, workspaceRootPath, localization)
 
     Column {
@@ -196,6 +205,14 @@ internal fun ToolCallItem(
                 shape = RoundedCornerShape(4.dp)
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
+                    if (commandCall) {
+                        Text(
+                            text = toolName,
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                     // Show detailed parameters
                     Text(
                         text = detailedParameters,
