@@ -448,7 +448,7 @@ class WorkflowContracts(unittest.TestCase):
         self.assertEqual("ubuntu-24.04", JOBS["verify-e2e"]["runs-on"])
         e2e_step = next(step for step in JOBS["verify-e2e"]["steps"]
                         if step.get("name") == "Verify Compose E2E")
-        self.assertEqual("https://mirrors.edge.kernel.org/ubuntu",
+        self.assertEqual("https://archive.ubuntu.com/ubuntu",
                          e2e_step["env"]["GROMOZEKA_E2E_UBUNTU_MIRROR"])
         compose = load_yaml(ROOT / "e2e-tests/compose.yaml")
         self.assertEqual("${GROMOZEKA_E2E_UBUNTU_MIRROR:-}",
