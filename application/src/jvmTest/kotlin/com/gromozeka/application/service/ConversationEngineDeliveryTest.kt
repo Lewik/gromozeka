@@ -352,6 +352,49 @@ class ConversationEngineDeliveryTest {
         assertFalse(f.messages.any { message -> message.content.any { it is ContentItem.UserMessage && "PIN_" in it.text } })
     }
 
+    @Test fun `custom inline suggestions instruction reaches the main model without a second call`() = runBlocking {
+        val f = Fixture()
+        f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
+            inlinePrompt = "CUSTOM_INLINE_INSTRUCTION", separatePrompt = "SEPARATE_ONLY_INSTRUCTION",
+        ))
+        val task = f.begin()
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+        val prompts = f.requests.single().systemPrompts.joinToString("\n")
+        assertContains(prompts, "suggestedReplies: CUSTOM_INLINE_INSTRUCTION")
+        assertFalse("SEPARATE_ONLY_INSTRUCTION" in prompts)
+        assertTrue(f.suggestionRequests.isEmpty())
+    }
+
+    @Test fun `full suggestions context loads actual thread history rather than the compacted model prefix`() = runBlocking {
+        for (mode in UserProfile.SuggestedRepliesSettings.ContextMode.entries) {
+            val f = Fixture()
+            f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
+                mode = UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME,
+                separatePrompt = "CUSTOM_SEPARATE_INSTRUCTION", contextMode = mode,
+            ))
+            f.allowFullHistoryLoad = mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD
+            val root = f.messages.single()
+            val old = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("ARCHIVE_VISIBLE_SENTINEL")))
+            val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )))
+            val replayAnchor = old.copy(id = Conversation.Message.Id("replay-anchor"), content = listOf(ContentItem.UserMessage("REPLAY_ANCHOR")))
+            f.messages.clear(); f.messages += listOf(old, replayAnchor, checkpoint, root)
+            val task = f.begin()
+            assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+            assertFalse(f.requests.single().messages.any { it.id == old.id })
+            val request = f.suggestionRequests.single()
+            val text = (request.messages.single().content.single() as ContentItem.UserMessage).text
+            assertEquals(mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD, "ARCHIVE_VISIBLE_SENTINEL" in text)
+            assertContains(text, "CUSTOM_SEPARATE_INSTRUCTION")
+            assertContains(text, "ASSISTANT: Answer")
+            assertFalse("CUSTOM_SEPARATE_INSTRUCTION" in f.requests.single().systemPrompts.joinToString("\n"))
+            assertEquals(listOf("Next"), f.messages.last().content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.suggestedReplies)
+        }
+    }
+
     @Test fun `model preparation loads checkpoint context rather than the archive`() = runBlocking {
         val f = Fixture(); f.allowFullHistoryLoad = false
         val root = f.messages.single()
@@ -711,6 +754,8 @@ class ConversationEngineDeliveryTest {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
+        var profile = UserProfile()
+        val suggestionRequests = mutableListOf<AiRuntimeRequest>()
         var onCompact: (AiRuntimeRequest) -> Conversation? = { null }
         val compactionChecks = mutableListOf<Pair<AiRuntimeRequest, Boolean>>()
         val preparations = mutableListOf<AiRuntimeRequest>()
@@ -865,14 +910,24 @@ class ConversationEngineDeliveryTest {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)
             },
             backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),
-            toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { UserProfile() },
+            toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { profile },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
             aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(),
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
-            suggestedRepliesGenerationService = mock(),
+            suggestedRepliesGenerationService = SuggestedRepliesGenerationService(
+                responding { object : AiRuntime {
+                    override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                        suggestionRequests += request
+                        return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(ContentItem.AssistantMessage(
+                            Conversation.Message.StructuredText("", suggestedReplies = listOf("Next")),
+                        )))))
+                    }
+                    override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("Unexpected suggestions stream")
+                } }, ConversationPinnedPrompt(pins), responding { agent.runtimeSelection },
+            ),
             conversationPins = ConversationPinnedPrompt(pins),
             requestEnrichers = if (withEnricher) listOf(object : ConversationRequestEnricher {
                 override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,

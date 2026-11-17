@@ -122,6 +122,7 @@ class ConversationContextSnapshotService(
                 skills = skillContext.systemPrompt,
                 responseFormat = format,
                 includeSuggestedReplies = inlineSuggestions,
+                inlineSuggestedRepliesPrompt = profile.suggestedRepliesSettings.inlinePrompt,
             ))
             if (peerContext != null) add(peerContext.prompt(target.address, peerContext.context(target.address, actor)))
             selectedTools.unavailableToolsSystemPrompt()?.let(::add)

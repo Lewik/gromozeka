@@ -151,7 +151,8 @@ class ConversationApplicationService(
         }
         val sourceAgentId = (sourceMessage.author as? Conversation.Message.Author.Agent)?.agentDefinitionId
             ?: error("Suggested reply source message has no agent author")
-        val mode = settingsProvider.userProfile.suggestedRepliesSettings.mode
+        val settings = settingsProvider.userProfile.suggestedRepliesSettings
+        val mode = settings.mode
         require(mode != UserProfile.SuggestedRepliesSettings.Mode.DISABLED) {
             "Suggested replies are disabled"
         }
@@ -175,6 +176,7 @@ class ConversationApplicationService(
             runtimeSelection = runtimeSelection,
             actorUserId = actorUserId,
             usageId = "suggested-replies:${sourceMessageId.value}:${uuid7()}",
+            settings = settings,
         )
     }
 

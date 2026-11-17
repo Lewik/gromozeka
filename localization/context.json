@@ -13295,6 +13295,78 @@
     "args": [],
     "literal": "Suggested replies"
   },
+  "settingsUi.suggestedRepliesInlinePrompt": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Label for the editable suggested-replies instruction embedded in the main assistant response contract. The technical field prefix is not editable.",
+    "args": [],
+    "literal": "Inline suggestions prompt"
+  },
+  "settingsUi.suggestedRepliesInlinePromptDescription": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Explains that only semantic inline suggestions instructions are editable; the JSON field name and response contract remain code-owned.",
+    "args": [],
+    "literal": "Instruction used in the main answer. The suggestedReplies field name and response format are fixed."
+  },
+  "settingsUi.suggestedRepliesSeparatePrompt": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Label for the editable user-message instruction in the dedicated suggestions generation request.",
+    "args": [],
+    "literal": "Separate suggestions prompt"
+  },
+  "settingsUi.suggestedRepliesSeparatePromptDescription": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Explains that this instruction is used by separate generation and by manual regeneration, while the system prompt, context delimiters and XML output contract remain code-owned.",
+    "args": [],
+    "literal": "Instruction for separate generation and regeneration. The system prompt, context wrapper and XML format are fixed."
+  },
+  "settingsUi.suggestedRepliesContext": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Dropdown label selecting how much conversation history is sent to a separate suggestions call, including manual regeneration.",
+    "args": [],
+    "literal": "Separate generation context"
+  },
+  "settingsUi.suggestedRepliesContextDescription": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Explains the fixed recent-window policy versus the complete readable current-thread history, and warns that the full thread is not silently trimmed to model limits.",
+    "args": [],
+    "literal": "Use the latest 10 non-empty messages (up to 4000 characters each), or all readable user and assistant messages in the current thread without truncation. The full thread may exceed the model context limit."
+  },
+  "settingsUi.suggestedRepliesRecentContext": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Context option limiting generation input to ten nonblank user/assistant messages with a four-thousand-character limit per message. The multiplication sign describes limits, not a computation.",
+    "args": [],
+    "literal": "Recent messages (10 × 4000 characters)"
+  },
+  "settingsUi.suggestedRepliesFullContext": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Context option including every readable user/assistant message in the current thread, with no per-message or message-count clipping.",
+    "args": [],
+    "literal": "Full current thread"
+  },
+  "settingsUi.suggestedRepliesPromptRequired": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"
+    ],
+    "description": "Validation feedback for a locally empty suggestions prompt draft; empty drafts are not persisted to the user profile.",
+    "args": [],
+    "literal": "Prompt must not be empty."
+  },
   "settingsUi.swallowKey": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:2500"

@@ -452,6 +452,31 @@ package management, selection, and synchronization to Agents. See
 ownership contracts, and validation commands, and
 [Web font fallback](localization-fonts.md) for bundled font resources.
 
+## Suggested Reply Settings
+
+`UserProfile.suggestedRepliesSettings` owns two independent nonblank instructions:
+`inlinePrompt` for the main response and `separatePrompt` for dedicated generation
+and manual regeneration. Both start with the same concise, language-preserving
+instruction and a recommendation of 112 total reply characters. That number is
+editable prompt text, not a new output validator or truncation rule. The existing
+reply sanitization policy is unchanged. JSON/XML field names, output syntax,
+the separate generator's system prompt and the conversation wrapper stay code-owned.
+The existing `grz_user_profile_get` and `grz_user_profile_update` tools expose these
+settings; updates still replace the complete shared profile, not a partial patch.
+
+`contextMode` selects `RECENT_MESSAGES` (the last ten nonblank readable messages,
+up to 4000 characters each) or `FULL_THREAD` (all readable user/assistant content
+in the current thread, without those limits). Initial full-thread generation loads
+actual thread history rather than the main model's compacted context projection,
+and includes the newly generated answer. Manual regeneration ends at the selected
+source answer. Full-thread mode does not silently shorten history to fit the model;
+provider context limits and the existing generation-failure behavior still apply.
+It does not change provider caching settings or guarantee a cache hit.
+
+The Settings editor keeps both instructions adjacent and offers the context choice
+for separate calls. Blank local drafts show validation and are not persisted.
+Existing profiles retain their saved mode and use the new preferences' defaults.
+
 ## Corporate Compatibility
 
 External integrations must respect the operator's selected provider policy. A
