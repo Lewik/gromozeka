@@ -1093,26 +1093,51 @@ class DefaultCommandTaskServiceTest {
     fun `permanent synchronization rejection retains binary output without rerunning the command`() = runBlocking {
         val directory = Files.createTempDirectory("command-rejected-result-").toFile()
         val runner = FakeCommandProcessRunner(directory)
-        val coordinator = ToggleableCommandTaskCoordinator(InMemoryConversationRuntimeCoordinator())
+        val delegate = InMemoryConversationRuntimeCoordinator()
+        val terminalWrite = CompletableDeferred<Unit>()
+        val allowRejection = CompletableDeferred<Unit>()
+        val rejectedWrites = AtomicLong()
+        val coordinator = object : ConversationRuntimeCoordinator by delegate {
+            override suspend fun upsertCommandTask(task: CommandTask): com.gromozeka.domain.service.CommandTaskUpsertResult {
+                if (task.isTerminal) {
+                    rejectedWrites.incrementAndGet()
+                    terminalWrite.complete(Unit)
+                    allowRejection.await()
+                    throw ControlPlaneRequestRejectedException("DATABASE_REQUEST_REJECTED", "Invalid stored data")
+                }
+                return delegate.upsertCommandTask(task)
+            }
+        }
         val service = DefaultCommandTaskService(runner, runtimeState(coordinator), objectProvider(workerDescriptor), fakeScripts(coordinator))
         try {
             val started = service.start(ExecuteCommandRequest(command = "binary", yield_time_ms = 0), context(directory))
-            coordinator.rejected = true
             val bytes = ByteArray(256) { it.toByte() }
             File(runner.lastProcess.outputFile).writeBytes(bytes)
             runner.lastProcess.complete(0)
-            waitUntil(2_000) { service.get(conversationId, started.task.id, 0, 0)?.task?.isTerminal == true }
+            withTimeout(2_000) { terminalWrite.await() }
+
+            val localResult = assertNotNull(service.get(conversationId, started.task.id, 0, 0))
+            assertEquals(CommandTask.Status.COMPLETED, localResult.task.status)
+            assertEquals(0, localResult.task.exitCode)
+            assertNull(localResult.task.synchronizationError)
+            assertContentEquals(bytes, localResult.content.bytes())
+            assertContentEquals(bytes, assertNotNull(localResult.task.terminalOutputContent).bytes())
+
+            allowRejection.complete(Unit)
+            waitUntil(2_000) { service.get(conversationId, started.task.id, 0, 0)?.task?.synchronizationError != null }
             val result = assertNotNull(service.get(conversationId, started.task.id, 0, 0))
             assertEquals(CommandTask.Status.COMPLETED, result.task.status)
             assertEquals(0, result.task.exitCode)
             assertNotNull(result.task.synchronizationError)
-            kotlin.test.assertContentEquals(bytes, result.content.bytes())
-            kotlin.test.assertContentEquals(bytes, result.task.terminalOutputContent!!.bytes())
+            assertContentEquals(bytes, result.content.bytes())
+            assertContentEquals(bytes, assertNotNull(result.task.terminalOutputContent).bytes())
             delay(1_200)
-            assertEquals(1, coordinator.rejectedWrites)
+            assertEquals(1L, rejectedWrites.get())
+            assertEquals(1, runner.startCount)
             assertFalse(runner.lastProcess.terminateTreeCalled)
             assertTrue(File(runner.lastProcess.outputFile).isFile)
         } finally {
+            allowRejection.complete(Unit)
             service.close()
             directory.deleteRecursively()
         }
