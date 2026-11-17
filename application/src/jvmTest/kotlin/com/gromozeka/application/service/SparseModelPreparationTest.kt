@@ -48,11 +48,29 @@ class SparseModelPreparationTest {
         val sparse = sparse(full, "OPENAI_SUBSCRIPTION")
         val expected = prepare(full, "OPENAI_SUBSCRIPTION", reveal = true)
         assertEquals(expected, prepare(sparse, "OPENAI_SUBSCRIPTION", reveal = true))
-        assertTrue(expected.none { message -> message.instructions.any { it is Message.Instruction.RevealedSecretRuntimeContext } })
+        val oneUseInput = expected.single { message -> message.instructions.any { it is Message.Instruction.RevealedSecretRuntimeContext } }
+        assertTrue(oneUseInput.content.isEmpty(), "Covered user text must not be restored with one-use context")
+        assertEquals(1, oneUseInput.instructions.size)
+        assertEquals(expected, AiRuntimeRequest(emptyList(), expected).projectedMessages("OPENAI_SUBSCRIPTION"),
+            "Request-only context must remain valid if an adapter projects its input again")
+        assertTrue(full.all { message -> message.instructions.none { it is Message.Instruction.RevealedSecretRuntimeContext } })
         val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
         val discovery = AiToolRuntimeCatalogService()
         assertEquals(setOf("example"), discovery.discoveredToolNames(full, catalog))
         assertEquals(discovery.discoveredToolNames(full, catalog), discovery.discoveredToolNames(sparse, catalog))
+    }
+
+    @Test
+    fun `one-use context has a separate request identity and does not become a selective summary source`() {
+        val source = text("covered", 0)
+        val checkpoint = summary("selective", listOf(source), full = false)
+        val original = listOf(source, checkpoint)
+        val projected = prepare(original, null, reveal = true)
+        val input = projected.single { message -> message.instructions.any { it is Message.Instruction.RevealedSecretRuntimeContext } }
+        assertNotEquals(source.id, input.id)
+        assertTrue(input.content.isEmpty())
+        assertEquals(projected, AiRuntimeRequest(emptyList(), projected).projectedMessages())
+        assertEquals(listOf(source, checkpoint), original)
     }
 
     @Test

@@ -101,11 +101,21 @@ class ExposedConversationCompactionRepository(
             this[ThreadMessages.position] = position
         }
         if (preparedState != null) {
-            val completed = preparedState.copy(proactiveCompaction = requireNotNull(preparedState.proactiveCompaction)
-                .copy(status = ProactiveCompaction.Status.APPLIED, checkpoint = null, updatedAt = newThread.createdAt))
+            val prepared = requireNotNull(preparedState.proactiveCompaction)
+            val completed = preparedState.updateProactiveCompaction(prepared,
+                prepared.copy(status = ProactiveCompaction.Status.APPLIED, checkpoint = null, updatedAt = newThread.createdAt)).state.finishIfIdle().state
+            val ready = completed.readyWorkItem()
+            val readiness = if (ready == null) "ready_task_id = NULL, ready_at = NULL" else "ready_task_id = ?, ready_at = ?::timestamptz"
             TransactionManager.current().exec(
-                "UPDATE conversation_runtime_records SET scheduling = ?::jsonb, revision = revision + 1 WHERE conversation_id = ?",
-                listOf(TextColumnType() to json.encodeToString(completed), TextColumnType() to compactionMessage.conversationId.value),
+                "UPDATE conversation_runtime_records SET scheduling = ?::jsonb, revision = revision + 1, $readiness WHERE conversation_id = ?",
+                buildList {
+                    add(TextColumnType() to json.encodeToString(completed))
+                    if (ready != null) {
+                        add(TextColumnType() to ready.taskId.value)
+                        add(TextColumnType() to ready.createdAt.toString())
+                    }
+                    add(TextColumnType() to compactionMessage.conversationId.value)
+                },
             )
         }
         true

@@ -35,6 +35,25 @@ import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
     @Test
+    fun `covered user anchor delivers only approved one-use context without resurrecting its text`() {
+        val source = Conversation.Message(Conversation.Message.Id("covered-secret-anchor"), conversationId,
+            role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("ARCHIVED ORIGINAL REQUEST")),
+            instructions = listOf(Conversation.Message.Instruction.RevealedSecretRuntimeContext(
+                com.gromozeka.domain.model.RevealedSecretRuntimeContext(mapOf("fixture" to "approved-one-use-value")))), createdAt = createdAt)
+        val summary = source.copy(id = Conversation.Message.Id("handoff"), role = Conversation.Message.Role.ASSISTANT, instructions = emptyList(),
+            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("A compact handoff"),
+                Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                sourceMessageIds = listOf(source.id), coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+        val wire = mapper.toRequest(AiRuntimeRequest(emptyList(), listOf(source, summary)), modelName = "gpt-5", conversationKey = "test").input.toString()
+        assertTrue(wire.contains("approved-one-use-value"))
+        assertFalse(wire.contains("ARCHIVED ORIGINAL REQUEST"))
+        assertFalse(wire.contains("Continue the active task"))
+        val next = mapper.toRequest(AiRuntimeRequest(emptyList(), listOf(source.copy(instructions = emptyList()), summary)), modelName = "gpt-5", conversationKey = "test").input.toString()
+        assertFalse(next.contains("approved-one-use-value"))
+    }
+
+    @Test
     fun visualActionIsUserInputWithTheFullSnapshotAndExplicitProvenance() {
         val snapshot = Json.parseToJsonElement("""{"form":{"query":"saved"},"data":{"count":7}}""").jsonObject
         val event = Conversation.Message.ContentItem.VisualInteraction("v", "Pipeline Runs", 3, "event-1", "refresh", "Refresh", snapshot)

@@ -105,6 +105,12 @@ data class ConversationRuntimeTask(
         }
 
         @Serializable
+        @SerialName("apply_prepared_compaction")
+        data class ApplyPreparedCompaction(val preparationId: String) : Payload {
+            init { require(preparationId.isNotBlank()) }
+        }
+
+        @Serializable
         @SerialName("response_review")
         data class ResponseReview(val draftId: String, val agentDefinitionId: AgentDefinition.Id) : Payload
 
@@ -222,6 +228,7 @@ data class ConversationRuntimeTask(
             is Payload.AgentInvocation,
             is Payload.AgentResponse,
             is Payload.HistoryMutation,
+            is Payload.ApplyPreparedCompaction,
             is Payload.MemoryRunCompletion,
             is Payload.BackgroundActivityCompletion,
             is Payload.ExecutionIncident -> true
@@ -262,6 +269,7 @@ data class ConversationRuntimeTask(
                 ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
+            is Payload.ApplyPreparedCompaction -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
             is Payload.ToolExecution -> setOf(ConversationRuntimeCapability.TOOL_EXECUTION)
             is Payload.ToolResultProcessing -> setOf(
                 ConversationRuntimeCapability.CONVERSATION_TURN,

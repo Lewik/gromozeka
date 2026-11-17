@@ -86,6 +86,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         val transition = current.updateProactiveCompaction(expected, updated)
         if (transition.changed) {
             schedulingByConversation[expected.conversationId] = transition.state
+            scheduleNextRunnableTaskIfReady(expected.conversationId)
             bumpRevision(expected.conversationId)
         }
         transition.result

@@ -32,6 +32,50 @@ class ConversationCompactionService internal constructor(
 ) {
     private val log = KLoggers.logger(this)
 
+    suspend fun applyPreparedIfReady(
+        task: ConversationRuntimeTask,
+        conversation: Conversation,
+        agent: AgentDefinition,
+        promptScope: List<String>,
+        beforeCommit: suspend () -> Unit,
+    ): Conversation? {
+        val prepared = runtimeCoordinator.proactiveCompaction(conversation.id)
+            ?.takeIf { it.status == ProactiveCompaction.Status.READY } ?: return null
+        if (history.contains(conversation.currentThread, Conversation.Message.Id(prepared.id))) {
+            preparations.finish(prepared, ProactiveCompaction.Status.APPLIED)
+            publishHistoryChange(task)
+            return conversation
+        }
+        val sources = history.getMessagesByThread(conversation.currentThread)
+        val valid = prepared.agentId == agent.id && prepared.actorUserId == task.actorUserId &&
+            prepared.threadId == conversation.currentThread && sources.size >= prepared.capturedMessageCount &&
+            compactionHistoryFingerprint(sources.take(prepared.capturedMessageCount)) == prepared.historyFingerprint
+        if (!valid) {
+            preparations.finish(prepared, ProactiveCompaction.Status.DISCARDED)
+            return null
+        }
+        val scope = try {
+            preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope)
+        } catch (_: CompactionScopeChangedException) {
+            preparations.finish(prepared, ProactiveCompaction.Status.DISCARDED)
+            return null
+        }
+        if (scope != prepared.scopeFingerprint) {
+            preparations.finish(prepared, ProactiveCompaction.Status.DISCARDED)
+            return null
+        }
+        currentCoroutineContext().ensureActive()
+        beforeCommit()
+        check(preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope) == prepared.scopeFingerprint) {
+            "Compaction scope changed before application"
+        }
+        check(runtimeCoordinator.proactiveCompaction(conversation.id) == prepared) { "Compaction preparation was cancelled or replaced" }
+        val updated = committer.commit(conversation.currentThread, requireNotNull(prepared.checkpoint), prepared.id)
+        preparations.finish(prepared, ProactiveCompaction.Status.APPLIED)
+        publishHistoryChange(task)
+        return updated
+    }
+
     suspend fun compactIfNeeded(
         task: ConversationRuntimeTask,
         conversation: Conversation,
@@ -86,17 +130,8 @@ class ConversationCompactionService internal constructor(
                 }
             }
             if (prepared?.status == ProactiveCompaction.Status.READY) {
-                currentCoroutineContext().ensureActive()
-                beforeCommit()
-                check(preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope) == prepared.scopeFingerprint) {
-                    "Compaction configuration changed before application"
-                }
-                // Stop changes this receipt under the same Runtime lock as foreground cancellation.
-                check(runtimeCoordinator.proactiveCompaction(conversation.id) == prepared) { "Compaction preparation was cancelled or replaced" }
-                val updated = committer.commit(conversation.currentThread, requireNotNull(prepared.checkpoint), prepared.id)
-                preparations.finish(prepared, ProactiveCompaction.Status.APPLIED)
-                publishHistoryChange(task)
-                return updated
+                applyPreparedIfReady(task, conversation, agent, promptScope, beforeCommit)?.let { return it }
+                prepared = runtimeCoordinator.proactiveCompaction(conversation.id)
             }
             if (prepared?.status == ProactiveCompaction.Status.FAILED && occupied >= threshold) {
                 log.info { "COMPACTION phase=fallback id=${prepared.id} mode=blocking reason=${prepared.failureCode}" }

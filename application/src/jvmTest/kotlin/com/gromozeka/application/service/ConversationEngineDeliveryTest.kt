@@ -71,16 +71,20 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.requests.isEmpty())
     }
 
-    @Test fun `background preparation begins only after a final answer is emitted`() = runBlocking {
+    @Test fun `background preparation begins after each committed successful model response`() = runBlocking {
         val f = Fixture(); val task = f.begin()
         var emitted = false
         f.onPrepare = { assertTrue(emitted, "Preparation must follow answer delivery") }
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) { message ->
             if (message.content.any { it is ContentItem.AssistantMessage }) emitted = true
         })
+        val continued = Fixture(); val active = continued.begin(); continued.onCall = { answer(AiStepOutcome.CONTINUE) }
+        assertIs<ConversationRuntimeTaskOutcome.Continue>(continued.engine.runRuntimeTask(active, executor) {})
+        assertEquals(1, continued.preparations.size)
+        assertEquals(1, continued.requests.size)
         assertEquals(1, f.preparations.size)
         assertTrue(f.preparations.single().messages.any { message -> message.content.any { it is ContentItem.AssistantMessage } })
-        for (outcome in listOf(AiStepOutcome.CONTINUE, AiStepOutcome.FAILED, AiStepOutcome.REFUSED)) {
+        for (outcome in listOf(AiStepOutcome.FAILED, AiStepOutcome.REFUSED)) {
             val other = Fixture(); val active = other.begin(); other.onCall = { answer(outcome) }
             other.engine.runRuntimeTask(active, executor) {}
             assertTrue(other.preparations.isEmpty(), outcome.name)
@@ -267,7 +271,7 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf("a", "b"), f.messages.takeLast(2).map { it.id.value })
     }
 
-    @Test fun `reviewed visible answer prepares compaction but silent routing completion does not`() = runBlocking {
+    @Test fun `reviewed responses prepare compaction only after committing the accepted draft`() = runBlocking {
         for (text in listOf("Visible final", null)) {
             val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
             val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
@@ -279,10 +283,14 @@ class ConversationEngineDeliveryTest {
             val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
                 payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
             f.advance(model, task)
-            f.onPrepare = { assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } }) }
+            f.onPrepare = {
+                assertTrue(f.emitted.any { it.providerMetadata["collaborationReviewId"] == JsonPrimitive("draft") })
+                if (text != null) assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } })
+            }
             val result = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
-            if (text == null) { assertIs<ConversationRuntimeTaskOutcome.CompleteWithoutNotification>(result); assertTrue(f.preparations.isEmpty()) }
-            else { assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(result); assertEquals(1, f.preparations.size) }
+            if (text == null) assertIs<ConversationRuntimeTaskOutcome.CompleteWithoutNotification>(result)
+            else assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(result)
+            assertEquals(1, f.preparations.size)
         }
     }
 
@@ -707,11 +715,127 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
     }
 
+    @Test fun `ready preparation is applied after the final response without a continuation or synthetic user message`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        val original = f.currentConversation.currentThread
+        f.onCall = { request ->
+            assertEquals(original.value, request.options.toolContext["threadId"])
+            answer()
+        }
+        var applications = 0
+        f.onApply = {
+            assertTrue(f.messages.any { it.content.any { content -> content is ContentItem.AssistantMessage } })
+            applications++
+            f.currentConversation = f.currentConversation.copy(currentThread = Conversation.Thread.Id("applied"))
+            f.onApply = { null }
+            f.currentConversation
+        }
+        val outcome = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
+        assertEquals(1, f.requests.size)
+        assertEquals(1, applications)
+        assertTrue(f.preparations.isEmpty())
+        assertEquals(listOf("root"), f.messages.filter { it.content.any { c -> c is ContentItem.UserMessage } }.map { it.id.value })
+        assertFalse(f.emitted.any { it.providerMetadata["syntheticKind"] == JsonPrimitive("compaction_continuation") })
+    }
+
+    @Test fun `ready preparation preserves an ordinary CONTINUE and never applies during the model call`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        val source = f.currentConversation.currentThread
+        var returned = false
+        f.onCall = {
+            assertEquals(source, f.currentConversation.currentThread)
+            returned = true
+            answer(AiStepOutcome.CONTINUE)
+        }
+        f.onApply = {
+            assertTrue(returned)
+            assertTrue(f.messages.any { it.content.any { c -> c is ContentItem.AssistantMessage } })
+            f.onApply = { null }
+            f.currentConversation.copy(currentThread = Conversation.Thread.Id("applied")).also { f.currentConversation = it }
+        }
+        val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {})
+        assertEquals(task.turnId, outcome.nextTask.turnId)
+        assertEquals(Conversation.Message.Id("root"), (outcome.nextTask.payload as ConversationRuntimeTask.Payload.LlmCall).rootUserMessageId)
+        assertEquals(1, f.requests.size)
+        assertTrue(f.preparations.isEmpty())
+    }
+
+    @Test fun `idle READY application performs no inference and preserves the recorded agent completion`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        val preparation = ProactiveCompaction("idle-preparation", conversation.id, task.id, task.turnId, executor, agentId, user,
+            conversation.currentThread, 1, "a".repeat(64), "b".repeat(64), 1000, 1, 0, now)
+        assertTrue(f.coordinator.beginProactiveCompaction(preparation))
+        val checkpoint = f.messages.single().copy(id = Conversation.Message.Id(preparation.id), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(ContentItem.ContextCompactionResult.Payload.ReadableSummary("handoff"),
+                ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY, sourceMessageIds = listOf(f.messages.single().id),
+                coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+        val ready = preparation.copy(status = ProactiveCompaction.Status.READY, checkpoint = checkpoint)
+        assertTrue(f.coordinator.updateProactiveCompaction(preparation, ready))
+        assertTrue(f.coordinator.listReadyWorkItems(10).isEmpty(), "READY must not race the current model task")
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+        val completion = f.coordinator.snapshot(conversation.id).lastCompletion
+        assertNotNull(completion)
+        f.onApply = {
+            assertTrue(runBlocking { f.coordinator.updateProactiveCompaction(ready, ready.copy(status = ProactiveCompaction.Status.APPLIED, checkpoint = null)) })
+            f.currentConversation
+        }
+        f.drain()
+        assertTrue(f.coordinator.finishIfIdle(conversation.id))
+        assertEquals(completion, f.coordinator.snapshot(conversation.id).lastCompletion)
+        assertTrue(f.requests.isEmpty()); assertTrue(f.preparations.isEmpty()); assertTrue(f.emitted.isEmpty())
+        assertEquals(ProactiveCompaction.Status.APPLIED, f.coordinator.proactiveCompaction(conversation.id)?.status)
+    }
+
+    @Test fun `ready compaction applies before tool routing while keeping the pending call and root`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("pending-call"), ContentItem.ToolCall.Data("example", JsonObject(emptyMap())))
+        f.onCall = { AiRuntimeResponse(listOf(AiAssistantMessage(listOf(call))), outcome = AiStepOutcome.TOOL_CALLS) }
+        var applied = false
+        f.onApply = {
+            assertTrue(f.messages.any { it.content.contains(call) })
+            applied = true; f.onApply = { null }
+            f.currentConversation.copy(currentThread = Conversation.Thread.Id("after-precompact")).also { f.currentConversation = it }
+        }
+        f.onRoute = { assertTrue(applied); assertEquals(Conversation.Thread.Id("after-precompact"), it.currentThread) }
+        val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {})
+        val next = assertIs<ConversationRuntimeTask.Payload.ToolExecution>(outcome.nextTask.payload)
+        assertEquals(listOf(call), next.toolCalls)
+        assertEquals(Conversation.Message.Id("root"), next.rootUserMessageId)
+        assertEquals(task.turnId, outcome.nextTask.turnId)
+        assertEquals(1, f.requests.size)
+        assertTrue(f.preparations.isEmpty())
+    }
+
+    @Test fun `review applies ready compaction only after accepted messages and routing receipt are committed`() = runBlocking {
+        val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
+        val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Accepted answer"))), createdAt = now)
+        f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
+            Conversation.Message.Id("root"), model.turnId.value, 1, listOf(candidate), emptyList(), emptyList(), emptyList(), "", listOf("root"), now,
+            decision = AgentResponseDecision("Accepted answer", AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()))
+        f.acceptReview = true
+        val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
+            payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
+        f.advance(model, task)
+        f.onApply = {
+            assertEquals(conversation.currentThread, f.currentConversation.currentThread)
+            assertTrue(f.messages.any { it.id == candidate.id })
+            assertTrue(f.messages.any { it.id.value == "draft:receipt" })
+            f.onApply = { null }
+            f.currentConversation.copy(currentThread = Conversation.Thread.Id("reviewed-and-compacted")).also { f.currentConversation = it }
+        }
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) { f.emitted += it })
+        assertTrue(f.requests.isEmpty()); assertTrue(f.preparations.isEmpty())
+        assertEquals(Conversation.Thread.Id("reviewed-and-compacted"), f.currentConversation.currentThread)
+    }
+
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false, realBackground: Boolean = false) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
         var onCompact: (AiRuntimeRequest) -> Conversation? = { null }
+        var onApply: () -> Conversation? = { null }
         val compactionChecks = mutableListOf<Pair<AiRuntimeRequest, Boolean>>()
         val preparations = mutableListOf<AiRuntimeRequest>()
         var onPrepare: () -> Unit = {}
@@ -720,6 +844,8 @@ class ConversationEngineDeliveryTest {
                 val request = it.arguments[4] as AiRuntimeRequest
                 compactionChecks += request to (it.arguments[5] as Boolean)
                 onCompact(request)
+            } else if (it.method.name.startsWith("applyPreparedIfReady")) {
+                onApply()
             } else if (it.method.name.startsWith("prepareAfterResponse")) {
                 onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; Unit
             } else Mockito.RETURNS_DEFAULTS.answer(it)
@@ -755,6 +881,15 @@ class ConversationEngineDeliveryTest {
                 compaction = if (proactive) AiModelConfiguration.Compaction(900, 500) else AiModelConfiguration.Compaction()),
             AiModelSpec("test-model", AiProvider.OPENAI, capabilities = setOf(AiModelCapability.TEXT_GENERATION),
                 limits = AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 1000))))
+        var onRoute: (Conversation) -> Unit = {}
+        private val routing = responding<ConversationRuntimeToolRoutingService> {
+            if (it.method.name.startsWith("route")) {
+                onRoute(it.arguments[0] as Conversation)
+                @Suppress("UNCHECKED_CAST")
+                val calls = it.arguments[2] as List<ContentItem.ToolCall>
+                ConversationRuntimeToolRoutingResult.Accepted(calls.associate { call -> call.id.value to ConversationRuntimeTaskTarget.Server }, false)
+            } else Mockito.RETURNS_DEFAULTS.answer(it)
+        }
         private val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
         private val conversations = responding<ConversationDomainService> {
             when (it.method.name.substringBefore('-')) {
@@ -869,7 +1004,7 @@ class ConversationEngineDeliveryTest {
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
-            aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(),
+            aiToolCapabilityCatalogService = mock(), toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
             suggestedRepliesGenerationService = mock(),
