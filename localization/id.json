@@ -4,6 +4,7 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Notifikasi Runtime",
     "ai.connection.responses_streaming": "Streaming Responses (SSE)",
     "ai.connection.responses_streaming_description": "Terima aliran secara internal; validasi dan jawaban lengkap tidak berubah.",
     "ai.connection.responses_stored_continuation": "Kelanjutan tersimpan di penyedia",

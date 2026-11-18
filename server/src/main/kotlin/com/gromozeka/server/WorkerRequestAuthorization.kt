@@ -24,6 +24,7 @@ class DefaultWorkerRequestAuthorization(
     private val users: UserDirectoryService,
     private val projectAccess: ProjectAccessService,
     private val projects: ProjectRepository,
+    private val asyncAdmission: org.springframework.beans.factory.ObjectProvider<com.gromozeka.application.service.AsyncToolAdmissionService>? = null,
 ) : WorkerRequestAuthorization {
     override suspend fun requireAccess(request: StoredWorkerRequest) {
         workers.findWorker(request.workerId)
@@ -32,6 +33,7 @@ class DefaultWorkerRequestAuthorization(
             if (projects.findById(it) == null) throw ProjectAccessDeniedException()
             workerAccess.requireProjectAccess(request.workerId, it)
         }
+        if (request.asyncTool != null) checkNotNull(asyncAdmission) { "Async dispatch validator is not configured" }.getObject().verifyWorkerDispatch(request)
         request.actorUserId?.let { userId ->
             val user = users.findActiveById(userId) ?: throw WorkerAccessDeniedException()
             request.projectId?.let { projectAccess.requirePermission(userId, it, ProjectPermission.READ) }

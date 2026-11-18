@@ -39,7 +39,7 @@ class NativeToolContextContractTest {
         assertEquals(setOf(USER, CONVERSATION), callback.metadata.contextRequirements.required)
         val descriptor = AiToolDescriptor(callback.definition, callback.metadata)
         val externalSchema = Json.parseToJsonElement(descriptor.withInvocationContext(AiToolContextBindings(setOf(USER))).definition.inputSchema).jsonObject
-        assertEquals(setOf("conversation_id"), externalSchema.getValue("properties").jsonObject.getValue("_grz").jsonObject.getValue("properties").jsonObject.keys)
+        assertEquals(setOf("async", "conversation_id"), externalSchema.getValue("properties").jsonObject.getValue("_grz").jsonObject.getValue("properties").jsonObject.keys)
         val arguments = buildJsonObject {
             put("display_name", "New title")
             put("_grz", buildJsonObject { put("conversation_id", conversation.id.value) })
@@ -69,6 +69,6 @@ class NativeToolContextContractTest {
         assertEquals(AiToolAccessPolicy.SERVER_OWNER, callback.metadata.accessPolicy)
         val definition = AiToolDescriptor(callback.definition, callback.metadata)
             .withInvocationContext(AiToolContextBindings(setOf(USER))).definition
-        assertFalse("_grz" in Json.parseToJsonElement(definition.inputSchema).jsonObject.getValue("properties").jsonObject)
+        assertEquals(setOf("async"), Json.parseToJsonElement(definition.inputSchema).jsonObject.getValue("properties").jsonObject.getValue("_grz").jsonObject.getValue("properties").jsonObject.keys)
     }
 }

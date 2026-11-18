@@ -812,6 +812,7 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
             is Conversation.Message.ContentItem.Thinking -> xmlBlock("thinking", item.thinking)
             is Conversation.Message.ContentItem.System -> xmlBlock("system", item.content)
+            is Conversation.Message.ContentItem.RuntimeNotification -> error("Runtime notifications must be projected before provider lowering")
             is Conversation.Message.ContentItem.ToolCall -> {
                 "<tool_call id=\"${xmlEscape(item.id.value)}\" name=\"${xmlEscape(item.call.name)}\">" +
                     xmlEscape(item.call.input.toString()) +
@@ -937,6 +938,7 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.ToolResult -> "tool_result:${item.toolUseId.value}:${item.toolName}:${item.isError}:${toolResultText(item)}"
             is Conversation.Message.ContentItem.Thinking -> "thinking:${item.thinking}:${item.signature}"
             is Conversation.Message.ContentItem.System -> "system:${item.level}:${item.content}:${item.toolUseId?.value}"
+            is Conversation.Message.ContentItem.RuntimeNotification -> "runtime_notification:${Json.encodeToString(item)}"
             is Conversation.Message.ContentItem.ImageItem -> "image:${imageSourceSignature(item.source)}"
             is Conversation.Message.ContentItem.DocumentItem -> "document:${documentSourceSignature(item.source)}"
             is Conversation.Message.ContentItem.ArtifactItem -> "artifact:${item.artifact}"

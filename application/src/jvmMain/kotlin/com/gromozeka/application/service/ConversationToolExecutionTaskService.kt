@@ -57,6 +57,8 @@ class ConversationToolExecutionTaskService(
     private val workerToolExecutionClient: WorkerToolExecutionClient,
     private val artifactService: ConversationArtifactApplicationService,
     private val toolSecretResolutionService: ToolSecretResolutionService,
+    private val asyncAdmission: AsyncToolAdmissionService? = null,
+    private val asyncOperations: AsyncToolOperationService? = null,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -74,6 +76,7 @@ class ConversationToolExecutionTaskService(
             "Tool execution task ${task.id.value} targets ${task.requirements.target} but is running on $executor"
         }
         val toolResultMessageId = runtimeMessageId(task.id, "result")
+        val hasAsyncCalls = payload.toolCalls.any { it.requestsAsync() }
         if (!conversationHistory.containsMessage(conversationId, toolResultMessageId)) {
             val modelToolNamesByCallId = payload.toolCalls.associate { it.id.value to it.call.name }
             val executionToolCalls = payload.toolCalls.withExecutionToolNames(
@@ -102,16 +105,26 @@ class ConversationToolExecutionTaskService(
                     base = baseToolContext,
                 )
             }
+            val asyncCalls = executionToolCalls.filter { it.requestsAsync() }
+            val ordinaryCalls = executionToolCalls.filterNot { it.requestsAsync() }
+            val accepted = mutableListOf<AsyncToolAdmissionService.Admission>()
+            for (call in asyncCalls) {
+                val target = payload.executionTargetsByCallId.getValue(call.id.value)
+                accepted += checkNotNull(asyncAdmission) { "Durable async admission is not configured" }.admit(
+                    task, executor, payload, payload.toolCalls.single { it.id == call.id }, call, target,
+                    toolContextsByTarget.getValue(target))
+            }
             val resolvedSecretsByToolCallId = toolSecretResolutionService.resolve(
                 userId = task.actorUserId,
-                toolCalls = executionToolCalls,
+                toolCalls = ordinaryCalls,
             )
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             clearRuntimeToolExecutions(conversationId, task.id, executor)
             val modelToolCallsById = payload.toolCalls.associateBy { it.id.value }
-            val executionResult = executeParallelByTarget(
-                toolCalls = executionToolCalls,
-                executionTargetsByCallId = payload.executionTargetsByCallId,
+            val ordinaryIds = ordinaryCalls.mapTo(mutableSetOf()) { it.id.value }
+            val ordinaryResult = if (ordinaryCalls.isEmpty()) ToolExecutionResult(emptyList(), false) else executeParallelByTarget(
+                toolCalls = ordinaryCalls,
+                executionTargetsByCallId = payload.executionTargetsByCallId.filterKeys { it in ordinaryIds },
             ) { target, targetToolCalls ->
                 val targetCallIds = targetToolCalls.mapTo(mutableSetOf()) { it.id.value }
                 val targetSecrets = resolvedSecretsByToolCallId.filterKeys(targetCallIds::contains)
@@ -184,10 +197,11 @@ class ConversationToolExecutionTaskService(
                 }
             }
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
+            val byId = (ordinaryResult.results + accepted.map { it.receipt }).associateBy { it.toolUseId }
             val persistedResults = artifactService.persistAndCommitToolResults(
                 conversation = conversation,
                 createdByUserId = task.actorUserId,
-                results = executionResult.results,
+                results = payload.toolCalls.map { byId.getValue(it.id) },
             ).map { result -> result.withModelToolName(modelToolNamesByCallId) }
 
             val toolResultMessage = Conversation.Message(
@@ -199,6 +213,9 @@ class ConversationToolExecutionTaskService(
             )
             if (addRuntimeMessageIfMissing(conversationId, toolResultMessage)) {
                 emitMessage(toolResultMessage)
+            }
+            accepted.mapNotNull { it.operationId }.forEach { id ->
+                check(checkNotNull(asyncOperations).acknowledge(id)) { "Async source result was not durably acknowledged" }
             }
         } else {
             log.info {
@@ -216,7 +233,7 @@ class ConversationToolExecutionTaskService(
                 toolResultMessageId = toolResultMessageId,
                 agentDefinitionId = payload.agentDefinitionId,
                 iteration = payload.iteration,
-                returnDirect = payload.returnDirect,
+                returnDirect = payload.returnDirect && !hasAsyncCalls,
                 actorUserId = task.actorUserId,
             ),
         )
@@ -563,3 +580,7 @@ class WorkerConversationRuntimeTaskRunner(
             )
         }
 }
+
+internal fun Conversation.Message.ContentItem.ToolCall.requestsAsync(): Boolean =
+    ((call.input as? kotlinx.serialization.json.JsonObject)?.get("_grz") as? kotlinx.serialization.json.JsonObject)
+        ?.get("async") == kotlinx.serialization.json.JsonPrimitive(true)

@@ -34,6 +34,37 @@ internal class PostgresWorkerRequestRepository(
                     it.setString(1, request.workerId.value)
                     it.executeQuery().use { rows -> require(rows.next() && rows.getString(1) == "ACTIVE") { "Worker is unavailable or revoked" } }
                 }
+                request.asyncTool?.let { reference ->
+                    connection.prepareStatement("SELECT id FROM async_tool_operations WHERE id=? FOR UPDATE").use { parent ->
+                        parent.setString(1, reference.operationId.value)
+                        parent.executeQuery().use { rows -> require(rows.next()) { "Async Worker parent is unavailable" } }
+                    }
+                    val existing = connection.prepareStatement("SELECT * FROM worker_requests WHERE id=?").use { child ->
+                        child.setString(1, request.id)
+                        child.executeQuery().use { rows -> if (rows.next()) rows.record() else null }
+                    }
+                    if (existing != null) {
+                        require(existing.asyncTool?.operationId == reference.operationId && existing.workerId == request.workerId &&
+                            existing.actorUserId == request.actorUserId && existing.projectId == request.projectId && existing.slotOrigin == request.slotOrigin) {
+                            "Async child request identity cannot be rebound"
+                        }
+                        connection.commit()
+                        return@withContext
+                    }
+                    connection.prepareStatement("SELECT phase,executor_session_id,cancel_requested_at,acknowledged_at,actor_user_id,project_id,slot_origin_json::text,lease_deadline,worker_id,worker_request_created_at FROM async_tool_operations WHERE id=?").use { parent ->
+                        parent.setString(1, reference.operationId.value)
+                        parent.executeQuery().use { rows ->
+                            require(rows.next() && rows.getString(1) == "CLAIMED" && rows.getString(2) == reference.executorSessionId.value &&
+                                rows.getTimestamp(3) == null && rows.getTimestamp(4) != null &&
+                                rows.getString(5) == request.actorUserId?.value && rows.getString(6) == request.projectId?.value &&
+                                rows.getString(7)?.let { Json.decodeFromString<SlotCommandOrigin>(it) } == request.slotOrigin &&
+                                rows.getTimestamp(8)?.let { it > Clock.System.now().sql() } == true &&
+                                rows.getString(9) == request.workerId.value && rows.getTimestamp(10) == null) {
+                                "Async Worker dispatch lost its parent acknowledgement, owner, cancellation or origin fence"
+                            }
+                        }
+                    }
+                }
                 connection.prepareStatement("""
                     SELECT count(*) FROM worker_requests WHERE worker_id = ? AND completed_at IS NULL
                         AND (dispatched_at IS NOT NULL OR (start_deadline > ? AND cancel_requested_at IS NULL))
@@ -44,8 +75,8 @@ internal class PostgresWorkerRequestRepository(
                 }
                 connection.prepareStatement("""
                     INSERT INTO worker_requests(id, worker_id, actor_user_id, project_id, request_ciphertext, request_nonce,
-                        request_version, created_at, start_deadline, slot_number, slot_origin_json, execution_deadline)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?)
+                        request_version, created_at, start_deadline, slot_number, slot_origin_json, execution_deadline, async_tool_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?::jsonb)
                 """.trimIndent()).use {
                     it.setString(1, request.id)
                     it.setString(2, request.workerId.value)
@@ -59,7 +90,14 @@ internal class PostgresWorkerRequestRepository(
                     it.setObject(10, request.slotOrigin?.slotNumber)
                     it.setString(11, request.slotOrigin?.let { origin -> Json.encodeToString(origin) })
                     it.setTimestamp(12, requireNotNull(request.executionDeadline) { "New Worker request requires an execution deadline" }.sql())
+                    it.setString(13, request.asyncTool?.let { reference -> Json.encodeToString(com.gromozeka.domain.model.AsyncToolDispatchReference.serializer(), reference) })
                     check(it.executeUpdate() == 1)
+                }
+                request.asyncTool?.let { reference ->
+                    connection.prepareStatement("UPDATE async_tool_operations SET worker_request_created_at=? WHERE id=? AND worker_request_created_at IS NULL").use { parent ->
+                        parent.setTimestamp(1, request.createdAt.sql()); parent.setString(2, reference.operationId.value)
+                        check(parent.executeUpdate() == 1) { "Async parent already created its durable Worker request" }
+                    }
                 }
                 connection.commit()
             } catch (error: Throwable) {
@@ -214,9 +252,17 @@ internal class PostgresWorkerRequestRepository(
                 SELECT id,slot_origin_json::text,created_at,dispatched_at FROM worker_requests
                 WHERE slot_number=? AND completed_at IS NULL
                   AND (dispatched_at IS NOT NULL OR (start_deadline>? AND cancel_requested_at IS NULL))
+                UNION ALL
+                SELECT operation.id,operation.slot_origin_json::text,operation.created_at,operation.started_at
+                FROM async_tool_operations operation
+                WHERE operation.slot_number=? AND operation.phase IN ('ACCEPTED','ACKNOWLEDGED','CLAIMED','RUNNING','OUTCOME_UNKNOWN')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM worker_requests child WHERE child.id=operation.id AND child.completed_at IS NULL
+                      AND (child.dispatched_at IS NOT NULL OR (child.start_deadline>? AND child.cancel_requested_at IS NULL)))
                 ORDER BY created_at,id
             """.trimIndent()).use { s ->
                 s.setLong(1, number); s.setTimestamp(2, Clock.System.now().sql())
+                s.setLong(3, number); s.setTimestamp(4, Clock.System.now().sql())
                 s.executeQuery().use { r -> buildList {
                     while (r.next()) add(SlotPendingDispatch(r.getString(1), Json.decodeFromString(r.getString(2)),
                         r.getTimestamp(3).kotlin(), r.getTimestamp(4)?.kotlin()))
@@ -247,6 +293,7 @@ internal class PostgresWorkerRequestRepository(
             completedAt = getTimestamp("completed_at")?.kotlin(),
             executionDeadline = getTimestamp("execution_deadline")?.kotlin(),
             completionProjectedAt = getTimestamp("completion_projected_at")?.kotlin(),
+            asyncTool = getString("async_tool_json")?.let { Json.decodeFromString<com.gromozeka.domain.model.AsyncToolDispatchReference>(it) },
         )
     }
 

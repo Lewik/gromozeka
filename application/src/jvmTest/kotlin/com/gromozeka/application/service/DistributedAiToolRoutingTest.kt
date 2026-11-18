@@ -297,7 +297,7 @@ class DistributedAiToolRoutingTest {
         val targetSchema = schema.getValue("properties").jsonObject
             .getValue(AI_TOOL_INVOCATION_CONTEXT_FIELD).jsonObject
         assertEquals(
-            setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds"),
+            setOf("async", AI_TOOL_EXECUTION_WORKER_ID_FIELD, "delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds"),
             targetSchema.getValue("properties").jsonObject.keys,
         )
         val entry = catalog.entries.getValue(workerEnvironmentTool.definition.name)
@@ -537,7 +537,7 @@ class DistributedAiToolRoutingTest {
             ?.jsonObject
             ?: error("Execution target schema is missing")
         assertEquals(
-            setOf(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD, "delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds"),
+            setOf("async", AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD, "delivery_ttl_seconds", "execution_timeout_seconds", "wait_timeout_seconds"),
             targetSchema.getValue("properties").jsonObject.keys,
         )
         assertFalse(targetSchema.toString().contains("mount-workspace-a-worker-a"))
@@ -679,7 +679,7 @@ class DistributedAiToolRoutingTest {
         val schema = Json.parseToJsonElement(
             catalog.tools.single().definition.inputSchema
         ).jsonObject
-        assertFalse(AI_TOOL_INVOCATION_CONTEXT_FIELD in schema.getValue("properties").jsonObject)
+        assertEquals(setOf("async"), schema.getValue("properties").jsonObject.getValue(AI_TOOL_INVOCATION_CONTEXT_FIELD).jsonObject.getValue("properties").jsonObject.keys)
     }
 
     @Test

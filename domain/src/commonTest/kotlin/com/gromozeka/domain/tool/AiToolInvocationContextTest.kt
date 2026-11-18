@@ -22,10 +22,10 @@ class AiToolInvocationContextTest {
         metadata.parseInvocationInput(Json.parseToJsonElement(input), bound)
 
     @Test fun renameRequiresConversationOnlyOutsideBoundRuntime() {
-        assertEquals(setOf("conversation_id"), envelope(rename).getValue("properties").jsonObject.keys)
+        assertEquals(setOf("async", "conversation_id"), envelope(rename).getValue("properties").jsonObject.keys)
         assertEquals(listOf(JsonPrimitive("conversation_id")), envelope(rename).getValue("required").jsonArray.toList())
         assertEquals(setOf("text", "_grz"), schema(rename).getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet())
-        assertFalse("_grz" in schema(rename, AiToolContextBindings.ConversationRuntime).getValue("properties").jsonObject)
+        assertEquals(setOf("async"), envelope(rename, AiToolContextBindings.ConversationRuntime).getValue("properties").jsonObject.keys)
     }
 
     @Test fun fileNeedsMountForInternalAndExternalCallsUnlessExplicitlyBound() {
@@ -41,9 +41,9 @@ class AiToolInvocationContextTest {
         assertFails { parse(file, "{}", ToolExecutionContext(mapOf(TOOL_CONTEXT_CONVERSATION_ID to "conversation"))) }
     }
 
-    @Test fun ownerCatalogHasNoEnvelopeAndUserIsNeverSelectable() {
+    @Test fun ownerCatalogHasOnlyOptionalAsyncAndUserIsNeverSelectable() {
         val catalog = server.copy(accessPolicy = AiToolAccessPolicy.SERVER_OWNER).withContextRequirements(USER)
-        assertFalse("_grz" in schema(catalog).getValue("properties").jsonObject)
+        assertEquals(setOf("async"), envelope(catalog).getValue("properties").jsonObject.keys)
         assertFailsWith<IllegalArgumentException> { parse(catalog, """{"_grz":{"user_id":"owner"}}""") }
         assertFailsWith<IllegalArgumentException> { catalog.requireInvocationContext(null) }
         catalog.requireInvocationContext(ToolExecutionContext(mapOf(TOOL_CONTEXT_USER_ID to "authenticated")))
@@ -53,7 +53,7 @@ class AiToolInvocationContextTest {
         val scoped = server.withContextRequirements(PROJECT, CONVERSATION, AGENT, THREAD)
         assertEquals(setOf("conversation_id", "agent_id"), envelope(scoped).getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet())
         assertEquals(listOf(JsonPrimitive("workspace_mount_id")), envelope(file.withContextRequirements(PROJECT)).getValue("required").jsonArray.toList())
-        assertEquals(setOf("project_id", "conversation_id", "agent_id"), envelope(scoped).getValue("properties").jsonObject.keys)
+        assertEquals(setOf("async", "project_id", "conversation_id", "agent_id"), envelope(scoped).getValue("properties").jsonObject.keys)
     }
 
     @Test fun conditionalContextDoesNotBecomeAnUnconditionalRequirement() {
@@ -128,7 +128,7 @@ class AiToolInvocationContextTest {
         val metadata = server.withContextRequirements(MEMORY_NAMESPACE, TOOL_CALL_ID)
         assertFailsWith<IllegalArgumentException> { metadata.requireInvocationContext(ToolExecutionContext()) }
         metadata.requireInvocationContext(ToolExecutionContext(mapOf(TOOL_CONTEXT_MEMORY_NAMESPACE to "authorized", "toolCallId" to "trusted")))
-        assertFalse("_grz" in schema(metadata).getValue("properties").jsonObject)
+        assertEquals(setOf("async"), envelope(metadata).getValue("properties").jsonObject.keys)
     }
 
     @Test fun contextRequirementsRoundtripAndAffectCanonicalFingerprint() {
@@ -151,6 +151,31 @@ class AiToolInvocationContextTest {
         assertFailsWith<IllegalArgumentException> { parsed.requireResolvedSelectors(ToolExecutionContext()) }
         assertFailsWith<IllegalArgumentException> { parse(worker, """{"_grz":{"worker_id":"w","project_id":"foreign"}}""",
             ToolExecutionContext(mapOf(TOOL_CONTEXT_PROJECT_ID to "p"))) }
+    }
+
+    @Test fun asyncIsAnOptionalBooleanAndDoesNotChangeBusinessArguments() {
+        assertFalse(parse(server, "{}").async)
+        assertFalse(parse(server, """{"_grz":{"async":false}}""").async)
+        val parsed = parse(server, """{"text":"literal","_grz":{"async":true}}""")
+        assertTrue(parsed.async)
+        assertEquals(Json.parseToJsonElement("""{"text":"literal"}"""), parsed.arguments)
+        assertTrue(parsed.selectors.isEmpty())
+        assertNull(parsed.executionTarget)
+        val field = envelope(server).getValue("properties").jsonObject.getValue("async").jsonObject
+        assertEquals(JsonPrimitive("boolean"), field["type"])
+        assertEquals(JsonPrimitive(false), field["default"])
+        for (bad in listOf("null", "1", "0", "[]", "{}", "\"true\"", "\"false\"")) {
+            assertFailsWith<IllegalArgumentException> { parse(server, "{\"_grz\":{\"async\":$bad}}") }
+        }
+        assertFailsWith<IllegalArgumentException> { parse(server, """{"_grz":{"async":true,"user_id":"forged"}}""") }
+    }
+
+    @Test fun invocationBoundEffectsHaveAnExplicitRestrictionNotAnInlineFallback() {
+        val inline = server.copy(inlineOnlyReason = "next model request only")
+        val error = assertFailsWith<IllegalArgumentException> { parse(inline, """{"_grz":{"async":true}}""") }
+        assertTrue(error.message.orEmpty().contains("next model request only"))
+        assertFalse(parse(inline, """{"_grz":{"async":false}}""").async)
+        assertNotEquals(descriptor(server).contractFingerprint(), descriptor(inline).contractFingerprint())
     }
 
     @Test fun businessSchemasCannotClaimReservedEnvelope() {

@@ -473,6 +473,44 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf("execute-tool:result"), f.emitted.map { it.id.value })
     }
 
+    @Test fun `incident recovers only the admitted async receipt and never repeats ordinary or missing async siblings`() = runBlocking {
+        val operations = TestAsyncToolOperations()
+        val recovery = AsyncToolAdmissionService(operations, mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock())
+        val f = Fixture(asyncRecovery = recovery)
+        val running = f.begin()
+        fun call(id: String, async: Boolean) = ContentItem.ToolCall(ContentItem.ToolCall.Id(id), ContentItem.ToolCall.Data(id,
+            buildJsonObject { if (async) put("_grz", buildJsonObject { put("async", true) }) }))
+        val admitted = call("admitted", true)
+        val missing = call("not-admitted", true)
+        val ordinary = call("ordinary", false)
+        val payload = ConversationRuntimeTask.Payload.ToolExecution(Conversation.Message.Id("root"), agentId, 1,
+            listOf(admitted, missing, ordinary), false, listOf(admitted, missing, ordinary).associate { it.id.value to ConversationRuntimeTaskTarget.Server })
+        val source = running.copy(id = ConversationRuntimeTask.Id("mixed-source"), parentTaskId = running.id, payload = payload)
+        f.advance(running, source)
+        val origin = AsyncToolOrigin(user, project.id, conversation.id, conversation.currentThread, agentId, source.id, admitted.id,
+            Conversation.Message.Id("mixed-source:result"), false, null)
+        operations.admit(AsyncToolOperation.Id("durable-accepted"), AsyncToolInvocation(origin, admitted.call.name, "1".repeat(64), admitted,
+            ConversationRuntimeTaskTarget.Server, mapOf(com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID to user.value,
+                com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID to project.id.value, com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
+                com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID to conversation.currentThread.value,
+                com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID to agentId.value, "toolCallId" to admitted.id.value)), now)
+        assertNotNull(f.coordinator.markActiveTaskInDoubt(conversation.id, source.id, executor, "Lost source result", "SyntheticFailure"))
+        val incident = f.coordinator.listPending(conversation.id).single { it.payload is ConversationRuntimeTask.Payload.ExecutionIncident }
+        f.claim(incident)
+        repeat(2) { assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(incident, executor) {}) }
+        val message = f.messages.single { it.id == origin.acknowledgementMessageId }
+        val results = message.content.filterIsInstance<ContentItem.ToolResult>()
+        assertEquals(listOf(admitted.id, missing.id, ordinary.id), results.map { it.toolUseId })
+        assertFalse(results.first().isError)
+        val receipt = Json.parseToJsonElement(assertIs<ContentItem.ToolResult.Data.Text>(results.first().result.single()).content).jsonObject
+        assertEquals(JsonPrimitive("durable-accepted"), receipt["operation_id"])
+        assertTrue(results.drop(1).all { it.isError })
+        assertEquals(1, operations.records.size)
+        assertEquals(AsyncToolOperation.Phase.ACCEPTED, operations.records.values.single().phase)
+        assertEquals(0, f.toolEffects)
+        assertTrue(f.requests.isEmpty())
+    }
+
     @Test fun `point tool result processing fails when the result is absent from the current thread`() = runBlocking {
         val f = Fixture(); f.allowFullHistoryLoad = false
         val running = f.begin()
@@ -920,7 +958,7 @@ class ConversationEngineDeliveryTest {
         .let { Json.parseToJsonElement(it).jsonObject.getValue("recorded_running_commands").jsonArray }
 
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
-        realBackground: Boolean = false, withCommandContext: Boolean = false) {
+        realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -1007,7 +1045,7 @@ class ConversationEngineDeliveryTest {
         private val artifacts = responding<ConversationArtifactApplicationService> {
             when (it.method.name.substringBefore('-')) {
                 "materialize" -> it.arguments[1]
-                "persistAndCommitMessageToolResults" -> it.arguments[2]
+                "persistAndCommitMessageOutputs" -> it.arguments[2]
                 "persistAndCommitToolResults" -> {
                     @Suppress("UNCHECKED_CAST")
                     val results = it.arguments[2] as List<ContentItem.ToolResult>
@@ -1119,6 +1157,7 @@ class ConversationEngineDeliveryTest {
                 })
                 if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
             },
+            asyncAdmission = asyncRecovery,
             collaboration = collaboration.takeIf { enableReview },
             responseReview = if (enableReview) AgentResponseReviewService(collaboration, reviewRepository, coordinator, ConversationPinnedPrompt(pins), mock()) else null,
         )

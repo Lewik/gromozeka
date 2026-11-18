@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
+
 import com.gromozeka.domain.model.AGENT_COLLABORATION_TOOL_NAMES
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
@@ -284,6 +286,18 @@ class DistributedAiToolCatalog(
                     ?.modelName,
             ),
         )
+    }
+
+    suspend fun executionDescriptor(tool: DistributedAiTool, target: ConversationRuntimeTaskTarget): AiToolDescriptor {
+        val raw = when (target) {
+            ConversationRuntimeTaskTarget.Server -> aiToolProvider.getTools().filter { it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER }
+                .map { AiToolDescriptor(it.definition, it.metadata) }
+            is ConversationRuntimeTaskTarget.Worker -> workerRegistry.list().singleOrNull { it.identity.workerId == target.workerId }?.tools.orEmpty()
+        }
+        return requireNotNull(raw.singleOrNull { descriptor ->
+            descriptor.definition.name == tool.executionName && descriptor.definition.source == tool.descriptor.definition.source &&
+                descriptor.asModelContractDescriptor().contractFingerprint() == tool.contractFingerprint
+        }) { "Exact execution callback revision is unavailable" }
     }
 
     private fun modelCallback(tool: DistributedAiTool): AiToolCallback =

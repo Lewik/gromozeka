@@ -137,6 +137,7 @@ class ConversationEngineService(
     private val requestEnrichers: List<ConversationRequestEnricher> = emptyList(),
     private val collaboration: AgentCollaborationService? = null,
     private val responseReview: AgentResponseReviewService? = null,
+    private val asyncAdmission: AsyncToolAdmissionService? = null,
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -553,7 +554,7 @@ class ConversationEngineService(
                 ),
             )
             .withRuntimeMessageIds(task.id, "assistant")
-            .map { artifactService.persistAndCommitMessageToolResults(conversation, task.actorUserId, it) }
+            .map { artifactService.persistAndCommitMessageOutputs(conversation, task.actorUserId, it) }
         val nativeCheckpoints = mappedAssistantMessages.takeWhile { it.content.singleOrNull() is ContentItem.ContextCompactionResult }
         check(mappedAssistantMessages.drop(nativeCheckpoints.size).none { message ->
             message.content.any { it is ContentItem.ContextCompactionResult }
@@ -1019,12 +1020,15 @@ class ConversationEngineService(
                 val toolResultMessageId = runtimeMessageId(incident.task.id, "result")
                 if (!conversationHistory.containsMessage(conversationId, toolResultMessageId)) {
                     val resultText = executionIncidentResult(incident)
+                    val sourceThread = requireNotNull(conversationService.findById(conversationId)).currentThread
                     val toolResultMessage = Conversation.Message(
                         id = toolResultMessageId,
                         conversationId = conversationId,
                         role = Conversation.Message.Role.USER,
                         content = sourcePayload.toolCalls.map { toolCall ->
-                            ContentItem.ToolResult(
+                            val recovered = if (toolCall.requestsAsync()) checkNotNull(asyncAdmission) { "Async recovery is not configured" }
+                                .recoverReceipt(incident.task, sourcePayload.agentDefinitionId, toolCall, sourceThread) else null
+                            recovered ?: ContentItem.ToolResult(
                                 toolUseId = toolCall.id,
                                 toolName = toolCall.call.name,
                                 result = listOf(ContentItem.ToolResult.Data.Text(resultText)),
@@ -1196,7 +1200,8 @@ class ConversationEngineService(
                 val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
                     if (it is ContentItem.ToolResult) iterator.next() else it
                 })
-                prepared += storedMessage
+                prepared += if (storedMessage.role == Conversation.Message.Role.RUNTIME_NOTIFICATION)
+                    artifactService.persistAndCommitMessageOutputs(conversation, batch.actorUserId, storedMessage) else storedMessage
             } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
                 replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
             }

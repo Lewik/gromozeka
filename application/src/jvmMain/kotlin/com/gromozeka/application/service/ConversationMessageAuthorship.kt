@@ -4,6 +4,10 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
 
 fun Conversation.Message.attributeAuthenticatedSubmission(actorUser: User): Conversation.Message {
+    require(role != Conversation.Message.Role.RUNTIME_NOTIFICATION && author !is Conversation.Message.Author.Runtime) {
+        "Runtime notifications cannot be submitted by clients"
+    }
+    com.gromozeka.domain.model.requireEditableHistoryContent(content)
     require(instructions.none { it is Conversation.Message.Instruction.RuntimeObservation }) {
         "Runtime observations cannot be submitted as user instructions"
     }

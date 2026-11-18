@@ -50,6 +50,7 @@ class PostgresWorkerRequestRepositoryTest {
                     statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V68__development_slots.sql")).readText())
                     statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V77__worker_request_retention.sql")).readText())
                     statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V86__application_updates.sql")).readText())
+                    statement.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V90__async_tool_operations.sql")).readText())
                 }
             }
             val settings = Proxy.newProxyInstance(SettingsProvider::class.java.classLoader, arrayOf(SettingsProvider::class.java)) { _, method, _ ->

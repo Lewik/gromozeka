@@ -52,7 +52,7 @@ class AgentCollaborationToolContributor(private val collaboration: AgentCollabor
         val key = context?.getString("toolCallId") ?: error("A conversation tool-call identity is required")
         val sourceMessageId = context.getString(TOOL_CONTEXT_TARGET_MESSAGE_ID)?.takeIf(String::isNotBlank)
             ?.let(Conversation.Message::Id) ?: error("The originating turn message is required")
-        val id = collaboration.send(source, actor, targetConversationId, targetAgentId, message, key, mode, sourceMessageId)
+        val id = collaboration.send(source, actor, targetConversationId, targetAgentId, message, key, mode, sourceMessageId, originReadOnly = context.asyncOrigin?.readOnly == true)
         return buildJsonObject {
             put("message_id", "$id:input")
             if (mode == AgentSendMode.REQUEST) put("request_id", id)

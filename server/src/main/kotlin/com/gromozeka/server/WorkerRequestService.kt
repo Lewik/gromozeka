@@ -77,11 +77,23 @@ class WorkerRequestService(
         actorUserId: User.Id? = null,
         projectId: Project.Id? = null,
         slotOrigin: com.gromozeka.domain.slot.SlotCommandOrigin? = null,
+        asyncTool: com.gromozeka.domain.model.AsyncToolDispatchReference? = null,
     ): String {
         require(payload.size <= 64 * 1024 * 1024) { "Worker request exceeds 64 MiB" }
+        if (asyncTool != null) {
+            require(operation == WorkerGatewayOperation.TOOL_EXECUTION && actorUserId != null && projectId != null) { "Async child requires its authenticated tool invocation" }
+            repository.find(asyncTool.operationId.value)?.let { existing ->
+                require(existing.asyncTool?.operationId == asyncTool.operationId && existing.workerId == workerId &&
+                    existing.actorUserId == actorUserId && existing.projectId == projectId && existing.slotOrigin == slotOrigin) {
+                    "Async child request cannot be rebound"
+                }
+                authorization.requireAccess(existing)
+                return existing.id
+            }
+        }
         val createdAt = Clock.System.now()
         val delivery = WorkerRequestDelivery(createdAt + policy.deliveryTtlMillis.milliseconds, policy.executionTimeoutMillis)
-        val request = WorkerGatewayMessage.Request(uuid7(), operation, payload, delivery)
+        val request = WorkerGatewayMessage.Request(asyncTool?.operationId?.value ?: uuid7(), operation, payload, delivery)
         val record = StoredWorkerRequest(
             id = request.id,
             workerId = workerId,
@@ -92,6 +104,7 @@ class WorkerRequestService(
             executionDeadline = delivery.startDeadline + delivery.executionTimeoutMillis.milliseconds,
             actorUserId = actorUserId,
             projectId = projectId,
+            asyncTool = asyncTool,
         )
         authorization.requireAccess(record)
         repository.create(record)
@@ -193,6 +206,8 @@ class WorkerRequestService(
                 } catch (error: WorkerAccessDeniedException) {
                     false
                 } catch (error: ProjectAccessDeniedException) {
+                    false
+                } catch (error: com.gromozeka.application.service.AsyncToolScopeDeniedException) {
                     false
                 }
                 if (!permitted) {

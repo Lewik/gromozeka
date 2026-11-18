@@ -159,8 +159,21 @@ class AgentCollaborationService(
         }
     }
 
+    internal suspend fun readOnlyOrigin(source: AgentContextRef, actor: User.Id, sourceMessageId: Conversation.Message.Id): Boolean {
+        val userMode = history?.loadCurrentMessages(source.conversationId).orEmpty()
+            .filter { it.author !is Conversation.Message.Author.Agent }.flatMap { it.instructions }
+            .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
+            .lastOrNull { it.id == "mode_readonly" || it.id == "mode_writable" }
+        val inherited = repository.findDelivery(sourceMessageId.value)
+        require(inherited == null || (inherited.target.address == source.address && inherited.actorUserId == actor)) {
+            "Originating collaboration message belongs to another session"
+        }
+        return userMode?.id == "mode_readonly" || inherited?.readOnly == true ||
+            repository.requests(source.conversationId).any { it.target.address == source.address && it.isOpen && it.readOnly }
+    }
+
     suspend fun send(source: AgentContextRef, actor: User.Id, targetConversationId: String, targetAgentId: String?,
-        text: String, key: String, mode: AgentSendMode, sourceMessageId: Conversation.Message.Id): String {
+        text: String, key: String, mode: AgentSendMode, sourceMessageId: Conversation.Message.Id, originReadOnly: Boolean = false): String {
         val request = mode == AgentSendMode.REQUEST
         require(text.isNotBlank() && text.length <= 32_000) { "Message must contain 1..32000 characters" }
         require(key.isNotBlank() && key.length <= 256) { "Stable request key required" }
@@ -181,16 +194,8 @@ class AgentCollaborationService(
             }
         }
         val now = Clock.System.now()
-        val userMode = history?.loadCurrentMessages(source.conversationId).orEmpty()
-            .filter { it.author !is Conversation.Message.Author.Agent }.flatMap { it.instructions }
-            .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
-            .lastOrNull { it.id == "mode_readonly" || it.id == "mode_writable" }
-        val inherited = repository.findDelivery(sourceMessageId.value)
-        require(inherited == null || (inherited.target.address == source.address && inherited.actorUserId == actor)) {
-            "Originating collaboration message belongs to another session"
-        }
-        val readOnly = userMode?.id == "mode_readonly" || inherited?.readOnly == true ||
-            repository.requests(source.conversationId).any { it.target.address == source.address && it.isOpen && it.readOnly }
+        val inheritedReadOnly = readOnlyOrigin(source, actor, sourceMessageId)
+        val readOnly = originReadOnly || inheritedReadOnly
         val item = if (request) AgentRequest(id, source, target, actor, text, now, readOnly = readOnly) else null
         val kind = when (mode) {
             AgentSendMode.CONTEXT_ONLY -> AgentDelivery.Kind.MESSAGE

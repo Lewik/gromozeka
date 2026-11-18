@@ -4,6 +4,7 @@
   "name": "English",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Runtime notification",
     "ai.connection.responses_streaming": "Stream Responses (SSE)",
     "ai.connection.responses_streaming_description": "Receive a stream internally; validation and the complete answer are unchanged.",
     "ai.connection.responses_stored_continuation": "Provider-stored continuation",

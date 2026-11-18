@@ -64,6 +64,7 @@ class ParallelToolExecutor(
         executor: ConversationRuntimeExecutorIdentity,
         expectedTarget: ConversationRuntimeTaskTarget,
         resolvedSecretsByToolCallId: Map<String, Map<String, String>> = emptyMap(),
+        preapprovedFingerprints: Map<String, String> = emptyMap(),
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit = {},
     ): ToolExecutionResult {
         if (toolCalls.isEmpty()) return ToolExecutionResult(emptyList(), false)
@@ -71,6 +72,7 @@ class ParallelToolExecutor(
         require(expectedTarget.matches(executor)) {
             "Runtime task target $expectedTarget does not match executor $executor"
         }
+        require(preapprovedFingerprints.keys.all { id -> toolCalls.any { it.id.value == id } }) { "Approval proof refers to another invocation" }
         val callbackMap = buildCallbackMap()
         val expectedFingerprints = toolContext.getString(EXPECTED_TOOL_FINGERPRINTS_CONTEXT_KEY)?.let {
             kotlinx.serialization.json.Json.decodeFromString<Map<String, String>>(it)
@@ -78,6 +80,11 @@ class ParallelToolExecutor(
         toolCalls.forEach { toolCall ->
             val callback = callbackMap[toolCall.call.name]
                 ?: error("Runtime executor does not provide requested tool: ${toolCall.call.name}")
+            preapprovedFingerprints[toolCall.id.value]?.let { approved ->
+                require(approved == com.gromozeka.domain.tool.AiToolDescriptor(callback.definition, callback.metadata).contractFingerprint()) {
+                    "Approved async tool contract changed before execution"
+                }
+            }
             if (expectedFingerprints != null) {
                 require(expectedFingerprints[toolCall.id.value] ==
                     com.gromozeka.domain.tool.AiToolDescriptor(callback.definition, callback.metadata).contractFingerprint()) {
@@ -85,6 +92,7 @@ class ParallelToolExecutor(
                 }
             }
             val invocation = callback.metadata.parseInvocationInput(toolCall.call.input, toolContext)
+            require(!invocation.async) { "Async calls must be admitted through their durable conversation tool boundary" }
             invocation.requireResolvedSelectors(toolContext)
             // Runtime-supplied call identity is never accepted from _grz.
             callback.metadata.requireInvocationContext(toolContext.withValue("toolCallId", toolCall.id.value))
@@ -135,6 +143,7 @@ class ParallelToolExecutor(
                         onToolExecutionChanged = onToolExecutionChanged,
                         resolvedSecrets = resolvedSecretsByToolCallId[toolCall.id.value].orEmpty(),
                         onStructuredContent = { structured[toolCall.id.value] = it },
+                        preapproved = toolCall.id.value in preapprovedFingerprints,
                     )
                 }
             }
@@ -158,6 +167,7 @@ class ParallelToolExecutor(
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit,
         resolvedSecrets: Map<String, String>,
         onStructuredContent: (kotlinx.serialization.json.JsonObject) -> Unit,
+        preapproved: Boolean,
     ): ContentItem.ToolResult {
         return try {
             val started = ConversationRuntimeToolExecution(
@@ -169,7 +179,7 @@ class ParallelToolExecutor(
                 startedAt = Clock.System.now(),
             )
             onToolExecutionChanged(started)
-            val result = executeSingleTool(toolCall, callbackMap, toolContext, resolvedSecrets, onStructuredContent)
+            val result = executeSingleTool(toolCall, callbackMap, toolContext, resolvedSecrets, onStructuredContent, preapproved)
             onToolExecutionChanged(
                 started.copy(
                     status = if (result.isError) {
@@ -221,6 +231,7 @@ class ParallelToolExecutor(
         toolContext: ToolExecutionContext,
         resolvedSecrets: Map<String, String>,
         onStructuredContent: (kotlinx.serialization.json.JsonObject) -> Unit,
+        preapproved: Boolean,
     ): ContentItem.ToolResult {
         val toolId = toolCall.id
         val toolName = toolCall.call.name
@@ -230,7 +241,7 @@ class ParallelToolExecutor(
 
         try {
             // Check approval
-            val approvalResult = toolApprovalService.approve(listOf(toolCall))
+            val approvalResult = if (preapproved) ApprovalResult.Approved else toolApprovalService.approve(listOf(toolCall))
             if (approvalResult is ApprovalResult.Rejected) {
                 log.warn { "Tool rejected: $toolName - ${approvalResult.reason}" }
                 return ContentItem.ToolResult(

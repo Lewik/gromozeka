@@ -42,6 +42,23 @@ class SlotApplicationServiceTest {
         assertNull(f.service.origin(f.user.id, f.conversation.id, WorkspaceMount.Id("unregistered")))
     }
 
+    @Test fun `async capture requires a caller lease and never adopts a successor occupation`() = fixture { f ->
+        val slot = f.register()
+        assertFailsWith<IllegalStateException> { f.service.captureAsyncOrigin(f.user.id, f.conversation.id, slot.mountId) }
+        assertFalse(f.service.sameAsyncOrigin(f.user.id, f.conversation.id, slot.mountId, null))
+        f.acquire(slot); f.service.processPending()
+        val original = assertNotNull(f.service.captureAsyncOrigin(f.user.id, f.conversation.id, slot.mountId))
+        assertTrue(f.service.sameAsyncOrigin(f.user.id, f.conversation.id, slot.mountId, original))
+        val warning = f.service.release(f.user, f.conversation.id, slot.number, original.leaseId, null)
+        assertTrue(f.service.release(f.user, f.conversation.id, slot.number, original.leaseId, warning.confirmationId).released)
+        f.acquire(slot, "successor"); f.service.processPending()
+        val successor = assertNotNull(f.service.captureAsyncOrigin(f.user.id, f.conversation.id, slot.mountId))
+        assertNotEquals(original, successor)
+        assertFalse(f.service.sameAsyncOrigin(f.user.id, f.conversation.id, slot.mountId, original))
+        assertTrue(f.service.sameAsyncOrigin(f.user.id, f.conversation.id, slot.mountId, successor))
+        assertFailsWith<IllegalArgumentException> { f.service.captureAsyncOrigin(User.Id("foreign"), f.conversation.id, slot.mountId) }
+    }
+
     @Test fun `foreign user and cross project cannot acquire or return lease`() = fixture { f ->
         val slot = f.register(); f.acquire(slot); f.service.processPending()
         val lease = f.repository.snapshot(slot.number)!!.leases.single()

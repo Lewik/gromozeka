@@ -69,6 +69,7 @@ object ConversationMessageProjection {
                 author = when (val author = projected.author) {
                     is Conversation.Message.Author.User -> author.copy(displayName = author.displayName.take(256), identityKey = null)
                     is Conversation.Message.Author.Agent -> author.copy(displayName = author.displayName.take(256))
+                    is Conversation.Message.Author.Runtime -> author.copy(displayName = author.displayName.take(256))
                     null -> null
                 },
                 error = projected.error?.let { it.copy(message = it.message.take(1_024), type = it.type?.take(128)) },

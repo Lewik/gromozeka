@@ -70,6 +70,11 @@ fun AiToolDescriptor.withInvocationContext(bindings: AiToolContextBindings): AiT
     val worker = metadata.executionScope == AiToolExecutionScope.WORKER
     val workspace = metadata.executionScope == AiToolExecutionScope.WORKSPACE
     val envelopeProperties = buildJsonObject {
+        put("async", buildJsonObject {
+            put("type", "boolean"); put("default", false)
+            put("description", metadata.inlineOnlyReason?.let { "Cannot be detached: $it" }
+                ?: "Opt-in durable background execution. Returns an operation receipt; completion arrives separately. Requires a durable conversation call.")
+        })
         fields.forEach { field -> put(field.selector!!, identifierSchema("Calling ${field.name.lowercase()} context; not the business operation's target.")) }
         if (worker && !bindings.worker) put("worker_id", identifierSchema("Exact compatible Worker for this call."))
         if (workspace && !bindings.workspaceMount) put("workspace_mount_id", identifierSchema("Exact filesystem mount; determines its Worker and root path."))
@@ -89,7 +94,6 @@ fun AiToolDescriptor.withInvocationContext(bindings: AiToolContextBindings): AiT
             })
         }
     }
-    if (envelopeProperties.isEmpty()) return this
     val envelopeRequired = buildSet {
         fields.filter { it in requiredFields }.forEach { field ->
             // A selected Conversation or mount supplies its project; never require duplicate selectors.
@@ -121,6 +125,7 @@ data class AiToolInvocationInput(
     val arguments: JsonObject,
     val selectors: Map<AiToolContextField, String>,
     val executionTarget: AiToolExecutionTarget?,
+    val async: Boolean = false,
 ) {
     fun requireResolvedSelectors(context: ToolExecutionContext?) {
         selectors.forEach { (field, value) ->
@@ -139,14 +144,20 @@ fun AiToolMetadata.parseInvocationInput(input: JsonElement, bound: ToolExecution
     val selectable = selectorFields()
     val worker = executionScope == AiToolExecutionScope.WORKER
     val workspace = executionScope == AiToolExecutionScope.WORKSPACE
-    val allowed = selectable.mapNotNull { it.selector }.toSet() + when {
+    val allowed = selectable.mapNotNull { it.selector }.toSet() + setOf("async") + when {
         worker -> timeoutFields + "worker_id"
         workspace -> timeoutFields + "workspace_mount_id"
         else -> emptySet()
     }
-    require(envelope.keys.all { it in allowed } && (allowed.isNotEmpty() || AI_TOOL_INVOCATION_CONTEXT_FIELD !in arguments)) {
+    require(envelope.keys.all { it in allowed }) {
         "Unsupported _grz field for this tool"
     }
+    val async = if ("async" !in envelope) false else {
+        val value = envelope["async"] as? JsonPrimitive
+        require(value != null && !value.isString && value.booleanOrNull != null) { "Invalid _grz.async" }
+        checkNotNull(value.booleanOrNull)
+    }
+    if (async) require(inlineOnlyReason == null) { "Async invocation is unsupported: $inlineOnlyReason" }
     fun id(name: String): String? {
         if (name !in envelope) return null
         val value = envelope[name] as? JsonPrimitive
@@ -188,7 +199,7 @@ fun AiToolMetadata.parseInvocationInput(input: JsonElement, bound: ToolExecution
         workspace -> AiToolExecutionTarget(workspaceMountId = WorkspaceMount.Id(targetId("workspace_mount_id", TOOL_CONTEXT_WORKSPACE_MOUNT_ID)), requestPolicy = policy)
         else -> null
     }
-    return AiToolInvocationInput(JsonObject(arguments - AI_TOOL_INVOCATION_CONTEXT_FIELD), selectors, target)
+    return AiToolInvocationInput(JsonObject(arguments - AI_TOOL_INVOCATION_CONTEXT_FIELD), selectors, target, async)
 }
 
 /** Must run after trusted call-id injection and context resolution, before approval/callback effects. */

@@ -374,6 +374,7 @@ internal class OpenAiSdkMessageMapper(
     private fun toMessageParams(message: Conversation.Message, targetModelName: String): List<ChatCompletionMessageParam> =
         buildList {
             when (message.role) {
+            Conversation.Message.Role.RUNTIME_NOTIFICATION -> error("Runtime notifications must be projected before provider lowering")
                 Conversation.Message.Role.USER -> userMessageParam(message)?.let {
                     add(ChatCompletionMessageParam.ofUser(it))
                 }

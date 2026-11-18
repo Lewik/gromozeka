@@ -35,6 +35,7 @@ class BackgroundActivityCompletionApplicationService(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val origins: BackgroundActivityOriginRepository,
     private val continuationPolicy: BackgroundActivityContinuationPolicy,
+    private val asyncTools: AsyncToolOperationService? = null,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -86,32 +87,42 @@ class BackgroundActivityCompletionApplicationService(
                 )
             }
         }
-        val sortedCandidates = (commandCandidates + monitorCandidates)
+        val asyncCandidates = asyncTools?.pendingDelivery(conversationId).orEmpty().asSequence()
+            .filter { it.notificationSourceKey() !in failedSources && it.notificationSourceKey() !in sourcesInCurrentPacket }
+            .map { operation -> DeliveryCandidate.Async(operation, checkNotNull(operation.completedAt),
+                kotlinx.serialization.json.Json.encodeToString(Conversation.Message.serializer(), checkNotNull(asyncTools).notification(operation)).encodeToByteArray().size) }
+        val sortedCandidates = (commandCandidates + monitorCandidates + asyncCandidates)
             .sortedWith(
                 compareBy<DeliveryCandidate> { it.occurredAt }
                     .thenBy { it.stableKey }
             )
             .toList()
-        val provenance = origins.find(conversationId, sortedCandidates.mapTo(mutableSetOf()) { it.originKey })
-        fun origin(candidate: DeliveryCandidate): BackgroundActivityOrigin? = provenance[candidate.originKey]
+        val provenance = origins.find(conversationId, sortedCandidates.mapNotNullTo(mutableSetOf()) { it.originKey })
+        fun origin(candidate: DeliveryCandidate): BackgroundActivityOrigin? = candidate.originKey?.let { provenance[it] }
             ?.takeIf { origin ->
                 origin.conversationId == conversationId && origin.agentDefinitionId == candidate.agentDefinitionId &&
                     when (candidate) {
                         is DeliveryCandidate.Command -> origin.workerId == candidate.task.workerId && origin.workspaceMountId == candidate.task.workspaceMountId
                         is DeliveryCandidate.Monitor -> origin.workerId == candidate.delivery.monitor.workerId && origin.workspaceMountId == candidate.delivery.monitor.workspaceMountId
+                        is DeliveryCandidate.Async -> false
                     }
             }
-        fun actor(candidate: DeliveryCandidate): User.Id? = origin(candidate)?.actorUserId
+        fun actor(candidate: DeliveryCandidate): User.Id? = when (candidate) {
+            is DeliveryCandidate.Async -> candidate.operation.invocation.origin.actorUserId
+            else -> origin(candidate)?.actorUserId
+        }
         val source = sortedCandidates.singleOrNull { candidate ->
             when (candidate) {
                 is DeliveryCandidate.Command -> candidate.task.notificationSourceKey() == sourceKey
                 is DeliveryCandidate.Monitor -> candidate.delivery.events.any { it.notificationSourceKey() == sourceKey } ||
                     (candidate.delivery.terminalNotificationIncluded && candidate.delivery.monitor.notificationSourceKey() == sourceKey)
+                is DeliveryCandidate.Async -> candidate.operation.notificationSourceKey() == sourceKey
             }
         } ?: return Batch(emptyList(), emptyList(), emptyList())
         val selectedActor = actor(source)
         val selectedCandidates = (sequenceOf(source) + sortedCandidates.asSequence().filter { candidate ->
-            candidate !== source && candidate.agentDefinitionId == source.agentDefinitionId && actor(candidate) == selectedActor
+            candidate !== source && candidate.agentDefinitionId == source.agentDefinitionId && actor(candidate) == selectedActor &&
+                ((candidate is DeliveryCandidate.Async) == (source is DeliveryCandidate.Async))
         }).selectBatch()
         val commandTasks = selectedCandidates
             .filterIsInstance<DeliveryCandidate.Command>()
@@ -124,10 +135,12 @@ class BackgroundActivityCompletionApplicationService(
             actorUserId = selectedActor,
             commandTasks = commandTasks,
             monitorDeliveries = monitorDeliveries,
+            asyncOperations = selectedCandidates.filterIsInstance<DeliveryCandidate.Async>().map { it.operation },
             messages = selectedCandidates.flatMap { candidate ->
                 when (candidate) {
                     is DeliveryCandidate.Command -> buildSyntheticCommandPair(candidate.task, origin(candidate).messageSource())
                     is DeliveryCandidate.Monitor -> buildSyntheticMonitorPair(candidate.delivery, origin(candidate).messageSource())
+                    is DeliveryCandidate.Async -> listOf(checkNotNull(asyncTools).notification(candidate.operation))
                 }
             },
         )
@@ -141,20 +154,23 @@ class BackgroundActivityCompletionApplicationService(
         val monitorDeliveries: List<MonitorDelivery>,
         val messages: List<Conversation.Message>,
         val actorUserId: User.Id? = null,
+        val asyncOperations: List<com.gromozeka.domain.model.AsyncToolOperation> = emptyList(),
     ) {
         val isEmpty: Boolean
-            get() = commandTasks.isEmpty() && monitorDeliveries.isEmpty()
+            get() = commandTasks.isEmpty() && monitorDeliveries.isEmpty() && asyncOperations.isEmpty()
 
         val receipt: BackgroundActivityDeliveryReceipt
             get() = BackgroundActivityDeliveryReceipt(
                 commandTasks.mapTo(mutableSetOf()) { it.id },
                 monitorDeliveries.flatMap { it.events }.mapTo(mutableSetOf()) { it.id },
                 monitorDeliveries.filter { it.terminalNotificationIncluded }.mapTo(mutableSetOf()) { it.monitor.id },
+                asyncOperations.mapTo(mutableSetOf()) { it.id },
             )
 
         val sourceKeys: Set<String>
             get() = buildSet {
                 commandTasks.forEach { add(it.notificationSourceKey()) }
+                asyncOperations.forEach { add(it.notificationSourceKey()) }
                 monitorDeliveries.forEach { delivery ->
                     delivery.events.forEach { add(it.notificationSourceKey()) }
                     if (delivery.terminalNotificationIncluded) add(delivery.monitor.notificationSourceKey())
@@ -167,6 +183,7 @@ class BackgroundActivityCompletionApplicationService(
         val agentDefinitionId: AgentDefinition.Id
             get() = commandTasks.firstNotNullOfOrNull(CommandTask::agentDefinitionId)
                 ?: monitorDeliveries.firstNotNullOfOrNull { it.monitor.agentDefinitionId }
+                ?: asyncOperations.firstOrNull()?.invocation?.origin?.agentDefinitionId
                 ?: error("Empty background activity batch has no agent")
     }
 
@@ -420,11 +437,21 @@ class BackgroundActivityCompletionApplicationService(
         val occurredAt: Instant
         val payloadBytes: Int
         val stableKey: String
-        val originKey: BackgroundActivityOrigin.Key
+        val originKey: BackgroundActivityOrigin.Key?
             get() = when (this) {
                 is Command -> BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.COMMAND, task.id.value)
                 is Monitor -> BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.MONITOR, delivery.monitor.id.value)
+                is Async -> null
             }
+
+        data class Async(
+            val operation: com.gromozeka.domain.model.AsyncToolOperation,
+            override val occurredAt: Instant,
+            override val payloadBytes: Int,
+        ) : DeliveryCandidate {
+            override val agentDefinitionId = operation.invocation.origin.agentDefinitionId
+            override val stableKey = operation.notificationSourceKey()
+        }
 
         data class Command(
             val task: CommandTask,

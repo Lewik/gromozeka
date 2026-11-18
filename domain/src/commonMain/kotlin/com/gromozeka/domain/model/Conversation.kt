@@ -211,7 +211,10 @@ data class Conversation(
             ASSISTANT,
 
             /** System notification or instruction */
-            SYSTEM
+            SYSTEM,
+
+            /** Server-authored event, projected as untrusted provider user data. */
+            RUNTIME_NOTIFICATION
         }
 
         @Serializable
@@ -233,6 +236,10 @@ data class Conversation(
                 val agentDefinitionId: AgentDefinition.Id,
                 override val displayName: String,
             ) : Author()
+
+            @Serializable
+            @SerialName("runtime")
+            data class Runtime(override val displayName: String = "Runtime") : Author()
         }
 
         /**
@@ -273,6 +280,28 @@ data class Conversation(
              *
              * @property text message content
              */
+            @Serializable
+            @SerialName("runtime_notification")
+            data class RuntimeNotification(
+                val level: Level,
+                val content: String,
+                val toolUseId: ToolCall.Id? = null,
+                override val state: BlockState = BlockState.COMPLETE,
+                val kind: Kind = Kind.NOTICE,
+                val referenceId: String? = null,
+                val details: JsonObject = JsonObject(emptyMap()),
+                val attachments: List<ToolResult.Data> = emptyList(),
+            ) : ContentItem() {
+                @Serializable
+                enum class Level { INFO, WARNING, ERROR }
+
+                @Serializable
+                enum class Kind {
+                    NOTICE, COMMAND_COMPLETED, MONITOR_OUTPUT, EXECUTION_INCIDENT,
+                    TURN_CONTINUATION, SLOT_UPDATED, TOOL_COMPLETED,
+                }
+            }
+
             @Serializable
             @SerialName("Message")
             data class UserMessage(

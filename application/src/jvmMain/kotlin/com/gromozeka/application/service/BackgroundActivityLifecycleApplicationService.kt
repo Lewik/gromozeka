@@ -38,6 +38,7 @@ class BackgroundActivityLifecycleApplicationService(
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
     @Qualifier("applicationScope") private val coroutineScope: CoroutineScope,
     private val origins: BackgroundActivityOriginRepository,
+    private val asyncTools: AsyncToolOperationService? = null,
 ) {
     private val log = KLoggers.logger(this)
     private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
@@ -50,6 +51,16 @@ class BackgroundActivityLifecycleApplicationService(
         collectCommandEvents()
         collectMonitorEvents()
         reconcileChangedConversations()
+        asyncTools?.let { tools ->
+            coroutineScope.launch { tools.completionChanges.collect { changedConversations.send(it) } }
+            coroutineScope.launch {
+                while (currentCoroutineContext().isActive) {
+                    tools.pendingDeliveryConversations().forEach { changedConversations.send(it) }
+                    kotlinx.coroutines.delay(1_000)
+                }
+            }
+            tools.start(coroutineScope)
+        }
         coroutineScope.launch {
             try {
                 reconcileAll()
@@ -70,6 +81,7 @@ class BackgroundActivityLifecycleApplicationService(
         val conversationIds = buildSet {
             commandTasks.mapTo(this) { it.conversationId }
             monitors.mapTo(this) { it.conversationId }
+            asyncTools?.pendingDeliveryConversations()?.let { addAll(it) }
         }
         conversationIds.forEach { conversationId ->
             submitPendingNotification(conversationId, commandTasks, monitors)
@@ -162,6 +174,8 @@ class BackgroundActivityLifecycleApplicationService(
             .filter {
                 it.monitorId in monitorIds && it.hasPendingNotification(failedSources)
             }
+        val asyncOperations = asyncTools?.pendingDelivery(conversationId).orEmpty()
+            .filter { it.notificationSourceKey() !in failedSources }
         val source = buildList {
             commandTasks.asSequence()
                 .filter { it.conversationId == conversationId }
@@ -192,13 +206,17 @@ class BackgroundActivityLifecycleApplicationService(
                         originKey = BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.MONITOR, it.id.value),
                     )
                 }
+            asyncOperations.mapTo(this) {
+                PendingSource(it.notificationSourceKey(), checkNotNull(it.completedAt), it.invocation.origin.agentDefinitionId,
+                    originKey = null, asyncOrigin = it.invocation.origin)
+            }
         }.minWithOrNull(compareBy(PendingSource::occurredAt, PendingSource::key))
             ?: return
-        val origin = origins.find(conversationId, setOf(source.originKey))[source.originKey]
+        val origin = source.originKey?.let { origins.find(conversationId, setOf(it))[it] }
         check(origin == null || origin.conversationId == conversationId && origin.agentDefinitionId == source.agentId) {
             "Background activity recipient does not match its launch origin"
         }
-        if (!runtimeDispatcher.submitBackgroundActivityCompletion(conversationId, source.key, source.agentId, origin?.actorUserId)) {
+        if (!runtimeDispatcher.submitBackgroundActivityCompletion(conversationId, source.key, source.agentId, source.asyncOrigin?.actorUserId ?: origin?.actorUserId, source.asyncOrigin?.externalChannel)) {
             log.debug { "Background activity delivery not admitted: conversation=${conversationId.value} source=${source.key}" }
         }
     }
@@ -207,7 +225,10 @@ class BackgroundActivityLifecycleApplicationService(
         val key: String,
         val occurredAt: Instant,
         val agentId: AgentDefinition.Id,
-        val originKey: BackgroundActivityOrigin.Key,
-    )
+        val originKey: BackgroundActivityOrigin.Key?,
+        val asyncOrigin: com.gromozeka.domain.model.AsyncToolOrigin? = null,
+    ) {
+        init { require((originKey == null) != (asyncOrigin == null)) }
+    }
 
 }

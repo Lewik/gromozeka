@@ -197,6 +197,7 @@ class OpenAiSubscriptionRequestMapper {
         replayReasoning: Boolean = false,
     ): List<JsonObject> {
         return when (message.role) {
+            Conversation.Message.Role.RUNTIME_NOTIFICATION -> error("Runtime notifications must be projected before provider lowering")
             Conversation.Message.Role.USER -> message.toUserInputItems()
             Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly, replayReasoning)
             Conversation.Message.Role.SYSTEM -> message.toSystemInputItems()

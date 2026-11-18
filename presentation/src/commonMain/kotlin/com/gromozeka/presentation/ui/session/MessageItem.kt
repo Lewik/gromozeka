@@ -793,6 +793,30 @@ private fun GenericContentItem(
             }
         }
 
+        is Conversation.Message.ContentItem.RuntimeNotification -> Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.DeveloperBoard, contentDescription = localization.text("chat.service.runtime"))
+                Text(localization.text("chat.service.runtime"), style = MaterialTheme.typography.labelLarge)
+                if (content.level != Conversation.Message.ContentItem.RuntimeNotification.Level.INFO) {
+                    Icon(if (content.level == Conversation.Message.ContentItem.RuntimeNotification.Level.ERROR) Icons.Default.Error else Icons.Default.Warning,
+                        content.level.name, tint = MaterialTheme.colorScheme.error)
+                }
+            }
+            if (content.content.isNotBlank()) Text(content.content)
+            content.referenceId?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+            if (content.details.isNotEmpty()) Text(content.details.toString(), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            content.attachments.forEach { data -> when (data) {
+                is Conversation.Message.ContentItem.ToolResult.Data.Text -> Text(data.content, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> GenericContentItem(
+                    Conversation.Message.ContentItem.ArtifactItem(data.artifact), JsonObject(emptyMap()), loadArtifactContent, onManualContentResize)
+                is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> Text(data.url)
+                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> Text(data.fileName ?: data.mediaType.value)
+            } }
+        }
+
         is Conversation.Message.ContentItem.System -> Text(text = content.content)
         is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content, providerMetadata["compactionBoundary"] as? JsonObject)
         is Conversation.Message.ContentItem.UnknownJson -> Row(

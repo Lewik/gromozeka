@@ -150,17 +150,22 @@ class ConversationArtifactApplicationService(
         return DraftDeletionResult.DELETED
     }
 
-    suspend fun persistAndCommitMessageToolResults(
+    suspend fun persistAndCommitMessageOutputs(
         conversation: Conversation,
         createdByUserId: User.Id?,
         message: Conversation.Message,
     ): Conversation.Message {
-        val results = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-        if (results.isEmpty()) return message
-        val persisted = persistAndCommitToolResults(conversation, createdByUserId, results).iterator()
-        return message.copy(content = message.content.map {
-            if (it is Conversation.Message.ContentItem.ToolResult) persisted.next() else it
-        })
+        val content = message.content.map { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.ToolResult ->
+                    persistAndCommitToolResults(conversation, createdByUserId, listOf(item)).single()
+                is Conversation.Message.ContentItem.RuntimeNotification -> item.copy(attachments = persistOutputData(
+                    conversation, createdByUserId, message.id.value, item.kind.name.lowercase(), Artifact.Purpose.TOOL_OUTPUT, item.attachments))
+                else -> item
+            }
+        }
+        validateReferences(conversation.id, content)
+        return message.copy(content = content)
     }
 
     suspend fun persistAndCommitToolResults(
@@ -168,47 +173,50 @@ class ConversationArtifactApplicationService(
         createdByUserId: User.Id?,
         results: List<Conversation.Message.ContentItem.ToolResult>,
     ): List<Conversation.Message.ContentItem.ToolResult> {
-        val persisted = results.map { toolResult ->
-            toolResult.copy(result = toolResult.result.flatMapIndexed { index, data ->
-                val upload = when (data) {
-                    is Conversation.Message.ContentItem.ToolResult.Data.Text -> ArtifactUpload(
-                        fileName = "${toolResult.effectiveToolName}-$index.txt",
-                        mediaType = "text/plain",
-                        content = data.content.encodeToByteArray(),
-                        purpose = Artifact.Purpose.TOOL_OUTPUT,
-                    )
-                    is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> ArtifactUpload(
-                        fileName = data.fileName ?: toolResult.defaultArtifactFileName(data.mediaType),
-                        mediaType = data.mediaType.value,
-                        content = Base64.getDecoder().decode(data.data),
-                        purpose = if (toolResult.effectiveToolName in SCREENSHOT_TOOL_NAMES) {
-                            Artifact.Purpose.TOOL_SCREENSHOT
-                        } else Artifact.Purpose.TOOL_OUTPUT,
-                    )
-                    else -> return@flatMapIndexed listOf(data)
-                }
-                val identity = listOf(conversation.id.value, toolResult.toolUseId.value, index.toString(),
-                    upload.fileName, upload.mediaType, upload.content.sha256()).joinToString("\u0000")
-                val artifactId = Artifact.Id(java.util.UUID.nameUUIDFromBytes(identity.encodeToByteArray()).toString())
-                val artifact = upload(conversation, createdByUserId, upload, artifactId)
-                buildList {
-                    if (data is Conversation.Message.ContentItem.ToolResult.Data.Text ||
-                        (!upload.mediaType.startsWith("image/") && upload.mediaType != "application/pdf")) {
-                        val preview = BinaryContent.fromBytes(upload.content).textPreview()
-                        val bounded = preview.take(MAX_TOOL_PREVIEW_CHARACTERS).let {
-                            if (it.lastOrNull()?.isHighSurrogate() == true) it.dropLast(1) else it
-                        }
-                        add(Conversation.Message.ContentItem.ToolResult.Data.Text(
-                            bounded +
-                                if (preview.length > MAX_TOOL_PREVIEW_CHARACTERS) "\n[Preview truncated; save the artifact for the complete result.]" else ""
-                        ))
-                    }
-                    add(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(artifact.reference()))
-                }
-            })
-        }
+        val persisted = results.map { result -> result.copy(result = persistOutputData(
+            conversation, createdByUserId, result.toolUseId.value, result.effectiveToolName,
+            if (result.effectiveToolName in SCREENSHOT_TOOL_NAMES) Artifact.Purpose.TOOL_SCREENSHOT else Artifact.Purpose.TOOL_OUTPUT,
+            result.result,
+        )) }
         validateReferences(conversation.id, persisted)
         return persisted
+    }
+
+    private suspend fun persistOutputData(
+        conversation: Conversation,
+        createdByUserId: User.Id?,
+        sourceId: String,
+        filePrefix: String,
+        binaryPurpose: Artifact.Purpose,
+        data: List<Conversation.Message.ContentItem.ToolResult.Data>,
+    ): List<Conversation.Message.ContentItem.ToolResult.Data> = data.flatMapIndexed { index, item ->
+        val upload = when (item) {
+            is Conversation.Message.ContentItem.ToolResult.Data.Text -> ArtifactUpload(
+                fileName = "$filePrefix-$index.txt", mediaType = "text/plain",
+                content = item.content.encodeToByteArray(), purpose = Artifact.Purpose.TOOL_OUTPUT,
+            )
+            is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> ArtifactUpload(
+                fileName = item.fileName ?: "$filePrefix-output.${item.mediaType.defaultExtension()}",
+                mediaType = item.mediaType.value, content = Base64.getDecoder().decode(item.data), purpose = binaryPurpose,
+            )
+            else -> return@flatMapIndexed listOf(item)
+        }
+        val identity = listOf(conversation.id.value, sourceId, index.toString(),
+            upload.fileName, upload.mediaType, upload.content.sha256()).joinToString("\u0000")
+        val artifactId = Artifact.Id(java.util.UUID.nameUUIDFromBytes(identity.encodeToByteArray()).toString())
+        val artifact = upload(conversation, createdByUserId, upload, artifactId)
+        buildList {
+            if (item is Conversation.Message.ContentItem.ToolResult.Data.Text ||
+                (!upload.mediaType.startsWith("image/") && upload.mediaType != "application/pdf")) {
+                val preview = BinaryContent.fromBytes(upload.content).textPreview()
+                val bounded = preview.take(MAX_TOOL_PREVIEW_CHARACTERS).let {
+                    if (it.lastOrNull()?.isHighSurrogate() == true) it.dropLast(1) else it
+                }
+                add(Conversation.Message.ContentItem.ToolResult.Data.Text(bounded +
+                    if (preview.length > MAX_TOOL_PREVIEW_CHARACTERS) "\n[Preview truncated; save the artifact for the complete result.]" else ""))
+            }
+            add(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(artifact.reference()))
+        }
     }
 
     suspend fun materialize(
@@ -280,6 +288,12 @@ class ConversationArtifactApplicationService(
                         is Conversation.Message.ContentItem.ArtifactItem ->
                             materialized.getValue(item.artifact.id).asContentItem()
 
+                        is Conversation.Message.ContentItem.RuntimeNotification -> item.copy(
+                            attachments = item.attachments.flatMap { data ->
+                                if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData)
+                                    materialized.getValue(data.artifact.id).asToolResultData() else listOf(data)
+                            }
+                        )
                         is Conversation.Message.ContentItem.ToolResult -> item.copy(
                             result = item.result.flatMap { data ->
                                 if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData) {
@@ -480,10 +494,6 @@ class ConversationArtifactApplicationService(
             .digest(this)
             .joinToString("") { byte -> "%02x".format(byte) }
 
-    private fun Conversation.Message.ContentItem.ToolResult.defaultArtifactFileName(
-        mediaType: Conversation.Message.MediaType,
-    ): String = "$effectiveToolName-output.${mediaType.defaultExtension()}"
-
     private val Conversation.Message.ContentItem.ToolResult.effectiveToolName: String
         get() = executionToolName ?: toolName
 
@@ -572,6 +582,9 @@ private fun List<Conversation.Message.ContentItem>.contentArtifactReferences(): 
     flatMap { item ->
         when (item) {
             is Conversation.Message.ContentItem.ArtifactItem -> listOf(item.artifact)
+            is Conversation.Message.ContentItem.RuntimeNotification -> item.attachments
+                .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
+                .map(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData::artifact)
             is Conversation.Message.ContentItem.ToolResult -> item.result
                 .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
                 .map(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData::artifact)
@@ -586,6 +599,12 @@ private fun List<Conversation.Message.ContentItem>.replaceArtifactReferences(
         is Conversation.Message.ContentItem.ArtifactItem ->
             item.copy(artifact = replacements.getValue(item.artifact.id))
 
+        is Conversation.Message.ContentItem.RuntimeNotification -> item.copy(
+            attachments = item.attachments.map { data ->
+                if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData)
+                    data.copy(artifact = replacements.getValue(data.artifact.id)) else data
+            }
+        )
         is Conversation.Message.ContentItem.ToolResult -> item.copy(
             result = item.result.map { data ->
                 if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData) {

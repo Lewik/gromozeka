@@ -41,6 +41,7 @@ class ConversationRuntimeDispatcher(
     private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val artifactReferenceValidator: ArtifactReferenceValidator,
     private val proactiveCompactionJobs: ProactiveCompactionJobs? = null,
+    private val asyncTools: com.gromozeka.domain.repository.AsyncToolOperationRepository? = null,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -127,6 +128,8 @@ class ConversationRuntimeDispatcher(
         } else {
             0
         }
+        val cancelledAsync = if (action == ConversationRuntimeControlAction.INTERRUPT && expectedTurnId == null)
+            asyncTools?.requestConversationCancellation(conversationId, Clock.System.now()) ?: 0 else 0
         val runtimeControlAccepted = when (action) {
             ConversationRuntimeControlAction.PAUSE -> runtimeCoordinator.requestPause(conversationId)
             ConversationRuntimeControlAction.RESUME -> runtimeCoordinator.requestResume(conversationId)
@@ -139,7 +142,7 @@ class ConversationRuntimeDispatcher(
                 proactiveCompactionJobs?.cancel(conversationId, preparation.id)
             }
         }
-        val accepted = runtimeControlAccepted || cancelledCommands > 0
+        val accepted = runtimeControlAccepted || cancelledCommands > 0 || cancelledAsync > 0
         if (accepted) {
             publishRuntimeSnapshot(conversationId)
             log.info { "Runtime execution control accepted: conversation=${conversationId.value} action=$action" }
@@ -316,12 +319,14 @@ class ConversationRuntimeDispatcher(
         sourceKey: String,
         agentDefinitionId: AgentDefinition.Id,
         actorUserId: com.gromozeka.domain.model.User.Id?,
+        externalChannel: com.gromozeka.domain.model.ExternalConversationChannel? = null,
     ): Boolean =
         submitRuntimeTask(
             ConversationRuntimeTask(
                 id = ConversationRuntimeTask.Id("background-activity:${stableIdentifier(sourceKey)}"),
                 conversationId = conversationId,
                 actorUserId = actorUserId,
+                externalChannel = externalChannel,
                 payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(
                     sourceKey = sourceKey,
                 ),
