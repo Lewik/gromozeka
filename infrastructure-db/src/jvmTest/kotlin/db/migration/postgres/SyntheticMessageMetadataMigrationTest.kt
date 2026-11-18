@@ -68,9 +68,15 @@ class SyntheticMessageMetadataMigrationTest {
             flyway(database).target("88").load().migrate()
             val command = oldMessage("command", "command_task_completion")
             val monitor = oldMessage("monitor", "command_monitor_update")
+            val forked = oldMessage("forked-command", "command_task_completion", conversationId = "fork")
             val nul = oldMessage("nul", "memory", withNul = true)
             database.connection.use { connection ->
                 createConversation(connection)
+                connection.createStatement().use {
+                    it.execute("INSERT INTO conversations(id,project_id,display_name,current_thread_id,created_at,updated_at) VALUES ('fork','project','Fork','fork-thread',now(),now())")
+                    it.execute("INSERT INTO threads(id,conversation_id,created_at,updated_at) VALUES ('fork-thread','fork',now(),now())")
+                }
+                insertMessage(connection, forked)
                 insertMessage(connection, command); insertMessage(connection, monitor); insertMessage(connection, nul)
                 for ((kind, id, call) in listOf(Triple("COMMAND", "task", "launch-call"), Triple("MONITOR", "monitor", "monitor-launch"))) {
                     val record = buildJsonObject {
@@ -92,13 +98,18 @@ class SyntheticMessageMetadataMigrationTest {
                     it.setString(1, buildJsonObject { put("messages", JsonArray(listOf(monitor))) }.toString()); it.executeUpdate()
                 }
             }
-            assertEquals(1, flyway(database).load().migrate().migrationsExecuted)
+            assertEquals(1, flyway(database).target("89").load().migrate().migrationsExecuted)
             database.connection.use { connection ->
                 val commandAfter = read(connection, "SELECT message_json FROM messages WHERE id='command'")
                 val monitorAfter = read(connection, "SELECT message_json FROM messages WHERE id='monitor'")
                 assertEquals(nul.getValue("content"), read(connection, "SELECT message_json FROM messages WHERE id='nul'").jsonObject.getValue("content"))
                 val commandMessage = Json.decodeFromJsonElement<Conversation.Message>(commandAfter)
                 val monitorMessage = Json.decodeFromJsonElement<Conversation.Message>(monitorAfter)
+                val forkAfter = read(connection, "SELECT message_json FROM messages WHERE id='forked-command'")
+                val forkMessage = Json.decodeFromJsonElement<Conversation.Message>(forkAfter)
+                assertEquals(SyntheticMessageKind.COMMAND_TASK_COMPLETION, forkMessage.syntheticKind)
+                assertNull(forkMessage.backgroundActivitySource)
+                assertEquals(forked.getValue("content"), forkAfter.jsonObject.getValue("content"))
                 assertEquals("launch-call", commandMessage.backgroundActivitySource?.toolCallId?.value)
                 assertEquals("monitor-launch", monitorMessage.backgroundActivitySource?.toolCallId?.value)
                 assertEquals(SyntheticMessageKind.COMMAND_MONITOR_UPDATE, monitorMessage.syntheticKind)
@@ -111,7 +122,7 @@ class SyntheticMessageMetadataMigrationTest {
                 val draft = read(connection, "SELECT record_json::text FROM agent_response_drafts WHERE id='draft'").jsonObject.getValue("messages").jsonArray.single()
                 assertEquals(commandAfter, queued); assertEquals(commandAfter, event); assertEquals(monitorAfter, draft)
             }
-            assertEquals(0, flyway(database).load().migrate().migrationsExecuted)
+            assertEquals(0, flyway(database).target("89").load().migrate().migrationsExecuted)
         }
     }
 
@@ -144,8 +155,8 @@ class SyntheticMessageMetadataMigrationTest {
 
     private fun source(callId: String, agentId: String) = buildJsonObject { put("toolCallId", callId); put("agentDefinitionId", agentId) }
 
-    private fun oldMessage(id: String, kind: String, withNul: Boolean = false): JsonObject {
-        val message = Conversation.Message(Conversation.Message.Id(id), Conversation.Id("conversation"), role = Conversation.Message.Role.ASSISTANT,
+    private fun oldMessage(id: String, kind: String, withNul: Boolean = false, conversationId: String = "conversation"): JsonObject {
+        val message = Conversation.Message(Conversation.Message.Id(id), Conversation.Id(conversationId), role = Conversation.Message.Role.ASSISTANT,
             content = listOf(Conversation.Message.ContentItem.UserMessage(if (withNul) "Original text\u0000\nDo not rewrite input" else "Original text\nDo not rewrite input")),
             providerMetadata = buildJsonObject {
                 put("synthetic", true); put("syntheticKind", kind); put("commandTaskId", "task"); put("commandMonitorId", "monitor")
@@ -178,8 +189,13 @@ class SyntheticMessageMetadataMigrationTest {
     }
 
     private fun insertMessage(connection: Connection, message: JsonObject) = connection.prepareStatement(
-        "INSERT INTO messages(id,conversation_id,role,created_at,message_json) VALUES (?,'conversation','ASSISTANT',now(),?)",
-    ).use { it.setString(1, message.getValue("id").jsonPrimitive.content); it.setString(2, message.toString()); it.executeUpdate() }
+        "INSERT INTO messages(id,conversation_id,role,created_at,message_json) VALUES (?,?,'ASSISTANT',now(),?)",
+    ).use {
+        it.setString(1, message.getValue("id").jsonPrimitive.content)
+        it.setString(2, message.getValue("conversationId").jsonPrimitive.content)
+        it.setString(3, message.toString())
+        it.executeUpdate()
+    }
 
     private fun read(connection: Connection, sql: String): JsonElement = connection.createStatement().use { statement ->
         statement.executeQuery(sql).use { rows -> check(rows.next()); Json.parseToJsonElement(rows.getString(1)) }

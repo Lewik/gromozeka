@@ -10,18 +10,19 @@ class V89__typed_synthetic_message_metadata : BaseJavaMigration() {
     override fun migrate(context: Context) {
         val connection = context.connection
         val sources = mutableMapOf<OriginKey, JsonObject?>()
-        connection.prepareStatement("SELECT conversation_id, record_json::text, tool_call_id FROM background_activity_origins WHERE kind = ? AND activity_id = ?").use { origin ->
+        connection.prepareStatement("SELECT record_json::text, tool_call_id FROM background_activity_origins WHERE kind = ? AND activity_id = ? AND conversation_id = ?").use { origin ->
             val source: SyntheticMessageSourceLookup = { kind, activityId, conversationId ->
                 sources.getOrPut(OriginKey(kind, activityId, conversationId)) {
-                    origin.setString(1, kind); origin.setString(2, activityId)
+                    origin.setString(1, kind)
+                    origin.setString(2, activityId)
+                    origin.setString(3, conversationId)
                     origin.executeQuery().use { rows ->
                         if (!rows.next()) null else {
-                            check(rows.getString(1) == conversationId) { "Background activity origin belongs to another conversation" }
-                            val record = Json.parseToJsonElement(rows.getString(2)).jsonObject
+                            val record = Json.parseToJsonElement(rows.getString("record_json")).jsonObject
                             check(record.optionalString("kind") == kind && record.optionalString("activityId") == activityId &&
                                 record.optionalString("conversationId") == conversationId) { "Background activity origin identity mismatch" }
                             val callId = record.optionalString("toolCallId")
-                            check(callId == rows.getString(3)) { "Background activity origin call mismatch" }
+                            check(callId == rows.getString("tool_call_id")) { "Background activity origin call mismatch" }
                             val agentId = record.optionalString("agentDefinitionId")
                             if (callId == null || agentId == null) null else buildJsonObject {
                                 put("toolCallId", callId); put("agentDefinitionId", agentId)
