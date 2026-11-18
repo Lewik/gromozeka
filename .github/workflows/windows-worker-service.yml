@@ -54,6 +54,12 @@ jobs:
         if: runner.os != 'Windows'
         shell: pwsh
         run: ./scripts/test-worker-license-setup.ps1
+      - name: Limit Gradle resources on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          # The development heaps exceed hosted macOS RAM; compile Kotlin in the bounded Gradle JVM.
+          echo 'GRADLE_OPTS=-Dorg.gradle.workers.max=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs="-Xmx3g -Xms256m -XX:MaxMetaspaceSize=768m" -Dorg.gradle.project.kotlin.compiler.execution.strategy=in-process' >> "$GITHUB_ENV"
       - name: Verify Worker, Computer Use and command process contracts
         run: >
           ./gradlew
@@ -63,7 +69,7 @@ jobs:
           :application-updates:jvmTest
           :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest' --tests '*ProactiveCompactionTest' --tests '*CompactionHistoryWindowTest'
           :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest' --tests '*ManagedCommandScriptSdkTest' --tests '*CommandScriptHttpTest' --tests '*LocalArtifactContentStoreTest' --tests '*AiCall*' --tests '*WorkspaceTextFileApplicationServiceTest'
-          -q
+          --console=plain
       - name: Verify real Windows service and standard-user permissions
         if: runner.os == 'Windows'
         shell: powershell

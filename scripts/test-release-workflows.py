@@ -3,6 +3,7 @@
 
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import shutil
 import sys
@@ -79,6 +80,82 @@ class WorkflowContracts(unittest.TestCase):
         self.assertIn("/runtime/(node|python)/", packaging)
         for filename in ("prepare-bundled-runtimes.sh", "prepare-bundled-runtimes.ps1"):
             self.assertIn("scripts/prepare-python-runtime.py", (ROOT / "deploy/distribution" / filename).read_text())
+
+    def test_macos_worker_checks_bound_the_compiler_to_one_gradle_process(self):
+        job = load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"]
+        steps = {step.get("name"): step for step in job["steps"]}
+        name = "Limit Gradle resources on macOS"
+        self.assertIn(name, steps)
+        budget = steps[name]
+        self.assertEqual("runner.os == 'macOS'", budget["if"])
+        self.assertEqual("bash", budget["shell"])
+        verification = steps["Verify Worker, Computer Use and command process contracts"]
+        self.assertLess(job["steps"].index(budget), job["steps"].index(verification))
+        self.assertNotIn("GRADLE_OPTS", verification.get("env", {}))
+        with tempfile.TemporaryDirectory() as directory:
+            github_env = Path(directory) / "github-env"
+            subprocess.run(["bash", "-euo", "pipefail", "-c", budget["run"]],
+                           env={"PATH": os.environ["PATH"], "GITHUB_ENV": str(github_env)}, check=True)
+            written = dict(line.split("=", 1) for line in github_env.read_text().splitlines())
+        self.assertEqual({"GRADLE_OPTS"}, set(written))
+        self.assertEqual([
+            "-Dorg.gradle.workers.max=1",
+            "-Dorg.gradle.parallel=false",
+            "-Dorg.gradle.jvmargs=-Xmx3g -Xms256m -XX:MaxMetaspaceSize=768m",
+            "-Dorg.gradle.project.kotlin.compiler.execution.strategy=in-process",
+        ], shlex.split(written["GRADLE_OPTS"]))
+
+    def test_worker_checks_keep_the_deadline_and_emit_task_progress(self):
+        job = load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"]
+        self.assertEqual(30, int(job["timeout-minutes"]))
+        self.assertNotIn("continue-on-error", job)
+        verification = next(step for step in job["steps"]
+                            if step.get("name") == "Verify Worker, Computer Use and command process contracts")
+        self.assertNotIn("continue-on-error", verification)
+        arguments = shlex.split(verification["run"])
+        self.assertIn("--console=plain", arguments)
+        for quiet in ("-q", "--quiet"):
+            self.assertNotIn(quiet, arguments)
+
+    def test_worker_resource_limits_preserve_scoped_tasks_and_test_filters(self):
+        job = load_yaml(WORKFLOWS / "windows-worker-service.yml")["jobs"]["verify"]
+        self.assertEqual("false", job["strategy"]["fail-fast"])
+        verification = next(step for step in job["steps"]
+                            if step.get("name") == "Verify Worker, Computer Use and command process contracts")
+        arguments = iter(shlex.split(verification["run"]))
+        self.assertEqual("./gradlew", next(arguments))
+        selected = []
+        for argument in arguments:
+            if argument.startswith(":"):
+                selected.append((argument, []))
+            elif argument == "--tests":
+                self.assertTrue(selected)
+                selected[-1][1].append(next(arguments))
+            else:
+                self.assertEqual("--console=plain", argument)
+        self.assertEqual([
+            (":worker:assemble", []),
+            (":server:assemble", []),
+            (":worker:test", ["*WorkerUpdatePreparationTest", "*WindowsPythonLicenseAcceptanceTest",
+                              "*WorkerEnrollmentClientTest", "*VisualWorkerRuntimeTest", "*JvmComputerUseControllerTest",
+                              "*WorkerCommandScriptBootstrapServiceTest", "*WorkerWorkspaceFileServiceTest"]),
+            (":infrastructure-ai:jvmTest", ["*GrzCaptureScreenshotToolImplTest", "*GrzComputerUseToolsImplTest",
+                                          "*LocalCommandProcessRunnerTest", "*LocalScriptSdkTest", "*LocalScriptSdkTlsTest",
+                                          "*ManagedPythonProcessTest", "*BundledPythonRuntimeTest", "*JsonSchemaGeneratorTest"]),
+            (":application-updates:jvmTest", []),
+            (":application:jvmTest", ["*DefaultCommandTaskServiceTest", "*DefaultCommandMonitorServiceTest",
+                                     "*ProactiveCompactionTest", "*CompactionHistoryWindowTest"]),
+            (":server:test", ["*WorkerCommandRuntimeGatewayHandlerTest", "*GrzCommandMonitorToolsTest",
+                              "*ManagedCommandScriptSdkTest", "*CommandScriptHttpTest", "*LocalArtifactContentStoreTest",
+                              "*AiCall*", "*WorkspaceTextFileApplicationServiceTest"]),
+        ], selected)
+        upload = next(step for step in job["steps"] if step.get("name") == "Upload test results")
+        self.assertEqual("always()", upload["if"])
+        self.assertEqual({f"{module}/build/{output}/{target}"
+                          for module, target in (("worker", "test"), ("infrastructure-ai", "jvmTest"),
+                                                 ("application", "jvmTest"), ("server", "test"))
+                          for output in ("reports/tests", "test-results")},
+                         set(upload["with"]["path"].splitlines()))
 
     def test_fork_copy_regressions_run_with_database_and_cross_platform_files(self):
         steps = {step.get("name"): step for step in JOBS["verify-runtime"]["steps"]}
