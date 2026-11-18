@@ -1,5 +1,5 @@
 {
-    "chat.service.runtime": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ServiceMessageItem.kt"], "description": "Collapsed service message category or navigation action. Runtime notification", "args": []},
+  "chat.service.runtime": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageItem.kt"], "description": "Runtime notification header label and icon accessibility description.", "args": []},
   "ai.connection.responses_streaming": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Stream Responses (SSE)", "args": []},
   "ai.connection.responses_streaming_description": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Receive a stream internally; validation and the complete answer are unchanged.", "args": []},
   "ai.connection.responses_stored_continuation": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Provider-stored continuation", "args": []},
