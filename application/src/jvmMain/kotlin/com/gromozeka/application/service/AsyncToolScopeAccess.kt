@@ -2,7 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.service.AgentDomainService
-import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.UserDirectoryService
 import org.springframework.stereotype.Service
@@ -14,7 +14,7 @@ class AsyncToolScopeDeniedException(val code: String) : IllegalStateException("A
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = ["gromozeka.runtime.server.enabled"], havingValue = "true", matchIfMissing = true)
 class AsyncToolScopeAccess(
     private val users: UserDirectoryService,
-    private val conversations: ConversationDomainService,
+    private val conversations: ConversationRepository,
     private val projects: ProjectAccessService,
     private val agents: AgentDomainService,
 ) {
