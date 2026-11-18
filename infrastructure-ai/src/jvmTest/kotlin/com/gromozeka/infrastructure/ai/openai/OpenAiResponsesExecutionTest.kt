@@ -427,8 +427,9 @@ class OpenAiResponsesExecutionTest {
     }
 
     @Test
-    fun `wire metrics match actual JSON bytes without logging content credentials URL or IDs`() = runBlocking {
+    fun `wire byte metrics are debug-only and match actual JSON without leaking private data`() = runBlocking {
         val logger = org.slf4j.LoggerFactory.getLogger(OpenAiResponsesSdkRuntime::class.java) as ch.qos.logback.classic.Logger
+        val originalLevel = logger.level
         val rows = CopyOnWriteArrayList<Pair<String, String>>()
         val appender = object : ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent>() {
             override fun append(event: ch.qos.logback.classic.spi.ILoggingEvent) {
@@ -437,7 +438,8 @@ class OpenAiResponsesExecutionTest {
         }.apply { context = logger.loggerContext; start() }
         logger.addAppender(appender)
         try {
-            for (stream in listOf(false, true)) {
+            for (level in listOf(ch.qos.logback.classic.Level.INFO, ch.qos.logback.classic.Level.DEBUG)) for (stream in listOf(false, true)) {
+                logger.level = level
                 rows.clear()
                 ResponsesServer { exchange, _, index ->
                     reply(exchange, response("opaque-private-parent-$index", output = TEXT_OUTPUT.replace("OK", "private-output-marker")), stream)
@@ -450,13 +452,17 @@ class OpenAiResponsesExecutionTest {
                     runtime(connection, state).call(next)
                     runtime(connection.copy(responsesStoredContinuationEnabled = false), state).call(next)
                     val wire = rows.map { it.second }.filter { it.startsWith("RESPONSES_WIRE ") }
-                    assertEquals(3, wire.size)
-                    fun number(row: String, key: String) = Regex("(?:^| )$key=([0-9]+)").find(row)!!.groupValues[1].toInt()
-                    assertEquals(server.requests[0].bytes, number(wire[0], "serialized_sent_bytes"))
-                    assertEquals(server.requests[1].bytes, number(wire[1], "serialized_sent_bytes"))
-                    // The actual full-reference call differs only by store:false (one extra byte).
-                    assertEquals(server.requests[2].bytes - 1, number(wire[1], "serialized_full_bytes"))
-                    println("RESPONSES_UPLOAD streaming=$stream full_bytes=${number(wire[1], "serialized_full_bytes")} delta_bytes=${server.requests[1].bytes}")
+                    assertEquals(3, rows.count { it.second.startsWith("RESPONSES_HTTP ") })
+                    if (level == ch.qos.logback.classic.Level.INFO) {
+                        assertTrue(wire.isEmpty(), "Payload byte diagnostics must not run at INFO")
+                    } else {
+                        assertEquals(3, wire.size)
+                        fun number(row: String, key: String) = Regex("(?:^| )$key=([0-9]+)").find(row)!!.groupValues[1].toInt()
+                        assertEquals(server.requests[0].bytes, number(wire[0], "serialized_sent_bytes"))
+                        assertEquals(server.requests[1].bytes, number(wire[1], "serialized_sent_bytes"))
+                        // The actual full-reference call differs only by store:false (one extra byte).
+                        assertEquals(server.requests[2].bytes - 1, number(wire[1], "serialized_full_bytes"))
+                    }
                     for ((thread, message) in rows) {
                         assertEquals("responses-metrics", thread)
                         for (privateValue in listOf("http://", "https://", "127.0.0.1", TOKEN, "opaque-private-parent", "private-input-marker", "private-output-marker")) {
@@ -465,7 +471,7 @@ class OpenAiResponsesExecutionTest {
                     }
                 }
             }
-        } finally { logger.detachAppender(appender); appender.stop() }
+        } finally { logger.level = originalLevel; logger.detachAppender(appender); appender.stop() }
     }
 
     private class AccountingAdmission : AiCallAdmission() {

@@ -404,10 +404,12 @@ when the whole rejection was received. It shares the original logical call's
 `maxAttempts:1` disables this recovery too. Other 400/409, auth, 5xx, malformed,
 truncated and ambiguous failures never trigger a hidden full replay or route change.
 
-`RESPONSES_WIRE` reports reason, stored mode, item counts and serialized full/sent
-JSON body bytes (including the SSE flag). These are exact serialized payload sizes,
-not proof that a failed connection transmitted every byte. `RESPONSES_HTTP` reports
-mapping and logical adapter milliseconds. Neither includes the whole Harness cycle
+At DEBUG, `RESPONSES_WIRE` reports reason, stored mode, item counts and serialized
+full/sent JSON body bytes (including the SSE flag). Its extra body serialization
+runs only when DEBUG is enabled; normal INFO logging does not compute these sizes.
+These are exact serialized payload sizes, not proof that a failed connection
+transmitted every byte. At INFO, `RESPONSES_HTTP` reports mapping and logical
+adapter milliseconds. Neither includes the whole Harness cycle
 before the adapter. Logs contain no URL, raw ID, prompt/response, headers, credential
 or exception body, including in the logging thread name. Upload reduction does not
 reduce the model's effective context or bypass compaction/token limits.

@@ -186,30 +186,32 @@ internal class OpenAiResponsesSdkRuntime(
             prepared?.let(continuations::forget)
             throw error
         } finally {
-            safeMetricLog("RESPONSES_HTTP outcome=$outcome streaming=${connection.responsesStreamingEnabled} " +
-                "mapping_ms=${mappedNanos / 1_000_000} logical_ms=${(System.nanoTime() - started) / 1_000_000}")
+            safeMetricLog { "RESPONSES_HTTP outcome=$outcome streaming=${connection.responsesStreamingEnabled} " +
+                "mapping_ms=${mappedNanos / 1_000_000} logical_ms=${(System.nanoTime() - started) / 1_000_000}" }
         }
     }
 
     private data class CompletedResponse(val native: Response, val mapped: AiRuntimeResponse, val replay: List<ResponseInputItem>?)
 
     private fun logRequestPlan(full: ResponseCreateParams, sent: ResponseCreateParams, plan: OpenAiResponsesContinuations.Plan) {
-        fun bodyBytes(params: ResponseCreateParams): Int = jsonMapper().writeValueAsBytes(wireBody(params)).size
-        safeMetricLog("RESPONSES_WIRE reason=${plan.reason.name.lowercase()} stored=${plan.store} " +
-            "full_items=${plan.fullInput.size} sent_items=${plan.input.size} " +
-            "serialized_full_bytes=${bodyBytes(full)} serialized_sent_bytes=${bodyBytes(sent)}")
+        safeMetricLog(debug = true) {
+            fun bodyBytes(params: ResponseCreateParams): Int = jsonMapper().writeValueAsBytes(wireBody(params)).size
+            "RESPONSES_WIRE reason=${plan.reason.name.lowercase()} stored=${plan.store} " +
+                "full_items=${plan.fullInput.size} sent_items=${plan.input.size} " +
+                "serialized_full_bytes=${bodyBytes(full)} serialized_sent_bytes=${bodyBytes(sent)}"
+        }
     }
 
     private fun wireBody(params: ResponseCreateParams) = if (connection.responsesStreamingEnabled) params._body().toBuilder()
         .putAdditionalProperty("stream", JsonValue.from(true)).build() else params._body()
 
-    private fun safeMetricLog(message: String) {
+    private fun safeMetricLog(debug: Boolean = false, message: () -> String) {
         val thread = Thread.currentThread()
         val originalName = thread.name
         try {
             // An unconfined caller can resume on an OkHttp thread whose name embeds the URL.
             thread.name = "responses-metrics"
-            log.info { message }
+            if (debug) log.debug(message) else log.info(message)
         } finally { thread.name = originalName }
     }
 
