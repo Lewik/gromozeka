@@ -12,8 +12,12 @@ import com.sun.jna.platform.win32.Kernel32
 import com.sun.jna.platform.win32.WinBase
 import com.sun.jna.platform.win32.WinNT
 import kotlin.time.Instant
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
@@ -452,6 +456,125 @@ class LocalCommandProcessRunnerTest {
             assertFalse(ProcessHandle.of(process.processId).map(ProcessHandle::isAlive).orElse(false))
             assertFalse(ProcessHandle.of(childPid).map(ProcessHandle::isAlive).orElse(false))
         }
+    }
+
+    @Test
+    fun `watchdog accepts LF and CRLF readiness and closes its lifeline exactly once`() {
+        for (handshake in listOf("ready\n", "ready\r\n")) {
+            for (disarm in listOf(false, true)) {
+                val clock = WatchdogReadinessClock()
+                val watchdog = ReadinessWatchdogProcess(ByteArrayInputStream(handshake.toByteArray(Charsets.US_ASCII)))
+                val binding = ProcessWorkerLifetimeBinding(watchdog, clock::nanoTime, clock::sleep)
+
+                if (disarm) binding.disarm() else binding.terminateCommand()
+                binding.disarm()
+                binding.terminateCommand()
+
+                assertEquals(if (disarm) "disarm\n" else "", watchdog.stdin.toString(Charsets.US_ASCII))
+                assertEquals(1, watchdog.stdinCloseCount)
+                assertEquals(listOf(5_000L), watchdog.waitTimeoutsMillis)
+                assertEquals(0, clock.sleepCalls)
+                assertFalse(watchdog.forciblyDestroyed)
+            }
+        }
+    }
+
+    @Test
+    fun `watchdog accepts ready published while a negative poll is suspended past the deadline`() {
+        val clock = WatchdogReadinessClock()
+        var readyPublishedAt: Long? = null
+        val stdout = object : ByteArrayInputStream(ByteArray(0)) {
+            override fun available(): Int {
+                val observed = super.available()
+                if (readyPublishedAt == null) {
+                    assertEquals(0, observed)
+                    buf = "ready\n".toByteArray(Charsets.US_ASCII)
+                    count = buf.size
+                    readyPublishedAt = clock.nanoTime()
+                    clock.elapse(2_200)
+                }
+                return observed
+            }
+        }
+        val watchdog = ReadinessWatchdogProcess(stdout)
+
+        val binding = ProcessWorkerLifetimeBinding(watchdog, clock::nanoTime, clock::sleep)
+
+        assertTrue(checkNotNull(readyPublishedAt) < TimeUnit.SECONDS.toNanos(2))
+        assertTrue(clock.nanoTime() >= TimeUnit.SECONDS.toNanos(2))
+        assertEquals(0, stdout.available())
+        binding.disarm()
+        assertEquals("disarm\n", watchdog.stdin.toString(Charsets.US_ASCII))
+        assertEquals(1, watchdog.stdinCloseCount)
+    }
+
+    @Test
+    fun `watchdog keeps the two second deadline for empty and partial readiness`() {
+        for (handshake in listOf("", "ready")) {
+            val clock = WatchdogReadinessClock()
+            val watchdog = ReadinessWatchdogProcess(ByteArrayInputStream(handshake.toByteArray(Charsets.US_ASCII)))
+
+            val failure = assertFailsWith<IllegalStateException> {
+                ProcessWorkerLifetimeBinding(watchdog, clock::nanoTime, clock::sleep)
+            }
+
+            assertContains(failure.message.orEmpty(), "Worker lifetime watchdog did not become ready")
+            assertContains(failure.message.orEmpty(), "stdout bytes=${handshake.length}")
+            assertEquals(TimeUnit.SECONDS.toNanos(2), clock.nanoTime())
+            assertEquals("disarm\n", watchdog.stdin.toString(Charsets.US_ASCII))
+            assertEquals(1, watchdog.stdinCloseCount)
+            assertEquals(listOf(5_000L), watchdog.waitTimeoutsMillis)
+            assertFalse(watchdog.forciblyDestroyed)
+        }
+    }
+
+    @Test
+    fun `watchdog rejects a dead producer before polling again`() {
+        val clock = WatchdogReadinessClock()
+        val watchdog = ReadinessWatchdogProcess(ByteArrayInputStream(ByteArray(0)), alive = false)
+
+        val failure = assertFailsWith<IllegalStateException> {
+            ProcessWorkerLifetimeBinding(watchdog, clock::nanoTime, clock::sleep)
+        }
+
+        assertContains(failure.message.orEmpty(), "Worker lifetime watchdog failed to start")
+        assertEquals(0, clock.sleepCalls)
+        assertEquals("disarm\n", watchdog.stdin.toString(Charsets.US_ASCII))
+        assertEquals(1, watchdog.stdinCloseCount)
+    }
+
+    @Test
+    fun `watchdog rejects a malformed complete handshake without waiting for the deadline`() {
+        for (handshake in listOf("wrong\n", "ready!\n")) {
+            val clock = WatchdogReadinessClock()
+            val watchdog = ReadinessWatchdogProcess(ByteArrayInputStream(handshake.toByteArray(Charsets.US_ASCII)))
+
+            val failure = assertFailsWith<IllegalStateException> {
+                ProcessWorkerLifetimeBinding(watchdog, clock::nanoTime, clock::sleep)
+            }
+
+            assertContains(failure.message.orEmpty(), "Worker lifetime watchdog returned an invalid handshake")
+            assertEquals(0, clock.sleepCalls)
+            assertEquals("disarm\n", watchdog.stdin.toString(Charsets.US_ASCII))
+            assertEquals(1, watchdog.stdinCloseCount)
+        }
+    }
+
+    @Test
+    fun `watchdog preserves startup failure when disarm cleanup also fails`() {
+        val clock = WatchdogReadinessClock()
+        val watchdog = ReadinessWatchdogProcess(ByteArrayInputStream("wrong\n".toByteArray(Charsets.US_ASCII)), exitsOnWait = false)
+
+        val failure = assertFailsWith<IllegalStateException> {
+            ProcessWorkerLifetimeBinding(watchdog, clock::nanoTime, clock::sleep)
+        }
+
+        assertContains(failure.message.orEmpty(), "Worker lifetime watchdog returned an invalid handshake")
+        assertContains(failure.suppressed.single().message.orEmpty(), "Worker lifetime watchdog did not stop")
+        assertEquals("disarm\n", watchdog.stdin.toString(Charsets.US_ASCII))
+        assertEquals(1, watchdog.stdinCloseCount)
+        assertEquals(listOf(5_000L), watchdog.waitTimeoutsMillis)
+        assertTrue(watchdog.forciblyDestroyed)
     }
 
     @Test
@@ -1216,6 +1339,64 @@ class LocalCommandProcessRunnerTest {
             cleanup.exceptionOrNull()?.let { error ->
                 testFailure?.addSuppressed(error) ?: throw error
             }
+        }
+    }
+
+    private class WatchdogReadinessClock {
+        private var nowNanos = 0L
+        var sleepCalls = 0
+            private set
+
+        fun nanoTime(): Long = nowNanos
+
+        fun elapse(milliseconds: Long) {
+            nowNanos += TimeUnit.MILLISECONDS.toNanos(milliseconds)
+        }
+
+        fun sleep(milliseconds: Long) {
+            sleepCalls++
+            elapse(milliseconds)
+        }
+    }
+
+    private class ReadinessWatchdogProcess(
+        private val stdout: InputStream,
+        private var alive: Boolean = true,
+        private val exitsOnWait: Boolean = true,
+    ) : Process() {
+        var stdinCloseCount = 0
+            private set
+        val stdin = object : ByteArrayOutputStream() {
+            override fun close() {
+                stdinCloseCount++
+                super.close()
+            }
+        }
+        val waitTimeoutsMillis = mutableListOf<Long>()
+        var forciblyDestroyed = false
+            private set
+
+        override fun getInputStream(): InputStream = stdout
+        override fun getOutputStream(): OutputStream = stdin
+        override fun getErrorStream(): InputStream = InputStream.nullInputStream()
+        override fun isAlive(): Boolean = alive
+        override fun waitFor(): Int = error("An unbounded watchdog wait is not allowed in this fixture")
+        override fun waitFor(timeout: Long, unit: TimeUnit): Boolean {
+            waitTimeoutsMillis += unit.toMillis(timeout)
+            if (exitsOnWait) alive = false
+            return exitsOnWait
+        }
+        override fun exitValue(): Int {
+            if (alive) throw IllegalThreadStateException("Synthetic watchdog is still running")
+            return 0
+        }
+        override fun destroy() {
+            alive = false
+        }
+        override fun destroyForcibly(): Process {
+            forciblyDestroyed = true
+            alive = false
+            return this
         }
     }
 
