@@ -161,7 +161,7 @@ class SdkConnectionModelsExecutorTest {
             val source = Sources()
             val entered = CompletableDeferred<Unit>()
             val inference = SdkHttpCallExecutor(connection, 5, admission = admission) { OpenAiSdkClientFactory(source).createInferenceClient(connection, it) }
-            val held = launch(Dispatchers.Default) { inference.call<Unit>(AiRuntimeOptions()) { _, _ -> entered.complete(Unit); CompletableFuture<Unit>() } }
+            val held = launch(Dispatchers.Default) { inference.call<Unit>(AiRuntimeOptions()) { _, _, _ -> entered.complete(Unit); CompletableFuture<Unit>() } }
             try {
                 entered.await()
                 val error = assertFailsWith<AiCallException> {

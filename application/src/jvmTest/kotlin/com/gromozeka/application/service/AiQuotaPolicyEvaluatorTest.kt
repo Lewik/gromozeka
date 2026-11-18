@@ -24,6 +24,28 @@ class AiQuotaPolicyEvaluatorTest {
         assertEquals("account/model", group.key)
     }
 
+    @Test fun `stored continuation selects by wire but calculates the expanded context explicitly`() = runBlocking {
+        val prefix = Json.parseToJsonElement("""{"route":"not-configured","text":"${"x".repeat(128)}"}""")
+        val suffix = Json.parseToJsonElement("""{"route":"account/model","text":"tail"}""")
+        val accounting = buildJsonObject { put("model", "account/model"); put("input", JsonArray(listOf(prefix, suffix))); put("store", true) }
+        val wire = JsonObject(accounting + mapOf("input" to JsonArray(listOf(suffix)), "previous_response_id" to JsonPrimitive("opaque-parent")))
+        val selected = policy(AiTpmGroupSelector.RequestValue("/input/0/route")).copy(
+            calculator = AiQuotaCalculator.BuiltIn(AiQuotaCalculator.Preset.INPUT_ONLY))
+        val result = evaluator.prepare(selected, wire, catalog, accounting)
+        assertEquals(group.id, result.groupId)
+        assertEquals(evaluator.estimate(selected.calculator as AiQuotaCalculator.BuiltIn, accounting), result.estimatedUnits)
+        assertTrue(result.estimatedUnits > evaluator.estimate(selected.calculator as AiQuotaCalculator.BuiltIn, wire))
+        assertFailsWith<IllegalArgumentException> { evaluator.prepare(selected, wire, catalog, JsonObject(accounting + ("model" to JsonPrimitive("wrong")))) }
+        assertFailsWith<IllegalArgumentException> { evaluator.prepare(selected, wire, catalog, JsonObject(accounting + ("input" to JsonArray(emptyList())))) }
+        if (!System.getProperty("os.name").startsWith("Windows")) {
+            val commandPolicy = selected.copy(
+                group = AiTpmGroupSelector.Command(AiQuotaCommand("/bin/sh", listOf("-c", "grep -q previous_response_id || exit 1; printf account/model"))),
+                calculator = AiQuotaCalculator.Command(AiQuotaCommand("/bin/sh", listOf("-c", "wc -c"))))
+            assertEquals(accounting.toString().toByteArray().size.toLong() + 1, evaluator.prepare(commandPolicy, wire, catalog, accounting).estimatedUnits)
+            assertEquals(wire.toString().toByteArray().size.toLong() + 1, evaluator.prepare(commandPolicy, wire, catalog).estimatedUnits)
+        }
+    }
+
     @Test fun `header names ignore case preserve debt and reject ambiguous or malformed feedback`() = runBlocking {
         val observed = evaluator.feedback(feedback, AiHttpQuotaFeedback(200, mapOf("CUSTOM-REMAINING" to listOf("-27"))), group)
         assertEquals(-27.0, observed.remaining)

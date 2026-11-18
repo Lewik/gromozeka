@@ -1,4 +1,8 @@
 {
+  "ai.connection.responses_streaming": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Stream Responses (SSE)", "args": []},
+  "ai.connection.responses_streaming_description": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Receive a stream internally; validation and the complete answer are unchanged.", "args": []},
+  "ai.connection.responses_stored_continuation": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Provider-stored continuation", "args": []},
+  "ai.connection.responses_stored_continuation_description": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Store conversation state at the provider (store:true) and send new history items with previous_response_id.", "args": []},
   "ai.compaction.proactive_threshold": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Proactive compaction threshold (tokens)", "args": []},
   "ai.compaction.proactive_hint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Empty disables background preparation after answers. Must be below the blocking threshold.", "args": []},
   "chat.activity.compactionPreparing": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationActivity.kt"], "description": "Preparing compaction", "args": []},

@@ -47,7 +47,7 @@ class WorkerAiAdmissionGatewayHandler(
                 require(remaining > 0) { "Owning AI operation deadline has passed" }
                 withTimeout(remaining) {
                     AiAdmissionGatewayCodec.encodeLease(admission.acquireRemote(
-                        command.operation.copy(deadline = deadline), identity.workerId.value, owner.id, command.httpRequest, origin,
+                        command.operation.copy(deadline = deadline), identity.workerId.value, owner.id, command.httpRequest, origin, command.accountingRequest,
                     ))
                 }
             }

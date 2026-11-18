@@ -4,6 +4,10 @@
   "name": "Português (Brasil)",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Receber Responses em streaming (SSE)",
+    "ai.connection.responses_streaming_description": "Receber o fluxo internamente; a validação e a resposta completa não mudam.",
+    "ai.connection.responses_stored_continuation": "Continuação armazenada no provedor",
+    "ai.connection.responses_stored_continuation_description": "Armazenar o contexto no provedor (store:true) e enviar novos itens do histórico com previous_response_id.",
     "ai.compaction.proactive_threshold": "Limite de compactação antecipada (tokens)",
     "ai.compaction.proactive_hint": "Vazio desativa a preparação após as respostas. Deve ser inferior ao limite de bloqueio.",
     "chat.activity.compactionPreparing": "Preparando compactação",

@@ -24,7 +24,9 @@ class OpenAiSdkClientFactory(
                 .apply { SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) } }
                 .build()
             val client = com.openai.client.OpenAIClientImpl(options)
-            return com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient(client, transport) { client.close() }
+            val identity = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallIdentity(baseUrl,
+                java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(token.toByteArray())))
+            return com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient(client, transport, identity) { client.close() }
         } catch (error: Exception) { transport.close(); throw error }
     }
 

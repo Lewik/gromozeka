@@ -46,6 +46,26 @@ import kotlin.test.assertEquals
 
 class AiRequestResponseGatewayCodecTest {
     @Test
+    fun responsesOptionsAndContinuationScopeReachTheSelectedWorker() = runBlocking<Unit> {
+        val fixture = TestHandler()
+        val connection = (fixture.runtime.connection as AiConnection.OpenAiApi).copy(
+            responsesStreamingEnabled = true, responsesStoredContinuationEnabled = true,
+            executionTarget = AiExecutionTarget.Worker("worker-test"))
+        val selected = fixture.runtime.copy(connection = connection)
+        val scope = mapOf("userId" to "actor", "projectId" to "project", "conversationId" to "conversation",
+            "threadId" to "branch", "agentDefinitionId" to "agent")
+        val request = fixture.runtimeRequest.copy(options = fixture.runtimeRequest.options.copy(toolContext = scope, usagePurpose = "CONVERSATION"))
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(runtime: ResolvedAiRuntime, workspaceRootPath: String?, request: AiRuntimeRequest): AiRuntimeResponse {
+                assertEquals(connection, runtime.connection)
+                assertEquals(scope, request.options.toolContext)
+                return fixture.runtimeResponse
+            }
+        }
+        AiRequestResponseGatewayCodec.execute(AiRequestResponseGatewayCodec.encodeCallRequest(selected, null, request), handler)
+    }
+
+    @Test
     fun admissionUsesReservedRuntimeOriginNotTheProviderSessionConversation() {
         val fixture = TestHandler()
         val origin = com.gromozeka.domain.service.AiAdmissionOrigin(Conversation.Id("conversation"),

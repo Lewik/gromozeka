@@ -310,6 +310,84 @@ unchanged. No token or decoded private claims are printed. A 401 means rejected
 authentication, not necessarily expiry; a 403 is reported separately as access
 denial. Neither triggers an automatic login or token refresh.
 
+## Responses streaming and stored continuation
+
+`OPENAI_API` connections have two independent opt-in options, both false by default:
+
+```json
+{
+  "responsesStreamingEnabled": true,
+  "responsesStoredContinuationEnabled": true
+}
+```
+
+These are Responses protocol settings, not `httpSettings`. They work with the
+ordinary native API and compatible Responses gateways such as TrueFoundry.
+They do not change Chat Completions, Anthropic, Bedrock or subscription WebSocket.
+No production connection is enabled automatically.
+
+With streaming enabled, the installed SDK consumes SSE internally and returns the
+same complete runtime response as non-streaming execution. A terminal
+`response.completed`, `response.incomplete` or `response.failed` event is required;
+EOF or partial tool-argument events alone never become a successful response.
+The stream is closed at its terminal event, without waiting for EOF or unrelated
+later events. Existing final-response parsing and validation still gate tools.
+Cancellation/deadline closes the native body even after headers. This does not add
+character-by-character GUI output or automatic replay of interrupted requests.
+
+Stored continuation uses `store:true` only for ordinary `CONVERSATION` calls with
+complete actor/project/conversation/thread/agent scope. A bounded executor-local
+cache keeps at most 128 opaque response IDs, prefix hashes and item counts. It is
+shared across runtime instances but separate from the HTTP connection pool.
+Endpoint, selected credential fingerprint, connection HTTP settings, execution
+target, model configuration and model also isolate the cursor. No prompt/output
+text or raw credential is retained in that cache; no database migration is needed.
+Restart/eviction returns safely to one full request.
+
+The next request uses `previous_response_id` only when its actual lowered input
+contains the complete expected prefix, including the previous native output. It
+then sends only the suffix, including function-call results. Message IDs alone
+never prove continuation. Edits, shortened context, incompatible projection,
+fork/compaction or changed scope produce a full request. Top-level instructions,
+tools, response format and current permissions are rebuilt on every call; changes
+inside `Message.instructions` participate in the actual input comparison.
+One-use revealed-secret context forces a full `store:false` request and forgets
+the cursor, so it cannot become an implicit stored parent. Context queries,
+isolated/helper calls, token counting and detached compaction remain stateless.
+Failed/incomplete/refused results, parsing failures, cancellation and quota errors
+do not advance the cursor. Concurrent stale completions cannot replace a newer one.
+
+The response ID is opaque: return the ID from the gateway verbatim, including any
+TrueFoundry virtual-model wrapper. Do not extract a provider-native ID or infer a
+backend. An explicit SDK `previous_response_not_found` rejection for
+`previous_response_id` at HTTP 400/404 can trigger one full recovery attempt only
+when the whole rejection was received. It shares the original logical call's
+`maxAttempts`, deadline, credential snapshot and admission policy with 429 retries.
+`maxAttempts:1` disables this recovery too. Other 400/409, auth, 5xx, malformed,
+truncated and ambiguous failures never trigger a hidden full replay or route change.
+
+`RESPONSES_WIRE` reports reason, stored mode, item counts and serialized full/sent
+JSON body bytes (including the SSE flag). These are exact serialized payload sizes,
+not proof that a failed connection transmitted every byte. `RESPONSES_HTTP` reports
+mapping and logical adapter milliseconds. Neither includes the whole Harness cycle
+before the adapter. Logs contain no URL, raw ID, prompt/response, headers, credential
+or exception body, including in the logging thread name. Upload reduction does not
+reduce the model's effective context or bypass compaction/token limits.
+
+TPM accounting retains the full effective input instead of reserving only the
+small uploaded suffix. Group selectors see exact wire JSON; when an explicit
+`accountingRequest` accompanies a continuation, both built-in and command quota
+calculators receive the expanded full-context JSON. This is an intentional contract
+extension for stored continuation; ordinary calls are unchanged. Server checks that
+only input/parent fields differ and that the sent input is the accounting suffix.
+For SSE, bounded final Response JSON supplies body feedback rather than raw SSE
+framing; header feedback is unchanged. No quota policy is disabled. See
+[HTTP TPM policies](ai-tpm.md#responses-continuation-accounting).
+
+Worker Gateway protocol **34** carries these options and the accounting view.
+Update Server and Workers together; older Workers must not silently ignore them.
+Local SDK/SSE fixtures are not live acceptance of a particular gateway deployment.
+
 ## TLS, proxy and headers
 
 - `caBundlePath` is an absolute executor-local path to additional X.509 trust
@@ -404,7 +482,7 @@ redirect following are disabled for these inference calls, so attempt limits do
 not multiply across those layers. A gateway's internal provider retries/fallbacks
 are outside this HTTP counter and need separate gateway policy.
 
-Only a completely received HTTP 429 rejection can be retried. There is no retry
+Ordinary retries require a completely received HTTP 429 rejection. Opt-in stored Responses additionally permits one explicit missing-parent recovery, within the same attempt cap and deadline (see Responses streaming and stored continuation above). There is no retry
 for 401/403, 408/409, 5xx, TLS/network errors, incomplete bodies, malformed model
 responses or successful responses with an incomplete model outcome. These can
 be partial/unknown outcomes; no route/model change or automatic token refresh is

@@ -137,7 +137,7 @@ internal class AiSettingsToolContributor(
         },
         toolFactory.create(CONTROL_TOOL_SOURCE,
             name = "grz_ai_connection_upsert",
-            description = "Create or replace one AI connection using the latest AI catalog revision. Missing API keys preserve the existing secret by default. SDK connections support httpSettings for Bearer/native auth, additional CA, proxy/noProxy, non-secret static headers and maxAttempts (1-5, default 3 including the first attempt; only complete HTTP 429 rejections may retry). Token env/file sources and CA paths belong to the selected execution target; Authorization must not be supplied in extraHeaders.",
+            description = "Create or replace one AI connection at the latest catalog revision. Missing API keys preserve the existing secret by default. OpenAI API: responsesStreamingEnabled enables internal SSE; responsesStoredContinuationEnabled opts into provider storage and delta input. SDK httpSettings select native/Bearer auth, executor-local CA and token env/file sources, proxy/noProxy, static non-secret headers and maxAttempts (1-5 including the first). Only complete 429 rejections and explicit stored-Responses missing-parent rejections may retry within that cap. Never put Authorization in extraHeaders.",
             inputSchema = aiEntityMutationSchema(
                 entityField = "connection",
                 description = "Serialized AiConnection object with connectionKind discriminator.",

@@ -141,6 +141,8 @@ sealed interface AiConnection {
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
         val webSearchEnabled: Boolean = true,
+        val responsesStreamingEnabled: Boolean = false,
+        val responsesStoredContinuationEnabled: Boolean = false,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
         override val httpSettings: AiHttpSettings = AiHttpSettings(),
     ) : AiConnection, ConfigurableHttpAiConnection {

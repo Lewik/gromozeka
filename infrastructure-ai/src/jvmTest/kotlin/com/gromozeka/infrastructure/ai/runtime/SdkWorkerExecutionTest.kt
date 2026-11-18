@@ -153,7 +153,7 @@ class SdkWorkerExecutionTest {
             options = AiRuntimeOptions(maxOutputTokens = 128, executionDeadline = started + logicalSeconds.seconds))
         private val payload = if (modelListing) AiRequestResponseGatewayCodec.encodeModelsRequest(connection, started + logicalSeconds.seconds)
             else AiRequestResponseGatewayCodec.encodeCallRequest(runtime, null, request)
-        private val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources()), admission = TestAiAdmission())))
+        private val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources()), admission = TestAiAdmission(), responsesContinuations = com.gromozeka.infrastructure.ai.openai.OpenAiResponsesContinuations())))
         private val handler = object : AiRequestResponseExecutionHandler {
         override suspend fun inspectContext(runtime: com.gromozeka.domain.service.ResolvedAiRuntime, workspaceRootPath: String?,
             request: com.gromozeka.domain.model.ai.AiRuntimeRequest, allowProviderCount: Boolean): com.gromozeka.domain.model.ai.AiContextInspection = error("Unused inspectContext")

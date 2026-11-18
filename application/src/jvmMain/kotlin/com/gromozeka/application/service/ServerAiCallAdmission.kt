@@ -52,14 +52,14 @@ class ServerAiCallAdmission(
     }
 
     override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = acquirePersisted(operation, null, null, null, currentCoroutineContext()[AiAdmissionOriginContext]?.origin)
-    override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease =
-        acquirePersisted(operation, null, null, request, currentCoroutineContext()[AiAdmissionOriginContext]?.origin)
+    override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement, accountingRequest: JsonElement?): AiAdmissionLease =
+        acquirePersisted(operation, null, null, request, currentCoroutineContext()[AiAdmissionOriginContext]?.origin, accountingRequest)
 
     suspend fun acquireRemote(operation: AiAdmissionOperation, workerId: String, workerRequestId: String, request: JsonElement? = null,
-        origin: AiAdmissionOrigin? = null): AiAdmissionLease =
-        acquirePersisted(operation, workerId, workerRequestId, request, origin)
+        origin: AiAdmissionOrigin? = null, accountingRequest: JsonElement? = null): AiAdmissionLease =
+        acquirePersisted(operation, workerId, workerRequestId, request, origin, accountingRequest)
 
-    private suspend fun acquirePersisted(operation: AiAdmissionOperation, workerId: String?, workerRequestId: String?, request: JsonElement?, origin: AiAdmissionOrigin?): AiAdmissionLease {
+    private suspend fun acquirePersisted(operation: AiAdmissionOperation, workerId: String?, workerRequestId: String?, request: JsonElement?, origin: AiAdmissionOrigin?, accountingRequest: JsonElement? = null): AiAdmissionLease {
         check(storageFailure == null) { "AI admission persistence requires recovery" }
         require(operation.tpm == null) { "TPM reservations are owned by Server" }
         val current = configuration.snapshot
@@ -67,9 +67,10 @@ class ServerAiCallAdmission(
         val model = target?.let { selected -> requireNotNull(current.catalog.modelConfigurations.find { it.id == selected.id }).also {
             require(it.connectionId == selected.connectionId) { "AI admission connection differs from model configuration" }
         } }
+        require(accountingRequest == null || model?.tpm != null) { "Expanded accounting requires a configured TPM policy" }
         val reservation = model?.tpm?.let { policy ->
             requireNotNull(request) { "TPM is unavailable for this non-JSON-HTTP operation" }
-            quotaPolicies.prepare(policy, request, current.catalog)
+            quotaPolicies.prepare(policy, request, current.catalog, accountingRequest)
         }
         queue.updateCatalog(current.catalog, current.revision)
         val lease = queue.acquire(operation.copy(tpm = reservation), workerId, workerRequestId, origin)

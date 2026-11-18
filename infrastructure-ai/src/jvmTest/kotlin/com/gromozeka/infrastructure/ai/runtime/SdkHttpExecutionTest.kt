@@ -275,7 +275,7 @@ class SdkHttpExecutionTest {
             val params = com.gromozeka.infrastructure.ai.openai.OpenAiSdkMessageMapper(connection.kind, connection.id.value, MODEL)
                 .toCreateParams(MODEL, request())
             val job = launch(Dispatchers.Default) {
-                executor.call(AiRuntimeOptions()) { client, _ ->
+                executor.call(AiRuntimeOptions()) { client, _, _ ->
                     preparing.countDown()
                     check(release.await(3, TimeUnit.SECONDS))
                     // A synchronous SDK call makes a too-late cancellation registration observable.
@@ -394,7 +394,7 @@ class SdkHttpExecutionTest {
         val feedback = CopyOnWriteArrayList<AiHttpQuotaFeedback?>()
         val active = AtomicInteger()
         override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = error("TPM must use prepared HTTP admission")
-        override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease {
+        override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement, accountingRequest: JsonElement?): AiAdmissionLease {
             requests += request
             gate?.await()
             assertEquals(1, active.incrementAndGet())
@@ -418,7 +418,7 @@ class SdkHttpExecutionTest {
         options = AiRuntimeOptions(maxOutputTokens = 128, executionDeadline = deadlineMillis?.let { Clock.System.now() + it.milliseconds }))
     private fun runtime(connection: AiConnection, sources: Sources = Sources(), timeoutSeconds: Int? = null, modelId: String = "synthetic", admission: AiCallAdmission = TestAiAdmission(), tpm: AiTpmPolicy? = null): AiRuntime {
         val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(sources, admission = admission)
-            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(sources), admission = admission)
+            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(sources), admission = admission, responsesContinuations = com.gromozeka.infrastructure.ai.openai.OpenAiResponsesContinuations())
         val model = AiModelConfiguration(AiModelConfiguration.Id(modelId), connection.id, MODEL, "Synthetic",
             defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = timeoutSeconds), tpm = tpm)
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
@@ -458,7 +458,8 @@ class SdkHttpExecutionTest {
 }
 
 /** A real HTTP/1 socket makes peer EOF observable even when the response parser is blocked. */
-internal class StalledServer(partialBody: Boolean, drop: Boolean = false, status: Int = 200) : AutoCloseable {
+internal class StalledServer(partialBody: Boolean, drop: Boolean = false, status: Int = 200,
+    contentType: String = "application/json", partialContent: String = "{\"id\":\"partial") : AutoCloseable {
     private val listener = ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"))
     private val executor = Executors.newSingleThreadExecutor()
     @Volatile private var socket: Socket? = null
@@ -484,8 +485,8 @@ internal class StalledServer(partialBody: Boolean, drop: Boolean = false, status
                     check(input.readNBytes(length).size == length)
                     requests.incrementAndGet()
                     if (partialBody) {
-                        accepted.getOutputStream().write(("HTTP/1.1 $status Fixture\r\nContent-Type: application/json\r\n" +
-                            "Content-Length: 100000\r\nRetry-After: 0\r\nConnection: close\r\n\r\n{\"id\":\"partial").toByteArray())
+                        accepted.getOutputStream().write(("HTTP/1.1 $status Fixture\r\nContent-Type: $contentType\r\n" +
+                            "Content-Length: 100000\r\nRetry-After: 0\r\nConnection: close\r\n\r\n$partialContent").toByteArray())
                         accepted.getOutputStream().flush()
                     }
                     started.countDown()

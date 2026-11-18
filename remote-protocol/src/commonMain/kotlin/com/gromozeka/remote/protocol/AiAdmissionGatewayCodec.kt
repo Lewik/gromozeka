@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
 @Serializable
 sealed interface AiAdmissionCommand {
     @Serializable
-    data class Acquire(val operation: AiAdmissionOperation, val workerRequestId: String, val httpRequest: JsonElement? = null) : AiAdmissionCommand
+    data class Acquire(val operation: AiAdmissionOperation, val workerRequestId: String, val httpRequest: JsonElement? = null, val accountingRequest: JsonElement? = null) : AiAdmissionCommand
 
     @Serializable
     data class Accept(val operationId: String) : AiAdmissionCommand

@@ -4,6 +4,10 @@
   "name": "Español",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Recibir Responses por streaming (SSE)",
+    "ai.connection.responses_streaming_description": "Recibir el flujo internamente; la validación y la respuesta completa no cambian.",
+    "ai.connection.responses_stored_continuation": "Continuación guardada en el proveedor",
+    "ai.connection.responses_stored_continuation_description": "Guardar el contexto en el proveedor (store:true) y enviar nuevos elementos del historial con previous_response_id.",
     "ai.compaction.proactive_threshold": "Umbral de compactación anticipada (tokens)",
     "ai.compaction.proactive_hint": "Vacío desactiva la preparación después de responder. Debe ser inferior al umbral de bloqueo.",
     "chat.activity.compactionPreparing": "Preparando compactación",

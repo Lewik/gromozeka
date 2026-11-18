@@ -207,7 +207,7 @@ class SdkGatewaySettingsTest {
 
     private fun runtime(connection: AiConnection, source: Sources = Sources()): AiRuntime {
         val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(source, admission = TestAiAdmission())
-            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(source), admission = TestAiAdmission())
+            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(source), admission = TestAiAdmission(), responsesContinuations = com.gromozeka.infrastructure.ai.openai.OpenAiResponsesContinuations())
         val model = AiModelConfiguration(AiModelConfiguration.Id("synthetic-model"), connection.id, MODEL, "Synthetic")
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)))
