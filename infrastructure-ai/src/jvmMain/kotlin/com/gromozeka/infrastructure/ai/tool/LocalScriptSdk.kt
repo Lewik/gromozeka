@@ -6,10 +6,10 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.security.MessageDigest
 
-/** Two shared files shipped in the Worker. No interpreter install, credentials or global environment edits. */
+/** Shared SDK and runner sources. No per-script installation, stored credentials or global environment edits. */
 internal object LocalScriptSdk {
     private val resources: Map<String, ByteArray> by lazy {
-        listOf("grz.py", "grz.sh").associateWith { name ->
+        listOf("grz.py", "grz.sh", "grz_runner.py").associateWith { name ->
             checkNotNull(javaClass.getResourceAsStream("/script-sdk/$name")) { "Bundled script SDK is missing" }
                 .use { it.readBytes() }
         }
@@ -53,6 +53,7 @@ internal object LocalScriptSdk {
         val previousPythonPath = supplied["PYTHONPATH"] ?: inherited["PYTHONPATH"]
         return supplied + mapOf(
             "GRZ_SDK_HOME" to directory,
+            "GRZ_PYTHON" to BundledPythonRuntime.executable().absolutePath,
             "PYTHONPATH" to listOfNotNull(directory, previousPythonPath?.takeIf(String::isNotEmpty)).joinToString(File.pathSeparator),
             // A monitor/filter without a Conversation must not inherit another launch's routing.
             "GRZ_MCP_CONTEXT" to (supplied["GRZ_MCP_CONTEXT"] ?: "{}"),

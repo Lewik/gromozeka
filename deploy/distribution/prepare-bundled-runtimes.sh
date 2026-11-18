@@ -163,3 +163,8 @@ mkdir -p "$destination" "$cache_root"
 for runtime_kind in "${runtime_kinds[@]}"; do
   prepare_runtime "$runtime_kind"
 done
+if [[ "$component" == "worker" ]]; then
+  "${GROMOZEKA_BUILD_PYTHON:-python3}" "$repository_root/scripts/prepare-python-runtime.py" \
+    --target "$platform-$architecture" --destination "$destination/python" \
+    --cache "$cache_root/python/artifacts"
+fi

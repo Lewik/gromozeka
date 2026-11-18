@@ -32,9 +32,27 @@ fun main(args: Array<String>) {
         check(System.getProperty("os.name").startsWith("Windows"))
         System.setProperty("gromozeka.windows.service", "true")
         WindowsWorkerService().run { started ->
+            confirmWindowsPythonConditions(interactive = false)
             runWorker(args.drop(1).toTypedArray()) { context -> started { context.close() } }
         }
         return
+    }
+    if (args.firstOrNull() == "accept-licenses") {
+        runCatching {
+            confirmWindowsPythonConditions(WorkerLicenseOptions.parse(args.drop(1)))
+        }.onSuccess {
+            println("Current Windows Python conditions are accepted for this GROMOZEKA_HOME.")
+        }.onFailure { error ->
+            System.err.println("Worker license acceptance failed: ${error.message}")
+            exitProcess(2)
+        }
+        return
+    }
+    if (System.getProperty("os.name").startsWith("Windows")) {
+        runCatching { confirmWindowsPythonConditions() }.onFailure { error ->
+            System.err.println("Worker startup/configuration failed: ${error.message}")
+            exitProcess(2)
+        }
     }
     if (args.firstOrNull() == "configure") {
         runCatching {

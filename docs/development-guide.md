@@ -1788,9 +1788,44 @@ access a physical device; they are build checks, not signed iOS distributions.
 The iOS job bounds both direct Gradle and
 Xcode's embedded Gradle invocation to one worker and a 4 GiB heap for native
 Release linking, without changing local project-wide Gradle settings.
-Windows service and Linux/Windows command-process checks run
-through the reusable Worker workflow; translation/font validation and Compose
+Windows service and Linux/Windows/macOS command-process and Python Code Mode checks
+run through the reusable Worker workflow; translation/font validation and Compose
 E2E run inside the main workflow. JNI library builds remain separately manual.
+
+The Worker stock Python is assembled by `./gradlew preparePythonRuntime` for local
+development, and by the same `scripts/prepare-python-runtime.py` helper during
+standalone packaging. Build-time Python 3.14+ is required (stdlib Zstandard support);
+`-Pgromozeka.build.python=/path/to/python` selects the build interpreter. Packaging
+scripts use `GROMOZEKA_BUILD_PYTHON` for the same purpose. Neither setting selects
+the interpreter used by managed scripts.
+
+`deploy/distribution/python-runtime.json` locks CPython archives, their full license
+archives and the seven pure-Python wheels by version and SHA-256. Downloads are cached
+under `build/bundled-runtime-cache/python/artifacts`; `--offline` requires the cache
+and fails on a missing or corrupt artifact. Local runtime directories include the
+lock hash and are never replaced in place. Third-party binaries stay out of Git.
+Cross-packaging the Linux archive requires a case-sensitive filesystem: its upstream
+terminfo entries include names differing only by case. The packaging CI uses Linux;
+do not assemble that target on a default case-insensitive macOS volume.
+Changing the lock requires reviewing native license metadata and wheel licenses,
+then running `scripts/test-prepare-python-runtime.py` and native Code Mode tests.
+Windows Python includes Microsoft CRT redistribution conditions in its root
+`LICENSE.txt`, separate from the metadata's PSF license reference. Preserve that
+file and the unmodified bundled CRT DLLs with Python, and pass the Windows conditions
+to users and further distributors. This is onward distribution of the upstream
+Python build; independently sourcing, replacing or separately distributing VC
+Runtime requires reviewing that different distribution route.
+
+Windows Worker startup requires acknowledgement of the packaged CPython Windows
+conditions before enrollment, bootstrap stdin consumption or gateway connection.
+The explicit unattended command is `accept-licenses --yes`; service setup exposes
+`--accept-licenses` and migrates only a matching existing acknowledgement. Receipts
+are private, keyed by normalized conditions rather than binary versions, and
+preserve previous agreements for installation rollback. They are not authorization
+grants. Tests use synthetic agreements, not acceptance of real terms on behalf
+of a publisher: `:worker:test --tests '*WindowsPythonLicenseAcceptanceTest'` and
+`scripts/test-worker-license-setup.ps1`. Native Windows CI additionally checks
+that the displayed conditions occur in the actual bundled Python license.
 
 Release JARs and Browser MCP are prepared once. Server/Worker archives are
 packaged in a three-platform matrix, reusing the shared JARs and production Web

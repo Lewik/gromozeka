@@ -167,6 +167,55 @@ information are available from:
 - https://github.com/nodejs/node
 - https://github.com/nodejs/node/blob/main/LICENSE
 
+## CPython and Code Mode packages
+
+Desktop Worker distributions include CPython 3.14.10 from the unmodified
+`python-build-standalone` release `20261110`, plus the following unmodified
+pure-Python packages. Server distributions do not include this runtime.
+
+| Package | Version | License |
+| --- | --- | --- |
+| HTTPX | 0.28.1 | BSD-3-Clause |
+| HTTP Core | 1.0.9 | BSD-3-Clause |
+| AnyIO | 4.16.0 | MIT |
+| certifi | 2026.10.23 | MPL-2.0 |
+| idna | 3.20 | BSD-3-Clause |
+| h11 | 0.16.0 | MIT |
+| typing_extensions | 4.16.0 | PSF-2.0 |
+
+CPython's license, history and native dependency licenses are preserved under
+`runtime/python/legal/python-build-standalone/licenses`. The adjacent `PYTHON.json`
+identifies the selected native build and its component license references.
+Python also retains the license files shipped in the install archive. Each wheel's
+complete license text and metadata are retained in its `*.dist-info` directory
+under the runtime's `site-packages`; certifi's source-form files and CA bundle
+remain under MPL-2.0, not Gromozeka's license. The complete artifact URLs, versions
+and SHA-256 values are in `runtime/python/legal/python-runtime-lock.json`.
+
+Source and license information:
+
+- https://www.python.org/downloads/release/python-31410/
+- https://github.com/astral-sh/python-build-standalone/releases/tag/20261110
+- https://pypi.org/project/httpx/0.28.1/
+- https://pypi.org/project/httpcore/1.0.9/
+- https://pypi.org/project/anyio/4.16.0/
+- https://pypi.org/project/certifi/2026.10.23/
+- https://pypi.org/project/idna/3.20/
+- https://pypi.org/project/h11/0.16.0/
+- https://pypi.org/project/typing-extensions/4.16.0/
+
+The Windows Python distribution includes Microsoft's `vcruntime140.dll` and
+`vcruntime140_1.dll`. Their additional Windows redistribution conditions are
+preserved in `runtime/python/LICENSE.txt`. These files are redistributed unchanged
+as part of Windows Python, not as a separate general-purpose VC Runtime package.
+Users and further distributors must comply with those conditions, including the
+requirement for downstream agreement. Microsoft's components retain their own
+terms; Gromozeka's license does not relicense them.
+
+See [CPython's Windows conditions](https://github.com/python/cpython/blob/v3.14.10/PC/crtlicense.txt)
+and section 4, Third Party Distribution, of the
+[Microsoft terms](https://visualstudio.microsoft.com/license-terms/vs2022-ga-community/).
+
 ## pty4j
 
 Gromozeka distributes the unmodified `org.jetbrains.pty4j:pty4j` library for

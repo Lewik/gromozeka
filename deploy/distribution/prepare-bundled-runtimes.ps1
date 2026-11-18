@@ -153,3 +153,10 @@ $RuntimeKinds = if ($Component -eq "server") { @("java") } else { @("java", "nod
 foreach ($RuntimeKind in $RuntimeKinds) {
     Prepare-Runtime $RuntimeKind
 }
+if ($Component -eq "worker") {
+    $BuildPython = if ($env:GROMOZEKA_BUILD_PYTHON) { $env:GROMOZEKA_BUILD_PYTHON } else { "python" }
+    & $BuildPython (Join-Path $RepositoryRoot "scripts/prepare-python-runtime.py") `
+        --target "$Platform-$Architecture" --destination (Join-Path $Destination "python") `
+        --cache (Join-Path $CacheRoot "python/artifacts")
+    if ($LASTEXITCODE -ne 0) { throw "Bundled Python preparation failed" }
+}

@@ -6,6 +6,7 @@
  */
 
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import java.security.MessageDigest
 import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenPlugin
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
@@ -120,4 +121,39 @@ allprojects {
             downloadBaseUrl.unset()
         }
     }
+}
+
+// The interpreter used to assemble distributions is a build tool, not a runtime fallback.
+val pythonRuntimeLock = layout.projectDirectory.file("deploy/distribution/python-runtime.json")
+val pythonRuntimeLockHash = providers.fileContents(pythonRuntimeLock).asText.map { contents ->
+    MessageDigest.getInstance("SHA-256")
+        .digest(contents.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+}
+val pythonRuntimeTarget = providers.provider {
+    val os = System.getProperty("os.name").lowercase()
+    val arch = System.getProperty("os.arch").lowercase()
+    when {
+        os.contains("mac") && arch in setOf("aarch64", "arm64") -> "macos-arm64"
+        os.contains("linux") && arch in setOf("amd64", "x86_64", "x64") -> "linux-x64"
+        os.contains("windows") && arch in setOf("amd64", "x86_64", "x64") -> "windows-x64"
+        else -> error("Bundled Python is not supported on $os/$arch")
+    }
+}
+val pythonRuntimeDirectory = layout.buildDirectory.dir(providers.provider {
+    "python-runtime/${pythonRuntimeTarget.get()}/${pythonRuntimeLockHash.get()}"
+})
+val preparePythonRuntime = tasks.register<Exec>("preparePythonRuntime") {
+    group = "build setup"
+    description = "Prepare the pinned native Python runtime and SDK dependencies"
+    inputs.file(pythonRuntimeLock)
+    inputs.file(layout.projectDirectory.file("scripts/prepare-python-runtime.py"))
+    inputs.property("target", pythonRuntimeTarget)
+    outputs.dir(pythonRuntimeDirectory)
+    workingDir(rootProject.projectDir)
+    executable = providers.gradleProperty("gromozeka.build.python").orElse(
+        if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+    ).get()
+    args("scripts/prepare-python-runtime.py", "--target", pythonRuntimeTarget.get(),
+        "--destination", pythonRuntimeDirectory.get().asFile.absolutePath)
+    if (gradle.startParameter.isOffline) args("--offline")
 }

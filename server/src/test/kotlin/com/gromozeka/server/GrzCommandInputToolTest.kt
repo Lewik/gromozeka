@@ -105,6 +105,8 @@ class GrzCommandInputToolTest {
             return CommandTaskInputResult(taskId, bytes.size, closeInput)
         }
         override suspend fun start(request: ExecuteCommandRequest, context: ToolExecutionContext): CommandTaskOutput = error("Unexpected start")
+        override suspend fun startPython(request: com.gromozeka.domain.tool.filesystem.ExecutePythonRequest,
+            context: ToolExecutionContext): CommandTaskOutput = error("Unexpected Python start")
         override suspend fun get(conversationId: Conversation.Id, taskId: CommandTask.Id, afterByte: Long, waitMillis: Long): CommandTaskOutput? = error("Unexpected get")
         override suspend fun cancel(conversationId: Conversation.Id, taskId: CommandTask.Id): Boolean = error("Unexpected cancel")
         override suspend fun cancelAll(conversationId: Conversation.Id): Int = error("Unexpected cancelAll")

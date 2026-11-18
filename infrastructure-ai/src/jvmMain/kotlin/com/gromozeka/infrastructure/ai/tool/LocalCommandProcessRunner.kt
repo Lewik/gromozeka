@@ -9,6 +9,10 @@ import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.service.CommandTask
 import klog.KLoggers
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import java.io.File
@@ -32,7 +36,6 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         require(workingDirectory.isDirectory) {
             "Command working directory does not exist or is not a directory: ${workingDirectory.absolutePath}"
         }
-        val executionSpec = spec.copy(environment = LocalScriptSdk.environment(gromozekaHome(), spec.environment))
         val outputFile = commandOutputFile(spec)
         val processTreeFile = processTreeFile(outputFile)
         val processStartFile = processStartFile(outputFile)
@@ -41,6 +44,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         var process: Process? = null
         var workerLifetimeBinding: LocalWorkerLifetimeBinding? = null
         try {
+            val executionSpec = prepareExecutionSpec(spec, workingDirectory, outputFile)
             if (spec.deferStartUntilRegistration) processStartPendingFile(outputFile).writeText("pending\n", StandardCharsets.UTF_8)
             spec.startGuard()
             process = host.launch(
@@ -96,6 +100,39 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             }
             throw error
         }
+    }
+
+    private fun prepareExecutionSpec(spec: CommandProcessSpec, workingDirectory: File, outputFile: File): CommandProcessSpec {
+        val environment = LocalScriptSdk.environment(gromozekaHome(), spec.environment)
+        val program = spec.pythonProgram ?: return spec.copy(environment = environment)
+        val inlineCode = program.code
+        val source = if (inlineCode != null) {
+            pythonSourceFile(outputFile).also {
+                Files.write(it.toPath(), inlineCode.encodeToByteArray(throwOnInvalidSequence = true),
+                    java.nio.file.StandardOpenOption.CREATE_NEW)
+            }
+        } else {
+            val supplied = File(checkNotNull(program.filePath))
+            (if (supplied.isAbsolute) supplied else File(workingDirectory, supplied.path)).canonicalFile
+                .also { require(it.isFile && it.canRead()) { "Python source file does not exist or is unreadable: $it" } }
+        }
+        val descriptor = pythonDescriptorFile(outputFile)
+        val data = buildJsonObject {
+            put("source_path", source.absolutePath)
+            put("inline", program.code != null)
+            putJsonArray("arguments") { program.arguments.forEach { add(JsonPrimitive(it)) } }
+        }.toString().encodeToByteArray(throwOnInvalidSequence = true)
+        Files.write(descriptor.toPath(), data, java.nio.file.StandardOpenOption.CREATE_NEW)
+        val command = if (host is WindowsLocalCommandHost) {
+            "\"%GRZ_PYTHON%\" -I -B -u -X utf8 \"%GRZ_SDK_HOME%\\grz_runner.py\" \"%GROMOZEKA_PYTHON_LAUNCH%\""
+        } else {
+            "exec \"${'$'}GRZ_PYTHON\" -I -B -u -X utf8 \"${'$'}GRZ_SDK_HOME/grz_runner.py\" \"${'$'}GROMOZEKA_PYTHON_LAUNCH\""
+        }
+        return spec.copy(
+            command = command,
+            pythonProgram = null,
+            environment = environment + ("GROMOZEKA_PYTHON_LAUNCH" to descriptor.absolutePath),
+        )
     }
 
     override fun recover(spec: CommandProcessRecoverySpec): CommandProcessRecovery {
@@ -292,6 +329,8 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         windowsCommandFile(outputFile),
         windowsWrapperFile(outputFile),
         windowsWatchdogFile(outputFile),
+        pythonSourceFile(outputFile),
+        pythonDescriptorFile(outputFile),
     )
 
     private fun outputArtifactGroup(outputFile: File): OutputArtifactGroup {
@@ -438,7 +477,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         val OUTPUT_FILE_NAME = Regex("command-[A-Za-z0-9-]+\\.log")
         val OUTPUT_ARTIFACT_NAME = Regex(
             "(command-[A-Za-z0-9-]+\\.log)" +
-                "(?:\\.(?:(?:tree|exit)(?:\\.tmp)?|start(?:\\.pending)?|stderr\\.log|(?:command|wrapper|watchdog)\\.cmd))?"
+                "(?:\\.(?:(?:tree|exit)(?:\\.tmp)?|start(?:\\.pending)?|stderr\\.log|python\\.(?:py|json)|(?:command|wrapper|watchdog)\\.cmd))?"
         )
     }
 }
@@ -926,6 +965,10 @@ private fun processStartPendingFile(outputFile: File): File = File("${outputFile
 private fun exitCodeFile(outputFile: File): File = File("${outputFile.absolutePath}.exit")
 
 private fun errorFile(outputFile: File): File = File("${outputFile.absolutePath}.stderr.log")
+
+private fun pythonSourceFile(outputFile: File): File = File("${outputFile.absolutePath}.python.py")
+
+private fun pythonDescriptorFile(outputFile: File): File = File("${outputFile.absolutePath}.python.json")
 
 private fun windowsCommandFile(outputFile: File): File = File("${outputFile.absolutePath}.command.cmd")
 

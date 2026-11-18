@@ -1,8 +1,12 @@
 $ErrorActionPreference = "Stop"
 $AppHome = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$env:GROMOZEKA_INSTALLATION_HOME = $AppHome
 $ServiceCommands = @("install-service", "update-service", "uninstall-service", "start-service", "stop-service", "service-status")
 if ($args.Count -gt 0 -and $ServiceCommands -contains $args[0]) {
-    & (Join-Path $PSScriptRoot "gromozeka-worker-service.ps1") @args
+    if ($args.Count -gt 2 -or ($args.Count -eq 2 -and $args[1] -ne "--accept-licenses")) {
+        throw "Service commands accept only the optional --accept-licenses flag."
+    }
+    & (Join-Path $PSScriptRoot "gromozeka-worker-service.ps1") $args[0] -AcceptLicenses:($args.Count -eq 2)
     exit $LASTEXITCODE
 }
 if (-not $env:GROMOZEKA_HOME) {
@@ -23,7 +27,7 @@ if (-not (Test-Path $JavaExecutable -PathType Leaf)) {
 }
 $WorkerJar = Join-Path $AppHome "app/gromozeka-worker.jar"
 
-$ConfigurationCommands = @("enroll", "connect", "configure")
+$ConfigurationCommands = @("enroll", "connect", "configure", "accept-licenses")
 if ($args.Count -gt 0 -and $ConfigurationCommands -contains $args[0]) {
     & $JavaExecutable -jar $WorkerJar @args
 } else {

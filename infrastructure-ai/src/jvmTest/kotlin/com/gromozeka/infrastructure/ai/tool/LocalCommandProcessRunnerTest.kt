@@ -476,6 +476,7 @@ class LocalCommandProcessRunnerTest {
                 File(System.getProperty("java.home"), "bin/java").absolutePath,
                 "-cp",
                 System.getProperty("java.class.path"),
+                "-Dgromozeka.project.root=${requireNotNull(System.getProperty("gromozeka.project.root"))}",
                 CommandWorkerLifetimeTestProcess::class.java.name,
                 home.absolutePath,
                 identityFile.absolutePath,

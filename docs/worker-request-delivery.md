@@ -126,32 +126,49 @@ Tools and exact-revision selections must be reinitialized after the coordinated 
 
 ## Shared Python and shell SDK
 
-Desktop/standalone Workers ship `grz.py` and `grz.sh` with the application. Each managed
-command receives `GRZ_SDK_HOME`, pointing to the same content-addressed directory under
-`GROMOZEKA_HOME/script-sdk/<sha256>`, and that directory is prepended to its `PYTHONPATH`.
-The bundled files are materialized atomically, reused without rewriting, and not removed
-when a command ends (including resumable commands). No user script is required: ordinary
-multiline shell, Python stdin/heredoc, and saved script files all use the same library.
-There is no script registry, new LLM tool, venv, pip install, daemon or interpreter download.
-Python **3.9+ must already be installed**; `GRZ_PYTHON` selects an existing executable for
-the shell wrapper without changing `PATH`. The wrapper is POSIX `sh`/Bash, not Windows
-cmd/PowerShell; Python and the shared path are also available on Windows.
+Desktop/standalone Workers ship a private CPython runtime, HTTPX and the async `grz`
+SDK. `grz_execute_python` accepts exactly one of inline `code` and `file_path`, plus
+`arguments` and `working_directory`. It runs a separate managed process, supports
+top-level `await` and ordinary scripts with `asyncio.run`, and uses the same native
+start gate, output, task lifecycle and cancellation as `grz_execute_command`.
+The tool is preloaded whenever available and allowed by the selected Agent's policy.
+
+Each managed command receives `GRZ_SDK_HOME`, pointing to the same content-addressed
+source directory under `GROMOZEKA_HOME/script-sdk/<sha256>`, and `GRZ_PYTHON`, pointing
+to this Worker's private interpreter. The SDK path is also prepended to `PYTHONPATH`
+for shell-launched scripts. Code Mode uses Python's isolated startup, imports the
+bundled SDK before adding the user script directory, and does not inherit user-site
+packages or `PYTHONPATH`. This prevents accidental package shadowing, not malicious
+code execution. Inline source and its argument descriptor are managed task artifacts;
+file mode leaves the source file owned by the caller.
+
+There is no per-call venv, pip install, download, persistent REPL or system-interpreter
+fallback. The runtime is prepared before Worker packaging and updated with the Worker,
+not replaced under active commands. Custom interpreters and extra packages are deferred.
+The optional shell wrapper is POSIX `sh`/Bash, not Windows cmd/PowerShell.
 
 Managed commands receive their MCP endpoint, command-scoped credential and optional
 Worker CA bundle **automatically**. No PAT creation or per-command connection setup is
 needed. `GRZ_MCP_URL`, `GRZ_MCP_TOKEN` and `GRZ_MCP_CA_BUNDLE` are Harness-owned process
 variables and are reserved from `secret_env`. The command itself can be:
 
-```sh
-python3 - <<'PY'
-from grz import Client
-with Client.from_env() as client:
-    tools = client.list_tools()
+```python
+import asyncio
+import grz
+
+async with grz.Client.from_env() as client:
+    tools = await client.list_tools()
     print([tool["name"] for tool in tools])
-    # Use an EXACT name and its inputSchema from this list; do not guess __vN.
-    # result = client.call(exact_name, arguments)
-PY
+    # Use EXACT names and their inputSchema from this list; do not guess __vN.
+    # first = await client.call(exact_name, arguments)
+    # independent = await asyncio.gather(
+    #     client.call(exact_name_a, arguments_a),
+    #     client.call(exact_name_b, arguments_b),
+    # )
 ```
+
+Pass this code directly to `grz_execute_python`. For execution outside Code Mode,
+wrap top-level awaits in `async def main()` and invoke `asyncio.run(main())`.
 
 `secret_env` remains available for other services, such as `GH_TOKEN`. It is a Gromozeka
 tool argument, not shell syntax; inline `secret://…` references in command text are rejected.
@@ -206,7 +223,12 @@ JSON
 
 Python offers `Client(url, token, context=..., ca_bundle=..., timeout=60)`, `Client.from_env()`,
 `list_tools(refresh=True)`, `describe_tool(exact_name)`, and
-`call(exact_name, arguments, context=..., check=True)`. It is synchronous, not thread-safe.
+`call(exact_name, arguments, context=..., check=True)`. All I/O methods and `close()`
+are async; use `async with` for cleanup. One Client can handle concurrent calls within
+one event loop, with one initialization and shared catalog. It cannot be moved between
+event loops or used after closing. There is no synchronous Python API or compatibility
+alias. `asyncio.gather` enables concurrent I/O; it does not make dependent calls safe to
+parallelize. Limit concurrency when appropriate for the downstream tool or service.
 Defaults in `GRZ_MCP_CONTEXT` come from that command's project/conversation/agent/mount/Worker;
 no user ID, thread, filesystem root, tool-call ID or credentials are exported there.
 Only selectors declared by the chosen tool's `_grz` schema are forwarded. Explicit
@@ -227,19 +249,22 @@ or verify the effect before considering another mutation. Closing the client doe
 a Worker action. HTTP timeout is a socket timeout, separate from native delivery/execution/wait
 policy. Responses are bounded (default 16 MiB, configurable explicitly).
 
-This small stdlib-only implementation targets Gromozeka's **stateless HTTP MCP** profile:
+This HTTPX-based implementation targets Gromozeka's **stateless HTTP MCP** profile:
 initialize, notifications/initialized, tools/list pagination and tools/call; JSON and POST SSE
 responses; current protocol version 2025-11-25, without legacy negotiation fallback. It is not a general MCP
 SDK, stdio bridge, sampling implementation or server-request executor. TLS keeps default
-Python trust and adds `GRZ_MCP_CA_BUNDLE` (from `gromozeka.worker-gateway.ca-certificate-path`)
-when configured. The CA bundle is loaded for each new HTTPS connection. Invalid trust is an
+Python system trust plus the bundled certifi roots, and adds `GRZ_MCP_CA_BUNDLE`
+(from `gromozeka.worker-gateway.ca-certificate-path`) when configured. Trust is loaded
+when the client's HTTP transport is created. Invalid trust is an
 explicit configuration error; chain and hostname verification are never disabled. Redirects,
 ambient proxies and cookies are not used. Plain HTTP is allowed only on loopback.
 
 `LocalScriptSdkTest` checks materialization and executes the bundled Python unittest fixture
-(23 cases, synthetic loopback server; shell case skipped on Windows). Command-service and
-real process-runner tests cover per-launch routing, secret separation and path injection.
-Use `GRZ_TEST_PYTHON` to select the test interpreter; these tests never install one.
+(28 SDK cases and 8 runner cases; shell case skipped on Windows) using the bundled
+interpreter. A loopback server barrier proves overlapping calls rather than merely
+concurrent scheduling. Command-service and real process-runner tests cover per-launch
+routing, secret separation, source modes, literal arguments, admission and cancellation.
+Gradle prepares the pinned runtime before these tests; no system-Python test fallback exists.
 `LocalScriptSdkTlsTest` verifies real HTTPS with an additional CA, hostname rejection and
 invalid-bundle rejection. Managed-process tests verify that the first Python SDK request
 cannot precede registration. MVC, permission, daily-reminder and isolated PostgreSQL tests

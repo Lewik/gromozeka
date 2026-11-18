@@ -19,14 +19,14 @@ class LocalScriptSdkTest {
             assertEquals(1, directories.toSet().size)
             val directory = directories.first()
             assertEquals(64, directory.name.length)
-            listOf("grz.py", "grz.sh").forEach { name ->
+            listOf("grz.py", "grz.sh", "grz_runner.py").forEach { name ->
                 val expected = checkNotNull(javaClass.getResourceAsStream("/script-sdk/$name")).use { it.readBytes() }
                 assertTrue(File(directory, name).readBytes().contentEquals(expected))
                 val before = File(directory, name).lastModified()
                 LocalScriptSdk.materialize(home)
                 assertEquals(before, File(directory, name).lastModified())
             }
-            assertEquals(setOf("grz.py", "grz.sh"), directory.list()!!.toSet())
+            assertEquals(setOf("grz.py", "grz.sh", "grz_runner.py"), directory.list()!!.toSet())
         } finally { pool.shutdownNow() }
     }
 
@@ -39,7 +39,7 @@ class LocalScriptSdkTest {
     }
 
     @Test
-    fun `per command paths preserve interpreter and Python path without injecting credentials`() = withHome { home ->
+    fun `per command paths bind bundled interpreter and preserve Python path without injecting credentials`() = withHome { home ->
         val supplied = mapOf("EXISTING" to "value", "GRZ_MCP_CONTEXT" to "{\"conversation_id\":\"one\"}")
         val inherited = mapOf("PYTHONPATH" to "previous${File.pathSeparator}second", "GRZ_MCP_CONTEXT" to "stale", "PATH" to "untouched")
         val environment = LocalScriptSdk.environment(home, supplied, inherited)
@@ -47,6 +47,8 @@ class LocalScriptSdkTest {
         assertEquals(environment["GRZ_SDK_HOME"] + File.pathSeparator + inherited["PYTHONPATH"], environment["PYTHONPATH"])
         assertEquals("value", environment["EXISTING"])
         assertFalse(environment.containsKey("PATH"))
+        assertEquals(BundledPythonRuntime.executable().absolutePath, environment["GRZ_PYTHON"])
+        assertEquals(environment["GRZ_PYTHON"], LocalScriptSdk.environment(home, mapOf("GRZ_PYTHON" to "unmanaged"))["GRZ_PYTHON"])
         assertFalse(environment.containsKey("GRZ_MCP_TOKEN"))
         assertFalse(environment.containsKey("GRZ_MCP_URL"))
         assertEquals("{}", LocalScriptSdk.environment(home, emptyMap(), inherited)["GRZ_MCP_CONTEXT"])
@@ -55,13 +57,17 @@ class LocalScriptSdkTest {
     }
 
     @Test
-    fun `Python SDK protocol and shell wrapper regressions`() = withHome { home ->
-        val script = File(home, "test_grz.py")
-        script.writeBytes(checkNotNull(javaClass.getResourceAsStream("/script-sdk/test_grz.py")).use { it.readBytes() })
-        val python = System.getenv("GRZ_TEST_PYTHON")
-            ?: if (System.getProperty("os.name").lowercase().contains("windows")) "python" else "python3"
+    fun `Python SDK protocol and shell wrapper regressions`() = runPythonSuite("test_grz.py", 28)
+
+    @Test
+    fun `Python runner source modes and isolation regressions`() = runPythonSuite("test_grz_runner.py", 8)
+
+    private fun runPythonSuite(name: String, expectedTests: Int) = withHome { home ->
+        val script = File(home, name)
+        script.writeBytes(checkNotNull(javaClass.getResourceAsStream("/script-sdk/$name")).use { it.readBytes() })
+        val python = BundledPythonRuntime.executable().absolutePath
         val output = File(home, "python-test.log")
-        val process = ProcessBuilder(python, script.absolutePath).directory(home)
+        val process = ProcessBuilder(python, "-B", "-X", "utf8", script.absolutePath).directory(home)
             .redirectErrorStream(true).redirectOutput(output)
             .apply {
                 environment()["GRZ_SDK_HOME"] = LocalScriptSdk.materialize(home).absolutePath
@@ -72,7 +78,7 @@ class LocalScriptSdkTest {
             val log = output.readText()
             println(log)
             assertEquals(0, process.exitValue(), log)
-            assertTrue(log.contains("Ran 23 tests"), "All Python test cases must actually execute")
+            assertTrue(log.contains("Ran $expectedTests tests"), "All Python test cases must actually execute")
         } finally {
             process.descendants().forEach { it.destroyForcibly() }
             if (process.isAlive) process.destroyForcibly()

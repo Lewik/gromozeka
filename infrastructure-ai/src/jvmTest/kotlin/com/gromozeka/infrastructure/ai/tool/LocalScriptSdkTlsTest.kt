@@ -23,29 +23,30 @@ class LocalScriptSdkTlsTest {
                 SdkHttpTestServer(replies, sslContext = identity.context, expectedTarget = "/mcp").use { server ->
                     val sdk = LocalScriptSdk.materialize(home)
                     val script = File(home, "probe.py").apply { writeText("""
-                        import os, ssl, grz
-                        expected = os.environ.get("EXPECTED_FAILURE")
-                        try:
-                            with grz.Client.from_env(timeout=5) as client:
-                                assert client.list_tools() == []
-                                context = client._ssl_context()
-                                assert context.check_hostname
-                                assert context.verify_mode == ssl.CERT_REQUIRED
-                                assert len(context.get_ca_certs()) > len(ssl.create_default_context().get_ca_certs())
-                        except grz.Error as error:
-                            assert type(error).__name__ == expected, (type(error).__name__, expected)
-                            assert not error.outcome_unknown
-                            assert os.environ["GRZ_MCP_TOKEN"] not in str(error)
-                            print("EXPECTED:" + expected)
-                        else:
-                            assert expected is None
-                            print("SUCCESS")
+                        import asyncio, os, ssl, grz
+                        async def main():
+                            expected = os.environ.get("EXPECTED_FAILURE")
+                            try:
+                                async with grz.Client.from_env(timeout=5) as client:
+                                    assert await client.list_tools() == []
+                                    context = client._ssl_context()
+                                    assert context.check_hostname
+                                    assert context.verify_mode == ssl.CERT_REQUIRED
+                                    assert len(context.get_ca_certs()) > len(ssl.create_default_context().get_ca_certs())
+                            except grz.Error as error:
+                                assert type(error).__name__ == expected, (type(error).__name__, expected)
+                                assert not error.outcome_unknown
+                                assert os.environ["GRZ_MCP_TOKEN"] not in str(error)
+                                print("EXPECTED:" + expected)
+                            else:
+                                assert expected is None
+                                print("SUCCESS")
+                        asyncio.run(main())
                     """.trimIndent()) }
                     fun probe(url: String, caBundle: String?, expected: String?) {
-                        val python = System.getenv("GRZ_TEST_PYTHON")
-                            ?: if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+                        val python = BundledPythonRuntime.executable().absolutePath
                         val output = File(home, "probe.log")
-                        val process = ProcessBuilder(python, script.absolutePath).directory(home)
+                        val process = ProcessBuilder(python, "-B", "-X", "utf8", script.absolutePath).directory(home)
                             .redirectErrorStream(true).redirectOutput(output).apply {
                                 environment()["PYTHONPATH"] = sdk.absolutePath
                                 environment()["PYTHONIOENCODING"] = "utf-8"

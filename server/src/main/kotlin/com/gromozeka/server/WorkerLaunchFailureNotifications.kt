@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.UserNotificationDraft
 import com.gromozeka.domain.service.StoredWorkerRequest
 import com.gromozeka.domain.service.UserNotificationPublisher
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
-import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.isManagedCommandLaunchTool
 import com.gromozeka.remote.protocol.*
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
@@ -23,7 +23,7 @@ class WorkerLaunchFailureNotifications(private val notifications: UserNotificati
         when (request.operation) {
             WorkerGatewayOperation.TOOL_EXECUTION -> {
                 val execution = json.decodeFromString<WorkerToolExecutionRequest>(request.payload.decodeToString())
-                val calls = execution.toolCalls.filter { it.call.name == GRZ_EXECUTE_COMMAND_TOOL_NAME || it.call.name == "grz_monitor_command" }
+                val calls = execution.toolCalls.filter { isManagedCommandLaunchTool(it.call.name) || it.call.name == "grz_monitor_command" }
                 if (calls.isEmpty()) return
                 val result = if (response.status == WorkerGatewayMessage.Response.Status.SUCCEEDED) {
                     json.decodeFromString<WorkerToolExecutionResponse>(requireNotNull(response.payload).decodeToString()).results
@@ -33,9 +33,9 @@ class WorkerLaunchFailureNotifications(private val notifications: UserNotificati
                     if (result != null) {
                         val item = requireNotNull(result.singleOrNull { it.toolUseId == call.id }) { "Missing Worker tool result" }
                         require(item.toolName == call.call.name) { "Worker tool result does not match its request" }
-                        if (!item.isError) continue // A shell exit code is not an RPC/launch failure.
+                        if (!item.isError) continue // A process exit code is not an RPC/launch failure.
                     }
-                    val kind = if (call.call.name == GRZ_EXECUTE_COMMAND_TOOL_NAME) "Command" else "Monitor"
+                    val kind = if (isManagedCommandLaunchTool(call.call.name)) "Command" else "Monitor"
                     notifications.publish(actor, UserNotificationDraft(
                         title = "$kind launch needs attention",
                         message = message(record, response),

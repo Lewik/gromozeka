@@ -189,6 +189,57 @@ class BackgroundActivityOriginRecorderTest {
         assertEquals(1, f.origins.records.size)
     }
 
+    @Test
+    fun `Python admission binds exact inline source and arguments to its creating request`(): Unit = runBlocking {
+        val f = fixture()
+        val program = PythonProgram(code = "print(1)", arguments = listOf("first", "second"))
+        val create = call("python-create", "grz_execute_python", buildJsonObject {
+            put("code", program.code)
+            put("arguments", buildJsonArray { program.arguments.forEach { add(JsonPrimitive(it)) } })
+        })
+        val requestId = f.submit(alice, create)
+        val task = command("python-inline").copy(command = program.commandIdentity,
+            launchReference = BackgroundActivityLaunchReference(requestId, create.id.value))
+        f.recorder.admit(task)
+        assertEquals(alice, f.origins.records.values.single().actorUserId)
+    }
+
+    @Test
+    fun `Python admission rejects a different program or reordered argv`(): Unit = runBlocking {
+        val original = PythonProgram(code = "print(1)", arguments = listOf("first", "second"))
+        for (changed in listOf(original.copy(code = "print(2)"), original.copy(arguments = listOf("second", "first")),
+            PythonProgram(filePath = "print(1)", arguments = original.arguments))) {
+            val f = fixture()
+            val create = call("python-create", "grz_execute_python", buildJsonObject {
+                put("code", original.code)
+                put("arguments", buildJsonArray { original.arguments.forEach { add(JsonPrimitive(it)) } })
+            })
+            val requestId = f.submit(alice, create)
+            assertFailsWith<IllegalArgumentException> {
+                f.recorder.admit(command("python-changed").copy(command = changed.commandIdentity,
+                    launchReference = BackgroundActivityLaunchReference(requestId, create.id.value)))
+            }
+            assertTrue(f.origins.records.isEmpty())
+        }
+    }
+
+    @Test
+    fun `Python file admission supports omitted argv but rejects an invalid extra source`(): Unit = runBlocking {
+        val f = fixture()
+        val program = PythonProgram(filePath = "scripts/task.py")
+        val create = call("python-file", "grz_execute_python", buildJsonObject { put("file_path", program.filePath) })
+        val requestId = f.submit(alice, create)
+        f.recorder.admit(command("python-file").copy(command = program.commandIdentity,
+            launchReference = BackgroundActivityLaunchReference(requestId, create.id.value)))
+        val invalid = call("python-invalid", "grz_execute_python", buildJsonObject { put("file_path", program.filePath); put("code", 42) })
+        val invalidId = f.submit(bob, invalid)
+        assertFailsWith<IllegalArgumentException> {
+            f.recorder.admit(command("python-invalid").copy(command = program.commandIdentity,
+                launchReference = BackgroundActivityLaunchReference(invalidId, invalid.id.value)))
+        }
+        assertEquals(1, f.origins.records.size)
+    }
+
     private suspend fun fixture(): Fixture = Fixture().also {
         Mockito.`when`(it.conversations.findById(conversation.id)).thenReturn(conversation)
     }

@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)]
     [ValidateSet("install-service", "update-service", "uninstall-service", "start-service", "stop-service", "service-status")]
-    [string]$Command
+    [string]$Command,
+    [switch]$AcceptLicenses
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,6 +35,35 @@ function Set-DirectoryPermissions([string]$Directory, [bool]$ReadableByUsers) {
         $Acl.AddAccessRule($Rule)
     }
     Set-Acl -LiteralPath $Directory -AclObject $Acl
+}
+
+function Confirm-WorkerLicenses([string]$AppHome) {
+    $UserHome = if ($env:GROMOZEKA_HOME) { $env:GROMOZEKA_HOME } else { Join-Path $HOME ".gromozeka" }
+    $UserAcceptance = Join-Path $UserHome "licenses/windows-python"
+    $ServiceAcceptance = Join-Path $ServiceHome "licenses/windows-python"
+    $LicenseArguments = @("accept-licenses")
+    if ($AcceptLicenses) { $LicenseArguments += "--yes" }
+    if ((Test-Path -LiteralPath $UserAcceptance -PathType Container) -and
+        [IO.Path]::GetFullPath($UserAcceptance) -ne [IO.Path]::GetFullPath($ServiceAcceptance)) {
+        $LicenseArguments += @("--from", $UserAcceptance)
+    }
+    $PreviousHome = $env:GROMOZEKA_HOME
+    $PreviousInstallation = $env:GROMOZEKA_INSTALLATION_HOME
+    try {
+        $env:GROMOZEKA_HOME = $ServiceHome
+        $env:GROMOZEKA_INSTALLATION_HOME = $AppHome
+        & (Join-Path $AppHome "runtime/java/bin/java.exe") -jar (Join-Path $AppHome "app/gromozeka-worker.jar") @LicenseArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Windows Python conditions were not accepted. Review the terms and rerun interactively or with --accept-licenses. The service was not stopped or replaced."
+        }
+    } finally {
+        $env:GROMOZEKA_HOME = $PreviousHome
+        $env:GROMOZEKA_INSTALLATION_HOME = $PreviousInstallation
+    }
+}
+
+if ($AcceptLicenses -and $Command -notin @("install-service", "update-service", "start-service")) {
+    throw "--accept-licenses applies only to install-service, update-service and start-service."
 }
 
 function Stop-InstalledWorker {
@@ -73,6 +103,7 @@ if ($ExistingService -and -not $ExistingService.PathName.StartsWith('"' + (Join-
 
 switch ($Command) {
     "start-service" {
+        Confirm-WorkerLicenses $InstallHome
         Start-Service -Name $ServiceName
         (Get-Service $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(120))
         exit 0
@@ -92,7 +123,7 @@ if ($Command -eq "update-service" -and -not $ExistingService) {
 if ((Test-Path $InstallHome) -and -not (Test-Path (Join-Path $InstallHome $Marker))) {
     throw "Installation directory is not managed by Gromozeka: $InstallHome"
 }
-foreach ($RelativePath in @("app\gromozeka-worker.jar", "runtime\java\bin\java.exe", "runtime\java\bin\javaw.exe", "runtime\node\node.exe")) {
+foreach ($RelativePath in @("app\gromozeka-worker.jar", "runtime\java\bin\java.exe", "runtime\java\bin\javaw.exe", "runtime\node\node.exe", "runtime\python\python.exe", "runtime\python\gromozeka-runtime.json")) {
     if (-not (Test-Path (Join-Path $SourceHome $RelativePath) -PathType Leaf)) {
         throw "Incomplete Worker distribution: missing $RelativePath"
     }
@@ -100,6 +131,7 @@ foreach ($RelativePath in @("app\gromozeka-worker.jar", "runtime\java\bin\java.e
 
 New-Item -ItemType Directory -Path $ServiceHome -Force | Out-Null
 Set-DirectoryPermissions $ServiceHome $false
+Confirm-WorkerLicenses $SourceHome
 if (-not (Test-Path $ServiceConfig)) {
     $SourceConfig = $env:GROMOZEKA_WORKER_CONFIG
     if (-not $SourceConfig) {
@@ -153,6 +185,7 @@ try {
     Invoke-ServiceControl @("failureflag", $ServiceName, "1")
     $Environment = @(
         "GROMOZEKA_MODE=prod",
+        "GROMOZEKA_INSTALLATION_HOME=$InstallHome",
         "GROMOZEKA_HOME=$ServiceHome",
         "GROMOZEKA_WORKER_CONFIG=$ServiceConfig",
         "GROMOZEKA_LOG_DIR=$(Join-Path $ServiceHome 'logs')",

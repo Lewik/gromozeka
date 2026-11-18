@@ -3,11 +3,17 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.tool.filesystem.ExecutePythonRequest
 import kotlin.time.Instant
 
 interface CommandTaskService {
     suspend fun start(
         request: ExecuteCommandRequest,
+        context: ToolExecutionContext,
+    ): CommandTaskOutput
+
+    suspend fun startPython(
+        request: ExecutePythonRequest,
         context: ToolExecutionContext,
     ): CommandTaskOutput
 
@@ -62,8 +68,12 @@ data class CommandProcessSpec(
     /** The user command remains behind its native gate until releaseStart is called. */
     val deferStartUntilRegistration: Boolean = false,
     val startupWaitMillis: Long = 5_000,
+    val pythonProgram: PythonProgram? = null,
 ) {
     init {
+        require(pythonProgram == null || command == pythonProgram.commandIdentity) {
+            "Python process command must match its program identity"
+        }
         require(executionId.isNotBlank()) { "Command process execution id must not be blank" }
         require(command.isNotBlank()) { "Command process command must not be blank" }
         require(startupWaitMillis in 1..86_400_000) { "Invalid command startup wait limit" }

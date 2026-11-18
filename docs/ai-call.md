@@ -134,8 +134,8 @@ import re
 from pathlib import Path
 import grz
 
-with grz.Client.from_env() as client:
-    names = [t["name"] for t in client.list_tools()
+async with grz.Client.from_env() as client:
+    names = [t["name"] for t in await client.list_tools()
              if re.fullmatch(r"grz_ai_call(?:__v\d+)?", t["name"])]
     if len(names) != 1:
         raise RuntimeError("Expected one accessible isolated AI call tool")
@@ -145,7 +145,7 @@ with grz.Client.from_env() as client:
     for index, chunk in enumerate(Path("input.txt").read_text(encoding="utf-8").split("\n\n")):
         if not chunk.strip():
             continue
-        response = client.call(tool, {
+        response = (await client.call(tool, {
             "model_configuration_id": "selected-configuration-id",
             "prompt": "Extract relevant facts as a JSON object with a facts array.",
             "inputs": [{"type": "text", "text": chunk}],
@@ -154,15 +154,16 @@ with grz.Client.from_env() as client:
                 "additionalProperties": False,
                 "properties": {"facts": {"type": "array", "items": {"type": "string"}}}
             }
-        })["structuredContent"]["result"]
+        }))["structuredContent"]["result"]
         results.append({"chunk": index, "facts": response["output"]["facts"]})
     print(json.dumps(results, ensure_ascii=False))
 ```
 
 Chunking, overlap, source labels, validation and reduction belong to ordinary
-Python code. For bounded parallelism, use a separate `Client` per thread/call;
-`Client` is synchronous and not thread-safe. Provider capacity groups still
-apply. Intermediate SDK responses remain Python data and are not automatically
+Python code. Pass this example to `grz_execute_python`, which supports top-level
+`await`. For bounded parallelism, share the async Client in one event loop and
+combine `asyncio.gather` with an `asyncio.Semaphore`; provider capacity groups
+still apply. Intermediate SDK responses remain Python data and are not automatically
 injected into the parent conversation; printing them would expose them there.
 For a single file, prefer a `file` input over reading it through a parent-facing
 `read_file` tool.
