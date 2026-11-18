@@ -17,6 +17,11 @@ test -f "$worker_jar" || {
   echo "Build the standalone Worker JAR first with deploy/aws/bin/build-images." >&2
   exit 1
 }
+# The helper is test-only; its runtime dependencies come exclusively from the packaged JAR.
+(cd "$root_dir" && ./gradlew :worker:compileTestKotlin --max-workers=2 -q)
+smoke_classes="$root_dir/worker/build/classes/kotlin/test"
+test -f "$smoke_classes/com/gromozeka/worker/WorkerCommandJarSmoke.class"
+
 log_dir="$root_dir/logs/cloud-image-smoke"
 
 mkdir -p "$log_dir"
@@ -121,6 +126,7 @@ docker run -d \
   --user 10001:10001 \
   --tmpfs /var/lib/gromozeka:uid=10001,gid=10001 \
   --mount "type=bind,source=$worker_jar,target=/app/gromozeka-worker.jar,readonly" \
+  --mount "type=bind,source=$smoke_classes,target=/app/command-smoke-classes,readonly" \
   -e HOME=/var/lib/gromozeka \
   -e GROMOZEKA_HOME=/var/lib/gromozeka \
   -e GROMOZEKA_MODE=prod \
@@ -159,6 +165,12 @@ for attempt in {1..90}; do
   }
   sleep 2
 done
+
+# Registration alone cannot detect a runner that accidentally requires bundled Python.
+docker exec -e GROMOZEKA_INSTALLATION_HOME=/var/lib/gromozeka/command-smoke-no-python "$worker" \
+  java -Dloader.main=com.gromozeka.worker.WorkerCommandJarSmoke \
+  -Dloader.path=/app/command-smoke-classes -cp /app/gromozeka-worker.jar \
+  org.springframework.boot.loader.launch.PropertiesLauncher
 
 server_state="$(docker inspect "$server" --format '{{.State.Status}}')"
 server_health="$(docker inspect "$server" --format '{{.State.Health.Status}}')"

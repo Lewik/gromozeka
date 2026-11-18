@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.tool
 
 import com.gromozeka.domain.service.CommandProcessSpec
+import com.gromozeka.domain.service.PythonProgram
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
@@ -17,6 +18,8 @@ import java.io.IOException
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -42,6 +45,82 @@ class LocalCommandProcessRunnerTest {
     }
     private val isWindows = System.getProperty("os.name").lowercase().contains("windows")
     private val isLinux = System.getProperty("os.name").lowercase().contains("linux")
+
+    @Test
+    fun `native shell remains usable with absent or misconfigured bundled Python`() {
+        for (configuration in listOf("missing", "mismatched", "malformed", "no-executable")) {
+            withTemporaryGromozekaHome { home -> withUnavailablePython(home, configuration) {
+                val process = runner.start(CommandProcessSpec(
+                    executionId = "native-without-python", command = "echo OK", workingDirectory = home.absolutePath,
+                ))
+                assertTrue(process.waitFor(10_000))
+                assertEquals(0, process.exitCode(), File(process.outputFile).readText())
+                assertEquals("OK", File(process.outputFile).readText().trim())
+            } }
+        }
+    }
+
+    @Test
+    fun `Python programs explicitly fail before launch when bundled runtime is unavailable`() {
+        for (configuration in listOf("missing", "mismatched", "malformed", "no-executable")) {
+            withTemporaryGromozekaHome { home -> withUnavailablePython(home, configuration) {
+                val program = PythonProgram(code = "raise AssertionError('must not run')")
+                val error = assertFailsWith<BundledPythonUnavailableException> {
+                    runner.start(CommandProcessSpec(executionId = "python-without-runtime", command = program.commandIdentity,
+                        workingDirectory = home.absolutePath, pythonProgram = program))
+                }
+                assertContains(checkNotNull(error.message), "Bundled Python")
+                assertTrue(File(home, "tool-outputs").listFiles().orEmpty().isEmpty())
+            } }
+        }
+    }
+
+    @Test
+    fun `shell SDK explicitly refuses missing Python and never selects an unmanaged interpreter`() {
+        assumeFalse(isWindows)
+        withTemporaryGromozekaHome { home -> withUnavailablePython(home, "missing") {
+            val fakeBin = File(home, "unmanaged-bin").apply { mkdirs() }
+            for (name in listOf("python", "python3")) {
+                File(fakeBin, name).apply { writeText("#!/bin/sh\nprintf UNMANAGED_PYTHON_USED\n"); assertTrue(setExecutable(true)) }
+            }
+            val process = runner.start(CommandProcessSpec(executionId = "sdk-without-python",
+                command = ". \"${'$'}GRZ_SDK_HOME/grz.sh\"; grz_list_tools", workingDirectory = home.absolutePath,
+                environment = mapOf("GRZ_PYTHON" to File(fakeBin, "python3").absolutePath,
+                    "PATH" to fakeBin.absolutePath + File.pathSeparator + System.getenv("PATH"),
+                    "GRZ_MCP_URL" to "http://127.0.0.1:1/mcp", "GRZ_MCP_TOKEN" to "synthetic-token")))
+            assertTrue(process.waitFor(10_000))
+            assertNotEquals(0, process.exitCode())
+            val output = File(process.outputFile).readText()
+            assertContains(output, "Managed Python is unavailable")
+            assertFalse(output.contains("UNMANAGED_PYTHON_USED"))
+        } }
+    }
+
+    @Test
+    fun `optional Python discovery preserves SDK authentication routing CA and supplied values`() {
+        withTemporaryGromozekaHome { home -> withUnavailablePython(home, "missing") {
+            val supplied = mapOf("GRZ_MCP_URL" to "https://example.invalid/mcp", "GRZ_MCP_TOKEN" to "synthetic-token",
+                "GRZ_MCP_CA_BUNDLE" to File(home, "worker ca.pem").absolutePath,
+                "GRZ_MCP_CONTEXT" to "{\"conversation_id\":\"bound\",\"agent_definition_id\":\"agent\"}",
+                "GRZ_PYTHON" to "unmanaged", "PYTHONPATH" to "supplied-path", "UNCHANGED" to "value")
+            val environment = LocalScriptSdk.environment(home, supplied, mapOf("GRZ_PYTHON" to "inherited-python"))
+            assertEquals("", environment["GRZ_PYTHON"])
+            for ((name, value) in supplied.filterKeys { it != "GRZ_PYTHON" && it != "PYTHONPATH" }) assertEquals(value, environment[name])
+            assertEquals(environment["GRZ_SDK_HOME"] + File.pathSeparator + "supplied-path", environment["PYTHONPATH"])
+        } }
+    }
+
+    @Test
+    fun `SDK integrity failure is not mistaken for optional Python unavailability`() {
+        withTemporaryGromozekaHome { home -> withUnavailablePython(home, "missing") {
+            File(LocalScriptSdk.materialize(home), "grz.py").writeText("corrupt SDK")
+            val error = assertFailsWith<IllegalStateException> {
+                runner.start(CommandProcessSpec(executionId = "bad-sdk", command = "echo OK", workingDirectory = home.absolutePath))
+            }
+            assertFalse(error is BundledPythonUnavailableException)
+            assertContains(checkNotNull(error.message), "Shared script SDK file")
+        } }
+    }
 
     @Test
     fun `deferred native gate blocks user code and stdin until explicit release`() {
@@ -1179,6 +1258,34 @@ class LocalCommandProcessRunnerTest {
         val output = File(outputFile)
         return output.parentFile.listFiles().orEmpty()
             .filter { it.name == output.name || it.name.startsWith("${output.name}.") }
+    }
+
+    private fun withUnavailablePython(home: File, configuration: String, block: () -> Unit) {
+        val previousRoot = System.getProperty("gromozeka.project.root")
+        val project = File(home, "unprepared-project")
+        val lockBytes = checkNotNull(javaClass.getResourceAsStream("/script-sdk/python-runtime.json")).use { it.readBytes() }
+        val lock = Json.parseToJsonElement(lockBytes.decodeToString()).jsonObject
+        val hash = java.security.MessageDigest.getInstance("SHA-256").digest(lockBytes).joinToString("") { "%02x".format(it) }
+        val target = BundledPythonRuntime.target()
+        val runtime = File(project, "build/python-runtime/$target/$hash")
+        if (configuration != "missing") {
+            assertTrue(runtime.mkdirs())
+            File(runtime, "gromozeka-runtime.json").writeText(when (configuration) {
+                "mismatched" -> "{}"
+                "malformed" -> "not JSON"
+                "no-executable" -> buildJsonObject {
+                    put("format", 1); put("lock_sha256", hash); put("target", target)
+                    put("python_version", lock.getValue("python_version"))
+                }.toString()
+                else -> error("Unknown unavailable-runtime fixture")
+            })
+        }
+        try {
+            System.setProperty("gromozeka.project.root", project.absolutePath)
+            block()
+        } finally {
+            if (previousRoot == null) System.clearProperty("gromozeka.project.root") else System.setProperty("gromozeka.project.root", previousRoot)
+        }
     }
 
     private fun withTemporaryGromozekaHome(block: (File) -> Unit) {

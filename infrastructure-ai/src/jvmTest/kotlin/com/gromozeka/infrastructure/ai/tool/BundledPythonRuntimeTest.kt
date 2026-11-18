@@ -10,6 +10,7 @@ import java.security.MessageDigest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BundledPythonRuntimeTest {
@@ -34,6 +35,22 @@ class BundledPythonRuntimeTest {
         assertFailsWith<IllegalStateException> { BundledPythonRuntime.executable(home.path, null, "windows-x64") }
         val executable = File(runtime, "python.exe").apply { writeText("fixture"); setExecutable(true) }
         assertEquals(executable.canonicalFile, BundledPythonRuntime.executable(home.path, null, "windows-x64"))
+    }
+
+    @Test
+    fun `malformed runtime metadata is an explicit availability error`() = withDirectory { home ->
+        val runtime = File(home, "runtime/python").apply { mkdirs() }
+        val marker = File(runtime, "gromozeka-runtime.json")
+        for (broken in listOf("not JSON", "[]", "{\"format\":{}}")) {
+            marker.writeText(broken)
+            assertFailsWith<BundledPythonUnavailableException> { BundledPythonRuntime.executable(home.path, null, "windows-x64") }
+        }
+    }
+
+    @Test
+    fun `invalid internal target is not classified as an unavailable installation`() = withDirectory { home ->
+        val error = assertFailsWith<IllegalStateException> { BundledPythonRuntime.executable(home.path, null, "not-in-lock") }
+        assertFalse(error is BundledPythonUnavailableException)
     }
 
     @Test
