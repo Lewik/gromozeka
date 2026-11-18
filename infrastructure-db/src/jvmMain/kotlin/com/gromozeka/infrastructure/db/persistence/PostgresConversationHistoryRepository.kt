@@ -90,7 +90,7 @@ class PostgresConversationHistoryRepository(
             ConversationMessageSelection.ASSISTANT -> "m.role = 'ASSISTANT' AND $visible"
             ConversationMessageSelection.THINKING -> thinking
             ConversationMessageSelection.TOOL -> "$tool OR EXISTS (SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item WHERE item ->> 'type' = '$TOOL_RESULT_TYPE')"
-            ConversationMessageSelection.PLAIN -> "NOT $thinking AND NOT $tool AND $visible AND m.role <> 'SYSTEM'"
+            ConversationMessageSelection.PLAIN -> "NOT $thinking AND NOT $tool AND $visible AND m.role NOT IN ('SYSTEM','RUNTIME_NOTIFICATION')"
         }
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT tm.message_id FROM thread_messages tm JOIN messages m ON m.id = tm.message_id WHERE tm.thread_id = ? AND ($predicate) ORDER BY tm.position").use { statement ->

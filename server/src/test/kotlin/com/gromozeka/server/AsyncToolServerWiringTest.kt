@@ -2,6 +2,7 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.*
 import com.gromozeka.domain.model.*
+import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.repository.*
 import com.gromozeka.domain.service.*
@@ -66,6 +67,29 @@ class AsyncToolServerWiringTest {
                 assertEquals(JsonPrimitive(true), cancelled["cancellation_request_accepted"])
                 assertEquals("ACCEPTED", cancelled.getValue("status").jsonPrimitive.content)
                 assertNull(repository.find(operation.id)?.startedAt)
+
+                val bytes = byteArrayOf(0, 1, 2, 3, 127)
+                val notification = Conversation.Message(Conversation.Message.Id("stored-runtime-output"), conversation.id,
+                    role = Conversation.Message.Role.RUNTIME_NOTIFICATION, author = Conversation.Message.Author.Runtime(),
+                    content = listOf(ContentItem.RuntimeNotification(ContentItem.RuntimeNotification.Level.INFO, "Async callback completed",
+                        toolUseId = origin.sourceToolCallId, kind = ContentItem.RuntimeNotification.Kind.TOOL_COMPLETED,
+                        referenceId = operation.id.value, attachments = listOf(ContentItem.ToolResult.Data.Base64Data(
+                            java.util.Base64.getEncoder().encodeToString(bytes), Conversation.Message.MediaType.parse("application/octet-stream"), "result.bin")))),
+                    createdAt = Clock.System.now())
+                val artifacts = context.getBean(ConversationArtifactApplicationService::class.java)
+                val persisted = artifacts.persistAndCommitMessageOutputs(conversation, owner.id, notification)
+                context.getBean(ConversationRuntimeMessageAppender::class.java).appendRuntimeMessage(conversation.id, persisted)
+                val history = context.getBean(ConversationHistoryReadService::class.java)
+                val stored = history.message(conversation.id, persisted.id)
+                assertEquals(persisted, stored)
+                val event = assertIs<ContentItem.RuntimeNotification>(stored.content.single())
+                val reference = event.attachments.filterIsInstance<ContentItem.ToolResult.Data.ArtifactData>().single().artifact
+                assertContentEquals(bytes, artifacts.read(reference.id))
+                assertTrue(stored.id !in history.selectedIds(conversation.id, ConversationMessageSelection.PLAIN))
+                val prepared = artifacts.materializeSnapshot(conversation.id, listOf(stored))
+                val projected = com.gromozeka.domain.model.ai.AiRuntimeRequest(emptyList(), prepared).projectedMessages().single()
+                assertEquals(Conversation.Message.Role.USER, projected.role)
+                assertTrue(assertIs<ContentItem.UserMessage>(projected.content.single()).text.contains("runtime_notification"))
             }
         } finally {
             DriverManager.getConnection(url, username, password).use { connection ->

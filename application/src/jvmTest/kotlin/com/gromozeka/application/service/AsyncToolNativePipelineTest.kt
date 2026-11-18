@@ -117,8 +117,10 @@ class AsyncToolNativePipelineTest {
         } finally { rejected.scope.cancel() }
         val inline = Fixture(inlineOnly = true)
         try {
-            inline.begin()
-            assertFailsWith<IllegalArgumentException> { inline.executeSource() }
+            inline.begin(); inline.executeSource()
+            val refusal = inline.messages.last().content.filterIsInstance<ContentItem.ToolResult>().single()
+            assertTrue(refusal.isError)
+            assertTrue(assertIs<ContentItem.ToolResult.Data.Text>(refusal.result.single()).content.contains("next model request"))
             assertTrue(inline.store.records.isEmpty())
             assertEquals(0, inline.effects.get())
             assertEquals(0, inline.approvalCount)

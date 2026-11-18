@@ -49,7 +49,7 @@ class CommandScriptHttpTest {
             assertEquals(200, catalog.status, catalog.contentAsString)
             val definition = Json.parseToJsonElement(catalog.contentAsString).jsonObject.getValue("result").jsonObject
                 .getValue("tools").jsonArray.single().jsonObject
-            assertFalse("_grz" in definition.getValue("inputSchema").jsonObject.getValue("properties").jsonObject)
+            assertEquals(setOf("async"), definition.getValue("inputSchema").jsonObject.getValue("properties").jsonObject.getValue("_grz").jsonObject.getValue("properties").jsonObject.keys)
             val params = buildJsonObject { put("name", "scoped"); put("arguments", buildJsonObject {}) }
             val result = rpc("tools/call", params)
             assertEquals(200, result.status, result.contentAsString)
@@ -58,6 +58,19 @@ class CommandScriptHttpTest {
             assertEquals(f.user.id.value, observed.single().getString(TOOL_CONTEXT_USER_ID))
             assertEquals(f.agent.id.value, observed.single().getString(TOOL_CONTEXT_AGENT_DEFINITION_ID))
             assertEquals(f.conversation.id.value, observed.single().getString(TOOL_CONTEXT_CONVERSATION_ID))
+            val async = rpc("tools/call", buildJsonObject {
+                put("name", "scoped")
+                put("arguments", buildJsonObject {
+                    put("_grz", buildJsonObject { put("async", true); put("source_task_id", "forged") })
+                    put("context", buildJsonObject { put("asyncOrigin", "forged") })
+                })
+            })
+            assertEquals(200, async.status)
+            val asyncResult = Json.parseToJsonElement(async.contentAsString).jsonObject.getValue("result").jsonObject
+            assertEquals(JsonPrimitive(true), asyncResult["isError"])
+            assertEquals(JsonPrimitive("async_origin_required"), asyncResult.getValue("structuredContent").jsonObject.getValue("error").jsonObject["code"])
+            assertEquals(1, observed.size)
+            assertTrue(f.records.records.isEmpty())
             allowed = false
             val rejected = rpc("tools/call", params)
             assertEquals(401, rejected.status)

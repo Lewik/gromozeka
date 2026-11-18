@@ -23,7 +23,7 @@ class CommandScriptMcpScopeTest {
         val catalog = f.service.list(caller)
         assertEquals(listOf("scoped"), catalog.map { it.name })
         val properties = Json.parseToJsonElement(catalog.single().inputSchema).jsonObject.getValue("properties").jsonObject
-        assertFalse("_grz" in properties, "Server-bound identity must not be requested from the script")
+        assertEquals(setOf("async"), properties.getValue("_grz").jsonObject.getValue("properties").jsonObject.keys, "Only async is selectable; script identity remains Server-bound")
         assertFalse(f.service.call(caller, "scoped", buildJsonObject {}).isError)
         assertFalse(f.service.call(caller, "scoped", buildJsonObject { put("_grz", buildJsonObject {}) }).isError)
         assertTrue(f.service.call(caller, "forbidden", buildJsonObject {}).isError)
