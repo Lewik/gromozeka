@@ -4,7 +4,7 @@ import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpAnthropicClient
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
 import com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient
-import com.gromozeka.infrastructure.ai.runtime.SdkHttpTransport
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool
 import com.gromozeka.infrastructure.ai.runtime.AnthropicControlledHttpClient
 import com.gromozeka.infrastructure.ai.runtime.safeHttpFailure
 import com.gromozeka.domain.model.ai.AiHttpSettings
@@ -86,6 +86,7 @@ import java.util.Base64
 @Service
 internal class AnthropicSdkRuntimeBackend(
     private val settingsProvider: SettingsProvider,
+    private val httpClients: SdkHttpClientPool,
     private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : AiRuntimeBackend {
 
@@ -149,7 +150,7 @@ internal class AnthropicSdkRuntimeBackend(
         val settings = SdkHttpSupport.settings(connection)
         val baseUrl = SdkHttpSupport.baseUrl(connection, "https://api.anthropic.com")
         val token = SdkHttpSupport.token(connection, settingsProvider, "ANTHROPIC_API_KEY")
-        val transport = SdkHttpTransport(settings, baseUrl, deadlineNanos)
+        val transport = httpClients.openTransport(connection, baseUrl, deadlineNanos)
         try {
             val backend = com.anthropic.backends.AnthropicBackend.builder().baseUrl(baseUrl).apply {
                 when (settings.authentication) {

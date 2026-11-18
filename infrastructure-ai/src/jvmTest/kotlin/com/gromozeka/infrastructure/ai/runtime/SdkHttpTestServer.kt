@@ -14,13 +14,15 @@ internal class SdkHttpTestServer(
     responseBodies: List<Reply>,
     sslContext: SSLContext? = null,
     private val expectedTarget: String? = null,
+    concurrentRequests: Int = 1,
+    private val beforeReply: (RecordedRequest) -> Unit = {},
 ) : AutoCloseable {
     constructor(vararg responseBodies: String) : this(responseBodies.map { Reply(it) })
 
     data class Reply(val body: String, val status: Int = 200, val headers: Map<String, String> = emptyMap())
 
     private val recorded = ConcurrentLinkedQueue<RecordedRequest>()
-    private val executor = Executors.newSingleThreadExecutor { runnable ->
+    private val executor = Executors.newFixedThreadPool(concurrentRequests) { runnable ->
         Thread(runnable, "sdk-http-test-server").apply { isDaemon = true }
     }
     private val responses = ConcurrentLinkedQueue(responseBodies)
@@ -35,7 +37,8 @@ internal class SdkHttpTestServer(
         executor = this@SdkHttpTestServer.executor
         createContext("/") { exchange ->
             try {
-                recorded += RecordedRequest(
+                val request = RecordedRequest(
+                    remoteAddress = exchange.remoteAddress,
                     method = exchange.requestMethod,
                     target = exchange.requestURI.toASCIIString(),
                     headers = exchange.requestHeaders.entries.associate {
@@ -43,6 +46,8 @@ internal class SdkHttpTestServer(
                     },
                     body = exchange.requestBody.use { it.readBytes().toString(Charsets.UTF_8) },
                 )
+                recorded += request
+                beforeReply(request)
                 val reply = if (expectedTarget != null && exchange.requestURI.toASCIIString() != expectedTarget) {
                     Reply("""{"error":{"message":"Endpoint is disabled","type":"not_found_error"}}""", status = 404)
                 } else checkNotNull(responses.poll()) { "Unexpected extra HTTP request in test" }
@@ -68,6 +73,7 @@ internal class SdkHttpTestServer(
     }
 
     data class RecordedRequest(
+        val remoteAddress: InetSocketAddress,
         val method: String,
         val target: String,
         val headers: Map<String, List<String>>,

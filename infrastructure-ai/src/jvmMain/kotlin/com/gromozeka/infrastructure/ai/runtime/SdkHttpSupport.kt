@@ -75,16 +75,21 @@ internal object SdkHttpSupport {
         return if (settings.bypassesProxy(endpoint.host, port)) Proxy.NO_PROXY else configuredProxy
     }
 
-    fun tls(settings: AiHttpSettings): Tls? {
+    fun readCaBundle(settings: AiHttpSettings): ByteArray? {
         val configuredPath = settings.caBundlePath ?: return null
         val path = try { Path.of(configuredPath) } catch (_: IllegalArgumentException) {
             throw IllegalArgumentException("Invalid CA bundle path on the execution target")
         }
         require(path.isAbsolute) { "CA bundle path must be absolute on the execution target" }
-        val certificates = try {
-            Files.newInputStream(path).use { CertificateFactory.getInstance("X.509").generateCertificates(it) }
-        } catch (_: java.io.IOException) {
+        return try { Files.readAllBytes(path) } catch (_: java.io.IOException) {
             throw IllegalStateException("Cannot read the configured CA bundle on the execution target")
+        }
+    }
+
+    fun tls(caBundle: ByteArray?): Tls? {
+        if (caBundle == null) return null
+        val certificates = try {
+            caBundle.inputStream().use { CertificateFactory.getInstance("X.509").generateCertificates(it) }
         } catch (_: CertificateException) {
             throw IllegalArgumentException("CA bundle must contain valid X.509 certificates")
         }

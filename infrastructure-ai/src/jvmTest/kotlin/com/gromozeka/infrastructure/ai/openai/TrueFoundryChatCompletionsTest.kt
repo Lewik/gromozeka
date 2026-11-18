@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool
+import kotlin.test.AfterTest
+
 import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
 
 import com.gromozeka.domain.model.AppMode
@@ -27,6 +30,10 @@ import kotlin.time.Instant
 
 /** Real SDK and production runtime against synthetic gateway replies; no live TrueFoundry credentials. */
 class TrueFoundryChatCompletionsTest {
+    private val httpClients = SdkHttpClientPool()
+    @AfterTest
+    fun closeHttpClients() = httpClients.close()
+
     @Test
     fun `chat-only gateway supports encrypted reasoning tool replay schema and controlled 429 retry`() = runBlocking {
         val replies = listOf(
@@ -411,7 +418,7 @@ class TrueFoundryChatCompletionsTest {
         val spec = AiModelSpec(model, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)),
             behavior = AiModelBehavior(chatSchemaEmptyToolCallsAsStop = workaround))
-        return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
+        return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission = TestAiAdmission())))
             .getRuntime(ResolvedAiRuntime(connection, configuration, spec), null)
     }
 

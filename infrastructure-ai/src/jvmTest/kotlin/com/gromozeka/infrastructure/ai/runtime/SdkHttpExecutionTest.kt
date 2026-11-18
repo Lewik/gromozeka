@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.runtime
 
+import kotlin.test.AfterTest
+
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.*
@@ -26,6 +28,10 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 class SdkHttpExecutionTest {
+    private val httpClients = SdkHttpClientPool()
+    @AfterTest
+    fun closeHttpClients() = httpClients.close()
+
     @Test
     fun `all SDK APIs retry only complete 429 with one token snapshot and unchanged model`() = runBlocking {
         for (api in Api.entries) {
@@ -268,7 +274,7 @@ class SdkHttpExecutionTest {
     fun `cancellation is installed before SDK request preparation can reach native HTTP`() = runBlocking {
         SdkHttpTestServer(Api.CHAT.reply()).use { server ->
             val connection = Api.CHAT.connection(server.origin)
-            val factory = OpenAiSdkClientFactory(Sources())
+            val factory = OpenAiSdkClientFactory(Sources(), httpClients)
             val executor = SdkHttpCallExecutor(connection, 5, admission = TestAiAdmission()) { factory.createInferenceClient(connection, it) }
             val preparing = CountDownLatch(1)
             val release = CountDownLatch(1)
@@ -417,8 +423,8 @@ class SdkHttpExecutionTest {
             content = listOf(Conversation.Message.ContentItem.UserMessage("Hello")), createdAt = Instant.fromEpochMilliseconds(0))),
         options = AiRuntimeOptions(maxOutputTokens = 128, executionDeadline = deadlineMillis?.let { Clock.System.now() + it.milliseconds }))
     private fun runtime(connection: AiConnection, sources: Sources = Sources(), timeoutSeconds: Int? = null, modelId: String = "synthetic", admission: AiCallAdmission = TestAiAdmission(), tpm: AiTpmPolicy? = null): AiRuntime {
-        val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(sources, admission = admission)
-            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(sources), admission = admission)
+        val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(sources, httpClients, admission = admission)
+            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(sources, httpClients), admission = admission)
         val model = AiModelConfiguration(AiModelConfiguration.Id(modelId), connection.id, MODEL, "Synthetic",
             defaultParameters = AiModelConfiguration.DefaultParameters(timeoutSeconds = timeoutSeconds), tpm = tpm)
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),

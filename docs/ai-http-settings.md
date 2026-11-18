@@ -294,13 +294,13 @@ A configured endpoint always requires an explicit credential reference, even if
 its URL happens to equal a vendor's public URL. No provider profile-file or
 alternate-auth-token discovery is performed.
 
-A new owned SDK client is created and closed for each logical inference call.
-The selected file is reread before that call, even when the runtime object is
-reused; that token stays fixed across the call's controlled HTTP attempts. This trades
-cross-call connection-pool reuse for straightforward credential rotation and
-resource ownership. Catalog secret edits are picked up when the next runtime
-context resolves the updated catalog; no application restart is needed. Updating
-an unrelated shell's environment cannot change an already running JVM's
+Each logical call owns an SDK session, but network resources are shared by the
+executor-local `SdkHttpClientPool`. The selected credential file is reread before
+that call, even when the runtime object is reused; that token stays fixed across
+the call's controlled HTTP attempts. Credentials and extra headers are not cached
+in the shared network client. Catalog secret edits are picked up when the next
+runtime context resolves the updated catalog; no application restart is needed.
+Updating an unrelated shell's environment cannot change an already running JVM's
 inherited environment. Use file or catalog rotation for that case.
 
 JWT-shaped tokens with a numeric `exp` can produce a log warning when their
@@ -310,12 +310,51 @@ unchanged. No token or decoded private claims are printed. A 401 means rejected
 authentication, not necessarily expiry; a 403 is reported separately as access
 denial. Neither triggers an automatic login or token refresh.
 
+## Connection reuse and measurements
+
+OpenAI Chat/Responses, direct Anthropic Messages, and their existing embeddings,
+speech, token-count, compaction and model-discovery calls use the same transport
+owner. Different conversations and runtime instances can reuse connections for
+the same configured connection ID, inference prefix, effective proxy and CA
+content. Different connection IDs have separate pools. Resources are local to
+the Server or Worker process executing the call; they are not shared between
+processes or machines.
+
+Each call keeps its own cancellation, deadline, feedback and response-body
+ownership. Closing one session does not shut down the shared dispatcher or evict
+another session's connections. Harness admission remains the concurrency limiter;
+sharing the dispatcher adds no separate per-host request limit. Automatic retries
+and redirects remain disabled. Proxy/endpoint/CA changes retire the old resource;
+its active calls can finish before it is closed. Process shutdown also closes
+active retired sessions. Idle sockets keep OkHttp's defaults (five idle sockets,
+five minutes); unused resource entries are retired on later acquisitions after
+five idle minutes. No connection-count or keep-alive UI setting is introduced.
+
+`SDK HTTP` logs contain only outcome, elapsed/connect/TLS milliseconds, connection
+attempt count, whether an existing connection was reused, and request/response
+body byte counts. These are native HTTP measurements, not complete Harness
+preparation or admission times. Connect time includes TLS rather than being an
+additional disjoint phase. Logs contain no URL, headers, prompt/response content,
+tokens or exception text. They do not enable SDK traffic dumps.
+
+`SdkHttpPoolingTest` uses real local HTTP/HTTPS with synthetic TrueFoundry-style
+prefixes, Bearer authentication and metadata. Its synthetic HTTPS benchmark
+compares fresh transport owners (the previous per-call lifecycle) against one
+shared owner while sending the same long history. It reports timings and asserts
+socket reuse, not a hardware-dependent speed threshold. This is not acceptance
+against a real gateway and does not establish a production latency improvement.
+
+Subscription WebSocket and Bedrock transports are separate and unchanged. This
+change does not enable SSE, `store`, `previous_response_id`, or provider-side
+conversation state.
+
 ## TLS, proxy and headers
 
 - `caBundlePath` is an absolute executor-local path to additional X.509 trust
   certificates. These supplement JVM/system trust; they never replace it or
-  disable TLS/hostname checks. Bad or missing bundles fail before HTTP. The
-  bundle is loaded when the per-call client is created.
+  disable TLS/hostname checks. Bad or missing bundles fail before HTTP. Current
+  bundle bytes are read for each logical call. TLS resources are reused only for
+  identical bytes, so rotation at the same path is observed before reuse.
 - `proxyUrl` supports an HTTP proxy endpoint, including CONNECT for HTTPS
   inference. HTTPS-to-proxy, SOCKS and proxy credentials in the URL are not
   supported. An unspecified proxy leaves SDK/JVM system proxy selection intact;

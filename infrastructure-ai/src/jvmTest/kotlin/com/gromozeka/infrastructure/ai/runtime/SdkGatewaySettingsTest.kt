@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.runtime
 
+import kotlin.test.AfterTest
+
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.AiRuntime
@@ -21,6 +23,10 @@ import kotlin.test.*
 import kotlin.time.Instant
 
 class SdkGatewaySettingsTest {
+    private val httpClients = SdkHttpClientPool()
+    @AfterTest
+    fun closeHttpClients() = httpClients.close()
+
     @Test
     fun `actual SDK runtimes send exact gateway prefix one Bearer token and configured headers`() = runBlocking {
         for (api in Api.entries) for (suffix in listOf("", "/")) {
@@ -72,7 +78,7 @@ class SdkGatewaySettingsTest {
             }
         }
         val sources = Sources()
-        val factory = OpenAiSdkClientFactory(sources)
+        val factory = OpenAiSdkClientFactory(sources, httpClients)
         val native = AiConnection.OpenAiApi(AiConnection.Id("native"), "Native")
         assertEquals("ambient-native-secret", factory.resolveApiKey(native))
         assertEquals<List<SecretRef?>>(listOf(SecretRef.EnvironmentVariable("OPENAI_API_KEY")), sources.reads)
@@ -154,7 +160,7 @@ class SdkGatewaySettingsTest {
             val system = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(null as KeyStore?) }
                 .trustManagers.filterIsInstance<X509TrustManager>().single()
             val tlsSettings = AiHttpSettings(authentication = AiHttpSettings.Authentication.BEARER, caBundlePath = identity.caBundle.toString(), noProxy = listOf("*"))
-            val combined = SdkHttpSupport.tls(tlsSettings)!!.trustManager.acceptedIssuers.toSet()
+            val combined = SdkHttpSupport.tls(SdkHttpSupport.readCaBundle(tlsSettings))!!.trustManager.acceptedIssuers.toSet()
             assertTrue(combined.containsAll(system.acceptedIssuers.toSet()))
             assertTrue(combined.size > system.acceptedIssuers.toSet().size)
             for (api in Api.entries) {
@@ -180,14 +186,14 @@ class SdkGatewaySettingsTest {
         val directory = Files.createTempDirectory("grz-sdk-ca-")
         try {
             val missing = directory.resolve("missing.pem")
-            assertFailsWith<IllegalStateException> { SdkHttpSupport.tls(AiHttpSettings(caBundlePath = missing.toString())) }
+            assertFailsWith<IllegalStateException> { SdkHttpSupport.tls(SdkHttpSupport.readCaBundle(AiHttpSettings(caBundlePath = missing.toString()))) }
             val file = directory.resolve("ca.pem")
             for (body in listOf("", "private-invalid-ca-marker")) {
                 Files.writeString(file, body)
-                val error = assertFailsWith<IllegalArgumentException> { SdkHttpSupport.tls(AiHttpSettings(caBundlePath = file.toString())) }
+                val error = assertFailsWith<IllegalArgumentException> { SdkHttpSupport.tls(SdkHttpSupport.readCaBundle(AiHttpSettings(caBundlePath = file.toString()))) }
                 assertFalse(error.toString().contains("private-invalid-ca-marker"))
             }
-            assertFailsWith<IllegalArgumentException> { SdkHttpSupport.tls(AiHttpSettings(caBundlePath = "relative.pem")) }
+            assertFailsWith<IllegalArgumentException> { SdkHttpSupport.tls(SdkHttpSupport.readCaBundle(AiHttpSettings(caBundlePath = "relative.pem"))) }
         } finally { directory.toFile().deleteRecursively() }
     }
 
@@ -206,8 +212,8 @@ class SdkGatewaySettingsTest {
     }
 
     private fun runtime(connection: AiConnection, source: Sources = Sources()): AiRuntime {
-        val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(source, admission = TestAiAdmission())
-            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(source), admission = TestAiAdmission())
+        val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API) AnthropicSdkRuntimeBackend(source, httpClients, admission = TestAiAdmission())
+            else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(source, httpClients), admission = TestAiAdmission())
         val model = AiModelConfiguration(AiModelConfiguration.Id("synthetic-model"), connection.id, MODEL, "Synthetic")
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)))

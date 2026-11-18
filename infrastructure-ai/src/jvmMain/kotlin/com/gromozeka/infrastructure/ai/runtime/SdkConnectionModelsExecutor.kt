@@ -19,6 +19,7 @@ import kotlin.time.Instant
 @Service
 class SdkConnectionModelsExecutor(
     private val settingsProvider: SettingsProvider,
+    private val httpClients: SdkHttpClientPool,
     private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : AiConnectionModelsExecutor {
     override suspend fun listModels(connection: AiConnection, deadline: Instant): AiConnectionModels {
@@ -36,7 +37,7 @@ class SdkConnectionModelsExecutor(
                     else header("Authorization", "Bearer $token")
                     SdkHttpSupport.headers(settings).forEach { (name, value) -> header(name, value) }
                 }.build()
-            val transport = SdkHttpTransport(settings, baseUrl, end)
+            val transport = httpClients.openTransport(connection, baseUrl, end)
             SdkInferenceClient(ModelsClient(request, transport), transport) {}
         }
         return executor.call(AiRuntimeOptions(executionDeadline = deadline, usagePurpose = "MODEL_DISCOVERY")) { client, _ -> client.read() }

@@ -1,6 +1,5 @@
 package com.gromozeka.infrastructure.ai.runtime
 
-import com.gromozeka.domain.model.ai.AiHttpSettings
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiHttpQuotaFeedback
 import com.gromozeka.domain.model.ai.AiAdmissionOutcome
@@ -34,7 +33,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 /** Owns native calls through body parsing: cancelling an SDK's derived future alone does not do that. */
-internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, private val deadlineNanos: Long) : AutoCloseable {
+internal class SdkHttpTransport(sharedClient: OkHttpClient, private val deadlineNanos: Long,
+    private val release: () -> Unit) : AutoCloseable {
     private val lock = Any()
     private var closed = false
     private val calls = mutableSetOf<Call>()
@@ -74,7 +74,8 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
     }
 
     private class ExchangeGuard { val exchanges = java.util.concurrent.atomic.AtomicInteger() }
-    private val client = OkHttpClient.Builder()
+    private val client = sharedClient.newBuilder()
+        .eventListenerFactory { SdkHttpCallMetrics() }
         .addNetworkInterceptor(AiTrafficDumpInterceptor("sdk"))
         .addNetworkInterceptor { chain ->
             val guard = requireNotNull(chain.request().tag(ExchangeGuard::class.java))
@@ -85,13 +86,6 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
                     retryAfterMillis = parseRetryAfter(response.header("Retry-After"))) }
             }
         }
-        .retryOnConnectionFailure(false)
-        .followRedirects(false)
-        .followSslRedirects(false)
-        .readTimeout(0, TimeUnit.MILLISECONDS)
-        .writeTimeout(0, TimeUnit.MILLISECONDS)
-        .proxy(SdkHttpSupport.proxy(settings, baseUrl))
-        .apply { SdkHttpSupport.tls(settings)?.let { sslSocketFactory(it.socketFactory, it.trustManager) } }
         .build()
 
     data class Attempt(val started: Boolean = false, val status: Int? = null, val bodyComplete: Boolean = false,
@@ -225,10 +219,12 @@ internal class SdkHttpTransport(settings: AiHttpSettings, baseUrl: String, priva
             closed = true
             calls.toList() to responses.toList()
         }
-        active.first.forEach(Call::cancel)
-        active.second.forEach(NativeResponse::close)
-        client.dispatcher.executorService.shutdown()
-        client.connectionPool.evictAll()
+        try {
+            active.first.forEach(Call::cancel)
+            active.second.forEach(NativeResponse::close)
+        } finally {
+            release()
+        }
     }
 }
 
