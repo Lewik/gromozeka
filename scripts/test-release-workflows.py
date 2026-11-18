@@ -177,11 +177,13 @@ class WorkflowContracts(unittest.TestCase):
         job = JOBS["verify-ios"]
         self.assertEqual(90, int(job["timeout-minutes"]))
         options = job.get("env", {}).get("GRADLE_OPTS", "")
-        for required in ("-Xmx4g", "org.gradle.workers.max=1", "org.gradle.parallel=false",
+        for required in ("-Xmx${{ matrix.heap }}", "org.gradle.workers.max=1", "org.gradle.parallel=false",
                          "kotlin.compiler.execution.strategy=in-process"):
             self.assertIn(required, options)
         self.assertFalse(any("GRADLE_OPTS" in step.get("env", {}) for step in job["steps"]))
         matrix = job["strategy"]["matrix"]["include"]
+        self.assertEqual({"client-device": "5g", "client-simulator": "5g", "worker-device": "4g", "worker-simulator": "4g"},
+                         {item["target"]: item["heap"] for item in matrix})
         expected = {
             "client-device": ("iosApp", "iphoneos", "Gromozeka.app"),
             "client-simulator": ("iosApp", "iphonesimulator", "Gromozeka.app"),
@@ -193,7 +195,7 @@ class WorkflowContracts(unittest.TestCase):
         self.assertEqual(1, len(steps))
         script = steps[0]["run"]
         for required in ("-project iosApp/iosApp.xcodeproj", '-target "${{ matrix.app_target }}"',
-                         '-sdk "${{ matrix.sdk }}"', "-configuration Release", "ARCHS=arm64",
+                         '-sdk "${{ matrix.sdk }}"', "-jobs 1", "-configuration Release", "ARCHS=arm64",
                          "CODE_SIGNING_ALLOWED=NO", "CODE_SIGNING_REQUIRED=NO", "CODE_SIGN_IDENTITY=",
                          "DEVELOPMENT_TEAM=", "MARKETING_VERSION=${{ needs.metadata.outputs.version }}",
                          "${{ matrix.app_bundle }}", 'test -f "$app/$executable"',

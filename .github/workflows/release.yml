@@ -390,31 +390,36 @@ jobs:
     # Xcode owns Release framework linking; native test tasks must not pre-link it.
     timeout-minutes: 90
     # Bound both standalone native tasks and Xcode's embedded Gradle invocation.
+    # Compose Client Release linking exceeded 4 GiB; keep the smaller Worker budget unchanged.
     env:
       GRADLE_OPTS: >-
         -Dorg.gradle.workers.max=1 -Dorg.gradle.parallel=false
-        -Dorg.gradle.jvmargs='-Xmx4g -Xms256m -XX:MaxMetaspaceSize=768m'
+        -Dorg.gradle.jvmargs='-Xmx${{ matrix.heap }} -Xms256m -XX:MaxMetaspaceSize=768m'
         -Dorg.gradle.project.kotlin.compiler.execution.strategy=in-process
     strategy:
       fail-fast: true
       matrix:
         include:
           - target: client-device
+            heap: 5g
             tasks: ""
             app_target: iosApp
             sdk: iphoneos
             app_bundle: Gromozeka.app
           - target: client-simulator
+            heap: 5g
             tasks: ":shared:iosSimulatorArm64Test"
             app_target: iosApp
             sdk: iphonesimulator
             app_bundle: Gromozeka.app
           - target: worker-device
+            heap: 4g
             tasks: ""
             app_target: iosWorkerApp
             sdk: iphoneos
             app_bundle: GromozekaWorker.app
           - target: worker-simulator
+            heap: 4g
             tasks: ":mobile-worker:iosSimulatorArm64Test"
             app_target: iosWorkerApp
             sdk: iphonesimulator
@@ -445,7 +450,7 @@ jobs:
           build_root="$PWD/build/ios-app-${{ matrix.target }}"
           xcodebuild -project iosApp/iosApp.xcodeproj \
             -target "${{ matrix.app_target }}" -configuration Release \
-            -sdk "${{ matrix.sdk }}" -jobs 2 ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            -sdk "${{ matrix.sdk }}" -jobs 1 ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
             SYMROOT="$build_root/products" OBJROOT="$build_root/intermediates" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM= \
