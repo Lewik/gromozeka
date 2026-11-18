@@ -173,6 +173,26 @@ class SlotApplicationService(
         return SlotCommandOrigin(slot.id, slot.number, lease.id)
     }
 
+    suspend fun captureAsyncOrigin(actorUserId: User.Id, conversationId: Conversation.Id, mountId: WorkspaceMount.Id): SlotCommandOrigin? {
+        val mount = requireNotNull(workspaces.findMount(mountId)) { "Async workspace mount is unavailable" }
+        val slot = repository.findByWorkspace(mount.workspaceId) ?: return null
+        require(slot.userId == actorUserId) { "Async checkout belongs to another slot owner" }
+        val lease = repository.snapshot(slot.number)?.leases?.singleOrNull {
+            it.conversationId == conversationId && it.actorUserId == actorUserId
+        } ?: error("Async checkout requires its calling conversation's slot lease")
+        return SlotCommandOrigin(slot.id, slot.number, lease.id)
+    }
+
+    suspend fun sameAsyncOrigin(actorUserId: User.Id, conversationId: Conversation.Id, mountId: WorkspaceMount.Id, captured: SlotCommandOrigin?): Boolean {
+        val mount = workspaces.findMount(mountId) ?: return false
+        val slot = repository.findByWorkspace(mount.workspaceId) ?: return captured == null
+        if (slot.userId != actorUserId) return false
+        val lease = repository.snapshot(slot.number)?.leases?.singleOrNull {
+            it.conversationId == conversationId && it.actorUserId == actorUserId
+        } ?: return false
+        return captured == SlotCommandOrigin(slot.id, slot.number, lease.id)
+    }
+
     suspend fun processPending() {
         var cursor: User.Id? = null
         while (true) {

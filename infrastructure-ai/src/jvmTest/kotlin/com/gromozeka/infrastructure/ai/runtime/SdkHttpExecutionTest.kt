@@ -463,7 +463,7 @@ class SdkHttpExecutionTest {
     }
 }
 
-/** A real HTTP/1 socket makes peer EOF observable even when the response parser is blocked. */
+/** A real HTTP/1 socket observes peer FIN or reset even when the response parser is blocked. */
 internal class StalledServer(partialBody: Boolean, drop: Boolean = false, status: Int = 200,
     contentType: String = "application/json", partialContent: String = "{\"id\":\"partial") : AutoCloseable {
     private val listener = ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"))
@@ -496,7 +496,12 @@ internal class StalledServer(partialBody: Boolean, drop: Boolean = false, status
                         accepted.getOutputStream().flush()
                     }
                     started.countDown()
-                    if (!drop) peerClosed.complete(input.read())
+                    if (!drop) peerClosed.complete(try {
+                        input.read()
+                    } catch (reset: java.net.SocketException) {
+                        // Cancelling an unread HTTP response may close with TCP RST instead of FIN.
+                        if (reset.message?.startsWith("Connection reset") == true) -1 else throw reset
+                    })
                 }
             } catch (error: Exception) { peerClosed.completeExceptionally(error); started.countDown() }
         }

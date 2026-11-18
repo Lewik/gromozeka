@@ -62,7 +62,7 @@ class GromozekaStatelessMcpHttpTest {
             assertTrue(result(denied).getValue("isError").jsonPrimitive.boolean)
             assertEquals(JsonPrimitive("forbidden"), result(denied).getValue("structuredContent").jsonObject.getValue("error").jsonObject["code"])
             assertEquals(401, rpc("tools/call", arguments, null).status)
-            assertFalse("_grz" in definition.getValue("inputSchema").jsonObject.getValue("properties").jsonObject)
+            assertEquals(setOf("async"), definition.getValue("inputSchema").jsonObject.getValue("properties").jsonObject.getValue("_grz").jsonObject.getValue("properties").jsonObject.keys)
             for (injected in listOf(
                 buildJsonObject { put("_grz", buildJsonObject { put("user_id", owner.id.value) }) },
                 buildJsonObject { put("_grz", buildJsonObject { put("conversation_id", "unneeded") }) },

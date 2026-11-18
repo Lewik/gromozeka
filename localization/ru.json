@@ -4,6 +4,7 @@
   "name": "Русский",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Уведомление Runtime",
     "ai.connection.responses_streaming": "Поток Responses (SSE)",
     "ai.connection.responses_streaming_description": "Принимать ответ потоком внутри приложения; проверка и полный ответ не меняются.",
     "ai.connection.responses_stored_continuation": "Продолжение истории у провайдера",

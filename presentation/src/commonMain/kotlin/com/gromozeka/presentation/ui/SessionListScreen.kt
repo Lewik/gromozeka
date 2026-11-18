@@ -530,7 +530,7 @@ private fun ConversationItem(
                         text = listOfNotNull(hit.role?.let { role -> localization.text(when (role) {
                             Conversation.Message.Role.USER -> "search.role.user"
                             Conversation.Message.Role.ASSISTANT -> "search.role.assistant"
-                            Conversation.Message.Role.SYSTEM -> "search.role.system"
+                            Conversation.Message.Role.SYSTEM, Conversation.Message.Role.RUNTIME_NOTIFICATION -> "search.role.system"
                         }) }, hit.excerpt.takeIf(String::isNotBlank))
                             .joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,

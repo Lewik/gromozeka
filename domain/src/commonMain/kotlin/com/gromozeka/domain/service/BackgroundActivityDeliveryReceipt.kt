@@ -7,8 +7,9 @@ data class BackgroundActivityDeliveryReceipt(
     val commands: Set<CommandTask.Id> = emptySet(),
     val monitorEvents: Set<CommandMonitorEvent.Id> = emptySet(),
     val terminalMonitors: Set<CommandMonitor.Id> = emptySet(),
+    val asyncTools: Set<com.gromozeka.domain.model.AsyncToolOperation.Id> = emptySet(),
 ) {
-    init { require(commands.isNotEmpty() || monitorEvents.isNotEmpty() || terminalMonitors.isNotEmpty()) }
+    init { require(commands.isNotEmpty() || monitorEvents.isNotEmpty() || terminalMonitors.isNotEmpty() || asyncTools.isNotEmpty()) }
 }
 
 data class BackgroundActivityAcknowledgedState(
@@ -17,7 +18,7 @@ data class BackgroundActivityAcknowledgedState(
     val events: List<CommandMonitorEvent>,
 )
 
-/** Validate the whole set before changing any state. Both coordinators invoke this inside their transaction. */
+/** Validate command/monitor receipts; async receipts are validated against their canonical invocation store in the same coordinator transaction. */
 fun acknowledgeBackgroundActivities(
     receipts: List<BackgroundActivityDeliveryReceipt>,
     commands: List<CommandTask>,

@@ -604,6 +604,7 @@ private class GitHubCopilotRequestMapper {
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
             is Conversation.Message.ContentItem.Thinking -> xmlBlock("thinking", item.thinking)
             is Conversation.Message.ContentItem.System -> xmlBlock("system", item.content)
+            is Conversation.Message.ContentItem.RuntimeNotification -> error("Runtime notifications must be projected before provider lowering")
             is Conversation.Message.ContentItem.ToolCall ->
                 "<tool_call id=\"${xmlEscape(item.id.value)}\" name=\"${xmlEscape(item.call.name)}\">" +
                     xmlEscape(item.call.input.toString()) +

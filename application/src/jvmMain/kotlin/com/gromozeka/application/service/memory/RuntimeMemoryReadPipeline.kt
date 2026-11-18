@@ -1,5 +1,6 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.serviceDataTextOrNull
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEvidenceRef
@@ -946,6 +947,7 @@ private fun MemoryReadRequest.targetQueryText(): String {
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall -> "Tool call: ${item.call.name}"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
+            is com.gromozeka.domain.model.Conversation.Message.ContentItem.RuntimeNotification -> item.serviceDataTextOrNull()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
                 is com.gromozeka.domain.model.Conversation.Message.DocumentSource.Base64DocumentSource ->

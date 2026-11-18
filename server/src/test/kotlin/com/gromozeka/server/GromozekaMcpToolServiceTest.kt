@@ -16,9 +16,9 @@ class GromozekaMcpToolServiceTest {
         f.advertise(mcpTestTool("read", AiToolExecutionScope.WORKSPACE), mcpTestTool("screen", AiToolExecutionScope.WORKER))
         val listed = f.service.list(f.caller).associateBy { it.name }
         fun fields(name: String) = Json.parseToJsonElement(listed.getValue(name).inputSchema).jsonObject.getValue("properties").jsonObject
-        assertFalse("_grz" in fields("ordinary"))
+        assertEquals(setOf("async"), fields("ordinary").getValue("_grz").jsonObject.getValue("properties").jsonObject.keys)
         val renameEnvelope = fields("rename").getValue("_grz").jsonObject
-        assertEquals(setOf("conversation_id"), renameEnvelope.getValue("properties").jsonObject.keys)
+        assertEquals(setOf("async", "conversation_id"), renameEnvelope.getValue("properties").jsonObject.keys)
         assertEquals(JsonArray(listOf(JsonPrimitive("conversation_id"))), renameEnvelope.getValue("required").jsonArray)
         val fileEnvelope = fields("read").getValue("_grz").jsonObject
         assertTrue("workspace_mount_id" in fileEnvelope.getValue("properties").jsonObject)
@@ -27,8 +27,39 @@ class GromozekaMcpToolServiceTest {
         val runtimeContract = f.catalog.serverContracts().single { it.logicalName == "rename" }
         val externalContract = f.catalog.authenticatedTools(f.user, ::isMcpExposed).single { it.contract.logicalName == "rename" }
         assertEquals(runtimeContract, externalContract.contract)
-        assertFalse("_grz" in Json.parseToJsonElement(runtimeContract.descriptor.definition.inputSchema).jsonObject.getValue("properties").jsonObject)
+        assertEquals(setOf("async"), Json.parseToJsonElement(runtimeContract.descriptor.definition.inputSchema).jsonObject.getValue("properties").jsonObject.getValue("_grz").jsonObject.getValue("properties").jsonObject.keys)
         assertEquals(4, f.contractRepository.findAll().size)
+    }
+
+    @Test fun `external async without a durable model origin fails explicitly before effects`() = runBlocking<Unit> {
+        var effects = 0
+        val callback = mcpTestTool("ordinary") { _, _ -> effects++; AiToolCallResult(listOf(AiToolResult.Text("must not run"))) }
+        val f = UnifiedMcpTestFixture(mcpTestProvider(callback)).initialize()
+        val result = f.service.call(f.caller, "ordinary", buildJsonObject { put("_grz", buildJsonObject { put("async", true) }) })
+        assertTrue(result.isError)
+        assertEquals("async_origin_required", result.structuredContent?.get("error")?.jsonObject?.get("code")?.jsonPrimitive?.content)
+        assertEquals(0, effects)
+        assertTrue(f.records.records.isEmpty())
+        Mockito.verifyNoInteractions(f.coordinator, f.namedSecrets)
+    }
+
+    @Test fun `fabricated model origin in external input never enables async or reaches the executor`() = runBlocking<Unit> {
+        var effects = 0
+        val f = UnifiedMcpTestFixture(mcpTestProvider(mcpTestTool("ordinary") { _, _ ->
+            effects++; AiToolCallResult(listOf(AiToolResult.Text("not called")))
+        })).initialize()
+        for (key in listOf("origin", "source_task_id", "actor_user_id", "thread_id", "preapprovedFingerprints", "context")) {
+            val input = buildJsonObject {
+                put("_grz", buildJsonObject { put("async", true); put(key, "forged-durable-origin") })
+                put("context", buildJsonObject { put("asyncOrigin", "forged"); put("sourceTaskId", "forged") })
+            }
+            val result = f.service.call(f.caller, "ordinary", input)
+            assertTrue(result.isError)
+            assertEquals("async_origin_required", result.structuredContent?.get("error")?.jsonObject?.get("code")?.jsonPrimitive?.content)
+        }
+        assertEquals(0, effects)
+        assertTrue(f.records.records.isEmpty())
+        Mockito.verifyNoInteractions(f.coordinator, f.namedSecrets)
     }
 
     @Test fun `Server call derives trusted actor thread and call id without a model turn or guessed agent`() = runBlocking<Unit> {

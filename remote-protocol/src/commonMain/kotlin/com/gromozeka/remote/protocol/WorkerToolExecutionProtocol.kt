@@ -10,6 +10,7 @@ data class WorkerToolExecutionRequest(
     val toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
     val toolContext: Map<String, String>,
     val resolvedSecretsByToolCallId: Map<String, Map<String, String>> = emptyMap(),
+    val preapprovedFingerprints: Map<String, String> = emptyMap(),
 ) {
     override fun toString(): String =
         "WorkerToolExecutionRequest(executionTarget=$executionTarget, toolCalls=$toolCalls, " +

@@ -4,6 +4,7 @@
   "name": "العربية",
   "direction": "RTL",
   "messages": {
+    "chat.service.runtime": "إشعار Runtime",
     "ai.connection.responses_streaming": "بث Responses ‏(SSE)",
     "ai.connection.responses_streaming_description": "استقبال البث داخل التطبيق؛ يبقى التحقق والرد الكامل دون تغيير.",
     "ai.connection.responses_stored_continuation": "متابعة محفوظة لدى المزوّد",

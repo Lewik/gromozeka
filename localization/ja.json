@@ -4,6 +4,7 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Runtime 通知",
     "ai.connection.responses_streaming": "Responses のストリーミング (SSE)",
     "ai.connection.responses_streaming_description": "アプリ内部でストリームを受信します。検証と完全な回答は変わりません。",
     "ai.connection.responses_stored_continuation": "プロバイダーに保存して会話を継続",

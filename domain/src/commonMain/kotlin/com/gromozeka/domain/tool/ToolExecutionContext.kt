@@ -37,6 +37,7 @@ data class ToolExecutionContext(
     private val values: Map<String, Any?> = emptyMap(),
     val cancellationSignal: ToolCancellationSignal = ToolCancellationSignal.None,
     val workerRequest: WorkerRequestExecutionContext? = null,
+    val asyncOrigin: com.gromozeka.domain.model.AsyncToolOrigin? = null,
 ) {
     /** Only a start fence: never apply the delivery TTL to an already running command. */
     fun checkStartAllowed(now: Instant = Clock.System.now()) {

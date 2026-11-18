@@ -46,7 +46,10 @@ data class StoredWorkerRequest(
     /** Latest possible RPC completion, not a managed process lifetime. Null only on pre-migration rows. */
     val executionDeadline: Instant? = null,
     val completionProjectedAt: Instant? = null,
-)
+    val asyncTool: com.gromozeka.domain.model.AsyncToolDispatchReference? = null,
+) {
+    init { require(asyncTool == null || asyncTool.operationId.value == id) { "Async child request must keep its stable operation identity" } }
+}
 
 data class PendingWorkerRequest(val id: String, val cancelRequested: Boolean)
 

@@ -4,6 +4,7 @@
   "name": "Español",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Notificación de Runtime",
     "ai.connection.responses_streaming": "Recibir Responses por streaming (SSE)",
     "ai.connection.responses_streaming_description": "Recibir el flujo internamente; la validación y la respuesta completa no cambian.",
     "ai.connection.responses_stored_continuation": "Continuación guardada en el proveedor",

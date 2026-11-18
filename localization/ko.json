@@ -4,6 +4,7 @@
   "name": "한국어",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Runtime 알림",
     "ai.connection.responses_streaming": "Responses 스트리밍 (SSE)",
     "ai.connection.responses_streaming_description": "내부적으로 스트림을 수신합니다. 검증과 전체 응답은 변경되지 않습니다.",
     "ai.connection.responses_stored_continuation": "공급자에 저장된 대화 이어가기",

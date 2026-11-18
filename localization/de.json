@@ -4,6 +4,7 @@
   "name": "Deutsch",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Runtime-Benachrichtigung",
     "ai.connection.responses_streaming": "Responses streamen (SSE)",
     "ai.connection.responses_streaming_description": "Stream intern empfangen; Prüfung und vollständige Antwort bleiben unverändert.",
     "ai.connection.responses_stored_continuation": "Beim Anbieter gespeicherte Fortsetzung",

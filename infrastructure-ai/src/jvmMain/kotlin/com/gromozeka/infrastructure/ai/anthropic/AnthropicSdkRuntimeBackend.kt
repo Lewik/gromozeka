@@ -383,6 +383,7 @@ internal class AnthropicSdkMessageMapper(
 
     private fun toMessageParam(message: Conversation.Message, modelName: String): MessageParam? {
         return when (message.role) {
+            Conversation.Message.Role.RUNTIME_NOTIFICATION -> error("Runtime notifications must be projected before provider lowering")
             Conversation.Message.Role.USER -> toUserMessageParam(message)
             Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, modelName)
             Conversation.Message.Role.SYSTEM -> null

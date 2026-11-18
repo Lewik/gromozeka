@@ -18,6 +18,8 @@ import kotlinx.serialization.json.*
 import org.springframework.stereotype.Service
 import java.util.Base64
 
+private class AsyncOriginRequiredException : IllegalArgumentException()
+
 /** HTTP adapter over the native catalog/dispatch, not an Engine turn or another tool registry. */
 @Service
 internal class GromozekaMcpToolService(
@@ -55,6 +57,9 @@ internal class GromozekaMcpToolService(
         if (entry.descriptor.metadata.accessPolicy == AiToolAccessPolicy.SERVER_OWNER && actor.role != User.Role.OWNER) {
             failure("forbidden", "Server owner permission is required")
         } else {
+            if ((arguments[AI_TOOL_INVOCATION_CONTEXT_FIELD] as? JsonObject)?.get("async") == JsonPrimitive(true)) {
+                throw AsyncOriginRequiredException()
+            }
             val callId = ContentItem.ToolCall.Id(uuid7())
             val script = (caller as? AuthenticatedMcpCaller.CommandScript)?.principal
             if (script != null && script.agentDefinitionId == null) {
@@ -116,6 +121,8 @@ internal class GromozekaMcpToolService(
         }
     } catch (cancelled: CancellationException) {
         throw cancelled
+    } catch (_: AsyncOriginRequiredException) {
+        failure("async_origin_required", "Async execution requires a durable conversation tool call and its persisted acknowledgement. This HTTP entry point does not provide that identity; the tool was not executed.")
     } catch (pending: WorkerRequestPendingException) {
         val status = buildJsonObject {
             put("status", "PENDING"); put("request_id", pending.requestId)

@@ -438,6 +438,25 @@ class MessageSquashServiceTest {
         assertTrue(f.runtimeProvider.requests.isEmpty())
     }
 
+    @Test fun `history edits reject runtime blocks and runtime authored messages before any write`() = runBlocking {
+        val f = Fixture()
+        val notice = Conversation.Message.ContentItem.RuntimeNotification(
+            Conversation.Message.ContentItem.RuntimeNotification.Level.INFO, "Server-owned outcome")
+        val counts = f.storageCounts()
+        assertFailsWith<IllegalArgumentException> {
+            f.historyService().editRuntimeHistory(f.conversation.id, f.third.id, listOf(notice))
+        }
+        assertEquals(counts, f.storageCounts())
+        f.messages.values[f.third.id] = f.third.copy(role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
+            author = Conversation.Message.Author.Runtime(), content = listOf(notice))
+        assertFailsWith<IllegalArgumentException> {
+            f.historyService().editRuntimeHistory(f.conversation.id, f.third.id,
+                listOf(Conversation.Message.ContentItem.UserMessage("client replacement")))
+        }
+        assertEquals(counts, f.storageCounts())
+        assertEquals(notice, f.messages.values.getValue(f.third.id).content.single())
+    }
+
     private class Fixture(
         runtimeFailure: Throwable? = null,
         commitConflict: Boolean = false,

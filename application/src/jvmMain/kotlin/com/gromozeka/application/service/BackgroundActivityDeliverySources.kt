@@ -29,3 +29,5 @@ internal fun CommandMonitor.hasPendingNotification(failedSources: Set<String>): 
     isTerminal && agentDefinitionId != null &&
         terminalNotificationRequestedAt != null && terminalNotificationDeliveredAt == null &&
         notificationSourceKey() !in failedSources
+
+internal fun com.gromozeka.domain.model.AsyncToolOperation.notificationSourceKey(): String = "async-tool:${id.value}"

@@ -47,7 +47,9 @@ import kotlin.time.Instant
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 
-class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
+class InMemoryConversationRuntimeCoordinator(
+    private val asyncTools: com.gromozeka.domain.repository.AsyncToolOperationRepository? = null,
+) : ConversationRuntimeCoordinator {
     private val mutex = Mutex()
     private val schedulingByConversation = mutableMapOf<Conversation.Id, ConversationRuntimeSchedulingState>()
     private val toolExecutionsByConversation =
@@ -203,6 +205,19 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                     outcome.backgroundDeliveryReceipts,
                     commandTasksByConversation[conversationId].orEmpty(), commandMonitorsByConversation[conversationId].orEmpty(),
                     commandMonitorEventsByConversation[conversationId].orEmpty(), Clock.System.now())
+                val asyncIds = outcome.backgroundDeliveryReceipts.flatMapTo(mutableSetOf()) { it.asyncTools }
+                if (asyncIds.isNotEmpty()) {
+                    val repository = checkNotNull(asyncTools) { "Async delivery requires its invocation store" }
+                    val actor = checkNotNull(current.activeTask?.actorUserId) { "Async delivery requires its captured actor" }
+                    val operations = asyncIds.map { checkNotNull(repository.find(it)) { "Acknowledged async operation is missing" } }
+                    check(operations.all { it.invocation.origin.conversationId == conversationId &&
+                        it.invocation.origin.actorUserId == actor && it.acknowledgedAt != null && it.phase.isTerminal }) {
+                        "Async delivery acknowledgement does not match its captured actor or durable outcome"
+                    }
+                    operations.filter { it.projectedAt == null }.forEach { operation ->
+                        check(repository.markProjected(operation.id, Clock.System.now())) { "Async acknowledgement lost its invocation" }
+                    }
+                }
                 commandTasksByConversation[conversationId] = acknowledged.commands.toMutableList()
                 commandMonitorsByConversation[conversationId] = acknowledged.monitors.toMutableList()
                 commandMonitorEventsByConversation[conversationId] = acknowledged.events.toMutableList()

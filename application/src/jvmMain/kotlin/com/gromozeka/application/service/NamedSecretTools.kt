@@ -101,7 +101,9 @@ class RevealNamedSecretToolCallback(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override val metadata = PreloadedServerToolMetadata.withContextRequirements(USER, CONVERSATION)
+    override val metadata = PreloadedServerToolMetadata.withContextRequirements(USER, CONVERSATION).copy(
+        inlineOnlyReason = "Secret revelation is bound to the immediate next model request.",
+    )
     override val definition = AiToolDefinition(
         name = "grz_reveal_secret",
         description = "Reveal one named secret to the model for the next model request only. Ask the user for explicit confirmation immediately before calling this tool. Never call it merely to pass a secret to another tool; use secret:// references for that.",

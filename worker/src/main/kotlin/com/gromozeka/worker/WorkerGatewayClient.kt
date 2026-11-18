@@ -308,6 +308,7 @@ class WorkerGatewayOperationHandler(
                             executor = ConversationRuntimeExecutorIdentity.Worker(identity),
                             expectedTarget = toolRequest.executionTarget,
                             resolvedSecretsByToolCallId = toolRequest.resolvedSecretsByToolCallId,
+                            preapprovedFingerprints = toolRequest.preapprovedFingerprints,
                         )
                         json.encodeToString(
                             WorkerToolExecutionResponse(

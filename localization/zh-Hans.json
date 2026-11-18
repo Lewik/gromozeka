@@ -4,6 +4,7 @@
   "name": "简体中文",
   "direction": "LTR",
   "messages": {
+    "chat.service.runtime": "Runtime 通知",
     "ai.connection.responses_streaming": "Responses 流式接收 (SSE)",
     "ai.connection.responses_streaming_description": "在应用内部接收流；验证和完整回复保持不变。",
     "ai.connection.responses_stored_continuation": "使用提供商存储的会话续接",

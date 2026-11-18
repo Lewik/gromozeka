@@ -212,6 +212,12 @@ class PostgresConversationRuntimeCoordinator(
             if (!stopped && outcome.backgroundDeliveryReceipts.isNotEmpty()) {
                 val acknowledged = com.gromozeka.domain.service.acknowledgeBackgroundActivities(outcome.backgroundDeliveryReceipts,
                     record.commandTasks, record.commandMonitors, record.commandMonitorEvents, Clock.System.now())
+                val asyncIds = outcome.backgroundDeliveryReceipts.flatMapTo(mutableSetOf()) { it.asyncTools }
+                if (asyncIds.isNotEmpty()) {
+                    record.pendingAsyncAcknowledgements = listOf(AsyncAcknowledgement(
+                        checkNotNull(record.scheduling.activeTask?.actorUserId) { "Async delivery requires its captured actor" },
+                        asyncIds, Clock.System.now()))
+                }
                 record.commandTasks = acknowledged.commands
                 record.commandMonitors = acknowledged.monitors
                 record.commandMonitorEvents = acknowledged.events
@@ -1270,6 +1276,7 @@ class PostgresConversationRuntimeCoordinator(
                 if (stored != null && record != before) {
                     val changedComponents = RuntimeComponent.entries.filter { record.componentValue(it) != before.componentValue(it) }
                     check(components.containsAll(changedComponents)) { "Runtime mutation changed an unloaded component" }
+                    connection.acknowledgeAsyncTools(record.conversationId, record.pendingAsyncAcknowledgements)
                     connection.updateRecord(record, changedComponents)
                     connection.appendJournal(record)
                     if (RuntimeComponent.SCHEDULING in changedComponents && before.schedulingState() != record.schedulingState()) {
@@ -1281,6 +1288,33 @@ class PostgresConversationRuntimeCoordinator(
             } catch (error: Throwable) {
                 connection.rollback()
                 throw error
+            }
+        }
+    }
+
+    private data class AsyncAcknowledgement(
+        val actor: com.gromozeka.domain.model.User.Id,
+        val ids: Set<com.gromozeka.domain.model.AsyncToolOperation.Id>,
+        val at: Instant,
+    )
+
+    private fun Connection.acknowledgeAsyncTools(conversationId: Conversation.Id, receipts: List<AsyncAcknowledgement>) {
+        receipts.forEach { receipt ->
+            receipt.ids.forEach { id ->
+                prepareStatement("SELECT conversation_id,actor_user_id,acknowledged_at,completed_at FROM async_tool_operations WHERE id=? FOR UPDATE").use { statement ->
+                    statement.setString(1, id.value)
+                    statement.executeQuery().use { row ->
+                        check(row.next()) { "Acknowledged async operation is missing" }
+                        check(row.getString(1) == conversationId.value && row.getString(2) == receipt.actor.value &&
+                            row.getTimestamp(3) != null && row.getTimestamp(4) != null) {
+                            "Async delivery acknowledgement does not match its captured actor or durable outcome"
+                        }
+                    }
+                }
+                prepareStatement("UPDATE async_tool_operations SET projected_at=COALESCE(projected_at,?) WHERE id=?").use { statement ->
+                    statement.setTimestamp(1, Timestamp.from(java.time.Instant.ofEpochSecond(receipt.at.epochSeconds, receipt.at.nanosecondsOfSecond.toLong())))
+                    statement.setString(2, id.value); check(statement.executeUpdate() == 1)
+                }
             }
         }
     }
@@ -1476,6 +1510,8 @@ class PostgresConversationRuntimeCoordinator(
         var eventLog: List<ConversationRuntimeEventLogEntry> = emptyList(),
         var traceSequence: Long = 0,
         var eventSequence: Long = 0,
+        @kotlinx.serialization.Transient
+        var pendingAsyncAcknowledgements: List<AsyncAcknowledgement> = emptyList(),
     ) {
         fun snapshot(): ConversationRuntimeSnapshot =
             ConversationRuntimeSnapshot(
