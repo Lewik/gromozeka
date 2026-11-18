@@ -221,7 +221,7 @@ class AsyncToolNativePipelineTest {
                 approvalCount++; return if (reject) ApprovalResult.Rejected("Denied") else ApprovalResult.Approved
             }
         }
-        val scopes = AsyncToolScopeAccess(users, conversations, projects, agents)
+        val scopes = AsyncToolScopeAccess(users, conversationRepo, projects, agents)
         val admission = AsyncToolAdmissionService(store, scopes, conversations, agents, catalog, contexts, slots, approvals, coordinator, workers)
         private val outcomes = AsyncToolOutcomeService(store, scopes)
         private val historyStore = responding<ConversationHistoryRepository> {
