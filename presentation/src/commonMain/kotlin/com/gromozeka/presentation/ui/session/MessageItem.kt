@@ -210,6 +210,13 @@ internal fun rememberMessageListEntries(
                         }
                     }
 
+                    is Conversation.Message.ContentItem.RuntimeNotification ->
+                        if (content.kind == Conversation.Message.ContentItem.RuntimeNotification.Kind.TOOL_COMPLETED) {
+                            segments += MessageSegment.Activity(contentIndex, ChatActivity.ToolCompletion(content))
+                        } else {
+                            segments += MessageSegment.Content(contentIndex, content)
+                        }
+
                     is Conversation.Message.ContentItem.ToolResult -> Unit
                     else -> segments += MessageSegment.Content(contentIndex, content)
                 }
@@ -797,6 +804,9 @@ private fun GenericContentItem(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            check(content.kind != Conversation.Message.ContentItem.RuntimeNotification.Kind.TOOL_COMPLETED) {
+                "Tool completions require an activity segment"
+            }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Default.DeveloperBoard, contentDescription = localization.text("chat.service.runtime"))
                 Text(localization.text("chat.service.runtime"), style = MaterialTheme.typography.labelLarge)
