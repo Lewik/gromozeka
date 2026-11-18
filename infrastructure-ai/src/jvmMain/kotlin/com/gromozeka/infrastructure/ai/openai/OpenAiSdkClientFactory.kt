@@ -11,12 +11,13 @@ import org.springframework.stereotype.Component
 @Component
 class OpenAiSdkClientFactory(
     private val settingsProvider: SettingsProvider,
+    private val httpClients: com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool,
 ) {
     internal fun createInferenceClient(connection: AiConnection, deadlineNanos: Long): com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient<OpenAIClient> {
         val settings = SdkHttpSupport.settings(connection)
         val baseUrl = resolveBaseUrl(connection)
         val token = resolveApiKey(connection)
-        val transport = com.gromozeka.infrastructure.ai.runtime.SdkHttpTransport(settings, baseUrl, deadlineNanos)
+        val transport = httpClients.openTransport(connection, baseUrl, deadlineNanos)
         try {
             val options = com.openai.core.ClientOptions.builder()
                 .httpClient(com.gromozeka.infrastructure.ai.runtime.OpenAiControlledHttpClient(transport))

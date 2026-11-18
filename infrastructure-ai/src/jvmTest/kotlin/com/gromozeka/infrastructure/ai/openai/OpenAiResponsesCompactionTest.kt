@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool
+import kotlin.test.AfterTest
+
 import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
 
 import com.gromozeka.domain.model.*
@@ -20,11 +23,15 @@ import kotlin.test.*
 import kotlin.time.Instant
 
 class OpenAiResponsesCompactionTest {
+    private val httpClients = SdkHttpClientPool()
+    @AfterTest
+    fun closeHttpClients() = httpClients.close()
+
     private val mapper = OpenAiResponsesMessageMapper(CONNECTION, "configuration", MODEL)
 
     @Test
     fun `Responses advertises compaction through both capability and runtime routes but Chat does not`() {
-        val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
+        val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission = TestAiAdmission())))
         val responses = resolved(connection("http://127.0.0.1:1/api/llm"))
         assertTrue(provider.capabilities(responses).supportsNativeCompaction)
         assertTrue(provider.getRuntime(responses, null).capabilities.supportsNativeCompaction)
@@ -122,7 +129,7 @@ class OpenAiResponsesCompactionTest {
     @Test
     fun `gateway preserves provider checkpoints without requesting inline compaction`() = runBlocking {
         SdkHttpTestServer(response(COMPACT, CALL), response(ANSWER)).use { server ->
-            val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
+            val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission = TestAiAdmission())))
             val runtime = provider.getRuntime(resolved(connection("${server.origin}/api/llm")), null)
             val archive = (0 until 20).map { text("old-$it", "ARCHIVE_MARKER_$it") }
             val first = runtime.call(request(archive))
@@ -149,7 +156,7 @@ class OpenAiResponsesCompactionTest {
         val retained = """{"type":"message","id":"retained","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Retained detail","annotations":[]}]}"""
         val compactedBody = """{"id":"compact-1","object":"response.compaction","created_at":1,"output":[$retained,$COMPACT],"usage":{"input_tokens":9000,"output_tokens":100,"total_tokens":9100,"input_tokens_details":{"cached_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}"""
         SdkHttpTestServer("""{"object":"response.input_tokens","input_tokens":9000}""", compactedBody, response(ANSWER)).use { server ->
-            val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources), admission = TestAiAdmission())))
+            val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission = TestAiAdmission())))
             val runtime = provider.getRuntime(resolved(connection("${server.origin}/api/llm")), null)
             val archive = listOf(text("old", "ARCHIVE_MARKER"))
             val local = runtime.inspectContext(request(archive), allowProviderCount = false)

@@ -1,5 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool
+import kotlin.test.AfterTest
+
 import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
 
 import com.gromozeka.domain.model.AppMode
@@ -48,6 +51,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class SpeechExecutionRoutingTest {
+    private val httpClients = SdkHttpClientPool()
+    @AfterTest
+    fun closeHttpClients() = httpClients.close()
+
     private val selection = AiRuntimeSelection(AiModelConfiguration.Id("speech-model-config"))
     private val workerIdentity = ConversationRuntimeWorkerIdentity(
         workerId = ConversationRuntimeWorkerId("speech-worker"),
@@ -63,7 +70,7 @@ class SpeechExecutionRoutingTest {
         )
         val remoteClient = RecordingRemoteClient()
         val resolver = RecordingWorkerTargetResolver(workerIdentity)
-        val clientFactory = OpenAiSdkClientFactory(settings)
+        val clientFactory = OpenAiSdkClientFactory(settings, httpClients)
         val stt = SttService(
             settingsProvider = settings,
             aiConfigurationProvider = configuration,
@@ -119,7 +126,7 @@ class SpeechExecutionRoutingTest {
         )
         val remoteClient = RecordingRemoteClient()
         val resolver = RecordingWorkerTargetResolver(workerIdentity)
-        val clientFactory = OpenAiSdkClientFactory(settings)
+        val clientFactory = OpenAiSdkClientFactory(settings, httpClients)
         val stt = SttService(
             settingsProvider = settings,
             aiConfigurationProvider = configuration,
