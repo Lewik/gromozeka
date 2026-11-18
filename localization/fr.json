@@ -4,6 +4,10 @@
   "name": "Français",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Recevoir Responses en flux (SSE)",
+    "ai.connection.responses_streaming_description": "Recevoir le flux en interne ; la validation et la réponse complète restent inchangées.",
+    "ai.connection.responses_stored_continuation": "Continuation stockée chez le fournisseur",
+    "ai.connection.responses_stored_continuation_description": "Stocker le contexte chez le fournisseur (store:true) et envoyer les nouveaux éléments avec previous_response_id.",
     "ai.compaction.proactive_threshold": "Seuil de compactage anticipé (tokens)",
     "ai.compaction.proactive_hint": "Laisser vide désactive la préparation après les réponses. Doit être inférieur au seuil bloquant.",
     "chat.activity.compactionPreparing": "Préparation du compactage",

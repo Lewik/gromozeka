@@ -361,7 +361,7 @@ class SdkHttpPoolingTest {
     private fun runtime(connection: AiConnection, owner: SdkHttpClientPool = httpClients): AiRuntime {
         val backend = if (connection.kind == AiConnection.Kind.ANTHROPIC_API)
             AnthropicSdkRuntimeBackend(Sources, owner, TestAiAdmission())
-        else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, owner), admission = TestAiAdmission())
+        else OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, owner), admission = TestAiAdmission(), responsesContinuations = com.gromozeka.infrastructure.ai.openai.OpenAiResponsesContinuations())
         val model = AiModelConfiguration(AiModelConfiguration.Id("pool-model"), connection.id, MODEL, "Synthetic")
         val spec = AiModelSpec(MODEL, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(64_000, 8192)))

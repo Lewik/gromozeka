@@ -14,6 +14,9 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiConnection
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -79,6 +82,9 @@ internal class OpenAiResponsesSdkRuntime(
     private val modelName: String,
     private val webSearchEnabled: Boolean,
     private val executor: SdkHttpCallExecutor<OpenAIClient>,
+    private val connection: AiConnection.OpenAiApi,
+    private val continuations: OpenAiResponsesContinuations,
+    private val quotaEnabled: Boolean,
     generation: ModelGenerationPolicy = ModelGenerationPolicy(),
     private val messageMapper: OpenAiResponsesMessageMapper = OpenAiResponsesMessageMapper(
         connectionId = connectionId,
@@ -98,7 +104,7 @@ internal class OpenAiResponsesSdkRuntime(
             it in setOf("model", "input", "instructions", "tools", "tool_choice", "reasoning", "text")
         }).toString(), InputTokenCountParams.Body::class.java)
         val options = executor.withDeadline(request.options.copy(usagePurpose = "CONTEXT_COUNT"))
-        return executor.call(options) { client, remaining ->
+        return executor.call(options) { client, remaining, _ ->
             client.async().responses().inputTokens().count(InputTokenCountParams.builder().body(countBody).build(),
                 com.openai.core.RequestOptions.builder().timeout(remaining).build()).thenApply {
                 AiContextInspection(Math.toIntExact(it.inputTokens()), AiContextInspection.Precision.PROVIDER_COUNT, true)
@@ -114,7 +120,7 @@ internal class OpenAiResponsesSdkRuntime(
             it in setOf("model", "input")
         }).toString(), ResponseCompactParams.Body::class.java)
         val options = executor.withDeadline(request.options)
-        return executor.call(options) { client, remaining ->
+        return executor.call(options) { client, remaining, _ ->
             client.async().responses().compact(ResponseCompactParams.builder().body(compactBody).build(),
                 com.openai.core.RequestOptions.builder().timeout(remaining).build())
                 .thenApply { messageMapper.toCompactionResponse(it, request) }
@@ -122,19 +128,98 @@ internal class OpenAiResponsesSdkRuntime(
     }
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+        val started = System.nanoTime()
         val options = executor.withDeadline(request.options)
-        val params = messageMapper.toCreateParams(modelName, webSearchEnabled, request)
-        log.info {
-            "Calling OpenAI Responses API: model=$modelName messages=${request.messages.size} " +
-                "functionTools=${request.tools.size} webSearch=$webSearchEnabled " +
-                "responseFormat=${request.options.responseFormat.logName()}"
+        val fullParams = messageMapper.toCreateParams(modelName, webSearchEnabled, request)
+        val fullInput = fullParams.input().orElseThrow().asResponse()
+        val mappedNanos = System.nanoTime() - started
+        var prepared: OpenAiResponsesContinuations.Plan? = null
+        var recoveredMissingParent = false
+        var outcome = "failed"
+        try {
+            val result = executor.call(options, recoverRejected = { _, error ->
+                if (!recoveredMissingParent && prepared?.previousResponseId != null && isMissingPreviousResponse(error)) {
+                    val original = checkNotNull(prepared) { "Missing-parent recovery has no request plan" }
+                    // Recovery must not acquire the right to overwrite a cursor created by a concurrent call.
+                    prepared = original.copy(input = original.fullInput, previousResponseId = null,
+                        reason = OpenAiResponsesContinuations.Reason.PREVIOUS_NOT_FOUND)
+                    recoveredMissingParent = true
+                    true
+                } else false
+            }) { client, remaining, session ->
+                val plan = prepared ?: continuations.plan(
+                    if (connection.responsesStoredContinuationEnabled) continuations.scope(connection, modelConfigurationId,
+                        modelName, request, checkNotNull(session.identity) { "Responses client has no call identity" }) else null,
+                    request, fullInput, connection.responsesStoredContinuationEnabled,
+                ).also { prepared = it }
+                val params = fullParams.toBuilder().store(plan.store).inputOfResponse(plan.input)
+                    .apply { plan.previousResponseId?.let(::previousResponseId) }.build()
+                val accounting = fullParams.toBuilder().store(plan.store).build()
+                if (quotaEnabled && plan.previousResponseId != null) {
+                    session.transport.accountForRequest(Json.parseToJsonElement(jsonMapper().writeValueAsString(wireBody(accounting))))
+                }
+                logRequestPlan(accounting, params, plan)
+                val pending = if (connection.responsesStreamingEnabled) collectOpenAiResponsesStream(client, params, remaining)
+                    else client.async().responses().create(params,
+                        com.openai.core.RequestOptions.builder().timeout(remaining).build())
+                pending.thenApply { response ->
+                    if (quotaEnabled && connection.responsesStreamingEnabled) {
+                        session.transport.accountForResponse(Json.parseToJsonElement(jsonMapper().writeValueAsString(response)))
+                    }
+                    val mapped = messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
+                    val replay = if (plan.store && response.status().orElse(null)?.asString() == "completed" &&
+                        !mapped.outcome.isFailure && mapped.outcome != AiStepOutcome.REFUSED && response.output().none { it.isCompaction() }) {
+                        response.output().map { item ->
+                            jsonMapper().readValue(jsonMapper().writeValueAsString(item), ResponseInputItem::class.java)
+                        }
+                    } else null
+                    CompletedResponse(response, mapped, replay)
+                }
+            }
+            currentCoroutineContext().ensureActive()
+            val plan = checkNotNull(prepared) { "Responses call completed without a prepared request" }
+            val (native, mapped, replay) = result
+            if (replay != null) continuations.record(plan, native.id(), replay) else continuations.forget(plan)
+            outcome = mapped.outcome.name.lowercase()
+            return mapped
+        } catch (error: Throwable) {
+            prepared?.let(continuations::forget)
+            throw error
+        } finally {
+            safeMetricLog("RESPONSES_HTTP outcome=$outcome streaming=${connection.responsesStreamingEnabled} " +
+                "mapping_ms=${mappedNanos / 1_000_000} logical_ms=${(System.nanoTime() - started) / 1_000_000}")
         }
-        val response = executor.call(options) { client, remaining ->
-            client.async().responses().create(params, com.openai.core.RequestOptions.builder().timeout(remaining).build())
-                .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat) }
-        }
-        return response
     }
+
+    private data class CompletedResponse(val native: Response, val mapped: AiRuntimeResponse, val replay: List<ResponseInputItem>?)
+
+    private fun logRequestPlan(full: ResponseCreateParams, sent: ResponseCreateParams, plan: OpenAiResponsesContinuations.Plan) {
+        fun bodyBytes(params: ResponseCreateParams): Int = jsonMapper().writeValueAsBytes(wireBody(params)).size
+        safeMetricLog("RESPONSES_WIRE reason=${plan.reason.name.lowercase()} stored=${plan.store} " +
+            "full_items=${plan.fullInput.size} sent_items=${plan.input.size} " +
+            "serialized_full_bytes=${bodyBytes(full)} serialized_sent_bytes=${bodyBytes(sent)}")
+    }
+
+    private fun wireBody(params: ResponseCreateParams) = if (connection.responsesStreamingEnabled) params._body().toBuilder()
+        .putAdditionalProperty("stream", JsonValue.from(true)).build() else params._body()
+
+    private fun safeMetricLog(message: String) {
+        val thread = Thread.currentThread()
+        val originalName = thread.name
+        try {
+            // An unconfined caller can resume on an OkHttp thread whose name embeds the URL.
+            thread.name = "responses-metrics"
+            log.info { message }
+        } finally { thread.name = originalName }
+    }
+
+    private fun isMissingPreviousResponse(error: Throwable): Boolean = generateSequence(error) { it.cause }
+        .take(16).filterIsInstance<com.openai.errors.OpenAIServiceException>().any {
+            runCatching {
+                it.statusCode() in setOf(400, 404) && it.code().orElse(null) == "previous_response_not_found" &&
+                    it.param().orElse("previous_response_id") == "previous_response_id"
+            }.getOrDefault(false)
+        }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
         emit(call(request))
@@ -774,9 +859,4 @@ internal fun appendWebSources(
             content = message.content.toMutableList().apply { this[contentIndex] = updatedContent }
         )
     }
-}
-
-private fun AiResponseFormat.logName(): String = when (this) {
-    AiResponseFormat.Text -> "text"
-    is AiResponseFormat.JsonSchema -> "json_schema:$name"
 }

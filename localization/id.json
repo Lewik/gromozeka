@@ -4,6 +4,10 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Streaming Responses (SSE)",
+    "ai.connection.responses_streaming_description": "Terima aliran secara internal; validasi dan jawaban lengkap tidak berubah.",
+    "ai.connection.responses_stored_continuation": "Kelanjutan tersimpan di penyedia",
+    "ai.connection.responses_stored_continuation_description": "Simpan konteks di penyedia (store:true) dan kirim item riwayat baru dengan previous_response_id.",
     "ai.compaction.proactive_threshold": "Ambang pemadatan proaktif (token)",
     "ai.compaction.proactive_hint": "Kosongkan untuk menonaktifkan persiapan setelah jawaban. Harus di bawah ambang pemblokiran.",
     "chat.activity.compactionPreparing": "Menyiapkan pemadatan",

@@ -952,6 +952,12 @@ private fun ConnectionDialog(
     var webSearchEnabled by remember {
         mutableStateOf(existing.openAiWebSearchEnabledOrDefault())
     }
+    var responsesStreamingEnabled by remember {
+        mutableStateOf((existing as? AiConnection.OpenAiApi)?.responsesStreamingEnabled ?: false)
+    }
+    var responsesStoredContinuationEnabled by remember {
+        mutableStateOf((existing as? AiConnection.OpenAiApi)?.responsesStoredContinuationEnabled ?: false)
+    }
     var executionTarget by remember {
         mutableStateOf(existing?.executionTarget ?: AiExecutionTarget.Server)
     }
@@ -1115,6 +1121,26 @@ private fun ConnectionDialog(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                        }
+                    }
+                }
+                if (kind == AiConnection.Kind.OPENAI_API) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = responsesStreamingEnabled, onCheckedChange = { responsesStreamingEnabled = it })
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(translation.text("ai.connection.responses_streaming"))
+                            Text(translation.text("ai.connection.responses_streaming_description"),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = responsesStoredContinuationEnabled, onCheckedChange = { responsesStoredContinuationEnabled = it })
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(translation.text("ai.connection.responses_stored_continuation"))
+                            Text(translation.text("ai.connection.responses_stored_continuation_description"),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -1444,6 +1470,8 @@ private fun ConnectionDialog(
                             name = name,
                             enabled = enabled,
                             webSearchEnabled = webSearchEnabled,
+                            responsesStreamingEnabled = responsesStreamingEnabled,
+                            responsesStoredContinuationEnabled = responsesStoredContinuationEnabled,
                             baseUrl = baseUrl,
                             secretMode = secretMode,
                             secretValue = secretValue,
@@ -1494,6 +1522,8 @@ private fun createConnection(
     name: String,
     enabled: Boolean,
     webSearchEnabled: Boolean,
+    responsesStreamingEnabled: Boolean,
+    responsesStoredContinuationEnabled: Boolean,
     baseUrl: String,
     secretMode: String,
     secretValue: String,
@@ -1542,6 +1572,8 @@ private fun createConnection(
             baseUrl = baseUrl.trim().ifBlank { null },
             apiKey = secret,
             webSearchEnabled = webSearchEnabled,
+            responsesStreamingEnabled = responsesStreamingEnabled,
+            responsesStoredContinuationEnabled = responsesStoredContinuationEnabled,
             executionTarget = executionTarget,
             httpSettings = httpSettings,
         )

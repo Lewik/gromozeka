@@ -4,6 +4,10 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Responses のストリーミング (SSE)",
+    "ai.connection.responses_streaming_description": "アプリ内部でストリームを受信します。検証と完全な回答は変わりません。",
+    "ai.connection.responses_stored_continuation": "プロバイダーに保存して会話を継続",
+    "ai.connection.responses_stored_continuation_description": "プロバイダーにコンテキストを保存し (store:true)、previous_response_id と新しい履歴項目を送信します。",
     "ai.compaction.proactive_threshold": "事前圧縮のしきい値（トークン）",
     "ai.compaction.proactive_hint": "空欄にすると応答後の準備を無効にします。ブロックしきい値より小さくしてください。",
     "chat.activity.compactionPreparing": "圧縮を準備中",

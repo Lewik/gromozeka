@@ -4,6 +4,10 @@
   "name": "Deutsch",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Responses streamen (SSE)",
+    "ai.connection.responses_streaming_description": "Stream intern empfangen; Prüfung und vollständige Antwort bleiben unverändert.",
+    "ai.connection.responses_stored_continuation": "Beim Anbieter gespeicherte Fortsetzung",
+    "ai.connection.responses_stored_continuation_description": "Gesprächskontext beim Anbieter speichern (store:true) und neue Verlaufselemente mit previous_response_id senden.",
     "ai.compaction.proactive_threshold": "Schwelle für vorausschauende Kompaktierung (Tokens)",
     "ai.compaction.proactive_hint": "Leer deaktiviert die Vorbereitung nach Antworten. Muss unter der blockierenden Schwelle liegen.",
     "chat.activity.compactionPreparing": "Kompaktierung wird vorbereitet",

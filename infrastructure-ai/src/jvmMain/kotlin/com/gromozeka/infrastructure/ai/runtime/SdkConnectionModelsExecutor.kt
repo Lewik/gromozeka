@@ -40,7 +40,7 @@ class SdkConnectionModelsExecutor(
             val transport = httpClients.openTransport(connection, baseUrl, end)
             SdkInferenceClient(ModelsClient(request, transport), transport) {}
         }
-        return executor.call(AiRuntimeOptions(executionDeadline = deadline, usagePurpose = "MODEL_DISCOVERY")) { client, _ -> client.read() }
+        return executor.call(AiRuntimeOptions(executionDeadline = deadline, usagePurpose = "MODEL_DISCOVERY")) { client, _, _ -> client.read() }
     }
 
     private class ModelsClient(val request: Request, val transport: SdkHttpTransport) {

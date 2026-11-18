@@ -160,7 +160,7 @@ class OpenAiSpeechSynthesisExecutor(
         request: AiSpeechSynthesisRequest,
     ): AiSpeechSynthesisResponse = executor(runtime).call(
         com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "TEXT_TO_SPEECH"),
-    ) { client, remaining ->
+    ) { client, remaining, _ ->
         client.async().audio().speech().create(
             speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
                 .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
@@ -177,7 +177,7 @@ class OpenAiSpeechSynthesisExecutor(
     }
 
     fun streamPcm(runtime: ResolvedAiRuntime, request: AiSpeechSynthesisRequest): Flow<TtsAudioChunk> = channelFlow {
-        executor(runtime).call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "TEXT_TO_SPEECH")) { client, remaining ->
+        executor(runtime).call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "TEXT_TO_SPEECH")) { client, remaining, _ ->
             client.async().audio().speech().create(
                 speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
                     .responseFormat(SpeechCreateParams.ResponseFormat.PCM)

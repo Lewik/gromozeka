@@ -4,6 +4,10 @@
   "name": "العربية",
   "direction": "RTL",
   "messages": {
+    "ai.connection.responses_streaming": "بث Responses ‏(SSE)",
+    "ai.connection.responses_streaming_description": "استقبال البث داخل التطبيق؛ يبقى التحقق والرد الكامل دون تغيير.",
+    "ai.connection.responses_stored_continuation": "متابعة محفوظة لدى المزوّد",
+    "ai.connection.responses_stored_continuation_description": "حفظ سياق المحادثة لدى المزوّد (store:true) وإرسال عناصر السجل الجديدة مع previous_response_id.",
     "ai.compaction.proactive_threshold": "حد الضغط الاستباقي (الرموز)",
     "ai.compaction.proactive_hint": "تركه فارغًا يعطل التحضير بعد الردود. يجب أن يكون أقل من حد الحظر.",
     "chat.activity.compactionPreparing": "جارٍ تحضير الضغط",

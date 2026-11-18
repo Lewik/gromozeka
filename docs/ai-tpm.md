@@ -131,7 +131,11 @@ is trusted owner configuration. Commands run as the **Server OS user**, even for
 Worker-executed inference. They are not sandboxed and must not contain secrets in
 arguments or source. Configure programs/credentials on Server explicitly.
 
-Selector and estimator stdin is the prepared request JSON plus a newline.
+Selector stdin is the exact prepared wire request JSON plus a newline. Estimator
+stdin is the same JSON for ordinary requests. Stored Responses continuation can
+explicitly supply a full-context accounting request instead; in that case the
+estimator receives that expanded JSON plus a newline, while the selector still
+receives the wire request. See [Responses continuation accounting](#responses-continuation-accounting).
 Commands must consume stdin before exiting; a closed input pipe is an explicit
 command failure, even if a program has already printed a value.
 Estimator stdout is one integer. Feedback stdin is
@@ -230,3 +234,36 @@ usage. Exercise long threads and parallel completion in reversed order before
 allowing parallel mode. Reduce usable quota when an estimate is optimistic.
 RPM, independent upstream limits, foreign traffic and `usage` reconciliation are
 outside this first TPM implementation.
+
+
+## Responses continuation accounting
+
+`previous_response_id` reduces uploaded input, not the effective model context.
+The Responses adapter therefore supplies a separate `accountingRequest` to HTTP
+admission when sending a delta. Server uses exact wire JSON for group selection,
+and the full accounting JSON for both built-in and command calculators. The
+accounting view is a complete current Responses body with full `input` and no
+`previous_response_id`; it is never sent to the provider. It preserves the same
+model, instructions, tools, output reserve and streaming settings. Server rejects
+changes to non-history fields or an input that does not retain the sent suffix.
+
+This is an explicit extension of the calculator contract for stored continuation.
+An estimator command that assumed selector and estimator stdin were always
+identical must account for the distinction before enabling that mode. Ordinary
+SDK calls and their calculator inputs are unchanged. There is no assumed cache
+discount or attempt to charge only uploaded characters for a full-context call.
+The existing estimator formulas remain configured estimates, not measured billing.
+
+With SSE, body-based feedback sees bounded final native Response JSON, not the
+raw event framing. Its shape matches the ordinary JSON response, including usage
+and additional provider fields. Partial/malformed streams have no invented final
+body. The existing 2 MiB JSON feedback bound still applies, and header policies
+continue to use the original HTTP headers. A feedback failure remains an explicit
+failure and does not advance continuation state.
+
+With TPM, each prepared request/accounting view retains the 16 MiB bound; the
+combined Worker admission envelope must also fit the existing 32 MiB codec bound.
+
+Worker Gateway protocol **34** carries the separate accounting view. Server and
+Workers must be updated together. Provider-link upload reduction does not remove
+existing full Harness/Worker history transfer or Server-owned quota calculation.

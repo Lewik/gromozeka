@@ -418,7 +418,7 @@ class TrueFoundryChatCompletionsTest {
         val spec = AiModelSpec(model, connection.kind.provider, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(32_000, 8192)),
             behavior = AiModelBehavior(chatSchemaEmptyToolCallsAsStop = workaround))
-        return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission = TestAiAdmission())))
+        return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission = TestAiAdmission(), responsesContinuations = com.gromozeka.infrastructure.ai.openai.OpenAiResponsesContinuations())))
             .getRuntime(ResolvedAiRuntime(connection, configuration, spec), null)
     }
 

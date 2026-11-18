@@ -4,6 +4,10 @@
   "name": "English",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Stream Responses (SSE)",
+    "ai.connection.responses_streaming_description": "Receive a stream internally; validation and the complete answer are unchanged.",
+    "ai.connection.responses_stored_continuation": "Provider-stored continuation",
+    "ai.connection.responses_stored_continuation_description": "Store conversation state at the provider (store:true) and send new history items with previous_response_id.",
     "ai.compaction.proactive_threshold": "Proactive compaction threshold (tokens)",
     "ai.compaction.proactive_hint": "Empty disables background preparation after answers. Must be below the blocking threshold.",
     "chat.activity.compactionPreparing": "Preparing compaction",

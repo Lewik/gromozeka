@@ -74,6 +74,7 @@ import kotlin.jvm.optionals.getOrNull
 internal class OpenAiSdkRuntimeBackend(
     private val clientFactory: OpenAiSdkClientFactory,
     private val admission: com.gromozeka.domain.service.AiCallAdmission,
+    private val responsesContinuations: OpenAiResponsesContinuations,
 ) : AiRuntimeBackend {
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.OPENAI_API || connectionKind == AiConnection.Kind.OPENAI_COMPATIBLE
@@ -102,6 +103,9 @@ internal class OpenAiSdkRuntimeBackend(
                 modelName = modelConfiguration.providerModelId,
                 webSearchEnabled = connection.webSearchEnabled,
                 executor = executor,
+                connection = connection,
+                continuations = responsesContinuations,
+                quotaEnabled = modelConfiguration.tpm != null,
                 generation = ModelGenerationPolicy(runtime.modelSpec),
             )
 
@@ -135,7 +139,7 @@ private class OpenAiSdkRuntime(
                 "responseFormat=${request.options.responseFormat.logName()}"
         }
 
-        val response = executor.call(options) { client, remaining ->
+        val response = executor.call(options) { client, remaining, _ ->
             client.async().chat().completions().create(params, com.openai.core.RequestOptions.builder().timeout(remaining).build())
                 .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat, params) }
         }

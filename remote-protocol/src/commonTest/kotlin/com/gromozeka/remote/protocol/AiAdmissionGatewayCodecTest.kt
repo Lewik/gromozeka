@@ -6,6 +6,17 @@ import kotlin.test.*
 import kotlin.time.Instant
 
 class AiAdmissionGatewayCodecTest {
+    @Test fun expandedAccountingRemainsDistinctFromTheExactWireRequest() {
+        val operation = AiAdmissionOperation("id", AiAdmissionTarget.ModelConfiguration(AiModelConfiguration.Id("model"), AiConnection.Id("connection")), "CONVERSATION")
+        val wire = Json.parseToJsonElement("""{"model":"model","previous_response_id":"opaque-parent","input":[{"role":"user","content":"tail"}]}""")
+        val full = Json.parseToJsonElement("""{"model":"model","input":[{"role":"user","content":"prefix"},{"role":"user","content":"tail"}]}""")
+        val command = AiAdmissionCommand.Acquire(operation, "root-request", wire, full)
+        val decoded = assertIs<AiAdmissionCommand.Acquire>(AiAdmissionGatewayCodec.decode(AiAdmissionGatewayCodec.encode(command)))
+        assertEquals(wire, decoded.httpRequest)
+        assertEquals(full, decoded.accountingRequest)
+        assertNotEquals(decoded.httpRequest, decoded.accountingRequest)
+    }
+
     @Test fun preparedJsonAndRawFeedbackRemainExactAcrossGateway() {
         val operation = AiAdmissionOperation("id", AiAdmissionTarget.ModelConfiguration(AiModelConfiguration.Id("model"), AiConnection.Id("connection")), "TEST")
         val request = Json.parseToJsonElement("""{"model":"account/model","input":"😀 private synthetic input"}""")

@@ -17,7 +17,19 @@ import kotlin.math.ceil
 class AiQuotaPolicyEvaluator {
     private val commands = Semaphore(4)
 
-    suspend fun prepare(policy: AiTpmPolicy, request: JsonElement, catalog: AiCatalog): AiTpmReservation {
+    suspend fun prepare(policy: AiTpmPolicy, request: JsonElement, catalog: AiCatalog, accountingRequest: JsonElement? = null): AiTpmReservation {
+        if (accountingRequest != null) {
+            val wire = requireNotNull(request as? JsonObject) { "Quota wire request must be an object" }
+            val effective = requireNotNull(accountingRequest as? JsonObject) { "Quota accounting request must be an object" }
+            val parent = wire["previous_response_id"] as? JsonPrimitive
+            require(parent?.isString == true && parent.content.isNotBlank()) { "Expanded accounting requires a stored parent" }
+            require(effective.filterKeys { it != "input" } == wire.filterKeys { it != "input" && it != "previous_response_id" }) {
+                "Quota accounting changed non-history request parameters"
+            }
+            val full = requireNotNull(effective["input"] as? JsonArray) { "Quota accounting input must be an array" }
+            val delta = requireNotNull(wire["input"] as? JsonArray) { "Quota wire input must be an array" }
+            require(full.size >= delta.size && full.takeLast(delta.size) == delta.toList()) { "Quota accounting does not retain the sent suffix" }
+        }
         val group = try {
             when (val selector = policy.group) {
                 is AiTpmGroupSelector.Fixed -> requireNotNull(catalog.tpmGroups.find { it.id == selector.groupId }) { "TPM group is unavailable" }
@@ -31,10 +43,11 @@ class AiQuotaPolicyEvaluator {
             val fallback = policy.fallbackGroupId ?: throw AiAdmissionException("TPM group selection failed (${error::class.simpleName})")
             requireNotNull(catalog.tpmGroups.find { it.id == fallback }) { "TPM fallback group is unavailable" }
         }
+        val effective = accountingRequest ?: request
         val units = when (val calculator = policy.calculator) {
-            is AiQuotaCalculator.Command -> runCommand(calculator.command, request).trim().toLongOrNull()
+            is AiQuotaCalculator.Command -> runCommand(calculator.command, effective).trim().toLongOrNull()
                 ?: throw AiAdmissionException("Quota command must return one integer")
-            is AiQuotaCalculator.BuiltIn -> estimate(calculator, request)
+            is AiQuotaCalculator.BuiltIn -> estimate(calculator, effective)
         }
         return AiTpmReservation(group.id, units, policy.feedback)
     }

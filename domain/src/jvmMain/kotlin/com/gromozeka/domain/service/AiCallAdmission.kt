@@ -44,14 +44,14 @@ class AiAdmittedSession internal constructor(private val release: suspend (AiAdm
 abstract class AiCallAdmission {
     protected abstract suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease
     protected abstract suspend fun finish(lease: AiAdmissionLease, outcome: AiAdmissionOutcome)
-    protected open suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease =
+    protected open suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement, accountingRequest: JsonElement? = null): AiAdmissionLease =
         throw AiAdmissionException("This admission coordinator does not support HTTP quota policies")
     protected open suspend fun finishHttp(lease: AiAdmissionLease, outcome: AiAdmissionOutcome, feedback: AiHttpQuotaFeedback?) = finish(lease, outcome)
 
-    suspend fun openHttpSession(configuration: AiModelConfiguration, request: JsonElement, purpose: String, deadline: Instant?): AiAdmittedHttpSession {
+    suspend fun openHttpSession(configuration: AiModelConfiguration, request: JsonElement, purpose: String, deadline: Instant?, accountingRequest: JsonElement? = null): AiAdmittedHttpSession {
         if (currentCoroutineContext()[HeldAiAdmission] != null) throw AiAdmissionException("Nested AI admission is not allowed")
         val operation = AiAdmissionOperation(uuid7().toString(), AiAdmissionTarget.ModelConfiguration(configuration.id, configuration.connectionId), purpose, deadline)
-        val lease = try { acquireHttp(operation, request) }
+        val lease = try { acquireHttp(operation, request, accountingRequest) }
         catch (error: CancellationException) { throw error }
         catch (error: Exception) { throw AiAdmissionException("HTTP AI admission failed (${error::class.simpleName})", error) }
         return AiAdmittedHttpSession(lease) { outcome, feedback ->

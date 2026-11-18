@@ -29,7 +29,10 @@ import kotlin.coroutines.resumeWithException
 import kotlin.random.Random
 import kotlin.time.Clock
 
+internal data class SdkHttpCallIdentity(val baseUrl: String, val credentialFingerprint: String)
+
 internal class SdkInferenceClient<C>(val client: C, val transport: SdkHttpTransport,
+    val identity: SdkHttpCallIdentity? = null,
     private val closeClient: () -> Unit) : AutoCloseable {
     override fun close() { try { closeClient() } finally { transport.close() } }
 }
@@ -47,7 +50,9 @@ internal class SdkHttpCallExecutor<C>(
     fun withDeadline(options: AiRuntimeOptions): AiRuntimeOptions = options.copy(
         executionDeadline = AiHttpCallBudget.deadline(timeoutSeconds, options.executionDeadline, Clock.System.now()))
 
-    suspend fun <T> call(options: AiRuntimeOptions, action: (C, Duration) -> CompletableFuture<T>): T {
+    suspend fun <T> call(options: AiRuntimeOptions,
+        recoverRejected: ((AiCallFailure, Throwable) -> Boolean)? = null,
+        action: (C, Duration, SdkInferenceClient<C>) -> CompletableFuture<T>): T {
         val now = Clock.System.now()
         val deadline = AiHttpCallBudget.deadline(timeoutSeconds, options.executionDeadline, now)
         val remainingNanos = (deadline - now).inWholeNanoseconds
@@ -78,7 +83,7 @@ internal class SdkHttpCallExecutor<C>(
                                         admission, tpm, options.usagePurpose ?: "INFERENCE", deadline)
                                     var outcome = AiAdmissionOutcome.FAILED
                                     try {
-                                        return await(activeSession.transport) { action(activeSession.client, Duration.ofNanos(left)) }
+                                        return await(activeSession.transport) { action(activeSession.client, Duration.ofNanos(left), activeSession) }
                                             .also { outcome = AiAdmissionOutcome.SUCCEEDED }
                                     } catch (error: CancellationException) { outcome = AiAdmissionOutcome.CANCELLED; throw error }
                                     finally { if (tpm != null) activeSession.transport.finishTpm(outcome) }
@@ -98,6 +103,8 @@ internal class SdkHttpCallExecutor<C>(
                                 val transport = requireNotNull(transportRef.get()) { "SDK failure has no transport attempt" }
                                 if (end - System.nanoTime() <= 0) throw deadlineFailure(transport)
                                 val failure = classify(error, transport)
+                                if (failure.outcome == AiCallFailure.Outcome.REJECTED &&
+                                    requireNotNull(failure.attempts) < maxAttempts && recoverRejected?.invoke(failure, error) == true) continue
                                 if (failure.kind != AiCallFailure.Kind.RATE_LIMITED ||
                                     failure.outcome != AiCallFailure.Outcome.REJECTED ||
                                     requireNotNull(failure.attempts) >= maxAttempts) throw AiCallException(failure)

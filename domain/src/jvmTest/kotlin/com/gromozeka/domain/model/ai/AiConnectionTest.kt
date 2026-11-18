@@ -10,6 +10,18 @@ import kotlin.test.assertFailsWith
 
 class AiConnectionTest {
     @Test
+    fun responsesOptionsAreOptInAndRoundTripIndependently() {
+        val original = Json.decodeFromString<AiConnection>("""{"connectionKind":"openai_api","id":"api","displayName":"API"}""") as AiConnection.OpenAiApi
+        assertEquals(false, original.responsesStreamingEnabled)
+        assertEquals(false, original.responsesStoredContinuationEnabled)
+        for (stream in listOf(false, true)) for (stored in listOf(false, true)) {
+            val changed = original.copy(responsesStreamingEnabled = stream, responsesStoredContinuationEnabled = stored)
+            val decoded = Json.decodeFromString<AiConnection>(Json.encodeToString<AiConnection>(changed))
+            assertEquals(changed, decoded)
+        }
+    }
+
+    @Test
     fun separatesProviderFromConnectionKind() {
         assertEquals(
             AiProvider.OPENAI,

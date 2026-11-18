@@ -283,7 +283,7 @@ class OpenAiSpeechTranscriptionExecutor(
                     request.prompt?.trim()?.takeIf { it.isNotBlank() }?.let(::prompt)
                 }
                 .build()
-            return executor.call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "SPEECH_TO_TEXT")) { client, remaining ->
+            return executor.call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "SPEECH_TO_TEXT")) { client, remaining, _ ->
                 client.async().audio().transcriptions().create(params,
                     com.openai.core.RequestOptions.builder().timeout(remaining).build()).thenApply { it.asTranscription().text() }
             }

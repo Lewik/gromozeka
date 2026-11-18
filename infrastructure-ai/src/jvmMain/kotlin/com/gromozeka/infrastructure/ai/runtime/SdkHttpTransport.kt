@@ -49,6 +49,21 @@ internal class SdkHttpTransport(sharedClient: OkHttpClient, private val deadline
     private var feedbackHeaders: Map<String, List<String>> = emptyMap()
     private val feedbackBody = ByteArrayOutputStream()
     private var feedbackBodyTooLarge = false
+    private var accountingRequest: kotlinx.serialization.json.JsonElement? = null
+    private var feedbackJson: kotlinx.serialization.json.JsonElement? = null
+
+    fun accountForRequest(value: kotlinx.serialization.json.JsonElement) = synchronized(lock) {
+        check(tpmGate != null && !current.started) { "Quota accounting must be prepared before dispatch" }
+        require(value.toString().toByteArray().size <= 16 * 1024 * 1024) { "TPM accounting request exceeds 16 MiB" }
+        accountingRequest = value
+    }
+
+    fun accountForResponse(value: kotlinx.serialization.json.JsonElement) = synchronized(lock) {
+        check(tpmGate != null) { "Response accounting requires HTTP quota admission" }
+        feedbackBodyTooLarge = value.toString().toByteArray().size > 2 * 1024 * 1024
+        feedbackJson = value.takeUnless { feedbackBodyTooLarge }
+        feedbackBody.reset()
+    }
 
     fun configureTpm(scope: CoroutineScope, admission: AiCallAdmission, configuration: AiModelConfiguration, purpose: String, deadline: kotlin.time.Instant) {
         tpmGate = TpmGate(scope, admission, configuration, purpose, deadline)
@@ -60,7 +75,7 @@ internal class SdkHttpTransport(sharedClient: OkHttpClient, private val deadline
             val feedback = synchronized(lock) {
                 current.status?.let { status ->
                     val raw = feedbackBody.toByteArray()
-                    val body = if (feedbackBodyTooLarge || raw.isEmpty()) null else try {
+                    val body = feedbackJson ?: if (feedbackBodyTooLarge || raw.isEmpty()) null else try {
                         Json.parseToJsonElement(raw.decodeToString(throwOnInvalidSequence = true))
                     } catch (_: IllegalArgumentException) { null }
                     AiHttpQuotaFeedback(status, feedbackHeaders, body, feedbackBodyTooLarge || (raw.isNotEmpty() && body == null))
@@ -98,6 +113,8 @@ internal class SdkHttpTransport(sharedClient: OkHttpClient, private val deadline
         feedbackHeaders = emptyMap()
         feedbackBody.reset()
         feedbackBodyTooLarge = false
+        feedbackJson = null
+        accountingRequest = null
     }
 
     fun execute(request: Request, closeRequestBody: () -> Unit): CompletableFuture<NativeResponse> {
@@ -118,7 +135,7 @@ internal class SdkHttpTransport(sharedClient: OkHttpClient, private val deadline
                 bounded.flush()
                 val bytes = buffer.readByteArray()
                 val document = Json.parseToJsonElement(bytes.decodeToString(throwOnInvalidSequence = true))
-                admitted = gate.admission.openHttpSession(gate.configuration, document, gate.purpose, gate.deadline)
+                admitted = gate.admission.openHttpSession(gate.configuration, document, gate.purpose, gate.deadline, accountingRequest)
                 currentCoroutineContext().ensureActive()
                 val body = object : RequestBody() {
                     override fun contentType() = original.contentType()

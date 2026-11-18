@@ -71,7 +71,7 @@ class OpenAiSdkEmbeddingProvider(
                     "model=${runtime.modelConfiguration.providerModelId} inputs=${missingInputs.size} " +
                     "dimensions=$dimensions requestedDimensions=${requestedDimensions ?: "provider-default"}"
             }
-            val response = executor.call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "EMBEDDINGS")) { client, remaining ->
+            val response = executor.call(com.gromozeka.domain.model.ai.AiRuntimeOptions(usagePurpose = "EMBEDDINGS")) { client, remaining, _ ->
                 client.async().embeddings().create(params, com.openai.core.RequestOptions.builder().timeout(remaining).build())
             }
             promptTokens = response.usage().promptTokens().toInt()

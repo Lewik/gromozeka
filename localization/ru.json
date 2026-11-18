@@ -4,6 +4,10 @@
   "name": "Русский",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Поток Responses (SSE)",
+    "ai.connection.responses_streaming_description": "Принимать ответ потоком внутри приложения; проверка и полный ответ не меняются.",
+    "ai.connection.responses_stored_continuation": "Продолжение истории у провайдера",
+    "ai.connection.responses_stored_continuation_description": "Хранить контекст у провайдера (store:true) и отправлять новые элементы истории с previous_response_id.",
     "ai.compaction.proactive_threshold": "Порог прекомпактификации (токены)",
     "ai.compaction.proactive_hint": "Пустое значение отключает подготовку после ответа. Порог должен быть ниже блокирующего.",
     "chat.activity.compactionPreparing": "Подготовка компакта",

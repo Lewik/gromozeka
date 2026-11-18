@@ -4,6 +4,10 @@
   "name": "繁體中文",
   "direction": "LTR",
   "messages": {
+    "ai.connection.responses_streaming": "Responses 串流接收 (SSE)",
+    "ai.connection.responses_streaming_description": "在應用程式內部接收串流；驗證和完整回覆保持不變。",
+    "ai.connection.responses_stored_continuation": "使用供應商儲存的對話續接",
+    "ai.connection.responses_stored_continuation_description": "在供應商處儲存上下文（store:true），並透過 previous_response_id 傳送新的歷史項目。",
     "ai.compaction.proactive_threshold": "預壓縮閾值（權杖）",
     "ai.compaction.proactive_hint": "留空可停用回覆後的背景準備。必須低於阻塞閾值。",
     "chat.activity.compactionPreparing": "正在準備壓縮",

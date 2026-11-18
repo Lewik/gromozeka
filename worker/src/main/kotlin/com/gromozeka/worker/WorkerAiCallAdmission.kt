@@ -81,9 +81,9 @@ class WorkerAiCallAdmission(
     }
 
     override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = acquireOwned(operation, null)
-    override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease = acquireOwned(operation, request)
+    override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement, accountingRequest: JsonElement?): AiAdmissionLease = acquireOwned(operation, request, accountingRequest)
 
-    private suspend fun acquireOwned(operation: AiAdmissionOperation, request: JsonElement?): AiAdmissionLease {
+    private suspend fun acquireOwned(operation: AiAdmissionOperation, request: JsonElement?, accountingRequest: JsonElement? = null): AiAdmissionLease {
         check(recoveryFailure == null) { "AI admission recovery requires attention" }
         flushPending()
         val owner = requireNotNull(currentCoroutineContext()[AiAdmissionWorkerContext]) {
@@ -93,7 +93,7 @@ class WorkerAiCallAdmission(
         require(wait.isPositive()) { "AI admission deadline has passed" }
         val lease = AiAdmissionGatewayCodec.decodeLease(outbound.execute(
             WorkerGatewayOperation.AI_ADMISSION,
-            AiAdmissionGatewayCodec.encode(AiAdmissionCommand.Acquire(operation, owner.requestId, request)),
+            AiAdmissionGatewayCodec.encode(AiAdmissionCommand.Acquire(operation, owner.requestId, request, accountingRequest)),
             wait,
         ))
         check(lease.operation.id == operation.id && lease.operation.target == operation.target &&

@@ -110,7 +110,7 @@ internal class AnthropicSdkRuntimeBackend(
                 count = { request ->
                     val options = executor.withDeadline(request.options.copy(usagePurpose = "CONTEXT_COUNT"))
                     val params = messageMapper.toCountParams(modelConfiguration.providerModelId, request)
-                    executor.call(options) { client, remaining ->
+                    executor.call(options) { client, remaining, _ ->
                         client.async().messages().countTokens(params, com.anthropic.core.RequestOptions.builder().timeout(remaining).build())
                             .thenApply { AiContextInspection(Math.toIntExact(it.inputTokens()), AiContextInspection.Precision.PROVIDER_COUNT) }
                     }
@@ -118,7 +118,7 @@ internal class AnthropicSdkRuntimeBackend(
                 val call: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { request ->
                     val options = executor.withDeadline(request.options)
                     val params = messageMapper.toCreateParams(modelConfiguration.providerModelId, request)
-                    executor.call(options) { client, remaining ->
+                    executor.call(options) { client, remaining, _ ->
                         client.async().messages().create(params, com.anthropic.core.RequestOptions.builder().timeout(remaining).build())
                             .thenApply { messageMapper.toRuntimeResponse(it, request.options.assistantResponseFormat) }
                     }

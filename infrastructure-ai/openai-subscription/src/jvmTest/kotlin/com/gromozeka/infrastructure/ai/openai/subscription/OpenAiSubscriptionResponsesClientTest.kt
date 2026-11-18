@@ -195,7 +195,7 @@ class OpenAiSubscriptionResponsesClientTest {
             AiTpmFeedbackPolicy.Fields(AiQuotaValueSource.Body("/remaining")))
         val admission = object : AiCallAdmission() {
             override suspend fun acquire(operation: AiAdmissionOperation): AiAdmissionLease = error("HTTP quota admission required")
-            override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement): AiAdmissionLease {
+            override suspend fun acquireHttp(operation: AiAdmissionOperation, request: JsonElement, accountingRequest: JsonElement?): AiAdmissionLease {
                 prepared = request; active = true
                 return AiAdmissionLease(operation, AiConcurrencyGroup.DEFAULT_ID, Clock.System.now())
             }

@@ -4,6 +4,10 @@
   "name": "עברית",
   "direction": "RTL",
   "messages": {
+    "ai.connection.responses_streaming": "הזרמת Responses ‏(SSE)",
+    "ai.connection.responses_streaming_description": "קבלת זרם בתוך היישום; האימות והתשובה המלאה אינם משתנים.",
+    "ai.connection.responses_stored_continuation": "המשך שיחה הנשמרת אצל הספק",
+    "ai.connection.responses_stored_continuation_description": "שמירת ההקשר אצל הספק (store:true) ושליחת פריטי היסטוריה חדשים עם previous_response_id.",
     "ai.compaction.proactive_threshold": "סף דחיסה מקדימה (טוקנים)",
     "ai.compaction.proactive_hint": "ערך ריק מבטל הכנה לאחר תשובות. חייב להיות נמוך מהסף החוסם.",
     "chat.activity.compactionPreparing": "מכין דחיסה",
