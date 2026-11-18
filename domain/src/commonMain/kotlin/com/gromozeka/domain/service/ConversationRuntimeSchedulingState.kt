@@ -1,5 +1,7 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserMessageDeliveryMode
@@ -20,6 +22,8 @@ data class ConversationRuntimeSchedulingState(
     val completedIdempotencyKeys: Set<String> = emptySet(),
     val lastTurn: ConversationRuntimeTurnSummary? = null,
     val retainedTurnProblems: ConversationRuntimeTurnSummary? = null,
+    val proactiveCompaction: ProactiveCompaction? = null,
+    val lastCompletion: ConversationRuntimeCompletion? = null,
 ) {
     init {
         require(executionState == null || executionState.conversationId == conversationId) {
@@ -72,11 +76,40 @@ data class ConversationRuntimeSchedulingState(
         }
     }
 
+    fun beginProactiveCompaction(preparation: ProactiveCompaction): ConversationRuntimeStateTransition<Boolean> {
+        require(preparation.conversationId == conversationId && preparation.status == ProactiveCompaction.Status.RUNNING)
+        if (proactiveCompaction?.cancellable == true || proactiveCompaction?.id == preparation.id) return unchanged(false)
+        if (executionState?.controlState != ConversationExecutionState.ControlState.RUNNING ||
+            !confirmActiveTaskOwner(preparation.sourceTaskId, preparation.executor)) return unchanged(false)
+        return changed(copy(proactiveCompaction = preparation), true)
+    }
+
+    fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): ConversationRuntimeStateTransition<Boolean> {
+        require(expected.conversationId == conversationId && updated.conversationId == conversationId && expected.id == updated.id)
+        require(updated.copy(status = expected.status, checkpoint = expected.checkpoint, updatedAt = expected.updatedAt,
+            failureCode = expected.failureCode, outcomeUnknown = expected.outcomeUnknown) == expected) {
+            "Compaction completion cannot change the captured input or owner"
+        }
+        if (proactiveCompaction != expected) return unchanged(false)
+        if (!expected.pending && !(expected.status == ProactiveCompaction.Status.FAILED && updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED))) {
+            return unchanged(expected == updated)
+        }
+        require(updated.status != ProactiveCompaction.Status.RUNNING || updated == expected)
+        val application = updated.applicationTask()
+        val pending = pendingTasks.filterNot { it.id == application.id }
+        return changed(copy(
+            proactiveCompaction = updated,
+            executionState = if (updated.status == ProactiveCompaction.Status.READY) executionState ?: idleRunningState(updated.updatedAt) else executionState,
+            pendingTasks = if (updated.status == ProactiveCompaction.Status.READY) listOf(application) + pending else pending,
+        ), true)
+    }
+
     fun submit(
         task: ConversationRuntimeTask,
         now: Instant,
         acceptPreviouslySubmitted: Boolean = false,
         userDeliveryMode: UserMessageDeliveryMode? = null,
+        backgroundActivityAgentId: AgentDefinition.Id? = null,
     ): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
             "Conversation runtime task belongs to another conversation"
@@ -95,10 +128,26 @@ data class ConversationRuntimeSchedulingState(
         }
         // Resolve human preference once, atomically with admission. Runtime-owned inputs keep
         // their explicit placement, and later preference changes never revisit queued tasks.
-        val submissions = if (userDeliveryMode == null) listOf(task) else prepareUserInput(task, userDeliveryMode)
+        require(userDeliveryMode == null || backgroundActivityAgentId == null)
+        val submissions = when {
+            userDeliveryMode != null -> prepareUserInput(task, userDeliveryMode)
+            backgroundActivityAgentId != null -> {
+                val background = task.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion
+                    ?: error("Background admission requires a completion input")
+                require(background.agentDefinitionId == null || background.agentDefinitionId == backgroundActivityAgentId) {
+                    "Background input cannot change its bound recipient"
+                }
+                val foreground = activeTask ?: continuationTask
+                val sameRecipient = foreground != null && task.actorUserId != null &&
+                    task.actorUserId == foreground.actorUserId && activeAgentId() == backgroundActivityAgentId
+                listOf(task.copy(payload = background.copy(agentDefinitionId = backgroundActivityAgentId),
+                    placement = if (sameRecipient) QueuedMessagePlacement.AFTER_TOOL_RESULT else QueuedMessagePlacement.END_OF_TURN))
+            }
+            else -> listOf(task)
+        }
         val submitted = submissions.first()
         if (submitted.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && activeTask == null &&
-            !(userDeliveryMode != null && continuationTask != null)) {
+            !((userDeliveryMode != null || backgroundActivityAgentId != null) && continuationTask != null)) {
             return unchanged(false)
         }
 
@@ -122,22 +171,25 @@ data class ConversationRuntimeSchedulingState(
         )
     }
 
+    private fun activeAgentId(): AgentDefinition.Id? = when (val payload = (activeTask ?: continuationTask)?.payload) {
+        is ConversationRuntimeTask.Payload.PostMessage -> payload.autoRespondAgentIds.minByOrNull { it.value }
+        is ConversationRuntimeTask.Payload.AgentInvocation -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.AgentResponse -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.LlmCall -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.ToolExecution -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.ToolResultProcessing -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.MemoryRecall -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.MemoryRunCompletion -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.ResponseReview -> payload.agentDefinitionId
+        is ConversationRuntimeTask.Payload.BackgroundActivityCompletion -> payload.agentDefinitionId
+        else -> null
+    }
+
     private fun prepareUserInput(task: ConversationRuntimeTask, mode: UserMessageDeliveryMode): List<ConversationRuntimeTask> {
         require(task.actorUserId != null && task.externalChannel == null && task.userMessageOrNull()?.role == Conversation.Message.Role.USER) {
             "User delivery preferences apply only to authenticated local human input"
         }
-        val activeAgent = when (val payload = (activeTask ?: continuationTask)?.payload) {
-            is ConversationRuntimeTask.Payload.PostMessage -> payload.autoRespondAgentIds.minByOrNull { it.value }
-            is ConversationRuntimeTask.Payload.AgentInvocation -> payload.agentDefinitionId
-            is ConversationRuntimeTask.Payload.AgentResponse -> payload.agentDefinitionId
-            is ConversationRuntimeTask.Payload.LlmCall -> payload.agentDefinitionId
-            is ConversationRuntimeTask.Payload.ToolExecution -> payload.agentDefinitionId
-            is ConversationRuntimeTask.Payload.ToolResultProcessing -> payload.agentDefinitionId
-            is ConversationRuntimeTask.Payload.MemoryRecall -> payload.agentDefinitionId
-            is ConversationRuntimeTask.Payload.MemoryRunCompletion -> payload.agentDefinitionId
-            is ConversationRuntimeTask.Payload.ResponseReview -> payload.agentDefinitionId
-            else -> null
-        }
+        val activeAgent = activeAgentId()
         val targetsActiveAgent = activeAgent != null && when (val payload = task.payload) {
             is ConversationRuntimeTask.Payload.AgentInvocation -> payload.agentDefinitionId == activeAgent
             is ConversationRuntimeTask.Payload.PostMessage -> activeAgent in payload.autoRespondAgentIds
@@ -364,7 +416,12 @@ data class ConversationRuntimeSchedulingState(
         }
         val terminal = completedControlState == ConversationExecutionState.ControlState.STOPPING ||
             completedControlState == ConversationExecutionState.ControlState.INTERRUPTING
-        val promotedPendingTasks = if (outcome !is ConversationRuntimeTaskOutcome.Continue || terminal) {
+        val interruptedBackgroundInputs = if (terminal) {
+            (listOf(currentTask) + activeInsertions).filter { it.payload is ConversationRuntimeTask.Payload.BackgroundActivityCompletion }
+                .map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }
+        } else emptyList()
+        val interruptedInputIds = interruptedBackgroundInputs.mapTo(mutableSetOf()) { it.id }
+        val promotedPendingTasks = interruptedBackgroundInputs + if (outcome !is ConversationRuntimeTaskOutcome.Continue || terminal) {
             pendingTasks
                 .filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
                 .map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +
@@ -392,17 +449,46 @@ data class ConversationRuntimeSchedulingState(
                 continuationTask = continuation?.takeUnless { terminal },
                 pendingTasks = queuedAgentResponses.takeUnless { terminal }.orEmpty() + promotedPendingTasks,
                 completedIdempotencyKeys = completedIdempotencyKeys +
-                    currentTask.idempotencyKey +
-                    activeInsertions.map { it.idempotencyKey },
+                    listOfNotNull(currentTask.idempotencyKey.takeUnless { currentTask.id in interruptedInputIds }) +
+                    activeInsertions.filterNot { it.id in interruptedInputIds }.map { it.idempotencyKey },
                 lastTurn = if (lastTurn?.turnId == currentTask.turnId) {
                     lastTurn.finishTask(taskId, now, terminal || outcome !is ConversationRuntimeTaskOutcome.Continue)
                 } else lastTurn,
+                lastCompletion = when {
+                    terminal -> completedAgentWork(currentTask, now, checkNotNull(terminalStatus(completedControlState)))
+                    outcome is ConversationRuntimeTaskOutcome.Failed -> completedAgentWork(currentTask, now,
+                        ConversationRuntimeCompletion.Status.FAILED, outcome.reason, outcome.errorType)
+                    outcome == ConversationRuntimeTaskOutcome.Cancelled -> completedAgentWork(currentTask, now,
+                        ConversationRuntimeCompletion.Status.CANCELLED, ConversationRuntimeCompletion.Reason.COLLABORATION_CANCELLED)
+                    outcome !is ConversationRuntimeTaskOutcome.Continue -> completedAgentWork(currentTask, now,
+                        ConversationRuntimeCompletion.Status.COMPLETED)
+                    else -> lastCompletion
+                },
                 retainedTurnProblems = if (!terminal && outcome == ConversationRuntimeTaskOutcome.CompleteTurn &&
                     currentTask.isAgentWork() && lastTurn?.turnId == currentTask.turnId && lastTurn.problems.isEmpty())
                     null else retainedTurnProblems,
             ),
             true,
         )
+    }
+
+    fun recordBackgroundInsertionFailure(
+        ownerTaskId: ConversationRuntimeTask.Id,
+        insertionTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        deliveryStartedAt: Instant?,
+        message: String,
+        errorType: String?,
+        occurredAt: Instant,
+    ): ConversationRuntimeStateTransition<ConversationRuntimeTaskIncident?> {
+        if (!confirmActiveTaskOwner(ownerTaskId, executor)) return unchanged(null)
+        val insertion = activeInsertions.singleOrNull { it.id == insertionTaskId } ?: return unchanged(null)
+        require(insertion.payload is ConversationRuntimeTask.Payload.BackgroundActivityCompletion)
+        val incident = ConversationRuntimeTaskIncident(insertion,
+            if (deliveryStartedAt == null) ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED else ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN,
+            message, errorType, executor, deliveryStartedAt, occurredAt)
+        return changed(copy(activeInsertions = activeInsertions.filterNot { it.id == insertionTaskId },
+            incidents = incidents + incident, completedIdempotencyKeys = completedIdempotencyKeys + insertion.idempotencyKey), incident)
     }
 
     fun recordActiveTaskIncident(
@@ -425,6 +511,8 @@ data class ConversationRuntimeSchedulingState(
             "Runtime incident kind does not match execution start boundary: task=${currentTask.id.value} kind=$kind"
         }
 
+        val terminal = currentState.controlState == ConversationExecutionState.ControlState.STOPPING ||
+            currentState.controlState == ConversationExecutionState.ControlState.INTERRUPTING
         val incident = ConversationRuntimeTaskIncident(
             task = currentTask,
             kind = kind,
@@ -434,8 +522,11 @@ data class ConversationRuntimeSchedulingState(
             executionStartedAt = currentState.activeTaskStartedAt,
             occurredAt = occurredAt,
         )
-        val terminal = currentState.controlState == ConversationExecutionState.ControlState.STOPPING ||
-            currentState.controlState == ConversationExecutionState.ControlState.INTERRUPTING
+        val completion = completedAgentWork(currentTask, occurredAt,
+            terminalStatus(currentState.controlState) ?: ConversationRuntimeCompletion.Status.FAILED,
+            if (kind == ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN) ConversationRuntimeCompletion.Reason.EXECUTION_OUTCOME_UNKNOWN
+            else ConversationRuntimeCompletion.Reason.DELIVERY_FAILED,
+            errorType, kind == ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN)
         if (terminal) {
             val preservedPendingTasks = (
                 activeInsertions.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +
@@ -461,6 +552,7 @@ data class ConversationRuntimeSchedulingState(
                     pendingTasks = preservedPendingTasks,
                     incidents = incidents + incident,
                     lastTurn = if (lastTurn?.turnId == currentTask.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
+                    lastCompletion = completion,
                     completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
                 ),
                 incident,
@@ -497,6 +589,7 @@ data class ConversationRuntimeSchedulingState(
                 pendingTasks = nextPendingTasks,
                 incidents = incidents + incident,
                 lastTurn = if (lastTurn?.turnId == currentTask.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
+                lastCompletion = completion,
                 completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
             ),
             incident,
@@ -537,6 +630,8 @@ data class ConversationRuntimeSchedulingState(
                 pendingTasks = nextPendingTasks,
                 incidents = incidents + incident,
                 lastTurn = if (lastTurn?.turnId == task.turnId) lastTurn.finishTask(taskId, occurredAt, true) else lastTurn,
+                lastCompletion = completedAgentWork(task, occurredAt, ConversationRuntimeCompletion.Status.FAILED,
+                    ConversationRuntimeCompletion.Reason.DELIVERY_FAILED, errorType),
                 completedIdempotencyKeys = completedIdempotencyKeys + task.idempotencyKey,
             ),
             incident,
@@ -629,6 +724,12 @@ data class ConversationRuntimeSchedulingState(
         ) {
             "Conversation runtime terminal request must stop or interrupt"
         }
+        val prepared = proactiveCompaction
+        if (prepared?.cancellable == true && (expectedTurnId == null || prepared.sourceTurnId == expectedTurnId)) {
+            val cancelled = updateProactiveCompaction(prepared, prepared.cancel(now)).state
+            val transition = cancelled.requestTerminalState(controlState, now, expectedTurnId)
+            return changed(transition.state, true)
+        }
         if (expectedTurnId != null && (activeTask ?: continuationTask)?.turnId != expectedTurnId) {
             val removed = pendingTasks.filter { it.turnId == expectedTurnId }
             if (removed.isEmpty()) return unchanged(false)
@@ -649,7 +750,7 @@ data class ConversationRuntimeSchedulingState(
         } else {
             ConversationExecutionState.ControlState.STOPPING
         }
-        val currentTurnInstruction = (activeTask ?: continuationTask)?.let { currentTask ->
+        val currentTurnInstruction = (activeTask ?: continuationTask)?.takeUnless { it.payload is ConversationRuntimeTask.Payload.ApplyPreparedCompaction }?.let { currentTask ->
             Conversation.Message.Instruction.PreviousTurnTerminated(
                 turnId = currentTask.turnId.value,
                 reason = when (effectiveControlState) {
@@ -690,6 +791,8 @@ data class ConversationRuntimeSchedulingState(
                     pendingTasks = preservedPendingTasks,
                     pendingTurnTerminationInstructions = nextPendingTurnTerminationInstructions,
                     lastTurn = if (lastTurn?.turnId == continuationTask?.turnId) lastTurn?.copy(completedAt = now) else lastTurn,
+                    lastCompletion = continuationTask?.let { completedAgentWork(it, now, checkNotNull(terminalStatus(effectiveControlState))) }
+                        ?: lastCompletion,
                 ),
                 true,
             )
@@ -739,6 +842,12 @@ data class ConversationRuntimeSchedulingState(
                 lastTurn = if (lastTurn?.turnId == (interruptedTask ?: continuationTask)?.turnId) {
                     lastTurn?.finishTask(checkNotNull(interruptedTask ?: continuationTask).id, now, true)
                 } else lastTurn,
+                lastCompletion = (interruptedTask ?: continuationTask)?.let {
+                    val status = terminalStatus(executionState?.controlState)
+                    completedAgentWork(it, now, status ?: ConversationRuntimeCompletion.Status.UNKNOWN,
+                        if (status == null) ConversationRuntimeCompletion.Reason.ABORTED else null,
+                        outcomeUnknown = executionState?.activeTaskStartedAt != null)
+                } ?: lastCompletion,
                 completedIdempotencyKeys = interruptedTask?.let {
                     completedIdempotencyKeys + it.idempotencyKey
                 } ?: completedIdempotencyKeys,
@@ -813,7 +922,7 @@ data class ConversationRuntimeSchedulingState(
             message.role != Conversation.Message.Role.USER ||
             (message.author as? Conversation.Message.Author.User)?.userId != actorUserId ||
             message.instructions.any { it is Conversation.Message.Instruction.Source.Agent } ||
-            "syntheticKind" in message.providerMetadata
+            message.syntheticKind != null
         ) return null
         return when (val input = payload) {
             is ConversationRuntimeTask.Payload.AgentInvocation -> setOf(input.agentDefinitionId)
@@ -847,6 +956,26 @@ data class ConversationRuntimeSchedulingState(
 
     fun findIncident(taskId: ConversationRuntimeTask.Id): ConversationRuntimeTaskIncident? =
         incidents.lastOrNull { it.task.id == taskId }
+
+    private fun terminalStatus(control: ConversationExecutionState.ControlState?): ConversationRuntimeCompletion.Status? = when (control) {
+        ConversationExecutionState.ControlState.STOPPING -> ConversationRuntimeCompletion.Status.STOPPED
+        ConversationExecutionState.ControlState.INTERRUPTING -> ConversationRuntimeCompletion.Status.INTERRUPTED
+        else -> null
+    }
+
+    private fun completedAgentWork(
+        task: ConversationRuntimeTask,
+        at: Instant,
+        status: ConversationRuntimeCompletion.Status,
+        reason: ConversationRuntimeCompletion.Reason? = null,
+        errorType: String? = null,
+        outcomeUnknown: Boolean = false,
+    ): ConversationRuntimeCompletion? {
+        if (!task.isAgentWork()) return lastCompletion
+        val problems = lastTurn?.takeIf { it.turnId == task.turnId }?.problems.orEmpty()
+        return ConversationRuntimeCompletion(task.turnId, task.id, at, status, reason, errorType,
+            outcomeUnknown || problems.any { it.outcomeUnknown }, problems.size)
+    }
 
     private fun idleRunningState(now: Instant): ConversationExecutionState =
         ConversationExecutionState(

@@ -1,6 +1,7 @@
 package com.gromozeka.domain.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlin.time.Instant
 
 /** Stable routing identity, independent of the conversation's current history version. */
@@ -41,6 +42,13 @@ data class AgentRequest(
 }
 
 @Serializable
+enum class AgentSendMode {
+    @SerialName("context_only") CONTEXT_ONLY,
+    @SerialName("activate") ACTIVATE,
+    @SerialName("request") REQUEST,
+}
+
+@Serializable
 data class AgentDelivery(
     val id: String,
     val requestId: String?,
@@ -54,7 +62,13 @@ data class AgentDelivery(
     val state: State = State.PENDING,
     val error: String? = null,
 ) {
-    @Serializable enum class Kind { REQUEST, RESULT, MESSAGE }
+    init {
+        require((kind == Kind.REQUEST || kind == Kind.RESULT) == (requestId != null)) {
+            "Only request/result deliveries may reference a request"
+        }
+    }
+
+    @Serializable enum class Kind { REQUEST, RESULT, MESSAGE, ACTIVATION }
     @Serializable enum class State { PENDING, QUEUED, BLOCKED }
 }
 
@@ -99,7 +113,7 @@ const val AGENT_CONTEXT_QUERY_TOOL_NAME = "grz_agent_query_context"
 /** Built-in collaboration tools are unavailable in externally bound conversations. */
 val AGENT_COLLABORATION_TOOL_NAMES: Set<String> = setOf(
     AGENT_CONTEXT_QUERY_TOOL_NAME,
-    "grz_agent_sessions", "grz_agent_request", "grz_agent_message",
+    "grz_agent_sessions", "grz_agent_send",
     "grz_agent_reply", "grz_agent_requests", "grz_agent_request_cancel",
 )
 

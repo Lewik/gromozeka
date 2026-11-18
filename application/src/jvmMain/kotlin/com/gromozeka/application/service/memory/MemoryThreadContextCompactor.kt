@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.putSyntheticMessageMetadata
+
 import com.gromozeka.application.service.AiConversationMessageMapper
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -90,12 +93,10 @@ internal class MemoryThreadContextCompactor(
                     """.trimIndent()
                 )
             ),
-            providerMetadata = JsonObject(
-                mapOf(
-                    "syntheticKind" to JsonPrimitive("memory_focused_context"),
-                    "targetMessageId" to JsonPrimitive(context.targetMessageId.value),
-                )
-            ),
+            providerMetadata = kotlinx.serialization.json.buildJsonObject {
+                putSyntheticMessageMetadata(SyntheticMessageKind.MEMORY_FOCUSED_CONTEXT)
+                put("targetMessageId", JsonPrimitive(context.targetMessageId.value))
+            },
             createdAt = Clock.System.now(),
         )
 

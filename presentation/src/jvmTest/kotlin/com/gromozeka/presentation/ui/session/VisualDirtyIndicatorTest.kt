@@ -150,7 +150,7 @@ class VisualDirtyIndicatorTest {
             </div><button id="save">Submit</button></body></html>"""
         return Visual("test", Conversation.Id("conversation"), User.Id("user"), document = document, title = "Form",
             state = Json.parseToJsonElement("""{"form":{"query":"saved","amount":1,"enabled":true,"choice":"one","volume":5,"notes":"notes"},"data":{}}""").jsonObject,
-            createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0))
+            createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0), includeStateInContext = true)
     }
 
     private object UnusedService : VisualService {

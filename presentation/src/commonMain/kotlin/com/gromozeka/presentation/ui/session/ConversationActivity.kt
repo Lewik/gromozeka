@@ -67,10 +67,20 @@ internal fun executionActivities(
                 ?: if (generation != null) translation.runtime.modelRequestStatus else translation.runtime.pendingTaskLabel,
             generation?.startedAt ?: snapshot?.state?.activeTaskStartedAt))
     }
+    snapshot?.proactiveCompaction?.let { preparation ->
+        val key = when (preparation.status) {
+            com.gromozeka.domain.service.ProactiveCompaction.Status.RUNNING -> "chat.activity.compactionPreparing"
+            com.gromozeka.domain.service.ProactiveCompaction.Status.READY -> "chat.activity.compactionReady"
+            com.gromozeka.domain.service.ProactiveCompaction.Status.FAILED -> "chat.activity.compactionFailed"
+            else -> null
+        }
+        if (key != null) add(ExecutionActivity("compaction:${preparation.id}", translation.text(key), preparation.createdAt,
+            failed = preparation.status == com.gromozeka.domain.service.ProactiveCompaction.Status.FAILED))
+    }
 }
 
 internal fun ConversationRuntimeSnapshot?.hasControllableWork(): Boolean = this != null && (
-    state != null || activeTask != null || continuationTask != null || pendingTasks.isNotEmpty()
+    state != null || activeTask != null || continuationTask != null || pendingTasks.isNotEmpty() || proactiveCompaction?.cancellable == true
 )
 
 @Composable

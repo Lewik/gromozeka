@@ -180,7 +180,7 @@ class ConversationRuntimePanelUiTest {
             </body></html>"""
         return Visual("selection", conversationId, User.Id("viewer"), document = document, title = "Selection",
             state = Json.parseToJsonElement("""{"form":{"query":"editable input","choice":"one"},"data":{}}""").jsonObject,
-            createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0))
+            createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0), includeStateInContext = true)
     }
 
     private class SelectionVisualService : VisualService {
@@ -497,6 +497,7 @@ class ConversationRuntimePanelUiTest {
             generation = "generation", taskId = CommandTask.Id("handler-task"),
         ),
         createdAt = Instant.fromEpochMilliseconds(0), updatedAt = Instant.fromEpochMilliseconds(0),
+        includeStateInContext = true,
     )
 
     private class Fixture(separateBetaModel: Boolean = false) {

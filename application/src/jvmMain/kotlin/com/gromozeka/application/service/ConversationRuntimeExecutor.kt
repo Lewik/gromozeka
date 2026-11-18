@@ -308,6 +308,8 @@ class ConversationRuntimeExecutor(
                     )
                 )
             }
+            val completedInsertions = runtimeCoordinator.schedulingSnapshot(task.conversationId).activeInsertions
+                .filter { it.payload is ConversationRuntimeTask.Payload.BackgroundActivityCompletion }
             activeExecutions.remove(task.conversationId, activeExecution)
             if (!runtimeCoordinator.completeActiveTask(task.conversationId, task.id, executor, outcome)) {
                 throw IllegalStateException(
@@ -316,6 +318,7 @@ class ConversationRuntimeExecutor(
                 )
             }
             notifyBackgroundDeliveryFinished(task)
+            completedInsertions.forEach { notifyBackgroundDeliveryFinished(it) }
             if (outcome is ConversationRuntimeTaskOutcome.HistoryChanged) {
                 publishRuntimeEvent(
                     ConversationRuntimeEvent.HistoryChanged(
@@ -332,7 +335,8 @@ class ConversationRuntimeExecutor(
                     ConversationRuntimeEvent.ExecutionCompleted(
                         conversationId = task.conversationId,
                         shouldNotifyUser = outcome !is ConversationRuntimeTaskOutcome.HistoryChanged &&
-                            outcome != ConversationRuntimeTaskOutcome.CompleteWithoutNotification,
+                            outcome != ConversationRuntimeTaskOutcome.CompleteWithoutNotification &&
+                            outcome != ConversationRuntimeTaskOutcome.Cancelled,
                     )
                 )
             }
@@ -464,7 +468,7 @@ class ConversationRuntimeExecutor(
             message = message,
             errorType = errorType,
         ) ?: return
-        notifyBackgroundDeliveryFinished(incident.task)
+        backgroundActivityLifecycleProvider?.getIfAvailable()?.deliveryFinished(incident.task.conversationId)
         publishRuntimeSnapshot(item.conversationId)
         publishRuntimeEvent(
             ConversationRuntimeEvent.ExecutionFailed(
@@ -561,7 +565,7 @@ class ConversationRuntimeExecutor(
         }
         pendingIncidents.remove(key, failure)
         if (incident == null) return
-        notifyBackgroundDeliveryFinished(incident.task)
+        backgroundActivityLifecycleProvider?.getIfAvailable()?.deliveryFinished(incident.task.conversationId)
         publishRuntimeSnapshot(key.conversationId)
         publishRuntimeEvent(ConversationRuntimeEvent.ExecutionFailed(
             conversationId = key.conversationId,

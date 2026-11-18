@@ -17,6 +17,7 @@ internal interface ContextCompactionCommitter {
     suspend fun commit(
         expectedThreadId: Conversation.Thread.Id,
         message: Conversation.Message,
+        preparedCompactionId: String? = null,
     ): Conversation
 }
 
@@ -31,6 +32,7 @@ internal class ContextCompactionCommitService(
     override suspend fun commit(
         expectedThreadId: Conversation.Thread.Id,
         message: Conversation.Message,
+        preparedCompactionId: String?,
     ): Conversation {
         val result = message.content.singleOrNull() as? ContextCompactionResult
             ?: error("A compaction commit must contain exactly one checkpoint")
@@ -99,8 +101,8 @@ internal class ContextCompactionCommitService(
         val insertionAnchorId = messages[maxOf(sourceEnd, lastFullCheckpoint)].id
         check(conversationCompactionRepository.commitIfCurrent(
             expectedThreadId = expectedThreadId, compactionMessage = compactionMessage,
-            newThread = newThread, insertionAnchorId = insertionAnchorId,
-        )) { "Conversation changed while compaction was committed" }
+            newThread = newThread, insertionAnchorId = insertionAnchorId, preparedCompactionId = preparedCompactionId,
+        )) { "Conversation changed or preparation was cancelled while compaction was committed" }
 
         val updated = conversationRepository.findById(conversationId)
             ?: error("Conversation disappeared after compaction: ${conversationId.value}")

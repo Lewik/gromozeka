@@ -195,6 +195,15 @@ class ConversationContextSnapshotServiceTest {
         assertEquals(listOf(selected.id), (readable.content.single() as Conversation.Message.ContentItem.ContextCompactionResult).sourceMessageIds)
     }
 
+    @Test fun `shared system assembly uses the configured inline instruction`() {
+        val f = Fixture()
+        for (format in AiModelConfiguration.AssistantResponseFormat.entries) {
+            val result = assembleConversationSystemPrompts(emptyList(), f.agent, null, "env", null, format, true,
+                inlineSuggestedRepliesPrompt = "CUSTOM_SNAPSHOT_SUGGESTIONS")
+            assertContains(result.last(), "CUSTOM_SNAPSHOT_SUGGESTIONS")
+        }
+    }
+
     @Test fun `ordinary and snapshot assemblers share the unchanged ordered system prefix`() {
         val f = Fixture()
         for (format in AiModelConfiguration.AssistantResponseFormat.entries) {
@@ -207,7 +216,8 @@ class ConversationContextSnapshotServiceTest {
                 </current_agent>
             """.trimIndent(), result[2])
             assertEquals(listOf("catalog", "env", "skills"), result.subList(3, 6))
-            assertEquals(listOfNotNull(AssistantResponseFormatContract.instruction(format, false)), result.drop(6))
+            assertEquals(RecordedRunningCommandsRequestEnricher.INSTRUCTION, result[6])
+            assertEquals(listOfNotNull(AssistantResponseFormatContract.instruction(format, false)), result.drop(7))
         }
     }
 

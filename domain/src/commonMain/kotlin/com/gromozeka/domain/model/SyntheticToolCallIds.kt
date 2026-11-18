@@ -25,8 +25,8 @@ fun syntheticToolCallId(stableKey: String): ContentItem.ToolCall.Id {
 
 private fun Message.isSyntheticToolPair(): Boolean =
     providerMetadata["synthetic"] == JsonPrimitive(true) &&
-        providerMetadata["syntheticKind"] in setOf(
-            JsonPrimitive("command_task_completion"), JsonPrimitive("command_monitor_update"), JsonPrimitive("memory"),
+        syntheticKind in setOf(
+            SyntheticMessageKind.COMMAND_TASK_COMPLETION, SyntheticMessageKind.COMMAND_MONITOR_UPDATE, SyntheticMessageKind.MEMORY,
         )
 
 /** Old stored notifications keep their identities; only their model-facing copy is normalized. */

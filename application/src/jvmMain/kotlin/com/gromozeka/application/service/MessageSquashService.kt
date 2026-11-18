@@ -52,7 +52,14 @@ class MessageSquashService internal constructor(
             "Some messages are not in the current conversation thread"
         }
 
-        val sourceIdSet = toolCallPairingService.includePairedToolMessages(allMessages, messageIds)
+        val selectedIds = toolCallPairingService.includePairedToolMessages(allMessages, messageIds)
+        val full = CompactionHistoryWindow.isFullSelection(allMessages, messageIds.toSet())
+        val sourceIdSet = if (full) CompactionHistoryWindow.prefix(allMessages, toolCallPairingService)
+            .mapTo(linkedSetOf()) { it.id } else selectedIds
+        require(sourceIdSet.size >= minimum) {
+            "Full compaction has no older history outside its retained 80000-character suffix; select older messages explicitly"
+        }
+        log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$full sources=${sourceIdSet.size} retained=${allMessages.size - sourceIdSet.size}" }
         val sourceMessageIds = allMessages.map(Conversation.Message::id).filter(sourceIdSet::contains)
         require(allMessages.filter { it.id in sourceIdSet }.all { message ->
             message.content.none { it.state == Conversation.Message.BlockState.STREAMING }
@@ -94,8 +101,11 @@ class MessageSquashService internal constructor(
             role = Conversation.Message.Role.ASSISTANT,
             content = listOf(result),
             createdAt = kotlin.time.Clock.System.now(),
-        ))
+        )).also { log.info { "COMPACTION phase=applied id=${checkpointId.value} mode=manual full=$full summaryChars=${generated.text.length}" } }
     }
+
+    internal suspend fun materializeSnapshot(conversationId: Conversation.Id, messages: List<Conversation.Message>) =
+        artifacts.materializeSnapshot(conversationId, messages)
 
     internal suspend fun generateWithAi(
         conversation: Conversation,
@@ -135,6 +145,7 @@ class MessageSquashService internal constructor(
                 messages = listOf(commandMessage),
                 options = AiRuntimeOptions(
                     toolChoice = AiToolChoice.None,
+                    toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(),
                     toolContext = requestContext + mapOf(
                         "conversationId" to conversation.id.value,
                         "threadId" to conversation.currentThread.value,

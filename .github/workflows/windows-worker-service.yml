@@ -61,7 +61,7 @@ jobs:
           :worker:test --tests '*WorkerUpdatePreparationTest' --tests '*WindowsPythonLicenseAcceptanceTest' --tests '*WorkerEnrollmentClientTest' --tests '*VisualWorkerRuntimeTest' --tests '*JvmComputerUseControllerTest' --tests '*WorkerCommandScriptBootstrapServiceTest' --tests '*WorkerWorkspaceFileServiceTest'
           :infrastructure-ai:jvmTest --tests '*GrzCaptureScreenshotToolImplTest' --tests '*GrzComputerUseToolsImplTest' --tests '*LocalCommandProcessRunnerTest' --tests '*LocalScriptSdkTest' --tests '*LocalScriptSdkTlsTest' --tests '*ManagedPythonProcessTest' --tests '*BundledPythonRuntimeTest' --tests '*JsonSchemaGeneratorTest'
           :application-updates:jvmTest
-          :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest'
+          :application:jvmTest --tests '*DefaultCommandTaskServiceTest' --tests '*DefaultCommandMonitorServiceTest' --tests '*ProactiveCompactionTest' --tests '*CompactionHistoryWindowTest'
           :server:test --tests '*WorkerCommandRuntimeGatewayHandlerTest' --tests '*GrzCommandMonitorToolsTest' --tests '*ManagedCommandScriptSdkTest' --tests '*CommandScriptHttpTest' --tests '*LocalArtifactContentStoreTest' --tests '*AiCall*' --tests '*WorkspaceTextFileApplicationServiceTest'
           -q
       - name: Verify real Windows service and standard-user permissions

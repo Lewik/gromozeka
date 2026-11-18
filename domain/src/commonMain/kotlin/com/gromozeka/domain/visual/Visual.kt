@@ -36,6 +36,7 @@ data class Visual(
     val diagnostics: List<VisualDiagnostic> = emptyList(),
     val createdAt: Instant,
     val updatedAt: Instant,
+    val includeStateInContext: Boolean,
 )
 
 @Serializable
@@ -71,6 +72,7 @@ data class VisualCreate(
     val document: String,
     val state: JsonObject,
     val handler: VisualHandlerSpec? = null,
+    val includeStateInContext: Boolean = true,
 )
 
 @Serializable
@@ -81,6 +83,7 @@ data class VisualUpdate(
     /** False leaves the current handler unchanged; true + null switches to the LLM. */
     val updateHandler: Boolean = false,
     val handler: VisualHandlerSpec? = null,
+    val includeStateInContext: Boolean? = null,
 )
 
 @Serializable

@@ -85,6 +85,11 @@ class TabViewModel(
     private val log = KLoggers.logger(this)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
     private val artifactUploadMutex = Mutex()
+    private val composerSubmissionMutex = Mutex()
+    private val composerSubmissionsInFlight = MutableStateFlow(0)
+    val isSubmittingMessage: StateFlow<Boolean> = composerSubmissionsInFlight
+        .map { it > 0 }
+        .stateIn(scope, SharingStarted.Eagerly, false)
     private val artifactContentCacheMutex = Mutex()
     private val messageSquashMutex = Mutex()
     private val artifactContentCache = linkedMapOf<com.gromozeka.domain.model.Artifact.Id, ByteArray>()
@@ -168,7 +173,6 @@ class TabViewModel(
 
     fun rememberHistoryAnchor(messageId: Conversation.Message.Id?) { historyAnchor.value = messageId }
 
-    fun loadOlderHistory() { loadAdjacentHistory(null, older = true) }
     fun loadNewerHistory() { loadAdjacentHistory(null, older = false) }
 
     fun loadOlderHistory(expectedFirstMessageId: Conversation.Message.Id) {
@@ -744,67 +748,79 @@ class TabViewModel(
         sendPendingUserMessage(pendingMessage)
     }
 
-    suspend fun submitUserInputToSession() {
+    fun submitUserInputToSession() {
         val pendingMessage = claimUserInput() ?: return
-        try {
-            sendPendingUserMessage(pendingMessage, restoreComposerOnQueueRejection = true)
-        } finally {
-            if (claimedUserInput == pendingMessage.text) {
-                claimedUserInput = null
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            composerSubmissionsInFlight.update { it + 1 }
+            var awaitingMentionResolution = true
+            try {
+                composerSubmissionMutex.withLock {
+                    val agentDefinitionId = when (val resolution = resolveCurrentAgentMention(pendingMessage.text)) {
+                        AgentMentionResolution.None -> null
+                        is AgentMentionResolution.Target -> resolution.candidate.agentDefinitionId
+                        is AgentMentionResolution.Invalid -> {
+                            _messageSubmissionError.value = resolution.message
+                            restoreComposerMessage(pendingMessage)
+                            awaitingMentionResolution = false
+                            return@withLock
+                        }
+                    }
+                    awaitingMentionResolution = false
+                    sendPendingUserMessage(
+                        pendingMessage.copy(agentDefinitionId = agentDefinitionId),
+                        composerClaimed = true,
+                    )
+                }
+            } catch (error: CancellationException) {
+                if (awaitingMentionResolution) restoreComposerMessage(pendingMessage)
+                throw error
+            } finally {
+                if (claimedUserInput == pendingMessage.text) claimedUserInput = null
+                composerSubmissionsInFlight.update { it - 1 }
             }
         }
     }
 
     private suspend fun sendPendingUserMessage(
         queuedMessage: PendingUserMessage,
-        restoreComposerOnQueueRejection: Boolean = false,
+        composerClaimed: Boolean = false,
     ) {
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
             if (submitPendingMessage(queuedMessage)) {
                 showPendingMessage(queuedMessage)
-                _uiState.update {
-                    it.copy(
-                        userInput = "",
-                        composerArtifacts = emptyList(),
-                        composerMessageInputContext = null,
-                        workspaceContextReferences = emptyList(),
-                    )
+                if (!composerClaimed) {
+                    _uiState.update {
+                        it.copy(
+                            userInput = "",
+                            composerArtifacts = emptyList(),
+                            composerMessageInputContext = null,
+                            workspaceContextReferences = emptyList(),
+                        )
+                    }
                 }
                 log.info {
                     "Queued user message for conversation $conversationId because previous request is still running"
                 }
             } else {
-                if (restoreComposerOnQueueRejection) {
-                    restoreComposerMessage(queuedMessage)
-                }
+                if (composerClaimed) restoreComposerMessage(queuedMessage)
                 log.warn { "Runtime queue rejected end-of-turn message for conversation $conversationId" }
             }
             return
         }
 
-        sendPendingMessageToSession(queuedMessage)
+        sendPendingMessageToSession(queuedMessage, composerClaimed)
     }
 
-    private suspend fun claimUserInput(): PendingUserMessage? {
+    private fun claimUserInput(): PendingUserMessage? {
         while (true) {
             val currentState = _uiState.value
             if (currentState.userInput.isBlank() && currentState.composerArtifacts.isEmpty()) return null
-
-            val agentDefinitionId = when (val resolution = resolveCurrentAgentMention(currentState.userInput)) {
-                AgentMentionResolution.None -> null
-                is AgentMentionResolution.Target -> resolution.candidate.agentDefinitionId
-                is AgentMentionResolution.Invalid -> {
-                    _messageSubmissionError.value = resolution.message
-                    return null
-                }
-            }
 
             val pendingMessage = createPendingUserMessage(
                 message = currentState.userInput,
                 additionalInstructions = emptyList(),
                 messageInputContext = currentState.composerMessageInputContext ?: textMessageInputContext,
                 currentState = currentState,
-                agentDefinitionId = agentDefinitionId,
             )
             val clearedState = currentState.copy(
                 userInput = "",
@@ -820,18 +836,21 @@ class TabViewModel(
         }
     }
 
-    private suspend fun resolveCurrentAgentMention(message: String): AgentMentionResolution = try {
-        val agents = agentService.findByProject(projectId)
-        val conversation = conversationService.findById(conversationId)
-            ?: error("Conversation not found: ${conversationId.value}")
-        resolveAgentMention(
-            message = message,
-            candidates = buildAgentMentionCandidates(agents, conversation.connectedAgentIds()),
-        )
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Exception) {
-        AgentMentionResolution.Invalid(error.localizedText("client.mention.failed"))
+    private suspend fun resolveCurrentAgentMention(message: String): AgentMentionResolution {
+        if ('@' !in message) return AgentMentionResolution.None
+        return try {
+            val agents = agentService.findByProject(projectId)
+            val conversation = conversationService.findById(conversationId)
+                ?: error("Conversation not found: ${conversationId.value}")
+            resolveAgentMention(
+                message = message,
+                candidates = buildAgentMentionCandidates(agents, conversation.connectedAgentIds()),
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            AgentMentionResolution.Invalid(error.localizedText("client.mention.failed"))
+        }
     }
 
     private fun restoreComposerMessage(pendingMessage: PendingUserMessage) {
@@ -1002,34 +1021,30 @@ class TabViewModel(
         )
     }
 
-    private fun sendPendingMessageToSession(
+    private suspend fun sendPendingMessageToSession(
         pendingMessage: PendingUserMessage,
+        composerClaimed: Boolean,
     ) {
-        if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
-            scope.launch {
-                if (submitPendingMessage(pendingMessage)) {
-                    showPendingMessage(pendingMessage)
-                }
-            }
-            return
-        }
-
         val userMessage = pendingMessage.userMessage
 
         _allMessages.update { it + userMessage }
         _isWaitingForResponse.value = true
         _executionPauseRequested.value = false
         _uiState.update {
-            it.copy(
-                userInput = "",
-                composerArtifacts = emptyList(),
-                composerMessageInputContext = null,
-                workspaceContextReferences = emptyList(),
-                isWaitingForResponse = true,
-            )
+            if (composerClaimed) {
+                it.copy(isWaitingForResponse = true)
+            } else {
+                it.copy(
+                    userInput = "",
+                    composerArtifacts = emptyList(),
+                    composerMessageInputContext = null,
+                    workspaceContextReferences = emptyList(),
+                    isWaitingForResponse = true,
+                )
+            }
         }
 
-        currentRequestJob = scope.launch {
+        val requestJob = scope.launch {
             try {
                 log.debug { "Submitting message to conversation $conversationId" }
                 val accepted = submitPendingMessage(pendingMessage)
@@ -1054,6 +1069,8 @@ class TabViewModel(
                 currentRequestJob = null
             }
         }
+        currentRequestJob = requestJob
+        requestJob.join()
     }
 
     private suspend fun submitPendingMessage(pendingMessage: PendingUserMessage): Boolean = try {

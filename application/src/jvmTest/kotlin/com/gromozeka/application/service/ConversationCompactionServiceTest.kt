@@ -27,14 +27,14 @@ class ConversationCompactionServiceTest {
         }
     }
 
-    @Test fun `text auto summarizes all sources and commits only after the owner check`() = runBlocking {
+    @Test fun `text auto summarizes the old prefix and commits only after the owner check`() = runBlocking {
         val f = Fixture(100)
         val changed = assertNotNull(f.apply())
         assertNotEquals(f.conversation.currentThread, changed.currentThread)
-        assertEquals(listOf("inspect", "summary", "owner", "commit", "event"), f.order)
-        assertEquals(f.sources, f.summarized)
+        assertEquals(listOf("inspect", "owner", "summary", "owner", "commit", "event"), f.order)
+        assertEquals(f.sources.dropLast(1), f.summarized)
         val result = assertNotNull(f.committed).content.single() as Checkpoint
-        assertEquals(f.sources.map { it.id }, result.sourceMessageIds)
+        assertEquals(f.sources.dropLast(1).map { it.id }, result.sourceMessageIds)
         assertEquals(Checkpoint.Strategy.SUMMARIZE, result.strategy)
         assertEquals(Checkpoint.Coverage.SELECTED_MESSAGES, result.coverage)
         assertEquals(Checkpoint.Origin.GROMOZEKA_POLICY, result.origin)
@@ -52,6 +52,16 @@ class ConversationCompactionServiceTest {
         assertEquals(0, f.summaryCalls)
     }
 
+    @Test fun `native checkpoint cannot claim a gapped or reordered provider prefix`() = runBlocking {
+        for (ids in listOf(listOf("m1", "m3"), listOf("m2", "m1"))) {
+            val f = Fixture(100, native = true)
+            f.nativeSourceIds = ids.map(Conversation.Message::Id)
+            assertFailsWith<IllegalArgumentException> { f.apply() }
+            assertEquals(0, f.commits)
+            assertEquals(1, f.nativeCalls)
+        }
+    }
+
     @Test fun `native error never selects a text fallback or applies history`() = runBlocking {
         val f = Fixture(100, native = true)
         f.nativeFailure = IllegalStateException("provider compact failed")
@@ -62,7 +72,9 @@ class ConversationCompactionServiceTest {
 
     @Test fun `stop after preparation prevents commit`() = runBlocking {
         val f = Fixture(100)
-        assertFailsWith<CancellationException> { f.apply { throw CancellationException("Stop") } }
+        var stopped = false
+        f.onSummary = { stopped = true }
+        assertFailsWith<CancellationException> { f.apply { if (stopped) throw CancellationException("Stop") } }
         assertEquals(1, f.summaryCalls)
         assertEquals(0, f.commits)
     }
@@ -91,7 +103,7 @@ class ConversationCompactionServiceTest {
     @Test fun `unrevealed secret space participates in the threshold without entering a summary`() = runBlocking {
         val f = Fixture(500)
         assertNotNull(f.apply(extraTokens = 400))
-        assertEquals(f.sources, f.summarized)
+        assertEquals(f.sources.dropLast(1), f.summarized)
     }
 
     @Test fun `measured append only continuation has no count call even near the threshold`() = runBlocking {
@@ -231,7 +243,9 @@ class ConversationCompactionServiceTest {
             AiModelSpec("model", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
                 AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(2000, 1000))))
         val sources = (1..3).map { index -> Conversation.Message(id = Conversation.Message.Id("m$index"), conversationId = conversation.id,
-            role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("Message $index")), createdAt = now) }
+            role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("Message $index")), createdAt = now) } +
+            Conversation.Message(Conversation.Message.Id("retained"), conversation.id, role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.UserMessage("t".repeat(80_000))), createdAt = now)
         val task = ConversationRuntimeTask(ConversationRuntimeTask.Id("task"), conversation.id, ConversationRuntimeTurnId("turn"),
             payload = ConversationRuntimeTask.Payload.LlmCall(sources.first().id, agent.id, 1),
             parentTaskId = ConversationRuntimeTask.Id("root"), actorUserId = User.Id("user"),
@@ -250,13 +264,13 @@ class ConversationCompactionServiceTest {
         var nativeCalls = 0
         var commits = 0
         var persisted = false
-        var nativeSourceIds = sources.map { it.id }
+        var nativeSourceIds = sources.dropLast(1).map { it.id }
         var nativeFailure: Exception? = null
         var onSummary: () -> Unit = {}
         var summarized: List<Conversation.Message>? = null
         var committed: Conversation.Message? = null
         val provider = object : AiRuntime {
-            override val capabilities = AiRuntimeCapabilities(supportsNativeCompaction = native)
+            override val capabilities = AiRuntimeCapabilities(supportsNativeCompaction = native, supportsDetachedNativeCompaction = native)
             override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
                 inspections++; order += "inspect"; countPermissions += allowProviderCount
                 countFailure?.let { throw it }
@@ -299,10 +313,11 @@ class ConversationCompactionServiceTest {
                 assertEquals(SquashType.SUMMARIZE, invocation.arguments[2])
                 onSummary()
                 MessageSquashService.GeneratedCompaction("Handoff", null, null)
-            } else Mockito.RETURNS_DEFAULTS.answer(invocation)
+            } else if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
+            else Mockito.RETURNS_DEFAULTS.answer(invocation)
         }
         private val committer = object : ContextCompactionCommitter {
-            override suspend fun commit(expectedThreadId: Conversation.Thread.Id, message: Conversation.Message): Conversation {
+            override suspend fun commit(expectedThreadId: Conversation.Thread.Id, message: Conversation.Message, preparedCompactionId: String?): Conversation {
                 assertEquals(conversation.currentThread, expectedThreadId)
                 commits++; order += "commit"; committed = message
                 return conversation.copy(currentThread = Conversation.Thread.Id("compacted"))
@@ -315,7 +330,7 @@ class ConversationCompactionServiceTest {
         private val events = Mockito.mock(ConversationRuntimeEventBus::class.java) { invocation ->
             if (invocation.method.name == "publish") { order += "event"; Unit } else Mockito.RETURNS_DEFAULTS.answer(invocation)
         }
-        var request = AiRuntimeRequest(emptyList(), sources, options = AiRuntimeOptions(
+        var request = AiRuntimeRequest(emptyList(), sources.dropLast(1), options = AiRuntimeOptions(
             usagePurpose = "CONVERSATION", toolContext = mapOf("threadId" to conversation.currentThread.value)))
         private val runtimeProvider = object : AiRuntimeProvider {
             override fun capabilities(selection: AiRuntimeSelection) = AiRuntimeCapabilities()
@@ -350,7 +365,8 @@ class ConversationCompactionServiceTest {
             resolved = resolved.copy(modelConfiguration = resolved.modelConfiguration.copy(compaction = resolved.modelConfiguration.compaction.copy(
                 tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, counterId))))
         }
-        private val service = ConversationCompactionService(configurations, history, summaries, committer, coordinator, events, runtimeProvider)
+        private val service = ConversationCompactionService(configurations, history, summaries, committer, coordinator, events, runtimeProvider,
+            Mockito.mock(ProactiveCompactionJobs::class.java), Mockito.mock(CompactionPreparationScope::class.java) { "scope" }, ToolCallPairingService())
         suspend fun apply(alreadyCompacted: Boolean = false, extraTokens: Int = 0, owner: suspend () -> Unit = {}): Conversation? =
             service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted, extraTokens) {
                 order += "owner"; owner()

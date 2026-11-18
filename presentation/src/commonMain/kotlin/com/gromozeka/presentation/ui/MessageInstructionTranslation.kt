@@ -33,6 +33,7 @@ internal fun MessageInstructionGroup.Control.displayShortLabel(translation: Tran
 
 internal fun Conversation.Message.Instruction.displayTitle(translation: Translation): String {
     val resourceKey = when (this) {
+        is Conversation.Message.Instruction.RuntimeObservation -> "client.instructions.runtimeObservation"
         is Conversation.Message.Instruction.MessageInputRuntimeContext -> "client.instructions.inputContext"
         is Conversation.Message.Instruction.MessageTemporalRuntimeContext -> "client.instructions.messageTime"
         is Conversation.Message.Instruction.RevealedSecretRuntimeContext -> "client.instructions.revealedSecrets"

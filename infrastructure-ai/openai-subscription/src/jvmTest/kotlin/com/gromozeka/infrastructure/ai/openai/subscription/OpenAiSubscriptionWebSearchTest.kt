@@ -14,6 +14,22 @@ import kotlinx.serialization.json.*
 
 class OpenAiSubscriptionWebSearchTest {
     @Test
+    fun `compaction and one-use runtime context do not create a new web-search turn boundary`() {
+        val source = userMessage("Archived user request").copy(instructions = listOf(Conversation.Message.Instruction.RevealedSecretRuntimeContext(
+            com.gromozeka.domain.model.RevealedSecretRuntimeContext(mapOf("fixture" to "approved-model-only-value")))))
+        val summary = message(Conversation.Message.Role.ASSISTANT, listOf(ContentItem.ContextCompactionResult(
+            ContentItem.ContextCompactionResult.Payload.ReadableSummary("handoff"), ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+            sourceMessageIds = listOf(source.id), coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+        val history = listOf(source, summary) + persisted(mapResponse(listOf(webCall)))
+        val projected = AiRuntimeRequest(emptyList(), history).projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+        val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
+        assertEquals(webCall["call_id"], search.pendingCall(projected, connectionId, model)?.get("call_id"))
+        assertFalse(search.recentInput(projected).toString().contains("approved-model-only-value"))
+        assertTrue(projected.last().content.isEmpty())
+        assertTrue(projected.last().instructions.single() is Conversation.Message.Instruction.RevealedSecretRuntimeContext)
+    }
+
+    @Test
     fun searchErrorsPreserveAuthRefreshAndReturnOtherFailuresAsToolResults() = runBlocking {
         var status = 401
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)

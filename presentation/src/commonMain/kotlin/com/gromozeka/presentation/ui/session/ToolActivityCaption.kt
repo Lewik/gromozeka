@@ -33,8 +33,7 @@ internal fun toolActivityCaption(
     val strings = translation.runtime
     val actionName = normalizedToolActionName(toolName)
     if (actionName.isCommandTool()) {
-        val description = ((input as? JsonObject)?.get("description") as? JsonPrimitive)
-            ?.takeIf { it.isString }?.content?.takeIf(String::isNotBlank)
+        val description = commandDescription(input)
         if (description != null) return description
     }
     return when {
@@ -61,6 +60,10 @@ internal fun toolActivityCaption(
         else -> translation.text("chat.tool.usingNamedTool", "toolName" to humanizedToolActionName(actionName))
     }
 }
+
+internal fun commandDescription(input: JsonElement?): String? =
+    ((input as? JsonObject)?.get("description") as? JsonPrimitive)
+        ?.takeIf { it.isString }?.content?.takeIf(String::isNotBlank)
 
 private fun ConversationRuntimeSnapshot.toolInput(execution: ConversationRuntimeToolExecution): JsonElement? {
     val runtimeTaskId = execution.runtimeTaskId ?: return null

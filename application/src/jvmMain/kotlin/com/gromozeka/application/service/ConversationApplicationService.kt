@@ -7,6 +7,8 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.repository.ConversationMessageBatchRepository
+import com.gromozeka.domain.repository.samePersistentBodyAs
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -57,6 +59,7 @@ class ConversationApplicationService(
     private val artifactService: ConversationArtifactApplicationService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val settingsProvider: SettingsProvider,
+    private val messageBatchRepo: ConversationMessageBatchRepository,
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : ConversationDomainService, ConversationRuntimeMessageAppender {
     private val log = KLoggers.logger(this)
@@ -148,7 +151,8 @@ class ConversationApplicationService(
         }
         val sourceAgentId = (sourceMessage.author as? Conversation.Message.Author.Agent)?.agentDefinitionId
             ?: error("Suggested reply source message has no agent author")
-        val mode = settingsProvider.userProfile.suggestedRepliesSettings.mode
+        val settings = settingsProvider.userProfile.suggestedRepliesSettings
+        val mode = settings.mode
         require(mode != UserProfile.SuggestedRepliesSettings.Mode.DISABLED) {
             "Suggested replies are disabled"
         }
@@ -172,6 +176,7 @@ class ConversationApplicationService(
             runtimeSelection = runtimeSelection,
             actorUserId = actorUserId,
             usageId = "suggested-replies:${sourceMessageId.value}:${uuid7()}",
+            settings = settings,
         )
     }
 
@@ -391,44 +396,21 @@ class ConversationApplicationService(
      * @throws IllegalArgumentException if message conversationId doesn't match
      * @throws IllegalStateException if conversation doesn't exist
      */
-    @Transactional
-    override suspend fun appendRuntimeMessage(
-        conversationId: Conversation.Id,
-        message: Conversation.Message
-    ): Conversation? {
-        require(message.conversationId == conversationId) {
-            "Message conversationId mismatch"
+    override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation? {
+        appendRuntimeMessages(conversationId, listOf(message))
+        return conversationRepo.findById(conversationId)
+    }
+
+    override suspend fun appendRuntimeMessages(conversationId: Conversation.Id, messages: List<Conversation.Message>): List<Conversation.Message> {
+        require(messages.all { it.conversationId == conversationId }) { "Message conversationId mismatch" }
+        val conversation = conversationRepo.findById(conversationId) ?: error("Conversation not found: $conversationId")
+        artifactService.validateReferences(conversationId, messages.flatMap { it.content })
+        val appended = messageBatchRepo.append(conversationId, conversation.currentThread, messages, Clock.System.now())
+        if (appended.isNotEmpty()) {
+            appended.forEach { conversationUnreadStateService.recordMessage(conversation, it) }
+            conversationRepo.findById(conversationId)?.let(::publishConversationList)
         }
-
-        val conversation = conversationRepo.findById(conversationId)
-            ?: throw IllegalStateException("Conversation not found: $conversationId")
-        artifactService.validateReferences(conversationId, message.content)
-        saveMessageIfAbsent(message)
-
-        val currentThread = threadRepo.findById(conversation.currentThread)!!
-        if (threadMessageRepo.contains(currentThread.id, message.id)) {
-            log.debug("Message ${message.id} is already linked to thread ${currentThread.id}")
-            return conversationRepo.findById(conversationId)
-        }
-
-        val lastPosition = threadMessageRepo.getMaxPosition(currentThread.id) ?: -1
-
-        runCatching {
-            threadMessageRepo.add(currentThread.id, message.id, position = lastPosition + 1)
-        }.onFailure { error ->
-            val linkedAfterRace = threadMessageRepo.contains(currentThread.id, message.id)
-            if (!linkedAfterRace) {
-                throw error
-            }
-        }
-
-        threadRepo.updateTimestamp(currentThread.id, Clock.System.now())
-        conversationRepo.touch(conversationId)
-        conversationUnreadStateService.recordMessage(conversation, message)
-
-        log.debug("Appended message ${message.id} to thread ${currentThread.id} at position ${lastPosition + 1}")
-
-        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
+        return appended
     }
 
     @Transactional
@@ -475,17 +457,6 @@ class ConversationApplicationService(
             }
         }
     }
-
-    private fun Conversation.Message.samePersistentBodyAs(other: Conversation.Message): Boolean =
-        conversationId == other.conversationId &&
-            originalIds == other.originalIds &&
-            replyTo == other.replyTo &&
-            role == other.role &&
-            author == other.author &&
-            content == other.content &&
-            instructions == other.instructions &&
-            providerMetadata == other.providerMetadata &&
-            error == other.error
 
     /**
      * Loads messages from current thread in order.

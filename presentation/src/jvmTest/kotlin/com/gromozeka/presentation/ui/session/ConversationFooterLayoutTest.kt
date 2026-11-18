@@ -61,6 +61,17 @@ class ConversationFooterLayoutTest {
     }
 
     @Test
+    fun phoneSummaryMatchesTabRowHeightWithoutShrinkingTouchTargets() = runDesktopComposeUiTest(width = 402, height = 700) {
+        setContent { Workspace("", {}, narrow = true, density = UiDensity.TOUCH) }
+        onNodeWithTag("conversation-footer").assertHeightIsEqualTo(48.dp)
+        assertEquals(0f, bounds("conversation-footer").top)
+        for (tag in listOf("conversation-queued-messages", "conversation-running-commands", "conversation-command-monitors", "conversation-slots")) {
+            onNodeWithTag(tag).assertHeightIsAtLeast(48.dp)
+            assertInside(bounds("conversation-footer"), bounds(tag), tag)
+        }
+    }
+
+    @Test
     fun phoneWithKeyboardSpaceKeepsInputSendStopAndMetricsReachable() = runDesktopComposeUiTest(width = 800, height = 700) {
         val width = mutableStateOf(390.dp)
         val scale = mutableFloatStateOf(1f)

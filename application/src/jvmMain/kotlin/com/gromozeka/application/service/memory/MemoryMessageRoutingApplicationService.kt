@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.application.service.ConversationPinnedPrompt
 import com.gromozeka.application.service.BackgroundAiExecutionPacer
 import com.gromozeka.application.service.backgroundWorkloadOrNull
@@ -30,8 +33,6 @@ import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import org.springframework.stereotype.Service
@@ -703,7 +704,7 @@ class MemoryMessageRoutingApplicationService(
     }
 
     private fun Conversation.Message.isSyntheticMemoryRuntimeMessage(): Boolean =
-        providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+        syntheticKind == SyntheticMessageKind.MEMORY
 
     private fun Conversation.Message.isMemoryRouteableTarget(): Boolean =
         role != Conversation.Message.Role.SYSTEM && error == null

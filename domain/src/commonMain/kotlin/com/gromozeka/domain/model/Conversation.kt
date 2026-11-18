@@ -767,6 +767,16 @@ data class Conversation(
                 override fun toXmlLine() = "<user-instruction>${serializeContent()}</user-instruction>"
             }
 
+            /** Request-only application data, never a new human utterance or user instruction. */
+            @Serializable
+            @SerialName("runtime_observation")
+            data class RuntimeObservation(val text: String) : Instruction() {
+                override val title = "Runtime observation"
+                override val description = "Request-only application data"
+                override fun serializeContent() = text
+                override fun toXmlLine() = text
+            }
+
             @Serializable
             @SerialName("message_input_context")
             data class MessageInputRuntimeContext(

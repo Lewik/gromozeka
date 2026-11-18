@@ -57,7 +57,7 @@ class VisualHalfSpacingTest {
         val state = Json.parseToJsonElement("""{"form":{},"data":{}}""").jsonObject
         val document = """<html><head><title>Spacing</title><state-schema><![CDATA[{"type":"object","properties":{"form":{"type":"object"},"data":{"type":"object"}},"required":["form","data"]}]]></state-schema></head><body>$body</body></html>"""
         val now = Instant.fromEpochMilliseconds(0)
-        return Visual("spacing", Conversation.Id("conversation"), User.Id("user"), document = document, title = "Spacing", state = state, createdAt = now, updatedAt = now)
+        return Visual("spacing", Conversation.Id("conversation"), User.Id("user"), document = document, title = "Spacing", state = state, createdAt = now, updatedAt = now, includeStateInContext = true)
     }
 
     private object NoIo : VisualService {

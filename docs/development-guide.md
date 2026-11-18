@@ -95,6 +95,9 @@ select the current count API, local-only counting, or another model configuratio
 See [context counting policy](ai-http-settings.md#context-counting-policy).
 Protocol 29 adds tool-free `isolated_ai_call_v1` inference and binary workspace file
 reads. Server and Workers must be updated together. See [isolated AI calls](ai-call.md).
+Protocol 30 adds proactive compaction configuration and detached native-prefix
+capability. Full compactions retain a whole-message suffix; prepared-result
+publication and cancellation are fenced by Runtime storage. See [proactive compaction](proactive-compaction.md).
 
 
 `ServerHttpSettings` preserves the existing `GROMOZEKA_REMOTE_*`, static-root,
@@ -449,6 +452,31 @@ package management, selection, and synchronization to Agents. See
 ownership contracts, and validation commands, and
 [Web font fallback](localization-fonts.md) for bundled font resources.
 
+## Suggested Reply Settings
+
+`UserProfile.suggestedRepliesSettings` owns two independent nonblank instructions:
+`inlinePrompt` for the main response and `separatePrompt` for dedicated generation
+and manual regeneration. Both start with the same concise, language-preserving
+instruction and a recommendation of 112 total reply characters. That number is
+editable prompt text, not a new output validator or truncation rule. The existing
+reply sanitization policy is unchanged. JSON/XML field names, output syntax,
+the separate generator's system prompt and the conversation wrapper stay code-owned.
+The existing `grz_user_profile_get` and `grz_user_profile_update` tools expose these
+settings; updates still replace the complete shared profile, not a partial patch.
+
+`contextMode` selects `RECENT_MESSAGES` (the last ten nonblank readable messages,
+up to 4000 characters each) or `FULL_THREAD` (all readable user/assistant content
+in the current thread, without those limits). Initial full-thread generation loads
+actual thread history rather than the main model's compacted context projection,
+and includes the newly generated answer. Manual regeneration ends at the selected
+source answer. Full-thread mode does not silently shorten history to fit the model;
+provider context limits and the existing generation-failure behavior still apply.
+It does not change provider caching settings or guarantee a cache hit.
+
+The Settings editor keeps both instructions adjacent and offers the context choice
+for separate calls. Blank local drafts show validation and are not persisted.
+Existing profiles retain their saved mode and use the new preferences' defaults.
+
 ## Corporate Compatibility
 
 External integrations must respect the operator's selected provider policy. A
@@ -786,9 +814,24 @@ Enable only on an isolated Server with `GROMOZEKA_COLLABORATION_ENABLED=true`.
 The default is off. Open two conversations in one project with identical tool
 access policies and name them. Agents may use different AI connections, providers,
 models and preloaded tool lists; each session uses its own configured runtime.
-`grz_agent_sessions` discovers eligible endpoints; `grz_agent_request` submits
-work without waiting; `grz_agent_reply` completes a request. `grz_agent_message`
-is context-only and does not start a model turn. Results are queued automatically.
+`grz_agent_sessions` discovers eligible endpoints. `grz_agent_send` requires an
+explicit `mode` (there is no default):
+
+- `context_only` adds the message to the recipient thread without activating the
+  agent or scheduling an LLM turn. Processing is not guaranteed.
+- `activate` queues a turn for the addressed agent without creating an obligation
+  to reply to the sender.
+- `request` queues work and creates an obligation completed by `grz_agent_reply`.
+
+Every send returns `message_id` and `status=queued`; only `request` also returns
+`request_id`. Queued does not mean delivered or completed. Request results are
+queued automatically. Delivery stays behind existing work and revalidates access
+before execution. User Stop/Interrupt blocks undelivered activations even when no
+request or foreground task exists; a racing submit is rejected by invocation-time
+validation. Already queued work follows the ordinary Runtime pause/stop controls.
+Retries of the same tool call preserve
+one delivery; changing the mode with the same identity is an explicit conflict.
+Only the unified send tool is registered; removed send-tool names have no aliases.
 Discovery returns a display-only `title` (`New conversation` for blank stored titles),
 `stored_title`, and `title_is_fallback`. The fallback corresponds to the UI's
 `common.newConversation` label; tools use its stable English form. `agent_name`
@@ -819,20 +862,24 @@ tool access policies. Telegram and other externally bound
 conversations keep their ordinary turn lifecycle: no collaboration prompt or response
 review, and collaboration tools are hidden from both the catalog and tool discovery.
 Direct collaboration calls from those channels remain rejected.
-Completed peer results are not human TTS. Read-only delegation constraints are copied into the recipient context;
-ordinary tool execution still uses the existing approval/policy mechanisms.
+Completed peer results are not human TTS. Read-only constraints are copied into
+requested turns, obligation-free activations, and returned results. The trusted
+originating message ID in tool context propagates those constraints through further
+sends, even when no parent request remains open. Ordinary tool execution still uses the
+existing approval/policy mechanisms; peer messages never grant user permission.
 The experiment does not enable external protocols, create agents, or move
 workspace files between sessions. Do not enable it in production yet.
 
 ### Read-only A2A session inspection
 
-`grz_agent_sessions` keeps its JSON-array result and accepts optional
-`conversation_id`, `agent_id`, and `details` (default false). Without a selector it
-returns at most 200 eligible session rows from the existing first-200-conversation
-scan. An explicit conversation selector bypasses that scan, not authorization;
+`grz_agent_sessions` returns `{sessions:[...],next_cursor:string|null}` with
+optional conversation/agent selectors, `details`, saved-open-tab filtering, title
+search (literal or RE2), strict last-message time bounds, and keyset pagination.
+`limit` defaults to 50 and is capped at 200; filters apply before pagination.
+`open_only` defaults to true; explicitly set false to inspect a closed tab.
 `agent_id` requires `conversation_id`, and `details=true` requires both IDs.
 Missing conversation IDs, unmatched agents, ineligible and current-conversation
-selections return an empty array.
+selections return an empty page. An explicit selector never bypasses authorization.
 The project/user/tool-policy checks and exclusion of external channels are unchanged.
 
 Each row adds `thread_id` and a compact `runtime` object. Foreground facts describe
@@ -842,7 +889,23 @@ Each row adds `thread_id` and a compact `runtime` object. Foreground facts descr
 payload class name; task bodies/arguments and other agents' identities are omitted.
 Queue count, continuation presence, active insertion count and last event sequence
 come from the same scheduling read. `IDLE` only means no observed scheduled foreground
-work: background commands/monitors, slots and failures are not queried by this view.
+work: it does not prove success, liveness, or absence of background commands/monitors.
+
+`last_completion` is the last recorded terminal fact for agent work in the
+conversation, not necessarily for the selected agent or the currently active turn.
+It survives newer work and passive context delivery. Its status is `COMPLETED`,
+`FAILED`, `STOPPED`, `INTERRUPTED`, `CANCELLED`, or `UNKNOWN`, with turn/task IDs,
+completion time, a structured reason and summary, a bounded `error_type` and its
+truncation flag, `outcome_unknown`, and `problem_count`. Raw exception bodies,
+stack traces, model input and command output are not exposed. A completed turn can
+still have tool problems; these do not classify the entire turn as failed.
+
+The completion fact is persisted by the same scheduling transitions as the task
+termination. Historical records without this fact remain null/unknown; neither
+IDLE nor old completion timestamps are used to invent an outcome. Existing
+requests, deliveries and history are retained without data rewrites or tool aliases.
+A failed/unknown outcome is not permission to replay effects or override a human
+pause/stop; inspection never schedules recovery itself.
 
 `agent_requests` describes open obligations for the authenticated user and selected
 agent in the conversation, across history versions: incoming/outgoing counts and incoming `WAITING_USER` /
@@ -1190,9 +1253,27 @@ and client reload clears them. Neither snapshots, handler input, `get`, reminder
 nor dismissal acknowledgements carry highlight state. Dirty-form dots remain
 separate noninteractive indicators.
 
+`include_state_in_context` is an optional boolean on `grz_visual create/update`.
+It defaults to true on create; omission on update preserves the saved setting.
+It can be changed alone, without replacing the document, state or handler, and
+without resetting client drafts. Compact receipts and list summaries return
+`include_state_in_context`; the full `get.visual` exposes `includeStateInContext`.
+The persisted/read model requires this field explicitly. V88 fills missing fields
+on existing panels with true and enforces a boolean storage constraint. There is
+no reader fallback for old records; the default belongs only to new-panel creation.
+
 Before each conversation LLM request, `VisualRequestEnricher` adds saved
-`form + data` observations for all current Visuals. Updates coalesce between
-requests and do not trigger model work. Full snapshots are sent when state changes;
+`form + data` observations only for Visuals with this setting enabled. Disabled
+Visuals remain in the inventory as `state-status=disabled`, with metadata but no
+state or snapshot ID; they are not reported as closed. Opting out also discards
+cached snapshot replay, so earlier automatic state is not re-injected. Other
+Visuals receive fresh full baselines where needed, and reenabling a Visual can
+resume normal state snapshots. This is not a privacy/permission boundary: it does
+not erase previously delivered model context or chat history. Explicit `get` and
+button submissions still carry full state, and handler output cannot change the
+setting through `form/data` updates.
+
+Updates coalesce between requests and do not trigger model work. Full snapshots are sent when state changes;
 short unchanged markers refer to full snapshots reconstructed earlier in the same
 request. Canonical JSON hashing ignores object-key order and transport revisions.
 The request-only replay cache is bounded and isolated by conversation, thread,
@@ -1210,11 +1291,11 @@ fresh reads, markup and diagnostics.
 contains one or both complete sections: omitted roots remain unchanged, supplied
 roots replace their entire previous objects. Members omitted inside a supplied
 section disappear at every depth. An empty section clears it if schema and
-bindings permit; an empty update with no sections is rejected. The same rules
+bindings permit; an empty `update.state` object is rejected. The same rules
 apply to handler output. The resulting full state is validated atomically before
 publication. Send `document` only for structural/control/schema changes, not for
 ordinary content updates. Model-facing create/update results contain compact
-acknowledgements (ID, revisions, status, handler task and diagnostics), never HTML
+acknowledgements (ID, revisions, status, context setting, handler task and diagnostics), never HTML
 or state. Only `get` returns the full document and saved state; `list` is compact.
 Schema or rendering errors leave the last valid state intact. Runtime diagnostics
 are shown in host-owned panel chrome outside the document and are available via
@@ -1542,6 +1623,89 @@ is not deleted or marked delivered. Other notifications continue after completio
 or failure, including bounded-batch overflow without another Worker event. This
 neither retries the failed delivery nor re-executes the command or monitor.
 
+Command completion is observed locally, independently of cancellation polling and
+Server synchronization. The initial yield makes one atomic delivery decision:
+a terminated process returns its terminal result inline and does not request a
+background notification; a running process returns a stable `WORKING` snapshot
+and requests one eventual completion. A late working-state acknowledgement must
+not replace a newer local terminal state. Process exit, not stdout availability,
+determines completion.
+
+Completion notifications for the active agent and the same authenticated creator
+use the next safe input boundary, including the gap before a model continuation;
+they do not wait for the whole turn to end. Tool call/result pairs remain intact.
+A notification for another agent/creator remains a separate queued input, and an
+idle notification is immediately runnable. The existing durable insertion
+reservation handles replay, Stop, Interrupt and executor ownership. Bounded
+notification batches continue draining after inserted deliveries as well as root
+deliveries. All ready results for the same recipient are delivered together and
+trigger an ordinary model continuation, including failed or cancelled commands.
+An ordinary tool result and an already-ready completion event join the same safe
+input boundary; inspecting a result does not silently consume its completion event.
+There is no additional coalescing timer. A later event triggers another normal
+continuation. Only a transport duplicate whose event was already delivered is a
+no-op. Pending unrelated work does not suppress a completion's model invocation.
+Delivery prepares all artifacts before atomically appending the complete message
+packet; a failed append cannot leave half a synthetic tool-call/result pair in
+history. Source acknowledgements are part of the Runtime step outcome and commit
+in the same coordinator transaction as the model continuation. A rollback commits
+neither. Stop/Interrupt keep unacknowledged background inputs pending and paused
+when their continuation is discarded.
+
+A failure is recorded against the specific background input whose delivery was
+attempted, not every input reserved by its parent. Untouched inputs survive parent
+failure. Command results awaiting delivery are protected from terminal-inventory
+retention. Runtime admission binds the notification recipient, so another result
+arriving during delivery can join the next safe point too.
+Worker Gateway protocol **31** includes this notification contract; update Server,
+Workers and clients together.
+
+Synthetic message metadata uses the shared `SyntheticMessageKind` enum and standard
+Kotlin serialization names (`COMMAND_TASK_COMPLETION`, `COMMAND_MONITOR_UPDATE`,
+`MEMORY`, and the other declared kinds). Producers use `putSyntheticMessageMetadata`;
+readers use the typed `syntheticKind` accessor. There are no lowercase aliases,
+case-insensitive readers, custom enum values, or unknown-kind defaults.
+
+Command/monitor delivery includes a typed `backgroundActivitySource` containing the
+initiating `toolCallId` and `agentDefinitionId`, taken only from validated Server-owned
+launch provenance. These fields identify activity ownership, not message authorship:
+automatic messages retain `author = null`, their separate message IDs and their
+synthetic call/result pair. UI grouping uses this ownership to join adjacent completed
+activity-only messages with the same agent, without crossing text, role, failure or
+running-activity boundaries. Missing trusted provenance stays unlinked rather than
+being inferred from the most recent agent or command text.
+
+Migration **V89** converts old lowercase kinds in canonical history, queued runtime
+messages, runtime event copies and response-review drafts, and fills launch links
+where trusted origin records exist. It preserves IDs, content, authors, tool payloads
+and opaque provider replay metadata. Unknown kinds fail explicitly. This is a one-time
+Kotlin/Flyway migration, not a runtime compatibility path.
+Worker Gateway protocol **33** requires the updated Server, Workers and clients;
+drain in-flight calls before the coordinated upgrade.
+
+Model requests also receive a request-only `recorded_running_commands` inventory
+from the Server's saved command state. Each entry contains only `task_id` and an
+optional nonblank `description`, limited to 160 Unicode code points. Missing
+labels never fall back to the shell command. Only recorded `WORKING` commands in
+the authorized conversation are included; an empty list replaces a previous list.
+This is not a Worker liveness check, does not enumerate detached external services,
+and does not request action or status polling. It does not wake the model, append
+history, or acknowledge automatic completion delivery.
+
+The shared system-prompt assembler supplies the static interpretation contract.
+Dynamic blocks contain only JSON in `<runtime-command-context>`. Observations use
+the distinct request-only `Instruction.RuntimeObservation` type, not user text;
+semantic consumers such as pending WebSearch and recent human-input selection do
+not mistake them for a new human turn. Authenticated submissions reject this type.
+Bounded replay keeps observations on retained canonical USER anchors without
+synthetic message IDs. Branch, actor, Agent and provider/model changes isolate
+replay. Native continuations ending in signed assistant state, and changed views
+on an already-sent USER anchor, receive the current block in system instructions
+without rewriting that anchor; the current block takes precedence over older
+observations. Isolated snapshots never seed or mutate the live observation cache.
+Worker Gateway protocol **32** carries the new instruction variant; update Server
+and Workers together.
+
 Managed shell commands accept an optional `description`: a short user-facing
 purpose in the user's language, preferably **at most 50 characters including
 spaces**. This is prompt guidance, not an acceptance limit: longer labels remain
@@ -1551,10 +1715,26 @@ claim results ("Tests passed"), and must not contain secrets.
 
 The exact command stays separate and unchanged. Description is persisted with the
 command task, included in get/list/completion metadata, and cannot change during
-state synchronization. Runtime captions prefer it, with the original command
-available in the tooltip; missing or blank task labels display the command.
+state synchronization. Runtime task labels and chat invocation headers share
+one selection rule: a nonblank description takes precedence over the command.
+Chat headers show only that label beside the tool icon, without a technical-name
+prefix. Missing/blank descriptions use a compact command preview; the expanded
+invocation keeps the exact tool name/version, full command, directory, parameters
+and output. Runtime task tooltips retain the full command. Activity groups stay
+icon-only. Live activity captions without a description retain their generic
+localized wording rather than exposing shell arguments.
 This adds no shell argument/environment value or extra model call. Existing JSON
 records default description to null; no database migration is required.
+
+Reasoning activity headers use the first nonblank line of returned `Thinking.thinking`
+display text. Whole-line Markdown heading/emphasis markers are removed from the
+preview; no summary is generated by another model. Missing text keeps the existing
+localized thinking/hidden-thinking label. The complete returned text remains in the
+expanded activity, and the original content, signatures and provider replay metadata
+are never rewritten for presentation. This uses the shared display model, including
+TrueFoundry-compatible `reasoning_content` and `thinking_blocks`, without changing
+provider routes, reasoning parameters or the blocking per-request delivery contract.
+It does not add live streaming. Collapsed activity groups remain icon-only.
 Worker Gateway protocol **26** adds this command metadata. Update Server, Workers
 and clients together. The tool registry assigns a new immutable execute-command
 schema revision; clients must discover the current name rather than invent it.

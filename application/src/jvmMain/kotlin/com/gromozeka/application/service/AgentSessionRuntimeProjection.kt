@@ -45,6 +45,20 @@ internal object AgentSessionRuntimeProjection {
             put("queued_task_count", scheduling.pendingTasks.size)
             put("active_insertion_count", scheduling.activeInsertions.size)
             put("last_event_sequence", scheduling.lastEventSequence)
+            put("last_completion", scheduling.lastCompletion?.let { completion ->
+                buildJsonObject {
+                    put("turn_id", completion.turnId.value)
+                    put("task_id", completion.taskId.value)
+                    put("completed_at", completion.completedAt.toString())
+                    put("status", completion.status.name)
+                    put("reason", completion.reason?.name)
+                    put("summary", completion.reason?.summary)
+                    put("error_type", completion.errorType?.take(128))
+                    put("error_type_truncated", (completion.errorType?.length ?: 0) > 128)
+                    put("outcome_unknown", completion.outcomeUnknown)
+                    put("problem_count", completion.problemCount)
+                }
+            } ?: JsonNull)
             putJsonObject("agent_requests") {
                 put("scope", "selected_agent_conversation")
                 put("open_incoming", incoming.size)

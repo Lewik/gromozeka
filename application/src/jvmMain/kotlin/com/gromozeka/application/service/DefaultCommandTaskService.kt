@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandScriptBootstrapService
+import com.gromozeka.domain.service.mergeCoordinatorState
 import com.gromozeka.domain.service.requireSameIdentity
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
@@ -50,6 +51,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -239,10 +241,10 @@ class DefaultCommandTaskService(
                     startGuard()
                     process.releaseStart()
                     activeCommands[task.id] = command
-                    publishSnapshot(conversationId)
                     processRunner.releaseStartupOutputProtection(process.outputFile)
                     scope.launch { monitor(command) }
                 }
+                publishSnapshot(conversationId)
                 command
             } catch (error: Throwable) {
                 cleanupFailedStart(process, created, error)
@@ -250,19 +252,19 @@ class DefaultCommandTaskService(
             }
         }
 
-        try {
+        return try {
             awaitInitialResult(activeCommand, request.yield_time_ms, context)
+            val resultTask = selectInitialResult(activeCommand)
+            // The delivery decision is immutable even if the process exits while its receipt is persisted.
+            trySynchronizeCommandTask(activeCommand)
+            context.cancellationSignal.throwIfCancellationRequested()
+            output(resultTask.copy(synchronizationError = activeCommand.task.synchronizationError), 0)
         } catch (error: CancellationException) {
             withContext(NonCancellable) {
                 runCatching { cancel(conversationId, taskId) }.onFailure(error::addSuppressed)
             }
             throw error
         }
-        var resultTask = currentTask(conversationId, taskId) ?: activeCommand.task
-        if (resultTask.status == CommandTask.Status.WORKING && resultTask.agentDefinitionId != null && resultTask.visualId == null) {
-            resultTask = requestCompletionNotification(activeCommand)
-        }
-        return output(resultTask, 0)
     }
 
     private suspend fun cleanupFailedStart(
@@ -292,7 +294,7 @@ class DefaultCommandTaskService(
             command.task = command.task.copy(status = status, statusMessage = message, updatedAt = now, completedAt = now)
             runCatching { setTerminalState(command, status, null, message) }.onFailure(error::addSuppressed)
             activeCommands[command.task.id] = command
-            command.completed.complete(Unit)
+            command.terminal.complete(Unit)
         }
         // The first registration may have committed despite a lost ACK. Reconcile the SAME id,
         // outside the failed/cancelled RPC. Never rerun the process or delete its output here.
@@ -357,80 +359,86 @@ class DefaultCommandTaskService(
     override suspend fun cancel(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
-    ): Boolean = taskMutex(taskId).withLock {
-        val activeCommand = activeCommands[taskId]
-        // This block already owns the active command's mutex; do not reacquire it via currentTask.
-        val stored = if (activeCommand != null) {
-            activeCommand.task.takeIf { it.conversationId == conversationId }
-        } else runtimeState.findCommandTask(conversationId, taskId)
-        if (stored == null || stored.workerId != workerId || stored.isTerminal) return@withLock false
+    ): Boolean {
+        var active: ActiveCommand? = null
+        val cancelled = taskMutex(taskId).withLock {
+            val activeCommand = activeCommands[taskId]
+            active = activeCommand
+            // This block already owns the active command's mutex; do not reacquire it via currentTask.
+            val stored = if (activeCommand != null) {
+                activeCommand.task.takeIf { it.conversationId == conversationId }
+            } else runtimeState.findCommandTask(conversationId, taskId)
+            if (stored == null || stored.workerId != workerId || stored.isTerminal) return@withLock false
 
-        if (activeCommand != null) {
-            if (activeCommand.task.isTerminal) return@withLock false
-            if (!activeCommand.process.isAlive()) {
-                val exitCode = runCatching(activeCommand.process::exitCode).getOrNull()
-                complete(
+            if (activeCommand != null) {
+                if (activeCommand.task.isTerminal) return@withLock false
+                if (!activeCommand.process.isAlive()) {
+                    val exitCode = runCatching(activeCommand.process::exitCode).getOrNull()
+                    setTerminalState(
+                        activeCommand = activeCommand,
+                        status = exitCode?.toTaskStatus() ?: CommandTask.Status.FAILED,
+                        exitCode = exitCode,
+                        statusMessage = exitCode?.let { "Command exited with code $it before cancellation" }
+                            ?: "Command stopped before cancellation without an exit code",
+                    )
+                    return@withLock false
+                }
+                activeCommand.process.terminateTree()
+                setTerminalState(
                     activeCommand = activeCommand,
-                    status = exitCode?.toTaskStatus() ?: CommandTask.Status.FAILED,
-                    exitCode = exitCode,
-                    statusMessage = exitCode?.let { "Command exited with code $it before cancellation" }
-                        ?: "Command stopped before cancellation without an exit code",
-                )
-                return@withLock false
-            }
-            activeCommand.process.terminateTree()
-            complete(
-                activeCommand = activeCommand,
-                status = CommandTask.Status.CANCELLED,
-                exitCode = null,
-                statusMessage = "Command was cancelled",
-            )
-            return@withLock true
-        }
-
-        when (val recovery = processRunner.recover(stored.recoverySpec())) {
-            is CommandProcessRecovery.Running -> {
-                recovery.process.terminateTree()
-                completeStoredTask(
-                    task = stored,
                     status = CommandTask.Status.CANCELLED,
                     exitCode = null,
-                    statusMessage = "Command was cancelled after reconnecting to its process",
+                    statusMessage = "Command was cancelled",
                 )
-                true
+                return@withLock true
             }
 
-            is CommandProcessRecovery.Completed -> {
-                completeStoredTask(
-                    task = stored,
-                    status = recovery.exitCode.toTaskStatus(),
-                    exitCode = recovery.exitCode,
-                    statusMessage = "Command exited with code ${recovery.exitCode} before cancellation",
-                )
-                false
-            }
+            when (val recovery = processRunner.recover(stored.recoverySpec())) {
+                is CommandProcessRecovery.Running -> {
+                    recovery.process.terminateTree()
+                    completeStoredTask(
+                        task = stored,
+                        status = CommandTask.Status.CANCELLED,
+                        exitCode = null,
+                        statusMessage = "Command was cancelled after reconnecting to its process",
+                    )
+                    true
+                }
 
-            is CommandProcessRecovery.UnrecoverableRunning -> {
-                recovery.process.terminateTree()
-                completeStoredTask(
-                    task = stored,
-                    status = CommandTask.Status.CANCELLED,
-                    exitCode = null,
-                    statusMessage = "Command was cancelled because recovery failed: ${recovery.reason}",
-                )
-                true
-            }
+                is CommandProcessRecovery.Completed -> {
+                    completeStoredTask(
+                        task = stored,
+                        status = recovery.exitCode.toTaskStatus(),
+                        exitCode = recovery.exitCode,
+                        statusMessage = "Command exited with code ${recovery.exitCode} before cancellation",
+                    )
+                    false
+                }
 
-            is CommandProcessRecovery.Unavailable -> {
-                completeStoredTask(
-                    task = stored,
-                    status = CommandTask.Status.FAILED,
-                    exitCode = null,
-                    statusMessage = "Command could not be recovered: ${recovery.reason}",
-                )
-                false
+                is CommandProcessRecovery.UnrecoverableRunning -> {
+                    recovery.process.terminateTree()
+                    completeStoredTask(
+                        task = stored,
+                        status = CommandTask.Status.CANCELLED,
+                        exitCode = null,
+                        statusMessage = "Command was cancelled because recovery failed: ${recovery.reason}",
+                    )
+                    true
+                }
+
+                is CommandProcessRecovery.Unavailable -> {
+                    completeStoredTask(
+                        task = stored,
+                        status = CommandTask.Status.FAILED,
+                        exitCode = null,
+                        statusMessage = "Command could not be recovered: ${recovery.reason}",
+                    )
+                    false
+                }
             }
         }
+        active?.let { trySynchronizeCommandTask(it) }
+        return cancelled
     }
 
     override suspend fun sendInput(
@@ -655,129 +663,92 @@ class DefaultCommandTaskService(
         }
     }
 
-    private suspend fun monitor(activeCommand: ActiveCommand) {
+    private suspend fun monitor(activeCommand: ActiveCommand) = coroutineScope {
+        val processObserver = launch { observeProcess(activeCommand) }
         try {
-            var lastPublishedBytes = 0L
-            var lastPublishedAt = System.nanoTime()
+            var lastPublishedAt = 0L
             var nextCancellationPollAt = 0L
             while (true) {
                 currentCoroutineContext().ensureActive()
-                val processStopped = if (activeCommand.task.isTerminal) {
-                    false
-                } else {
-                    activeCommand.process.waitFor(COMMAND_STATE_POLL_INTERVAL_MILLIS)
-                }
                 val now = System.nanoTime()
                 val cancellationRequested = if (!activeCommand.task.isTerminal && now >= nextCancellationPollAt) {
                     nextCancellationPollAt = now + CANCELLATION_POLL_INTERVAL_NANOS
                     pollCancellationRequest(activeCommand)
-                } else {
-                    false
-                }
-                var stopMonitoring = false
+                } else false
                 activeCommand.mutex.withLock {
-                    if (activeCommand.task.isTerminal) {
-                        stopMonitoring = trySynchronizeCommandTask(activeCommand)
-                        return@withLock
-                    }
-                    when {
-                        cancellationRequested -> {
+                    if (!activeCommand.task.isTerminal) {
+                        if (!observeExit(activeCommand) && cancellationRequested) {
                             activeCommand.process.terminateTree()
-                            setTerminalState(
-                                activeCommand = activeCommand,
-                                status = CommandTask.Status.CANCELLED,
-                                exitCode = null,
-                                statusMessage = "Command was cancelled",
-                            )
-                            stopMonitoring = trySynchronizeCommandTask(activeCommand)
+                            setTerminalState(activeCommand, CommandTask.Status.CANCELLED, null, "Command was cancelled")
                         }
-
-                        processStopped -> {
-                            val exitCode = activeCommand.process.exitCode()
-                            setTerminalState(
-                                activeCommand = activeCommand,
-                                status = exitCode.toTaskStatus(),
-                                exitCode = exitCode,
-                                statusMessage = if (exitCode == 0) {
-                                    "Command completed"
-                                } else {
-                                    "Command exited with code $exitCode"
-                                },
-                            )
-                            stopMonitoring = trySynchronizeCommandTask(activeCommand)
-                        }
-
-                        activeCommand.task.timeoutAt?.let { Clock.System.now() >= it } == true -> {
-                            activeCommand.process.terminateTree()
-                            setTerminalState(
-                                activeCommand = activeCommand,
-                                status = CommandTask.Status.FAILED,
-                                exitCode = null,
-                                statusMessage = "Command timed out at ${activeCommand.task.timeoutAt}",
-                            )
-                            stopMonitoring = trySynchronizeCommandTask(activeCommand)
-                        }
-
-                        else -> {
+                        if (!activeCommand.task.isTerminal) {
                             val outputBytes = File(activeCommand.task.outputFile).length()
-                            val now = System.nanoTime()
-                            if (outputBytes != lastPublishedBytes &&
-                                now - lastPublishedAt >= PROGRESS_PUBLISH_INTERVAL_NANOS
-                            ) {
-                                lastPublishedAt = now
-                                activeCommand.task = activeCommand.task.copy(
-                                    outputBytes = outputBytes,
-                                    updatedAt = Clock.System.now(),
-                                )
-                                if (trySynchronizeCommandTask(activeCommand)) {
-                                    lastPublishedBytes = outputBytes
-                                }
+                            if (outputBytes != activeCommand.task.outputBytes) {
+                                activeCommand.task = activeCommand.task.copy(outputBytes = outputBytes, updatedAt = Clock.System.now())
                             }
                         }
                     }
                 }
-                if (stopMonitoring) return
-                if (activeCommand.task.isTerminal) {
-                    delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                if (activeCommand.task.isTerminal || now - lastPublishedAt >= PROGRESS_PUBLISH_INTERVAL_NANOS) {
+                    lastPublishedAt = now
+                    if (trySynchronizeCommandTask(activeCommand)) return@coroutineScope
+                }
+                delay(if (activeCommand.task.isTerminal) CONTROL_PLANE_RETRY_INTERVAL_MILLIS else COMMAND_STATE_POLL_INTERVAL_MILLIS)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            failCommand(activeCommand, error)
+            synchronizeTerminalStateUntilAvailable(activeCommand)
+        } finally {
+            withContext(NonCancellable) { processObserver.cancelAndJoin() }
+            if (activeCommand.synchronization.rejection == null) activeCommands.remove(activeCommand.task.id, activeCommand)
+            if (activeCommand.task.isTerminal) {
+                runCatching { garbageCollectOutputArtifacts(reason = "command_terminal") }
+                    .onFailure { log.warn(it) { "Failed to apply command output retention: ${it.message}" } }
+            }
+        }
+    }
+
+    /** Process exit and timeout observation must never wait for a control-plane round trip. */
+    private suspend fun observeProcess(activeCommand: ActiveCommand) {
+        try {
+            while (!activeCommand.terminal.isCompleted) {
+                runInterruptible { activeCommand.process.waitFor(COMMAND_STATE_POLL_INTERVAL_MILLIS) }
+                activeCommand.mutex.withLock {
+                    if (!activeCommand.task.isTerminal && !observeExit(activeCommand) &&
+                        activeCommand.task.timeoutAt?.let { Clock.System.now() >= it } == true) {
+                        activeCommand.process.terminateTree()
+                        setTerminalState(activeCommand, CommandTask.Status.FAILED, null,
+                            "Command timed out at ${activeCommand.task.timeoutAt}")
+                    }
                 }
             }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            log.error(error) { "Command task monitor failed: ${activeCommand.task.id.value}" }
-            activeCommand.mutex.withLock {
-                if (!activeCommand.task.isTerminal) {
-                    runCatching { activeCommand.process.terminateTree() }
-                    setTerminalState(
-                        activeCommand = activeCommand,
-                        status = CommandTask.Status.FAILED,
-                        exitCode = null,
-                        statusMessage = error.message ?: "Command task monitor failed",
-                    )
-                }
-            }
-            synchronizeTerminalStateUntilAvailable(activeCommand)
-        } finally {
-            if (activeCommand.synchronization.rejection == null) activeCommands.remove(activeCommand.task.id, activeCommand)
-            activeCommand.completed.complete(Unit)
-            if (activeCommand.task.isTerminal) {
-                runCatching { garbageCollectOutputArtifacts(reason = "command_terminal") }
-                    .onFailure { error ->
-                        log.warn(error) { "Failed to apply command output retention: ${error.message}" }
-                    }
+            failCommand(activeCommand, error)
+        }
+    }
+
+    private suspend fun failCommand(activeCommand: ActiveCommand, error: Throwable) {
+        log.error(error) { "Command task monitor failed: ${activeCommand.task.id.value}" }
+        activeCommand.mutex.withLock {
+            if (!activeCommand.task.isTerminal) {
+                runCatching { activeCommand.process.terminateTree() }
+                setTerminalState(activeCommand, CommandTask.Status.FAILED, null, error.message ?: "Command task monitor failed")
             }
         }
     }
 
-    private suspend fun complete(
-        activeCommand: ActiveCommand,
-        status: CommandTask.Status,
-        exitCode: Int?,
-        statusMessage: String,
-    ) {
-        setTerminalState(activeCommand, status, exitCode, statusMessage)
-        activeCommand.task = persistCommandTask(activeCommand.task)
-        publishSnapshot(activeCommand.task.conversationId)
+    /** Caller owns the command mutex. The process receipt, not stdout, determines completion. */
+    private fun observeExit(activeCommand: ActiveCommand): Boolean {
+        if (activeCommand.task.isTerminal) return true
+        if (!activeCommand.process.waitFor(0)) return false
+        val exitCode = activeCommand.process.exitCode()
+        setTerminalState(activeCommand, exitCode.toTaskStatus(), exitCode,
+            if (exitCode == 0) "Command completed" else "Command exited with code $exitCode")
+        return true
     }
 
     private fun setTerminalState(
@@ -798,6 +769,7 @@ class DefaultCommandTaskService(
             terminalOutputStartByte = terminalOutput.first,
             terminalOutputContent = terminalOutput.second,
         )
+        activeCommand.terminal.complete(Unit)
     }
 
     private suspend fun pollCancellationRequest(activeCommand: ActiveCommand): Boolean =
@@ -813,42 +785,54 @@ class DefaultCommandTaskService(
         } catch (error: Throwable) {
             activeCommand.controlReads.failed(error)
             activeCommand.controlReads.rejection?.let {
-                activeCommand.task = activeCommand.task.copy(synchronizationError = it)
+                activeCommand.mutex.withLock {
+                    activeCommand.task = activeCommand.task.copy(synchronizationError = it)
+                }
                 log.error(error) { "Command control request was rejected; local output is retained: ${activeCommand.task.id.value}" }
             } ?: warnControlPlaneUnavailable(activeCommand, error)
             false
         }
 
-    private suspend fun trySynchronizeCommandTask(activeCommand: ActiveCommand): Boolean {
-        if (!activeCommand.synchronization.canAttempt()) {
-            return activeCommand.synchronization.rejection != null && activeCommand.task.isTerminal
+    private suspend fun trySynchronizeCommandTask(activeCommand: ActiveCommand): Boolean =
+        activeCommand.synchronizationMutex.withLock {
+            if (activeCommand.terminalSynchronized.isCompleted) return@withLock true
+            if (!activeCommand.synchronization.canAttempt()) {
+                return@withLock activeCommand.synchronization.rejection != null && activeCommand.task.isTerminal
+            }
+            try {
+                val task = activeCommand.mutex.withLock { activeCommand.task }
+                val stored = persistCommandTask(task)
+                activeCommand.mutex.withLock {
+                    activeCommand.task = activeCommand.task.mergeCoordinatorState(stored)
+                    if (activeCommand.task.isTerminal) activeCommand.terminal.complete(Unit)
+                }
+                publishSnapshot(task.conversationId)
+                activeCommand.lastControlPlaneWarningAtNanos = null
+                activeCommand.synchronization.succeeded()
+                if (!activeCommand.startupTerminationFailed) processRunner.releaseStartupOutputProtection(task.outputFile)
+                activeCommand.mutex.withLock {
+                    (activeCommand.task.isTerminal && activeCommand.task == stored).also { terminalStored ->
+                        if (terminalStored) activeCommand.terminalSynchronized.complete(Unit)
+                    }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                activeCommand.synchronization.failed(error)
+                val rejection = activeCommand.synchronization.rejection
+                if (rejection != null) {
+                    activeCommand.mutex.withLock {
+                        activeCommand.task = activeCommand.task.copy(synchronizationError = rejection)
+                    }
+                    log.error(error) { "Command result synchronization was rejected; local output is retained: ${activeCommand.task.id.value}" }
+                } else warnControlPlaneUnavailable(activeCommand, error)
+                rejection != null && activeCommand.task.isTerminal
+            }
         }
-        return try {
-            val task = activeCommand.task
-            activeCommand.task = persistCommandTask(task)
-            publishSnapshot(task.conversationId)
-            activeCommand.lastControlPlaneWarningAtNanos = null
-            activeCommand.synchronization.succeeded()
-            if (!activeCommand.startupTerminationFailed) processRunner.releaseStartupOutputProtection(task.outputFile)
-            true
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            activeCommand.synchronization.failed(error)
-            val rejection = activeCommand.synchronization.rejection
-            if (rejection != null) {
-                activeCommand.task = activeCommand.task.copy(synchronizationError = rejection)
-                log.error(error) { "Command result synchronization was rejected; local output is retained: ${activeCommand.task.id.value}" }
-            } else warnControlPlaneUnavailable(activeCommand, error)
-            rejection != null && activeCommand.task.isTerminal
-        }
-    }
 
     private suspend fun synchronizeTerminalStateUntilAvailable(activeCommand: ActiveCommand) {
         while (currentCoroutineContext().isActive) {
-            val synchronized = activeCommand.mutex.withLock {
-                trySynchronizeCommandTask(activeCommand)
-            }
+            val synchronized = trySynchronizeCommandTask(activeCommand)
             if (synchronized) {
                 return
             }
@@ -894,15 +878,15 @@ class DefaultCommandTaskService(
             }
     }
 
-    private suspend fun requestCompletionNotification(activeCommand: ActiveCommand): CommandTask =
+    private suspend fun selectInitialResult(activeCommand: ActiveCommand): CommandTask =
         activeCommand.mutex.withLock {
-            if (activeCommand.task.completionNotificationRequestedAt == null) {
-                activeCommand.task = activeCommand.task.copy(
-                    completionNotificationRequestedAt = Clock.System.now(),
-                    updatedAt = Clock.System.now(),
-                )
-                trySynchronizeCommandTask(activeCommand)
+            observeExit(activeCommand)
+            if (!activeCommand.task.isTerminal && activeCommand.task.agentDefinitionId != null && activeCommand.task.visualId == null) {
+                check(activeCommand.task.completionNotificationRequestedAt == null) { "Initial command result was already selected" }
+                val now = Clock.System.now()
+                activeCommand.task = activeCommand.task.copy(completionNotificationRequestedAt = now, updatedAt = now)
             }
+            log.debug { "COMMAND_DELIVERY task=${activeCommand.task.id.value} mode=${if (activeCommand.task.isTerminal) "inline" else "background"} status=${activeCommand.task.status}" }
             activeCommand.task
         }
 
@@ -979,7 +963,7 @@ class DefaultCommandTaskService(
         context: ToolExecutionContext,
     ) {
         val deadline = System.nanoTime() + yieldMillis * 1_000_000
-        while (!activeCommand.completed.isCompleted && System.nanoTime() < deadline) {
+        while (!activeCommand.terminal.isCompleted && System.nanoTime() < deadline) {
             context.cancellationSignal.throwIfCancellationRequested()
             delay(COMMAND_STATE_POLL_INTERVAL_MILLIS)
         }
@@ -1198,7 +1182,6 @@ class DefaultCommandTaskService(
                     statusMessage = exitCode?.let { "Command exited with code $it while its Worker was stopping" }
                         ?: "Command stopped without an exit code while its Worker was stopping",
                 )
-                trySynchronizeCommandTask(activeCommand)
                 return
             }
             try {
@@ -1215,16 +1198,18 @@ class DefaultCommandTaskService(
                 exitCode = null,
                 statusMessage = "Command was stopped because its Worker shut down",
             )
-            trySynchronizeCommandTask(activeCommand)
         }
+        trySynchronizeCommandTask(activeCommand)
     }
 
     private class ActiveCommand(
-        var task: CommandTask,
+        @Volatile var task: CommandTask,
         val process: RunningCommandProcess,
         val mutex: Mutex,
     ) {
-        val completed = CompletableDeferred<Unit>()
+        val terminal = CompletableDeferred<Unit>()
+        val terminalSynchronized = CompletableDeferred<Unit>()
+        val synchronizationMutex = Mutex()
         val inputMutex = Mutex()
         var inputClosed = false
         val synchronization = CommandSynchronizationState()

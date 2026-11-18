@@ -26,30 +26,32 @@ class ExposedMessageRepository(
 
     override suspend fun saveBatch(messages: List<Conversation.Message>) {
         if (messages.isEmpty()) return
-        dbQuery {
-            messages.chunked(BATCH_SIZE).forEach { batch ->
-                val artifactIdsByMessage = batch.associate { message ->
-                    message.id to message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-                        .flatMap { it.result }
-                        .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
-                        .map { it.artifact.id.value }.distinct()
-                }
-                val artifactText = artifactIdsByMessage.values.flatten().distinct().chunked(BATCH_SIZE)
-                    .flatMap { ids -> Artifacts.select(Artifacts.id, Artifacts.searchText)
-                        .where { Artifacts.id inList ids }
-                        .map { it[Artifacts.id] to it[Artifacts.searchText] } }.toMap()
-                Messages.batchInsert(batch, shouldReturnGeneratedValues = false) { message ->
-                    val toolText = artifactIdsByMessage.getValue(message.id).mapNotNull(artifactText::get).joinToString("\n")
-                    this[Messages.id] = message.id.value
-                    this[Messages.conversationId] = message.conversationId.value
-                    this[Messages.originalIdsJson] = json.encodeToString(message.originalIds.map { it.value })
-                    this[Messages.replyToId] = message.replyTo?.value
-                    this[Messages.role] = message.role.name
-                    this[Messages.createdAt] = message.createdAt
-                    this[Messages.searchText] = listOf(message.searchText(), toolText).filter(String::isNotBlank).joinToString("\n")
-                    this[Messages.messageText] = message.searchText(includeToolResults = false)
-                    this[Messages.messageJson] = json.encodeToString(message)
-                }
+        dbQuery { insertBatch(messages) }
+    }
+
+    internal fun insertBatch(messages: List<Conversation.Message>) {
+        messages.chunked(BATCH_SIZE).forEach { batch ->
+            val artifactIdsByMessage = batch.associate { message ->
+                message.id to message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+                    .flatMap { it.result }
+                    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
+                    .map { it.artifact.id.value }.distinct()
+            }
+            val artifactText = artifactIdsByMessage.values.flatten().distinct().chunked(BATCH_SIZE)
+                .flatMap { ids -> Artifacts.select(Artifacts.id, Artifacts.searchText)
+                    .where { Artifacts.id inList ids }
+                    .map { it[Artifacts.id] to it[Artifacts.searchText] } }.toMap()
+            Messages.batchInsert(batch, shouldReturnGeneratedValues = false) { message ->
+                val toolText = artifactIdsByMessage.getValue(message.id).mapNotNull(artifactText::get).joinToString("\n")
+                this[Messages.id] = message.id.value
+                this[Messages.conversationId] = message.conversationId.value
+                this[Messages.originalIdsJson] = json.encodeToString(message.originalIds.map { it.value })
+                this[Messages.replyToId] = message.replyTo?.value
+                this[Messages.role] = message.role.name
+                this[Messages.createdAt] = message.createdAt
+                this[Messages.searchText] = listOf(message.searchText(), toolText).filter(String::isNotBlank).joinToString("\n")
+                this[Messages.messageText] = message.searchText(includeToolResults = false)
+                this[Messages.messageJson] = json.encodeToString(message)
             }
         }
     }

@@ -71,7 +71,7 @@ class BackgroundActivityOriginRecorderTest {
         assertEquals(alice, first.actorUserId)
         assertEquals(listOf(task.id), first.commandTasks.map { it.id })
         assertTrue(first.monitorDeliveries.isEmpty())
-        f.completions.markDelivered(first, now)
+        commitBatch(f, first)
         val second = f.completions.prepareBatch(conversation.id, "command-monitor-event:event")
         assertEquals(bob, second.actorUserId)
         assertEquals(listOf(monitor.id), second.monitorDeliveries.map { it.monitor.id })
@@ -108,7 +108,7 @@ class BackgroundActivityOriginRecorderTest {
         val batch = f.completions.prepareBatch(conversation.id, "command-task:legacy")
         assertNull(batch.actorUserId)
         assertFalse(f.completions.canContinue(batch, conversation))
-        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(runBackground(f, batch))
+        assertIs<ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery>(runBackground(f, batch))
     }
 
     @Test
@@ -119,7 +119,7 @@ class BackgroundActivityOriginRecorderTest {
         f.requests.accept(worker, response(f.register(alice, create, task), create, task.id.value))
         f.allowed = false
         val batch = f.completions.prepareBatch(conversation.id, "command-task:${task.id.value}")
-        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(runBackground(f, batch))
+        assertIs<ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery>(runBackground(f, batch))
         assertNotNull(f.coordinator.findCommandTask(conversation.id, task.id)?.completionNotificationDeliveredAt)
     }
 
@@ -278,20 +278,35 @@ class BackgroundActivityOriginRecorderTest {
         }
     }
 
+    private suspend fun commitBatch(f: Fixture, batch: BackgroundActivityCompletionApplicationService.Batch) {
+        val task = ConversationRuntimeTask(ConversationRuntimeTask.Id("commit-batch"), conversation.id, actorUserId = batch.actorUserId,
+            payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion("test-batch", batch.agentDefinitionId),
+            placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "commit-batch",
+            requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.CONVERSATION_TURN), ConversationRuntimeTaskTarget.Server), createdAt = now)
+        val executor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("batch-test"))
+        assertTrue(f.coordinator.submit(task))
+        assertNotNull(f.coordinator.claimDeliveredTask(conversation.id, task.id, executor, task.requirements.capabilities, emptySet()))
+        assertTrue(f.coordinator.markActiveTaskStarted(conversation.id, task.id, executor, now))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor,
+            ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery(listOf(batch.receipt))))
+    }
+
     private suspend fun runBackground(f: Fixture, batch: BackgroundActivityCompletionApplicationService.Batch): ConversationRuntimeTaskOutcome {
         val sourceKey = batch.commandTasks.firstOrNull()?.let { "command-task:${it.id.value}" }
             ?: batch.monitorDeliveries.first().let { delivery ->
                 delivery.events.firstOrNull()?.let { "command-monitor-event:${it.id.value}" }
                     ?: "command-monitor-terminal:${delivery.monitor.id.value}:${delivery.monitor.completedAt}"
             }
-        val task = ConversationRuntimeTask(ConversationRuntimeTask.Id("background"), conversation.id,
+        val task = ConversationRuntimeTask(ConversationRuntimeTask.Id("background"), conversation.id, actorUserId = batch.actorUserId,
             payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(sourceKey),
             placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "background",
             requirements = ConversationRuntimeTaskRequirements(capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN), target = ConversationRuntimeTaskTarget.Server),
             createdAt = now)
         val executor = ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server"))
-        val coordinator = mock<ConversationRuntimeCoordinator>()
-        Mockito.`when`(coordinator.confirmActiveTaskOwner(conversation.id, task.id, executor)).thenReturn(true)
+        val coordinator = f.coordinator
+        assertTrue(coordinator.submit(task))
+        assertNotNull(coordinator.claimDeliveredTask(conversation.id, task.id, executor, task.requirements.capabilities, emptySet()))
+        assertTrue(coordinator.markActiveTaskStarted(conversation.id, task.id, executor, now))
         val conversations = mock<ConversationDomainService>()
         Mockito.`when`(conversations.findById(conversation.id)).thenReturn(conversation)
         val history = mock<ConversationHistoryReadService>()
@@ -301,10 +316,19 @@ class BackgroundActivityOriginRecorderTest {
             val results = message.content.filterIsInstance<ContentItem.ToolResult>()
             Mockito.`when`(artifacts.persistAndCommitToolResults(conversation, batch.actorUserId, results)).thenReturn(results)
         }
+        val appended = mutableListOf<Conversation.Message>()
+        val appender = object : ConversationRuntimeMessageAppender {
+            override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation? =
+                error("Completion must use the atomic batch writer")
+            override suspend fun appendRuntimeMessages(conversationId: Conversation.Id, messages: List<Conversation.Message>): List<Conversation.Message> {
+                appended += messages
+                return messages
+            }
+        }
         val engine = ConversationEngineService(
             aiRuntimeProvider = mock(), aiToolProvider = mock(), agentDomainService = mock(), agentPromptAssemblyService = mock(),
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = mock(),
-            conversationMessageAppender = mock(), historyMutationExecutor = mock(), compactions = mock(), memoryApplicationService = mock(),
+            conversationMessageAppender = appender, historyMutationExecutor = mock(), compactions = mock(), memoryApplicationService = mock(),
             memoryToolApplicationService = mock(), backgroundActivityCompletionApplicationService = f.completions,
             memoryMessageRoutingApplicationService = mock(), toolCallSequenceFixerService = mock(), settingsProvider = mock(),
             aiConfigurationProvider = mock(), runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
@@ -315,6 +339,8 @@ class BackgroundActivityOriginRecorderTest {
             conversationPins = mock(),
         )
         val outcome = engine.runRuntimeTask(task, executor) {}
+        assertEquals(batch.messages.map { it.id }, appended.map { it.id })
+        assertTrue(coordinator.completeActiveTask(conversation.id, task.id, executor, outcome))
         Mockito.verify(conversations, Mockito.never()).loadCurrentMessages(conversation.id)
         return outcome
     }

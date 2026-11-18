@@ -4,6 +4,15 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.service.*
+import com.gromozeka.infrastructure.db.runtime.PostgresConversationRuntimeCoordinator
 import kotlinx.serialization.json.Json
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -54,7 +63,97 @@ class PostgresConversationCompactionRepositoryTest {
         }
     }
 
-    private inner class Fixture {
+    @Test fun `prepared commit and receipt are atomic and cancelled readiness cannot publish`() = runBlocking {
+        for (cancelFirst in listOf(false, true)) withDatabase { f ->
+            f.installPreparation()
+            val coordinator = PostgresConversationRuntimeCoordinator(f.source, json)
+            assertEquals(f.summary.id.value + ":apply", coordinator.listReadyWorkItems(10).single().taskId.value)
+            if (cancelFirst) assertTrue(coordinator.requestStop(f.conversation.id))
+            assertEquals(!cancelFirst, f.commit(preparedId = f.summary.id.value))
+            val preparation = assertNotNull(coordinator.proactiveCompaction(f.conversation.id))
+            assertEquals(if (cancelFirst) ProactiveCompaction.Status.CANCELLED else ProactiveCompaction.Status.APPLIED, preparation.status)
+            assertNull(preparation.checkpoint)
+            assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+            assertTrue(coordinator.listPending(f.conversation.id).isEmpty())
+            if (cancelFirst) {
+                assertEquals(f.original.id, f.conversations.findById(f.conversation.id)?.currentThread)
+                assertNull(f.messages.findById(f.summary.id))
+            } else {
+                assertEquals(f.derived.id, f.conversations.findById(f.conversation.id)?.currentThread)
+                assertFalse(coordinator.requestStop(f.conversation.id), "A finished commit is not undone by a later idle Stop")
+            }
+        }
+    }
+
+    @Test fun `COW failure rolls back the preparation receipt too`() = runBlocking {
+        withDatabase { f ->
+            f.installPreparation()
+            assertFailsWith<IllegalStateException> { f.commit(Conversation.Message.Id("missing"), f.summary.id.value) }
+            val coordinator = PostgresConversationRuntimeCoordinator(f.source, json)
+            assertEquals(ProactiveCompaction.Status.READY, coordinator.proactiveCompaction(f.conversation.id)?.status)
+            assertEquals(f.original.id, f.conversations.findById(f.conversation.id)?.currentThread)
+            assertNull(f.threads.findById(f.derived.id))
+            assertNull(f.messages.findById(f.summary.id))
+        }
+    }
+
+    @Test fun `prepared commit waits behind the Stop transaction and observes its cancellation`() = runBlocking {
+        withDatabase { f ->
+            val preparation = f.installPreparation()
+            f.source.connection.use { blocker ->
+                blocker.autoCommit = false
+                val cancelled = ConversationRuntimeSchedulingState(f.conversation.id, proactiveCompaction = preparation.cancel(now))
+                blocker.prepareStatement("UPDATE conversation_runtime_records SET scheduling = ?::jsonb WHERE conversation_id = ?").use {
+                    it.setString(1, json.encodeToString(cancelled)); it.setString(2, f.conversation.id.value); it.executeUpdate()
+                }
+                val committing = async(Dispatchers.IO) { f.commit(preparedId = f.summary.id.value) }
+                try {
+                    withTimeout(10_000) {
+                        while (true) {
+                            val blocked = f.source.connection.use { c -> c.prepareStatement("SELECT count(*) FROM pg_stat_activity WHERE application_name = ? AND wait_event_type = 'Lock'").use { statement ->
+                                statement.setString(1, f.source.applicationName)
+                                statement.executeQuery().use { r -> r.next(); r.getInt(1) > 0 }
+                            } }
+                            if (blocked) break
+                            delay(10)
+                        }
+                    }
+                    assertFalse(committing.isCompleted)
+                    blocker.commit()
+                    assertFalse(committing.await())
+                    assertEquals(f.original.id, f.conversations.findById(f.conversation.id)?.currentThread)
+                    assertNull(f.messages.findById(f.summary.id))
+                } finally { blocker.rollback(); committing.cancel() }
+            }
+        }
+    }
+
+    @Test fun `receipt update failure rolls back history publication and preserves indexed READY work`() = runBlocking {
+        withDatabase { f ->
+            f.installPreparation()
+            f.source.connection.use { connection -> connection.createStatement().use { statement ->
+                statement.execute("""
+                    CREATE FUNCTION reject_compaction_receipt() RETURNS trigger LANGUAGE plpgsql AS ${'$'}${'$'}
+                    BEGIN
+                        IF NEW.scheduling -> 'proactiveCompaction' ->> 'status' = 'APPLIED' THEN
+                            RAISE EXCEPTION 'synthetic receipt failure';
+                        END IF;
+                        RETURN NEW;
+                    END
+                    ${'$'}${'$'}
+                """.trimIndent())
+                statement.execute("CREATE TRIGGER reject_receipt BEFORE UPDATE ON conversation_runtime_records FOR EACH ROW EXECUTE FUNCTION reject_compaction_receipt()")
+            } }
+            assertFails { f.commit(preparedId = f.summary.id.value) }
+            val restored = PostgresConversationRuntimeCoordinator(f.source, json)
+            assertEquals(ProactiveCompaction.Status.READY, restored.proactiveCompaction(f.conversation.id)?.status)
+            assertEquals(f.summary.id.value + ":apply", restored.listReadyWorkItems(10).single().taskId.value)
+            assertEquals(f.original.id, f.conversations.findById(f.conversation.id)?.currentThread)
+            assertNull(f.threads.findById(f.derived.id)); assertNull(f.messages.findById(f.summary.id))
+        }
+    }
+
+    private inner class Fixture(val source: PGSimpleDataSource) {
         val conversations = ExposedConversationRepository()
         val threads = ExposedThreadRepository()
         val messages = ExposedMessageRepository(json)
@@ -86,7 +185,24 @@ class PostgresConversationCompactionRepositoryTest {
             links.add(original.id, message.id, (links.getMaxPosition(original.id) ?: -1) + 1)
         }
         suspend fun ids(thread: Conversation.Thread.Id) = links.getByThread(thread).map { it.messageId.value }
-        suspend fun commit(anchor: Conversation.Message.Id = first.id) = repository.commitIfCurrent(original.id, summary, derived, anchor)
+        suspend fun commit(anchor: Conversation.Message.Id = first.id, preparedId: String? = null) = repository.commitIfCurrent(original.id, summary, derived, anchor, preparedId)
+        fun installPreparation(): ProactiveCompaction {
+            val prepared = ProactiveCompaction(summary.id.value, conversation.id, ConversationRuntimeTask.Id("source"), ConversationRuntimeTurnId("turn"),
+                ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server")), AgentDefinition.Id("agent"), User.Id("actor"),
+                original.id, 2, "a".repeat(64), "b".repeat(64), 100_000, 1, 1, now, status = ProactiveCompaction.Status.READY, checkpoint = summary)
+            val running = prepared.copy(status = ProactiveCompaction.Status.RUNNING, checkpoint = null)
+            val state = ConversationRuntimeSchedulingState(conversation.id, proactiveCompaction = running)
+                .updateProactiveCompaction(running, prepared).state
+            val work = requireNotNull(state.readyWorkItem())
+            source.connection.use { c -> c.prepareStatement("INSERT INTO conversation_runtime_records(conversation_id, scheduling, ready_task_id, ready_at) VALUES (?, ?::jsonb, ?, ?::timestamptz)").use { statement ->
+                statement.setString(1, conversation.id.value)
+                statement.setString(2, json.encodeToString(state))
+                statement.setString(3, work.taskId.value)
+                statement.setString(4, work.createdAt.toString())
+                statement.executeUpdate()
+            } }
+            return prepared
+        }
     }
 
     private suspend fun withDatabase(block: suspend (Fixture) -> Unit) {
@@ -97,6 +213,7 @@ class PostgresConversationCompactionRepositoryTest {
             user = requireNotNull(System.getenv("GROMOZEKA_POSTGRES_USER"))
             password = requireNotNull(System.getenv("GROMOZEKA_POSTGRES_PASSWORD"))
             currentSchema = "$schema,public"
+            applicationName = "compaction-$schema"
         }
         try {
             Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
@@ -106,7 +223,7 @@ class PostgresConversationCompactionRepositoryTest {
                 it.execute("INSERT INTO projects(id,name,created_at,last_used_at) VALUES ('project','Project',now(),now())")
             } }
             Database.connect(source)
-            block(Fixture().also { it.initialize() })
+            block(Fixture(source).also { it.initialize() })
         } finally {
             source.connection.use { c -> c.createStatement().use { it.execute("DROP SCHEMA IF EXISTS $schema CASCADE") } }
         }

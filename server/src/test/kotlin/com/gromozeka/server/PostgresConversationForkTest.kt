@@ -199,7 +199,8 @@ class PostgresConversationForkTest {
         val service get() = forkService()
         fun forkService(messages: MessageRepository = this.messages, artifacts: ArtifactRepository = this.artifacts) =
             ConversationApplicationService(conversations, threads, messages, links, mock(), mock(), mock(),
-                ToolCallPairingService(), mock(), mock(), ConversationArtifactApplicationService(artifacts, store), mock(), mock())
+                ToolCallPairingService(), mock(), mock(), ConversationArtifactApplicationService(artifacts, store), mock(), mock(),
+                com.gromozeka.infrastructure.db.persistence.ExposedConversationMessageBatchRepository(Json, this.messages))
 
         suspend fun initialize() {
             ExposedProjectRepository().save(project)

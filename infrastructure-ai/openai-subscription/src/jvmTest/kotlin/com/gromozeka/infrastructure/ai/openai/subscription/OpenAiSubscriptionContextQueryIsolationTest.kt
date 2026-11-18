@@ -31,6 +31,18 @@ class OpenAiSubscriptionContextQueryIsolationTest {
         assertFailsWith<IllegalArgumentException> { base.subscriptionTransportNamespace("runtime") }
     }
 
+    @Test fun `detached compaction does not share foreground or another preparation transport`() {
+        val main = request("parent", "CONVERSATION")
+        fun prepared(id: String) = main.copy(options = main.options.copy(usagePurpose = "CONTEXT_COMPACTION",
+            toolContext = main.options.toolContext + ("compactionTransportId" to id)))
+        assertEquals("parent", main.subscriptionTransportNamespace("runtime"))
+        assertEquals("parent:compaction:one", prepared("one").subscriptionTransportNamespace("runtime"))
+        assertNotEquals(prepared("one").subscriptionTransportNamespace("runtime"), prepared("two").subscriptionTransportNamespace("runtime"))
+        assertFailsWith<IllegalArgumentException> {
+            main.copy(options = main.options.copy(toolContext = main.options.toolContext + ("compactionTransportId" to "one"))).subscriptionTransportNamespace("runtime")
+        }
+    }
+
     private fun request(id: String, purpose: String?) = AiRuntimeRequest(emptyList(), emptyList(), options = AiRuntimeOptions(
         usagePurpose = purpose, toolContext = mapOf("conversationId" to id, "promptCacheKey" to "target"),
     ))

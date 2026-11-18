@@ -74,6 +74,8 @@ sealed class AiResponseFormat {
 
 data class AiRuntimeCapabilities(
     val supportsNativeCompaction: Boolean = false,
+    /** Can compact a captured prefix without changing the live provider session. */
+    val supportsDetachedNativeCompaction: Boolean = false,
 )
 
 data class AiRuntimeResponse(
@@ -153,7 +155,7 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
     val originalMessages = originalCollaborationMessages().withPortableSyntheticToolCallIds()
-    return ConversationContext(originalMessages).messagesForProvider(nativeProvider).map { message ->
+    val projected = ConversationContext(originalMessages).messagesForProvider(nativeProvider).map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
         if (currentThread != null && sourceThread != currentThread) {
             // Legacy raw states without branch attribution are replayed as portable content.
@@ -161,6 +163,17 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
             message.withoutProviderReplay()
         } else message
     }
+    val retainedIds = projected.mapTo(mutableSetOf()) { it.id }
+    // One-use runtime context must survive a covered user anchor, without restoring its archived text.
+    val oneUseInputs = originalMessages.filter { it.id !in retainedIds }.mapNotNull { message ->
+        val instructions = message.instructions.filterIsInstance<Conversation.Message.Instruction.RevealedSecretRuntimeContext>()
+        if (instructions.isEmpty()) null else {
+            val id = Conversation.Message.Id("${message.id.value}:one-use-context")
+            check(originalMessages.none { it.id == id }) { "One-use runtime context identity collides with history" }
+            message.copy(id = id, content = emptyList(), instructions = instructions, providerMetadata = JsonObject(emptyMap()))
+        }
+    }
+    return projected + oneUseInputs
 }
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */

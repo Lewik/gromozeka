@@ -60,6 +60,24 @@ class ConversationLoadingStateTest {
         load: AiRequestActivitySnapshot? = AiRequestActivitySnapshot(0, 0, 0, emptyList())) =
         conversationIndicatorState(runtime, null, waiting, false, false, unread, connected, load)
 
+    @Test fun proactiveCompactionRemainsVisibleAndCancellableAfterTheAnswer() {
+        val preparation = com.gromozeka.domain.service.ProactiveCompactionActivity("compaction", ConversationRuntimeTask.Id("source"),
+            com.gromozeka.domain.service.ProactiveCompaction.Status.RUNNING, 100_000, 10, 2, now, now)
+        val running = snapshot().copy(proactiveCompaction = preparation)
+        assertTrue(running.hasControllableWork())
+        assertEquals(ConversationActivity.WORKING, indicator(running).activity)
+        val load = AiRequestActivitySnapshot(1, 0, 1, listOf(AiRequestTaskWait(preparation.sourceTaskId, AiRequestWaitReason.CONCURRENCY)))
+        assertEquals(setOf(AiRequestWaitReason.CONCURRENCY), indicator(running, load = load).waitReasons)
+        val ready = running.copy(proactiveCompaction = preparation.copy(status = com.gromozeka.domain.service.ProactiveCompaction.Status.READY))
+        assertTrue(ready.hasControllableWork())
+        assertEquals(ConversationActivity.READY, indicator(ready).activity)
+        val cancelled = running.copy(proactiveCompaction = preparation.copy(status = com.gromozeka.domain.service.ProactiveCompaction.Status.CANCELLED))
+        assertFalse(cancelled.hasControllableWork())
+        assertEquals(ConversationActivity.READY, indicator(cancelled).activity)
+        val unknown = running.copy(proactiveCompaction = preparation.copy(status = com.gromozeka.domain.service.ProactiveCompaction.Status.FAILED, outcomeUnknown = true))
+        assertTrue(unknown.hasControllableWork())
+    }
+
     @Test
     fun unknownStateDoesNotManufactureReadinessAndBackgroundCommandsStaySeparate() {
         assertEquals(ConversationActivity.UNKNOWN, indicator(null).activity)
@@ -133,12 +151,72 @@ class ConversationLoadingStateTest {
     }
 
     @Test
-    fun globalPressureDoesNotTurnAnIdleConversationIntoActiveWork() {
-        val state = indicator(snapshot(), load = AiRequestActivitySnapshot(4, 1, 0, emptyList()))
-        assertEquals(ConversationPressure.GLOBAL_WAIT, state.pressure)
-        assertEquals(ConversationCenterMark.READY, state.centerMark)
-        assertFalse(state.animated)
+    fun globalPressureDoesNotLightUpQuietConversations() {
+        val paused = snapshot().copy(state = ConversationExecutionState(conversationId,
+            ConversationExecutionState.ControlState.PAUSED, null, updatedAt = now))
+        for (load in globalWaitSnapshots()) {
+            val idle = indicator(snapshot(), load = load)
+            assertEquals(ConversationPressure.NORMAL, idle.pressure)
+            assertEquals(ConversationCenterMark.READY, idle.centerMark)
+            assertFalse(idle.animated)
+            assertEquals(CompactIndicatorContent.HIDDEN, CompactIndicatorMode.ACTIVITY_OR_ATTENTION.content(idle))
+
+            val pausedState = indicator(paused, waiting = true, load = load)
+            assertEquals(ConversationPressure.NORMAL, pausedState.pressure)
+            assertEquals(ConversationCenterMark.PAUSED, pausedState.centerMark)
+            assertFalse(pausedState.animated)
+
+            assertEquals(ConversationPressure.NORMAL, indicator(null, load = load).pressure)
+            val background = snapshot().copy(commandTasks = listOf(command), commandMonitors = listOf(monitor))
+            assertEquals(ConversationPressure.NORMAL, indicator(background, load = load).pressure)
+        }
     }
+
+    @Test
+    fun globalPressureRemainsVisibleDuringWorkAndDisappearsWhenWorkEnds() {
+        val activeStates = listOf(
+            waitRuntime(),
+            snapshot().copy(state = ConversationExecutionState(conversationId,
+                ConversationExecutionState.ControlState.PAUSE_REQUESTED, null, updatedAt = now)),
+            snapshot().copy(state = ConversationExecutionState(conversationId,
+                ConversationExecutionState.ControlState.STOPPING, null, updatedAt = now)),
+        )
+        for (load in globalWaitSnapshots()) {
+            for (runtime in activeStates) {
+                val state = indicator(runtime, load = load)
+                assertEquals(ConversationPressure.GLOBAL_WAIT, state.pressure)
+                assertTrue(state.animated)
+                assertEquals(CompactIndicatorContent.STATUS, CompactIndicatorMode.ACTIVITY_OR_ATTENTION.content(state))
+            }
+            assertEquals(ConversationPressure.GLOBAL_WAIT, indicator(snapshot(), waiting = true, load = load).pressure)
+            assertEquals(ConversationPressure.NORMAL, indicator(snapshot(), load = load).pressure)
+        }
+    }
+
+    @Test
+    fun suppressingIdleGlobalPressurePreservesUnreadAndProblemIndicators() {
+        val problem = ConversationRuntimeTurnSummary(ConversationRuntimeTurnId("previous"), now,
+            listOf(ConversationRuntimeTurnSummary.Problem("problem", "Failed", now)))
+        val runtime = snapshot().copy(lastTurn = ConversationRuntimeTurnSummary(ConversationRuntimeTurnId("current"), now),
+            retainedTurnProblems = problem)
+        for (load in globalWaitSnapshots()) {
+            val unread = indicator(snapshot(), unread = true, load = load)
+            val failed = indicator(runtime, load = load)
+            assertEquals(ConversationCenterMark.UNREAD, unread.centerMark)
+            assertTrue(failed.hasTurnProblem)
+            assertEquals(CompactIndicatorContent.UNREAD_ONLY, CompactIndicatorMode.ACTIVITY_OR_ATTENTION.content(unread))
+            assertEquals(CompactIndicatorContent.STATUS, CompactIndicatorMode.ACTIVITY_OR_ATTENTION.content(failed))
+            for (state in listOf(unread, failed)) {
+                assertEquals(ConversationActivity.READY, state.activity)
+                assertEquals(ConversationPressure.NORMAL, state.pressure)
+            }
+        }
+    }
+
+    private fun globalWaitSnapshots() = listOf(
+        AiRequestActivitySnapshot(4, 1, 0, emptyList()),
+        AiRequestActivitySnapshot(4, 0, 1, emptyList()),
+    )
 
     @Test
     fun onlyTheCommandWhoseLaunchIsStillRunningIsForeground() {

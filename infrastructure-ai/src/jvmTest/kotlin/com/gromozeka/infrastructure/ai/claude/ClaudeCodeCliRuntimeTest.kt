@@ -1771,6 +1771,17 @@ class ClaudeCodeCliRuntimeTest {
         assertEquals(edited.removePrefix(baseText + "\n\n" + after), deleted.removePrefix(baseText))
     }
 
+    @Test fun harnessPolicyAndSummaryCallsDisableCompetingNativeAutoCompaction() = runBlocking {
+        for ((configured, purpose) in listOf(false to "CONVERSATION", true to "CONVERSATION", false to "MESSAGE_SQUASH")) {
+            val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+                "kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))
+            runtime(executor, harnessCompactionEnabled = configured).call(request(listOf(userMessage("Question")), emptyList(),
+                AiRuntimeOptions(usagePurpose = purpose, assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    toolContext = testToolContext())))
+            assertEquals(configured || purpose == "MESSAGE_SQUASH", executor.commands.single().disableCompaction)
+        }
+    }
+
     @Test
     fun isolatedContextQueryNeverTouchesNativeSessionRepositoryOrEnablesTools() = runBlocking {
         val sessions = object : ClaudeCodeSessionStateRepository {
@@ -1985,6 +1996,7 @@ class ClaudeCodeCliRuntimeTest {
         executor: ClaudeCodeCliExecutor,
         sessions: ClaudeCodeSessionStateRepository = InMemoryClaudeCodeSessionStateRepository(),
         modelName: String = realClaudeModel(),
+        harnessCompactionEnabled: Boolean = false,
     ): ClaudeCodeCliRuntime =
         ClaudeCodeCliRuntime(
             executor = executor,
@@ -1994,6 +2006,7 @@ class ClaudeCodeCliRuntimeTest {
             workspaceDirectory = null,
             sessionStateRepository = sessions,
             sessionLocks = java.util.concurrent.ConcurrentHashMap(),
+            harnessCompactionEnabled = harnessCompactionEnabled,
         )
 
     private fun request(

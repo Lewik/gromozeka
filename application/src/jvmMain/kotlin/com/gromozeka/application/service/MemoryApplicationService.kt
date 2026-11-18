@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.application.service.memory.LlmMemoryReadPlanner
 import com.gromozeka.application.service.memory.LlmMemoryReadSelector
 import com.gromozeka.application.service.memory.LlmMemoryQuestionAnswerer
@@ -46,8 +49,6 @@ import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 
@@ -217,7 +218,7 @@ class MemoryApplicationService(
     }
 
     private fun Conversation.Message.isSyntheticMemoryRuntimeMessage(): Boolean =
-        providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+        syntheticKind == SyntheticMessageKind.MEMORY
 
     private fun Conversation.Message.memoryQuestionText(): String =
         content.mapNotNull { item ->

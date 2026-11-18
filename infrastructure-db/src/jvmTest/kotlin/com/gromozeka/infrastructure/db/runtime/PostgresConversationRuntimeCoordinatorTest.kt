@@ -55,6 +55,80 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
+    @Test fun `recorded completion survives recreation in both snapshot paths and absent facts remain unknown`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val id = Conversation.Id("completion")
+            val now = kotlin.time.Clock.System.now()
+            val owner = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+            val root = agentInvocationTask(id, "completion-message", now).let {
+                it.copy(requirements = it.requirements.copy(target = ConversationRuntimeTaskTarget.Server))
+            }
+            assertTrue(coordinator.submit(root))
+            kotlin.test.assertNotNull(coordinator.claimDeliveredTask(id, root.id, owner, root.requirements.capabilities, emptySet()))
+            assertTrue(coordinator.markActiveTaskStarted(id, root.id, owner, now))
+            assertTrue(coordinator.completeActiveTask(id, root.id, owner, ConversationRuntimeTaskOutcome.Failed(
+                com.gromozeka.domain.service.ConversationRuntimeCompletion.Reason.MODEL_ERROR, "SyntheticProviderFailure")))
+            coordinator.finishIfIdle(id)
+            val completion = kotlin.test.assertNotNull(coordinator.snapshot(id).lastCompletion)
+            assertEquals(com.gromozeka.domain.service.ConversationRuntimeCompletion.Status.FAILED, completion.status)
+            assertEquals(root.turnId, completion.turnId)
+            val restored = PostgresConversationRuntimeCoordinator(source, json)
+            assertEquals(completion, restored.snapshot(id).lastCompletion)
+            assertEquals(completion, restored.schedulingSnapshot(id).lastCompletion)
+            source.connection.use { c -> c.prepareStatement("UPDATE conversation_runtime_records SET scheduling = scheduling - 'lastCompletion' WHERE conversation_id = ?").use { s ->
+                s.setString(1, id.value)
+                assertEquals(1, s.executeUpdate())
+            } }
+            assertNull(restored.schedulingSnapshot(id).lastCompletion)
+            assertNull(restored.snapshot(id).lastCompletion)
+            assertEquals(root.turnId, restored.snapshot(id).lastTurn?.turnId)
+        }
+    }
+
+    @Test fun `proactive preparation survives recreation and idle Stop fences late completion in both orders`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            for (readyFirst in listOf(false, true)) {
+                val id = Conversation.Id("proactive-$readyFirst")
+                val now = kotlin.time.Clock.System.now()
+                val executor = ConversationRuntimeExecutorIdentity.Server(com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"))
+                val requirements = ConversationRuntimeTaskRequirements(ConversationRuntimeCapability.entries.toSet(), ConversationRuntimeTaskTarget.Server)
+                val root = agentInvocationTask(id, "start", now).copy(requirements = requirements)
+                assertTrue(coordinator.submit(root))
+                kotlin.test.assertNotNull(coordinator.claimDeliveredTask(id, root.id, executor, requirements.capabilities, emptySet()))
+                assertTrue(coordinator.markActiveTaskStarted(id, root.id, executor, now))
+                val preparation = com.gromozeka.domain.service.ProactiveCompaction("prepared-$readyFirst", id, root.id, root.turnId, executor,
+                    AgentDefinition.Id("agent"), com.gromozeka.domain.model.User.Id("user"), Conversation.Thread.Id("source"), 3,
+                    "a".repeat(64), "b".repeat(64), 100_000, 1, 2, now)
+                assertTrue(coordinator.beginProactiveCompaction(preparation))
+                assertFalse(coordinator.beginProactiveCompaction(preparation.copy(id = "duplicate")))
+                assertTrue(coordinator.completeActiveTask(id, root.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+                coordinator.finishIfIdle(id)
+                val restored = PostgresConversationRuntimeCoordinator(source, json)
+                assertEquals(preparation, restored.proactiveCompaction(id))
+                assertTrue(restored.runningProactiveCompactions().any { it.id == preparation.id })
+                val checkpoint = Conversation.Message(Conversation.Message.Id(preparation.id), id, role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                        Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("private prepared summary"),
+                        Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                        sourceMessageIds = listOf(Conversation.Message.Id("old")),
+                        coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)), createdAt = now)
+                val ready = preparation.copy(status = com.gromozeka.domain.service.ProactiveCompaction.Status.READY, checkpoint = checkpoint)
+                if (readyFirst) {
+                    assertTrue(restored.updateProactiveCompaction(preparation, ready))
+                    assertFalse(restored.snapshot(id).toString().contains("private prepared summary"))
+                    assertEquals(ready, PostgresConversationRuntimeCoordinator(source, json).proactiveCompaction(id))
+                }
+                assertNull(restored.snapshot(id).activeTask)
+                assertTrue(if (readyFirst) restored.requestInterrupt(id) else restored.requestStop(id))
+                assertEquals(com.gromozeka.domain.service.ProactiveCompaction.Status.CANCELLED, restored.proactiveCompaction(id)?.status)
+                assertFalse(restored.updateProactiveCompaction(preparation, ready))
+                assertFalse(restored.beginProactiveCompaction(preparation.copy(id = "after-stop")))
+                assertFalse(restored.snapshot(id).proactiveCompaction!!.pending)
+                assertFalse(restored.schedulingSnapshot(id).toString().contains("private prepared summary"))
+            }
+        }
+    }
+
     @Test
     fun `completed response and request timing survives recreation and background inventory updates`() = runBlocking {
         withInventoryDatabase { source, coordinator, json ->

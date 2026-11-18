@@ -13,6 +13,8 @@ interface AgentCollaborationRepository {
     data class DeliveryCursor(val createdAt: kotlin.time.Instant, val id: String)
     suspend fun findDelivery(id: String): AgentDelivery?
     suspend fun settleDelivery(delivery: AgentDelivery)
+    /** Atomically block pending activation deliveries; leave passive context and already-queued deliveries unchanged. */
+    suspend fun blockPendingActivations(conversationId: Conversation.Id, reason: String): Boolean
     suspend fun saveDraft(draft: AgentResponseDraft)
     suspend fun findDraft(id: String): AgentResponseDraft?
     suspend fun failDraft(id: String, reason: String)

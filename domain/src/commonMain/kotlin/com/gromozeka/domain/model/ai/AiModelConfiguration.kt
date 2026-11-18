@@ -42,16 +42,21 @@ data class AiModelConfiguration(
         }
     }
 
-    /** Blocking conversation compaction; percentages are an editor convenience, not stored policy. */
+    /** Fixed conversation compaction thresholds; null proactive threshold disables background preparation. */
     @Serializable
     data class Compaction(
         val thresholdTokens: Int? = null,
+        val proactiveThresholdTokens: Int? = null,
         val summaryModelConfigurationId: Id? = null,
         val tokenCounting: TokenCounting = TokenCounting(),
     ) {
         init {
             require(thresholdTokens == null || thresholdTokens > 0) {
                 "AI compaction threshold must be positive"
+            }
+            require(proactiveThresholdTokens == null ||
+                (thresholdTokens != null && proactiveThresholdTokens > 0 && proactiveThresholdTokens < thresholdTokens)) {
+                "Proactive compaction threshold must be positive and below the blocking threshold"
             }
         }
     }

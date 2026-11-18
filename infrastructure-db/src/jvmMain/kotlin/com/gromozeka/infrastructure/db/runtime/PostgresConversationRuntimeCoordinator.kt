@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.service.ProactiveCompaction
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorSyncResult
@@ -89,16 +90,46 @@ class PostgresConversationRuntimeCoordinator(
         }
     }
 
+    override suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean =
+        mutateRecord(preparation.conversationId, createIfMissing = false) { record ->
+            val transition = record.scheduling.beginProactiveCompaction(preparation)
+            if (transition.changed) { record.scheduling = transition.state; record.bumpRevision() }
+            transition.result
+        }
+
+    override suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean =
+        mutateRecord(expected.conversationId, createIfMissing = false) { record ->
+            val transition = record.scheduling.updateProactiveCompaction(expected, updated)
+            if (transition.changed) { record.scheduling = transition.state; record.bumpRevision() }
+            transition.result
+        }
+
+    override suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction? =
+        readJson(conversationId, "SELECT scheduling -> 'proactiveCompaction' FROM conversation_runtime_records WHERE conversation_id = ?")
+            ?.let { json.decodeFromString(it) }
+
+    override suspend fun runningProactiveCompactions(): List<ProactiveCompaction> = withContext(Dispatchers.IO) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("SELECT scheduling -> 'proactiveCompaction' FROM conversation_runtime_records WHERE jsonb_typeof(scheduling -> 'proactiveCompaction') = 'object' AND COALESCE(scheduling -> 'proactiveCompaction' ->> 'status', 'RUNNING') = 'RUNNING'").use { statement ->
+                statement.executeQuery().use { rows -> buildList { while (rows.next()) add(json.decodeFromString<ProactiveCompaction>(rows.getString(1))) } }
+            }
+        }
+    }
+
     override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
         submitInternal(task, acceptPreviouslySubmitted, null)
 
     override suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean =
         submitInternal(task, false, mode)
 
+    override suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id): Boolean =
+        submitInternal(task, false, null, agentDefinitionId)
+
     private suspend fun submitInternal(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean,
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?): Boolean =
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?,
+        backgroundActivityAgentId: com.gromozeka.domain.model.AgentDefinition.Id? = null): Boolean =
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
-            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode)
+            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode, backgroundActivityAgentId)
             if (!transition.changed) return@mutateRecord transition.result
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
@@ -165,7 +196,10 @@ class PostgresConversationRuntimeCoordinator(
         executor: ConversationRuntimeExecutorIdentity,
         outcome: ConversationRuntimeTaskOutcome,
     ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
+        mutateRecord(conversationId, createIfMissing = false,
+            components = if (outcome.backgroundDeliveryReceipts.isEmpty()) setOf(RuntimeComponent.SCHEDULING)
+                else setOf(RuntimeComponent.SCHEDULING, RuntimeComponent.COMMANDS, RuntimeComponent.MONITORS, RuntimeComponent.MONITOR_EVENTS),
+        ) { record ->
             val transition = record.scheduling.completeActiveTask(
                 taskId = taskId,
                 executor = executor,
@@ -173,6 +207,15 @@ class PostgresConversationRuntimeCoordinator(
                 now = Clock.System.now(),
             )
             if (!transition.result) return@mutateRecord false
+            val stopped = record.scheduling.executionState?.controlState in setOf(
+                ConversationExecutionState.ControlState.STOPPING, ConversationExecutionState.ControlState.INTERRUPTING)
+            if (!stopped && outcome.backgroundDeliveryReceipts.isNotEmpty()) {
+                val acknowledged = com.gromozeka.domain.service.acknowledgeBackgroundActivities(outcome.backgroundDeliveryReceipts,
+                    record.commandTasks, record.commandMonitors, record.commandMonitorEvents, Clock.System.now())
+                record.commandTasks = acknowledged.commands
+                record.commandMonitors = acknowledged.monitors
+                record.commandMonitorEvents = acknowledged.events
+            }
             record.scheduling = transition.state
             record.appendTrace(
                 conversationId = conversationId,
@@ -215,6 +258,16 @@ class PostgresConversationRuntimeCoordinator(
         executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
         find(conversationId)?.let { it.activeTaskId == taskId && it.activeExecutor == executor } ?: false
+
+    override suspend fun recordBackgroundInsertionFailure(
+        conversationId: Conversation.Id, ownerTaskId: ConversationRuntimeTask.Id, insertionTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity, deliveryStartedAt: Instant?, message: String, errorType: String?,
+    ): ConversationRuntimeTaskIncident? = mutateRecord(conversationId, createIfMissing = false) { record ->
+        val transition = record.scheduling.recordBackgroundInsertionFailure(ownerTaskId, insertionTaskId, executor,
+            deliveryStartedAt, message, errorType, Clock.System.now())
+        if (transition.changed) { record.scheduling = transition.state; record.bumpRevision() }
+        transition.result
+    }
 
     override suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
@@ -440,7 +493,8 @@ class PostgresConversationRuntimeCoordinator(
                 .mapTo(mutableSetOf()) { it.commandTaskId }
             val retainedTasks = tasks
                 .partition {
-                    it.status == CommandTask.Status.WORKING || it.id in monitoredTaskIds
+                    it.status == CommandTask.Status.WORKING || it.id in monitoredTaskIds ||
+                        (it.completionNotificationRequestedAt != null && it.completionNotificationDeliveredAt == null)
                 }
                 .let { (working, terminal) ->
                     working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)
@@ -815,7 +869,7 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot =
         readJson(conversationId, """
             SELECT jsonb_build_object('conversationId', conversation_id, 'lastEventSequence', event_sequence)
-                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn' - 'retainedTurnProblems')
+                || (scheduling - 'completedIdempotencyKeys' - 'pendingTurnTerminationInstructions' - 'lastTurn' - 'retainedTurnProblems' - 'proactiveCompaction')
             FROM conversation_runtime_records WHERE conversation_id = ?
         """.trimIndent())?.let { json.decodeFromString(it) } ?: ConversationRuntimeSchedulingSnapshot(conversationId)
 
@@ -1438,7 +1492,9 @@ class PostgresConversationRuntimeCoordinator(
                 commandMonitors = commandMonitors,
                 incidents = scheduling.incidents,
                 lastTurn = scheduling.lastTurn,
+                lastCompletion = scheduling.lastCompletion,
                 retainedTurnProblems = scheduling.retainedTurnProblems,
+                proactiveCompaction = scheduling.proactiveCompaction?.activity(),
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),
                 lastEventSequence = eventSequence,
             )

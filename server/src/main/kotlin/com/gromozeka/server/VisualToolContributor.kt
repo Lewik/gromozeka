@@ -39,8 +39,8 @@ class VisualToolContributor(
                 val allowedArguments = when (action) {
                     "reference", "list" -> setOf("action")
                     "get", "close" -> setOf("action", "visual_id")
-                    "create" -> setOf("action", "document", "state", "handler")
-                    "update" -> setOf("action", "visual_id", "document", "state", "handler")
+                    "create" -> setOf("action", "document", "state", "handler", "include_state_in_context")
+                    "update" -> setOf("action", "visual_id", "document", "state", "handler", "include_state_in_context")
                     "highlight" -> setOf("action", "visual_id", "highlight")
                     else -> error("Unknown visual action")
                 }
@@ -52,7 +52,8 @@ class VisualToolContributor(
                 when (action) {
                     "create" -> {
                         val visual = visuals.create(actor, conversationId,
-                            VisualCreate(input.string("document"), input["state"] as? JsonObject ?: error("state is required"), input.handler()),
+                            VisualCreate(input.string("document"), input["state"] as? JsonObject ?: error("state is required"), input.handler(),
+                                includeStateInContext = input.optionalBoolean("include_state_in_context") ?: true),
                             context.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)?.let(AgentDefinition::Id))
                         mutationResponse(visual)
                     }
@@ -60,7 +61,8 @@ class VisualToolContributor(
                         val visual = visuals.update(actor, conversationId, input.string("visual_id"),
                             VisualUpdate(document = input["document"]?.let { input.string("document") },
                                 state = input["state"]?.let { it as? JsonObject ?: error("state must be an object") },
-                                updateHandler = "handler" in input, handler = input.handler()))
+                                updateHandler = "handler" in input, handler = input.handler(),
+                                includeStateInContext = input.optionalBoolean("include_state_in_context")))
                         mutationResponse(visual)
                     }
                     "get" -> documentResponse(visuals.list(actor, conversationId).singleOrNull { it.id == input.string("visual_id") }
@@ -97,6 +99,7 @@ class VisualToolContributor(
         put("visual_id", visual.id)
         put("title", visual.title)
         put("status", visual.status.name)
+        put("include_state_in_context", visual.includeStateInContext)
         put("revision", visual.revision)
         put("document_revision", visual.documentRevision)
         put("form_revision", visual.formRevision)
@@ -119,6 +122,11 @@ class VisualToolContributor(
 
     private fun JsonObject.string(name: String): String = (get(name) as? JsonPrimitive)?.takeIf { it.isString }?.content
         ?: error("$name must be a string")
+
+    private fun JsonObject.optionalBoolean(name: String): Boolean? = get(name)?.let { value ->
+        require(value is JsonPrimitive && !value.isString && value.booleanOrNull != null) { "$name must be a boolean" }
+        value.boolean
+    }
 
     private fun JsonObject.handler(): VisualHandlerSpec? {
         val value = get("handler") ?: return null
@@ -148,6 +156,7 @@ create requires document and state with both complete sections: {form:{...},data
 update accepts state containing one or both complete root sections, form and data. Each supplied section replaces the entire previous section, including all nested objects and arrays. Include every member you want to keep. An omitted section stays unchanged; omitted members inside a supplied section are removed. An empty section {} clears that section if the document schema permits it. The resulting full state must satisfy the schema and all bindings.
 Prefer updating data only. Include form only to deliberately set/reset the entire form: it replaces all saved inputs and local drafts. A button submits the full {form,data} snapshot; only form is saved, stale input data is never written back. Without a script, clicks arrive as typed user interactions for this agent.
 Optional handler starts an owned command on an exact workspace_mount_id. Its stdout/stderr must contain only NDJSON section updates: one object containing complete data and/or form, at most 262144 UTF-8 bytes per line. Omitted handler leaves the current handler unchanged; handler=null stops it and switches to LLM handling; an object replaces its process. close deletes the Visual and terminates its handler. No automatic restart or input replay. Use handler.secret_env for named secrets; references in handler.command are rejected. Have the handler read its environment directly, not expand secrets into child process arguments.
+Optional include_state_in_context controls automatic saved-state context. It defaults to true on create; omit on update to leave it unchanged. False omits automatic form/data snapshots and cached snapshot replay, retaining panel metadata marked state-status=disabled. It does not change explicit get, button submissions, stored state, or content already delivered to a model. The setting can be updated on its own and is returned by get/list and mutation acknowledgements.
 create/update return compact acknowledgements, not the document or state. Only get returns the full HTML document, saved state, diagnostics and effective palette; list returns summaries. You author the document: reuse your last known markup, and use get to recover it when it has left your context, not to recheck your own unchanged work. Scripts and user input do not edit the document.
 highlight accepts highlight=[element-id,...] (maximum 16), or [] to clear. It replaces the acting user's connected clients' local highlighted set without changing document, state or reminders. Clicking an arrow badge dismisses the set locally without activating the underlying control. No offline replay or dismissal feedback. Mutations require write access; reference/get/list are read-only. Do not retry create or uncertain button delivery automatically; inspect state instead."""
         const val SCHEMA = """{
@@ -157,6 +166,7 @@ highlight accepts highlight=[element-id,...] (maximum 16), or [] to clear. It re
                 "visual_id":{"type":"string","description":"Existing Visual in this conversation; required for get, update, close and highlight."},
                 "document":{"type":"string","description":"Required for create. On update, omit unless changing structure, controls or schema; use state for content and values."},
                 "state":{"type":"object","description":"Create: both complete sections. Update: one or both complete sections. Each supplied section replaces its whole previous value; omitted sections stay unchanged, omitted nested members are removed.","properties":{"form":{"type":"object","description":"Complete saved input values. Include only to intentionally replace/reset the entire form, including client drafts."},"data":{"type":"object","description":"Complete display data. Include all data members to retain, including unchanged ones."}},"minProperties":1,"additionalProperties":false},
+                "include_state_in_context":{"type":"boolean","description":"Include saved form/data in automatic model context. Defaults to true on create; omit on update to keep the current setting. False leaves only panel metadata in automatic context, without state or snapshot IDs. Explicit get and button submissions still include state; previously delivered context/history is not erased."},
                 "handler":{"type":["object","null"],"properties":{"workspace_mount_id":{"type":"string"},"command":{"type":"string"},"working_directory":{"type":["string","null"]},"secret_env":{"type":"object","description":"Environment variable name to exact secret://name reference. The handler reads these variables directly; expanding them into child process arguments can expose credentials.","additionalProperties":{"type":"string"}}},"required":["workspace_mount_id","command"],"additionalProperties":false},
                 "highlight":{"type":"array","items":{"type":"string"},"maxItems":16,"uniqueItems":true}
             },"required":["action"],"additionalProperties":false
@@ -185,7 +195,7 @@ highlight accepts highlight=[element-id,...] (maximum 16), or [] to clear. It re
             Document and state: create supplies the reusable document plus both complete form/data sections. update normally supplies state only, containing complete data and/or complete form. Each supplied root replaces its whole previous object; all omitted members at any depth disappear. Omitted roots remain unchanged. Keep all nested values you want to retain. {"data":{}} clears data if schema and bindings allow it; {"form":{}} clears the whole form under the same rule. A state update must include at least one section. Document is changed only when layout, controls or schema change, not for ordinary content updates. create/update return a compact receipt; only get returns the full document. Reuse your known markup rather than reading it repeatedly.
             Inputs are local drafts until a button click submits the full {form,data} snapshot. Neutral dots mark the dirty tab and individual fields. Only submitted form is saved; input data is context, never a write-back. Prefer sending complete data only for routine updates. An explicit form section replaces all saved fields and local drafts, including values equal to their old saved values. Your client's own delayed button acknowledgement does not undo typing performed after the click.
             Handler input is one UTF-8 JSON line with visual-id,event-id,button-id,state. Loop on stdin and flush stdout after every NDJSON section update, such as {"data":{...all current data...}}. The same full-section replacement rules apply to handler output. Maintain complete display data in the script; do not echo the whole input state, which would overwrite the form. Send complete form only when intentionally resetting/replacing inputs. Updates are applied in order; rendering may coalesce snapshots.
-            Conversation model requests automatically include saved Visual state in system-reminder blocks: full snapshots when changed, short unchanged references only while their full baseline is retained in the same request context. Client drafts are never included. Script updates do not wake the model; the next request sees the latest accepted state. get remains available for autonomous explicit refreshes, document inspection and diagnostics.
+            The include_state_in_context parameter defaults to true on create and is unchanged when omitted on update; it can be changed without a document, state or handler update. When false, automatic context contains only panel metadata with state-status=disabled, no form/data or snapshot-id, and no cached state replay. This is not deletion or a privacy boundary: explicit get, button submissions, and content previously delivered to a model are unaffected. Conversation model requests otherwise automatically include saved Visual state in system-reminder blocks: full snapshots when changed, short unchanged references only while their full baseline is retained in the same request context. Client drafts are never included. Script updates do not wake the model; the next request sees the latest accepted state. get remains available for autonomous explicit refreshes, document inspection and diagnostics.
             Supply named secrets through handler.secret_env, a map of environment variable names to exact secret://name references, as with grz_execute_command.secret_env. The handler must read these variables directly; shell expansion into child process arguments exposes values in process listings and audit/EDR logs. References inside handler.command are rejected. References inside markup or state remain literal; they are never expanded into UI data.
             Highlighting: call action=highlight, visual_id, highlight=["field-id","button-id"]. Any currently rendered element with an explicit id can be targeted, including div containers and inline text. For loops use stable bound IDs. [] clears the set. This is an imperative presentation command, NOT a state update or HTML edit. It is sent once to connected clients; each client stores and dismisses it locally. Arrow badges clear the entire set without activating controls behind them; the target and its entire tab heading glow while the set is active. No highlights or dismissals are sent back in button state, get results or model reminders. Switching tabs preserves local highlights; reloading the client clears them. Unknown/not-rendered IDs fail. Do not put highlight in form/data or handler output.
             Limits: 64 KiB document, 256 KiB full state, 256 KiB output line, 2048 expanded nodes, 64 KiB expanded text, depth 32, 8 visuals per conversation. Runtime errors appear in a host-owned footer outside body; markup cannot hide it. Close/delete terminates the owned process; Worker restart stops it permanently until explicitly replaced. No scripts are automatically relaunched and no button events are automatically replayed.

@@ -1,5 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.repository.BackgroundActivityOrigin
+import com.gromozeka.domain.repository.BackgroundActivityOriginRepository
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorLifecycleEventStream
@@ -11,7 +14,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -35,6 +37,7 @@ class BackgroundActivityLifecycleApplicationService(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
     @Qualifier("applicationScope") private val coroutineScope: CoroutineScope,
+    private val origins: BackgroundActivityOriginRepository,
 ) {
     private val log = KLoggers.logger(this)
     private val inventoryLog = KLoggers.logger("com.gromozeka.runtime.commandInventory")
@@ -117,7 +120,6 @@ class BackgroundActivityLifecycleApplicationService(
         coroutineScope.launch {
             while (currentCoroutineContext().isActive) {
                 val conversations = linkedSetOf(changedConversations.receive())
-                delay(COALESCING_WINDOW_MILLIS)
                 while (true) {
                     val conversationId = changedConversations.tryReceive().getOrNull() ?: break
                     conversations += conversationId
@@ -154,7 +156,8 @@ class BackgroundActivityLifecycleApplicationService(
         val failedSources = runtimeCoordinator.schedulingSnapshot(conversationId).failedBackgroundActivitySourceKeys()
         val conversationMonitors = monitors
             .filter { it.conversationId == conversationId && it.agentDefinitionId != null }
-        val monitorIds = conversationMonitors.mapTo(mutableSetOf()) { it.id }
+        val monitorsById = conversationMonitors.associateBy { it.id }
+        val monitorIds = monitorsById.keys
         val pendingEvents = runtimeCoordinator.findCommandMonitorEvents(conversationId)
             .filter {
                 it.monitorId in monitorIds && it.hasPendingNotification(failedSources)
@@ -167,12 +170,16 @@ class BackgroundActivityLifecycleApplicationService(
                     PendingSource(
                         key = it.notificationSourceKey(),
                         occurredAt = it.completedAt ?: it.updatedAt,
+                        agentId = requireNotNull(it.agentDefinitionId),
+                        originKey = BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.COMMAND, it.id.value),
                     )
                 }
             pendingEvents.mapTo(this) {
                 PendingSource(
                     key = it.notificationSourceKey(),
                     occurredAt = it.occurredAt,
+                    agentId = requireNotNull(monitorsById.getValue(it.monitorId).agentDefinitionId),
+                    originKey = BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.MONITOR, it.monitorId.value),
                 )
             }
             conversationMonitors.asSequence()
@@ -181,11 +188,17 @@ class BackgroundActivityLifecycleApplicationService(
                     PendingSource(
                         key = it.notificationSourceKey(),
                         occurredAt = it.completedAt ?: it.updatedAt,
+                        agentId = requireNotNull(it.agentDefinitionId),
+                        originKey = BackgroundActivityOrigin.Key(BackgroundActivityOrigin.Kind.MONITOR, it.id.value),
                     )
                 }
         }.minWithOrNull(compareBy(PendingSource::occurredAt, PendingSource::key))
             ?: return
-        if (!runtimeDispatcher.submitBackgroundActivityCompletion(conversationId, source.key)) {
+        val origin = origins.find(conversationId, setOf(source.originKey))[source.originKey]
+        check(origin == null || origin.conversationId == conversationId && origin.agentDefinitionId == source.agentId) {
+            "Background activity recipient does not match its launch origin"
+        }
+        if (!runtimeDispatcher.submitBackgroundActivityCompletion(conversationId, source.key, source.agentId, origin?.actorUserId)) {
             log.debug { "Background activity delivery not admitted: conversation=${conversationId.value} source=${source.key}" }
         }
     }
@@ -193,9 +206,8 @@ class BackgroundActivityLifecycleApplicationService(
     private data class PendingSource(
         val key: String,
         val occurredAt: Instant,
+        val agentId: AgentDefinition.Id,
+        val originKey: BackgroundActivityOrigin.Key,
     )
 
-    private companion object {
-        const val COALESCING_WINDOW_MILLIS = 250L
-    }
 }

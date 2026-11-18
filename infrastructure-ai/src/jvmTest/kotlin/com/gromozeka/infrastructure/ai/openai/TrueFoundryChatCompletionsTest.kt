@@ -87,6 +87,52 @@ class TrueFoundryChatCompletionsTest {
     }
 
     @Test
+    fun `readable reasoning reaches the shared display blocks without changing the Chat route or reasoning options`() = runBlocking {
+        val summary = "**Check gateway configuration**\n\nCompare the two reasoning fields."
+        val base = Json.parseToJsonElement(ANSWER_MESSAGE).jsonObject
+        val signedEmpty = Json.parseToJsonElement("""[{"type":"reasoning","id":"rs-1","encrypted_content":"$CIPHERTEXT"}]""")
+        val cases = listOf(
+            JsonObject(base + ("reasoning_content" to JsonPrimitive(summary))),
+            JsonObject(base + ("thinking_blocks" to buildJsonArray { add(buildJsonObject {
+                put("type", "thinking"); put("thinking", summary); put("signature", CIPHERTEXT)
+            }) })),
+            JsonObject(base + mapOf("reasoning_content" to JsonPrimitive(summary), "thinking_blocks" to signedEmpty)),
+        )
+        for (message in cases) {
+            SdkHttpTestServer(listOf(SdkHttpTestServer.Reply(completion(message.toString(), "stop"))), expectedTarget = CHAT_PATH).use { server ->
+                val response = runtime(server.origin).call(request(listOf(user)))
+                val blocks = response.messages.single().content.filterIsInstance<ContentItem.Thinking>()
+                assertEquals(summary, blocks.single { it.thinking.isNotBlank() }.thinking)
+                val stored = persist(response)
+                assertEquals(blocks, stored.content.filterIsInstance<ContentItem.Thinking>())
+                assertEquals(message, stored.providerMetadata.getValue("openaiCompatibleMessage"))
+                assertTrue(server.requests.size == 1, "Displaying reasoning must not add another model request")
+                val sent = server.requests.single()
+                assertEquals(CHAT_PATH, sent.target)
+                assertNull(sent.headers["x-tfy-openai-use-responses-api"])
+                val body = Json.parseToJsonElement(sent.body).jsonObject
+                assertEquals("low", body.getValue("reasoning_effort").jsonPrimitive.content)
+                assertFalse("reasoning" in body)
+                assertFalse("thinking" in body)
+                assertFalse("stream" in body)
+            }
+        }
+    }
+
+    @Test
+    fun `opaque-only reasoning stays opaque in the shared display projection`() = runBlocking {
+        val message = JsonObject(Json.parseToJsonElement(ANSWER_MESSAGE).jsonObject + ("thinking_blocks" to
+            Json.parseToJsonElement("""[{"type":"reasoning","id":"rs-1","encrypted_content":"$CIPHERTEXT"}]""")))
+        SdkHttpTestServer(listOf(SdkHttpTestServer.Reply(completion(message.toString(), "stop"))), expectedTarget = CHAT_PATH).use { server ->
+            val response = runtime(server.origin).call(request(listOf(user)))
+            val block = response.messages.single().content.filterIsInstance<ContentItem.Thinking>().single()
+            assertEquals("", block.thinking)
+            assertEquals(CIPHERTEXT, block.signature)
+            assertEquals(message, persist(response).providerMetadata.getValue("openaiCompatibleMessage"))
+        }
+    }
+
+    @Test
     fun `malformed encrypted reasoning is a safe terminal failure and never triggers another API`() = runBlocking {
         val source = Json.parseToJsonElement(TOOL_MESSAGE).jsonObject
         val malformed = JsonObject(source + ("thinking_blocks" to Json.parseToJsonElement("""[

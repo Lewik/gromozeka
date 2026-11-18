@@ -1,5 +1,12 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.BackgroundActivityMessageSource
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.backgroundActivitySource
+import com.gromozeka.domain.model.syntheticKind
+import com.gromozeka.domain.repository.BackgroundActivityOrigin
+
 import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
@@ -10,7 +17,6 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -28,6 +34,47 @@ import kotlin.test.assertTrue
 class BackgroundActivityCompletionApplicationServiceTest {
     private val conversationId = Conversation.Id("conversation-1")
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
+
+    @Test
+    fun `command and monitor messages preserve validated launch identity without attributing runtime output to an agent`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val origins = TestBackgroundActivityOrigins()
+        val service = BackgroundActivityCompletionApplicationService(coordinator, origins, BackgroundActivityContinuationPolicy { _, _ -> true })
+        val at = Instant.fromEpochMilliseconds(1000)
+        val command = terminalCommand("task", agentDefinitionId, "done", at)
+        val monitor = commandMonitor("monitor", CommandMonitor.Status.COMPLETED, at, agentDefinitionId)
+        val actor = User.Id("user")
+        origins.bindWhileRequestPending(BackgroundActivityOrigin(BackgroundActivityOrigin.Kind.COMMAND, command.id.value, conversationId,
+            agentDefinitionId, actor, command.workerId, command.workspaceMountId, "request-command", "original-command-call"), at)
+        origins.bindWhileRequestPending(BackgroundActivityOrigin(BackgroundActivityOrigin.Kind.MONITOR, monitor.id.value, conversationId,
+            agentDefinitionId, actor, monitor.workerId, monitor.workspaceMountId, "request-monitor", "original-monitor-call"), at)
+        coordinator.upsertCommandTask(command)
+        coordinator.synchronizeCommandMonitor(monitor, emptyList())
+        val batch = service.prepareBatch(conversationId, command.notificationSourceKey())
+        assertEquals(4, batch.messages.size)
+        assertEquals(actor, batch.actorUserId)
+        for (message in batch.messages) {
+            val expectedCall = if (message.syntheticKind == SyntheticMessageKind.COMMAND_TASK_COMPLETION) "original-command-call" else "original-monitor-call"
+            assertEquals(BackgroundActivityMessageSource(ContentItem.ToolCall.Id(expectedCall), agentDefinitionId), message.backgroundActivitySource)
+            assertEquals(null, message.author)
+        }
+    }
+
+    @Test
+    fun `mismatched provenance does not become a grouping identity`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val origins = TestBackgroundActivityOrigins()
+        val service = BackgroundActivityCompletionApplicationService(coordinator, origins, BackgroundActivityContinuationPolicy { _, _ -> true })
+        val at = Instant.fromEpochMilliseconds(1000)
+        val command = terminalCommand("task", agentDefinitionId, "done", at)
+        origins.bindWhileRequestPending(BackgroundActivityOrigin(BackgroundActivityOrigin.Kind.COMMAND, command.id.value, conversationId,
+            AgentDefinition.Id("unrelated"), User.Id("user"), command.workerId, command.workspaceMountId, "request", "wrong-call"), at)
+        coordinator.upsertCommandTask(command)
+        val batch = service.prepareBatch(conversationId, command.notificationSourceKey())
+        assertEquals(2, batch.messages.size)
+        assertTrue(batch.messages.all { it.backgroundActivitySource == null && it.author == null })
+        assertEquals(null, batch.actorUserId)
+    }
 
     @Test
     fun `synthetic pairs have stable nine-character IDs without changing command or message identity`() = runBlocking {
@@ -112,7 +159,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
             toolResults[0].result.filterIsInstance<ContentItem.ToolResult.Data.Base64Data>().single().data
         ).utf8TextOrNull())
         assertTrue(commandResult.contains("\"output_is_untrusted\":true"))
-        service.markDelivered(batch, Instant.fromEpochMilliseconds(5_000))
+        commitBackgroundBatch(coordinator, batch)
 
         assertTrue(
             coordinator.findCommandTask(conversationId, command.id)
@@ -148,7 +195,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
         ).utf8TextOrNull())
         assertTrue(monitorResult.contains("\"output_is_untrusted\":true"))
 
-        service.markDelivered(nextAgentBatch, Instant.fromEpochMilliseconds(6_000))
+        commitBackgroundBatch(coordinator, nextAgentBatch)
         assertTrue(service.prepareBatch(conversationId, command.notificationSourceKey()).isEmpty)
     }
 
@@ -185,7 +232,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
         assertTrue(delivery.events.size < events.size)
         assertTrue(delivery.events.sumOf { it.output.toByteArray().size } <= 16 * 1024)
         assertEquals(events.size - delivery.events.size, delivery.remainingEventCount)
-        service.markDelivered(first, Instant.fromEpochMilliseconds(2_000))
+        commitBackgroundBatch(coordinator, first)
 
         val second = service.prepareBatch(conversationId,
             coordinator.findCommandMonitorEvents(conversationId, monitor.id).first { it.deliveredAt == null }.notificationSourceKey())
@@ -223,7 +270,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
         val first = service.prepareBatch(conversationId, "command-task:command-0")
 
         assertEquals(16, first.commandTasks.size)
-        service.markDelivered(first, Instant.fromEpochMilliseconds(100))
+        commitBackgroundBatch(coordinator, first)
         assertEquals(4, service.prepareBatch(conversationId, "command-task:command-16").commandTasks.size)
     }
 
@@ -241,7 +288,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
 
         assertEquals(16, batch.commandTasks.size)
         assertEquals(source.id, batch.commandTasks.first().id)
-        service.markDelivered(batch, Instant.fromEpochMilliseconds(200))
+        commitBackgroundBatch(coordinator, batch)
         assertTrue(coordinator.findCommandTask(conversationId, source.id)?.completionNotificationDeliveredAt != null)
         assertEquals(5, coordinator.findCommandTasks(conversationId).count { it.completionNotificationDeliveredAt == null })
     }
@@ -260,7 +307,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
 
         assertTrue(source in batch.monitorDeliveries.single().events)
         assertTrue(batch.monitorDeliveries.single().events.sumOf { it.content.bytes().size } <= 16 * 1024)
-        service.markDelivered(batch, Instant.fromEpochMilliseconds(2_000))
+        commitBackgroundBatch(coordinator, batch)
         val retained = coordinator.findCommandMonitorEvents(conversationId, monitor.id)
         assertTrue(retained.single { it.id == source.id }.deliveredAt != null)
         assertEquals(null, retained.first().deliveredAt)
@@ -281,7 +328,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
 
         assertEquals(listOf(next.id), batch.commandTasks.map { it.id })
         assertTrue(service.prepareBatch(conversationId, failed.notificationSourceKey()).isEmpty)
-        service.markDelivered(batch, Instant.fromEpochMilliseconds(3_000))
+        commitBackgroundBatch(coordinator, batch)
         assertEquals(failed, coordinator.findCommandTask(conversationId, failed.id))
     }
 
@@ -300,7 +347,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
 
         assertEquals(listOf(next.id), batch.monitorDeliveries.single().events.map { it.id })
         assertEquals(0, batch.monitorDeliveries.single().remainingEventCount)
-        service.markDelivered(batch, Instant.fromEpochMilliseconds(2_000))
+        commitBackgroundBatch(coordinator, batch)
         assertEquals(failed, coordinator.findCommandMonitorEvents(conversationId, monitor.id).single { it.id == failed.id })
     }
 
@@ -318,7 +365,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
 
         assertFalse(batch.monitorDeliveries.single().terminalNotificationIncluded)
         assertTrue(service.prepareBatch(conversationId, monitor.notificationSourceKey()).isEmpty)
-        service.markDelivered(batch, Instant.fromEpochMilliseconds(2_000))
+        commitBackgroundBatch(coordinator, batch)
         assertEquals(null, coordinator.findCommandMonitor(conversationId, monitor.id)?.terminalNotificationDeliveredAt)
         assertTrue(coordinator.findCommandMonitorEvents(conversationId, monitor.id).single().deliveredAt != null)
     }
@@ -329,7 +376,7 @@ class BackgroundActivityCompletionApplicationServiceTest {
         val service = completionService(coordinator)
         val first = terminalCommand("first", agentDefinitionId, "first", Instant.fromEpochMilliseconds(1_000))
         coordinator.upsertCommandTask(first)
-        service.markDelivered(service.prepareBatch(conversationId, first.notificationSourceKey()), Instant.fromEpochMilliseconds(2_000))
+        commitBackgroundBatch(coordinator, service.prepareBatch(conversationId, first.notificationSourceKey()))
         val next = terminalCommand("next", agentDefinitionId, "next", Instant.fromEpochMilliseconds(3_000))
         coordinator.upsertCommandTask(next)
 
@@ -348,39 +395,6 @@ class BackgroundActivityCompletionApplicationServiceTest {
         assertEquals(task, coordinator.claimDeliveredTask(conversationId, task.id, executor, task.requirements.capabilities, emptySet()))
         assertTrue(coordinator.markActiveTaskStarted(conversationId, task.id, executor, kotlin.time.Clock.System.now()))
         requireNotNull(coordinator.markActiveTaskInDoubt(conversationId, task.id, executor, "Synthetic delivery failure", "IllegalStateException"))
-    }
-
-    @Test
-    fun `only non-background pending work suppresses a dedicated model wakeup`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-        val service = completionService(
-            object : ConversationRuntimeCoordinator by coordinator {
-                override suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot =
-                    error("Pending-work checks must not load the full runtime snapshot")
-            }
-        )
-
-        coordinator.submit(backgroundCompletionRuntimeTask("delivery-1"))
-        assertFalse(service.hasPendingConversationWork(conversationId))
-
-        coordinator.submit(
-            ConversationRuntimeTask(
-                id = ConversationRuntimeTask.Id("incident-1"),
-                conversationId = conversationId,
-                payload = ConversationRuntimeTask.Payload.ExecutionIncident(
-                    ConversationRuntimeTask.Id("source-1")
-                ),
-                placement = QueuedMessagePlacement.END_OF_TURN,
-                idempotencyKey = "incident-1",
-                requirements = ConversationRuntimeTaskRequirements(
-                    capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
-                    target = ConversationRuntimeTaskTarget.Server,
-                ),
-                createdAt = Instant.fromEpochMilliseconds(2_000),
-            )
-        )
-
-        assertTrue(service.hasPendingConversationWork(conversationId))
     }
 
     private fun completionService(coordinator: ConversationRuntimeCoordinator) = BackgroundActivityCompletionApplicationService(

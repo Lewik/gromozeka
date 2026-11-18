@@ -40,6 +40,7 @@ class ConversationRuntimeDispatcher(
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val artifactReferenceValidator: ArtifactReferenceValidator,
+    private val proactiveCompactionJobs: ProactiveCompactionJobs? = null,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -131,6 +132,12 @@ class ConversationRuntimeDispatcher(
             ConversationRuntimeControlAction.RESUME -> runtimeCoordinator.requestResume(conversationId)
             ConversationRuntimeControlAction.STOP -> runtimeCoordinator.requestStop(conversationId)
             ConversationRuntimeControlAction.INTERRUPT -> runtimeCoordinator.requestInterrupt(conversationId, expectedTurnId)
+        }
+        if (action == ConversationRuntimeControlAction.STOP || action == ConversationRuntimeControlAction.INTERRUPT) {
+            val preparation = runtimeCoordinator.proactiveCompaction(conversationId)
+            if (preparation?.status == com.gromozeka.domain.service.ProactiveCompaction.Status.CANCELLED) {
+                proactiveCompactionJobs?.cancel(conversationId, preparation.id)
+            }
         }
         val accepted = runtimeControlAccepted || cancelledCommands > 0
         if (accepted) {
@@ -307,11 +314,14 @@ class ConversationRuntimeDispatcher(
     suspend fun submitBackgroundActivityCompletion(
         conversationId: Conversation.Id,
         sourceKey: String,
+        agentDefinitionId: AgentDefinition.Id,
+        actorUserId: com.gromozeka.domain.model.User.Id?,
     ): Boolean =
         submitRuntimeTask(
             ConversationRuntimeTask(
                 id = ConversationRuntimeTask.Id("background-activity:${stableIdentifier(sourceKey)}"),
                 conversationId = conversationId,
+                actorUserId = actorUserId,
                 payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(
                     sourceKey = sourceKey,
                 ),
@@ -323,7 +333,8 @@ class ConversationRuntimeDispatcher(
                     target = ConversationRuntimeTaskTarget.Server,
                 ),
                 createdAt = Clock.System.now(),
-            )
+            ),
+            backgroundActivityAgentId = agentDefinitionId,
         )
 
     private fun stableIdentifier(value: String): String =
@@ -373,9 +384,13 @@ class ConversationRuntimeDispatcher(
         task: ConversationRuntimeTask,
         acceptPreviouslySubmitted: Boolean = false,
         userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
+        backgroundActivityAgentId: AgentDefinition.Id? = null,
     ): Boolean {
-        val accepted = if (userDeliveryMode == null) runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
-            else runtimeCoordinator.submitUserInput(task, userDeliveryMode)
+        val accepted = when {
+            backgroundActivityAgentId != null -> runtimeCoordinator.submitBackgroundActivity(task, backgroundActivityAgentId)
+            userDeliveryMode != null -> runtimeCoordinator.submitUserInput(task, userDeliveryMode)
+            else -> runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
+        }
         if (accepted) {
             publishRuntimeSnapshot(task.conversationId)
         }

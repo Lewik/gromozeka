@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.runtime
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
@@ -154,7 +156,7 @@ class SdkHttpContractTest {
                     content = listOf(Conversation.Message.ContentItem.ToolCall(Conversation.Message.ContentItem.ToolCall.Id(id),
                         Conversation.Message.ContentItem.ToolCall.Data("lookup", JsonObject(emptyMap())))),
                     providerMetadata = if (synthetic) JsonObject(mapOf("synthetic" to JsonPrimitive(true),
-                        "syntheticKind" to JsonPrimitive("command_task_completion"))) else JsonObject(emptyMap()))
+                        "syntheticKind" to Json.encodeToJsonElement(SyntheticMessageKind.serializer(), SyntheticMessageKind.COMMAND_TASK_COMPLETION))) else JsonObject(emptyMap()))
                 return listOf(call, call.copy(id = Conversation.Message.Id("$prefix-result"), role = Conversation.Message.Role.USER,
                     content = listOf(Conversation.Message.ContentItem.ToolResult(Conversation.Message.ContentItem.ToolCall.Id(id), "lookup",
                         listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done"))))))

@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
@@ -17,8 +20,6 @@ import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolCallback
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
@@ -145,7 +146,7 @@ class MemoryOperationContextResolver(
             .forMemoryPipeline(agent.toolAccess)
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
-        providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+        syntheticKind == SyntheticMessageKind.MEMORY
 }
 
 private fun ConversationRuntimeExecutorIdentity.toRuntimeEnvironmentExecutor(): RuntimeEnvironmentExecutor =

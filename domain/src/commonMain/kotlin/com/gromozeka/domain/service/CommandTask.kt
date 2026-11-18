@@ -16,6 +16,9 @@ fun requireValidCommandDescription(description: String?) {
     }
 }
 
+fun commandDisplayLabel(command: String, description: String?): String =
+    description?.takeIf(String::isNotBlank) ?: command
+
 @Serializable
 data class CommandTask(
     val id: Id,
@@ -63,7 +66,7 @@ data class CommandTask(
         }
     }
 
-    val displayLabel: String get() = description?.takeIf(String::isNotBlank) ?: command
+    val displayLabel: String get() = commandDisplayLabel(command, description)
 
     val terminalOutput: String? get() = terminalOutputContent?.textPreview()
 

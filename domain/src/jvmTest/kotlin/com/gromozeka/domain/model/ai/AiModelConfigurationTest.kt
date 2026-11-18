@@ -37,7 +37,7 @@ class AiModelConfigurationTest {
     @Test
     fun compactionRoundTripsOnlyAbsoluteTokensAndExplicitReset() {
         val json = kotlinx.serialization.json.Json { encodeDefaults = true }
-        val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(75_000, AiModelConfiguration.Id("summary")))
+        val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(75_000, summaryModelConfigurationId = AiModelConfiguration.Id("summary")))
         val encoded = json.encodeToString(AiModelConfiguration.serializer(), configured)
         assertEquals(configured, json.decodeFromString(AiModelConfiguration.serializer(), encoded))
         kotlin.test.assertFalse(encoded.contains("percent"))
@@ -57,6 +57,18 @@ class AiModelConfigurationTest {
         val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(tokenCounting =
             AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, id)))
         assertEquals(configured, json.decodeFromString(AiModelConfiguration.serializer(), json.encodeToString(AiModelConfiguration.serializer(), configured)))
+    }
+
+    @Test fun proactiveThresholdIsFixedOptionalAndStrictlyBelowTheBlockingThreshold() {
+        for (early in listOf(-1, 0, 100, 101)) assertFailsWith<IllegalArgumentException> {
+            AiModelConfiguration.Compaction(thresholdTokens = 100, proactiveThresholdTokens = early)
+        }
+        assertFailsWith<IllegalArgumentException> { AiModelConfiguration.Compaction(proactiveThresholdTokens = 50) }
+        val json = kotlinx.serialization.json.Json
+        val policy = AiModelConfiguration.Compaction(thresholdTokens = 140_000, proactiveThresholdTokens = 100_000)
+        assertEquals(policy, json.decodeFromString(AiModelConfiguration.Compaction.serializer(), json.encodeToString(AiModelConfiguration.Compaction.serializer(), policy)))
+        assertEquals(null, json.decodeFromString(AiModelConfiguration.Compaction.serializer(), """{"thresholdTokens":140000}""").proactiveThresholdTokens)
+        assertEquals(null, json.decodeFromString(AiModelConfiguration.Compaction.serializer(), "{}").proactiveThresholdTokens)
     }
 
     private fun configuration(

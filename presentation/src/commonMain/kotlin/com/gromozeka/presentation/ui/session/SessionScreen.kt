@@ -100,6 +100,7 @@ internal fun SessionScreen(
     val lastUserMessageAt by viewModel.lastUserMessageAt.collectAsState()
     val agentMentionCandidates by viewModel.agentMentionCandidates.collectAsState()
     val messageSubmissionError by viewModel.messageSubmissionError.collectAsState()
+    val isSubmittingMessage by viewModel.isSubmittingMessage.collectAsState()
     val suggestedRepliesOverride by viewModel.suggestedRepliesOverride.collectAsState()
     val suggestedRepliesRegeneratingFor by viewModel.suggestedRepliesRegeneratingFor.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -186,11 +187,6 @@ internal fun SessionScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(historyError.orEmpty(), modifier = Modifier.weight(1f))
                                 TextButton(onClick = viewModel::retryHistory) { Text(localization.text("chat.error.retry")) }
-                            }
-                        }
-                        if (olderHistory != null) {
-                            TextButton(onClick = { viewModel.loadOlderHistory() }, enabled = !historyLoading) {
-                                Text(localization.text("chat.history.loadOlder"))
                             }
                         }
                         key(viewModel.conversationId) {
@@ -289,6 +285,7 @@ internal fun SessionScreen(
                                 suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor != null,
                                 onRegenerateSuggestedReplies = viewModel::regenerateSuggestedReplies,
                                 onSendMessage = viewModel::submitUserInputToSession,
+                                isSubmittingMessage = isSubmittingMessage,
                                 coroutineScope = coroutineScope,
                                 pttEventHandler = pttEventHandler,
                                 pttState = pttState,

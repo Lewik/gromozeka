@@ -1,5 +1,10 @@
 package com.gromozeka.presentation.ui.session
 
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.BackgroundActivityMessageSource
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.putSyntheticMessageMetadata
+
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.test.Test
@@ -157,6 +162,62 @@ class ToolCallGroupingTest {
         assertEquals(ActivityState.RUNNING, assertIs<MessageSegment.Activity>(grouped[1].segment).activity.state)
         assertEquals(ActivityState.INTERRUPTED, assertIs<MessageSegment.Activity>(grouped[2].segment).activity.state)
     }
+
+    @Test
+    fun `completion groups with its agent without changing runtime authorship`() {
+        val owner = AgentDefinition.Id("owner")
+        val first = message("launch", listOf(toolCall("launch-call"))).copy(author = Conversation.Message.Author.Agent(owner, "Agent"))
+        val completion = notification("completion", SyntheticMessageKind.COMMAND_TASK_COMPLETION, "launch-call", owner)
+        val next = message("next", listOf(toolCall("next-call"))).copy(author = first.author)
+        val grouped = groupWithResults(entries(first) + entries(completion) + entries(next), successfulResults("launch-call", "completion-call", "next-call"))
+        assertEquals(listOf("launch-call", "completion-call", "next-call"), groupCalls(grouped.single()))
+        val activities = assertIs<MessageSegment.ActivityGroup>(grouped.single().segment).activities
+        assertEquals(listOf(first, completion, next), activities.map { it.message })
+        assertEquals(null, completion.author)
+    }
+
+    @Test
+    fun `adjacent command and monitor updates use the same verified owner`() {
+        val owner = AgentDefinition.Id("owner")
+        val command = notification("command", SyntheticMessageKind.COMMAND_TASK_COMPLETION, "launch", owner)
+        val monitor = notification("monitor", SyntheticMessageKind.COMMAND_MONITOR_UPDATE, "monitor-launch", owner)
+        val next = message("next", listOf(toolCall("next-call"))).copy(author = Conversation.Message.Author.Agent(owner, "Agent"))
+        val grouped = groupWithResults(entries(command) + entries(monitor) + entries(next), successfulResults("command-call", "monitor-call", "next-call"))
+        assertEquals(listOf("command-call", "monitor-call", "next-call"), groupCalls(grouped.single()))
+    }
+
+    @Test
+    fun `background ownership never merges another agent or an unproven source`() {
+        val owner = AgentDefinition.Id("owner")
+        val other = message("other", listOf(toolCall("other-call"))).copy(author = Conversation.Message.Author.Agent(AgentDefinition.Id("other"), "Other"))
+        val completion = notification("completion", SyntheticMessageKind.COMMAND_TASK_COMPLETION, "launch", owner)
+        assertEquals(2, groupWithResults(entries(other) + entries(completion), successfulResults("other-call", "completion-call")).size)
+        val unproven = message("unproven", listOf(toolCall("unproven-call", "grz_get_command_task"))).copy(
+            providerMetadata = buildJsonObject { putSyntheticMessageMetadata(SyntheticMessageKind.COMMAND_TASK_COMPLETION) },
+        )
+        assertEquals(2, groupWithResults(entries(unproven) + entries(completion), successfulResults("unproven-call", "completion-call")).size)
+        val ownerMessage = other.copy(author = Conversation.Message.Author.Agent(owner, "Agent"))
+        assertEquals(2, groupWithResults(entries(ownerMessage) + entries(unproven), successfulResults("other-call", "unproven-call")).size)
+    }
+
+    @Test
+    fun `proven background updates still respect text and failure boundaries`() {
+        val owner = AgentDefinition.Id("owner")
+        val before = message("before", listOf(toolCall("before-call"))).copy(author = Conversation.Message.Author.Agent(owner, "Agent"))
+        val text = message("text", listOf(assistantText())).copy(author = before.author)
+        val completion = notification("completion", SyntheticMessageKind.COMMAND_TASK_COMPLETION, "before-call", owner)
+        val input = entries(before) + entries(text) + entries(completion)
+        assertEquals(3, groupWithResults(input, successfulResults("before-call", "completion-call")).size)
+        val failed = successfulResults("before-call") + ("completion-call" to toolResult("completion-call", isError = true))
+        assertEquals(2, groupWithResults(entries(before) + entries(completion), failed).size)
+    }
+
+    private fun notification(id: String, kind: SyntheticMessageKind, launch: String, owner: AgentDefinition.Id) =
+        message(id, listOf(toolCall("$id-call", if (kind == SyntheticMessageKind.COMMAND_TASK_COMPLETION) "grz_get_command_task" else "grz_get_command_monitor"))).copy(
+            providerMetadata = buildJsonObject {
+                putSyntheticMessageMetadata(kind, BackgroundActivityMessageSource(Conversation.Message.ContentItem.ToolCall.Id(launch), owner))
+            },
+        )
 
     private fun groupWithResults(
         entries: List<MessageListEntry>,

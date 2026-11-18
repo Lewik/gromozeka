@@ -105,6 +105,12 @@ data class ConversationRuntimeTask(
         }
 
         @Serializable
+        @SerialName("apply_prepared_compaction")
+        data class ApplyPreparedCompaction(val preparationId: String) : Payload {
+            init { require(preparationId.isNotBlank()) }
+        }
+
+        @Serializable
         @SerialName("response_review")
         data class ResponseReview(val draftId: String, val agentDefinitionId: AgentDefinition.Id) : Payload
 
@@ -180,6 +186,7 @@ data class ConversationRuntimeTask(
         @SerialName("background_activity_completion")
         data class BackgroundActivityCompletion(
             val sourceKey: String,
+            val agentDefinitionId: AgentDefinition.Id? = null,
         ) : Payload {
             init {
                 require(sourceKey.isNotBlank()) { "Background activity completion source key must not be blank" }
@@ -221,6 +228,7 @@ data class ConversationRuntimeTask(
             is Payload.AgentInvocation,
             is Payload.AgentResponse,
             is Payload.HistoryMutation,
+            is Payload.ApplyPreparedCompaction,
             is Payload.MemoryRunCompletion,
             is Payload.BackgroundActivityCompletion,
             is Payload.ExecutionIncident -> true
@@ -261,6 +269,7 @@ data class ConversationRuntimeTask(
                 ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
+            is Payload.ApplyPreparedCompaction -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
             is Payload.ToolExecution -> setOf(ConversationRuntimeCapability.TOOL_EXECUTION)
             is Payload.ToolResultProcessing -> setOf(
                 ConversationRuntimeCapability.CONVERSATION_TURN,
@@ -285,9 +294,21 @@ value class ConversationRuntimeTurnId(val value: String) {
 }
 
 sealed interface ConversationRuntimeTaskOutcome {
+    val backgroundDeliveryReceipts: List<BackgroundActivityDeliveryReceipt> get() = emptyList()
+
+    data class CompleteBackgroundDelivery(
+        override val backgroundDeliveryReceipts: List<BackgroundActivityDeliveryReceipt>,
+    ) : ConversationRuntimeTaskOutcome {
+        init { require(backgroundDeliveryReceipts.isNotEmpty()) }
+    }
+
     data object CompleteTurn : ConversationRuntimeTaskOutcome
 
     data object CompleteWithoutNotification : ConversationRuntimeTaskOutcome
+
+    data class Failed(val reason: ConversationRuntimeCompletion.Reason, val errorType: String? = null) : ConversationRuntimeTaskOutcome
+
+    data object Cancelled : ConversationRuntimeTaskOutcome
 
     data class HistoryChanged(
         val kind: ConversationHistoryMutationKind,
@@ -296,6 +317,7 @@ sealed interface ConversationRuntimeTaskOutcome {
     data class Continue(
         val nextTask: ConversationRuntimeTask,
         val queuedAgentResponses: List<ConversationRuntimeTask> = emptyList(),
+        override val backgroundDeliveryReceipts: List<BackgroundActivityDeliveryReceipt> = emptyList(),
     ) : ConversationRuntimeTaskOutcome {
         init {
             require(nextTask.isContinuation()) {
@@ -774,8 +796,10 @@ data class ConversationRuntimeSnapshot(
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
     val lastTurn: ConversationRuntimeTurnSummary? = null,
     val retainedTurnProblems: ConversationRuntimeTurnSummary? = null,
+    val proactiveCompaction: ProactiveCompactionActivity? = null,
     val agentRequests: List<com.gromozeka.domain.model.AgentRequest> = emptyList(),
     val lastEventSequence: Long = 0,
+    val lastCompletion: ConversationRuntimeCompletion? = null,
 )
 
 @Serializable
@@ -788,6 +812,7 @@ data class ConversationRuntimeSchedulingSnapshot(
     val pendingTasks: List<ConversationRuntimeTask> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val lastEventSequence: Long = 0,
+    val lastCompletion: ConversationRuntimeCompletion? = null,
 ) {
     fun containsTask(taskId: ConversationRuntimeTask.Id): Boolean =
         activeTask?.id == taskId || activeInsertions.any { it.id == taskId } ||
@@ -892,11 +917,16 @@ data class ConversationRuntimeEventLogEntry(
 )
 
 interface ConversationRuntimeCoordinator {
+    suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean
+    suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean
+    suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction?
+    suspend fun runningProactiveCompactions(): List<ProactiveCompaction>
+
     suspend fun schedulingSnapshot(conversationId: Conversation.Id): ConversationRuntimeSchedulingSnapshot {
         val snapshot = snapshot(conversationId)
         return ConversationRuntimeSchedulingSnapshot(
             conversationId, snapshot.state, snapshot.activeTask, snapshot.activeInsertions,
-            snapshot.continuationTask, snapshot.pendingTasks, snapshot.incidents, snapshot.lastEventSequence,
+            snapshot.continuationTask, snapshot.pendingTasks, snapshot.incidents, snapshot.lastEventSequence, snapshot.lastCompletion,
         )
     }
 
@@ -937,6 +967,9 @@ interface ConversationRuntimeCoordinator {
 
     /** Captures a human preference atomically with admission; never changes already queued input. */
     suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean
+
+    /** Resolve safe-point placement atomically against the current agent and authenticated actor. */
+    suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: AgentDefinition.Id): Boolean
 
     suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
 
@@ -983,6 +1016,16 @@ interface ConversationRuntimeCoordinator {
      * This never requeues or re-executes the source task. It records an incident and schedules incident handling so
      * the user or the main model can decide what to do next.
      */
+    suspend fun recordBackgroundInsertionFailure(
+        conversationId: Conversation.Id,
+        ownerTaskId: ConversationRuntimeTask.Id,
+        insertionTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        deliveryStartedAt: Instant?,
+        message: String,
+        errorType: String?,
+    ): ConversationRuntimeTaskIncident?
+
     suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,

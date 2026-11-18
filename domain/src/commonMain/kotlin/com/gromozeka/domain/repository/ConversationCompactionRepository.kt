@@ -8,5 +8,6 @@ interface ConversationCompactionRepository {
         compactionMessage: Conversation.Message,
         newThread: Conversation.Thread,
         insertionAnchorId: Conversation.Message.Id,
+        preparedCompactionId: String? = null,
     ): Boolean
 }

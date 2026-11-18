@@ -1,5 +1,9 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.SyntheticMessageKind
+import com.gromozeka.domain.model.putSyntheticMessageMetadata
+import com.gromozeka.domain.model.syntheticKind
+
 import com.gromozeka.domain.model.AgentAddress
 import com.gromozeka.domain.model.AgentResponseDecision
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -47,6 +51,8 @@ import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
+import com.gromozeka.domain.service.ProactiveCompaction
+import com.gromozeka.domain.service.ConversationRuntimeCompletion
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
@@ -154,6 +160,7 @@ class ConversationEngineService(
             }
             is ConversationRuntimeTask.Payload.HistoryMutation ->
                 runHistoryMutationStep(task, executor, payload)
+            is ConversationRuntimeTask.Payload.ApplyPreparedCompaction -> runPreparedCompactionStep(task, executor, payload)
             is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.ResponseReview -> runResponseReviewStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.ToolExecution ->
@@ -168,6 +175,50 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ExecutionIncident ->
                 runExecutionIncidentStep(task, executor, payload, emitMessage)
         }
+
+    private suspend fun runPreparedCompactionStep(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        payload: ConversationRuntimeTask.Payload.ApplyPreparedCompaction,
+    ): ConversationRuntimeTaskOutcome {
+        ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        val prepared = runtimeCoordinator.proactiveCompaction(task.conversationId)
+            ?.takeIf { it.id == payload.preparationId && it.status == ProactiveCompaction.Status.READY }
+            ?: return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+        check(task.actorUserId == prepared.actorUserId) { "Compaction application actor changed" }
+        val conversation = requireNotNull(conversationService.findById(task.conversationId))
+        requireActorConnected(task, conversation)
+        val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor)
+        compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts) {
+            ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        }
+        return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+    }
+
+    private suspend fun afterCommittedModelResponse(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        conversation: Conversation,
+        context: ConversationRuntimeStepContext,
+        request: AiRuntimeRequest,
+    ): Conversation {
+        suspend fun apply() = compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts) {
+            ensureRuntimeTaskOwner(conversation.id, task.id, executor)
+        }
+        apply()?.let { return it }
+        val captured = request.copy(options = request.options.copy(toolContext = request.options.toolContext + buildMap {
+            put(TOOL_CONTEXT_CONVERSATION_ID, conversation.id.value)
+            put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
+            put(TOOL_CONTEXT_PROJECT_ID, conversation.projectId.value)
+            put(TOOL_CONTEXT_AGENT_DEFINITION_ID, context.agent.id.value)
+            task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
+            put(AI_ADMISSION_CONVERSATION_CONTEXT_KEY, conversation.id.value)
+            put(AI_ADMISSION_TASK_CONTEXT_KEY, task.id.value)
+        }))
+        compactions.prepareAfterResponse(task, executor, conversation, context.agent, captured, promptScope = context.runtimeSystemPrompts)
+        // A fast preparation can become READY at this same boundary. A later result has its durable application task.
+        return apply() ?: conversation
+    }
 
     private suspend fun runHistoryMutationStep(
         task: ConversationRuntimeTask,
@@ -244,7 +295,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         requireActorConnected(task, conversation)
-        if (collaboration?.validateMessage(payload.userMessage) == false) return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+        if (collaboration?.validateMessage(payload.userMessage) == false) return ConversationRuntimeTaskOutcome.Cancelled
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
         appendUserMessageWithAutomaticMemory(
             conversationId = conversationId,
@@ -330,7 +381,7 @@ class ConversationEngineService(
                     context.memoryPipelineTools,
                 )
             }
-            return ConversationRuntimeTaskOutcome.CompleteTurn
+            return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.ITERATION_LIMIT)
         }
 
         val beforeModel = emitQueuedRuntimeMessagesAtSafePoint(
@@ -341,7 +392,8 @@ class ConversationEngineService(
         if (beforeModel.consumedTasks) {
             beforeModel.messages.forEach { emitMessage(it) }
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
-                payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId, payload.afterCompaction))
+                payload.agentDefinitionId, payload.iteration + 1, beforeModel.actorUserId, payload.afterCompaction),
+                backgroundDeliveryReceipts = beforeModel.backgroundDeliveryReceipts)
         }
 
         // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
@@ -379,7 +431,7 @@ class ConversationEngineService(
                 toolChoice = AiToolChoice.Auto,
                 responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(
                     context.assistantResponseFormat,
-                    includeSuggestedReplies = context.suggestedRepliesMode ==
+                    includeSuggestedReplies = context.suggestedRepliesSettings.mode ==
                         UserProfile.SuggestedRepliesSettings.Mode.INLINE,
                 ),
                 assistantResponseFormat = context.assistantResponseFormat,
@@ -408,21 +460,12 @@ class ConversationEngineService(
         context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
 
         val compacted = compactions.compactIfNeeded(task, conversation, context.agent, context.runtime, runtimeRequest,
-            payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId)) {
+            payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId),
+            promptScope = context.runtimeSystemPrompts) {
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             check(agentDomainService.findById(context.agent.id) == context.agent) { "Agent changed during compaction" }
         }
         if (compacted != null) {
-            // A portable handoff can end with an assistant summary. This explicit Runtime continuation
-            // also provides a user input anchor for one-shot secrets without preserving a raw history tail.
-            val continuation = Conversation.Message(
-                id = runtimeMessageId(task.id, "compaction-continuation"), conversationId = conversationId,
-                role = Conversation.Message.Role.USER, createdAt = Clock.System.now(),
-                content = listOf(ContentItem.UserMessage("Continue the active task from the compacted context. Follow the latest user instructions; do not repeat completed work.")),
-                providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "compaction_continuation") },
-            )
-            ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (addRuntimeMessageIfMissing(conversationId, continuation)) emitMessage(continuation)
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
                 payload.agentDefinitionId, payload.iteration + 1, task.actorUserId, afterCompaction = true))
         }
@@ -482,7 +525,7 @@ class ConversationEngineService(
                         context.memoryPipelineTools,
                     )
                 }
-                return ConversationRuntimeTaskOutcome.CompleteTurn
+                return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_ERROR, e::class.simpleName)
             }
         } finally {
             clearActiveGeneration(activeGeneration)
@@ -545,15 +588,16 @@ class ConversationEngineService(
         }
         val assistantMessages = when {
             outcome != AiStepOutcome.COMPLETE -> mappedAssistantMessages.withSuggestedReplies(emptyList())
-            context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.DISABLED ->
+            context.suggestedRepliesSettings.mode == UserProfile.SuggestedRepliesSettings.Mode.DISABLED ->
                 mappedAssistantMessages.withSuggestedReplies(emptyList())
-            context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE ->
+            context.suggestedRepliesSettings.mode == UserProfile.SuggestedRepliesSettings.Mode.INLINE ->
                 mappedAssistantMessages
             else -> generateSeparateSuggestedReplies(
                 task = task,
                 conversation = conversation,
                 currentMessages = currentMessages,
                 assistantMessages = mappedAssistantMessages,
+                settings = context.suggestedRepliesSettings,
                 agentDefinitionId = context.agent.id,
                 actorUserId = task.actorUserId,
             )
@@ -583,18 +627,18 @@ class ConversationEngineService(
             }
         }
         if (outcome.isFailure) {
-            collaboration?.failRequest(payload.rootUserMessageId, "Recipient model response was incomplete or failed")
             val errorMessage = AiConversationMessageMapper.createErrorMessage(
                 conversationId,
                 "Model response ${outcome.name.lowercase()}: ${runtimeResponse.finishReason ?: "unspecified reason"}. No actions were executed.",
             ).copy(id = runtimeMessageId(task.id, "llm-incomplete"))
             if (addRuntimeMessageIfMissing(conversationId, errorMessage)) emitMessage(errorMessage)
-            return ConversationRuntimeTaskOutcome.CompleteTurn
+            return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_RESPONSE_INCOMPLETE)
         }
         if (outcome == AiStepOutcome.REFUSED) {
-            collaboration?.failRequest(payload.rootUserMessageId, "Recipient model refused the request")
-            return ConversationRuntimeTaskOutcome.CompleteTurn
+            return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_REFUSED)
         }
+        conversation = afterCommittedModelResponse(task, executor, conversation, context,
+            runtimeRequest.copy(messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages))
         // A model-only answer has no tool-result step. Do not strand human steering until a new turn.
         // If the model returned tool calls, keep their call/result pairs intact and use the existing tool boundary.
         if (allToolCalls.isEmpty()) {
@@ -603,10 +647,11 @@ class ConversationEngineService(
                 conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
                 context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled,
             )
-            if (afterModel.consumedTasks) {
+            if (afterModel.requiresModelResponse) {
                 afterModel.messages.forEach { emitMessage(it) }
                 return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
-                    payload.agentDefinitionId, payload.iteration + 1, afterModel.actorUserId))
+                    payload.agentDefinitionId, payload.iteration + 1, afterModel.actorUserId),
+                    backgroundDeliveryReceipts = afterModel.backgroundDeliveryReceipts)
             }
         }
         if (outcome == AiStepOutcome.CONTINUE) {
@@ -660,8 +705,7 @@ class ConversationEngineService(
                             )
                         },
                         providerMetadata = buildJsonObject {
-                            put("synthetic", true)
-                            put("syntheticKind", "tool_routing_error")
+                            putSyntheticMessageMetadata(SyntheticMessageKind.TOOL_ROUTING_ERROR)
                         },
                         createdAt = Clock.System.now(),
                     )
@@ -693,9 +737,17 @@ class ConversationEngineService(
             automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
             actorUserId = task.actorUserId,
         )
-        return memoryRecallTask
-            ?.let { ConversationRuntimeTaskOutcome.Continue(it) }
-            ?: ConversationRuntimeTaskOutcome.CompleteTurn
+        if (memoryRecallTask != null) return ConversationRuntimeTaskOutcome.Continue(memoryRecallTask)
+        return ConversationRuntimeTaskOutcome.CompleteTurn
+    }
+
+    private suspend fun failAgentTurn(
+        rootMessageId: Conversation.Message.Id,
+        reason: ConversationRuntimeCompletion.Reason,
+        errorType: String? = null,
+    ): ConversationRuntimeTaskOutcome.Failed {
+        collaboration?.failRequest(rootMessageId, reason.summary)
+        return ConversationRuntimeTaskOutcome.Failed(reason, errorType)
     }
 
     private suspend fun runResponseReviewStep(
@@ -706,7 +758,7 @@ class ConversationEngineService(
         val service = requireNotNull(responseReview) { "Collaboration review is disabled; draft retained" }
         val collaboration = requireNotNull(collaboration)
         val draft = requireNotNull(collaboration.repository.findDraft(payload.draftId)) { "Missing response draft" }
-        val conversation = requireNotNull(conversationService.findById(task.conversationId))
+        var conversation = requireNotNull(conversationService.findById(task.conversationId))
         require(draft.endpoint.threadId == conversation.currentThread && draft.actorUserId == task.actorUserId && draft.endpoint.agentId == payload.agentDefinitionId)
         requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
@@ -719,8 +771,11 @@ class ConversationEngineService(
                 conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
                 context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled)
             steering.messages.forEach { emitMessage(it) }
+            conversation = afterCommittedModelResponse(task, executor, conversation, context,
+                AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind)))
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
-                payload.agentDefinitionId, draft.iteration + 1, if (steering.consumedTasks) steering.actorUserId else task.actorUserId))
+                payload.agentDefinitionId, draft.iteration + 1, if (steering.consumedTasks) steering.actorUserId else task.actorUserId),
+                backgroundDeliveryReceipts = steering.backgroundDeliveryReceipts)
         }
         ensureRuntimeTaskOwner(conversation.id, task.id, executor)
         if (runtimeCoordinator.listPending(conversation.id).any { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }) return continueAfterNewInput()
@@ -762,11 +817,15 @@ class ConversationEngineService(
             createdAt = Clock.System.now(),
         )
         if (addRuntimeMessageIfMissing(conversation.id, receipt)) emitMessage(receipt)
+        conversation = afterCommittedModelResponse(task, executor, conversation, context,
+            AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind)))
         return if (decision.next == AgentResponseDecision.Next.CONTINUE) {
             ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
                 payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
         } else if (decision.userText == null) ConversationRuntimeTaskOutcome.CompleteWithoutNotification
-        else ConversationRuntimeTaskOutcome.CompleteTurn
+        else {
+            ConversationRuntimeTaskOutcome.CompleteTurn
+        }
     }
 
     private suspend fun publishActiveGeneration(snapshot: ActiveGenerationSnapshot) {
@@ -838,7 +897,7 @@ class ConversationEngineService(
         queuedMessageEmission.messages.forEach { queuedMessage ->
             emitMessage(queuedMessage)
         }
-        if (payload.returnDirect && !queuedMessageEmission.consumedTasks) return ConversationRuntimeTaskOutcome.CompleteTurn
+        if (payload.returnDirect && !queuedMessageEmission.requiresModelResponse) return ConversationRuntimeTaskOutcome.CompleteTurn
 
         return ConversationRuntimeTaskOutcome.Continue(
             llmCallTask(
@@ -853,6 +912,7 @@ class ConversationEngineService(
                     task.actorUserId
                 },
             ),
+            backgroundDeliveryReceipts = queuedMessageEmission.backgroundDeliveryReceipts,
         )
     }
 
@@ -972,8 +1032,7 @@ class ConversationEngineService(
                             )
                         },
                         providerMetadata = buildJsonObject {
-                            put("synthetic", true)
-                            put("syntheticKind", "runtime_execution_incident")
+                            putSyntheticMessageMetadata(SyntheticMessageKind.RUNTIME_EXECUTION_INCIDENT)
                             put("sourceRuntimeTaskId", incident.task.id.value)
                             put("incidentKind", incident.kind.name)
                         },
@@ -1015,8 +1074,7 @@ class ConversationEngineService(
                         ContentItem.UserMessage(executionIncidentSystemNotification(incident))
                     ),
                     providerMetadata = buildJsonObject {
-                        put("synthetic", true)
-                        put("syntheticKind", "runtime_execution_incident")
+                        putSyntheticMessageMetadata(SyntheticMessageKind.RUNTIME_EXECUTION_INCIDENT)
                         put("sourceRuntimeTaskId", incident.task.id.value)
                         put("incidentKind", incident.kind.name)
                     },
@@ -1095,28 +1153,10 @@ class ConversationEngineService(
         )
         if (batch.isEmpty) return ConversationRuntimeTaskOutcome.CompleteTurn
 
-        val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
-        batch.messages.forEach { syntheticMessage ->
-            ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
-                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
-                    result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
-                }
-                val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
-                val iterator = persisted.iterator()
-                val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
-                    if (it is ContentItem.ToolResult) iterator.next() else it
-                })
-                if (addRuntimeMessageIfMissing(conversationId, storedMessage)) emitMessage(storedMessage)
-            } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
-                replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
-            }
-        }
+        appendBackgroundBatch(conversation, task.id, executor, batch).forEach { emitMessage(it) }
 
-        val pendingConversationWork =
-            backgroundActivityCompletionApplicationService.hasPendingConversationWork(conversationId)
-        val outcome = if (pendingConversationWork || !backgroundActivityCompletionApplicationService.canContinue(batch, conversation)) {
-            ConversationRuntimeTaskOutcome.CompleteTurn
+        val outcome = if (!backgroundActivityCompletionApplicationService.canContinue(batch, conversation)) {
+            ConversationRuntimeTaskOutcome.CompleteBackgroundDelivery(listOf(batch.receipt))
         } else {
             ConversationRuntimeTaskOutcome.Continue(
                 llmCallTask(
@@ -1127,14 +1167,45 @@ class ConversationEngineService(
                     iteration = 1,
                     actorUserId = batch.actorUserId,
                 ),
+                backgroundDeliveryReceipts = listOf(batch.receipt),
             )
         }
 
-        val deliveredAt = Clock.System.now()
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
-        backgroundActivityCompletionApplicationService.markDelivered(batch, deliveredAt)
         publishRuntimeSnapshot(conversationId)
         return outcome
+    }
+
+    private suspend fun appendBackgroundBatch(
+        conversation: Conversation,
+        runtimeTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity,
+        batch: BackgroundActivityCompletionApplicationService.Batch,
+    ): List<Conversation.Message> {
+        val conversationId = conversation.id
+        val prepared = mutableListOf<Conversation.Message>()
+        val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
+        batch.messages.forEach { syntheticMessage ->
+            ensureRuntimeTaskOwner(conversationId, runtimeTaskId, executor)
+            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
+                val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
+                    result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
+                }
+                val persisted = artifactService.persistAndCommitToolResults(conversation, batch.actorUserId, toolResults)
+                val iterator = persisted.iterator()
+                val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
+                    if (it is ContentItem.ToolResult) iterator.next() else it
+                })
+                prepared += storedMessage
+            } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
+                replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
+            }
+        }
+
+        ensureRuntimeTaskOwner(conversationId, runtimeTaskId, executor)
+        return conversationMessageAppender.appendRuntimeMessages(conversationId, prepared).also {
+            if (it.isNotEmpty()) publishRuntimeSnapshot(conversationId)
+        }
     }
 
     private fun executionIncidentResult(incident: ConversationRuntimeTaskIncident): String =
@@ -1204,7 +1275,7 @@ class ConversationEngineService(
         val automaticMemoryRememberEnabled: Boolean,
         val automaticMemoryRecallEnabled: Boolean,
         val includeMessageTemporalContext: Boolean,
-        val suggestedRepliesMode: UserProfile.SuggestedRepliesSettings.Mode,
+        val suggestedRepliesSettings: UserProfile.SuggestedRepliesSettings,
     ) {
         val project get() = runtimeContext.project
     }
@@ -1264,8 +1335,9 @@ class ConversationEngineService(
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
         val memorySettings = settingsProvider.userProfile.memorySettings
-        val suggestedRepliesMode = if (conversation.externalChannel != null) UserProfile.SuggestedRepliesSettings.Mode.DISABLED
-            else settingsProvider.userProfile.suggestedRepliesSettings.mode
+        val suggestedRepliesSettings = settingsProvider.userProfile.suggestedRepliesSettings.let {
+            if (conversation.externalChannel != null) it.copy(mode = UserProfile.SuggestedRepliesSettings.Mode.DISABLED) else it
+        }
         val automaticMemoryRememberEnabled = conversation.externalChannel == null && memorySettings.autoRemember &&
             aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null
         val automaticMemoryRecallEnabled = conversation.externalChannel == null && memorySettings.autoRecall &&
@@ -1277,7 +1349,8 @@ class ConversationEngineService(
             environment = toolCatalog.environmentPrompt,
             skills = agentSkillRuntime.systemPrompt,
             responseFormat = assistantResponseFormat,
-            includeSuggestedReplies = suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+            includeSuggestedReplies = suggestedRepliesSettings.mode == UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+            inlineSuggestedRepliesPrompt = suggestedRepliesSettings.inlinePrompt,
         )
 
         return ConversationRuntimeStepContext(
@@ -1297,7 +1370,7 @@ class ConversationEngineService(
             automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
             includeMessageTemporalContext =
                 settingsProvider.userProfile.agentSettings.includeMessageTemporalContext,
-            suggestedRepliesMode = suggestedRepliesMode,
+            suggestedRepliesSettings = suggestedRepliesSettings,
         )
     }
 
@@ -1319,6 +1392,7 @@ class ConversationEngineService(
         conversation: Conversation,
         currentMessages: List<Conversation.Message>,
         assistantMessages: List<Conversation.Message>,
+        settings: UserProfile.SuggestedRepliesSettings,
         agentDefinitionId: AgentDefinition.Id,
         actorUserId: User.Id?,
     ): List<Conversation.Message> {
@@ -1330,12 +1404,16 @@ class ConversationEngineService(
         return try {
             val suggestions = suggestedRepliesGenerationService.generate(
                 conversation = conversation,
-                messages = currentMessages + assistantMessages,
+                messages = when (settings.contextMode) {
+                    UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> currentMessages
+                    UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD -> conversationService.loadCurrentMessages(conversation.id)
+                } + assistantMessages,
                 sourceMessage = sourceMessage,
                 agentDefinitionId = agentDefinitionId,
                 runtimeSelection = suggestedRepliesGenerationService.requireConfiguredRuntimeSelection(),
                 actorUserId = actorUserId,
                 usageId = "suggested-replies:${sourceMessage.id.value}:initial",
+                settings = settings,
             )
             assistantMessages.withSuggestedReplies(suggestions)
         } catch (error: CancellationException) {
@@ -1369,7 +1447,7 @@ class ConversationEngineService(
             return emptyList()
         }
         emittedMessages.add(userMessage)
-        if (userMessage.providerMetadata.stringValue("syntheticKind") == "slot_event") {
+        if (userMessage.syntheticKind == SyntheticMessageKind.SLOT_EVENT) {
             return emittedMessages
         }
 
@@ -1693,24 +1771,50 @@ class ConversationEngineService(
             return QueuedRuntimeMessageEmission()
         }
 
+        var requiresModelResponse = false
+        val receipts = mutableListOf<com.gromozeka.domain.service.BackgroundActivityDeliveryReceipt>()
+        val sourcesInCurrentPacket = mutableSetOf<String>()
+        val messages = queuedMessages.flatMap { queued ->
+            val completion = queued.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion
+            if (completion != null) {
+                var deliveryStartedAt: kotlin.time.Instant? = null
+                try {
+                    val batch = backgroundActivityCompletionApplicationService.prepareBatch(conversationId, completion.sourceKey, sourcesInCurrentPacket)
+                    if (batch.isEmpty) emptyList()
+                    else {
+                        check(batch.actorUserId == queued.actorUserId && batch.agentDefinitionId == completion.agentDefinitionId) {
+                            "Background activity recipient changed after admission"
+                        }
+                        deliveryStartedAt = Clock.System.now()
+                        val emitted = appendBackgroundBatch(conversation, runtimeTaskId, executor, batch)
+                        receipts += batch.receipt
+                        sourcesInCurrentPacket += batch.sourceKeys
+                        requiresModelResponse = true
+                        emitted
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    try {
+                        checkNotNull(runtimeCoordinator.recordBackgroundInsertionFailure(conversationId, runtimeTaskId, queued.id,
+                            executor, deliveryStartedAt, "Background delivery failed: ${completion.sourceKey}", error::class.simpleName)) {
+                            "Background insertion ownership was lost"
+                        }
+                    } catch (recordingError: Exception) { error.addSuppressed(recordingError) }
+                    throw error
+                }
+            } else {
+                requiresModelResponse = true
+                appendQueuedUserMessage(conversationId, conversation, runtimeContext, queued,
+                    memorySystemPrompts, memoryPipelineTools, automaticMemoryRememberEnabled, automaticMemoryRecallEnabled)
+            }
+        }
         return QueuedRuntimeMessageEmission(
-            messages = queuedMessages.flatMap { queued ->
-                appendQueuedUserMessage(
-                    conversationId = conversationId,
-                    conversation = conversation,
-                    runtimeContext = runtimeContext,
-                    queued = queued,
-                    memorySystemPrompts = memorySystemPrompts,
-                    memoryPipelineTools = memoryPipelineTools,
-                    automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
-                    automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
-                )
-            },
-            actorUserId = queuedMessages
-                .map(ConversationRuntimeTask::actorUserId)
-                .distinct()
-                .singleOrNull(),
+            messages = messages,
+            actorUserId = queuedMessages.map(ConversationRuntimeTask::actorUserId).distinct().singleOrNull(),
             consumedTasks = true,
+            requiresModelResponse = requiresModelResponse,
+            backgroundDeliveryReceipts = receipts,
         )
     }
 
@@ -1718,6 +1822,8 @@ class ConversationEngineService(
         val messages: List<Conversation.Message> = emptyList(),
         val actorUserId: User.Id? = null,
         val consumedTasks: Boolean = false,
+        val requiresModelResponse: Boolean = false,
+        val backgroundDeliveryReceipts: List<com.gromozeka.domain.service.BackgroundActivityDeliveryReceipt> = emptyList(),
     )
 
     private suspend fun appendQueuedUserMessage(
@@ -1886,8 +1992,7 @@ class ConversationEngineService(
                 )
             ),
             providerMetadata = buildJsonObject {
-                put("synthetic", true)
-                put("syntheticKind", "memory")
+                putSyntheticMessageMetadata(SyntheticMessageKind.MEMORY)
                 put("syntheticToolName", toolName)
                 put("syntheticPhase", syntheticPhase)
                 put(targetMetadataName, syntheticTargetId)
@@ -1909,8 +2014,7 @@ class ConversationEngineService(
                 )
             ),
             providerMetadata = buildJsonObject {
-                put("synthetic", true)
-                put("syntheticKind", "memory")
+                putSyntheticMessageMetadata(SyntheticMessageKind.MEMORY)
                 put("syntheticToolName", toolName)
                 put("syntheticPhase", syntheticPhase)
                 put(targetMetadataName, syntheticTargetId)
@@ -1958,7 +2062,7 @@ class ConversationEngineService(
         toolName: String,
         phase: String,
     ): Conversation.Message.Id? {
-        if (providerMetadata.stringValue("syntheticKind") != "memory") {
+        if (syntheticKind != SyntheticMessageKind.MEMORY) {
             return null
         }
         if (providerMetadata.stringValue("syntheticToolName") != toolName) {

@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.service.ProactiveCompaction
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorSyncResult
@@ -70,18 +71,51 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         emitAll(schedulingSignalChannel.receiveAsFlow())
     }
 
+    override suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean = mutex.withLock {
+        val current = schedulingByConversation[preparation.conversationId] ?: return@withLock false
+        val transition = current.beginProactiveCompaction(preparation)
+        if (transition.changed) {
+            schedulingByConversation[preparation.conversationId] = transition.state
+            bumpRevision(preparation.conversationId)
+        }
+        transition.result
+    }
+
+    override suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean = mutex.withLock {
+        val current = schedulingByConversation[expected.conversationId] ?: return@withLock false
+        val transition = current.updateProactiveCompaction(expected, updated)
+        if (transition.changed) {
+            schedulingByConversation[expected.conversationId] = transition.state
+            scheduleNextRunnableTaskIfReady(expected.conversationId)
+            bumpRevision(expected.conversationId)
+        }
+        transition.result
+    }
+
+    override suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction? = mutex.withLock {
+        schedulingByConversation[conversationId]?.proactiveCompaction
+    }
+
+    override suspend fun runningProactiveCompactions(): List<ProactiveCompaction> = mutex.withLock {
+        schedulingByConversation.values.mapNotNull { it.proactiveCompaction }.filter { it.status == ProactiveCompaction.Status.RUNNING }
+    }
+
     override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
         submitInternal(task, acceptPreviouslySubmitted, null)
 
     override suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean =
         submitInternal(task, false, mode)
 
+    override suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id): Boolean =
+        submitInternal(task, false, null, agentDefinitionId)
+
     private suspend fun submitInternal(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean,
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?): Boolean =
+        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?,
+        backgroundActivityAgentId: com.gromozeka.domain.model.AgentDefinition.Id? = null): Boolean =
         mutex.withLock {
             val current = schedulingByConversation[task.conversationId]
                 ?: ConversationRuntimeSchedulingState(task.conversationId)
-            val transition = current.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode)
+            val transition = current.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode, backgroundActivityAgentId)
             if (!transition.changed) return@withLock transition.result
             if (!transition.result) return@withLock false
             schedulingByConversation[task.conversationId] = transition.state
@@ -162,6 +196,17 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 now = Clock.System.now(),
             )
             if (!transition.result) return@withLock false
+            val stopped = current.executionState?.controlState in setOf(
+                ConversationExecutionState.ControlState.STOPPING, ConversationExecutionState.ControlState.INTERRUPTING)
+            if (!stopped && outcome.backgroundDeliveryReceipts.isNotEmpty()) {
+                val acknowledged = com.gromozeka.domain.service.acknowledgeBackgroundActivities(
+                    outcome.backgroundDeliveryReceipts,
+                    commandTasksByConversation[conversationId].orEmpty(), commandMonitorsByConversation[conversationId].orEmpty(),
+                    commandMonitorEventsByConversation[conversationId].orEmpty(), Clock.System.now())
+                commandTasksByConversation[conversationId] = acknowledged.commands.toMutableList()
+                commandMonitorsByConversation[conversationId] = acknowledged.monitors.toMutableList()
+                commandMonitorEventsByConversation[conversationId] = acknowledged.events.toMutableList()
+            }
             schedulingByConversation[conversationId] = transition.state
             appendTrace(
                 conversationId = conversationId,
@@ -213,6 +258,17 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         mutex.withLock {
             schedulingByConversation[conversationId]?.confirmActiveTaskOwner(taskId, executor) == true
         }
+
+    override suspend fun recordBackgroundInsertionFailure(
+        conversationId: Conversation.Id, ownerTaskId: ConversationRuntimeTask.Id, insertionTaskId: ConversationRuntimeTask.Id,
+        executor: ConversationRuntimeExecutorIdentity, deliveryStartedAt: Instant?, message: String, errorType: String?,
+    ): ConversationRuntimeTaskIncident? = mutex.withLock {
+        val current = schedulingByConversation[conversationId] ?: return@withLock null
+        val transition = current.recordBackgroundInsertionFailure(ownerTaskId, insertionTaskId, executor,
+            deliveryStartedAt, message, errorType, Clock.System.now())
+        if (transition.changed) { schedulingByConversation[conversationId] = transition.state; bumpRevision(conversationId) }
+        transition.result
+    }
 
     override suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
@@ -413,7 +469,8 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 .mapTo(mutableSetOf()) { it.commandTaskId }
             val retainedTasks = tasks
                 .partition {
-                    it.status == CommandTask.Status.WORKING || it.id in monitoredTaskIds
+                    it.status == CommandTask.Status.WORKING || it.id in monitoredTaskIds ||
+                        (it.completionNotificationRequestedAt != null && it.completionNotificationDeliveredAt == null)
                 }
                 .let { (working, terminal) ->
                     working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)
@@ -784,7 +841,9 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 incidents = scheduling?.incidents.orEmpty(),
                 trace = traceByConversation[conversationId]?.takeLast(TRACE_SNAPSHOT_LIMIT).orEmpty(),
                 lastTurn = scheduling?.lastTurn,
+                lastCompletion = scheduling?.lastCompletion,
                 retainedTurnProblems = scheduling?.retainedTurnProblems,
+                proactiveCompaction = scheduling?.proactiveCompaction?.activity(),
                 lastEventSequence = eventSequencesByConversation[conversationId] ?: 0L,
             )
         }

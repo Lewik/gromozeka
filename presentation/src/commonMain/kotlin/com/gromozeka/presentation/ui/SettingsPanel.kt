@@ -947,26 +947,10 @@ fun SettingsPanel(
                             }
                         )
 
-                        DropdownSettingItem(
-                            label = translation.text("settingsUi.suggestedReplies"),
-                            description = translation.text("settingsUi.generateReplyChipsInlineWithTheAnswerOr"),
-                            value = suggestedRepliesSettings.mode,
-                            options = UserProfile.SuggestedRepliesSettings.Mode.entries,
-                            optionLabel = { mode ->
-                                when (mode) {
-                                    UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> translation.text("settingsUi.off")
-                                    UserProfile.SuggestedRepliesSettings.Mode.INLINE -> translation.text("settingsUi.inlineWithTheAnswer")
-                                    UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME -> translation.text("settingsUi.separateAIRuntime")
-                                }
-                            },
-                            onValueChange = { mode ->
-                                onSettingsChange(
-                                    settings.updateUserProfile {
-                                        copy(
-                                            suggestedRepliesSettings = suggestedRepliesSettings.copy(mode = mode)
-                                        )
-                                    }
-                                )
+                        SuggestedRepliesSettingsEditor(
+                            settings = suggestedRepliesSettings,
+                            onSettingsChange = { updated ->
+                                onSettingsChange(settings.updateUserProfile { copy(suggestedRepliesSettings = updated) })
                             },
                         )
 
@@ -2301,6 +2285,79 @@ internal fun KeyboardShortcutSettingsGroup(
             }
         }
     }
+}
+
+@Composable
+internal fun SuggestedRepliesSettingsEditor(
+    settings: UserProfile.SuggestedRepliesSettings,
+    onSettingsChange: (UserProfile.SuggestedRepliesSettings) -> Unit,
+) {
+    val translation = LocalTranslation.current
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        DropdownSettingItem(
+            label = translation.text("settingsUi.suggestedReplies"),
+            description = translation.text("settingsUi.generateReplyChipsInlineWithTheAnswerOr"),
+            value = settings.mode,
+            options = UserProfile.SuggestedRepliesSettings.Mode.entries,
+            optionLabel = { mode ->
+                when (mode) {
+                    UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> translation.text("settingsUi.off")
+                    UserProfile.SuggestedRepliesSettings.Mode.INLINE -> translation.text("settingsUi.inlineWithTheAnswer")
+                    UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME -> translation.text("settingsUi.separateAIRuntime")
+                }
+            },
+            onValueChange = { onSettingsChange(settings.copy(mode = it)) },
+        )
+        SuggestedRepliesPromptSetting(
+            label = translation.text("settingsUi.suggestedRepliesInlinePrompt"),
+            description = translation.text("settingsUi.suggestedRepliesInlinePromptDescription"),
+            value = settings.inlinePrompt,
+            onValueChange = { onSettingsChange(settings.copy(inlinePrompt = it)) },
+        )
+        SuggestedRepliesPromptSetting(
+            label = translation.text("settingsUi.suggestedRepliesSeparatePrompt"),
+            description = translation.text("settingsUi.suggestedRepliesSeparatePromptDescription"),
+            value = settings.separatePrompt,
+            onValueChange = { onSettingsChange(settings.copy(separatePrompt = it)) },
+        )
+        DropdownSettingItem(
+            label = translation.text("settingsUi.suggestedRepliesContext"),
+            description = translation.text("settingsUi.suggestedRepliesContextDescription"),
+            value = settings.contextMode,
+            options = UserProfile.SuggestedRepliesSettings.ContextMode.entries,
+            optionLabel = { mode ->
+                when (mode) {
+                    UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> translation.text("settingsUi.suggestedRepliesRecentContext")
+                    UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD -> translation.text("settingsUi.suggestedRepliesFullContext")
+                }
+            },
+            onValueChange = { onSettingsChange(settings.copy(contextMode = it)) },
+        )
+    }
+}
+
+@Composable
+private fun SuggestedRepliesPromptSetting(
+    label: String,
+    description: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    val translation = LocalTranslation.current
+    var draft by remember(value) { mutableStateOf(value) }
+    OutlinedTextField(
+        value = draft,
+        onValueChange = {
+            draft = it
+            if (it.isNotBlank()) onValueChange(it)
+        },
+        label = { Text(label) },
+        supportingText = { Text(if (draft.isBlank()) translation.text("settingsUi.suggestedRepliesPromptRequired") else description) },
+        isError = draft.isBlank(),
+        modifier = Modifier.fillMaxWidth(),
+        minLines = 3,
+        maxLines = 8,
+    )
 }
 
 @Composable

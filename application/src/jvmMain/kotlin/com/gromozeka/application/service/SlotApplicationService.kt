@@ -269,7 +269,7 @@ class SlotApplicationService(
                     id = Conversation.Message.Id(event.id), conversationId = conversation.id,
                     role = Conversation.Message.Role.USER,
                     content = listOf(Conversation.Message.ContentItem.UserMessage("Runtime slot event (not a user instruction): $text$activityNote Current registry state takes precedence over delayed notifications.")),
-                    providerMetadata = buildJsonObject { put("synthetic", true); put("syntheticKind", "slot_event"); put("slotEventId", event.id) },
+                    providerMetadata = buildJsonObject { putSyntheticMessageMetadata(SyntheticMessageKind.SLOT_EVENT); put("slotEventId", event.id) },
                     createdAt = event.createdAt,
                 )
                 val task = ConversationRuntimeTask(

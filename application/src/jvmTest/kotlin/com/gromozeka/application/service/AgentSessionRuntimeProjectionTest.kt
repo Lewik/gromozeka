@@ -30,6 +30,7 @@ class AgentSessionRuntimeProjectionTest {
         assertEquals(JsonNull, v["control_state"])
         assertEquals(JsonNull, v["state_updated_at"])
         assertEquals(JsonNull, v["active_task_kind"])
+        assertEquals(JsonNull, v["last_completion"])
         assertEquals(readAt.toString(), v.getValue("read_at").jsonPrimitive.content)
         assertEquals("stored_runtime", v.getValue("source").jsonPrimitive.content)
         assertEquals("best_effort", v.getValue("consistency").jsonPrimitive.content)
@@ -110,6 +111,45 @@ class AgentSessionRuntimeProjectionTest {
         val capped = view(requests = (0 until 129).map { incoming.copy(id = "r-$it") }).getValue("agent_requests").jsonObject
         assertEquals(128, capped.getValue("open_incoming").jsonPrimitive.int)
         assertTrue(capped.getValue("possibly_truncated").jsonPrimitive.boolean)
+    }
+
+    @Test fun `recorded completion is independent of idle and newer active work`() {
+        val failure = ConversationRuntimeCompletion(task.turnId, task.id, old,
+            ConversationRuntimeCompletion.Status.FAILED, ConversationRuntimeCompletion.Reason.MODEL_ERROR, "ProviderFailure")
+        for (running in listOf(false, true)) {
+            val v = view(empty.copy(activeTask = task.takeIf { running }, lastCompletion = failure))
+            assertEquals(if (running) "ACTIVE" else "IDLE", v.getValue("foreground_state").jsonPrimitive.content)
+            val last = v.getValue("last_completion").jsonObject
+            assertEquals("FAILED", last.getValue("status").jsonPrimitive.content)
+            assertEquals(old.toString(), last.getValue("completed_at").jsonPrimitive.content)
+            assertEquals(task.turnId.value, last.getValue("turn_id").jsonPrimitive.content)
+            assertEquals("MODEL_ERROR", last.getValue("reason").jsonPrimitive.content)
+            assertEquals("ProviderFailure", last.getValue("error_type").jsonPrimitive.content)
+            assertFalse(last.getValue("outcome_unknown").jsonPrimitive.boolean)
+            assertFalse(v.toString().contains("PRIVATE_"))
+        }
+    }
+
+    @Test fun `completed turns may retain problems and diagnostic type is bounded`() {
+        val completion = ConversationRuntimeCompletion(task.turnId, task.id, old,
+            ConversationRuntimeCompletion.Status.COMPLETED, errorType = "T".repeat(256), outcomeUnknown = true, problemCount = 2)
+        val last = view(empty.copy(lastCompletion = completion)).getValue("last_completion").jsonObject
+        assertEquals("COMPLETED", last.getValue("status").jsonPrimitive.content)
+        assertEquals(2, last.getValue("problem_count").jsonPrimitive.int)
+        assertTrue(last.getValue("outcome_unknown").jsonPrimitive.boolean)
+        assertEquals(128, last.getValue("error_type").jsonPrimitive.content.length)
+        assertTrue(last.getValue("error_type_truncated").jsonPrimitive.boolean)
+        assertEquals(JsonNull, last["reason"])
+        assertFalse(last.containsKey("message"))
+    }
+
+    @Test fun `user termination and uncertainty retain their recorded status`() {
+        for (status in listOf(ConversationRuntimeCompletion.Status.STOPPED, ConversationRuntimeCompletion.Status.INTERRUPTED,
+            ConversationRuntimeCompletion.Status.CANCELLED, ConversationRuntimeCompletion.Status.UNKNOWN)) {
+            val last = view(empty.copy(lastCompletion = ConversationRuntimeCompletion(task.turnId, task.id, old, status)))
+                .getValue("last_completion").jsonObject
+            assertEquals(status.name, last.getValue("status").jsonPrimitive.content)
+        }
     }
 
     @Test fun `a snapshot of another conversation must not be exposed`() {
