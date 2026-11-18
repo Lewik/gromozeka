@@ -911,18 +911,28 @@ private class WindowsProcessTree(
     }
 }
 
-private class ProcessWorkerLifetimeBinding(
+internal class ProcessWorkerLifetimeBinding(
     private val watchdog: Process,
+    nanoTime: () -> Long = System::nanoTime,
+    sleep: (Long) -> Unit = Thread::sleep,
 ) : LocalWorkerLifetimeBinding {
     private val closed = AtomicBoolean()
 
     init {
         try {
-            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(STARTUP_HANDSHAKE_MILLIS)
-            while (watchdog.inputStream.available() < WATCHDOG_READY.length + 1) {
+            val deadline = nanoTime() + TimeUnit.MILLISECONDS.toNanos(STARTUP_HANDSHAKE_MILLIS)
+            val readyBytes = WATCHDOG_READY.length + 1
+            while (watchdog.inputStream.available() < readyBytes) {
                 check(watchdog.isAlive) { "Worker lifetime watchdog failed to start" }
-                check(System.nanoTime() < deadline) { "Worker lifetime watchdog did not become ready" }
-                Thread.sleep(STARTUP_POLL_MILLIS)
+                if (nanoTime() >= deadline) {
+                    // The observer may pause after a negative poll while READY arrives.
+                    val availableBytes = watchdog.inputStream.available()
+                    check(availableBytes >= readyBytes) {
+                        "Worker lifetime watchdog did not become ready (stdout bytes=$availableBytes)"
+                    }
+                    break
+                }
+                sleep(STARTUP_POLL_MILLIS)
             }
             check(watchdog.inputStream.bufferedReader().readLine() == WATCHDOG_READY) {
                 "Worker lifetime watchdog returned an invalid handshake"
