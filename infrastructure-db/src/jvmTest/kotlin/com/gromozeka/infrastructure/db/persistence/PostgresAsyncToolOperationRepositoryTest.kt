@@ -23,17 +23,17 @@ class PostgresAsyncToolOperationRepositoryTest {
             assertEquals(1, candidates.map { it.id }.distinct().size)
             val accepted = candidates.first()
             assertEquals(f.invocation, f.repository().find(accepted.id)?.invocation)
-            assertFalse(f.repository().claim(accepted.id, f.owner, f.at, f.after(30)))
+            assertNull(f.repository().claim(accepted.id, f.owner, f.at, f.after(30)))
             assertTrue(f.repository().acknowledge(accepted.id, f.at))
             assertFalse(f.repository().acknowledge(accepted.id, f.after(1)))
             val claims = (1..8).map { index -> async(Dispatchers.IO) {
                 f.repository().claim(accepted.id, ConversationRuntimeServerSessionId("owner-$index"), f.at, f.after(30))
             } }.awaitAll()
-            assertEquals(1, claims.count { it })
+            assertEquals(1, claims.count { it != null })
             val claimed = assertNotNull(f.repository().find(accepted.id))
             val winner = assertNotNull(claimed.executorSessionId)
-            assertFalse(f.repository().markStarted(accepted.id, ConversationRuntimeServerSessionId("wrong-owner"), f.at))
-            assertTrue(f.repository().markStarted(accepted.id, winner, f.at))
+            assertFalse(f.repository().markStarted(claimed.copy(executorSessionId = ConversationRuntimeServerSessionId("wrong-owner")), f.at))
+            assertTrue(f.repository().markStarted(claimed, f.at))
             val running = assertNotNull(f.repository().find(accepted.id))
             val output = AsyncToolOutcome(listOf(ContentItem.ToolResult.Data.Text("private-result-secret")), isError = false)
             assertTrue(f.repository().finish(running, Phase.SUCCEEDED, output, f.after(1)))
@@ -55,18 +55,18 @@ class PostgresAsyncToolOperationRepositoryTest {
         database { f ->
             val id = f.repository().admit(AsyncToolOperation.Id("operation"), f.invocation, f.at).id
             assertTrue(f.repository().acknowledge(id, f.at))
-            assertTrue(f.repository().claim(id, f.owner, f.at, f.after(1)))
+            val initial = assertNotNull(f.repository().claim(id, f.owner, f.at, f.after(1)))
             val replacement = ConversationRuntimeServerSessionId("replacement-server")
-            assertTrue(f.repository().claim(id, replacement, f.after(2), f.after(30)))
-            assertFalse(f.repository().markStarted(id, f.owner, f.after(3)))
-            assertTrue(f.repository().markStarted(id, replacement, f.after(3)))
-            assertFalse(f.repository().claim(id, f.owner, f.after(31), f.after(60)))
+            val nextClaim = assertNotNull(f.repository().claim(id, replacement, f.after(2), f.after(30)))
+            assertFalse(f.repository().markStarted(initial, f.after(3)))
+            assertTrue(f.repository().markStarted(nextClaim, f.after(3)))
+            assertNull(f.repository().claim(id, f.owner, f.after(31), f.after(60)))
             val lost = f.repository().expiredLeases(f.after(31), 16).single()
             val unknown = AsyncToolOutcome(isError = true, failureCode = "OUTCOME_UNKNOWN")
             assertTrue(f.repository().finish(lost, Phase.OUTCOME_UNKNOWN, unknown, f.after(31)))
             assertFalse(f.repository().finish(lost, Phase.SUCCEEDED, AsyncToolOutcome(isError = false), f.after(32)))
             assertEquals(unknown, f.repository().find(id)?.outcome)
-            assertFalse(f.repository().claim(id, f.owner, f.after(33), f.after(60)))
+            assertNull(f.repository().claim(id, f.owner, f.after(33), f.after(60)))
         }
     }
 
@@ -75,7 +75,7 @@ class PostgresAsyncToolOperationRepositoryTest {
             val id = f.repository().admit(AsyncToolOperation.Id("queued"), f.invocation, f.at).id
             assertTrue(f.repository().acknowledge(id, f.at))
             assertTrue(f.repository().requestCancellation(id, f.at))
-            assertFalse(f.repository().claim(id, f.owner, f.at, f.after(30)))
+            assertNull(f.repository().claim(id, f.owner, f.at, f.after(30)))
             val queued = assertNotNull(f.repository().find(id))
             assertTrue(f.repository().finish(queued, Phase.CANCELLED,
                 AsyncToolOutcome(isError = true, failureCode = "CANCELLED_BEFORE_START"), f.after(1)))
@@ -84,8 +84,8 @@ class PostgresAsyncToolOperationRepositoryTest {
             val next = f.invocation.copy(origin = nextOrigin)
             val runningId = f.repository().admit(AsyncToolOperation.Id("running"), next, f.at).id
             assertTrue(f.repository().acknowledge(runningId, f.at))
-            assertTrue(f.repository().claim(runningId, f.owner, f.at, f.after(30)))
-            assertTrue(f.repository().markStarted(runningId, f.owner, f.at))
+            val claimedRunning = assertNotNull(f.repository().claim(runningId, f.owner, f.at, f.after(30)))
+            assertTrue(f.repository().markStarted(claimedRunning, f.at))
             assertTrue(f.repository().requestCancellation(runningId, f.after(1)))
             val running = assertNotNull(f.repository().find(runningId))
             assertFailsWith<IllegalArgumentException> { f.repository().finish(running, Phase.CANCELLED,
@@ -120,14 +120,16 @@ class PostgresAsyncToolOperationRepositoryTest {
             val child = StoredWorkerRequest(parent.id.value, ConversationRuntimeWorkerId("worker"), "original-private-wire".encodeToByteArray(),
                 now, now + kotlin.time.Duration.parse("30s"), actorUserId = parent.invocation.origin.actorUserId,
                 projectId = parent.invocation.origin.projectId, slotOrigin = slot, executionDeadline = now + kotlin.time.Duration.parse("60s"),
-                asyncTool = AsyncToolDispatchReference(parent.id, f.owner))
+                asyncTool = AsyncToolDispatchReference(parent.id, f.owner, 1))
             assertEquals(parent.id.value, f.workerRepository().pendingForSlot(2).single().requestId)
             assertFailsWith<IllegalArgumentException> { f.workerRepository().create(child) }
             assertNull(f.workerRepository().find(child.id))
             assertTrue(f.repository().acknowledge(parent.id, now))
-            assertTrue(f.repository().claim(parent.id, f.owner, now, now + kotlin.time.Duration.parse("30s")))
+            assertNotNull(f.repository().claim(parent.id, f.owner, now, now + kotlin.time.Duration.parse("30s")))
             assertFailsWith<IllegalArgumentException> { f.workerRepository().create(child.copy(
-                asyncTool = AsyncToolDispatchReference(parent.id, ConversationRuntimeServerSessionId("wrong-owner")))) }
+                asyncTool = AsyncToolDispatchReference(parent.id, ConversationRuntimeServerSessionId("wrong-owner"), 1))) }
+            assertFailsWith<IllegalArgumentException> { f.workerRepository().create(child.copy(
+                asyncTool = checkNotNull(child.asyncTool).copy(claimGeneration = 2))) }
             assertFailsWith<IllegalArgumentException> { f.workerRepository().create(child.copy(workerId = ConversationRuntimeWorkerId("other"))) }
             assertFailsWith<IllegalArgumentException> { f.workerRepository().create(child.copy(slotOrigin = slot.copy(leaseId = "new-lease"))) }
             f.workerRepository().create(child)
@@ -147,15 +149,81 @@ class PostgresAsyncToolOperationRepositoryTest {
             val now = Instant.fromEpochMilliseconds(kotlin.time.Clock.System.now().toEpochMilliseconds())
             val parent = f.repository().admit(AsyncToolOperation.Id("worker-cancel"), f.workerInvocation(null), now)
             assertTrue(f.repository().acknowledge(parent.id, now))
-            assertTrue(f.repository().claim(parent.id, f.owner, now, now + kotlin.time.Duration.parse("30s")))
+            assertNotNull(f.repository().claim(parent.id, f.owner, now, now + kotlin.time.Duration.parse("30s")))
             val child = StoredWorkerRequest(parent.id.value, ConversationRuntimeWorkerId("worker"), byteArrayOf(1), now,
                 now + kotlin.time.Duration.parse("30s"), actorUserId = parent.invocation.origin.actorUserId,
                 projectId = parent.invocation.origin.projectId, executionDeadline = now + kotlin.time.Duration.parse("60s"),
-                asyncTool = AsyncToolDispatchReference(parent.id, f.owner))
+                asyncTool = AsyncToolDispatchReference(parent.id, f.owner, 1))
             assertTrue(f.repository().requestCancellation(parent.id, now))
             assertFailsWith<IllegalArgumentException> { f.workerRepository().create(child) }
             assertNull(f.workerRepository().find(child.id))
             assertNull(f.repository().find(parent.id)?.workerRequestCreatedAt)
+        }
+    }
+
+    @Test fun `created Worker child fences a reclaim decided from an older claimed snapshot`() = runBlocking<Unit> {
+        database { f ->
+            val now = Instant.fromEpochMilliseconds(kotlin.time.Clock.System.now().toEpochMilliseconds())
+            val parent = f.repository().admit(AsyncToolOperation.Id("child-before-reclaim"), f.workerInvocation(null), now)
+            assertTrue(f.repository().acknowledge(parent.id, now))
+            assertNotNull(f.repository().claim(parent.id, f.owner, now, now + kotlin.time.Duration.parse("30s")))
+            val stale = assertNotNull(f.repository().find(parent.id))
+            assertNull(stale.workerRequestCreatedAt)
+            val child = StoredWorkerRequest(parent.id.value, ConversationRuntimeWorkerId("worker"), byteArrayOf(1), now,
+                now + kotlin.time.Duration.parse("30s"), actorUserId = parent.invocation.origin.actorUserId,
+                projectId = parent.invocation.origin.projectId, executionDeadline = now + kotlin.time.Duration.parse("60s"),
+                asyncTool = AsyncToolDispatchReference(parent.id, f.owner, 1))
+            f.workerRepository().create(child)
+            assertFalse(f.repository().finish(stale, Phase.FAILED, AsyncToolOutcome(isError = true, failureCode = "STALE_PRE_CHILD"), now))
+            val reclaimAt = checkNotNull(stale.leaseDeadline) + kotlin.time.Duration.parse("1s")
+            assertNull(f.repository().claim(stale.id, ConversationRuntimeServerSessionId("replacement"), reclaimAt,
+                reclaimAt + kotlin.time.Duration.parse("30s")), "A Worker child created after the snapshot must fence reclaim")
+            assertEquals(f.owner, f.repository().find(stale.id)?.executorSessionId)
+            assertNotNull(f.repository().find(stale.id)?.workerRequestCreatedAt)
+            assertContentEquals(child.request, f.workerRepository().find(child.id)?.request)
+        }
+    }
+
+    @Test fun `same-session replacement claim fences stale finish`() = runBlocking<Unit> {
+        database { f ->
+            val parent = f.repository().admit(AsyncToolOperation.Id("same-owner-reclaim"), f.invocation, f.at)
+            assertTrue(f.repository().acknowledge(parent.id, f.at))
+            assertNotNull(f.repository().claim(parent.id, f.owner, f.at, f.after(1)))
+            val stale = assertNotNull(f.repository().find(parent.id))
+            assertNotNull(f.repository().claim(parent.id, f.owner, f.after(2), f.after(30)))
+            assertFalse(f.repository().finish(stale, Phase.FAILED, AsyncToolOutcome(isError = true, failureCode = "LATE_PREPARATION"), f.after(3)))
+            assertEquals(Phase.CLAIMED, f.repository().find(parent.id)?.phase)
+            assertNull(f.repository().find(parent.id)?.outcome)
+            assertFalse(f.repository().markStarted(stale, f.after(3)))
+            assertFalse(f.repository().renewLease(stale, f.after(60)))
+            assertEquals(2L, f.repository().find(parent.id)?.claimGeneration)
+        }
+    }
+
+    @Test fun `V91 carries forward a valid V90 parent and child claim without changing the child wire`() = runBlocking<Unit> {
+        database(fenced = false) { f ->
+            val id = f.insertLegacyWorker()
+            f.applyClaimFencing()
+            val parent = assertNotNull(f.repository().find(AsyncToolOperation.Id(id)))
+            val child = assertNotNull(f.workerRepository().find(id))
+            assertEquals(1L, parent.claimGeneration)
+            assertEquals(parent.claimReference, child.asyncTool)
+            assertContentEquals("legacy-canonical-wire".encodeToByteArray(), child.request)
+            assertNull(f.repository().claim(parent.id, f.owner, checkNotNull(parent.leaseDeadline) + kotlin.time.Duration.parse("1s"),
+                checkNotNull(parent.leaseDeadline) + kotlin.time.Duration.parse("30s")))
+        }
+    }
+
+    @Test fun `V91 refuses inconsistent legacy child ownership without repairing it or partially migrating`() = runBlocking<Unit> {
+        database(fenced = false) { f ->
+            f.insertLegacyWorker()
+            f.dataSource.connection.use { c -> c.createStatement().use { it.executeUpdate("UPDATE worker_requests SET async_tool_json=jsonb_set(async_tool_json,'{executorSessionId}','\"another-owner\"'::jsonb)") } }
+            assertFailsWith<java.sql.SQLException> { f.applyClaimFencing() }
+            f.dataSource.connection.use { c -> c.createStatement().use { statement ->
+                statement.executeQuery("SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='async_tool_operations' AND column_name='claim_generation'").use { rows ->
+                    assertTrue(rows.next()); assertEquals(0, rows.getInt(1))
+                }
+            } }
         }
     }
 
@@ -165,6 +233,41 @@ class PostgresAsyncToolOperationRepositoryTest {
         private val settings = Proxy.newProxyInstance(SettingsProvider::class.java.classLoader, arrayOf(SettingsProvider::class.java)) { _, method, _ ->
             check(method.name == "getHomeDirectory"); home
         } as SettingsProvider
+        fun applyClaimFencing() {
+            dataSource.connection.use { connection ->
+                connection.autoCommit = false
+                try {
+                    connection.createStatement().use { it.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V91__async_tool_claim_fencing.sql")).readText()) }
+                    connection.commit()
+                } catch (failure: Throwable) { connection.rollback(); throw failure }
+            }
+        }
+        fun insertLegacyWorker(): String {
+            val id = "legacy-operation"
+            val at = kotlin.time.Clock.System.now()
+            val cipher = SecretCipher(settings)
+            val input = cipher.encrypt(Json.encodeToString(AsyncToolInvocation.serializer(), workerInvocation(null)), "async-tool-invocation:$id")
+            val wire = cipher.encrypt(java.util.Base64.getEncoder().encodeToString("legacy-canonical-wire".encodeToByteArray()), "worker-request:worker:$id")
+            dataSource.connection.use { c ->
+                c.prepareStatement("""INSERT INTO async_tool_operations(id,actor_user_id,project_id,conversation_id,thread_id,agent_definition_id,source_task_id,source_call_id,
+                    worker_id,workspace_mount_id,invocation_ciphertext,invocation_nonce,invocation_version,phase,created_at,acknowledged_at,claimed_at,executor_session_id,lease_deadline,worker_request_created_at)
+                    VALUES (?,'actor','project','conversation','source-thread','agent','source-task','call','worker','mount',?,?,?,'CLAIMED',?,?,?,?,?,?)""").use { st ->
+                    st.setString(1,id); st.setString(2,input.ciphertext); st.setString(3,input.nonce); st.setInt(4,input.version)
+                    for (i in 5..7) st.setTimestamp(i,java.sql.Timestamp(at.toEpochMilliseconds()))
+                    st.setString(8,owner.value); st.setTimestamp(9,java.sql.Timestamp((at+kotlin.time.Duration.parse("30s")).toEpochMilliseconds()))
+                    st.setTimestamp(10,java.sql.Timestamp(at.toEpochMilliseconds())); assertEquals(1,st.executeUpdate())
+                }
+                c.prepareStatement("""INSERT INTO worker_requests(id,worker_id,actor_user_id,project_id,request_ciphertext,request_nonce,request_version,created_at,start_deadline,execution_deadline,async_tool_json)
+                    VALUES (?,'worker','actor','project',?,?,?,?,?,?,?::jsonb)""").use { st ->
+                    st.setString(1,id); st.setString(2,wire.ciphertext); st.setString(3,wire.nonce); st.setInt(4,wire.version)
+                    st.setTimestamp(5,java.sql.Timestamp(at.toEpochMilliseconds()))
+                    st.setTimestamp(6,java.sql.Timestamp((at+kotlin.time.Duration.parse("30s")).toEpochMilliseconds()))
+                    st.setTimestamp(7,java.sql.Timestamp((at+kotlin.time.Duration.parse("60s")).toEpochMilliseconds()))
+                    st.setString(8,buildJsonObject { put("operationId",id); put("executorSessionId",owner.value) }.toString()); assertEquals(1,st.executeUpdate())
+                }
+            }
+            return id
+        }
         fun repository() = PostgresAsyncToolOperationRepository(dataSource, SecretCipher(settings))
         fun workerRepository() = PostgresWorkerRequestRepository(dataSource, SecretCipher(settings))
         fun workerInvocation(slot: com.gromozeka.domain.slot.SlotCommandOrigin?): AsyncToolInvocation = invocation.copy(
@@ -184,7 +287,7 @@ class PostgresAsyncToolOperationRepositoryTest {
                 TOOL_CONTEXT_AGENT_DEFINITION_ID to origin.agentDefinitionId.value, "toolCallId" to origin.sourceToolCallId.value))
     }
 
-    private suspend fun database(block: suspend (Fixture) -> Unit) {
+    private suspend fun database(fenced: Boolean = true, block: suspend (Fixture) -> Unit) {
         org.junit.Assume.assumeTrue("Requires isolated PostgreSQL test configuration", System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
         fun source() = PGSimpleDataSource().apply {
             setURL(requireNotNull(System.getenv("GROMOZEKA_POSTGRES_URL")))
@@ -204,7 +307,8 @@ class PostgresAsyncToolOperationRepositoryTest {
                 s.execute("INSERT INTO workers VALUES ('worker','ACTIVE'),('other','ACTIVE')")
                 s.execute("INSERT INTO users VALUES ('actor')")
                 s.execute("INSERT INTO projects VALUES ('project')")
-                for (migration in listOf("V50__durable_worker_requests.sql", "V68__development_slots.sql", "V77__worker_request_retention.sql", "V90__async_tool_operations.sql")) {
+                for (migration in listOf("V50__durable_worker_requests.sql", "V68__development_slots.sql", "V77__worker_request_retention.sql", "V90__async_tool_operations.sql") +
+                    if (fenced) listOf("V91__async_tool_claim_fencing.sql") else emptyList()) {
                     s.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/$migration")).readText())
                 }
             } }

@@ -33,11 +33,17 @@ class AsyncToolOperationTest {
         assertEquals(Phase.ACCEPTED, accepted.phase)
         assertFailsWith<IllegalArgumentException> { accepted.copy(phase = Phase.ACKNOWLEDGED) }
         assertFailsWith<IllegalArgumentException> {
-            accepted.copy(phase = Phase.CLAIMED, claimedAt = at, executorSessionId = owner, leaseDeadline = at)
+            accepted.copy(phase = Phase.CLAIMED, claimedAt = at, executorSessionId = owner, claimGeneration = 1, leaseDeadline = at)
         }
         val ack = accepted.copy(phase = Phase.ACKNOWLEDGED, acknowledgedAt = at)
-        val claimed = ack.copy(phase = Phase.CLAIMED, claimedAt = at, executorSessionId = owner, leaseDeadline = at)
+        val claimed = ack.copy(phase = Phase.CLAIMED, claimedAt = at, executorSessionId = owner, claimGeneration = 1, leaseDeadline = at)
         assertNull(claimed.startedAt)
+        assertNull(accepted.claimReference)
+        assertEquals(AsyncToolDispatchReference(accepted.id, owner, 1), claimed.claimReference)
+        assertFailsWith<IllegalArgumentException> { claimed.copy(claimGeneration = 0) }
+        assertFailsWith<IllegalArgumentException> { accepted.copy(claimGeneration = 1) }
+        assertFailsWith<IllegalArgumentException> { accepted.copy(claimGeneration = -1) }
+        assertNotEquals(claimed.claimReference, claimed.copy(claimGeneration = 2).claimReference)
         val running = claimed.copy(phase = Phase.RUNNING, startedAt = at)
         assertEquals(owner, running.executorSessionId)
     }
@@ -54,10 +60,10 @@ class AsyncToolOperationTest {
             outcome = AsyncToolOutcome(isError = true, failureCode = "CANCELLED_BEFORE_START"))
         assertNull(cancelled.startedAt)
         assertFailsWith<IllegalArgumentException> {
-            cancelled.copy(acknowledgedAt = at, claimedAt = at, executorSessionId = owner, startedAt = at)
+            cancelled.copy(acknowledgedAt = at, claimedAt = at, executorSessionId = owner, claimGeneration = 1, startedAt = at)
         }
         val unknown = cancelled.copy(phase = Phase.OUTCOME_UNKNOWN, acknowledgedAt = at,
-            claimedAt = at, executorSessionId = owner, startedAt = at,
+            claimedAt = at, executorSessionId = owner, claimGeneration = 1, startedAt = at,
             outcome = AsyncToolOutcome(isError = true, failureCode = "OUTCOME_UNKNOWN"))
         assertTrue(unknown.phase.isTerminal)
         assertNull(unknown.leaseDeadline)

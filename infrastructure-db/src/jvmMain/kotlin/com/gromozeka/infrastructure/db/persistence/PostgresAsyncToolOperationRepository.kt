@@ -119,23 +119,34 @@ internal class PostgresAsyncToolOperationRepository(
         WHERE id=? AND acknowledged_at IS NULL
     """.trimIndent()) { it.setTimestamp(1, at.sql()); it.setString(2, id.value) }
 
-    override suspend fun claim(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant, leaseDeadline: Instant): Boolean {
+    override suspend fun claim(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant, leaseDeadline: Instant): AsyncToolOperation? {
         require(leaseDeadline > at) { "Async lease must expire after its claim" }
-        return update("""
-            UPDATE async_tool_operations SET phase='CLAIMED', claimed_at=?, executor_session_id=?, lease_deadline=?
-            WHERE id=? AND acknowledged_at IS NOT NULL AND cancel_requested_at IS NULL AND
-                (phase='ACKNOWLEDGED' OR (phase='CLAIMED' AND lease_deadline<=?))
-        """.trimIndent()) {
-            it.setTimestamp(1, at.sql()); it.setString(2, owner.value); it.setTimestamp(3, leaseDeadline.sql())
-            it.setString(4, id.value); it.setTimestamp(5, at.sql())
+        return withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection -> connection.prepareStatement("""
+                UPDATE async_tool_operations SET phase='CLAIMED', claimed_at=?, executor_session_id=?, lease_deadline=?,
+                    claim_generation=claim_generation+1
+                WHERE id=? AND acknowledged_at IS NOT NULL AND cancel_requested_at IS NULL AND worker_request_created_at IS NULL AND
+                    (phase='ACKNOWLEDGED' OR (phase='CLAIMED' AND lease_deadline<=?))
+                RETURNING *
+            """.trimIndent()).use { statement ->
+                statement.setTimestamp(1, at.sql()); statement.setString(2, owner.value); statement.setTimestamp(3, leaseDeadline.sql())
+                statement.setString(4, id.value); statement.setTimestamp(5, at.sql())
+                statement.executeQuery().use { rows -> if (rows.next()) rows.record() else null }
+            } }
         }
     }
 
-    override suspend fun markStarted(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant): Boolean = update("""
-        UPDATE async_tool_operations SET phase='RUNNING', started_at=?
-        WHERE id=? AND phase='CLAIMED' AND executor_session_id=? AND cancel_requested_at IS NULL AND lease_deadline>?
-    """.trimIndent()) {
-        it.setTimestamp(1, at.sql()); it.setString(2, id.value); it.setString(3, owner.value); it.setTimestamp(4, at.sql())
+    override suspend fun markStarted(claimed: AsyncToolOperation, at: Instant): Boolean {
+        val claim = checkNotNull(claimed.claimReference) { "Async start requires its original claim" }
+        require(claimed.phase == Phase.CLAIMED)
+        return update("""
+            UPDATE async_tool_operations SET phase='RUNNING', started_at=?
+            WHERE id=? AND phase='CLAIMED' AND executor_session_id=? AND claim_generation=?
+              AND cancel_requested_at IS NULL AND lease_deadline>? AND worker_request_created_at IS NULL
+        """.trimIndent()) {
+            it.setTimestamp(1, at.sql()); it.setString(2, claim.operationId.value); it.setString(3, claim.executorSessionId.value)
+            it.setLong(4, claim.claimGeneration); it.setTimestamp(5, at.sql())
+        }
     }
 
     override suspend fun recordWorkerDispatch(id: AsyncToolOperation.Id): Boolean = update("""
@@ -143,12 +154,20 @@ internal class PostgresAsyncToolOperationRepository(
         FROM worker_requests child
         WHERE operation.id=? AND operation.phase='CLAIMED' AND operation.worker_request_created_at IS NOT NULL
           AND child.id=operation.id AND child.dispatched_at IS NOT NULL
+          AND child.async_tool_json ->> 'executorSessionId' = operation.executor_session_id
+          AND (child.async_tool_json ->> 'claimGeneration')::bigint = operation.claim_generation
     """.trimIndent()) { it.setString(1, id.value) }
 
-    override suspend fun renewLease(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, leaseDeadline: Instant): Boolean = update("""
-        UPDATE async_tool_operations SET lease_deadline=?
-        WHERE id=? AND phase IN ('CLAIMED','RUNNING') AND executor_session_id=?
-    """.trimIndent()) { it.setTimestamp(1, leaseDeadline.sql()); it.setString(2, id.value); it.setString(3, owner.value) }
+    override suspend fun renewLease(observed: AsyncToolOperation, leaseDeadline: Instant): Boolean {
+        val claim = checkNotNull(observed.claimReference) { "Async renewal requires its observed claim" }
+        return update("""
+            UPDATE async_tool_operations SET lease_deadline=?
+            WHERE id=? AND phase IN ('CLAIMED','RUNNING') AND executor_session_id=? AND claim_generation=?
+        """.trimIndent()) {
+            it.setTimestamp(1, leaseDeadline.sql()); it.setString(2, claim.operationId.value)
+            it.setString(3, claim.executorSessionId.value); it.setLong(4, claim.claimGeneration)
+        }
+    }
 
     override suspend fun requestConversationCancellation(conversationId: com.gromozeka.domain.model.Conversation.Id, at: Instant): Int = withContext(Dispatchers.IO) {
         dataSource.connection.use { c -> c.prepareStatement("UPDATE async_tool_operations SET cancel_requested_at=? WHERE conversation_id=? AND completed_at IS NULL AND cancel_requested_at IS NULL").use { s ->
@@ -167,10 +186,12 @@ internal class PostgresAsyncToolOperationRepository(
         return update("""
             UPDATE async_tool_operations SET phase=?, completed_at=?, outcome_ciphertext=?, outcome_nonce=?, outcome_version=?, lease_deadline=NULL
             WHERE id=? AND phase=? AND executor_session_id IS NOT DISTINCT FROM ? AND completed_at IS NULL
+              AND claim_generation=? AND worker_request_created_at IS NOT DISTINCT FROM ?
         """.trimIndent()) {
             it.setString(1, phase.name); it.setTimestamp(2, at.sql()); it.setString(3, encrypted.ciphertext)
             it.setString(4, encrypted.nonce); it.setInt(5, encrypted.version); it.setString(6, observed.id.value)
             it.setString(7, observed.phase.name); it.setString(8, observed.executorSessionId?.value)
+            it.setLong(9, observed.claimGeneration); it.setTimestamp(10, observed.workerRequestCreatedAt?.sql())
         }
     }
 
@@ -212,7 +233,7 @@ internal class PostgresAsyncToolOperationRepository(
         return AsyncToolOperation(id, invocation, getTimestamp("created_at").kotlin(),
             phase = Phase.valueOf(getString("phase")), acknowledgedAt = getTimestamp("acknowledged_at")?.kotlin(),
             claimedAt = getTimestamp("claimed_at")?.kotlin(), startedAt = getTimestamp("started_at")?.kotlin(),
-            executorSessionId = getString("executor_session_id")?.let(::ConversationRuntimeServerSessionId),
+            executorSessionId = getString("executor_session_id")?.let(::ConversationRuntimeServerSessionId), claimGeneration = getLong("claim_generation"),
             leaseDeadline = getTimestamp("lease_deadline")?.kotlin(), workerRequestCreatedAt = getTimestamp("worker_request_created_at")?.kotlin(), cancelRequestedAt = getTimestamp("cancel_requested_at")?.kotlin(),
             completedAt = getTimestamp("completed_at")?.kotlin(),
             outcome = getString("outcome_ciphertext")?.let { json.decodeFromString<AsyncToolOutcome>(decrypt("outcome")) },

@@ -124,6 +124,7 @@ class AsyncToolAdmissionService(
         val operation = checkNotNull(operations.find(reference.operationId)) { "Async Worker parent is missing" }
         val invocation = operation.invocation
         val origin = invocation.origin
+        check(operation.claimReference == reference) { "Async child belongs to another parent claim" }
         val target = invocation.target as? ConversationRuntimeTaskTarget.Worker ?: error("Async Worker request has a Server parent")
         check(request.id == operation.id.value && request.workerId == target.workerId && request.actorUserId == origin.actorUserId &&
             request.projectId == origin.projectId && request.slotOrigin == origin.slotOrigin) { "Async child differs from its immutable parent" }

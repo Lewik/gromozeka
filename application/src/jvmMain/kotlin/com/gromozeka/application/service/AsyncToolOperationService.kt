@@ -31,7 +31,8 @@ class AsyncToolOperationService(
 ) {
     private val log = KLoggers.logger(this)
     private val started = AtomicBoolean(false)
-    private val jobs = ConcurrentHashMap<AsyncToolOperation.Id, Job>()
+    private data class ExecutionJob(val claim: AsyncToolDispatchReference, val job: Job)
+    private val jobs = ConcurrentHashMap<AsyncToolOperation.Id, ExecutionJob>()
     private val owner get() = (server.identity as? ConversationRuntimeExecutorIdentity.Server)?.sessionId
         ?: error("Async orchestration must remain Server-owned")
 
@@ -85,8 +86,8 @@ class AsyncToolOperationService(
         for (operation in operations.pending(Phase.ACKNOWLEDGED, 256)) {
             if (operation.cancelRequestedAt != null) {
                 outcomes.finish(operation, Phase.CANCELLED, failureOutcome("CANCELLED_BEFORE_START", "Cancelled before execution; no effects were started."))
-            } else if (jobs.size < 32 && operations.claim(operation.id, owner, now, now + 30.seconds)) {
-                launch(scope, checkNotNull(operations.find(operation.id)))
+            } else if (jobs.size < 32) {
+                operations.claim(operation.id, owner, now, now + 30.seconds)?.let { launch(scope, it) }
             }
         }
         for (operation in operations.pending(Phase.CLAIMED, 256) + operations.pending(Phase.RUNNING, 256)) {
@@ -95,15 +96,19 @@ class AsyncToolOperationService(
                 workers.reconcile(operation)
                 continue
             }
-            val job = jobs[operation.id]
-            if (job != null) {
-                if (operation.cancelRequestedAt != null) job.cancel(CancellationException("Async cancellation requested"))
-                else operations.renewLease(operation.id, owner, now + 30.seconds)
+            val execution = jobs[operation.id]
+            if (execution != null) {
+                if (execution.claim != operation.claimReference) {
+                    execution.job.cancel(CancellationException("Async execution claim changed"))
+                    continue
+                }
+                if (operation.cancelRequestedAt != null) execution.job.cancel(CancellationException("Async cancellation requested"))
+                else operations.renewLease(operation, now + 30.seconds)
             } else if (operation.cancelRequestedAt != null && operation.startedAt == null) {
                 outcomes.finish(operation, Phase.CANCELLED, failureOutcome("CANCELLED_BEFORE_START", "Cancelled before execution; no effects were started."))
             } else if (checkNotNull(operation.leaseDeadline) <= now) {
-                if (operation.phase == Phase.CLAIMED && jobs.size < 32 && operations.claim(operation.id, owner, now, now + 30.seconds)) {
-                    launch(scope, checkNotNull(operations.find(operation.id)))
+                if (operation.phase == Phase.CLAIMED && jobs.size < 32) {
+                    operations.claim(operation.id, owner, now, now + 30.seconds)?.let { launch(scope, it) }
                 } else if (operation.phase == Phase.RUNNING) {
                     outcomes.finish(operation, Phase.OUTCOME_UNKNOWN, failureOutcome("OUTCOME_UNKNOWN", "The running callback lost its executor. Its effects are unknown; it is not executed again."))
                 }
@@ -123,10 +128,13 @@ class AsyncToolOperationService(
     fun notification(operation: AsyncToolOperation): Conversation.Message = outcomes.notification(operation)
 
     private fun launch(scope: CoroutineScope, operation: AsyncToolOperation) {
+        val claim = checkNotNull(operation.claimReference)
+        check(operation.phase == Phase.CLAIMED && claim.executorSessionId == owner) { "Async launch requires its own atomic claim grant" }
         val job = scope.launch(start = CoroutineStart.LAZY) { execute(operation) }
-        val previous = jobs.putIfAbsent(operation.id, job)
+        val execution = ExecutionJob(claim, job)
+        val previous = jobs.putIfAbsent(operation.id, execution)
         if (previous != null) { job.cancel(); return }
-        job.invokeOnCompletion { jobs.remove(operation.id, job) }
+        job.invokeOnCompletion { jobs.remove(operation.id, execution) }
         job.start()
     }
 
@@ -137,8 +145,9 @@ class AsyncToolOperationService(
             when (claimed.invocation.target) {
                 is ConversationRuntimeTaskTarget.Worker -> workers.submit(claimed, resolved)
                 ConversationRuntimeTaskTarget.Server -> {
-                    if (!operations.markStarted(claimed.id, owner, Clock.System.now())) return
+                    if (!operations.markStarted(claimed, Clock.System.now())) return
                     val running = checkNotNull(operations.find(claimed.id))
+                    if (running.claimReference != claimed.claimReference || running.phase != Phase.RUNNING) return
                     val result = executor.executeParallel(listOf(prepared.call), prepared.context, null, server.identity,
                         ConversationRuntimeTaskTarget.Server, resolved,
                         preapprovedFingerprints = mapOf(prepared.call.id.value to running.invocation.contractFingerprint))
@@ -150,18 +159,18 @@ class AsyncToolOperationService(
                 }
             }
         } catch (cancelled: CancellationException) {
-            withContext(NonCancellable) { failedExecution(claimed.id, true, "CANCELLATION_REQUESTED") }
+            withContext(NonCancellable) { failedExecution(claimed, true, "CANCELLATION_REQUESTED") }
             throw cancelled
         } catch (failure: Exception) {
             log.error { "Async tool dispatch failed: ${claimed.id.value} (${failure::class.simpleName}); no effect replay" }
-            failedExecution(claimed.id, false,
+            failedExecution(claimed, false,
                 (failure as? AsyncToolScopeDeniedException)?.code ?: "DISPATCH_FAILED")
         }
     }
 
-    private suspend fun failedExecution(id: AsyncToolOperation.Id, cancelled: Boolean, code: String) {
-        val operation = checkNotNull(operations.find(id)) { "Async operation disappeared during execution" }
-        if (operation.phase.isTerminal) return
+    private suspend fun failedExecution(claimed: AsyncToolOperation, cancelled: Boolean, code: String) {
+        val operation = checkNotNull(operations.find(claimed.id)) { "Async operation disappeared during execution" }
+        if (operation.phase.isTerminal || operation.claimReference != claimed.claimReference) return
         if (operation.invocation.target is ConversationRuntimeTaskTarget.Worker && operation.workerRequestCreatedAt != null) {
             if (cancelled) workers.cancel(operation)
             workers.reconcile(operation)

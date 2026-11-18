@@ -102,6 +102,18 @@ class AsyncWorkerRoundtripTest {
         } finally { f.close() }
     }
 
+    @Test fun `stale claim cannot cancel the replacement owner Worker child through the actual gateway`() = runBlocking {
+        val f = Fixture()
+        try {
+            val stale = f.operation
+            f.operation = stale.copy(executorSessionId = ConversationRuntimeServerSessionId("replacement"), claimGeneration = 2)
+            f.gateway.submit(f.operation, emptyMap())
+            assertFailsWith<IllegalStateException> { f.gateway.cancel(stale) }
+            assertNull(f.records.find(f.operation.id.value)?.cancelRequestedAt)
+            assertEquals(0, f.effects.get())
+        } finally { f.close() }
+    }
+
     private class Fixture(val toolError: Boolean = false) {
         val now = Clock.System.now()
         val home = Files.createTempDirectory("async-worker-journal-")
@@ -136,7 +148,7 @@ class AsyncWorkerRoundtripTest {
                 TOOL_CONTEXT_THREAD_ID to "thread", TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent", "toolCallId" to "call",
                 TOOL_CONTEXT_WORKER_ID to "worker", TOOL_CONTEXT_WORKSPACE_ID to "workspace", TOOL_CONTEXT_WORKSPACE_MOUNT_ID to "mount", TOOL_CONTEXT_WORKSPACE_ROOT_PATH to "/captured-checkout"))
         @Volatile var operation = AsyncToolOperation(AsyncToolOperation.Id("operation"), invocation, now, AsyncToolOperation.Phase.CLAIMED,
-            acknowledgedAt = now, claimedAt = now, executorSessionId = owner, leaseDeadline = now + 30.seconds)
+            acknowledgedAt = now, claimedAt = now, executorSessionId = owner, claimGeneration = 1, leaseDeadline = now + 30.seconds)
         val records = TestWorkerRequestRepository()
         var loseSubmitAck = false
         private val childRepository = object : WorkerRequestRepository by records {
@@ -155,10 +167,10 @@ class AsyncWorkerRoundtripTest {
                     if (operation.phase != AsyncToolOperation.Phase.CLAIMED || dispatched == null) false
                     else { operation = operation.copy(phase = AsyncToolOperation.Phase.RUNNING, startedAt = dispatched); true }
                 }
-                "renewLease" -> if (operation.phase.isTerminal) false else { operation = operation.copy(leaseDeadline = call.arguments[2] as kotlin.time.Instant); true }
+                "renewLease" -> if (operation.phase.isTerminal) false else { operation = operation.copy(leaseDeadline = call.arguments[1] as kotlin.time.Instant); true }
                 "finish" -> {
                     val observed = call.arguments[0] as AsyncToolOperation
-                    if (operation.phase != observed.phase || operation.phase.isTerminal) false else {
+                    if (operation.phase != observed.phase || operation.phase.isTerminal || operation.claimReference != observed.claimReference) false else {
                         operation = operation.copy(phase = call.arguments[1] as AsyncToolOperation.Phase,
                             outcome = call.arguments[2] as AsyncToolOutcome, completedAt = call.arguments[3] as kotlin.time.Instant, leaseDeadline = null); true
                     }

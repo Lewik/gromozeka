@@ -66,7 +66,12 @@ flag merely because their provider calls them tools.
 
 Invocations and outcomes use the existing Server secret cipher. Operation state
 separates `ACCEPTED`, `ACKNOWLEDGED`, `CLAIMED`, `RUNNING` and terminal outcomes.
-Claim recovery is fenced by the exact executor session/lease. A lost running
+Claim recovery is fenced by the exact executor session, durable claim generation
+and lease. The atomic claim update returns its own grant; delayed preparation,
+secret resolution and cancellation cannot finalize or cancel a replacement
+claim, including a later claim by the same Server session. Start, renewal and
+terminal updates compare that generation. Worker-child creation fences further
+reclaim, and a stale pre-child observation cannot finalize a now-linked parent. A lost running
 Server callback becomes `OUTCOME_UNKNOWN`; recovery does not invoke it again.
 
 Worker execution reuses WorkerRequest delivery and its durable Worker journal.
@@ -102,8 +107,12 @@ This feature includes only the RuntimeNotification subset of the typed-events
 work at commit `179ff1730d28d5925e21d88425b00b70b8f0d74a` (PR #202). It preserves
 the agreed type/role/fields and late provider-envelope model. It does not include
 PEER, PROMPT, VISUAL_UPDATED, immutable turn-prompt binding or migration of legacy
-SYSTEM records. The async storage migration follows the actual main migration
-sequence (`V90` after main's V88/V89).
+SYSTEM records. The async storage migrations follow the actual main migration
+sequence (`V90` after main's V88/V89, then `V91` for durable claim generations).
+V91 carries forward valid V90 parent/child claims without changing canonical
+Worker request bytes; inconsistent legacy ownership fails explicitly instead of
+being repaired by guessing. Claim generations and the child claim reference are
+Server-private storage metadata; the Worker wire protocol remains 35.
 
 When integrating the complete typed-events change, reconcile the shared
 RuntimeNotification/Runtime author, output artifact support and common service

@@ -83,7 +83,7 @@ class WorkerRequestService(
         if (asyncTool != null) {
             require(operation == WorkerGatewayOperation.TOOL_EXECUTION && actorUserId != null && projectId != null) { "Async child requires its authenticated tool invocation" }
             repository.find(asyncTool.operationId.value)?.let { existing ->
-                require(existing.asyncTool?.operationId == asyncTool.operationId && existing.workerId == workerId &&
+                require(existing.asyncTool == asyncTool && existing.workerId == workerId &&
                     existing.actorUserId == actorUserId && existing.projectId == projectId && existing.slotOrigin == slotOrigin) {
                     "Async child request cannot be rebound"
                 }

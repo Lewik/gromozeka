@@ -83,7 +83,7 @@ class GatewayWorkerToolExecutionClient(
         val invocation = operation.invocation
         val origin = invocation.origin
         val target = invocation.target as? ConversationRuntimeTaskTarget.Worker ?: error("Async Worker target required")
-        val reference = com.gromozeka.domain.model.AsyncToolDispatchReference(operation.id, checkNotNull(operation.executorSessionId))
+        val reference = checkNotNull(operation.claimReference)
         check(operation.phase == com.gromozeka.domain.model.AsyncToolOperation.Phase.CLAIMED && operation.acknowledgedAt != null) {
             "Async Worker submission requires its acknowledged claim"
         }

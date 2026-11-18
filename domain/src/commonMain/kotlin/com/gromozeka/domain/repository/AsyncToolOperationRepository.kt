@@ -19,13 +19,14 @@ interface AsyncToolOperationRepository {
     suspend fun expiredLeases(at: Instant, limit: Int): List<AsyncToolOperation>
     suspend fun unprojected(limit: Int): List<AsyncToolOperation>
     suspend fun acknowledge(id: AsyncToolOperation.Id, at: Instant): Boolean
-    suspend fun claim(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant, leaseDeadline: Instant): Boolean
-    suspend fun markStarted(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant): Boolean
+    /** Returns the exact atomic grant, not a subsequently reread operation. */
+    suspend fun claim(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant, leaseDeadline: Instant): AsyncToolOperation?
+    suspend fun markStarted(claimed: AsyncToolOperation, at: Instant): Boolean
     suspend fun recordWorkerDispatch(id: AsyncToolOperation.Id): Boolean
-    suspend fun renewLease(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, leaseDeadline: Instant): Boolean
+    suspend fun renewLease(observed: AsyncToolOperation, leaseDeadline: Instant): Boolean
     suspend fun requestConversationCancellation(conversationId: com.gromozeka.domain.model.Conversation.Id, at: Instant): Int
     suspend fun requestCancellation(id: AsyncToolOperation.Id, at: Instant): Boolean
-    /** CAS against the observed phase and owner. A late response cannot replace a durable unknown outcome. */
+    /** CAS against the observed phase, owner, generation and Worker-child marker. A late response cannot replace a durable unknown outcome. */
     suspend fun finish(observed: AsyncToolOperation, phase: AsyncToolOperation.Phase, outcome: AsyncToolOutcome, at: Instant): Boolean
     suspend fun markProjected(id: AsyncToolOperation.Id, at: Instant): Boolean
 }

@@ -44,14 +44,14 @@ internal class PostgresWorkerRequestRepository(
                         child.executeQuery().use { rows -> if (rows.next()) rows.record() else null }
                     }
                     if (existing != null) {
-                        require(existing.asyncTool?.operationId == reference.operationId && existing.workerId == request.workerId &&
+                        require(existing.asyncTool == reference && existing.workerId == request.workerId &&
                             existing.actorUserId == request.actorUserId && existing.projectId == request.projectId && existing.slotOrigin == request.slotOrigin) {
                             "Async child request identity cannot be rebound"
                         }
                         connection.commit()
                         return@withContext
                     }
-                    connection.prepareStatement("SELECT phase,executor_session_id,cancel_requested_at,acknowledged_at,actor_user_id,project_id,slot_origin_json::text,lease_deadline,worker_id,worker_request_created_at FROM async_tool_operations WHERE id=?").use { parent ->
+                    connection.prepareStatement("SELECT phase,executor_session_id,cancel_requested_at,acknowledged_at,actor_user_id,project_id,slot_origin_json::text,lease_deadline,worker_id,worker_request_created_at,claim_generation FROM async_tool_operations WHERE id=?").use { parent ->
                         parent.setString(1, reference.operationId.value)
                         parent.executeQuery().use { rows ->
                             require(rows.next() && rows.getString(1) == "CLAIMED" && rows.getString(2) == reference.executorSessionId.value &&
@@ -59,7 +59,8 @@ internal class PostgresWorkerRequestRepository(
                                 rows.getString(5) == request.actorUserId?.value && rows.getString(6) == request.projectId?.value &&
                                 rows.getString(7)?.let { Json.decodeFromString<SlotCommandOrigin>(it) } == request.slotOrigin &&
                                 rows.getTimestamp(8)?.let { it > Clock.System.now().sql() } == true &&
-                                rows.getString(9) == request.workerId.value && rows.getTimestamp(10) == null) {
+                                rows.getString(9) == request.workerId.value && rows.getTimestamp(10) == null &&
+                                rows.getLong(11) == reference.claimGeneration) {
                                 "Async Worker dispatch lost its parent acknowledgement, owner, cancellation or origin fence"
                             }
                         }

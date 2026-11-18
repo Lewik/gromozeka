@@ -13,6 +13,7 @@ internal class TestAsyncToolOperations : AsyncToolOperationRepository {
     private val mutex = Mutex()
     val records = linkedMapOf<AsyncToolOperation.Id, AsyncToolOperation>()
     val workerRequests = linkedMapOf<String, StoredWorkerRequest>()
+    var beforeFinish: suspend (AsyncToolOperation) -> Unit = {}
 
     override suspend fun admit(id: AsyncToolOperation.Id, invocation: AsyncToolInvocation, at: Instant): AsyncToolOperation = mutex.withLock {
         val existing = records.values.singleOrNull { it.invocation.origin.let { origin ->
@@ -40,21 +41,28 @@ internal class TestAsyncToolOperations : AsyncToolOperationRepository {
     override suspend fun acknowledge(id: AsyncToolOperation.Id, at: Instant) = change(id, { it.acknowledgedAt == null }) {
         it.copy(acknowledgedAt = at, phase = if (it.phase == Phase.ACCEPTED) Phase.ACKNOWLEDGED else it.phase)
     }
-    override suspend fun claim(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant, leaseDeadline: Instant) = change(id, {
-        it.acknowledgedAt != null && it.cancelRequestedAt == null &&
-            (it.phase == Phase.ACKNOWLEDGED || (it.phase == Phase.CLAIMED && checkNotNull(it.leaseDeadline) <= at))
-    }) { it.copy(phase = Phase.CLAIMED, claimedAt = at, executorSessionId = owner, leaseDeadline = leaseDeadline) }
-    override suspend fun markStarted(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant) = change(id, {
-        it.phase == Phase.CLAIMED && it.executorSessionId == owner && it.cancelRequestedAt == null && checkNotNull(it.leaseDeadline) > at
+    override suspend fun claim(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, at: Instant, leaseDeadline: Instant): AsyncToolOperation? = mutex.withLock {
+        require(leaseDeadline > at)
+        val current = records[id] ?: return@withLock null
+        if (current.acknowledgedAt == null || current.cancelRequestedAt != null || current.workerRequestCreatedAt != null ||
+            !(current.phase == Phase.ACKNOWLEDGED || (current.phase == Phase.CLAIMED && checkNotNull(current.leaseDeadline) <= at))) return@withLock null
+        current.copy(phase = Phase.CLAIMED, claimedAt = at, executorSessionId = owner,
+            claimGeneration = Math.addExact(current.claimGeneration, 1), leaseDeadline = leaseDeadline).also { records[id] = it }
+    }
+    override suspend fun markStarted(claimed: AsyncToolOperation, at: Instant) = change(claimed.id, {
+        it.phase == Phase.CLAIMED && it.claimReference == claimed.claimReference && it.cancelRequestedAt == null &&
+            it.workerRequestCreatedAt == null && checkNotNull(it.leaseDeadline) > at
     }) { it.copy(phase = Phase.RUNNING, startedAt = at) }
     override suspend fun recordWorkerDispatch(id: AsyncToolOperation.Id): Boolean = mutex.withLock {
         val operation = records[id] ?: return@withLock false
-        val dispatched = workerRequests[id.value]?.dispatchedAt ?: return@withLock false
+        val child = workerRequests[id.value] ?: return@withLock false
+        if (child.asyncTool != operation.claimReference) return@withLock false
+        val dispatched = child.dispatchedAt ?: return@withLock false
         if (operation.phase != Phase.CLAIMED || operation.workerRequestCreatedAt == null) return@withLock false
         records[id] = operation.copy(phase = Phase.RUNNING, startedAt = dispatched); true
     }
-    override suspend fun renewLease(id: AsyncToolOperation.Id, owner: ConversationRuntimeServerSessionId, leaseDeadline: Instant) = change(id, {
-        it.phase in setOf(Phase.CLAIMED, Phase.RUNNING) && it.executorSessionId == owner
+    override suspend fun renewLease(observed: AsyncToolOperation, leaseDeadline: Instant) = change(observed.id, {
+        it.phase in setOf(Phase.CLAIMED, Phase.RUNNING) && it.claimReference == observed.claimReference
     }) { it.copy(leaseDeadline = leaseDeadline) }
     override suspend fun requestConversationCancellation(conversationId: Conversation.Id, at: Instant): Int = mutex.withLock {
         val affected = records.values.filter { it.invocation.origin.conversationId == conversationId && !it.phase.isTerminal && it.cancelRequestedAt == null }
@@ -65,8 +73,10 @@ internal class TestAsyncToolOperations : AsyncToolOperationRepository {
     }
     override suspend fun finish(observed: AsyncToolOperation, phase: Phase, outcome: AsyncToolOutcome, at: Instant): Boolean {
         require(!observed.phase.isTerminal && phase.isTerminal)
+        beforeFinish(observed)
         observed.copy(phase = phase, completedAt = at, outcome = outcome, leaseDeadline = null)
-        return change(observed.id, { it.phase == observed.phase && it.executorSessionId == observed.executorSessionId && !it.phase.isTerminal }) {
+        return change(observed.id, { it.phase == observed.phase && it.claimReference == observed.claimReference && !it.phase.isTerminal &&
+            it.claimGeneration == observed.claimGeneration && it.workerRequestCreatedAt == observed.workerRequestCreatedAt }) {
             it.copy(phase = phase, completedAt = at, outcome = outcome, leaseDeadline = null)
         }
     }

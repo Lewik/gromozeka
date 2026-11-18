@@ -25,7 +25,7 @@ class AsyncWorkerResultProjector(
     fun validateChild(operation: AsyncToolOperation, request: StoredWorkerRequest) {
         val origin = operation.invocation.origin
         val target = operation.invocation.target as? ConversationRuntimeTaskTarget.Worker ?: error("Async Worker result has a Server parent")
-        check(request.id == operation.id.value && request.asyncTool?.operationId == operation.id &&
+        check(request.id == operation.id.value && request.asyncTool == operation.claimReference &&
             request.workerId == target.workerId && request.actorUserId == origin.actorUserId &&
             request.projectId == origin.projectId && request.slotOrigin == origin.slotOrigin) {
             "Worker result does not match its captured async invocation"
@@ -83,7 +83,7 @@ class AsyncWorkerResultProjector(
         if (response != null) {
             completed(request, WorkerGatewayCodec.decode(response) as WorkerGatewayMessage.Response)
         } else request.executionDeadline?.let { deadline ->
-            operations.renewLease(operation.id, checkNotNull(operation.executorSessionId), deadline)
+            operations.renewLease(operation, deadline)
         }
     }
 }

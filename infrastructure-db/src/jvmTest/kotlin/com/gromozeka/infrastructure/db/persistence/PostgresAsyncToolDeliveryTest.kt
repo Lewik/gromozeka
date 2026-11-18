@@ -98,8 +98,8 @@ class PostgresAsyncToolDeliveryTest {
             val repository = operations()
             operation = repository.admit(AsyncToolOperation.Id("outcome"), invocation, now)
             assertTrue(repository.acknowledge(operation.id, now))
-            assertTrue(repository.claim(operation.id, owner, now, now + 30.seconds))
-            assertTrue(repository.markStarted(operation.id, owner, now))
+            val claimed = assertNotNull(repository.claim(operation.id, owner, now, now + 30.seconds))
+            assertTrue(repository.markStarted(claimed, now))
             assertTrue(repository.finish(assertNotNull(repository.find(operation.id)), AsyncToolOperation.Phase.SUCCEEDED,
                 AsyncToolOutcome(listOf(ContentItem.ToolResult.Data.Text("durable body")), isError = false), now))
             operation = assertNotNull(repository.find(operation.id))

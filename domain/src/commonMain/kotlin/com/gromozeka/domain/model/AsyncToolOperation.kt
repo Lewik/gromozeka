@@ -38,7 +38,10 @@ data class AsyncToolOrigin(
 data class AsyncToolDispatchReference(
     val operationId: AsyncToolOperation.Id,
     val executorSessionId: ConversationRuntimeServerSessionId,
-)
+    val claimGeneration: Long,
+) {
+    init { require(claimGeneration > 0) { "A Worker dispatch requires a granted claim generation" } }
+}
 
 /** Immutable execution input, also the equality boundary for admission deduplication. */
 @Serializable
@@ -105,6 +108,7 @@ data class AsyncToolOperation(
     val claimedAt: Instant? = null,
     val startedAt: Instant? = null,
     val executorSessionId: ConversationRuntimeServerSessionId? = null,
+    val claimGeneration: Long = 0,
     val leaseDeadline: Instant? = null,
     val workerRequestCreatedAt: Instant? = null,
     val cancelRequestedAt: Instant? = null,
@@ -112,6 +116,9 @@ data class AsyncToolOperation(
     val outcome: AsyncToolOutcome? = null,
     val projectedAt: Instant? = null,
 ) {
+    val claimReference: AsyncToolDispatchReference?
+        get() = executorSessionId?.let { AsyncToolDispatchReference(id, it, claimGeneration) }
+
     @Serializable
     @JvmInline
     value class Id(val value: String) {
@@ -131,6 +138,9 @@ data class AsyncToolOperation(
             "A durable Worker child requires its acknowledged parent claim"
         }
         require((claimedAt == null) == (executorSessionId == null)) { "Async claim requires its owner session" }
+        require(claimGeneration >= 0 && (claimGeneration == 0L) == (claimedAt == null)) {
+            "Async claim requires its durable generation"
+        }
         require(startedAt == null || claimedAt != null) { "Async execution cannot start before its claim" }
         require((phase in setOf(Phase.CLAIMED, Phase.RUNNING)) == (leaseDeadline != null)) { "Only a claimed or running async operation holds an execution lease" }
         require(phase !in setOf(Phase.ACKNOWLEDGED, Phase.CLAIMED, Phase.RUNNING) || acknowledgedAt != null) {
