@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.serviceDataTextOrNull
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -572,7 +571,6 @@ private fun MemoryReadRequest.targetMessageText(): String {
             is Conversation.Message.ContentItem.ToolCall -> "Tool call: ${item.call.name}"
             is Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
             is Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
-            is Conversation.Message.ContentItem.RuntimeNotification -> item.serviceDataTextOrNull()
             is Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
             is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
                 is Conversation.Message.DocumentSource.Base64DocumentSource ->

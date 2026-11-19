@@ -279,7 +279,6 @@ class GromozekaRemoteAuthorization(
 
             is EditMessageRequest -> requireConversation(user, request.conversationId(), ProjectPermission.WRITE).also {
                 require(it.externalChannel == null) { "Manage messages through the connected external channel; detach it before editing history" }
-                com.gromozeka.domain.model.requireEditableHistoryContent(request.newContent)
             }
 
             is DeleteConversationRequest,

@@ -946,13 +946,6 @@ private fun Conversation.Message.ContentItem.extractCassetteRuntimeText(): Strin
             appendLine(thinking)
             signature?.let(::appendLine)
         }
-        is Conversation.Message.ContentItem.RuntimeNotification -> buildString {
-            appendLine(content)
-            referenceId?.let(::appendLine)
-            toolUseId?.value?.let(::appendLine)
-            appendLine(details.toString())
-            attachments.forEach { appendLine(it.extractCassetteRuntimeText()) }
-        }
         is Conversation.Message.ContentItem.System -> buildString {
             appendLine(content)
             toolUseId?.value?.let(::appendLine)
@@ -1056,13 +1049,6 @@ private fun Conversation.Message.ContentItem.toStableCassetteContentItem(
         is Conversation.Message.ContentItem.Thinking -> copy(
             thinking = normalizeRuntimeText(thinking, runtimeBindings),
             signature = signature?.let { STABLE_SIGNATURE },
-        )
-        is Conversation.Message.ContentItem.RuntimeNotification -> copy(
-            content = normalizeRuntimeText(content, runtimeBindings),
-            referenceId = referenceId?.let { normalizeRuntimeText(it, runtimeBindings) },
-            toolUseId = toolUseId?.let { Conversation.Message.ContentItem.ToolCall.Id(normalizeRuntimeText(it.value, runtimeBindings)) },
-            details = normalizeJsonElement(details, runtimeBindings) as JsonObject,
-            attachments = attachments.map { it.toStableCassetteToolResultData(runtimeBindings) },
         )
         is Conversation.Message.ContentItem.System -> copy(
             content = normalizeRuntimeText(content, runtimeBindings),
@@ -1180,13 +1166,6 @@ private fun Conversation.Message.ContentItem.rehydrateDynamicContentItem(
         )
         is Conversation.Message.ContentItem.Thinking -> copy(
             signature = signature?.let { rehydrateProviderSignature(it, context, messageIndex, contentIndex) },
-        )
-        is Conversation.Message.ContentItem.RuntimeNotification -> copy(
-            content = context.runtimeBindings.rehydrateText(content),
-            referenceId = referenceId?.let { context.runtimeBindings.rehydrateText(it) },
-            toolUseId = toolUseId?.let { Conversation.Message.ContentItem.ToolCall.Id(context.runtimeBindings.rehydrateText(it.value)) },
-            details = rehydrateJsonElement(details, context) as JsonObject,
-            attachments = attachments.map { it.rehydrateDynamicToolResultData(context) },
         )
         is Conversation.Message.ContentItem.System -> copy(
             toolUseId = toolUseId?.let {

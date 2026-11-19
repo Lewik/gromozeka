@@ -23,11 +23,20 @@ fun syntheticToolCallId(stableKey: String): ContentItem.ToolCall.Id {
     return ContentItem.ToolCall.Id(characters.concatToString())
 }
 
-private fun Message.isSyntheticToolPair(): Boolean =
-    providerMetadata["synthetic"] == JsonPrimitive(true) &&
-        syntheticKind in setOf(
-            SyntheticMessageKind.COMMAND_TASK_COMPLETION, SyntheticMessageKind.COMMAND_MONITOR_UPDATE, SyntheticMessageKind.MEMORY,
-        )
+private fun Message.isSyntheticToolPair(): Boolean {
+    val kind = syntheticKind
+    if (kind == SyntheticMessageKind.ASYNC_TOOL_COMPLETION) {
+        check(author is Message.Author.Runtime && providerMetadata["synthetic"] == JsonPrimitive(true) &&
+            backgroundActivitySource != null &&
+            (providerMetadata["asyncToolOperationId"] as? JsonPrimitive)?.let { it.isString && it.content.isNotBlank() } == true) {
+            "Async completion messages require Runtime authorship and their captured source"
+        }
+    }
+    return providerMetadata["synthetic"] == JsonPrimitive(true) && kind in setOf(
+        SyntheticMessageKind.COMMAND_TASK_COMPLETION, SyntheticMessageKind.COMMAND_MONITOR_UPDATE,
+        SyntheticMessageKind.ASYNC_TOOL_COMPLETION, SyntheticMessageKind.MEMORY,
+    )
+}
 
 /** Old stored notifications keep their identities; only their model-facing copy is normalized. */
 internal fun List<Message>.withPortableSyntheticToolCallIds(): List<Message> {
@@ -35,7 +44,10 @@ internal fun List<Message>.withPortableSyntheticToolCallIds(): List<Message> {
     val ids = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
     fun target(message: Message, id: ContentItem.ToolCall.Id): ContentItem.ToolCall.Id =
         if (!message.isSyntheticToolPair()) id else ids.getOrPut(id) {
-            if (portableId.matches(id.value)) id else syntheticToolCallId(id.value)
+            if (message.syntheticKind == SyntheticMessageKind.ASYNC_TOOL_COMPLETION) {
+                check(portableId.matches(id.value)) { "Async completion has an invalid pairing ID" }
+                id
+            } else if (portableId.matches(id.value)) id else syntheticToolCallId(id.value)
         }
 
     val origins = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()

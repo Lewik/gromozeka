@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
+import com.gromozeka.domain.model.assistantTextWithRuntimeObservations
+
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.model.ai.projectedMessages
@@ -197,7 +199,6 @@ class OpenAiSubscriptionRequestMapper {
         replayReasoning: Boolean = false,
     ): List<JsonObject> {
         return when (message.role) {
-            Conversation.Message.Role.RUNTIME_NOTIFICATION -> error("Runtime notifications must be projected before provider lowering")
             Conversation.Message.Role.USER -> message.toUserInputItems()
             Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly, replayReasoning)
             Conversation.Message.Role.SYSTEM -> message.toSystemInputItems()
@@ -251,6 +252,7 @@ class OpenAiSubscriptionRequestMapper {
         }
         val items = mutableListOf<JsonObject>()
         val textBuffer = mutableListOf<String>()
+        assistantTextWithRuntimeObservations("").takeIf(String::isNotBlank)?.let(textBuffer::add)
         val hiddenReplayItems = if (replayReasoning) providerMetadata.toHiddenReplayItems()
             .filterNot { it.isCompactionReplayItem() }
             else emptyList()

@@ -90,6 +90,8 @@ data class AsyncToolOutcome(
     val structuredContent: JsonObject? = null,
     val isError: Boolean,
     val failureCode: String? = null,
+    val state: Conversation.Message.BlockState = Conversation.Message.BlockState.COMPLETE,
+    val executionToolName: String? = null,
 ) {
     init {
         require(failureCode == null || (failureCode.isNotBlank() && isError)) {

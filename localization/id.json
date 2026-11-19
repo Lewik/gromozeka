@@ -4,7 +4,6 @@
   "name": "Bahasa Indonesia",
   "direction": "LTR",
   "messages": {
-    "chat.service.runtime": "Notifikasi Runtime",
     "ai.connection.responses_streaming": "Streaming Responses (SSE)",
     "ai.connection.responses_streaming_description": "Terima aliran secara internal; validasi dan jawaban lengkap tidak berubah.",
     "ai.connection.responses_stored_continuation": "Kelanjutan tersimpan di penyedia",
@@ -156,7 +155,6 @@
     "security.users.aiAllowed": "Allow AI requests",
     "agents.always_loaded_tools": "Alat yang selalu dimuat, satu per baris",
     "agents.available_prompts": "Prompt yang tersedia",
-    "agents.budget_tokens": "Anggaran token",
     "agents.cancel": "Batal",
     "agents.catalog.description": "Agen dan prompt adalah konfigurasi eksekusi yang dikelola server. Skill merupakan paket yang diimpor.",
     "agents.catalog.empty": "Tidak ada agen dalam cakupan ini",
@@ -336,8 +334,6 @@
     "ai.quota.refresh_interval_hint": "Data kuota terbaru diperlukan setelah setiap panggilan model latar belakang",
     "ai.quota.reserve": "Cadangan terlindungi (%)",
     "ai.quota.reserve_hint": "Sisihkan kapasitas langganan sebesar ini untuk pekerjaan interaktif",
-    "ai.reasoning.budget": "Anggaran penalaran",
-    "ai.reasoning.budget_tokens": "Anggaran token penalaran",
     "ai.reasoning.default": "Penalaran bawaan",
     "ai.reasoning.display": "Tampilan",
     "ai.reasoning.display.full": "Lengkap",
@@ -352,7 +348,6 @@
     "ai.reasoning.mode": "Mode",
     "ai.reasoning.mode.adaptive": "Adaptif",
     "ai.reasoning.mode.disabled": "Dinonaktifkan",
-    "ai.reasoning.mode.token_budget": "Anggaran token",
     "ai.response_format.json_schema": "Skema JSON",
     "ai.response_format.text": "Teks",
     "ai.response_format.xml_inline": "XML inline",
@@ -1438,7 +1433,6 @@
     "session.runtime.enum.reasoningEffort.xhigh": "Sangat tinggi",
     "session.runtime.enum.reasoningMode.adaptive": "Adaptif",
     "session.runtime.enum.reasoningMode.disabled": "Dinonaktifkan",
-    "session.runtime.enum.reasoningMode.token_budget": "Anggaran token",
     "session.runtime.enum.responseFormat.json_schema": "Skema JSON",
     "session.runtime.enum.responseFormat.text": "Teks",
     "session.runtime.enum.responseFormat.xml_inline": "XML inline",
@@ -1485,7 +1479,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "Pemadatan otomatis: {count} token"
     },
-    "session.runtime.parameters.budget": "Anggaran: {count}",
     "session.runtime.parameters.effort": "Upaya: {effort}",
     "session.runtime.parameters.maxOutput": "Output maks.: {count}",
     "session.runtime.parameters.mode": "Mode: {mode}",

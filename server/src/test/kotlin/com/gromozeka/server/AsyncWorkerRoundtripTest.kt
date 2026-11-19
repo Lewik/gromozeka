@@ -57,10 +57,13 @@ class AsyncWorkerRoundtripTest {
                 assertEquals(outcome, f.operation.outcome)
                 assertEquals(1, f.effects.get())
                 worker.acknowledge(request.id); worker.stop()
-                val notification = f.outcomes.notification(f.operation)
-                val event = assertIs<ContentItem.RuntimeNotification>(notification.content.single())
-                assertEquals(f.operation.invocation.origin.sourceToolCallId, event.toolUseId)
-                assertTrue(event.attachments.any { it is ContentItem.ToolResult.Data.Base64Data })
+                val pair = f.outcomes.completionMessages(f.operation)
+                val call = assertIs<ContentItem.ToolCall>(pair[0].content.single())
+                val result = assertIs<ContentItem.ToolResult>(pair[1].content.single())
+                assertNotEquals(f.operation.invocation.origin.sourceToolCallId, call.id)
+                assertEquals(call.id, result.toolUseId)
+                assertEquals(f.operation.outcome?.content, result.result)
+                assertTrue(result.result.any { it is ContentItem.ToolResult.Data.Base64Data })
                 assertEquals(1, f.received.size)
                 assertEquals(mapOf("call" to f.fingerprint), f.received.single().preapprovedFingerprints)
                 Mockito.verifyNoInteractions(f.approvals)
@@ -84,6 +87,27 @@ class AsyncWorkerRoundtripTest {
                 assertEquals(0, f.effects.get())
             } finally { f.close() }
         }
+    }
+
+    @Test fun `neutral Worker failure after dispatch remains model visible unknown with no automatic replay`() = runBlocking {
+        val f = Fixture()
+        try {
+            f.gateway.submit(f.operation, emptyMap())
+            val request = f.dispatch()
+            assertTrue(f.requests.accept(f.identity.workerId, WorkerGatewayMessage.Response(request.id,
+                WorkerGatewayMessage.Response.Status.FAILED, errorCode = "TRANSPORT_FAILURE", errorMessage = "Connection ended")))
+            f.requests.maintain()
+            assertEquals(AsyncToolOperation.Phase.OUTCOME_UNKNOWN, f.operation.phase)
+            val pair = f.outcomes.completionMessages(f.operation)
+            val result = assertIs<ContentItem.ToolResult>(pair.last().content.single())
+            assertTrue(result.isError)
+            val text = result.result.filterIsInstance<ContentItem.ToolResult.Data.Text>().joinToString("\n") { it.content }
+            assertTrue(text.contains("Effects may have occurred"))
+            assertTrue(text.contains("Do not repeat it automatically"))
+            assertTrue(text.contains("Connection ended"))
+            assertFalse(text.contains("did not start"))
+            assertEquals(0, f.effects.get())
+        } finally { f.close() }
     }
 
     @Test fun `forged approval revision crosses strict RPC but fails at the real Worker executor before effects`() = runBlocking {

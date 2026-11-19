@@ -90,7 +90,9 @@ class BackgroundActivityCompletionApplicationService(
         val asyncCandidates = asyncTools?.pendingDelivery(conversationId).orEmpty().asSequence()
             .filter { it.notificationSourceKey() !in failedSources && it.notificationSourceKey() !in sourcesInCurrentPacket }
             .map { operation -> DeliveryCandidate.Async(operation, checkNotNull(operation.completedAt),
-                kotlinx.serialization.json.Json.encodeToString(Conversation.Message.serializer(), checkNotNull(asyncTools).notification(operation)).encodeToByteArray().size) }
+                checkNotNull(asyncTools).completionMessages(operation).sumOf { message ->
+                    kotlinx.serialization.json.Json.encodeToString(Conversation.Message.serializer(), message).encodeToByteArray().size
+                }) }
         val sortedCandidates = (commandCandidates + monitorCandidates + asyncCandidates)
             .sortedWith(
                 compareBy<DeliveryCandidate> { it.occurredAt }
@@ -140,7 +142,7 @@ class BackgroundActivityCompletionApplicationService(
                 when (candidate) {
                     is DeliveryCandidate.Command -> buildSyntheticCommandPair(candidate.task, origin(candidate).messageSource())
                     is DeliveryCandidate.Monitor -> buildSyntheticMonitorPair(candidate.delivery, origin(candidate).messageSource())
-                    is DeliveryCandidate.Async -> listOf(checkNotNull(asyncTools).notification(candidate.operation))
+                    is DeliveryCandidate.Async -> checkNotNull(asyncTools).completionMessages(candidate.operation)
                 }
             },
         )

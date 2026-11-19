@@ -200,30 +200,39 @@ class PostgresAsyncToolOperationRepositoryTest {
         }
     }
 
-    @Test fun `V91 carries forward a valid V90 parent and child claim without changing the child wire`() = runBlocking<Unit> {
-        database(fenced = false) { f ->
-            val id = f.insertLegacyWorker()
-            f.applyClaimFencing()
-            val parent = assertNotNull(f.repository().find(AsyncToolOperation.Id(id)))
-            val child = assertNotNull(f.workerRepository().find(id))
-            assertEquals(1L, parent.claimGeneration)
-            assertEquals(parent.claimReference, child.asyncTool)
-            assertContentEquals("legacy-canonical-wire".encodeToByteArray(), child.request)
-            assertNull(f.repository().claim(parent.id, f.owner, checkNotNull(parent.leaseDeadline) + kotlin.time.Duration.parse("1s"),
-                checkNotNull(parent.leaseDeadline) + kotlin.time.Duration.parse("30s")))
+    @Test fun `fresh V90 schema starts unclaimed and rejects invalid claim generations`() = runBlocking<Unit> {
+        database { f ->
+            val admitted = f.repository().admit(AsyncToolOperation.Id("fresh-generation"), f.invocation, f.at)
+            assertEquals(0L, admitted.claimGeneration)
+            assertNull(admitted.claimReference)
+            for (generation in listOf(-1, 1)) {
+                assertFailsWith<java.sql.SQLException> {
+                    f.dataSource.connection.use { connection ->
+                        connection.prepareStatement("UPDATE async_tool_operations SET claim_generation=? WHERE id=?").use { statement ->
+                            statement.setLong(1, generation.toLong()); statement.setString(2, admitted.id.value)
+                            statement.executeUpdate()
+                        }
+                    }
+                }
+                assertEquals(0L, f.repository().find(admitted.id)?.claimGeneration)
+            }
         }
     }
 
-    @Test fun `V91 refuses inconsistent legacy child ownership without repairing it or partially migrating`() = runBlocking<Unit> {
-        database(fenced = false) { f ->
-            f.insertLegacyWorker()
-            f.dataSource.connection.use { c -> c.createStatement().use { it.executeUpdate("UPDATE worker_requests SET async_tool_json=jsonb_set(async_tool_json,'{executorSessionId}','\"another-owner\"'::jsonb)") } }
-            assertFailsWith<java.sql.SQLException> { f.applyClaimFencing() }
-            f.dataSource.connection.use { c -> c.createStatement().use { statement ->
-                statement.executeQuery("SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='async_tool_operations' AND column_name='claim_generation'").use { rows ->
-                    assertTrue(rows.next()); assertEquals(0, rows.getInt(1))
+    @Test fun `fresh V90 creates both claim fencing constraints without a data upgrade`() = runBlocking<Unit> {
+        database { f ->
+            f.dataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("""SELECT conname FROM pg_constraint c
+                        JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+                        WHERE n.nspname=current_schema() AND t.relname='async_tool_operations'
+                        AND conname IN ('async_tool_claim_generation_nonnegative','async_tool_claim_generation_owner')""").use { rows ->
+                        val names = mutableSetOf<String>()
+                        while (rows.next()) names += rows.getString(1)
+                        assertEquals(setOf("async_tool_claim_generation_nonnegative", "async_tool_claim_generation_owner"), names)
+                    }
                 }
-            } }
+            }
         }
     }
 
@@ -233,41 +242,6 @@ class PostgresAsyncToolOperationRepositoryTest {
         private val settings = Proxy.newProxyInstance(SettingsProvider::class.java.classLoader, arrayOf(SettingsProvider::class.java)) { _, method, _ ->
             check(method.name == "getHomeDirectory"); home
         } as SettingsProvider
-        fun applyClaimFencing() {
-            dataSource.connection.use { connection ->
-                connection.autoCommit = false
-                try {
-                    connection.createStatement().use { it.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V91__async_tool_claim_fencing.sql")).readText()) }
-                    connection.commit()
-                } catch (failure: Throwable) { connection.rollback(); throw failure }
-            }
-        }
-        fun insertLegacyWorker(): String {
-            val id = "legacy-operation"
-            val at = kotlin.time.Clock.System.now()
-            val cipher = SecretCipher(settings)
-            val input = cipher.encrypt(Json.encodeToString(AsyncToolInvocation.serializer(), workerInvocation(null)), "async-tool-invocation:$id")
-            val wire = cipher.encrypt(java.util.Base64.getEncoder().encodeToString("legacy-canonical-wire".encodeToByteArray()), "worker-request:worker:$id")
-            dataSource.connection.use { c ->
-                c.prepareStatement("""INSERT INTO async_tool_operations(id,actor_user_id,project_id,conversation_id,thread_id,agent_definition_id,source_task_id,source_call_id,
-                    worker_id,workspace_mount_id,invocation_ciphertext,invocation_nonce,invocation_version,phase,created_at,acknowledged_at,claimed_at,executor_session_id,lease_deadline,worker_request_created_at)
-                    VALUES (?,'actor','project','conversation','source-thread','agent','source-task','call','worker','mount',?,?,?,'CLAIMED',?,?,?,?,?,?)""").use { st ->
-                    st.setString(1,id); st.setString(2,input.ciphertext); st.setString(3,input.nonce); st.setInt(4,input.version)
-                    for (i in 5..7) st.setTimestamp(i,java.sql.Timestamp(at.toEpochMilliseconds()))
-                    st.setString(8,owner.value); st.setTimestamp(9,java.sql.Timestamp((at+kotlin.time.Duration.parse("30s")).toEpochMilliseconds()))
-                    st.setTimestamp(10,java.sql.Timestamp(at.toEpochMilliseconds())); assertEquals(1,st.executeUpdate())
-                }
-                c.prepareStatement("""INSERT INTO worker_requests(id,worker_id,actor_user_id,project_id,request_ciphertext,request_nonce,request_version,created_at,start_deadline,execution_deadline,async_tool_json)
-                    VALUES (?,'worker','actor','project',?,?,?,?,?,?,?::jsonb)""").use { st ->
-                    st.setString(1,id); st.setString(2,wire.ciphertext); st.setString(3,wire.nonce); st.setInt(4,wire.version)
-                    st.setTimestamp(5,java.sql.Timestamp(at.toEpochMilliseconds()))
-                    st.setTimestamp(6,java.sql.Timestamp((at+kotlin.time.Duration.parse("30s")).toEpochMilliseconds()))
-                    st.setTimestamp(7,java.sql.Timestamp((at+kotlin.time.Duration.parse("60s")).toEpochMilliseconds()))
-                    st.setString(8,buildJsonObject { put("operationId",id); put("executorSessionId",owner.value) }.toString()); assertEquals(1,st.executeUpdate())
-                }
-            }
-            return id
-        }
         fun repository() = PostgresAsyncToolOperationRepository(dataSource, SecretCipher(settings))
         fun workerRepository() = PostgresWorkerRequestRepository(dataSource, SecretCipher(settings))
         fun workerInvocation(slot: com.gromozeka.domain.slot.SlotCommandOrigin?): AsyncToolInvocation = invocation.copy(
@@ -287,7 +261,7 @@ class PostgresAsyncToolOperationRepositoryTest {
                 TOOL_CONTEXT_AGENT_DEFINITION_ID to origin.agentDefinitionId.value, "toolCallId" to origin.sourceToolCallId.value))
     }
 
-    private suspend fun database(fenced: Boolean = true, block: suspend (Fixture) -> Unit) {
+    private suspend fun database(block: suspend (Fixture) -> Unit) {
         org.junit.Assume.assumeTrue("Requires isolated PostgreSQL test configuration", System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
         fun source() = PGSimpleDataSource().apply {
             setURL(requireNotNull(System.getenv("GROMOZEKA_POSTGRES_URL")))
@@ -307,8 +281,7 @@ class PostgresAsyncToolOperationRepositoryTest {
                 s.execute("INSERT INTO workers VALUES ('worker','ACTIVE'),('other','ACTIVE')")
                 s.execute("INSERT INTO users VALUES ('actor')")
                 s.execute("INSERT INTO projects VALUES ('project')")
-                for (migration in listOf("V50__durable_worker_requests.sql", "V68__development_slots.sql", "V77__worker_request_retention.sql", "V90__async_tool_operations.sql") +
-                    if (fenced) listOf("V91__async_tool_claim_fencing.sql") else emptyList()) {
+                for (migration in listOf("V50__durable_worker_requests.sql", "V68__development_slots.sql", "V77__worker_request_retention.sql", "V90__async_tool_operations.sql")) {
                     s.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/$migration")).readText())
                 }
             } }

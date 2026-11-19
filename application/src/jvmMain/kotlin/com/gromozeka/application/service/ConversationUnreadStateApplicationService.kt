@@ -61,7 +61,6 @@ class ConversationUnreadStateApplicationService(
             is Conversation.Message.ContentItem.UserMessage,
             is Conversation.Message.ContentItem.VisualInteraction,
             is Conversation.Message.ContentItem.System,
-            is Conversation.Message.ContentItem.RuntimeNotification,
             is Conversation.Message.ContentItem.AssistantMessage,
             is Conversation.Message.ContentItem.ImageItem,
             is Conversation.Message.ContentItem.DocumentItem,

@@ -4,7 +4,6 @@
   "name": "繁體中文",
   "direction": "LTR",
   "messages": {
-    "chat.service.runtime": "Runtime 通知",
     "ai.connection.responses_streaming": "Responses 串流接收 (SSE)",
     "ai.connection.responses_streaming_description": "在應用程式內部接收串流；驗證和完整回覆保持不變。",
     "ai.connection.responses_stored_continuation": "使用供應商儲存的對話續接",
@@ -156,7 +155,6 @@
     "security.users.aiAllowed": "Allow AI requests",
     "agents.always_loaded_tools": "固定載入的工具，每行一個",
     "agents.available_prompts": "可用的提示詞",
-    "agents.budget_tokens": "詞元預算",
     "agents.cancel": "取消",
     "agents.catalog.description": "代理程式與提示詞是由伺服器管理的執行設定。技能則是匯入的套件。",
     "agents.catalog.empty": "此範圍內沒有代理程式",
@@ -336,8 +334,6 @@
     "ai.quota.refresh_interval_hint": "每次背景模型呼叫後，都需要取得最新額度快照",
     "ai.quota.reserve": "保護的預留額度（%）",
     "ai.quota.reserve_hint": "為前景工作保留此比例的訂閱額度",
-    "ai.reasoning.budget": "推理預算",
-    "ai.reasoning.budget_tokens": "推理詞元預算",
     "ai.reasoning.default": "預設推理設定",
     "ai.reasoning.display": "顯示方式",
     "ai.reasoning.display.full": "完整",
@@ -352,7 +348,6 @@
     "ai.reasoning.mode": "模式",
     "ai.reasoning.mode.adaptive": "自適應",
     "ai.reasoning.mode.disabled": "已停用",
-    "ai.reasoning.mode.token_budget": "詞元預算",
     "ai.response_format.json_schema": "JSON 結構描述",
     "ai.response_format.text": "文字",
     "ai.response_format.xml_inline": "文字中嵌入 XML",
@@ -1438,7 +1433,6 @@
     "session.runtime.enum.reasoningEffort.xhigh": "很高",
     "session.runtime.enum.reasoningMode.adaptive": "自適應",
     "session.runtime.enum.reasoningMode.disabled": "已停用",
-    "session.runtime.enum.reasoningMode.token_budget": "詞元預算",
     "session.runtime.enum.responseFormat.json_schema": "JSON 結構描述",
     "session.runtime.enum.responseFormat.text": "文字",
     "session.runtime.enum.responseFormat.xml_inline": "文字中嵌入 XML",
@@ -1485,7 +1479,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "自動精簡上下文：{count} 個詞元"
     },
-    "session.runtime.parameters.budget": "預算：{count}",
     "session.runtime.parameters.effort": "推理強度：{effort}",
     "session.runtime.parameters.maxOutput": "最大輸出：{count}",
     "session.runtime.parameters.mode": "模式：{mode}",

@@ -11,7 +11,6 @@ import com.gromozeka.presentation.services.translation.data.Translation
 internal fun AiReasoningMode.runtimeDisplayName(translation: Translation): String = translation.text(when (this) {
     AiReasoningMode.DISABLED -> "session.runtime.enum.reasoningMode.disabled"
     AiReasoningMode.ADAPTIVE -> "session.runtime.enum.reasoningMode.adaptive"
-    AiReasoningMode.TOKEN_BUDGET -> "session.runtime.enum.reasoningMode.token_budget"
 })
 
 internal fun AiReasoningEffort.runtimeDisplayName(translation: Translation): String = translation.text(when (this) {

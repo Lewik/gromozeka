@@ -234,9 +234,6 @@ internal class GitHubCopilotRuntime(
             "GitHub Copilot SDK does not expose a per-request maximum output token control"
         }
         val reasoning = request.options.reasoning ?: return
-        require(reasoning.mode != AiReasoningMode.TOKEN_BUDGET && reasoning.budgetTokens == null) {
-            "GitHub Copilot does not expose a fixed reasoning token budget"
-        }
         require(reasoning.mode != AiReasoningMode.DISABLED || reasoning.effort == null) {
             "GitHub Copilot disabled reasoning cannot be combined with reasoning effort"
         }
@@ -604,7 +601,6 @@ private class GitHubCopilotRequestMapper {
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
             is Conversation.Message.ContentItem.Thinking -> xmlBlock("thinking", item.thinking)
             is Conversation.Message.ContentItem.System -> xmlBlock("system", item.content)
-            is Conversation.Message.ContentItem.RuntimeNotification -> error("Runtime notifications must be projected before provider lowering")
             is Conversation.Message.ContentItem.ToolCall ->
                 "<tool_call id=\"${xmlEscape(item.id.value)}\" name=\"${xmlEscape(item.call.name)}\">" +
                     xmlEscape(item.call.input.toString()) +

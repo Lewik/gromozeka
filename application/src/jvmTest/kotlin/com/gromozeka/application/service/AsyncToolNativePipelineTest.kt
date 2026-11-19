@@ -43,17 +43,31 @@ class AsyncToolNativePipelineTest {
             assertEquals(1, insertions.size)
             val batch = f.completions.prepareBatch(f.conversation.id, sourceKey)
             assertFalse(batch.isEmpty)
-            val notification = batch.messages.single()
-            assertEquals(Conversation.Message.Role.RUNTIME_NOTIFICATION, notification.role)
-            assertTrue(notification.content.none { it is ContentItem.ToolResult || it is ContentItem.ToolCall })
-            val event = assertIs<ContentItem.RuntimeNotification>(notification.content.single())
-            assertEquals(accepted.invocation.origin.sourceToolCallId, event.toolUseId)
-            assertEquals(accepted.id.value, event.referenceId)
-            assertTrue(event.attachments.any { it is ContentItem.ToolResult.Data.Text && it.content == f.working.toString() })
+            assertEquals(2, batch.messages.size, "Async completion must be a canonical tool-call/result pair")
+            val completionCallMessage = batch.messages[0]
+            val completionResultMessage = batch.messages[1]
+            val completionCall = assertIs<ContentItem.ToolCall>(completionCallMessage.content.single())
+            val completionResult = assertIs<ContentItem.ToolResult>(completionResultMessage.content.single())
+            assertEquals(Conversation.Message.Role.ASSISTANT, completionCallMessage.role)
+            assertEquals(Conversation.Message.Role.USER, completionResultMessage.role)
+            assertIs<Conversation.Message.Author.Runtime>(completionCallMessage.author)
+            assertIs<Conversation.Message.Author.Runtime>(completionResultMessage.author)
+            assertNotEquals(accepted.invocation.origin.sourceToolCallId, completionCall.id)
+            assertEquals(completionCall.id, completionResult.toolUseId)
+            assertEquals(accepted.invocation.modelToolName, completionCall.call.name)
+            assertEquals(accepted.invocation.toolCall.call.input, completionCall.call.input)
+            assertEquals(f.operation().outcome?.content, completionResult.result,
+                "Completion must preserve the normal tool-result payload without an extra envelope")
+            assertFalse(completionResult.isError)
+            assertEquals("ASYNC_TOOL_COMPLETION", completionCallMessage.providerMetadata["syntheticKind"]?.jsonPrimitive?.content)
+            assertEquals(accepted.id.value, completionCallMessage.providerMetadata["asyncToolOperationId"]?.jsonPrimitive?.content)
+            assertEquals(completionCallMessage.providerMetadata, completionResultMessage.providerMetadata)
+            assertTrue(completionCallMessage.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
+                .single().text.let { accepted.id.value in it && accepted.invocation.origin.sourceToolCallId.value in it })
             assertEquals(f.working, f.operation().outcome?.structuredContent)
             assertEquals(AsyncToolOperation.Phase.SUCCEEDED, f.operation().phase)
             Mockito.verifyNoInteractions(f.workers)
-            f.messages += notification
+            f.messages += batch.messages
             val next = continuation.nextTask.copy(id = ConversationRuntimeTask.Id("next"), parentTaskId = continuation.nextTask.id,
                 idempotencyKey = "next", payload = ConversationRuntimeTask.Payload.LlmCall(f.root.id, f.agent.id, 2), requirements = f.requirements)
             assertTrue(f.coordinator.completeActiveTask(f.conversation.id, continuation.nextTask.id, f.executor,
@@ -61,6 +75,110 @@ class AsyncToolNativePipelineTest {
             assertNotNull(f.operation().projectedAt)
             assertTrue(f.completions.prepareBatch(f.conversation.id, sourceKey).isEmpty)
             assertEquals(1, f.messages.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>().count { it.toolUseId == f.call.id })
+        } finally { f.scope.cancel() }
+    }
+
+    @Test fun `async result is identical to ordinary sync output except for its new pairing ID`() = runBlocking {
+        val structured = buildJsonObject { put("answer", 42) }
+        val samples = listOf(
+            AiToolCallResult(listOf(AiToolResult.Text("Exact text body"))),
+            AiToolCallResult(listOf(AiToolResult.Text("Binary result"),
+                AiToolResult.Binary(byteArrayOf(0, 1, 2, 127), "output.bin", "application/octet-stream"))),
+            AiToolCallResult(listOf(AiToolResult.Text("Native body")), structuredContent = structured),
+            AiToolCallResult(structuredContent = structured),
+            AiToolCallResult(listOf(AiToolResult.Text("Original callback error")), isError = true),
+        )
+        for (sample in samples) {
+            val synchronous = Fixture(asynchronous = false, callbackResult = sample)
+            val asynchronous = Fixture(callbackResult = sample)
+            try {
+                synchronous.begin(); synchronous.executeSource()
+                assertTrue(synchronous.store.records.isEmpty())
+                val expected = assertIs<ContentItem.ToolResult>(synchronous.messages.last().content.single())
+                asynchronous.begin(); asynchronous.executeSource()
+                asynchronous.operations.reconcile(asynchronous.scope); asynchronous.awaitTerminal()
+                val operation = asynchronous.operation()
+                val batch = asynchronous.completions.prepareBatch(asynchronous.conversation.id, operation.notificationSourceKey())
+                val actual = assertIs<ContentItem.ToolResult>(batch.messages.last().content.single())
+                assertNotEquals(asynchronous.call.id, actual.toolUseId)
+                assertEquals(expected.copy(toolUseId = actual.toolUseId), actual,
+                    "Async delivery must not add a result envelope, structured-output prefix, or alter callback bytes/error fields")
+                assertEquals(1, synchronous.effects.get())
+                assertEquals(1, asynchronous.effects.get())
+            } finally {
+                synchronous.scope.cancel(); asynchronous.scope.cancel()
+            }
+        }
+    }
+
+    @Test fun `engine rejects preoccupied completion IDs without consuming delivery or repeating callbacks`() = runBlocking {
+        for (collision in 0..4) {
+            val f = Fixture(continueAfterCompletion = false, callbackResult = AiToolCallResult(listOf(
+                AiToolResult.Text("actual body"), AiToolResult.Binary(byteArrayOf(0, 1, 2, 127), "result.bin", "application/octet-stream"))))
+            try {
+                f.persistCompletionArtifacts = true
+                f.finishSourceAtIdleForBackground()
+                val operation = f.operation()
+                val pair = f.completions.prepareBatch(f.conversation.id, operation.notificationSourceKey()).messages
+                fun clientMessage(id: Conversation.Message.Id, block: ContentItem) = f.root.copy(id = id,
+                    instructions = emptyList(), content = listOf(block), author = null).attributeAuthenticatedSubmission(f.user)
+                val fakeResult = clientMessage(pair[1].id, ContentItem.UserMessage("ordinary client input"))
+                val call = assertIs<ContentItem.ToolCall>(pair[0].content.single())
+                val fakeCall = clientMessage(pair[0].id, call.copy(call = call.call.copy(input = buildJsonObject { put("wrong", true) })))
+                val stored = when (collision) {
+                    0 -> listOf(fakeResult)
+                    1 -> listOf(fakeCall)
+                    2 -> listOf(fakeCall, fakeResult)
+                    3 -> listOf(pair[0], pair[1].copy(content = listOf(f.persistedResult(
+                        assertIs<ContentItem.ToolResult>(pair[1].content.single())).copy(result = listOf(ContentItem.ToolResult.Data.Text("altered saved body"))))))
+                    else -> {
+                        val legacyId = ContentItem.ToolCall.Id("async-tool:${operation.id.value}:completion")
+                        assertEquals(call.id, syntheticToolCallId(legacyId.value))
+                        listOf(pair[0].copy(content = listOf(call.copy(id = legacyId))))
+                    }
+                }
+                f.messages += stored
+                val before = f.messages.toList()
+                val background = f.claimBackground()
+                val failure = runCatching {
+                    val outcome = f.backgroundEngine.runRuntimeTask(background, f.executor) {}
+                    assertTrue(f.coordinator.completeActiveTask(f.conversation.id, background.id, f.executor, outcome))
+                }.exceptionOrNull()
+                assertIs<IllegalArgumentException>(failure,
+                    "Collision $collision must fail before delivery ACK; projectedAt=${f.operation().projectedAt}")
+                assertTrue(failure.message.orEmpty().contains("Message id collision"))
+                assertEquals(before, f.messages)
+                assertNull(f.operation().projectedAt)
+                assertNotNull(f.operation().outcome)
+                f.operations.reconcile(f.scope)
+                assertEquals(1, f.effects.get())
+            } finally { f.scope.cancel() }
+        }
+    }
+
+    @Test fun `engine recovers an appended canonical artifact pair after lost ACK without executing it again`() = runBlocking {
+        val f = Fixture(continueAfterCompletion = false, callbackResult = AiToolCallResult(listOf(
+            AiToolResult.Text("actual body"), AiToolResult.Binary(byteArrayOf(0, 1, 2, 127), "result.bin", "application/octet-stream"))))
+        try {
+            f.persistCompletionArtifacts = true
+            f.finishSourceAtIdleForBackground()
+            val pair = f.completions.prepareBatch(f.conversation.id, f.operation().notificationSourceKey()).messages
+            val background = f.claimBackground()
+            f.failAfterCompletionAppend = true
+            val lost = assertFailsWith<IllegalStateException> { f.backgroundEngine.runRuntimeTask(background, f.executor) {} }
+            assertEquals("Lost completion append acknowledgement", lost.message)
+            assertNull(f.operation().projectedAt)
+            val appended = f.messages.filter { message -> pair.any { it.id == message.id } }
+            assertEquals(2, appended.size)
+            assertIs<ContentItem.ToolResult.Data.ArtifactData>(assertIs<ContentItem.ToolResult>(appended.last().content.single()).result.last())
+            f.failAfterCompletionAppend = false
+            val outcome = f.backgroundEngine.runRuntimeTask(background, f.executor) {}
+            assertTrue(f.coordinator.completeActiveTask(f.conversation.id, background.id, f.executor, outcome))
+            assertNotNull(f.operation().projectedAt)
+            assertEquals(appended, f.messages.filter { message -> pair.any { it.id == message.id } })
+            assertContentEquals(byteArrayOf(0, 1, 2, 127), f.persistedArtifactBytes.values.single())
+            f.operations.reconcile(f.scope)
+            assertEquals(1, f.effects.get())
         } finally { f.scope.cancel() }
     }
 
@@ -159,7 +277,13 @@ class AsyncToolNativePipelineTest {
         }
     }
 
-    private class Fixture(val reject: Boolean = false, val inlineOnly: Boolean = false) {
+    private class Fixture(
+        val reject: Boolean = false,
+        val inlineOnly: Boolean = false,
+        val asynchronous: Boolean = true,
+        val callbackResult: AiToolCallResult? = null,
+        val continueAfterCompletion: Boolean = true,
+    ) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val now = Clock.System.now()
         var user = User(User.Id("actor"), displayName = "Actor", status = User.Status.ACTIVE, createdAt = now, updatedAt = now)
@@ -191,7 +315,7 @@ class AsyncToolNativePipelineTest {
                 assertEquals(JsonObject(emptyMap()), Json.parseToJsonElement(toolInput))
                 observedOrigin = context?.asyncOrigin
                 effects.incrementAndGet()
-                return AiToolCallResult(listOf(AiToolResult.Text(working.toString())), structuredContent = working)
+                return callbackResult ?: AiToolCallResult(listOf(AiToolResult.Text(working.toString())), structuredContent = working)
             }
         }
         private val provider = object : AiToolProvider { override fun getTools() = listOf(callback) }
@@ -239,23 +363,65 @@ class AsyncToolNativePipelineTest {
         val operations = AsyncToolOperationService(store, admission, outcomes, parallel, workers, historyStore, conversations, secrets,
             ConversationRuntimeExecutorDescriptor(executor, requirements.capabilities))
         var failAfterAppend = false
+        var failAfterCompletionAppend = false
+        var persistCompletionArtifacts = false
+        val persistedArtifactBytes = mutableMapOf<Artifact.Id, ByteArray>()
+        val validatedBatches = mutableListOf<List<Conversation.Message>>()
         private val appender = object : ConversationRuntimeMessageAppender {
-            override suspend fun appendRuntimeMessages(conversationId: Conversation.Id, messages: List<Conversation.Message>) = error("Only one source result")
+            override suspend fun appendRuntimeMessages(conversationId: Conversation.Id, messages: List<Conversation.Message>): List<Conversation.Message> {
+                require(messages.all { it.conversationId == conversationId })
+                require(messages.map { it.id }.distinct().size == messages.size)
+                validatedBatches += messages
+                messages.forEach { message ->
+                    val existing = this@Fixture.messages.firstOrNull { it.id == message.id }
+                    require(existing?.samePersistentBodyAs(message) != false) { "Message id collision with different content" }
+                }
+                val added = messages.filter { message -> this@Fixture.messages.none { it.id == message.id } }
+                this@Fixture.messages += added
+                if (failAfterCompletionAppend) throw IllegalStateException("Lost completion append acknowledgement")
+                return added
+            }
             override suspend fun appendRuntimeMessage(conversationId: Conversation.Id, message: Conversation.Message): Conversation {
                 this@Fixture.messages += message
                 if (failAfterAppend) throw IllegalStateException("Lost source append acknowledgement")
                 return conversation
             }
         }
+        fun persistedResult(result: ContentItem.ToolResult): ContentItem.ToolResult = if (!persistCompletionArtifacts) result else result.copy(
+            result = result.result.map { data ->
+                if (data !is ContentItem.ToolResult.Data.Base64Data) data else {
+                    val bytes = java.util.Base64.getDecoder().decode(data.data)
+                    val id = Artifact.Id(java.util.UUID.nameUUIDFromBytes(
+                        "${result.toolUseId.value}:${data.fileName}:${data.data}".encodeToByteArray()).toString())
+                    persistedArtifactBytes[id] = bytes
+                    ContentItem.ToolResult.Data.ArtifactData(Artifact.Reference(id, data.fileName ?: "output.bin", data.mediaType.value,
+                        bytes.size.toLong(), Artifact.Purpose.TOOL_OUTPUT, Artifact.Kind.fromMediaType(data.mediaType.value)))
+                }
+            })
         private val artifacts = responding<ConversationArtifactApplicationService> {
-            check(it.method.name.substringBefore('-') == "persistAndCommitToolResults"); it.arguments[2]
+            check(it.method.name.substringBefore('-') == "persistAndCommitToolResults")
+            @Suppress("UNCHECKED_CAST")
+            (it.arguments[2] as List<ContentItem.ToolResult>).map(::persistedResult)
         }
         private val source = ConversationToolExecutionTaskService(conversations, history, appender, workspaces, coordinator, mock(), parallel,
             workerAccess, mock(), mock(), artifacts, secrets, admission, operations)
         val dispatcher = ConversationRuntimeDispatcher(coordinator, InMemoryConversationRuntimeEventBus(), mock(), ArtifactReferenceValidator { _, _ -> })
         val completions = BackgroundActivityCompletionApplicationService(coordinator,
             responding<BackgroundActivityOriginRepository> { emptyMap<BackgroundActivityOrigin.Key, BackgroundActivityOrigin>() },
-            BackgroundActivityContinuationPolicy { _, _ -> true }, operations)
+            BackgroundActivityContinuationPolicy { _, _ -> continueAfterCompletion }, operations)
+        val backgroundEngine = ConversationEngineService(
+            aiRuntimeProvider = mock(), aiToolProvider = provider, agentDomainService = agents, agentPromptAssemblyService = mock(),
+            toolApprovalService = approvals, toolExecutionTaskService = source, conversationService = conversations,
+            conversationHistory = history, contextHistory = mock(), conversationMessageAppender = appender,
+            historyMutationExecutor = mock(), compactions = mock(), memoryApplicationService = mock(), memoryToolApplicationService = mock(),
+            backgroundActivityCompletionApplicationService = completions, memoryMessageRoutingApplicationService = mock(),
+            toolCallSequenceFixerService = mock(), settingsProvider = mock(), aiConfigurationProvider = mock(), runtimeCoordinator = coordinator,
+            runtimeStateSyncService = mock(), distributedToolCatalog = catalog, agentSkillRuntimeCatalogService = mock(),
+            aiToolRuntimeCatalogService = mock(), aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(), artifactService = artifacts,
+            activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
+            stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = mock(),
+            suggestedRepliesGenerationService = mock(), conversationPins = mock(),
+        )
         lateinit var task: ConversationRuntimeTask
         lateinit var call: ContentItem.ToolCall
         lateinit var catalogEntry: DistributedAiTool
@@ -265,7 +431,7 @@ class AsyncToolNativePipelineTest {
             Mockito.`when`(registry.list()).thenReturn(emptyList())
             catalogEntry = catalog.snapshot(project, agent.toolAccess, conversation).entries.values.single()
             call = ContentItem.ToolCall(ContentItem.ToolCall.Id("call"), ContentItem.ToolCall.Data(catalogEntry.modelName,
-                buildJsonObject { put("_grz", buildJsonObject { put("async", true); extra?.let { put(it, "forged") } }) }))
+                buildJsonObject { put("_grz", buildJsonObject { put("async", asynchronous); extra?.let { put(it, "forged") } }) }))
             val rootTask = ConversationRuntimeTask(ConversationRuntimeTask.Id("root-task"), conversation.id, actorUserId = user.id,
                 payload = ConversationRuntimeTask.Payload.AgentInvocation(root, agent.id), placement = QueuedMessagePlacement.END_OF_TURN,
                 idempotencyKey = "root-task", requirements = requirements, createdAt = now)
@@ -275,6 +441,21 @@ class AsyncToolNativePipelineTest {
                     mapOf(call.id.value to ConversationRuntimeTaskTarget.Server), mapOf(call.id.value to catalogEntry.executionName)))
             assertTrue(coordinator.completeActiveTask(conversation.id, rootTask.id, executor, ConversationRuntimeTaskOutcome.Continue(task)))
             claim(task)
+        }
+        suspend fun finishSourceAtIdleForBackground() {
+            begin()
+            messages += Conversation.Message(Conversation.Message.Id("source-call-message"), conversation.id,
+                role = Conversation.Message.Role.ASSISTANT, author = Conversation.Message.Author.Agent(agent.id, "Agent"),
+                content = listOf(call), createdAt = now)
+            executeSource(); operations.reconcile(scope); awaitTerminal()
+            assertTrue(coordinator.completeActiveTask(conversation.id, task.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+        }
+        suspend fun claimBackground(): ConversationRuntimeTask {
+            val background = ConversationRuntimeTask(ConversationRuntimeTask.Id("background"), conversation.id,
+                actorUserId = user.id, payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(operation().notificationSourceKey(), agent.id),
+                placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "background", requirements = requirements, createdAt = now)
+            assertTrue(coordinator.submitBackgroundActivity(background, agent.id)); claim(background)
+            return background
         }
         suspend fun claim(task: ConversationRuntimeTask) {
             assertNotNull(coordinator.claimDeliveredTask(task.conversationId, task.id, executor, requirements.capabilities, emptySet()))

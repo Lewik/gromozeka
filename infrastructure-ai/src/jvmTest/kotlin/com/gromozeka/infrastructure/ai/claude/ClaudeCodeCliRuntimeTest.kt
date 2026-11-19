@@ -602,7 +602,6 @@ class ClaudeCodeCliRuntimeTest {
         val runtime = runtime(executor)
 
         listOf(
-            AiReasoningConfig(mode = AiReasoningMode.TOKEN_BUDGET, budgetTokens = 16_000),
             AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE, display = AiReasoningDisplay.FULL),
             AiReasoningConfig(mode = AiReasoningMode.DISABLED, effort = AiReasoningEffort.XHIGH),
         ).forEach { reasoning ->

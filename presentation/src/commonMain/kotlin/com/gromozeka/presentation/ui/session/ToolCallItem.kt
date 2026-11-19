@@ -222,139 +222,131 @@ internal fun ToolCallItem(
 
                     if (toolResult != null) Spacer(modifier = Modifier.height(8.dp))
 
-                    ToolResultContent(toolResult?.result.orEmpty(), loadArtifactContent)
+                    // Show result content - now it's a list of Data items
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        toolResult?.result.orEmpty().forEach { dataItem ->
+                            when (dataItem) {
+                                is Conversation.Message.ContentItem.ToolResult.Data.Text -> {
+                                    val prettyJsonContent = remember(dataItem.content) {
+                                        val firstNonWhitespace = dataItem.content.firstOrNull { !it.isWhitespace() }
+                                        if (firstNonWhitespace == '{' || firstNonWhitespace == '[') {
+                                            jsonPrettyPrintOrNull(dataItem.content)
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                    val displayText = truncateText(
+                                        text = prettyJsonContent ?: dataItem.content,
+                                        localization = localization,
+                                        maxLines = if (prettyJsonContent == null) 5 else 40,
+                                    )
+                                    Text(
+                                        text = displayText,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        style = if (prettyJsonContent == null) {
+                                            MaterialTheme.typography.bodySmall
+                                        } else {
+                                            MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                                        },
+                                    )
+                                }
+
+                                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> {
+                                    when {
+                                        dataItem.mediaType.type == "image" -> {
+                                                // Base64 image - show placeholder with truncation
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Image,
+                                                        contentDescription = localization.text("chat.attachment.image")
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = localization.format("imageDisplayText", dataItem.mediaType.value, dataItem.data.length),
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+
+                                            else -> {
+                                                // Non-image Base64 data - show truncated version
+                                                val truncated = if (dataItem.data.length > 100) {
+                                                    localization.plural("chat.tool.dataTruncation", (dataItem.data.length - 100).toLong(),
+                                                        "prefix" to dataItem.data.take(50), "suffix" to dataItem.data.takeLast(50))
+                                                } else {
+                                                    dataItem.data
+                                                }
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Description,
+                                                        contentDescription = localization.text("chat.attachment.document")
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = "[${dataItem.mediaType.value}] $truncated",
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Link,
+                                                contentDescription = localization.text("chat.attachment.url")
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "${dataItem.url}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+
+                                    is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    if (dataItem.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
+                                                        Icons.Default.Image
+                                                    } else {
+                                                        Icons.Default.Folder
+                                                    },
+                                                    contentDescription = localization.text("chat.attachment.file")
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "${dataItem.artifact.fileName} (${dataItem.artifact.mediaType})",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            if (dataItem.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
+                                                ArtifactImagePreview(dataItem.artifact, loadArtifactContent)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                 }
             }
         }
     }
-}
-
-@Composable
-internal fun ToolResultContent(
-    result: List<Conversation.Message.ContentItem.ToolResult.Data>,
-    loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
-) {
-    val localization = LocalTranslation.current
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        result.forEach { dataItem ->
-            when (dataItem) {
-                is Conversation.Message.ContentItem.ToolResult.Data.Text -> {
-                    val prettyJsonContent = remember(dataItem.content) {
-                        val firstNonWhitespace = dataItem.content.firstOrNull { !it.isWhitespace() }
-                        if (firstNonWhitespace == '{' || firstNonWhitespace == '[') {
-                            jsonPrettyPrintOrNull(dataItem.content)
-                        } else {
-                            null
-                        }
-                    }
-                    val displayText = truncateText(
-                        text = prettyJsonContent ?: dataItem.content,
-                        localization = localization,
-                        maxLines = if (prettyJsonContent == null) 5 else 40,
-                    )
-                    Text(
-                        text = displayText,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = if (prettyJsonContent == null) {
-                            MaterialTheme.typography.bodySmall
-                        } else {
-                            MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
-                        },
-                    )
-                }
-
-                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> {
-                    when {
-                        dataItem.mediaType.type == "image" -> {
-                                // Base64 image - show placeholder with truncation
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(
-                                        Icons.Default.Image,
-                                        contentDescription = localization.text("chat.attachment.image")
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = localization.format("imageDisplayText", dataItem.mediaType.value, dataItem.data.length),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-
-                            else -> {
-                                // Non-image Base64 data - show truncated version
-                                val truncated = if (dataItem.data.length > 100) {
-                                    localization.plural("chat.tool.dataTruncation", (dataItem.data.length - 100).toLong(),
-                                        "prefix" to dataItem.data.take(50), "suffix" to dataItem.data.takeLast(50))
-                                } else {
-                                    dataItem.data
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(
-                                        Icons.Default.Description,
-                                        contentDescription = localization.text("chat.attachment.document")
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "[${dataItem.mediaType.value}] $truncated",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Link,
-                                contentDescription = localization.text("chat.attachment.url")
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${dataItem.url}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-
-                    is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    if (dataItem.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
-                                        Icons.Default.Image
-                                    } else {
-                                        Icons.Default.Folder
-                                    },
-                                    contentDescription = localization.text("chat.attachment.file")
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${dataItem.artifact.fileName} (${dataItem.artifact.mediaType})",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            if (dataItem.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
-                                ArtifactImagePreview(dataItem.artifact, loadArtifactContent)
-                            }
-                        }
-                    }
-                }
-            }
-        }
 }

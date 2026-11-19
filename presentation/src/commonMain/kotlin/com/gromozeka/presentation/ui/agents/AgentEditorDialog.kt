@@ -105,9 +105,6 @@ fun AgentEditorDialog(
     var reasoningMode by remember { mutableStateOf(initialOverrides.reasoning?.mode) }
     var reasoningEffort by remember { mutableStateOf(initialOverrides.reasoning?.effort) }
     var reasoningDisplay by remember { mutableStateOf(initialOverrides.reasoning?.display) }
-    var reasoningBudget by remember {
-        mutableStateOf(initialOverrides.reasoning?.budgetTokens?.toString().orEmpty())
-    }
     var toolsText by remember {
         mutableStateOf((agent?.tools?.names ?: template?.tools.orEmpty()).joinToString("\n"))
     }
@@ -322,13 +319,6 @@ fun AgentEditorDialog(
                     AgentNullableEnumDropdown(translation.text("ai.reasoning.display"), reasoningDisplay, AiReasoningDisplay.entries, { it.aiLabel(translation) }) {
                         reasoningDisplay = it
                     }
-                    OutlinedTextField(
-                        value = reasoningBudget,
-                        onValueChange = { reasoningBudget = it },
-                        label = { Text(translation.text("agents.budget_tokens")) },
-                        singleLine = true,
-                        modifier = Modifier.width(160.dp),
-                    )
                 }
                 OutlinedTextField(
                     value = toolsText,
@@ -361,14 +351,12 @@ fun AgentEditorDialog(
                             val reasoning = if (
                                 reasoningMode != null ||
                                 reasoningEffort != null ||
-                                reasoningDisplay != null ||
-                                reasoningBudget.isNotBlank()
+                                reasoningDisplay != null
                             ) {
                                 AiReasoningConfig(
                                     mode = reasoningMode,
                                     effort = reasoningEffort,
                                     display = reasoningDisplay,
-                                    budgetTokens = reasoningBudget.optionalPositiveInt(translation.text("ai.reasoning.budget"), translation),
                                 )
                             } else {
                                 null

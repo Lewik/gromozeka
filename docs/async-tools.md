@@ -11,23 +11,44 @@ tool call. Omitting it, or using `false`, preserves ordinary execution.
 
 The source tool result is an `ACCEPTED` receipt with `operation_id`. This reports
 that the invocation was durably saved, **not** that its action succeeded or even
-started. It closes the original tool-call/result pair.
+started. Its pairing ID is the original model call ID, and it closes that pair.
+Execution waits for this receipt in the original persisted history thread.
 
-Execution waits for the receipt to exist in the original persisted history
-thread. A completion is a Runtime-authored `RUNTIME_NOTIFICATION` with the same
-operation ID and related original tool-call ID. It is never another tool result
-for that original call. Native provider projection lowers the notification into
-an explicitly labelled, untrusted user-data envelope after attachment
-materialization; it is not a system/developer instruction or a user permission.
+The final outcome is stored in canonical history as two ordinary messages:
+
+1. An assistant-role synthetic `ToolCall` with a new, stable pairing ID.
+2. A user-role `ToolResult` using that new ID and the original callback output.
+
+Both messages are Runtime-authored and marked `ASYNC_TOOL_COMPLETION`. Their
+metadata preserves the operation ID and original source call/agent. The call uses
+the captured model tool name and captured arguments, including secret references,
+not newly resolved credentials or arguments reconstructed from the current
+catalog. A Runtime observation explicitly tells the model that this is a record
+of an earlier invocation, not a new execution. The synthetic call is never sent
+to the executor; callback execution, Worker RPC and approval proof remain bound
+to the original call.
+
+The final `ToolResult` follows the ordinary result path, preserving text, media,
+error/state and execution-tool identity. Structured-only callbacks use the same
+normal fallback as synchronous calls; completion does not add another result
+envelope or structured-output summary. Existing artifact persistence is shared
+with synchronous results, rather than a special async file transport.
+
+The two call IDs must differ. Each pair must match internally. New completion
+IDs are portable from creation and are not repaired using legacy normalization.
+The pair is appended atomically, and an existing ID alone is not proof of
+previous delivery: replay validates both complete canonical bodies after output
+artifact persistence. A body/provenance collision fails before delivery ACK.
 
 The invocation finishes when its tool callback returns. A tool that itself
 returns a managed-command, monitor, memory-run or other pending receipt retains
-that underlying resource's existing lifecycle. Generic async does not implicitly
-poll or await the nested resource.
+that underlying resource's existing lifecycle. For example, an async invocation
+may succeed with a `WORKING` command receipt while the command remains active.
+Generic async does not implicitly poll or await the nested resource.
 
-Use `grz_async_tool_get(operation_id)` to inspect the durable status/outcome and
+Use `grz_async_tool_get(operation_id)` to inspect durable status/outcome and
 `grz_async_tool_cancel(operation_id)` to request cancellation. Neither retrieving
-nor cancelling an operation is permission to repeat its original action.
+nor cancelling an operation permits repeating its original action.
 
 ## Identity, authorization and unsupported contracts
 
@@ -35,8 +56,8 @@ The authenticated actor, project, conversation, source thread, agent, channel,
 source task/call, exact tool revision, Worker/mount/root and slot lease are captured
 by Server. `_grz` selectors cannot supply or override that authority. Admission
 and execution retain resource/tool authorization and approval. Approval reuse is
-an internal proof bound to the exact callback fingerprint and call ID, not an
-argument-controlled boolean.
+an internal proof bound to the exact callback fingerprint and original call ID,
+not an argument-controlled boolean or the synthetic completion call.
 
 Deduplication uses the original conversation/task/call identity. Thread and actor
 are immutable captured values, not additional ways to create a second operation
@@ -49,6 +70,10 @@ If the original destination is no longer eligible, the outcome remains in the
 invocation store for authorized inspection; it is not silently posted to another
 branch or agent.
 
+Clients cannot submit Runtime authorship, async-completion provenance or typed
+Runtime observations. Both stored completion messages are protected from client
+history edits. A synthetic metadata marker by itself is not trusted authorship.
+
 The current stateless external MCP/SDK HTTP entry point creates a fresh call ID
 and has no durable source model pair/ACK identity. It explicitly rejects async
 with `async_origin_required` before effects. This is an entry-point constraint,
@@ -56,11 +81,11 @@ not an allowlist of tool names. SDK `await`/`gather` and the managed Python proc
 lifecycle remain separate features.
 
 A callback may declare an inline-only reason for an objectively invocation-bound
-effect. Secret revelation is such a contract: it injects a secret into the
-immediate next model request. Detaching it could expose it at another boundary,
-so async is rejected explicitly rather than being executed inline as a fallback.
+effect. Secret revelation injects a secret into the immediate next model request,
+so detaching it is rejected explicitly instead of falling back to inline execution.
 Provider-hosted native tools are not Harness callbacks and do not acquire this
-flag merely because their provider calls them tools.
+flag merely because their provider calls them tools. This mechanism is also
+separate from a provider's native async-tool API.
 
 ## Recovery and cancellation
 
@@ -68,56 +93,54 @@ Invocations and outcomes use the existing Server secret cipher. Operation state
 separates `ACCEPTED`, `ACKNOWLEDGED`, `CLAIMED`, `RUNNING` and terminal outcomes.
 Claim recovery is fenced by the exact executor session, durable claim generation
 and lease. The atomic claim update returns its own grant; delayed preparation,
-secret resolution and cancellation cannot finalize or cancel a replacement
-claim, including a later claim by the same Server session. Start, renewal and
-terminal updates compare that generation. Worker-child creation fences further
-reclaim, and a stale pre-child observation cannot finalize a now-linked parent. A lost running
-Server callback becomes `OUTCOME_UNKNOWN`; recovery does not invoke it again.
+secret resolution and cancellation cannot finalize or cancel a replacement claim,
+including a later claim by the same Server session. Start, renewal and terminal
+updates compare that generation. Worker-child creation fences further reclaim,
+and a stale pre-child observation cannot finalize a now-linked parent. A lost
+running Server callback becomes `OUTCOME_UNKNOWN`; recovery never invokes it again.
 
 Worker execution reuses WorkerRequest delivery and its durable Worker journal.
 Its child request ID is the operation ID. Creation records a parent tombstone in
 the same transaction: a missing once-created child cannot be recreated after
-retention/reconnect. Canonical responses are projected into the operation before
-the WorkerRequest projection/retention acknowledgement advances. A late success
-cannot replace an already committed unknown outcome.
+retention/reconnect. Canonical responses are copied into the operation before
+WorkerRequest projection/retention ACK advances. A late success cannot replace an
+already committed unknown outcome.
 
 Cancellation before execution can report `CANCELLED`. Once effects may have
-started, cancellation is best-effort and does not imply rollback. Server running
-callback loss/cancellation without a definitive result is unknown, not proof of
-failure without effects.
+started, cancellation is best-effort and does not imply rollback. An unknown
+outcome explicitly warns that effects may have occurred and the action must not
+be repeated automatically. Successful callback bodies do not receive a status or
+warning prefix.
 
 Turn completion/STOP do not become implicit rollback or cancellation of accepted
 background work. The existing unrestricted conversation INTERRUPT also requests
 cancellation of async operations; an expected-turn-only interrupt does not gain
 that broader meaning. Explicit per-operation cancellation remains available.
 
-Background notification batching and its delivery acknowledgement reuse the
-existing coordinator transaction and continuation. Existing SYSTEM notifications
-and managed command/monitor synthetic-pair paths remain unchanged where generic
-async does not own their result.
+Completion batching and its delivery ACK reuse the existing coordinator
+transaction and continuation. Existing SYSTEM messages and command/monitor/memory
+synthetic pairs retain their established semantics.
 
-## Compatibility and integration with typed events
+## Clean schema and coordinated upgrade
 
-Worker Gateway protocol **35** is required for the new invocation metadata,
-revision-bound approval proof and serialized runtime notification. Upgrade Server,
-Workers and clients to compatible builds. This document does not authorize a
-release or deployment.
+This implementation deliberately does not read or migrate the former generic
+async Runtime-notification format. Installing it over an instance that ran that
+format requires the agreed restoration of a backup taken **before 6.6.0**, or a
+fresh database. Do not bypass Flyway validation or mark an incompatible schema as
+repaired to avoid that restoration.
 
-This feature includes only the RuntimeNotification subset of the typed-events
-work at commit `179ff1730d28d5925e21d88425b00b70b8f0d74a` (PR #202). It preserves
-the agreed type/role/fields and late provider-envelope model. It does not include
-PEER, PROMPT, VISUAL_UPDATED, immutable turn-prompt binding or migration of legacy
-SYSTEM records. The async storage migrations follow the actual main migration
-sequence (`V90` after main's V88/V89, then `V91` for durable claim generations).
-V91 carries forward valid V90 parent/child claims without changing canonical
-Worker request bytes; inconsistent legacy ownership fails explicitly instead of
-being repaired by guessing. Claim generations and the child claim reference are
-Server-private storage metadata; the Worker wire protocol remains 35.
+The pre-existing migrations through V89 remain intact. V89 types provenance of
+real command/monitor/memory messages; it is not a migration of generic async
+notifications. V90 creates async storage with claim generations and both fencing
+constraints from the outset. There is no upgrade step for old async rows.
 
-When integrating the complete typed-events change, reconcile the shared
-RuntimeNotification/Runtime author, output artifact support and common service
-projection; retain the added `TOOL_COMPLETED` kind. Extend that same model instead
-of introducing a second notification format. Renumber the older typed-events
-migration against the then-current main. Separately preserve the existing
-maintenance boundary: ApplyPreparedCompaction must validate scope without
-requiring or creating a new agent-turn PROMPT binding.
+Worker Gateway protocol **36** is required because the serialized history variants
+changed. Upgrade Server, Workers and clients to compatible builds. Schema tests
+and native request serialization tests are distinct from live-provider acceptance,
+including provider-specific reasoning/signature constraints. This document does
+not itself authorize release, restoration or deployment.
+
+The separate typed-events work in PR #202 is not included. A future integration
+must respect this canonical tool-pair contract instead of reinstating a parallel
+async notification format. Its immutable agent-turn prompt binding must also
+remain separate from the existing `ApplyPreparedCompaction` maintenance boundary.

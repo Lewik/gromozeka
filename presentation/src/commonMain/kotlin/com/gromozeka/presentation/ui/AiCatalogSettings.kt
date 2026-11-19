@@ -1731,9 +1731,6 @@ private fun ModelConfigurationDialog(
     var reasoningMode by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.mode) }
     var reasoningEffort by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.effort) }
     var reasoningDisplay by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.display) }
-    var reasoningBudget by remember {
-        mutableStateOf(existing?.defaultParameters?.reasoning?.budgetTokens?.toString().orEmpty())
-    }
     var error by remember(translation) { mutableStateOf<String?>(null) }
     val selectedConnection = connections.firstOrNull { it.id == connectionId }
     val selectedModelSpec = modelSpecs.firstOrNull {
@@ -1925,12 +1922,6 @@ private fun ModelConfigurationDialog(
                         onSelect = { reasoningDisplay = it },
                     )
                 }
-                OptionalNumberField(
-                    value = reasoningBudget,
-                    onValueChange = { reasoningBudget = it },
-                    label = translation.text("ai.reasoning.budget_tokens"),
-                    modifier = Modifier.fillMaxWidth(),
-                )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
@@ -1943,14 +1934,12 @@ private fun ModelConfigurationDialog(
                     val reasoning = if (
                         reasoningMode != null ||
                         reasoningEffort != null ||
-                        reasoningDisplay != null ||
-                        reasoningBudget.isNotBlank()
+                        reasoningDisplay != null
                     ) {
                         AiReasoningConfig(
                             mode = reasoningMode,
                             effort = reasoningEffort,
                             display = reasoningDisplay,
-                            budgetTokens = reasoningBudget.optionalInt(translation.text("ai.reasoning.budget"), translation),
                         )
                     } else {
                         null

@@ -52,7 +52,8 @@ class AsyncWorkerResultProjector(
                 "Async Worker tool result does not match its source call"
             }
             outcome = AsyncToolOutcome(result.result, execution.structuredContentByCallId[result.toolUseId.value], result.isError,
-                failureCode = "TOOL_ERROR".takeIf { result.isError })
+                failureCode = "TOOL_ERROR".takeIf { result.isError }, state = result.state,
+                executionToolName = result.executionToolName)
             phase = if (result.isError) Phase.FAILED else Phase.SUCCEEDED
         } else {
             phase = when {
@@ -60,9 +61,15 @@ class AsyncWorkerResultProjector(
                 response.errorCode == "CANCELLED" -> Phase.CANCELLED
                 else -> Phase.FAILED
             }
+            val reportedMessage = requireNotNull(response.errorMessage)
+            val message = if (phase == Phase.OUTCOME_UNKNOWN)
+                "The invocation has an unknown outcome. Effects may have occurred. Do not repeat it automatically.\n$reportedMessage"
+            else reportedMessage
             outcome = AsyncToolOutcome(
-                content = listOf(ContentItem.ToolResult.Data.Text(requireNotNull(response.errorMessage))),
+                content = listOf(ContentItem.ToolResult.Data.Text(message)),
                 isError = true, failureCode = requireNotNull(response.errorCode),
+                state = if (phase == Phase.CANCELLED) com.gromozeka.domain.model.Conversation.Message.BlockState.INTERRUPTED
+                    else com.gromozeka.domain.model.Conversation.Message.BlockState.COMPLETE,
             )
         }
         outcomes.finish(operation, phase, outcome)

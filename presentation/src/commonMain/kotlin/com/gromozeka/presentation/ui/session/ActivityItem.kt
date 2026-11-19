@@ -57,13 +57,6 @@ internal fun ChatActivityItem(
             modifier = modifier,
             loadArtifactContent = loadArtifactContent,
         )
-        is ChatActivity.ToolCompletion -> RuntimeToolCompletionItem(
-            activity = activity,
-            isExpanded = isExpanded,
-            onToggleExpanded = onToggleExpanded,
-            modifier = modifier,
-            loadArtifactContent = loadArtifactContent,
-        )
         is ChatActivity.Reasoning -> {
             val summaryTitle = remember(activity.block.thinking) { reasoningSummaryTitle(activity.block.thinking) }
             ActivityHeader(
@@ -177,10 +170,10 @@ private fun ActivitySummaryRow(
     style: ActivitySummaryStyle,
     modifier: Modifier,
 ) {
-    val translation = LocalTranslation.current
+    val strings = LocalTranslation.current.runtime
     when (style) {
         ActivitySummaryStyle.TEXT -> Text(
-            text = summaries.joinToString(" · ") { summaryLabel(it, translation) },
+            text = summaries.joinToString(" · ") { summaryLabel(it, strings) },
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -194,7 +187,7 @@ private fun ActivitySummaryRow(
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     ActivityIcon(summary.kind, Modifier.size(24.dp))
-                    Text(summaryLabel(summary, translation), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    Text(summaryLabel(summary, strings), maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall)
                 }
             }
@@ -215,11 +208,10 @@ private fun ActivitySummaryRow(
     }
 }
 
-private fun summaryLabel(summary: ActivitySummary, translation: Translation): String {
+private fun summaryLabel(summary: ActivitySummary, strings: Translation.RuntimeTranslation): String {
     val label = when (val kind = summary.kind) {
-        is ActivityKind.Tool -> toolDisplayName(kind.name, translation.runtime)
-        ActivityKind.Reasoning -> translation.runtime.thinkingLabel
-        ActivityKind.Runtime -> translation.text("chat.service.runtime")
+        is ActivityKind.Tool -> toolDisplayName(kind.name, strings)
+        ActivityKind.Reasoning -> strings.thinkingLabel
     }
     return if (summary.count > 1) "$label ×${summary.count}" else label
 }
@@ -229,12 +221,6 @@ private fun ActivityIcon(kind: ActivityKind, modifier: Modifier = Modifier, coun
     val localization = LocalTranslation.current
     when (kind) {
         is ActivityKind.Tool -> ToolSemanticIcon(kind.name, "${toolDisplayName(kind.name, localization.runtime)}: $count", modifier, count)
-        ActivityKind.Runtime -> SemanticActivityIcon(
-            spec = ToolIconSpec(Icons.Default.DeveloperBoard),
-            contentDescription = "${localization.text("chat.service.runtime")}: $count",
-            modifier = modifier,
-            invocationCount = count,
-        )
         ActivityKind.Reasoning -> SemanticActivityIcon(
             spec = ToolIconSpec(Icons.Default.Psychology),
             contentDescription = localization.text("chat.activity.thinkingCount", "count" to count),

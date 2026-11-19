@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import kotlinx.serialization.json.JsonElement
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.putSyntheticMessageMetadata
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -34,6 +35,39 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
+    @Test fun `synthetic async completion uses native function output with model visible provenance`() {
+        val source = Conversation.Message.ContentItem.ToolCall.Id("source-call")
+        val completion = com.gromozeka.domain.model.syntheticToolCallId("async-tool:operation:completion")
+        val metadata = buildJsonObject {
+            putSyntheticMessageMetadata(
+                com.gromozeka.domain.model.SyntheticMessageKind.ASYNC_TOOL_COMPLETION,
+                com.gromozeka.domain.model.BackgroundActivityMessageSource(source, com.gromozeka.domain.model.AgentDefinition.Id("agent")))
+            put("asyncToolOperationId", "operation")
+        }
+        val call = Conversation.Message(Conversation.Message.Id("completion-call"), conversationId,
+            role = Conversation.Message.Role.ASSISTANT, author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.ToolCall(completion,
+                Conversation.Message.ContentItem.ToolCall.Data("tool", JsonObject(emptyMap())))),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("Runtime completion for operation; source ${source.value}; not another execution.")),
+            providerMetadata = metadata, createdAt = createdAt)
+        val result = call.copy(id = Conversation.Message.Id("completion-result"), role = Conversation.Message.Role.USER,
+            instructions = emptyList(), content = listOf(Conversation.Message.ContentItem.ToolResult(completion, "tool",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("{\"answer\":42}")))))
+        val request = AiRuntimeRequest(emptyList(), listOf(call, result))
+        val actual = mapper.toRequest(request, modelName = "gpt-5", conversationKey = "async-wire").input
+        val ordinaryCall = call.copy(author = null, instructions = emptyList(), providerMetadata = JsonObject(emptyMap()),
+            content = listOf(Conversation.Message.ContentItem.ToolCall(source, Conversation.Message.ContentItem.ToolCall.Data("tool", JsonObject(emptyMap())))))
+        val ordinaryResult = result.copy(author = null, providerMetadata = JsonObject(emptyMap()), content = listOf(
+            (result.content.single() as Conversation.Message.ContentItem.ToolResult).copy(toolUseId = source)))
+        val ordinary = mapper.toRequest(request.copy(messages = listOf(ordinaryCall, ordinaryResult)), modelName = "gpt-5", conversationKey = "sync-wire").input
+        val output = actual.single { it["type"] == JsonPrimitive("function_call_output") }
+        val expected = ordinary.single { it["type"] == JsonPrimitive("function_call_output") }
+        assertEquals(completion.value, output.getValue("call_id").jsonPrimitive.content)
+        assertEquals(JsonObject(expected - "call_id"), JsonObject(output - "call_id"))
+        assertTrue(actual.single { it["role"] == JsonPrimitive("assistant") }.getValue("content").toString().contains(source.value))
+        assertTrue(actual.none { it["role"] == JsonPrimitive("user") })
+    }
+
     @Test
     fun `covered user anchor delivers only approved one-use context without resurrecting its text`() {
         val source = Conversation.Message(Conversation.Message.Id("covered-secret-anchor"), conversationId,

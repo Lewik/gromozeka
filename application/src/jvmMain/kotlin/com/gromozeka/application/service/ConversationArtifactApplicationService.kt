@@ -159,8 +159,6 @@ class ConversationArtifactApplicationService(
             when (item) {
                 is Conversation.Message.ContentItem.ToolResult ->
                     persistAndCommitToolResults(conversation, createdByUserId, listOf(item)).single()
-                is Conversation.Message.ContentItem.RuntimeNotification -> item.copy(attachments = persistOutputData(
-                    conversation, createdByUserId, message.id.value, item.kind.name.lowercase(), Artifact.Purpose.TOOL_OUTPUT, item.attachments))
                 else -> item
             }
         }
@@ -288,12 +286,6 @@ class ConversationArtifactApplicationService(
                         is Conversation.Message.ContentItem.ArtifactItem ->
                             materialized.getValue(item.artifact.id).asContentItem()
 
-                        is Conversation.Message.ContentItem.RuntimeNotification -> item.copy(
-                            attachments = item.attachments.flatMap { data ->
-                                if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData)
-                                    materialized.getValue(data.artifact.id).asToolResultData() else listOf(data)
-                            }
-                        )
                         is Conversation.Message.ContentItem.ToolResult -> item.copy(
                             result = item.result.flatMap { data ->
                                 if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData) {
@@ -582,9 +574,6 @@ private fun List<Conversation.Message.ContentItem>.contentArtifactReferences(): 
     flatMap { item ->
         when (item) {
             is Conversation.Message.ContentItem.ArtifactItem -> listOf(item.artifact)
-            is Conversation.Message.ContentItem.RuntimeNotification -> item.attachments
-                .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
-                .map(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData::artifact)
             is Conversation.Message.ContentItem.ToolResult -> item.result
                 .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
                 .map(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData::artifact)
@@ -599,12 +588,6 @@ private fun List<Conversation.Message.ContentItem>.replaceArtifactReferences(
         is Conversation.Message.ContentItem.ArtifactItem ->
             item.copy(artifact = replacements.getValue(item.artifact.id))
 
-        is Conversation.Message.ContentItem.RuntimeNotification -> item.copy(
-            attachments = item.attachments.map { data ->
-                if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData)
-                    data.copy(artifact = replacements.getValue(data.artifact.id)) else data
-            }
-        )
         is Conversation.Message.ContentItem.ToolResult -> item.copy(
             result = item.result.map { data ->
                 if (data is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData) {

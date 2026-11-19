@@ -1,6 +1,5 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.serviceDataTextOrNull
 import com.gromozeka.domain.model.Conversation
 
 internal object MessageCompactionTextRenderer {
@@ -27,7 +26,6 @@ internal object MessageCompactionTextRenderer {
             when (item) {
                 is Conversation.Message.ContentItem.ImageItem, is Conversation.Message.ContentItem.DocumentItem -> add(item)
                 is Conversation.Message.ContentItem.ToolResult -> addAll(outputAttachments(item.result))
-                is Conversation.Message.ContentItem.RuntimeNotification -> addAll(outputAttachments(item.attachments))
                 else -> Unit
             }
         }
@@ -55,7 +53,6 @@ internal object MessageCompactionTextRenderer {
         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
         is Conversation.Message.ContentItem.Thinking -> item.thinking.takeIf(String::isNotBlank)
         is Conversation.Message.ContentItem.System -> item.content
-        is Conversation.Message.ContentItem.RuntimeNotification -> item.serviceDataTextOrNull()
         is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${item.call.name}] id=${item.id.value} ${item.call.input}"
         is Conversation.Message.ContentItem.ToolResult -> buildString {
             append("[tool_result:${item.toolName} error=${item.isError} call_id=${item.toolUseId.value}]")

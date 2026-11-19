@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.domain.model.assistantTextWithRuntimeObservations
+
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -395,7 +397,6 @@ internal class OpenAiResponsesMessageMapper(
             return@buildList
         }
         when (message.role) {
-            Conversation.Message.Role.RUNTIME_NOTIFICATION -> error("Runtime notifications must be projected before provider lowering")
             Conversation.Message.Role.USER -> {
                 val content = buildList {
                     userText(message).takeIf(String::isNotBlank)?.let { text ->
@@ -435,7 +436,7 @@ internal class OpenAiResponsesMessageMapper(
                         is Conversation.Message.ContentItem.ContextCompactionResult -> item.readableText()
                         else -> null
                     }
-                }.filter(String::isNotBlank).joinToString("\n").trim()
+                }.filter(String::isNotBlank).joinToString("\n").let { message.assistantTextWithRuntimeObservations(it) }.trim()
                 if (text.isNotBlank()) {
                     val builder = EasyInputMessage.builder()
                         .content(text)

@@ -57,7 +57,6 @@ internal fun AiReasoningMode.aiLabel(translation: Translation): String =
         when (this) {
             AiReasoningMode.ADAPTIVE -> "ai.reasoning.mode.adaptive"
             AiReasoningMode.DISABLED -> "ai.reasoning.mode.disabled"
-            AiReasoningMode.TOKEN_BUDGET -> "ai.reasoning.mode.token_budget"
         }
     )
 

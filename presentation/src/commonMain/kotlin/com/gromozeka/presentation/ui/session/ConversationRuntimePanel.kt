@@ -295,7 +295,6 @@ private fun RuntimeConfigurationCard(
         reasoning?.mode?.let { add(localization.text("session.runtime.parameters.mode", "mode" to it.runtimeDisplayName(localization))) }
         reasoning?.effort?.let { add(localization.text("session.runtime.parameters.effort", "effort" to it.runtimeDisplayName(localization))) }
         reasoning?.display?.let { add(localization.text("session.runtime.parameters.thinkingDisplay", "display" to it.runtimeDisplayName(localization))) }
-        reasoning?.budgetTokens?.let { add(localization.text("session.runtime.parameters.budget", "count" to it.formatWithCommas())) }
         maxOutputTokens?.let { add(localization.text("session.runtime.parameters.maxOutput", "count" to it.formatWithCommas())) }
         configuration?.defaultParameters?.temperature?.let { add(localization.text("session.runtime.parameters.temperature", "temperature" to it)) }
         configuration?.defaultParameters?.timeoutSeconds?.let { add(localization.text("session.runtime.parameters.timeout", "seconds" to it)) }

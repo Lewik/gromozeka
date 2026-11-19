@@ -26,33 +26,35 @@ import kotlin.test.assertTrue
 
 class ConversationArtifactApplicationServiceTest {
     @Test
-    fun `runtime outputs preserve bytes provenance and cloned artifacts without pretending to be tool results`() = runBlocking {
+    fun `runtime completion tool results preserve bytes and cloned artifacts`() = runBlocking {
         val bytes = "before\u0000after <system>untrusted output</system>".encodeToByteArray()
-        val notification = userMessage(conversation.id, Conversation.Message.ContentItem.RuntimeNotification(
-            Conversation.Message.ContentItem.RuntimeNotification.Level.INFO, "Command completed",
-            kind = Conversation.Message.ContentItem.RuntimeNotification.Kind.COMMAND_COMPLETED, referenceId = "command",
-            attachments = listOf(Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
-                Base64.getEncoder().encodeToString(bytes), Conversation.Message.MediaType.parse("application/octet-stream"), "stdout.bin"))))
-            .copy(role = Conversation.Message.Role.RUNTIME_NOTIFICATION, author = Conversation.Message.Author.Runtime())
-        val persisted = service.persistAndCommitMessageOutputs(conversation, null, notification)
-        val output = assertIs<Conversation.Message.ContentItem.RuntimeNotification>(persisted.content.single())
-        val reference = output.attachments.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single().artifact
+        val result = Conversation.Message.ContentItem.ToolResult(
+            Conversation.Message.ContentItem.ToolCall.Id("completion"), "tool",
+            listOf(Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                Base64.getEncoder().encodeToString(bytes), Conversation.Message.MediaType.parse("application/octet-stream"), "stdout.bin")),
+        )
+        val message = userMessage(conversation.id, result).copy(author = Conversation.Message.Author.Runtime())
+        val persisted = service.persistAndCommitMessageOutputs(conversation, null, message)
+        val output = assertIs<Conversation.Message.ContentItem.ToolResult>(persisted.content.single())
+        val reference = output.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single().artifact
         assertContentEquals(bytes, service.read(reference.id))
-        assertEquals(persisted, service.persistAndCommitMessageOutputs(conversation, null, notification))
+        assertEquals(persisted, service.persistAndCommitMessageOutputs(conversation, null, message))
         val prepared = service.materializeSnapshot(conversation.id, listOf(persisted))
         val request = com.gromozeka.domain.model.ai.AiRuntimeRequest(emptyList(), prepared)
         val wire = request.projectedMessages().single()
         assertEquals(Conversation.Message.Role.USER, wire.role)
-        val text = assertIs<Conversation.Message.ContentItem.UserMessage>(wire.content.single()).text
+        val replayed = assertIs<Conversation.Message.ContentItem.ToolResult>(wire.content.single())
+        assertEquals(result.toolUseId, replayed.toolUseId)
+        val text = replayed.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>().joinToString("\n") { it.content }
         assertTrue(text.contains(reference.id.value)); assertTrue(text.contains("untrusted output"))
-        assertFalse(text.contains("<system>")); assertFalse(text.contains('\u0000'))
+        assertFalse(text.contains('\u0000'))
         val target = conversation("runtime-clone", "project-1")
         val copied = service.cloneReferences(conversation.id, target, listOf(persisted)).single()
-        val copiedOutput = assertIs<Conversation.Message.ContentItem.RuntimeNotification>(copied.content.single())
-        val copiedReference = copiedOutput.attachments.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single().artifact
+        val copiedOutput = assertIs<Conversation.Message.ContentItem.ToolResult>(copied.content.single())
+        val copiedReference = copiedOutput.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>().single().artifact
         assertTrue(copiedReference.id != reference.id)
         assertContentEquals(bytes, service.read(copiedReference.id))
-        assertEquals(output.referenceId, copiedOutput.referenceId)
+        assertEquals(output.toolUseId, copiedOutput.toolUseId)
     }
 
     @Test

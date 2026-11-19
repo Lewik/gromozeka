@@ -178,18 +178,12 @@ class AnthropicSdkMessageMapperTest {
     }
 
     @Test
-    fun opus55RejectsDisabledAndBudgetedThinkingBeforeCallingProvider() {
-        for (reasoning in listOf(
-            AiReasoningConfig(mode = AiReasoningMode.DISABLED),
-            AiReasoningConfig(mode = AiReasoningMode.TOKEN_BUDGET, budgetTokens = 1024),
-            AiReasoningConfig(budgetTokens = 1024),
-        )) {
-            val error = assertFailsWith<IllegalArgumentException> {
-                mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
-                    .toCreateParams("claude-opus-5-5", requestWithoutJsonSchema(reasoning))
-            }
-            assertTrue(error.message.orEmpty().contains(if (reasoning.mode == null) "Reasoning token budget requires TOKEN_BUDGET mode" else "does not support reasoning mode"))
+    fun opus55RejectsDisabledThinkingBeforeCallingProvider() {
+        val error = assertFailsWith<IllegalArgumentException> {
+            mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = true))
+                .toCreateParams("claude-opus-5-5", requestWithoutJsonSchema(AiReasoningConfig(mode = AiReasoningMode.DISABLED)))
         }
+        assertTrue(error.message.orEmpty().contains("does not support reasoning mode"))
     }
 
     @Test
@@ -236,24 +230,6 @@ class AnthropicSdkMessageMapperTest {
 
         assertTrue(params.thinking().orElseThrow().isAdaptive())
         assertEquals("max", params.outputConfig().orElseThrow().effort().orElseThrow().asString())
-    }
-
-    @Test
-    fun opus5RejectsManualThinkingBudget() {
-        val error = assertFailsWith<IllegalArgumentException> {
-            mapper(AiConnection.Kind.ANTHROPIC_API, generation = adaptivePolicy(required = false))
-                .toCreateParams(
-                    "claude-opus-5",
-                    requestWithoutJsonSchema(
-                        AiReasoningConfig(
-                            mode = AiReasoningMode.TOKEN_BUDGET,
-                            budgetTokens = 16_000,
-                        )
-                    ),
-                )
-        }
-
-        assertTrue("does not support reasoning mode TOKEN_BUDGET" in error.message.orEmpty())
     }
 
     @Test

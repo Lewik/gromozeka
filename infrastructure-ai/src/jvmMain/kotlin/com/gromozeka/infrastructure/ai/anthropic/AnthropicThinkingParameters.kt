@@ -3,7 +3,6 @@ package com.gromozeka.infrastructure.ai.anthropic
 import com.anthropic.core.JsonValue
 import com.anthropic.models.messages.ThinkingConfigAdaptive
 import com.anthropic.models.messages.ThinkingConfigDisabled
-import com.anthropic.models.messages.ThinkingConfigEnabled
 import com.anthropic.models.messages.ThinkingConfigParam
 import com.gromozeka.domain.model.ai.AiModelBehavior
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -12,9 +11,8 @@ import com.gromozeka.domain.model.ai.AiReasoningMode
 
 internal object AnthropicThinkingParameters {
     const val PREFIX_DROP_BETA = "thinking-binding-controls-2026-08-01"
-    private const val DEFAULT_BUDGET_TOKENS = 16_000
 
-    fun create(reasoning: AiReasoningConfig?, behavior: AiModelBehavior, maxOutputTokens: Int?): ThinkingConfigParam? {
+    fun create(reasoning: AiReasoningConfig?, behavior: AiModelBehavior): ThinkingConfigParam? {
         require(!behavior.anthropicThinkingPrefixDrop || reasoning?.mode == AiReasoningMode.ADAPTIVE) {
             "Anthropic thinking prefix-drop behavior requires adaptive thinking"
         }
@@ -32,15 +30,6 @@ internal object AnthropicThinkingParameters {
                         }
                     }.build()
             )
-            AiReasoningMode.TOKEN_BUDGET -> {
-                val budget = reasoning.budgetTokens ?: DEFAULT_BUDGET_TOKENS
-                require(maxOutputTokens != null && budget < maxOutputTokens) { "Anthropic thinking budget must be smaller than the output token limit" }
-                ThinkingConfigParam.ofEnabled(
-                    ThinkingConfigEnabled.builder().budgetTokens(budget.toLong())
-                        .display(if (reasoning.display == AiReasoningDisplay.OMITTED) ThinkingConfigEnabled.Display.OMITTED else ThinkingConfigEnabled.Display.SUMMARIZED)
-                        .build()
-                )
-            }
         }
     }
 }

@@ -6,7 +6,6 @@ import com.gromozeka.domain.model.isBackgroundActivity
 import com.gromozeka.domain.model.syntheticKind
 
 import com.gromozeka.domain.model.Conversation
-import kotlinx.serialization.json.JsonPrimitive
 
 internal enum class ActivityState {
     RUNNING,
@@ -18,7 +17,6 @@ internal enum class ActivityState {
 internal sealed interface ActivityKind {
     data class Tool(val name: String) : ActivityKind
     data object Reasoning : ActivityKind
-    data object Runtime : ActivityKind
 }
 
 internal sealed interface ChatActivity {
@@ -41,27 +39,6 @@ internal sealed interface ChatActivity {
             }
         override val kind: ActivityKind = ActivityKind.Tool(call.call.name)
         override val canExpand: Boolean get() = true
-    }
-
-    data class ToolCompletion(val notification: Conversation.Message.ContentItem.RuntimeNotification) : ChatActivity {
-        init {
-            require(notification.kind == Conversation.Message.ContentItem.RuntimeNotification.Kind.TOOL_COMPLETED)
-        }
-
-        val toolName: String? = (notification.details["tool_name"] as? JsonPrimitive)
-            ?.takeIf { it.isString }?.content?.takeIf(String::isNotBlank)
-        override val kind: ActivityKind = toolName?.let { ActivityKind.Tool(it) } ?: ActivityKind.Runtime
-        override val canExpand: Boolean get() = true
-        override val state: ActivityState
-            get() = when (notification.state) {
-                Conversation.Message.BlockState.STREAMING -> ActivityState.RUNNING
-                Conversation.Message.BlockState.INTERRUPTED -> ActivityState.INTERRUPTED
-                Conversation.Message.BlockState.COMPLETE -> when (notification.level) {
-                    Conversation.Message.ContentItem.RuntimeNotification.Level.INFO -> ActivityState.COMPLETE
-                    Conversation.Message.ContentItem.RuntimeNotification.Level.WARNING -> ActivityState.INTERRUPTED
-                    Conversation.Message.ContentItem.RuntimeNotification.Level.ERROR -> ActivityState.FAILED
-                }
-            }
     }
 
     data class Reasoning(val block: Conversation.Message.ContentItem.Thinking) : ChatActivity {

@@ -125,7 +125,7 @@ class AsyncToolOperationService(
         return operations.pendingDelivery(conversationId, conversation.currentThread, 256).filter { outcomes.canDeliver(it) }
     }
 
-    fun notification(operation: AsyncToolOperation): Conversation.Message = outcomes.notification(operation)
+    fun completionMessages(operation: AsyncToolOperation): List<Conversation.Message> = outcomes.completionMessages(operation)
 
     private fun launch(scope: CoroutineScope, operation: AsyncToolOperation) {
         val claim = checkNotNull(operation.claimReference)
@@ -155,7 +155,7 @@ class AsyncToolOperationService(
                     check(item.toolUseId == running.invocation.origin.sourceToolCallId) { "Async callback returned another invocation's outcome" }
                     outcomes.finish(running, if (item.isError) Phase.FAILED else Phase.SUCCEEDED,
                         AsyncToolOutcome(item.result, result.structuredContentByCallId[item.toolUseId.value], item.isError,
-                            "TOOL_ERROR".takeIf { item.isError }))
+                            "TOOL_ERROR".takeIf { item.isError }, state = item.state, executionToolName = item.executionToolName))
                 }
             }
         } catch (cancelled: CancellationException) {

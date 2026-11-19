@@ -438,23 +438,28 @@ class MessageSquashServiceTest {
         assertTrue(f.runtimeProvider.requests.isEmpty())
     }
 
-    @Test fun `history edits reject runtime blocks and runtime authored messages before any write`() = runBlocking {
+    @Test fun `history edits reject both Runtime authored completion messages before any write`() = runBlocking {
         val f = Fixture()
-        val notice = Conversation.Message.ContentItem.RuntimeNotification(
-            Conversation.Message.ContentItem.RuntimeNotification.Level.INFO, "Server-owned outcome")
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("runtime-completion")
+        val blocks = listOf(
+            Conversation.Message.ContentItem.ToolCall(callId,
+                Conversation.Message.ContentItem.ToolCall.Data("tool", kotlinx.serialization.json.JsonObject(emptyMap()))),
+            Conversation.Message.ContentItem.ToolResult(callId, "tool", listOf(
+                Conversation.Message.ContentItem.ToolResult.Data.Text("Server-owned outcome"))),
+        )
         val counts = f.storageCounts()
-        assertFailsWith<IllegalArgumentException> {
-            f.historyService().editRuntimeHistory(f.conversation.id, f.third.id, listOf(notice))
+        for (block in blocks) {
+            f.messages.values[f.third.id] = f.third.copy(
+                role = if (block is Conversation.Message.ContentItem.ToolCall) Conversation.Message.Role.ASSISTANT else Conversation.Message.Role.USER,
+                author = Conversation.Message.Author.Runtime(), content = listOf(block),
+            )
+            assertFailsWith<IllegalArgumentException> {
+                f.historyService().editRuntimeHistory(f.conversation.id, f.third.id,
+                    listOf(Conversation.Message.ContentItem.UserMessage("client replacement")))
+            }
+            assertEquals(counts, f.storageCounts())
+            assertEquals(block, f.messages.values.getValue(f.third.id).content.single())
         }
-        assertEquals(counts, f.storageCounts())
-        f.messages.values[f.third.id] = f.third.copy(role = Conversation.Message.Role.RUNTIME_NOTIFICATION,
-            author = Conversation.Message.Author.Runtime(), content = listOf(notice))
-        assertFailsWith<IllegalArgumentException> {
-            f.historyService().editRuntimeHistory(f.conversation.id, f.third.id,
-                listOf(Conversation.Message.ContentItem.UserMessage("client replacement")))
-        }
-        assertEquals(counts, f.storageCounts())
-        assertEquals(notice, f.messages.values.getValue(f.third.id).content.single())
     }
 
     private class Fixture(

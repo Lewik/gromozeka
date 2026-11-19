@@ -1,5 +1,4 @@
 {
-  "chat.service.runtime": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageItem.kt"], "description": "Runtime notification header label and icon accessibility description.", "args": []},
   "ai.connection.responses_streaming": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Stream Responses (SSE)", "args": []},
   "ai.connection.responses_streaming_description": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Receive a stream internally; validation and the complete answer are unchanged.", "args": []},
   "ai.connection.responses_stored_continuation": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"], "description": "Provider-stored continuation", "args": []},
@@ -172,13 +171,6 @@
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/agents/AgentEditorDialog.kt:180"
     ],
     "description": "Heading above the selectable stored Prompt documents that can form this Agent's ordered instruction stack. Available does not mean already selected.",
-    "args": []
-  },
-  "agents.budget_tokens": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/agents/AgentEditorDialog.kt:316"
-    ],
-    "description": "Optional per-Agent reasoning token budget. It overrides the selected model configuration; it is not the maximum visible answer length or a subscription spending allowance.",
     "args": []
   },
   "agents.cancel": {
@@ -1550,21 +1542,6 @@
     "description": "Explains the share of subscription allowance retained for foreground requests rather than spent by background memory operations.",
     "args": []
   },
-  "ai.reasoning.budget": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1649",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/agents/AgentEditorDialog.kt:349"
-    ],
-    "description": "Field name for a numeric budget allocated specifically to model reasoning. It is not the subscription quota, money budget or maximum visible answer length.",
-    "args": []
-  },
-  "ai.reasoning.budget_tokens": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1627"
-    ],
-    "description": "Optional limit on tokens allocated to model reasoning under supported provider controls. Tokens refer to model text-processing units, not credentials.",
-    "args": []
-  },
   "ai.reasoning.default": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1603"
@@ -1694,16 +1671,6 @@
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/agents/AgentEditorDialog.kt:304"
     ],
     "description": "Requests the supported no-reasoning-control mode. Disabled refers to reasoning for this request/configuration, not disabling the model or its ability to answer. Keep the serialized enum identifier unchanged.",
-    "args": []
-  },
-  "ai.reasoning.mode.token_budget": {
-    "source": [
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiReasoning.kt:46",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1610",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1805",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/agents/AgentEditorDialog.kt:304"
-    ],
-    "description": "Selects reasoning controlled by an explicit token allocation. Budget counts model reasoning tokens, not money, subscription quota or output words. Keep the serialized enum identifier unchanged.",
     "args": []
   },
   "ai.response_format.json_schema": {
@@ -10472,14 +10439,6 @@
     "args": [],
     "translationNotes": "Translate the human-readable option label, not the enum/wire value in source code. The mode applies to the AI model request, not the visual application theme."
   },
-  "session.runtime.enum.reasoningMode.token_budget": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt:289"
-    ],
-    "description": "Display label for reasoningMode enum TOKEN_BUDGET. Preserve its wire identifier; translate only the visible label.",
-    "args": [],
-    "translationNotes": "Translate the human-readable option label, not the enum/wire value in source code. The mode applies to the AI model request, not the visual application theme."
-  },
   "session.runtime.enum.responseFormat.json_schema": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt:296"
@@ -10833,22 +10792,6 @@
     "argumentExamples": {
       "count": 96000
     }
-  },
-  "session.runtime.parameters.budget": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationRuntimePanel.kt:292"
-    ],
-    "description": "Configured reasoning token budget.",
-    "args": [
-      "count"
-    ],
-    "argumentDescriptions": {
-      "count": "Configured reasoning-token budget, not money or elapsed time."
-    },
-    "argumentExamples": {
-      "count": 4096
-    },
-    "translationNotes": "Budget is a reasoning-token limit, not a financial budget."
   },
   "session.runtime.parameters.effort": {
     "source": [

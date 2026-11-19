@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.serviceDataTextOrNull
 import com.gromozeka.domain.model.SyntheticMessageKind
 import com.gromozeka.domain.model.putSyntheticMessageMetadata
 
@@ -279,7 +278,6 @@ private fun Conversation.Message.memoryCompactionCharCount(): Int =
             is Conversation.Message.ContentItem.VisualInteraction -> item.modelText().length
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText.length
             is Conversation.Message.ContentItem.System -> item.content.length
-            is Conversation.Message.ContentItem.RuntimeNotification -> checkNotNull(item.serviceDataTextOrNull()).length
             is Conversation.Message.ContentItem.Thinking -> 0
             is Conversation.Message.ContentItem.ToolCall -> item.call.name.length + item.call.input.toString().length
             is Conversation.Message.ContentItem.ToolResult -> item.result.sumOf { data ->
@@ -305,7 +303,6 @@ private fun Conversation.Message.renderForMemoryCompaction(maxChars: Int): Strin
             is Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
             is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
             is Conversation.Message.ContentItem.System -> "[system:${item.level.name}] ${item.content}"
-            is Conversation.Message.ContentItem.RuntimeNotification -> item.serviceDataTextOrNull()
             is Conversation.Message.ContentItem.Thinking -> null
             is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${item.call.name}] ${item.call.input}"
             is Conversation.Message.ContentItem.ToolResult -> "[tool_result:${item.toolName}] " + item.result.joinToString("\n") { data ->

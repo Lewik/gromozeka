@@ -663,8 +663,6 @@ internal fun MutableMap<String, String>.applyClaudeCodeReasoningMode(mode: AiRea
             remove("CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING")
             remove("MAX_THINKING_TOKENS")
         }
-        AiReasoningMode.TOKEN_BUDGET ->
-            error("Claude Code does not support fixed thinking token budgets")
     }
 }
 
@@ -1218,7 +1216,6 @@ private fun AiReasoningMode?.diagnosticEnvironment(): String =
         null -> "inherited"
         AiReasoningMode.ADAPTIVE -> "thinking=enabled,adaptive=enabled,maxTokens=unset"
         AiReasoningMode.DISABLED -> "thinking=disabled,adaptive=default,maxTokens=unset"
-        AiReasoningMode.TOKEN_BUDGET -> "unsupported"
     }
 
 internal fun JsonObject.diagnosticEventSummary(): String {

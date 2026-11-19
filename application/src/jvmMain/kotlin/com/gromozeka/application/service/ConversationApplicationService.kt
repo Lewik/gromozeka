@@ -502,7 +502,7 @@ class ConversationApplicationService(
 
         val targetMessage = messages.find { it.id == messageId }
             ?: throw IllegalArgumentException("Message $messageId not found in thread $currentThreadId")
-        com.gromozeka.domain.model.requireEditableConversationMessage(targetMessage, newContent)
+        com.gromozeka.domain.model.requireEditableConversationMessage(targetMessage)
         ensureMessagesAreNotCoveredByCompaction(messages, setOf(messageId), "edit")
         artifactService.validateReferences(conversationId, newContent)
 

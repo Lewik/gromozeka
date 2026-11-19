@@ -30,17 +30,14 @@ support off must omit `DISABLED` from its declared supported modes. A rejected
 request never triggers a switch of model, encoding, or effort.
 
 `ADAPTIVE` with OpenAI effort encoding requires an explicit effort; the adapter
-does not choose an arbitrary level. `TOKEN_BUDGET` is rejected by that encoding.
+does not choose an arbitrary level.
 Efforts are transmitted exactly, including `max` rather than silently reducing
 it to `xhigh`. Chat Completions effort encoding has no reasoning-display control;
 set no display there. Responses maps visible reasoning to its summary control
 and does not request a summary when reasoning is disabled.
 
-Anthropic thinking encodes disabled/adaptive/enabled explicitly. A manual budget
-requires `TOKEN_BUDGET`; the existing default budget is 16,000 tokens when that
-mode is selected without a budget. Its output-token limit must be larger. Effort
-is independent and can remain present with disabled thinking if the route allows
-that combination. There is no automatic promotion from off to the minimum
+Anthropic thinking encodes disabled/adaptive explicitly. Effort is independent
+and can remain present with disabled thinking if the route allows that combination. There is no automatic promotion from off to the minimum
 required for tools.
 
 Example for a route accepting Anthropic thinking through Chat Completions:

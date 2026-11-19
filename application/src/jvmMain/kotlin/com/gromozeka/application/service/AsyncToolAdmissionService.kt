@@ -170,7 +170,7 @@ class AsyncToolAdmissionService(
         toolUseId = operation.invocation.origin.sourceToolCallId, toolName = operation.invocation.modelToolName,
         result = listOf(ContentItem.ToolResult.Data.Text(buildJsonObject {
             put("status", "ACCEPTED"); put("operation_id", operation.id.value)
-            put("message", "Durably accepted, not completed. The source tool call is closed by this receipt. A correlated Runtime notification will report the outcome. Inspect or cancel this operation by ID; do not repeat the action to retrieve its result.")
+            put("message", "Durably accepted, not completed. The source tool call is closed by this receipt. A Runtime-generated synthetic call/result pair with a new pairing ID will later report this invocation's original outcome; it does not execute the action again. Inspect or cancel this operation by ID; do not repeat the action to retrieve its result.")
         }.toString())),
     )
 

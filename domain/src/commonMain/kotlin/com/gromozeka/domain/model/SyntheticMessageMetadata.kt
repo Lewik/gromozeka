@@ -13,6 +13,7 @@ import kotlinx.serialization.json.put
 enum class SyntheticMessageKind {
     COMMAND_TASK_COMPLETION,
     COMMAND_MONITOR_UPDATE,
+    ASYNC_TOOL_COMPLETION,
     TOOL_ROUTING_ERROR,
     RUNTIME_EXECUTION_INCIDENT,
     SLOT_EVENT,
@@ -43,7 +44,8 @@ val Message.backgroundActivitySource: BackgroundActivityMessageSource?
     }
 
 fun SyntheticMessageKind?.isBackgroundActivity(): Boolean =
-    this == SyntheticMessageKind.COMMAND_TASK_COMPLETION || this == SyntheticMessageKind.COMMAND_MONITOR_UPDATE
+    this == SyntheticMessageKind.COMMAND_TASK_COMPLETION || this == SyntheticMessageKind.COMMAND_MONITOR_UPDATE ||
+        this == SyntheticMessageKind.ASYNC_TOOL_COMPLETION
 
 fun JsonObjectBuilder.putSyntheticMessageMetadata(
     kind: SyntheticMessageKind,

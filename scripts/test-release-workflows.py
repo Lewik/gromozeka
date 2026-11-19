@@ -443,6 +443,24 @@ class WorkflowContracts(unittest.TestCase):
                       "*ConversationEngineDeliveryTest", "*SdkHttpContractTest"):
             self.assertIn(check, verification)
 
+    def test_native_async_and_reasoning_contracts_gate_publication(self):
+        job = JOBS["verify-runtime"]
+        runtime = next(step["run"] for step in job["steps"] if step.get("name") == "Verify Server and Worker")
+        sections = (
+            (":domain:jvmTest", ":application:jvmTest", ("*AiReasoningContractTest", "*SyntheticAsyncCompletionMessageTest")),
+            (":application:jvmTest", ":infrastructure-ai:jvmTest", ("*AsyncToolOperationServiceTest", "*AsyncToolNativePipelineTest")),
+            (":infrastructure-ai:jvmTest", ":infrastructure-ai:openai-subscription:jvmTest", ("*ModelGenerationContractTest", "*AsyncToolCompletionWireTest")),
+        )
+        for task, following, checks in sections:
+            selected = runtime.split(task, 1)[1].split(following, 1)[0]
+            for check in checks:
+                self.assertIn("--tests '" + check + "'", selected)
+        postgres = next(step for step in job["steps"] if step.get("name") == "Verify PostgreSQL migrations and Worker inventory")
+        self.assertEqual("true", postgres["env"]["GROMOZEKA_POSTGRES_RUNTIME_TEST"])
+        for check in ("*PostgresAsyncToolOperationRepositoryTest", "*PostgresAsyncToolDeliveryTest"):
+            self.assertIn("--tests '" + check + "'", postgres["run"])
+        self.assertNotIn("GROMOZEKA_ASYNC_BACKUP_TEST", str(job))
+
     def test_runtime_failures_keep_xml_and_visible_database_test_names(self):
         upload = next(step for step in JOBS["verify-runtime"]["steps"]
                       if step.get("with", {}).get("name") == "verify-runtime-diagnostics")

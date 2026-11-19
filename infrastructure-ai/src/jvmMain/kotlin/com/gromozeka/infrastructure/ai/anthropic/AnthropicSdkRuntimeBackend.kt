@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.anthropic
 
+import com.gromozeka.domain.model.assistantTextWithRuntimeObservations
+
 import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpAnthropicClient
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
@@ -319,7 +321,7 @@ internal class AnthropicSdkMessageMapper(
         }
 
         applyTools(builder, request.tools, request.options.toolChoice)
-        AnthropicThinkingParameters.create(reasoning, generation.behavior, outputBudget)
+        AnthropicThinkingParameters.create(reasoning, generation.behavior)
             ?.let(builder::thinking)
         if (generation.behavior.anthropicThinkingPrefixDrop) {
             builder.putAdditionalHeader("anthropic-beta", AnthropicThinkingParameters.PREFIX_DROP_BETA)
@@ -383,7 +385,6 @@ internal class AnthropicSdkMessageMapper(
 
     private fun toMessageParam(message: Conversation.Message, modelName: String): MessageParam? {
         return when (message.role) {
-            Conversation.Message.Role.RUNTIME_NOTIFICATION -> error("Runtime notifications must be projected before provider lowering")
             Conversation.Message.Role.USER -> toUserMessageParam(message)
             Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, modelName)
             Conversation.Message.Role.SYSTEM -> null
@@ -472,6 +473,8 @@ internal class AnthropicSdkMessageMapper(
             metadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
             metadata["model"]?.jsonPrimitive?.contentOrNull == modelName
         val rawBlocks = metadata["anthropicContent"] as? JsonArray
+        val observation = message.assistantTextWithRuntimeObservations("")
+        check(observation.isEmpty() || rawBlocks == null) { "Runtime completion cannot contain provider-signed replay blocks" }
         val blocks = if (sameProvider && rawBlocks != null) {
             rawBlocks.map { jsonMapper().readValue(it.toString(), ContentBlockParam::class.java) }
         } else message.content.mapNotNull { item ->
@@ -484,7 +487,8 @@ internal class AnthropicSdkMessageMapper(
             }
         }
 
-        return blocks.takeIf { it.isNotEmpty() }?.let {
+        val observedBlocks = listOfNotNull(observation.takeIf(String::isNotBlank)?.let(::textBlock)) + blocks
+        return observedBlocks.takeIf { it.isNotEmpty() }?.let {
             MessageParam.builder()
                 .role(MessageParam.Role.ASSISTANT)
                 .contentOfBlockParams(it)

@@ -25,25 +25,19 @@ data class AiReasoningCapabilities(
  * Runtime reasoning controls requested for one model call or configured model.
  *
  * Adapters must map this typed domain shape to provider-specific fields such as
- * Anthropic extended thinking, OpenAI reasoning effort, or Gemini thinking.
+ * Anthropic adaptive thinking, OpenAI reasoning effort, or Gemini thinking.
  */
 @Serializable
 data class AiReasoningConfig(
     val mode: AiReasoningMode? = null,
     val effort: AiReasoningEffort? = null,
     val display: AiReasoningDisplay? = null,
-    val budgetTokens: Int? = null,
-) {
-    init {
-        require(budgetTokens == null || budgetTokens > 0) { "AI reasoning budget tokens must be positive" }
-    }
-}
+)
 
 @Serializable
 enum class AiReasoningMode {
     DISABLED,
     ADAPTIVE,
-    TOKEN_BUDGET,
 }
 
 @Serializable

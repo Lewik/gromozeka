@@ -4,7 +4,6 @@
   "name": "日本語",
   "direction": "LTR",
   "messages": {
-    "chat.service.runtime": "Runtime 通知",
     "ai.connection.responses_streaming": "Responses のストリーミング (SSE)",
     "ai.connection.responses_streaming_description": "アプリ内部でストリームを受信します。検証と完全な回答は変わりません。",
     "ai.connection.responses_stored_continuation": "プロバイダーに保存して会話を継続",
@@ -156,7 +155,6 @@
     "security.users.aiAllowed": "Allow AI requests",
     "agents.always_loaded_tools": "常に読み込むツール（1行に1つ）",
     "agents.available_prompts": "選択できるプロンプト",
-    "agents.budget_tokens": "推論トークン予算",
     "agents.cancel": "キャンセル",
     "agents.catalog.description": "エージェントとプロンプトは、サーバーが管理する実行時の設定です。スキルはインポートしたパッケージです。",
     "agents.catalog.empty": "このスコープにはエージェントがありません",
@@ -336,8 +334,6 @@
     "ai.quota.refresh_interval_hint": "バックグラウンドのモデル呼び出し後は、毎回最新の利用枠情報を取得する必要があります",
     "ai.quota.reserve": "確保する予備枠（%）",
     "ai.quota.reserve_hint": "対話中の処理に使用できるよう、この割合のサブスクリプション枠を確保します",
-    "ai.reasoning.budget": "推論予算",
-    "ai.reasoning.budget_tokens": "推論のトークン予算",
     "ai.reasoning.default": "既定の推論設定",
     "ai.reasoning.display": "推論の表示",
     "ai.reasoning.display.full": "全文",
@@ -352,7 +348,6 @@
     "ai.reasoning.mode": "モード",
     "ai.reasoning.mode.adaptive": "適応型",
     "ai.reasoning.mode.disabled": "無効",
-    "ai.reasoning.mode.token_budget": "トークン予算",
     "ai.response_format.json_schema": "JSONスキーマ",
     "ai.response_format.text": "テキスト",
     "ai.response_format.xml_inline": "インラインXML",
@@ -1438,7 +1433,6 @@
     "session.runtime.enum.reasoningEffort.xhigh": "非常に高い",
     "session.runtime.enum.reasoningMode.adaptive": "適応型",
     "session.runtime.enum.reasoningMode.disabled": "無効",
-    "session.runtime.enum.reasoningMode.token_budget": "トークン予算",
     "session.runtime.enum.responseFormat.json_schema": "JSONスキーマ",
     "session.runtime.enum.responseFormat.text": "テキスト",
     "session.runtime.enum.responseFormat.xml_inline": "インラインXML",
@@ -1485,7 +1479,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "自動圧縮：{count} トークン"
     },
-    "session.runtime.parameters.budget": "予算：{count}",
     "session.runtime.parameters.effort": "推論の強度：{effort}",
     "session.runtime.parameters.maxOutput": "最大出力：{count}",
     "session.runtime.parameters.mode": "モード：{mode}",

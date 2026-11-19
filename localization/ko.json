@@ -4,7 +4,6 @@
   "name": "한국어",
   "direction": "LTR",
   "messages": {
-    "chat.service.runtime": "Runtime 알림",
     "ai.connection.responses_streaming": "Responses 스트리밍 (SSE)",
     "ai.connection.responses_streaming_description": "내부적으로 스트림을 수신합니다. 검증과 전체 응답은 변경되지 않습니다.",
     "ai.connection.responses_stored_continuation": "공급자에 저장된 대화 이어가기",
@@ -156,7 +155,6 @@
     "security.users.aiAllowed": "Allow AI requests",
     "agents.always_loaded_tools": "항상 불러올 도구, 한 줄에 하나씩",
     "agents.available_prompts": "사용 가능한 프롬프트",
-    "agents.budget_tokens": "추론 토큰 예산",
     "agents.cancel": "취소",
     "agents.catalog.description": "에이전트와 프롬프트는 서버에서 관리하는 런타임 설정입니다. 스킬은 가져온 패키지입니다.",
     "agents.catalog.empty": "이 범위에 에이전트가 없습니다",
@@ -336,8 +334,6 @@
     "ai.quota.refresh_interval_hint": "백그라운드 모델 호출 후에는 매번 최신 할당량 정보를 가져와야 합니다",
     "ai.quota.reserve": "보호할 예비분(%)",
     "ai.quota.reserve_hint": "사용자 요청에 쓸 수 있도록 이 비율만큼 구독 할당량을 남겨 둡니다",
-    "ai.reasoning.budget": "추론 예산",
-    "ai.reasoning.budget_tokens": "추론 토큰 예산",
     "ai.reasoning.default": "기본 추론 설정",
     "ai.reasoning.display": "추론 표시",
     "ai.reasoning.display.full": "전체",
@@ -352,7 +348,6 @@
     "ai.reasoning.mode": "모드",
     "ai.reasoning.mode.adaptive": "적응형",
     "ai.reasoning.mode.disabled": "사용 안 함",
-    "ai.reasoning.mode.token_budget": "토큰 예산",
     "ai.response_format.json_schema": "JSON 스키마",
     "ai.response_format.text": "텍스트",
     "ai.response_format.xml_inline": "인라인 XML",
@@ -1438,7 +1433,6 @@
     "session.runtime.enum.reasoningEffort.xhigh": "매우 높음",
     "session.runtime.enum.reasoningMode.adaptive": "적응형",
     "session.runtime.enum.reasoningMode.disabled": "사용 안 함",
-    "session.runtime.enum.reasoningMode.token_budget": "토큰 예산",
     "session.runtime.enum.responseFormat.json_schema": "JSON 스키마",
     "session.runtime.enum.responseFormat.text": "텍스트",
     "session.runtime.enum.responseFormat.xml_inline": "인라인 XML",
@@ -1485,7 +1479,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "자동 압축: {count}토큰"
     },
-    "session.runtime.parameters.budget": "예산: {count}",
     "session.runtime.parameters.effort": "추론 강도: {effort}",
     "session.runtime.parameters.maxOutput": "최대 출력: {count}",
     "session.runtime.parameters.mode": "모드: {mode}",

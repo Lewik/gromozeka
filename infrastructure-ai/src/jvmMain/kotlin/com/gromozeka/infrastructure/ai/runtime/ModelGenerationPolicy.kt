@@ -43,9 +43,6 @@ internal class ModelGenerationPolicy(
         require(mode == null || reasoningCapabilities?.modes.isNullOrEmpty() || mode in reasoningCapabilities.modes) {
             "Model route does not support reasoning mode $mode"
         }
-        require(reasoning?.budgetTokens == null || mode == AiReasoningMode.TOKEN_BUDGET) {
-            "Reasoning token budget requires TOKEN_BUDGET mode"
-        }
         reasoning?.effort?.let { effort ->
             require(reasoningCapabilities?.efforts.isNullOrEmpty() || effort in reasoningCapabilities.efforts) {
                 "Model route does not support reasoning effort $effort"

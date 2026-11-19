@@ -1191,7 +1191,9 @@ class ConversationEngineService(
         val replayedCallIds = mutableMapOf<ContentItem.ToolCall.Id, ContentItem.ToolCall.Id>()
         batch.messages.forEach { syntheticMessage ->
             ensureRuntimeTaskOwner(conversationId, runtimeTaskId, executor)
-            if (!conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
+            // Existing IDs alone cannot prove async delivery; the batch repository must validate both canonical bodies after artifact persistence.
+            val exactAsyncReplay = syntheticMessage.syntheticKind == SyntheticMessageKind.ASYNC_TOOL_COMPLETION
+            if (exactAsyncReplay || !conversationHistory.containsMessage(conversationId, syntheticMessage.id)) {
                 val toolResults = syntheticMessage.content.filterIsInstance<ContentItem.ToolResult>().map { result ->
                     result.copy(toolUseId = replayedCallIds[result.toolUseId] ?: result.toolUseId)
                 }
@@ -1200,8 +1202,7 @@ class ConversationEngineService(
                 val storedMessage = syntheticMessage.copy(content = syntheticMessage.content.map {
                     if (it is ContentItem.ToolResult) iterator.next() else it
                 })
-                prepared += if (storedMessage.role == Conversation.Message.Role.RUNTIME_NOTIFICATION)
-                    artifactService.persistAndCommitMessageOutputs(conversation, batch.actorUserId, storedMessage) else storedMessage
+                prepared += storedMessage
             } else syntheticMessage.content.filterIsInstance<ContentItem.ToolCall>().singleOrNull()?.let { generatedCall ->
                 replayedCallIds[generatedCall.id] = reuseStoredSyntheticCallId(conversationId, syntheticMessage.id, generatedCall.id)
             }
@@ -1943,7 +1944,7 @@ class ConversationEngineService(
         val existing = conversationHistory.findMessage(conversationId, callMessageId) ?: return generatedId
         val storedId = existing.content.filterIsInstance<ContentItem.ToolCall>().single().id
         check(storedId == generatedId || com.gromozeka.domain.model.syntheticToolCallId(storedId.value) == generatedId) {
-            "Replayed synthetic notification has a different tool call identity"
+            "Replayed synthetic completion has a different tool call identity"
         }
         return storedId
     }

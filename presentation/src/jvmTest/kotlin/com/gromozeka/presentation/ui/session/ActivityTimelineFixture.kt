@@ -38,6 +38,7 @@ internal fun ActivityTimelineFixture(
     messages: List<Conversation.Message>,
     results: Map<String, Conversation.Message.ContentItem.ToolResult> = activityTestResults(messages),
     summaryStyle: ActivitySummaryStyle = ActivitySummaryStyle.ICONS,
+    loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray = { byteArrayOf() },
     onEntries: (List<MessageListEntry>) -> Unit = {},
 ) {
     var expanded by rememberSaveable { mutableStateOf(emptySet<String>()) }
@@ -57,7 +58,7 @@ internal fun ActivityTimelineFixture(
                 onToggleActivityExpansion = { key -> expanded = if (key in expanded) expanded - key else expanded + key },
                 onManualContentResize = pauseFollowingLatest,
                 activitySummaryStyle = summaryStyle,
-                loadArtifactContent = { byteArrayOf() },
+                loadArtifactContent = loadArtifactContent,
             )
         }
     }

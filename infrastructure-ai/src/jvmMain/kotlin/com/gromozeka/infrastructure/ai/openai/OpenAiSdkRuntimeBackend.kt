@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.domain.model.assistantTextWithRuntimeObservations
+
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
 import com.gromozeka.infrastructure.ai.anthropic.AnthropicThinkingParameters
 import com.gromozeka.domain.model.ai.AiReasoningMode
@@ -183,10 +185,7 @@ internal class OpenAiSdkMessageMapper(
         }
         val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty())
         val builder = ChatCompletionCreateParams.builder().model(modelName)
-        val maxOutputTokens = request.options.maxOutputTokens ?: if (
-            generation.behavior.chatCompletionsReasoning == AiModelBehavior.ChatCompletionsReasoning.ANTHROPIC_THINKING &&
-            reasoning?.mode == AiReasoningMode.TOKEN_BUDGET
-        ) generation.requiredOutputTokens(request) else null
+        val maxOutputTokens = request.options.maxOutputTokens
         maxOutputTokens?.let { limit ->
             when (generation.behavior.chatCompletionsTokenLimit) {
                 AiModelBehavior.ChatCompletionsTokenLimit.MAX_COMPLETION_TOKENS -> builder.maxCompletionTokens(limit.toLong())
@@ -211,7 +210,7 @@ internal class OpenAiSdkMessageMapper(
         messages.forEach(builder::addMessage)
 
         applyTools(builder, request.tools, request.options.toolChoice)
-        applyReasoning(builder, reasoning, maxOutputTokens)
+        applyReasoning(builder, reasoning)
         applyResponseFormat(builder, request.options.responseFormat)
 
         return builder.build()
@@ -374,7 +373,6 @@ internal class OpenAiSdkMessageMapper(
     private fun toMessageParams(message: Conversation.Message, targetModelName: String): List<ChatCompletionMessageParam> =
         buildList {
             when (message.role) {
-            Conversation.Message.Role.RUNTIME_NOTIFICATION -> error("Runtime notifications must be projected before provider lowering")
                 Conversation.Message.Role.USER -> userMessageParam(message)?.let {
                     add(ChatCompletionMessageParam.ofUser(it))
                 }
@@ -481,8 +479,7 @@ internal class OpenAiSdkMessageMapper(
             message.content
                 .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
                 .map { it.toOpenAiSdkText() }
-        val textContent = text.joinToString("\n")
-            .trim()
+        val textContent = message.assistantTextWithRuntimeObservations(text.joinToString("\n")).trim()
         val toolCalls = message.content
             .filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
             .map(::assistantToolCall)
@@ -669,7 +666,6 @@ internal class OpenAiSdkMessageMapper(
     private fun applyReasoning(
         builder: ChatCompletionCreateParams.Builder,
         reasoning: AiReasoningConfig?,
-        maxOutputTokens: Int?,
     ) {
         when (generation.behavior.chatCompletionsReasoning) {
             AiModelBehavior.ChatCompletionsReasoning.REASONING_EFFORT -> {
@@ -679,11 +675,7 @@ internal class OpenAiSdkMessageMapper(
                 reasoning?.openAiEffort()?.let(builder::reasoningEffort)
             }
             AiModelBehavior.ChatCompletionsReasoning.ANTHROPIC_THINKING -> {
-                require(reasoning?.mode != AiReasoningMode.TOKEN_BUDGET ||
-                    generation.behavior.chatCompletionsTokenLimit != AiModelBehavior.ChatCompletionsTokenLimit.OMIT) {
-                    "Anthropic thinking token budget requires an output token limit"
-                }
-                AnthropicThinkingParameters.create(reasoning, generation.behavior, maxOutputTokens)?.let { thinking ->
+                AnthropicThinkingParameters.create(reasoning, generation.behavior)?.let { thinking ->
                     val value = com.openai.core.jsonMapper().readValue(com.anthropic.core.jsonMapper().writeValueAsString(thinking), Any::class.java)
                     builder.putAdditionalBodyProperty("thinking", JsonValue.from(value))
                 }

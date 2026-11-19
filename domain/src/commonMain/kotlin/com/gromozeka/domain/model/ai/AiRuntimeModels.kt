@@ -1,7 +1,6 @@
 package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.projectServiceMessages
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.withPortableSyntheticToolCallIds
@@ -174,7 +173,7 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
             message.copy(id = id, content = emptyList(), instructions = instructions, providerMetadata = JsonObject(emptyMap()))
         }
     }
-    return (projected + oneUseInputs).projectServiceMessages()
+    return (projected + oneUseInputs)
 }
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */

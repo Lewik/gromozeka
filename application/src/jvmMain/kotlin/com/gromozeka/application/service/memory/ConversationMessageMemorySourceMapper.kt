@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.serviceDataTextOrNull
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemorySource
@@ -50,8 +49,6 @@ class ConversationMessageMemorySourceMapper {
                     else -> null
                 }
 
-                Conversation.Message.Role.RUNTIME_NOTIFICATION -> item.serviceDataTextOrNull()
-
                 Conversation.Message.Role.SYSTEM -> when (item) {
                     is Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
                     else -> null
@@ -70,7 +67,7 @@ class ConversationMessageMemorySourceMapper {
         when (this) {
             Conversation.Message.Role.USER -> MemorySource.ActorRole.USER
             Conversation.Message.Role.ASSISTANT -> MemorySource.ActorRole.ASSISTANT
-            Conversation.Message.Role.SYSTEM, Conversation.Message.Role.RUNTIME_NOTIFICATION -> MemorySource.ActorRole.SYSTEM
+            Conversation.Message.Role.SYSTEM -> MemorySource.ActorRole.SYSTEM
         }
 
     private fun String.sha256(): String {

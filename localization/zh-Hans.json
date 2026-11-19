@@ -4,7 +4,6 @@
   "name": "简体中文",
   "direction": "LTR",
   "messages": {
-    "chat.service.runtime": "Runtime 通知",
     "ai.connection.responses_streaming": "Responses 流式接收 (SSE)",
     "ai.connection.responses_streaming_description": "在应用内部接收流；验证和完整回复保持不变。",
     "ai.connection.responses_stored_continuation": "使用提供商存储的会话续接",
@@ -156,7 +155,6 @@
     "security.users.aiAllowed": "Allow AI requests",
     "agents.always_loaded_tools": "始终加载的工具，每行一个",
     "agents.available_prompts": "可用提示词",
-    "agents.budget_tokens": "推理词元预算",
     "agents.cancel": "取消",
     "agents.catalog.description": "智能体和提示词是由服务器管理的运行配置。技能是导入的资源包。",
     "agents.catalog.empty": "此范围内没有智能体",
@@ -336,8 +334,6 @@
     "ai.quota.refresh_interval_hint": "每次后台模型调用后都必须获取最新配额信息",
     "ai.quota.reserve": "保护的预留比例（%）",
     "ai.quota.reserve_hint": "为前台任务保留此比例的订阅配额",
-    "ai.reasoning.budget": "推理预算",
-    "ai.reasoning.budget_tokens": "推理词元预算",
     "ai.reasoning.default": "默认推理设置",
     "ai.reasoning.display": "推理展示",
     "ai.reasoning.display.full": "完整",
@@ -352,7 +348,6 @@
     "ai.reasoning.mode": "模式",
     "ai.reasoning.mode.adaptive": "自适应",
     "ai.reasoning.mode.disabled": "禁用",
-    "ai.reasoning.mode.token_budget": "词元预算",
     "ai.response_format.json_schema": "JSON 模式",
     "ai.response_format.text": "文本",
     "ai.response_format.xml_inline": "文本中嵌入 XML",
@@ -1438,7 +1433,6 @@
     "session.runtime.enum.reasoningEffort.xhigh": "很高",
     "session.runtime.enum.reasoningMode.adaptive": "自适应",
     "session.runtime.enum.reasoningMode.disabled": "已禁用",
-    "session.runtime.enum.reasoningMode.token_budget": "词元预算",
     "session.runtime.enum.responseFormat.json_schema": "JSON 模式",
     "session.runtime.enum.responseFormat.text": "文本",
     "session.runtime.enum.responseFormat.xml_inline": "文本中嵌入 XML",
@@ -1485,7 +1479,6 @@
     "session.runtime.parameters.autoCompactionThreshold": {
       "other": "自动精简上下文：{count} 个词元"
     },
-    "session.runtime.parameters.budget": "预算：{count}",
     "session.runtime.parameters.effort": "推理强度：{effort}",
     "session.runtime.parameters.maxOutput": "最大输出：{count}",
     "session.runtime.parameters.mode": "模式：{mode}",

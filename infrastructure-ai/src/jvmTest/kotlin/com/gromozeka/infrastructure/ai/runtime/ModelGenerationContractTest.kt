@@ -54,17 +54,15 @@ class ModelGenerationContractTest {
     }
 
     @Test
-    fun `OpenAI efforts retain their exact values including max and reject unsupported budget or ambiguous adaptive mode`() {
+    fun `OpenAI efforts retain their exact values including max and reject ambiguous adaptive mode`() {
         for (effort in AiReasoningEffort.entries) {
             val request = request(AiReasoningConfig(AiReasoningMode.ADAPTIVE, effort))
             assertEquals(JsonPrimitive(effort.name.lowercase()), chatBody(chat(), request)["reasoning_effort"])
             assertEquals(JsonPrimitive(effort.name.lowercase()), responsesBody(request).getValue("reasoning").jsonObject["effort"])
         }
-        for (config in listOf(AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE),
-            AiReasoningConfig(mode = AiReasoningMode.TOKEN_BUDGET, budgetTokens = 1024), AiReasoningConfig(budgetTokens = 1024))) {
-            assertFailsWith<IllegalArgumentException> { chatBody(chat(), request(config)) }
-            assertFailsWith<IllegalArgumentException> { responsesBody(request(config)) }
-        }
+        val ambiguous = request(AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE))
+        assertFailsWith<IllegalArgumentException> { chatBody(chat(), ambiguous) }
+        assertFailsWith<IllegalArgumentException> { responsesBody(ambiguous) }
     }
 
     @Test
@@ -116,17 +114,21 @@ class ModelGenerationContractTest {
         val behavior = AiModelBehavior(chatCompletionsTokenLimit = AiModelBehavior.ChatCompletionsTokenLimit.MAX_TOKENS,
             chatCompletionsReasoning = AiModelBehavior.ChatCompletionsReasoning.ANTHROPIC_THINKING)
         val mapper = chat(ModelGenerationPolicy(behavior))
-        val body = chatBody(mapper, request(AiReasoningConfig(mode = AiReasoningMode.TOKEN_BUDGET, budgetTokens = 1024)))
-        assertEquals(JsonPrimitive("enabled"), body.getValue("thinking").jsonObject["type"])
-        assertEquals(JsonPrimitive(1024), body.getValue("thinking").jsonObject["budget_tokens"])
+        val adaptive = request(AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE, effort = AiReasoningEffort.HIGH))
+        val body = chatBody(mapper, adaptive)
+        assertEquals(buildJsonObject { put("type", "adaptive"); put("display", "summarized") }, body["thinking"])
+        assertEquals(buildJsonObject { put("effort", "high") }, body["output_config"])
         assertEquals(JsonPrimitive(4096), body["max_tokens"])
         assertFalse("reasoning_effort" in body)
         val off = chatBody(mapper, request(AiReasoningConfig(AiReasoningMode.DISABLED, AiReasoningEffort.HIGH)))
         assertEquals(buildJsonObject { put("type", "disabled") }, off["thinking"])
         assertEquals(buildJsonObject { put("effort", "high") }, off["output_config"])
-        assertFailsWith<IllegalArgumentException> {
-            chatBody(mapper, request(AiReasoningConfig(mode = AiReasoningMode.TOKEN_BUDGET, budgetTokens = 4096)))
-        }
+        val omitted = chatBody(chat(ModelGenerationPolicy(behavior.copy(
+            chatCompletionsTokenLimit = AiModelBehavior.ChatCompletionsTokenLimit.OMIT))),
+            adaptive.copy(options = adaptive.options.copy(maxOutputTokens = null)))
+        assertFalse("max_tokens" in omitted)
+        assertFalse("max_completion_tokens" in omitted)
+        assertEquals(body["thinking"], omitted["thinking"])
     }
 
     @Test
