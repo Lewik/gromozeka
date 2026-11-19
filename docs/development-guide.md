@@ -963,6 +963,23 @@ This checks the model protocol and application read path, **not** Worker RPC, Po
 ConversationEngine dispatch or crash recovery. Idle/active/control variants, bounds,
 authorization exclusions and stale timestamps are covered by the deterministic tests.
 
+## Conversation Side Panel
+
+The entire side panel uses one selection contract for the built-in sections
+(Runtime, Tasks, Slots, Pins, Settings, and the other sections) and Visual tabs.
+Visibility and the selected tab are client-local, in-memory state keyed by
+`Conversation.Id` and the effective compact/wide layout. They are not synced to
+other clients or persisted across client restarts. Switching conversations or
+layouts restores that entry rather than carrying over the previous panel.
+
+A new wide-layout entry starts open on Runtime; a compact entry starts closed on
+Runtime. Both use the existing `isCompactLayout` decision, including narrow desktop
+windows. Application settings outside a conversation have separate state. Visual
+snapshots, additions, and data updates never open or select the panel. Removing a
+selected Visual resets only the affected conversation/layout selections to Runtime
+without changing visibility. Visual drafts and highlights remain independent of
+panel navigation and survive hiding or layout changes.
+
 ## Conversation Pins
 
 Pins are independent literal text owned by a **Conversation**, not by an agent,

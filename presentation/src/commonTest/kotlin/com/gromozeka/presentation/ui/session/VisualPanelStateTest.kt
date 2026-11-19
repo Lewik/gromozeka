@@ -50,19 +50,21 @@ class VisualPanelStateTest {
         assertEquals("remote", draft.form["query"]!!.jsonPrimitive.content)
     }
 
-    @Test fun tabsArePerConversationAndNewVisualsAreSelectedOnce() {
+    @Test fun snapshotsAndDraftsArePerConversationAndRemovedVisualsAreDiscarded() {
         val panels = VisualPanelState()
-        assertTrue(panels.accept(initial.conversationId, listOf(initial)))
-        assertEquals(initial.id, panels.selected(initial.conversationId))
-        panels.select(initial.conversationId, null)
-        assertFalse(panels.accept(initial.conversationId, listOf(initial.copy(revision = 2))))
-        assertNull(panels.selected(initial.conversationId))
-        val second = initial.copy(id = "visual-2")
-        assertTrue(panels.accept(initial.conversationId, listOf(initial, second)))
-        assertEquals(second.id, panels.selected(initial.conversationId))
-        assertNull(panels.selected(Conversation.Id("another-conversation")))
+        val other = initial.copy(id = "other-visual", conversationId = Conversation.Id("another-conversation"))
         panels.accept(initial.conversationId, listOf(initial))
-        assertNull(panels.selected(initial.conversationId))
+        val originalDraft = panels.draft(initial)
+        originalDraft.edit(initial, "form.query", JsonPrimitive("local"))
+        panels.accept(other.conversationId, listOf(other))
+        panels.accept(initial.conversationId, listOf(initial.copy(revision = 2)))
+        assertSame(originalDraft, panels.draft(initial))
+        assertEquals("local", panels.draft(initial).form.getValue("query").jsonPrimitive.content)
+        assertEquals(listOf(other), panels.visuals(other.conversationId))
+        panels.accept(initial.conversationId, emptyList())
+        assertTrue(panels.visuals(initial.conversationId).isEmpty())
+        assertNotSame(originalDraft, panels.draft(initial))
+        assertEquals(listOf(other), panels.visuals(other.conversationId))
     }
 
     @Test fun completeFormReplacementRemovesOldFieldsAndResetsEvenUnchangedSavedValues() {
@@ -165,7 +167,8 @@ class VisualPanelStateTest {
         val second = initial.copy(id = "visual-2")
         panels.accept(initial.conversationId, listOf(initial, second))
         panels.draft(initial).edit(initial, "form.query", JsonPrimitive("draft"))
-        panels.select(initial.conversationId, second.id)
+        val navigation = ConversationSidePanelState()
+        navigation.panel(initial.conversationId, compact = true).open(ConversationSidePanelTab.VisualPanel(second.id))
         assertEquals(setOf(initial.id), panels.dirtyVisualIds(initial.conversationId))
         panels.accept(initial.conversationId, listOf(initial.copy(formRevision = 2,
             formEventId = null), second))
@@ -240,7 +243,8 @@ class VisualPanelStateTest {
         first.accept(initial.conversationId, listOf(initial)); second.accept(initial.conversationId, listOf(initial))
         val command = com.gromozeka.domain.visual.VisualHighlightCommand("highlight-1", initial.conversationId, initial.id, initial.documentRevision, listOf("query"))
         first.applyHighlight(command); second.applyHighlight(command)
-        first.select(initial.conversationId, null)
+        val navigation = ConversationSidePanelState()
+        navigation.panel(initial.conversationId, compact = true).hide()
         assertEquals(setOf("query"), first.highlightedIds(initial))
         first.clearHighlights(initial.id)
         assertTrue(first.highlightedIds(initial).isEmpty())

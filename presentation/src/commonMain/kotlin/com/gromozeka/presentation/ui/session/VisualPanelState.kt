@@ -7,10 +7,9 @@ import com.gromozeka.domain.visual.VisualPath
 import kotlinx.serialization.json.*
 import kotlinx.coroutines.launch
 
-/** Client-local selection and editor drafts survive side-panel hiding and layout changes. */
+/** Client-local snapshots and editor drafts survive side-panel hiding and layout changes. */
 @Stable
 class VisualPanelState {
-    private val selected = mutableStateMapOf<Conversation.Id, String?>()
     private val snapshots = mutableStateMapOf<Conversation.Id, List<Visual>>()
     private val drafts = mutableMapOf<String, VisualFormDraft>()
     private val highlights = mutableStateMapOf<String, com.gromozeka.domain.visual.VisualHighlightCommand>()
@@ -38,10 +37,8 @@ class VisualPanelState {
     var loadError by mutableStateOf<String?>(null)
 
     fun visuals(conversationId: Conversation.Id): List<Visual> = snapshots[conversationId].orEmpty()
-    fun selected(conversationId: Conversation.Id): String? = selected[conversationId]
     fun dirtyVisualIds(conversationId: Conversation.Id): Set<String> = visuals(conversationId)
         .filter { draft(it).hasLocalChanges }.mapTo(mutableSetOf()) { it.id }
-    fun select(conversationId: Conversation.Id, id: String?) { selected[conversationId] = id }
     fun draft(visual: Visual): VisualFormDraft = drafts.getOrPut(visual.id) { VisualFormDraft(visual) }
 
     fun close(visual: Visual, service: com.gromozeka.domain.visual.VisualService, scope: kotlinx.coroutines.CoroutineScope, fallbackError: String) {
@@ -56,19 +53,15 @@ class VisualPanelState {
         }
     }
 
-    fun accept(conversationId: Conversation.Id, visuals: List<Visual>): Boolean {
+    fun accept(conversationId: Conversation.Id, visuals: List<Visual>) {
         val previous = snapshots[conversationId].orEmpty()
-        val added = visuals.filter { next -> previous.none { it.id == next.id } }
         previous.filter { old -> visuals.none { it.id == old.id } }.forEach { drafts.remove(it.id); highlights.remove(it.id) }
         snapshots[conversationId] = visuals
         visuals.forEach {
             draft(it).accept(it)
             if ((highlights[it.id]?.documentRevision ?: Long.MAX_VALUE) < it.documentRevision) highlights.remove(it.id)
         }
-        if (added.isNotEmpty()) selected[conversationId] = added.last().id
-        else if (selected[conversationId] != null && visuals.none { it.id == selected[conversationId] }) selected[conversationId] = null
         loadError = null
-        return added.isNotEmpty()
     }
 }
 

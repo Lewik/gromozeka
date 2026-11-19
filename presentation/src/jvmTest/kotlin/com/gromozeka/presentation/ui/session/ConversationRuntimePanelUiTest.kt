@@ -385,14 +385,18 @@ class ConversationRuntimePanelUiTest {
             secondClient.accept(visual.conversationId, listOf(visual))
             val draft = firstClient.draft(visual)
             draft.edit(visual, "form.query", JsonPrimitive("local draft"))
-            val visible = mutableStateOf(true)
+            val firstNavigation = ConversationSidePanelState().panel(visual.conversationId, compact = fullScreen)
+            val secondNavigation = ConversationSidePanelState().panel(visual.conversationId, compact = fullScreen)
+            val selected = ConversationSidePanelTab.VisualPanel(visual.id)
+            firstNavigation.open(selected)
+            secondNavigation.open(selected)
             var visualCloseRequests = 0
             setContent {
                 fixture.Panel(
-                    null, isVisible = visible.value, fullScreen = fullScreen,
+                    null, isVisible = firstNavigation.visible, fullScreen = fullScreen,
                     visuals = firstClient.visuals(visual.conversationId),
-                    selectedVisualId = firstClient.selected(visual.conversationId),
-                    onClose = { visible.value = false },
+                    selectedVisualId = (firstNavigation.selected as ConversationSidePanelTab.VisualPanel).id,
+                    onClose = firstNavigation::hide,
                     onCloseVisual = { visualCloseRequests++ },
                     visualContent = { Text(firstClient.draft(it).form.getValue("query").jsonPrimitive.content) },
                 )
@@ -401,13 +405,14 @@ class ConversationRuntimePanelUiTest {
             onNodeWithContentDescription(translation.text("session.sidebar.hide")).performClick()
             onNodeWithTag("conversation-side-panel-tabs").assertDoesNotExist()
             runOnIdle {
-                assertFalse(visible.value)
+                assertFalse(firstNavigation.visible)
                 // Closing the shared Visual (and its handler) must never be requested.
                 assertEquals(0, visualCloseRequests)
                 assertEquals(listOf(visual), firstClient.visuals(visual.conversationId))
                 assertEquals(listOf(visual), secondClient.visuals(visual.conversationId))
-                assertEquals(visual.id, firstClient.selected(visual.conversationId))
-                assertEquals(visual.id, secondClient.selected(visual.conversationId))
+                assertEquals(selected, firstNavigation.selected)
+                assertEquals(selected, secondNavigation.selected)
+                assertTrue(secondNavigation.visible)
                 assertSame(draft, firstClient.draft(visual))
                 assertEquals("saved", secondClient.draft(visual).form.getValue("query").jsonPrimitive.content)
                 // A handler can publish another snapshot while this client hides the panel.
@@ -415,12 +420,13 @@ class ConversationRuntimePanelUiTest {
                     put("form", visual.state.getValue("form"))
                     put("data", buildJsonObject { put("count", 1) })
                 })
-                assertFalse(firstClient.accept(visual.conversationId, listOf(next)))
-                assertFalse(secondClient.accept(visual.conversationId, listOf(next)))
+                firstClient.accept(visual.conversationId, listOf(next))
+                secondClient.accept(visual.conversationId, listOf(next))
                 assertSame(visual.handler, firstClient.visuals(visual.conversationId).single().handler)
                 assertSame(visual.handler, secondClient.visuals(visual.conversationId).single().handler)
-                assertFalse(visible.value)
-                visible.value = true
+                assertFalse(firstNavigation.visible)
+                assertEquals(selected, firstNavigation.selected)
+                firstNavigation.toggle()
             }
             onNodeWithText("local draft").assertExists()
             onNodeWithTag("conversation-side-panel-tabs").assertExists()

@@ -77,6 +77,7 @@ import com.gromozeka.presentation.ui.session.ConversationPinsPanel
 import com.gromozeka.presentation.ui.session.ConversationPinsPanelState
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
 import com.gromozeka.presentation.ui.session.ConversationSidePanel
+import com.gromozeka.presentation.ui.session.ConversationSidePanelState
 import com.gromozeka.presentation.ui.session.ConversationSidePanelTab
 import com.gromozeka.presentation.ui.session.ConversationSidePanelTab.Section as SidebarSection
 import com.gromozeka.presentation.ui.session.ConversationThreadPanel
@@ -104,7 +105,6 @@ import kotlinx.coroutines.launch
 fun GromozekaApp(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    showSidePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
@@ -118,7 +118,6 @@ fun GromozekaApp(
             GromozekaAppContent(
                 appComponents = appComponents,
                 skipLoadingScreen = skipLoadingScreen,
-                showSidePanelInitially = showSidePanelInitially,
                 forceCompactLayout = forceCompactLayout,
                 clientPlatform = clientPlatform,
             )
@@ -130,7 +129,6 @@ fun GromozekaApp(
 fun GromozekaAppContent(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    showSidePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
@@ -142,9 +140,8 @@ fun GromozekaAppContent(
     var recordingShortcut by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
-    var sidePanelVisible by remember(showSidePanelInitially) { mutableStateOf(showSidePanelInitially) }
+    val sidePanels = remember(appComponents) { ConversationSidePanelState() }
     val sidePanelResize = remember { ConversationSidePanelResizeState() }
-    var sidePanelTab by remember { mutableStateOf<ConversationSidePanelTab>(SidebarSection.RUNTIME) }
     val notificationState = remember(appComponents) { UserNotificationsState(appComponents.authenticatedUser.id) }
     LaunchedEffect(appComponents, notificationState.observationRetry) {
         notificationState.observe(appComponents.userNotificationService, appComponents.userNotificationSink)
@@ -183,22 +180,12 @@ fun GromozekaAppContent(
     val unreadConversationIds by appComponents.appViewModel.unreadConversationIds.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
-    val hideSidePanel: () -> Unit = { sidePanelVisible = false }
-    val openSidePanel: (ConversationSidePanelTab) -> Unit = { tab ->
-        if (tab is ConversationSidePanelTab.VisualPanel) {
-            visualPanelState.select(checkNotNull(currentTab).conversationId, tab.id)
-        }
-        sidePanelTab = tab
-        sidePanelVisible = true
-    }
     LaunchedEffect(currentTab?.conversationId, appComponents.visualService) {
         val conversationId = currentTab?.conversationId ?: return@LaunchedEffect
         try {
             appComponents.visualService.observe(conversationId).collect { snapshots ->
-                if (visualPanelState.accept(conversationId, snapshots) && currentTab?.conversationId == conversationId) {
-                    sidePanelTab = ConversationSidePanelTab.VisualPanel(checkNotNull(visualPanelState.selected(conversationId)))
-                    sidePanelVisible = true
-                }
+                visualPanelState.accept(conversationId, snapshots)
+                sidePanels.acceptVisuals(conversationId, snapshots.mapTo(mutableSetOf()) { it.id })
             }
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (error: Exception) { visualPanelState.loadError = error.message ?: localization.text("visuals.loadFailed") }
@@ -386,6 +373,18 @@ fun GromozekaAppContent(
                             with(scaledDensity) { maxWidth.toPx() }.toDp()
                         }
                         val isCompactLayout = forceCompactLayout || unscaledMaxWidth < 700.dp
+                        val conversationId = currentTab?.conversationId
+                        val sidePanel = conversationId?.let { sidePanels.panel(it, isCompactLayout) }
+                            ?: sidePanels.settings(isCompactLayout)
+                        val sidePanelVisible = sidePanel.visible
+                        val sidePanelTab = sidePanel.selected
+                        val hideSidePanel: () -> Unit = sidePanel::hide
+                        val openSidePanel: (ConversationSidePanelTab) -> Unit = { tab ->
+                            check(conversationId != null || tab == SidebarSection.SETTINGS) {
+                                "Only settings can be opened without a conversation"
+                            }
+                            sidePanel.open(tab)
+                        }
                         val availableWidth = maxWidth
                         val resizable = !isCompactLayout && (clientPlatform == ClientPlatform.DESKTOP || clientPlatform == ClientPlatform.WEB_DESKTOP)
                         val contentPadding = if (isCompactLayout) GromozekaTheme.spacing.panelPadding else GromozekaTheme.spacing.contentPadding
@@ -437,12 +436,7 @@ fun GromozekaAppContent(
                             val tabViewModel = currentTab
                             val conversationId = tabViewModel?.conversationId
                             val visuals = conversationId?.let(visualPanelState::visuals).orEmpty()
-                            // Visual selection belongs to the conversation and may disappear after a remote close.
-                            val requested = sidePanelTab
-                            val selected = if (requested is ConversationSidePanelTab.VisualPanel) {
-                                conversationId?.let(visualPanelState::selected)?.takeIf { id -> visuals.any { it.id == id } }
-                                    ?.let { ConversationSidePanelTab.VisualPanel(it) } ?: SidebarSection.RUNTIME
-                            } else requested
+                            val selected = sidePanelTab
                             val closeConversation: (() -> Unit)? = conversationId?.let { id ->
                                 { coroutineScope.launch { appComponents.appViewModel.closeConversationTab(id) }; Unit }
                             }
@@ -618,9 +612,9 @@ fun GromozekaAppContent(
                                             appComponents.appViewModel.renameConversation(conversationId, newName)
                                         },
                                         trailingContent = {
-                                            if (currentTab != null || (sidePanelTab == SidebarSection.SETTINGS && currentTabIndex != -2)) {
+                                            if (currentTab != null || (sidePanelVisible && currentTabIndex != -2)) {
                                                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                                                    SidePanelToggle(sidePanelVisible) { sidePanelVisible = !sidePanelVisible }
+                                                    SidePanelToggle(sidePanelVisible, sidePanel::toggle)
                                                 }
                                             }
                                             androidx.compose.material3.BadgedBox(badge = {
