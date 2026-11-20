@@ -154,7 +154,7 @@ class OpenAiResponsesCompactionTest {
     @Test
     fun `explicit counter and compactor use separate endpoints and replay the complete returned window`() = runBlocking {
         val retained = """{"type":"message","id":"retained","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Retained detail","annotations":[]}]}"""
-        val compactedBody = """{"id":"compact-1","object":"response.compaction","created_at":1,"output":[$retained,$COMPACT],"usage":{"input_tokens":9000,"output_tokens":100,"total_tokens":9100,"input_tokens_details":{"cached_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}"""
+        val compactedBody = compactedResponse(retained, COMPACT)
         SdkHttpTestServer("""{"object":"response.input_tokens","input_tokens":9000}""", compactedBody, response(ANSWER)).use { server ->
             val provider = RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission = TestAiAdmission(), responsesContinuations = com.gromozeka.infrastructure.ai.openai.OpenAiResponsesContinuations())))
             val runtime = provider.getRuntime(resolved(connection("${server.origin}/api/llm")), null)
@@ -192,11 +192,44 @@ class OpenAiResponsesCompactionTest {
         }
     }
 
+    @Test
+    fun `gateway sends retained reasoning on the next inference and the next standalone compact`() = runBlocking {
+        fun reasoning(id: String) = """{"type":"reasoning","id":"$id","summary":[],"encrypted_content":"encrypted-$id"}"""
+        val first = reasoning("rs_first")
+        val tail = reasoning("rs_tail")
+        val firstWindow = compactedResponse(COMPACT)
+        SdkHttpTestServer(firstWindow, response(ANSWER), firstWindow).use { server ->
+            val backend = OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients),
+                admission = TestAiAdmission(), responsesContinuations = OpenAiResponsesContinuations())
+            val runtime = RoutingAiRuntimeProvider(listOf(backend)).getRuntime(resolved(connection("${server.origin}/api/llm")), null)
+            val prefix = listOf(text("old")) + persist(parse(response(first)), "first")
+            val suffix = listOf(text("new")) + persist(parse(response(tail)), "tail")
+            suspend fun compact(input: AiRuntimeRequest) =
+                runtime.compact(input.copy(options = input.options.copy(usagePurpose = "CONTEXT_COMPACTION")))
+            val generated = persist(compact(request(prefix))).single()
+            val result = generated.content.single() as Compaction
+            val transition = Compaction.HistoryTransition(Conversation.Thread.Id("thread"), Conversation.Thread.Id("next"))
+            val checkpoint = generated.copy(content = listOf(result.copy(historyTransition = transition)))
+                .recordRetainedOpenAiReplay(prefix + suffix, prefix.lastIndex)
+            val next = request(listOf(checkpoint) + suffix, "next")
+            runtime.call(next)
+            compact(next)
+
+            assertEquals(listOf("/api/llm/responses/compact", "/api/llm/responses", "/api/llm/responses/compact"),
+                server.requests.map { it.target })
+            val inputs = server.requests.map { Json.parseToJsonElement(it.body).jsonObject.getValue("input").jsonArray }
+            assertEquals(listOf(first, tail, tail).map { Json.parseToJsonElement(it) }, inputs.map { items ->
+                items.single { it.jsonObject["type"] == JsonPrimitive("reasoning") }
+            })
+            assertTrue(inputs.drop(1).all { it.first() == Json.parseToJsonElement(COMPACT) })
+        }
+    }
+
     private fun parse(body: String) = mapper.toRuntimeResponse(jsonMapper().readValue(body, Response::class.java), AiModelConfiguration.AssistantResponseFormat.TEXT)
 
-    private fun request(messages: List<Message>) = AiRuntimeRequest(
+    private fun request(messages: List<Message>, threadId: String = "thread") = AiRuntimeRequest(
         systemPrompts = listOf("Continue the task."), messages = messages,
-        options = AiRuntimeOptions(maxOutputTokens = 128, toolContext = mapOf("threadId" to "thread")),
+        options = AiRuntimeOptions(maxOutputTokens = 128, toolContext = mapOf("threadId" to threadId)),
     )
 
     private fun persist(response: AiRuntimeResponse, prefix: String = "generated") = response.messages.mapIndexed { index, message ->
@@ -235,6 +268,7 @@ class OpenAiResponsesCompactionTest {
         const val COMPACT = """{"type":"compaction","id":"checkpoint-1","encrypted_content":"encrypted-state","future_field":"preserved"}"""
         const val CALL = """{"type":"function_call","id":"call-item","call_id":"tool-1","name":"lookup","arguments":"{}","status":"completed"}"""
         const val ANSWER = """{"type":"message","id":"answer","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Done","annotations":[]}]}"""
+        fun compactedResponse(vararg output: String) = """{"id":"compact-1","object":"response.compaction","created_at":1,"output":[${output.joinToString(",")}],"usage":{"input_tokens":9000,"output_tokens":100,"total_tokens":9100,"input_tokens_details":{"cached_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}"""
         fun response(vararg output: String) = """{"id":"response","object":"response","created_at":1,"model":"$MODEL","status":"completed","output":[${output.joinToString(",")}],"usage":{"input_tokens":8000,"input_tokens_details":{"cached_tokens":0},"output_tokens":40,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":8040}}"""
     }
 }

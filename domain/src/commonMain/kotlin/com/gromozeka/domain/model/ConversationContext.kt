@@ -2,9 +2,15 @@ package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.Conversation.Message
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
-import kotlinx.serialization.json.JsonObject
+import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
+import com.gromozeka.domain.model.ai.AiConnection
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 
 /** Context is a projection of immutable history, not a replacement for that history. */
 class ConversationContext(
@@ -90,10 +96,51 @@ fun Conversation.Message.compactions(): List<Conversation.Message.ContentItem.Co
 
 fun Conversation.Message.isFullContextCompaction(): Boolean = compactions().any { it.coversAllPrevious }
 
+// Local checkpoint metadata; never part of the provider's opaque replay window.
+private const val RETAINED_OPENAI_REPLAY_IDS = "gromozekaRetainedOpenAiReplayIds"
+
+private fun String?.supportsNativeReplayTransfer() =
+    this == AiConnection.Kind.OPENAI_API.name || this == AiConnection.Kind.OPENAI_SUBSCRIPTION.name
+
+internal fun Message?.retainedOpenAiReplayIds(provider: String?, thread: String?): Set<Message.Id> {
+    if (this == null || thread == null || !provider.supportsNativeReplayTransfer()) return emptySet()
+    val receipt = content.singleOrNull() as? ContextCompactionResult ?: return emptySet()
+    if (!receipt.coversAllPrevious || receipt.historyTransition?.targetThreadId?.value != thread ||
+        receipt.providerScope?.provider != provider ||
+        receipt.payload !is ContextCompactionResult.Payload.OpaqueProviderState) return emptySet()
+    val ids = providerMetadata[RETAINED_OPENAI_REPLAY_IDS]?.jsonArray ?: return emptySet()
+    return ids.mapTo(mutableSetOf()) { Message.Id(it.jsonPrimitive.content) }
+}
+
+/** Carry only immutable messages that could already be replayed on the verified source branch. */
+fun Message.recordRetainedOpenAiReplay(history: List<Message>, sourceEnd: Int): Message {
+    require(RETAINED_OPENAI_REPLAY_IDS !in providerMetadata) { "Only the compaction commit may grant retained replay" }
+    val checkpoint = content.single() as ContextCompactionResult
+    val scope = checkpoint.providerScope ?: return this
+    if (sourceEnd == history.lastIndex || !scope.provider.supportsNativeReplayTransfer() || !checkpoint.coversAllPrevious ||
+        checkpoint.payload !is ContextCompactionResult.Payload.OpaqueProviderState ||
+        scope.connectionId == null || scope.modelName == null) return this
+    val sourceThread = requireNotNull(checkpoint.historyTransition).sourceThreadId.value
+    val previous = history.lastOrNull(Message::isFullContextCompaction)
+    val inherited = previous.retainedOpenAiReplayIds(scope.provider, sourceThread)
+    val invalidated = checkpoint.invalidatedReplayMessageIds.toSet()
+    val ids = history.subList(sourceEnd + 1, history.size).filter { message ->
+        val metadata = message.providerMetadata
+        message.role == Message.Role.ASSISTANT && message.id !in invalidated &&
+            metadata["provider"] == JsonPrimitive(scope.provider) &&
+            metadata["connectionId"] == JsonPrimitive(scope.connectionId) &&
+            metadata["model"] == JsonPrimitive(scope.modelName) &&
+            (scope.modelConfigurationId == null || metadata["modelConfigurationId"] == JsonPrimitive(scope.modelConfigurationId)) &&
+            (metadata[AI_REPLAY_THREAD_METADATA_KEY] == JsonPrimitive(sourceThread) || message.id in inherited)
+    }.map { JsonPrimitive(it.id.value) }
+    if (ids.isEmpty()) return this
+    return copy(providerMetadata = JsonObject(providerMetadata + (RETAINED_OPENAI_REPLAY_IDS to JsonArray(ids))))
+}
+
 /** Request-only normalization: persisted content and usage/provenance remain unchanged. */
 fun Conversation.Message.withoutProviderReplay(): Conversation.Message = copy(
     content = content.filterNot { it is Conversation.Message.ContentItem.Thinking },
-    providerMetadata = JsonObject(providerMetadata.filterKeys { it == "providerManagedTool" }),
+    providerMetadata = JsonObject(providerMetadata.filterKeys { it == "providerManagedTool" || it == RETAINED_OPENAI_REPLAY_IDS }),
 )
 
 /** Restore provider-generated content before context projection, never the human-facing correction. */

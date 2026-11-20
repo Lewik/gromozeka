@@ -2,6 +2,8 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Checkpoint
+import com.gromozeka.domain.model.recordRetainedOpenAiReplay
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -26,6 +28,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 class OpenAiSubscriptionCompactionTest {
@@ -108,6 +111,46 @@ class OpenAiSubscriptionCompactionTest {
             assertTrue(inspect(fixture, listOf(measured), mapped.copy(model = "other"), "connection") < 100)
             val changedPrefix = mapped.copy(instructions = "new instructions ".repeat(100))
             assertTrue(inspect(fixture, listOf(measured), changedPrefix, "connection") > 900_000)
+        }
+    }
+
+    @Test
+    fun replaysEncryptedTailOnInferenceAndNextLiteCompaction() = runBlocking {
+        Fixture().use { fixture ->
+            fun reasoning(id: String) = buildJsonObject {
+                put("type", "reasoning")
+                put("id", id)
+                put("summary", JsonArray(emptyList()))
+                put("encrypted_content", "encrypted-$id")
+            }
+            fun stored(item: JsonObject): Conversation.Message {
+                val parsed = fixture.responseMapper.toRuntimeResponse(listOf(item),
+                    OpenAiSubscriptionCompletedResponse("response", "completed"), "conversation", "connection",
+                    "configuration", profile.slug, AiModelConfiguration.AssistantResponseFormat.TEXT)
+                return persisted(parsed).single().copy(id = Conversation.Message.Id(item.getValue("id").jsonPrimitive.content))
+            }
+            val prefixReasoning = reasoning("rs_prefix")
+            val tailReasoning = reasoning("rs_tail")
+            val prefix = listOf(user("old", "First task"), stored(prefixReasoning))
+            val suffix = listOf(user("new", "Next task"), stored(tailReasoning))
+            val original = request().copy(messages = prefix, options = AiRuntimeOptions(toolContext = mapOf("threadId" to "thread")))
+            fun mapped(request: AiRuntimeRequest) = fixture.mapper.toRequest(request, profile, "conversation", connectionId = "connection")
+            val generated = persisted(fixture.compact(original, mapped(original))).single()
+            val item = generated.content.single() as Checkpoint
+            val transition = Checkpoint.HistoryTransition(Conversation.Thread.Id("thread"), Conversation.Thread.Id("next"))
+            val checkpoint = generated.copy(content = listOf(item.copy(historyTransition = transition)))
+                .recordRetainedOpenAiReplay(prefix + suffix, prefix.lastIndex)
+            val next = original.copy(messages = listOf(checkpoint) + suffix, options = AiRuntimeOptions(toolContext = mapOf("threadId" to "next")))
+            fixture.client.create(testModelConfiguration("connection"),
+                OpenAiSubscriptionSession("access", "refresh", null, "account", Long.MAX_VALUE),
+                "conversation", mapped(next), profile, AiModelConfiguration.AssistantResponseFormat.TEXT)
+            fixture.compact(next, mapped(next))
+
+            val inputs = fixture.requests.map { it.getValue("input").jsonArray }
+            assertEquals(listOf(true, false, true), inputs.map { it.last().jsonObject["type"] == JsonPrimitive("compaction_trigger") })
+            assertEquals(listOf(prefixReasoning, tailReasoning, tailReasoning), inputs.map { items ->
+                items.single { it.jsonObject["type"] == JsonPrimitive("reasoning") }
+            })
         }
     }
 

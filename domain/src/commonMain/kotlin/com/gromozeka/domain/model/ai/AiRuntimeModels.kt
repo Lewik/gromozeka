@@ -2,6 +2,7 @@ package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.retainedOpenAiReplayIds
 import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.withPortableSyntheticToolCallIds
 import kotlinx.serialization.json.jsonPrimitive
@@ -155,11 +156,13 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
     val originalMessages = originalCollaborationMessages().withPortableSyntheticToolCallIds()
-    val projected = ConversationContext(originalMessages).messagesForProvider(nativeProvider).map { message ->
+    val window = ConversationContext(originalMessages).messagesForProvider(nativeProvider)
+    val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeProvider, currentThread)
+    val projected = window.map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
-        if (currentThread != null && sourceThread != currentThread) {
+        if (currentThread != null && sourceThread != currentThread && message.id !in retainedReplay) {
             // Legacy raw states without branch attribution are replayed as portable content.
-            // Newly produced thinking remains reusable until the branch changes again.
+            // A verified native checkpoint grants replay only to its exact retained messages.
             message.withoutProviderReplay()
         } else message
     }

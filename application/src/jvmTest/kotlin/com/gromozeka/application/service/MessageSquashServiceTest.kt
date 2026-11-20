@@ -7,6 +7,9 @@ import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.compactions
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
+import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.ai.AiToolChoice
 import org.mockito.Mockito
 import com.gromozeka.domain.model.Project
@@ -51,6 +54,44 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 class MessageSquashServiceTest {
+    @Test
+    fun `repeated native prefix commits preserve only previously eligible reasoning on the committed branch`() = runBlocking {
+        val f = Fixture()
+        val provider = AiConnection.Kind.OPENAI_API.name
+        val scope = Compaction.ProviderScope(provider, "gateway", "configuration", "model")
+        val thinking = Conversation.Message.ContentItem.Thinking("", signature = "opaque")
+        fun tail(id: String, thread: String, model: String = "model") = f.third.copy(
+            id = Conversation.Message.Id(id), role = Conversation.Message.Role.ASSISTANT, content = listOf(thinking),
+            providerMetadata = JsonObject(mapOf(
+                "provider" to JsonPrimitive(provider), "connectionId" to JsonPrimitive("gateway"),
+                "model" to JsonPrimitive(model), "modelConfigurationId" to JsonPrimitive("configuration"),
+                AI_REPLAY_THREAD_METADATA_KEY to JsonPrimitive(thread),
+            )),
+        )
+        val original = f.initialThread.id
+        val kept = tail("keep", original.value)
+        f.append(kept)
+        f.append(tail("foreign-branch", "other-thread"))
+        f.append(tail("foreign-model", original.value, "other-model"))
+        val sources = listOf(f.first.id, f.toolResult.id, f.third.id)
+        suspend fun commit(id: String, thread: Conversation.Thread.Id, prefix: List<Conversation.Message.Id>): Conversation.Thread.Id {
+            val checkpoint = f.checkpoint(opaque = true)
+            val result = checkpoint.compactions().single().copy(providerScope = scope, sourceMessageIds = prefix)
+            return f.committer.commit(thread, checkpoint.copy(id = Conversation.Message.Id(id), content = listOf(result))).currentThread
+        }
+        fun reasoning(history: List<Conversation.Message>, thread: String) =
+            AiRuntimeRequest(emptyList(), history, options = AiRuntimeOptions(toolContext = mapOf("threadId" to thread)))
+                .projectedMessages(provider).filter { thinking in it.content }.map { it.id }
+
+        val first = commit("cp1", original, sources)
+        assertEquals(listOf(kept.id), reasoning(f.threadMessages.messages(first), first.value))
+        val second = commit("cp2", first, sources + Conversation.Message.Id("cp1"))
+        val latest = f.threadMessages.messages(second).dropWhile { it.id.value != "cp2" }
+        assertEquals(listOf(kept.id), reasoning(latest, second.value))
+        assertTrue(reasoning(latest, "real-fork").isEmpty())
+        assertEquals(kept, f.messages.values.getValue(kept.id))
+    }
+
     @Test
     fun `every strategy commits one canonical compaction in conversation order`() = runBlocking {
         SquashType.entries.forEach { strategy ->
@@ -538,15 +579,12 @@ class MessageSquashServiceTest {
         val pins = conversations.pinCatalog
         private val configurationProvider = FixedConfigurationProvider()
 
+        private val pairingService = ToolCallPairingService()
+        val committer = ContextCompactionCommitService(
+            conversations, compactions, threadMessages, pairingService, NoOpDeclarativeStateChangePublisher,
+        )
+
         fun service(): MessageSquashService {
-            val pairingService = ToolCallPairingService()
-            val committer = ContextCompactionCommitService(
-                conversationRepository = conversations,
-                conversationCompactionRepository = compactions,
-                threadMessageRepository = threadMessages,
-                toolCallPairingService = pairingService,
-                stateChanges = NoOpDeclarativeStateChangePublisher,
-            )
             return MessageSquashService(
                 aiRuntimeProvider = runtimeProvider,
                 artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->

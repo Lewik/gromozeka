@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.isFullContextCompaction
+import com.gromozeka.domain.model.recordRetainedOpenAiReplay
 import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -95,7 +96,7 @@ internal class ContextCompactionCommitService(
         val compactionMessage = message.copy(content = listOf(result.copy(
             invalidatedReplayMessageIds = (result.invalidatedReplayMessageIds + invalidatedReplay).distinct(),
             historyTransition = ContextCompactionResult.HistoryTransition(expectedThreadId, newThread.id),
-        )))
+        ))).recordRetainedOpenAiReplay(messages, sourceEnd)
         // A selective summary must remain after any existing full checkpoint, otherwise
         // it would disappear behind that checkpoint or split its protected prefix.
         val insertionAnchorId = messages[maxOf(sourceEnd, lastFullCheckpoint)].id
