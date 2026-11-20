@@ -103,7 +103,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
     }
 
     private fun prepareExecutionSpec(spec: CommandProcessSpec, workingDirectory: File, outputFile: File): CommandProcessSpec {
-        val environment = LocalScriptSdk.environment(gromozekaHome(), spec.environment)
+        val environment = LocalScriptSdk.environment(gromozekaHome(), spec.environment, requirePython = spec.pythonProgram != null)
         val program = spec.pythonProgram ?: return spec.copy(environment = environment)
         val inlineCode = program.code
         val source = if (inlineCode != null) {

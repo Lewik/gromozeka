@@ -75,6 +75,17 @@ tasks.named<Jar>("jar") {
     }
 }
 
+tasks.register<JavaExec>("commandJarSmoke") {
+    group = "verification"
+    description = "Check native commands and explicit Python failure using the standalone Worker JAR"
+    dependsOn(tasks.named("bootJar"), tasks.named("testClasses"))
+    classpath = files(tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar").flatMap { it.archiveFile })
+    mainClass.set("org.springframework.boot.loader.launch.PropertiesLauncher")
+    systemProperty("loader.main", "com.gromozeka.worker.WorkerCommandJarSmoke")
+    environment("GROMOZEKA_INSTALLATION_HOME", layout.buildDirectory.dir("tmp/command-jar-smoke-no-python").get().asFile.absolutePath)
+    systemProperty("loader.path", sourceSets["test"].output.classesDirs.files.joinToString(",") { it.absolutePath })
+}
+
 tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }.configureEach {
     dependsOn(rootProject.tasks.named("preparePythonRuntime"))
     systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)

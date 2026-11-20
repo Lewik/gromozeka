@@ -48,12 +48,23 @@ internal object LocalScriptSdk {
         return directory.toFile()
     }
 
-    fun environment(home: File, supplied: Map<String, String>, inherited: Map<String, String> = System.getenv()): Map<String, String> {
+    fun environment(
+        home: File,
+        supplied: Map<String, String>,
+        inherited: Map<String, String> = System.getenv(),
+        requirePython: Boolean = false,
+    ): Map<String, String> {
         val directory = materialize(home).absolutePath
+        val python = try {
+            BundledPythonRuntime.executable().absolutePath
+        } catch (error: BundledPythonUnavailableException) {
+            if (requirePython) throw error
+            ""
+        }
         val previousPythonPath = supplied["PYTHONPATH"] ?: inherited["PYTHONPATH"]
         return supplied + mapOf(
             "GRZ_SDK_HOME" to directory,
-            "GRZ_PYTHON" to BundledPythonRuntime.executable().absolutePath,
+            "GRZ_PYTHON" to python,
             "PYTHONPATH" to listOfNotNull(directory, previousPythonPath?.takeIf(String::isNotEmpty)).joinToString(File.pathSeparator),
             // A monitor/filter without a Conversation must not inherit another launch's routing.
             "GRZ_MCP_CONTEXT" to (supplied["GRZ_MCP_CONTEXT"] ?: "{}"),
