@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Checkpoint
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.recordRetainedOpenAiReplay
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -139,7 +140,7 @@ class OpenAiSubscriptionCompactionTest {
             val item = generated.content.single() as Checkpoint
             val transition = Checkpoint.HistoryTransition(Conversation.Thread.Id("thread"), Conversation.Thread.Id("next"))
             val checkpoint = generated.copy(content = listOf(item.copy(historyTransition = transition)))
-                .recordRetainedOpenAiReplay(prefix + suffix, prefix.lastIndex)
+                .recordRetainedOpenAiReplay(previous = null, suffix.map(CompactionMessageHeader::from))
             val next = original.copy(messages = listOf(checkpoint) + suffix, options = AiRuntimeOptions(toolContext = mapOf("threadId" to "next")))
             fixture.client.create(testModelConfiguration("connection"),
                 OpenAiSubscriptionSession("access", "refresh", null, "account", Long.MAX_VALUE),

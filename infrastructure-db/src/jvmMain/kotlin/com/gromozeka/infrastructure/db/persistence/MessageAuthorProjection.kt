@@ -9,7 +9,15 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 
 internal fun resolveCurrentMessageAuthors(messages: List<Conversation.Message>): List<Conversation.Message> {
     val authors = messages.mapNotNull { it.author as? Conversation.Message.Author.User }
-    if (authors.isEmpty()) return messages
+    val resolved = resolveAuthors(authors)
+    return messages.map { message ->
+        val current = resolved[message.author] ?: return@map message
+        if (current == message.author) message else message.copy(author = current)
+    }
+}
+
+internal fun resolveAuthors(authors: List<Conversation.Message.Author.User>): Map<Conversation.Message.Author.User, Conversation.Message.Author.User> {
+    if (authors.isEmpty()) return emptyMap()
     val identityKeys = authors.mapNotNull { it.identityKey }.distinct()
     val identityOwners = if (identityKeys.isEmpty()) emptyMap() else UserIdentities.selectAll()
         .where { UserIdentities.key inList identityKeys }
@@ -17,10 +25,8 @@ internal fun resolveCurrentMessageAuthors(messages: List<Conversation.Message>):
     val userIds = (authors.map { it.userId.value } + identityOwners.values).distinct()
     val names = Users.selectAll().where { Users.id inList userIds }
         .associate { it[Users.id] to it[Users.displayName] }
-    return messages.map { message ->
-        val author = message.author as? Conversation.Message.Author.User ?: return@map message
+    return authors.distinct().associateWith { author ->
         val currentId = identityOwners[author.identityKey] ?: author.userId.value
-        val name = names[currentId] ?: return@map message
-        message.copy(author = author.copy(userId = User.Id(currentId), displayName = name))
+        names[currentId]?.let { author.copy(userId = User.Id(currentId), displayName = it) } ?: author
     }
 }

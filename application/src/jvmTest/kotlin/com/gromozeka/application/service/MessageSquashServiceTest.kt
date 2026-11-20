@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Conversation
@@ -54,6 +55,42 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 class MessageSquashServiceTest {
+    @Test
+    fun `foreign nested native checkpoints load only the surviving readable handoff and its tail`() = runBlocking {
+        val f = Fixture()
+        val readable = f.checkpoint()
+        val tail = f.third.copy(id = Conversation.Message.Id("old-tail"))
+        val inner = f.checkpoint(opaque = true).copy(id = Conversation.Message.Id("inner"))
+        val outer = inner.copy(id = Conversation.Message.Id("outer"), content = listOf(
+            inner.compactions().single().copy(coverage = Compaction.Coverage.SELECTED_MESSAGES, sourceMessageIds = listOf(inner.id))
+        ))
+        listOf(readable, tail, inner, outer).forEach(f::append)
+        val history = f.threadMessages.messages(f.initialThread.id)
+        val window = CompactionHistoryWindow(f.threadMessages.compactionHeaders(f.initialThread.id))
+        val input = window.headers.takeLast(1)
+        val selected = setOf(outer.id)
+        val foreign = window.messages(f.threadMessages, f.initialThread.id, input, null)
+        assertEquals(ConversationContext(history).messagesForProvider(null, selected), foreign)
+        assertEquals(listOf(readable.id, tail.id), foreign.map { it.id })
+        assertEquals(listOf(readable.id, tail.id, inner.id, outer.id), f.threadMessages.bodyReads)
+
+        f.threadMessages.bodyReads.clear()
+        val native = window.messages(f.threadMessages, f.initialThread.id, input, AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+        assertEquals(listOf(outer), native)
+        assertEquals(listOf(outer.id), f.threadMessages.bodyReads)
+    }
+
+    @Test
+    fun `manual selection in a 16000 message thread reads only the tool exchange including through commit`() = runBlocking {
+        val f = Fixture()
+        repeat(15_996) { f.append(f.third.copy(id = Conversation.Message.Id("archived-$it"))) }
+        f.append(f.checkpoint())
+        val updated = f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id), SquashType.DISTILL)
+        val checkpoint = f.threadMessages.messages(updated.currentThread).last().compactions().single()
+        assertEquals(listOf(f.first.id, f.toolResult.id), checkpoint.sourceMessageIds)
+        assertEquals(checkpoint.sourceMessageIds, f.threadMessages.bodyReads)
+    }
+
     @Test
     fun `repeated native prefix commits preserve only previously eligible reasoning on the committed branch`() = runBlocking {
         val f = Fixture()
@@ -823,6 +860,12 @@ private class InMemoryThreadMessageRepository(
         links[threadId]?.maxOfOrNull(ThreadMessageLink::position)
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> =
         messages(threadId)
+    val bodyReads = mutableListOf<Conversation.Message.Id>()
+    override suspend fun compactionHeaders(threadId: Conversation.Thread.Id) = messages(threadId).map(CompactionMessageHeader::from)
+    override suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> {
+        bodyReads += ids
+        return ids.map(messages(threadId).associateBy { it.id }::getValue)
+    }
     override suspend fun getContextMessagesByThread(threadId: Conversation.Thread.Id, nativeProvider: String?): List<Conversation.Message> {
         val history = messages(threadId)
         val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(

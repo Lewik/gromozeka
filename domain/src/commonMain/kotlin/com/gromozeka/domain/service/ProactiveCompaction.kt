@@ -28,6 +28,7 @@ data class ProactiveCompaction(
     val checkpoint: Conversation.Message? = null,
     val failureCode: String? = null,
     val outcomeUnknown: Boolean = false,
+    val capturedLastMessageId: Conversation.Message.Id? = null,
 ) {
     init {
         require(id.isNotBlank() && capturedMessageCount > 0 && sourceCount > 0 && retainedCount >= 0 && inputTokens >= 0)

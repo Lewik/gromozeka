@@ -1,16 +1,15 @@
 package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.Conversation.Message
-import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 
-internal data class CompactionNode(val id: Message.Id, val compactions: List<ContextCompactionResult>) {
+data class CompactionNode(val id: Message.Id, val compactions: List<CompactionCoverage>) {
     val isFull: Boolean get() = compactions.any { it.coversAllPrevious }
 }
 
-internal fun Message.compactionNode() = CompactionNode(id, compactions())
+internal fun Message.compactionNode() = CompactionNode(id, compactions().map(::CompactionCoverage))
 
 /** Coverage and recovery depend on ordered IDs and checkpoints, not ordinary message bodies. */
-internal class ConversationCompactionIndex(private val history: List<CompactionNode>) {
+class ConversationCompactionIndex(private val history: List<CompactionNode>) {
     private val byId = history.associateBy { it.id }
     private val positions = history.mapIndexed { index, node -> node.id to index }.toMap()
 
@@ -65,13 +64,13 @@ internal class ConversationCompactionIndex(private val history: List<CompactionN
         return covered
     }
 
-    fun incompatibleCompactions(node: CompactionNode, provider: String?): List<ContextCompactionResult> =
+    fun incompatibleCompactions(node: CompactionNode, provider: String?): List<CompactionCoverage> =
         node.compactions.filter {
-            it.payload is ContextCompactionResult.Payload.OpaqueProviderState &&
-                (provider == null || it.providerScope?.provider != provider)
+            it.opaque &&
+                (provider == null || it.provider != provider)
         }
 
-    fun recoverySourceIds(id: Message.Id, incompatible: List<ContextCompactionResult>): List<Message.Id> {
+    fun recoverySourceIds(id: Message.Id, incompatible: List<CompactionCoverage>): List<Message.Id> {
         val sourceIds = incompatible.flatMap { result ->
             if (result.coversAllPrevious && positions[id]?.let { it > 0 } == true) {
                 history.take(positions.getValue(id)).map(CompactionNode::id)
@@ -84,6 +83,14 @@ internal class ConversationCompactionIndex(private val history: List<CompactionN
             check(sourceId in byId) { "Missing compaction source message: ${sourceId.value}" }
         }
         return sourceIds
+    }
+
+    class RecoveryWindow(val nodes: List<CompactionNode>, val invalidatedReplay: Set<Message.Id>)
+
+    fun recoveryWindow(id: Message.Id, foreign: List<CompactionCoverage>): RecoveryWindow {
+        val sources = recoverySourceIds(id, foreign).map(byId::getValue)
+        val invalidated = sources.flatMap { it.compactions }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
+        return RecoveryWindow(project(sources), invalidated)
     }
 
     /** Keep checkpoints for transitive coverage and replay invalidation, plus recovery sources. */

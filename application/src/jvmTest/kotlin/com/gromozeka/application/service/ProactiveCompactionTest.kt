@@ -14,6 +14,39 @@ import kotlin.test.*
 import kotlin.time.Clock
 
 class ProactiveCompactionTest {
+    @Test fun `long native blocking and proactive compactions read only the active prefix and capture current pins`() = runBlocking {
+        for (background in listOf(false, true)) Fixture(native = true).use { f ->
+            val archive = List(15_997) { f.message("archived-$it", "archived text") }
+            val checkpoint = f.message("earlier", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(Checkpoint(
+                Checkpoint.Payload.OpaqueProviderState(buildJsonObject { put("encrypted_content", "previous") }),
+                Checkpoint.Origin.PROVIDER_AUTO, coverage = Checkpoint.Coverage.ALL_PREVIOUS,
+                providerScope = Checkpoint.ProviderScope("OPENAI_API"),
+            )))
+            val (old, tail) = f.messages
+            f.messages = archive + listOf(checkpoint, old, tail)
+            val activeRequest = f.request().copy(messages = listOf(checkpoint, old, tail))
+            f.startTurn()
+            f.pin = "new pin"
+            if (background) {
+                f.service.prepareAfterResponse(f.task!!, f.executor, f.conversation, f.agent, activeRequest)
+                assertEquals(ProactiveCompaction.Status.READY, f.preparation().status)
+                f.messages += f.message("append", "arrived after capture")
+                assertNotNull(f.applyReady())
+                assertEquals("append", f.messages.last().id.value)
+            } else {
+                f.inputTokens = 160_000
+                assertNotNull(f.service.compactIfNeeded(f.task!!, f.conversation, f.agent, f.runtime,
+                    activeRequest.copy(systemPrompts = f.prompts + "old pin"), false,
+                    promptScope = f.prompts, unpinnedPrompts = f.prompts) {})
+            }
+            assertEquals(listOf(checkpoint.id, old.id), f.bodyReads)
+            assertEquals(f.prompts + "new pin", f.nativeRequest!!.systemPrompts)
+            val saved = f.messages[15_999].content.single() as Checkpoint
+            assertEquals((archive + checkpoint + old).map { it.id }, saved.sourceMessageIds)
+            assertEquals(tail, f.messages[16_000])
+        }
+    }
+
     @Test fun `ready summary preserves the retained suffix and concurrent append and applies only once`() = runBlocking {
         Fixture().use { f ->
             f.startTurn()
@@ -104,10 +137,15 @@ class ProactiveCompactionTest {
     }
 
     @Test fun `editing captured input or changing prompt config or agent invalidates readiness`() = runBlocking {
-        for (change in listOf("history", "prompt", "config", "agent", "pin", "thread")) Fixture().use { f ->
+        for (change in listOf("history", "boundary", "author", "prompt", "config", "agent", "pin", "thread")) Fixture().use { f ->
             f.startTurn(); f.prepare()
             when (change) {
-                "history" -> f.messages = listOf(f.messages.first().copy(content = listOf(ContentItem.UserMessage("edited")))) + f.messages.drop(1)
+                "history" -> {
+                    f.messages = listOf(f.message("edited", "new version")) + f.messages.drop(1)
+                    f.conversation = f.conversation.copy(currentThread = Conversation.Thread.Id("edited-thread"))
+                }
+                "boundary" -> f.messages = f.messages.dropLast(1)
+                "author" -> f.messages = listOf(f.messages.first().copy(author = Conversation.Message.Author.User(f.user.id, "renamed"))) + f.messages.drop(1)
                 "prompt" -> f.prompts = listOf("Changed prompt")
                 "config" -> f.resolved = f.resolved.copy(modelConfiguration = f.resolved.modelConfiguration.copy(displayName = "Changed"))
                 "agent" -> f.agent = f.agent.copy(name = "Changed")
@@ -331,9 +369,15 @@ class ProactiveCompactionTest {
         val projects = Mockito.mock(ProjectAccessService::class.java)
         val workers = Mockito.mock(WorkerAccessService::class.java)
         val pins = Mockito.mock(ConversationPinnedPrompt::class.java) { listOf(pin).filter { it.isNotEmpty() } }
+        val bodyReads = mutableListOf<Conversation.Message.Id>()
         val history = Mockito.mock(ThreadMessageRepository::class.java) { invocation -> when {
             invocation.method.name.startsWith("contains") -> messages.any { it.id.value == invocation.arguments[1] }
-            invocation.method.name.startsWith("getMessagesByThread") -> messages
+            invocation.method.name.startsWith("compactionHeaders") -> messages.map(CompactionMessageHeader::from)
+            invocation.method.name.startsWith("compactionBodies") -> {
+                val versions = messages.associateBy { it.id }
+                (invocation.arguments[1] as List<*>).map { versions.getValue(it as Conversation.Message.Id).also { msg -> bodyReads += msg.id } }
+            }
+            invocation.method.name.startsWith("getContextMessagesByThread") -> messages
             else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
         } }
         val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->

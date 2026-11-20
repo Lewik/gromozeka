@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.infrastructure.db.persistence.tables.Messages
 import com.gromozeka.infrastructure.db.persistence.tables.ThreadMessages
 import com.gromozeka.domain.model.Conversation
@@ -82,6 +83,33 @@ class ExposedThreadMessageRepository(
                 json.decodeFromString<Conversation.Message>(row[Messages.messageJson])
             }
             .let(::resolveCurrentMessageAuthors)
+    }
+
+    override suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader> =
+        newSuspendedTransaction(Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true) {
+            val rows = (ThreadMessages innerJoin Messages).select(ThreadMessages.messageId, Messages.compactionHeader)
+                .where { ThreadMessages.threadId eq threadId.value }.orderBy(ThreadMessages.position, SortOrder.ASC)
+                .map { row ->
+                    val id = Conversation.Message.Id(row[ThreadMessages.messageId])
+                    val header = row[Messages.compactionHeader]?.let { json.decodeFromString<CompactionMessageHeader>(it) }
+                    check(header == null || header.id == id) { "Compaction header has a different message ID" }
+                    id to header
+                }
+            // Imports written without the optional index can still be read with bounded memory.
+            val missing = rows.filter { it.second == null }.map { it.first }.chunked(32).flatMap { ids ->
+                readContextBodies(threadId, ids).map(CompactionMessageHeader::from)
+            }.associateBy { it.id }
+            val headers = rows.map { (id, header) -> header ?: missing.getValue(id) }
+            val authors = resolveAuthors(headers.mapNotNull { it.author }.distinct())
+            headers.map { header ->
+                val current = authors[header.author]
+                if (current == null || current == header.author) header else header.copy(author = current)
+            }
+        }
+
+    override suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> = dbQuery {
+        val found = readContextBodies(threadId, ids).associateBy { it.id }
+        resolveCurrentMessageAuthors(ids.map(found::getValue))
     }
 
     override suspend fun getContextMessagesByThread(

@@ -49,9 +49,9 @@ fun selectModelHistoryMessageIds(
         "Incomplete or foreign compaction metadata for conversation history"
     }
     val byId = checkpoints.associateBy { it.id }
-    val rawIndex = ConversationCompactionIndex(headers.map { CompactionNode(it.id, byId[it.id]?.compactions().orEmpty()) })
+    val rawIndex = ConversationCompactionIndex(headers.map { CompactionNode(it.id, byId[it.id]?.compactions().orEmpty().map(::CompactionCoverage)) })
     val originalIndex = ConversationCompactionIndex(headers.map {
-        CompactionNode(it.id, byId[it.id]?.originalCollaborationMessage()?.compactions().orEmpty())
+        CompactionNode(it.id, byId[it.id]?.originalCollaborationMessage()?.compactions().orEmpty().map(::CompactionCoverage))
     })
     val required = originalIndex.requiredHistoryIds(nativeProvider).toMutableSet()
     // Tool discovery projects the displayed history, while provider replay restores original content.

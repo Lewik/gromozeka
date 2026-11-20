@@ -457,12 +457,13 @@ class ConversationEngineService(
             runtimeRequest = enricher.enrich(conversationId, payload.rootUserMessageId, task.turnId, context.modelSpec, runtimeRequest)
         }
         runtimeRequest = runtimeRequest.copy(messages = artifactService.materialize(conversationId, runtimeRequest.messages))
+        val unpinnedPrompts = runtimeRequest.systemPrompts
         runtimeRequest = conversationPins.append(conversationId, runtimeRequest)
         context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
 
         val compacted = compactions.compactIfNeeded(task, conversation, context.agent, context.runtime, runtimeRequest,
             payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId),
-            promptScope = context.runtimeSystemPrompts) {
+            promptScope = context.runtimeSystemPrompts, unpinnedPrompts = unpinnedPrompts) {
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             check(agentDomainService.findById(context.agent.id) == context.agent) { "Agent changed during compaction" }
         }
@@ -639,7 +640,7 @@ class ConversationEngineService(
             return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_REFUSED)
         }
         conversation = afterCommittedModelResponse(task, executor, conversation, context,
-            runtimeRequest.copy(messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages))
+            runtimeRequest.copy(systemPrompts = unpinnedPrompts, messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages))
         // A model-only answer has no tool-result step. Do not strand human steering until a new turn.
         // If the model returned tool calls, keep their call/result pairs intact and use the existing tool boundary.
         if (allToolCalls.isEmpty()) {

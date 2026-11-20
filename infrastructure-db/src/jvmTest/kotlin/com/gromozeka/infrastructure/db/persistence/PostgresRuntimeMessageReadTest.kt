@@ -27,6 +27,39 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
+    fun `V91 indexes 16000 legacy messages and selection reads only the requested bodies`() = runBlocking {
+        withFixture(target = "90") { f ->
+            val thread = f.conversation.currentThread
+            f.source.connection.use { connection ->
+                connection.prepareStatement("""
+                    INSERT INTO messages(id, conversation_id, original_ids_json, role, created_at, search_text, message_json)
+                    SELECT 'archive-' || i, ?, '[]', 'USER', now(), '', replace(?, 'SEED_ID', 'archive-' || i)
+                    FROM generate_series(1, 16000) AS i
+                """.trimIndent()).use {
+                    it.setString(1, f.conversation.id.value)
+                    it.setString(2, Json.encodeToString(f.message("SEED_ID")))
+                    it.executeUpdate()
+                }
+                connection.prepareStatement("""
+                    INSERT INTO thread_messages(thread_id, message_id, position)
+                    SELECT ?, 'archive-' || i, i - 1 FROM generate_series(1, 16000) AS i
+                """.trimIndent()).use { it.setString(1, thread.value); it.executeUpdate() }
+            }
+            f.migrate()
+            val ids = listOf(Conversation.Message.Id("archive-16000"), Conversation.Message.Id("archive-3"))
+            val headers = f.measure {
+                val all = f.links.compactionHeaders(thread)
+                assertEquals(16_000, all.size)
+                assertEquals(ids.first(), all.last().id)
+                assertEquals("archive-16000".length.toLong(), all.last().characters)
+            }
+            assertEquals(0, headers.bodies)
+            val selected = f.measure { assertEquals(ids, f.links.compactionBodies(thread, ids).map { it.id }) }
+            assertEquals(2, selected.bodies)
+        }
+    }
+
+    @Test
     fun `point reads preserve full messages and author projection while isolating threads`() = runBlocking {
         withFixture { f ->
             val current = f.conversation.currentThread

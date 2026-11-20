@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
-import klog.KLoggers
 import org.springframework.stereotype.Service
 
 /**
@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service
  */
 @Service
 class ToolCallPairingService {
-    private val log = KLoggers.logger(this)
-
     /**
      * Pair of ToolCall and its corresponding ToolResult.
      * 
@@ -68,26 +66,35 @@ class ToolCallPairingService {
         messages: List<Conversation.Message>,
         messageIds: Collection<Conversation.Message.Id>,
     ): Set<Conversation.Message.Id> {
-        val pairingMap = buildPairingMap(messages)
-        val selected = messageIds.toMutableSet()
-        do {
-            val before = selected.size
-            val calls = messages.filter { it.id in selected }.flatMap { it.content }.mapNotNull { item ->
-                when (item) {
-                    is Conversation.Message.ContentItem.ToolCall -> item.id.takeIf { pairingMap[it]?.toolResult != null }
-                    is Conversation.Message.ContentItem.ToolResult -> item.toolUseId.takeIf { pairingMap[it]?.toolCall != null }
-                    else -> null
-                }
-            }.toSet()
-            messages.filter { message -> message.content.any { item ->
-                when (item) {
-                    is Conversation.Message.ContentItem.ToolCall -> item.id in calls
-                    is Conversation.Message.ContentItem.ToolResult -> item.toolUseId in calls
-                    else -> false
-                }
-            } }.forEach { selected += it.id }
-        } while (selected.size != before)
-        return selected
+        return includePairs(messages, messageIds, { it.id },
+            { it.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().map { call -> call.id } },
+            { it.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>().map { result -> result.toolUseId } })
     }
 
+    fun includePairedHeaders(headers: List<CompactionMessageHeader>, ids: Collection<Conversation.Message.Id>) =
+        includePairs(headers, ids, { it.id }, { it.calls }, { it.results })
+
+    private fun <T> includePairs(
+        rows: List<T>, ids: Collection<Conversation.Message.Id>, id: (T) -> Conversation.Message.Id,
+        calls: (T) -> Collection<Conversation.Message.ContentItem.ToolCall.Id>,
+        results: (T) -> Collection<Conversation.Message.ContentItem.ToolCall.Id>,
+    ): Set<Conversation.Message.Id> {
+        val called = rows.flatMapTo(mutableSetOf(), calls)
+        val paired = rows.flatMapTo(mutableSetOf(), results).intersect(called)
+        if (paired.isEmpty()) return ids.toSet()
+        val edges = rows.associate { id(it) to (calls(it) + results(it)).filter(paired::contains) }
+        val owners = edges.flatMap { (message, keys) -> keys.map { it to message } }.groupBy({ it.first }, { it.second })
+        val selected = ids.toMutableSet()
+        val queue = ArrayDeque(selected)
+        val visited = mutableSetOf<Conversation.Message.ContentItem.ToolCall.Id>()
+        while (queue.isNotEmpty()) {
+            for (key in edges[queue.removeFirst()].orEmpty()) {
+                if (!visited.add(key)) continue
+                for (owner in owners.getValue(key)) {
+                    if (selected.add(owner)) queue.addLast(owner)
+                }
+            }
+        }
+        return selected
+    }
 }

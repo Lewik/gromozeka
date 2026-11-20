@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.infrastructure.db.persistence.tables.Artifacts
 import com.gromozeka.infrastructure.db.persistence.tables.Messages
 import com.gromozeka.domain.model.safeToolOutputText
@@ -51,6 +52,7 @@ class ExposedMessageRepository(
                 this[Messages.createdAt] = message.createdAt
                 this[Messages.searchText] = listOf(message.searchText(), toolText).filter(String::isNotBlank).joinToString("\n")
                 this[Messages.messageText] = message.searchText(includeToolResults = false)
+                this[Messages.compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(message))
                 this[Messages.messageJson] = json.encodeToString(message)
             }
         }

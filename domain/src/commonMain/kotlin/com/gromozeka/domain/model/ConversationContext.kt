@@ -15,9 +15,9 @@ import kotlinx.serialization.json.jsonPrimitive
 /** Context is a projection of immutable history, not a replacement for that history. */
 class ConversationContext(
     private val history: List<Message>,
+    private val index: ConversationCompactionIndex = ConversationCompactionIndex(history.map(Message::compactionNode)),
 ) {
     private val byId = history.associateBy(Message::id)
-    private val index = ConversationCompactionIndex(history.map(Message::compactionNode))
 
     /** Two passes: collect back to the latest full checkpoint, then remove covered nodes. */
     fun messages(): List<Message> = project(history)
@@ -78,9 +78,10 @@ class ConversationContext(
             if (incompatible.isEmpty()) return@flatMap listOf(message)
             require(message.id !in visiting) { "Cyclic opaque compaction sources at ${message.id.value}" }
             // There must be a real source for recovery. A provider label is not a summary.
-            val sourceIds = index.recoverySourceIds(message.id, incompatible)
-            val sources = sourceIds.map { sourceId ->
-                byId[sourceId] ?: error("Missing compaction source message: ${sourceId.value}")
+            val window = index.recoveryWindow(message.id, incompatible.map(::CompactionCoverage))
+            val sources = window.nodes.map { node ->
+                val source = byId[node.id] ?: error("Missing compaction source message: ${node.id.value}")
+                if (node.id in window.invalidatedReplay) source.withoutProviderReplay() else source
             }
             val recovered = prepare(sources, provider, visiting + message.id).map(Message::withoutProviderReplay)
             val lastCheckpoint = message.content.indexOfLast { it in incompatible }
@@ -102,30 +103,38 @@ private const val RETAINED_OPENAI_REPLAY_IDS = "gromozekaRetainedOpenAiReplayIds
 private fun String?.supportsNativeReplayTransfer() =
     this == AiConnection.Kind.OPENAI_API.name || this == AiConnection.Kind.OPENAI_SUBSCRIPTION.name
 
-internal fun Message?.retainedOpenAiReplayIds(provider: String?, thread: String?): Set<Message.Id> {
-    if (this == null || thread == null || !provider.supportsNativeReplayTransfer()) return emptySet()
-    val receipt = content.singleOrNull() as? ContextCompactionResult ?: return emptySet()
-    if (!receipt.coversAllPrevious || receipt.historyTransition?.targetThreadId?.value != thread ||
-        receipt.providerScope?.provider != provider ||
-        receipt.payload !is ContextCompactionResult.Payload.OpaqueProviderState) return emptySet()
-    val ids = providerMetadata[RETAINED_OPENAI_REPLAY_IDS]?.jsonArray ?: return emptySet()
-    return ids.mapTo(mutableSetOf()) { Message.Id(it.jsonPrimitive.content) }
+@kotlinx.serialization.Serializable
+data class RetainedOpenAiReplay(val provider: String, val targetThread: String, val ids: Set<Message.Id>)
+
+internal fun Message.retainedOpenAiReplay(): RetainedOpenAiReplay? {
+    val receipt = content.singleOrNull() as? ContextCompactionResult ?: return null
+    val target = receipt.historyTransition?.targetThreadId ?: return null
+    val provider = receipt.providerScope?.provider ?: return null
+    if (!provider.supportsNativeReplayTransfer() || !receipt.coversAllPrevious ||
+        receipt.payload !is ContextCompactionResult.Payload.OpaqueProviderState) return null
+    val ids = providerMetadata[RETAINED_OPENAI_REPLAY_IDS]?.jsonArray ?: return null
+    return RetainedOpenAiReplay(provider, target.value, ids.mapTo(mutableSetOf()) { Message.Id(it.jsonPrimitive.content) })
 }
 
+private fun RetainedOpenAiReplay?.idsFor(provider: String?, thread: String?): Set<Message.Id> =
+    this?.takeIf { it.provider == provider && it.targetThread == thread }?.ids.orEmpty()
+
+internal fun Message?.retainedOpenAiReplayIds(provider: String?, thread: String?): Set<Message.Id> =
+    this?.retainedOpenAiReplay().idsFor(provider, thread)
+
 /** Carry only immutable messages that could already be replayed on the verified source branch. */
-fun Message.recordRetainedOpenAiReplay(history: List<Message>, sourceEnd: Int): Message {
+fun Message.recordRetainedOpenAiReplay(previous: RetainedOpenAiReplay?, suffix: List<CompactionMessageHeader>): Message {
     require(RETAINED_OPENAI_REPLAY_IDS !in providerMetadata) { "Only the compaction commit may grant retained replay" }
     val checkpoint = content.single() as ContextCompactionResult
     val scope = checkpoint.providerScope ?: return this
-    if (sourceEnd == history.lastIndex || !scope.provider.supportsNativeReplayTransfer() || !checkpoint.coversAllPrevious ||
+    if (suffix.isEmpty() || !scope.provider.supportsNativeReplayTransfer() || !checkpoint.coversAllPrevious ||
         checkpoint.payload !is ContextCompactionResult.Payload.OpaqueProviderState ||
         scope.connectionId == null || scope.modelName == null) return this
     val sourceThread = requireNotNull(checkpoint.historyTransition).sourceThreadId.value
-    val previous = history.lastOrNull(Message::isFullContextCompaction)
-    val inherited = previous.retainedOpenAiReplayIds(scope.provider, sourceThread)
+    val inherited = previous.idsFor(scope.provider, sourceThread)
     val invalidated = checkpoint.invalidatedReplayMessageIds.toSet()
-    val ids = history.subList(sourceEnd + 1, history.size).filter { message ->
-        val metadata = message.providerMetadata
+    val ids = suffix.filter { message ->
+        val metadata = message.replayMetadata
         message.role == Message.Role.ASSISTANT && message.id !in invalidated &&
             metadata["provider"] == JsonPrimitive(scope.provider) &&
             metadata["connectionId"] == JsonPrimitive(scope.connectionId) &&

@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.MessageCompactionTextRenderer
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -47,30 +47,29 @@ class MessageSquashService internal constructor(
             ?: error("Conversation not found: ${conversationId.value}")
         val expectedThreadId = conversation.currentThread
         if (threadMessageRepository.contains(expectedThreadId, checkpointId)) return conversation
-        val allMessages = threadMessageRepository.getMessagesByThread(expectedThreadId)
-        require(allMessages.count { it.id in messageIds } == messageIds.size) {
+        val headers = threadMessageRepository.compactionHeaders(expectedThreadId)
+        val window = CompactionHistoryWindow(headers)
+        val requested = messageIds.toSet()
+        require(headers.count { it.id in requested } == requested.size) {
             "Some messages are not in the current conversation thread"
         }
 
-        val selectedIds = toolCallPairingService.includePairedToolMessages(allMessages, messageIds)
-        val full = CompactionHistoryWindow.isFullSelection(allMessages, messageIds.toSet())
-        val sourceIdSet = if (full) CompactionHistoryWindow.prefix(allMessages, toolCallPairingService)
-            .mapTo(linkedSetOf()) { it.id } else selectedIds
-        require(sourceIdSet.size >= minimum) {
+        val full = window.isFullSelection(requested)
+        val selection = if (full) window.prefix(toolCallPairingService) else {
+            val paired = toolCallPairingService.includePairedHeaders(headers, requested)
+            headers.filter { it.id in paired }
+        }
+        require(selection.size >= minimum) {
             "Full compaction has no older history outside its retained 80000-character suffix; select older messages explicitly"
         }
-        log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$full sources=${sourceIdSet.size} retained=${allMessages.size - sourceIdSet.size}" }
-        val sourceMessageIds = allMessages.map(Conversation.Message::id).filter(sourceIdSet::contains)
-        require(allMessages.filter { it.id in sourceIdSet }.all { message ->
-            message.content.none { it.state == Conversation.Message.BlockState.STREAMING }
-        }) { "Wait for selected messages to finish streaming before compaction" }
-        val readableMessages = ConversationContext(allMessages)
-            .messagesForProvider(provider = null, selection = sourceIdSet)
-        val selectedText = MessageCompactionTextRenderer.render(readableMessages)
+        require(selection.none { it.streaming }) { "Wait for selected messages to finish streaming before compaction" }
+        log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$full sources=${selection.size} retained=${headers.size - selection.size}" }
+        val sourceMessageIds = selection.map { it.id }
+        val readableMessages = window.messages(threadMessageRepository, expectedThreadId, selection, null)
 
         val generated = when (strategy) {
             SquashType.CONCATENATE -> GeneratedCompaction(
-                text = selectedText,
+                text = MessageCompactionTextRenderer.render(readableMessages),
                 providerScope = null,
                 promptTemplate = null,
             )
@@ -113,6 +112,7 @@ class MessageSquashService internal constructor(
         strategy: SquashType,
         currentSelection: AiRuntimeSelection? = null,
         requestContext: Map<String, Any?> = emptyMap(),
+        pinPrompts: List<String>? = null,
     ): GeneratedCompaction {
         val selection = currentSelection ?: currentSelection(conversation)
         val current = aiConfigurationProvider.resolveAiRuntime(selection)
@@ -139,7 +139,7 @@ class MessageSquashService internal constructor(
         }
         val response = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null).call(
             AiRuntimeRequest(
-                systemPrompts = conversationPins.append(conversation.id, emptyList()),
+                systemPrompts = pinPrompts ?: conversationPins.append(conversation.id, emptyList()),
                 // A fresh service request, not a replay of the live conversation.
                 // Historical raw provider messages must not override selection text.
                 messages = listOf(commandMessage),

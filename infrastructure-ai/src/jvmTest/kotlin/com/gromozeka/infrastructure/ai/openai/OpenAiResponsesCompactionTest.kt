@@ -210,7 +210,7 @@ class OpenAiResponsesCompactionTest {
             val result = generated.content.single() as Compaction
             val transition = Compaction.HistoryTransition(Conversation.Thread.Id("thread"), Conversation.Thread.Id("next"))
             val checkpoint = generated.copy(content = listOf(result.copy(historyTransition = transition)))
-                .recordRetainedOpenAiReplay(prefix + suffix, prefix.lastIndex)
+                .recordRetainedOpenAiReplay(previous = null, suffix.map(CompactionMessageHeader::from))
             val next = request(listOf(checkpoint) + suffix, "next")
             runtime.call(next)
             compact(next)

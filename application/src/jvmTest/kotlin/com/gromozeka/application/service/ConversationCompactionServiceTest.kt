@@ -301,7 +301,8 @@ class ConversationCompactionServiceTest {
         private val history = Mockito.mock(ThreadMessageRepository::class.java) { invocation ->
             when (invocation.method.name.substringBefore('-')) {
                 "contains" -> persisted
-                "getMessagesByThread" -> sources
+                "compactionHeaders" -> sources.map(CompactionMessageHeader::from)
+                "compactionBodies" -> (invocation.arguments[1] as List<*>).map { id -> sources.single { it.id == id } }
                 else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
             }
         }
@@ -366,7 +367,7 @@ class ConversationCompactionServiceTest {
                 tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, counterId))))
         }
         private val service = ConversationCompactionService(configurations, history, summaries, committer, coordinator, events, runtimeProvider,
-            Mockito.mock(ProactiveCompactionJobs::class.java), Mockito.mock(CompactionPreparationScope::class.java) { "scope" }, ToolCallPairingService())
+            Mockito.mock(ProactiveCompactionJobs::class.java), Mockito.mock(CompactionPreparationScope::class.java) { if (it.method.name == "pinPrompts") emptyList<String>() else "scope" }, ToolCallPairingService())
         suspend fun apply(alreadyCompacted: Boolean = false, extraTokens: Int = 0, owner: suspend () -> Unit = {}): Conversation? =
             service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted, extraTokens) {
                 order += "owner"; owner()

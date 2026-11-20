@@ -1,50 +1,74 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.CompactionNode
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Conversation.Message
+import com.gromozeka.domain.model.ConversationCompactionIndex
 import com.gromozeka.domain.model.ConversationContext
-import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
-import kotlinx.serialization.json.JsonPrimitive
-import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
+import com.gromozeka.domain.model.withoutProviderReplay
+import com.gromozeka.domain.repository.ThreadMessageRepository
 
-/** A raw suffix is independent of archived sources and never splits a tool exchange. */
-internal object CompactionHistoryWindow {
-    const val RETAINED_CHARACTERS = 80_000
+/** Coverage and pair boundaries use immutable headers; only projected input needs bodies. */
+internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader>) {
+    private val index = ConversationCompactionIndex(headers.map { it.node })
+    private val positions = headers.mapIndexed { i, header -> header.id to i }.toMap()
+    private val visible by lazy { index.project().map { headers[positions.getValue(it.id)] } }
 
-    fun prefix(history: List<Conversation.Message>, pairs: ToolCallPairingService): List<Conversation.Message> {
-        val visible = ConversationContext(history).messages()
-        val positions = history.mapIndexed { index, message -> message.id to index }.toMap()
-        val visibleIds = visible.mapTo(mutableSetOf()) { it.id }
-        val retained = mutableSetOf<Conversation.Message.Id>()
+    fun isFullSelection(selected: Set<Message.Id>): Boolean = visible.all { it.id in selected }
+
+    fun prefix(pairs: ToolCallPairingService): List<CompactionMessageHeader> {
+        val invalidated = headers.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
+        var boundary = headers.size
         var characters = 0L
-        for (message in visible.asReversed()) {
-            // A prefix checkpoint is the previous window's handoff. A selective summary
-            // does not erase earlier unselected messages from the recent-window budget.
-            if (message.content.singleOrNull() is ContextCompactionResult) {
-                if (ConversationContext(history.take(positions.getValue(message.id) + 1)).messages().singleOrNull()?.id == message.id) break
+        for (header in visible.asReversed()) {
+            val position = positions.getValue(header.id)
+            if (header.standaloneCheckpoint || (header.id in invalidated && header.portableStandaloneCheckpoint)) {
+                if (header.node.isFull || index.project(headers.take(position + 1).map { it.node }).singleOrNull()?.id == header.id) break
                 continue
             }
-            retained += message.id
-            characters += MessageCompactionTextRenderer.characterCount(message)
-            if (characters >= RETAINED_CHARACTERS) break
+            boundary = position
+            characters += if (header.id in invalidated) header.characters - header.thinkingCharacters else header.characters
+            if (characters >= 80_000) break
         }
-        if (retained.isEmpty()) return history
-        var boundary = history.indexOfFirst { it.id in retained }
-        val clientMessages = visible.filter { it.providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] != JsonPrimitive(true) }
-        val openCalls = pairs.buildPairingMap(clientMessages).filterValues { it.toolCall != null && it.toolResult == null }.keys
-        val openBoundary = history.indexOfFirst { message -> message.content.any {
-            it is Conversation.Message.ContentItem.ToolCall && it.id in openCalls
-        } }
-        if (openBoundary >= 0) boundary = minOf(boundary, openBoundary)
+        if (boundary == headers.size) return headers
+        val client = visible.filterNot { it.providerManaged }
+        val open = client.flatMapTo(mutableSetOf()) { it.calls } - client.flatMapTo(mutableSetOf()) { it.results }
+        val firstOpen = headers.indexOfFirst { header -> header.calls.any(open::contains) }
+        if (firstOpen >= 0) boundary = minOf(boundary, firstOpen)
         do {
             val previous = boundary
-            val suffix = history.drop(boundary).map { it.id }
-            val paired = pairs.includePairedToolMessages(visible, suffix)
-            boundary = minOf(boundary, history.indexOfFirst { it.id in paired }.takeIf { it >= 0 } ?: boundary)
+            val paired = pairs.includePairedHeaders(visible, headers.subList(boundary, headers.size).map { it.id })
+            boundary = minOf(boundary, paired.minOf { positions.getValue(it) })
         } while (boundary != previous)
-        val prefix = history.take(boundary)
-        return if (prefix.any { it.id in visibleIds }) prefix else emptyList()
+        return if (visible.any { positions.getValue(it.id) < boundary }) headers.take(boundary) else emptyList()
     }
 
-    fun isFullSelection(history: List<Conversation.Message>, selected: Set<Conversation.Message.Id>): Boolean =
-        ConversationContext(history).messages().all { it.id in selected }
+    suspend fun messages(
+        repository: ThreadMessageRepository, thread: Conversation.Thread.Id,
+        selection: List<CompactionMessageHeader>, provider: String?,
+    ): List<Message> {
+        val nodes = index.project(selection.map { it.node })
+        val visibleIds = nodes.mapTo(linkedSetOf()) { it.id }
+        // Foreign opaque checkpoints may need their original canonical sources for recursive recovery.
+        val required = visibleIds.toMutableSet()
+        val expanded = mutableSetOf<Message.Id>()
+        fun includeRecovery(candidates: List<CompactionNode>) {
+            for (node in candidates) {
+                val foreign = index.incompatibleCompactions(node, provider)
+                if (foreign.isEmpty() || !expanded.add(node.id)) continue
+                val recover = index.recoveryWindow(node.id, foreign).nodes
+                recover.mapTo(required) { it.id }
+                includeRecovery(recover)
+            }
+        }
+        includeRecovery(nodes)
+        val invalidated = selection.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
+        val ids = headers.mapNotNull { it.id.takeIf(required::contains) }
+        val bodies = repository.compactionBodies(thread, ids).map {
+            if ((it.author as? Message.Author.User) != headers[positions.getValue(it.id)].author) throw CompactionScopeChangedException()
+            if (it.id in visibleIds && it.id in invalidated) it.withoutProviderReplay() else it
+        }
+        return ConversationContext(bodies, index).messagesForProvider(provider, visibleIds)
+    }
 }

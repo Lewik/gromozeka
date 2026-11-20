@@ -55,7 +55,19 @@ The trigger reuses ordinary-response measurements when applicable and otherwise
 uses the local estimate; it does not add a count API call after each response.
 Foreground blocking checks retain the configured counting policy.
 
-Preparation captures an immutable prefix and its retained suffix. It runs under
+Preparation records the immutable branch, its message count and the last message
+ID at capture. Appends leave that boundary intact. Edits and deletions create a
+new branch. Resolved user identities and pins can change on the same branch, so
+they are checked separately. The native request and text fallback use the same
+pin snapshot that preparation validates.
+
+Selection and commit read per-message headers (coverage, tool pairs, character
+counts and replay eligibility). Bodies are loaded for the selected input,
+including any originals needed to recover an incompatible opaque checkpoint.
+V91 backfills headers on existing messages. An older READY receipt without a
+captured boundary is discarded on application.
+
+Preparation runs under
 ordinary model admission and quota policies, with no special priority or reserved
 capacity. It can consume the last available model slot. Preparation can overlap
 foreground work or idle reading time; it does not guarantee zero waiting.

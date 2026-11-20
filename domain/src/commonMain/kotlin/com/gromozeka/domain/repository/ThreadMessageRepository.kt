@@ -1,5 +1,6 @@
 package com.gromozeka.domain.repository
 
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.Serializable
 
@@ -100,6 +101,12 @@ interface ThreadMessageRepository {
      * @return messages in position order
      */
     suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message>
+
+    /** Ordered headers with current author attribution. Message bodies are stored independently. */
+    suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader>
+
+    /** Read exactly these immutable versions in the requested order, including current author attribution. */
+    suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message>
 
     /**
      * Sufficient sparse raw history for the normal agent-model path, selected before body reads.

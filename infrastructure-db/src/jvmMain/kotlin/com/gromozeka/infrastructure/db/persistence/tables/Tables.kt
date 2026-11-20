@@ -462,6 +462,7 @@ internal object Messages : Table("messages") {
     val createdAt = timestamp("created_at")
     val searchText = text("search_text")
     val messageText = text("message_text")
+    val compactionHeader = text("compaction_header").nullable()
     val messageJson = text("message_json")
     val contextMetadataJson = text("context_metadata_json").nullable().databaseGenerated()
 

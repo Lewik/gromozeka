@@ -91,6 +91,20 @@ class ConversationEngineDeliveryTest {
         }
     }
 
+    @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
+        val f = Fixture(proactive = true)
+        val task = f.begin()
+        f.pins.values = listOf(testPin(conversation.id, "ORIGINAL_PIN"))
+        f.onCall = { request ->
+            assertTrue(request.systemPrompts.any { "ORIGINAL_PIN" in it })
+            f.pins.values = listOf(testPin(conversation.id, "REPLACEMENT_PIN"))
+            answer()
+        }
+        f.engine.runRuntimeTask(task, executor) {}
+        val base = f.preparations.single().systemPrompts
+        assertFalse(base.any { "ORIGINAL_PIN" in it || "REPLACEMENT_PIN" in it })
+    }
+
     @Test fun `queued idle bursts produce one request containing every distinct message in either mode`() = runBlocking {
         for (mode in UserMessageDeliveryMode.entries) {
             val f = Fixture(); f.messages.clear()

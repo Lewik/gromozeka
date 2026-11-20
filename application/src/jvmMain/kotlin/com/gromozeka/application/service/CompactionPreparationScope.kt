@@ -20,7 +20,10 @@ class CompactionPreparationScope(
     private val configurations: AiConfigurationProvider,
     private val pins: ConversationPinnedPrompt,
 ) {
-    suspend fun fingerprint(conversation: Conversation, agent: AgentDefinition, actorId: User.Id, prompts: List<String>): String {
+    suspend fun pinPrompts(conversation: Conversation) = pins.append(conversation.id, emptyList())
+
+    suspend fun fingerprint(conversation: Conversation, agent: AgentDefinition, actorId: User.Id, prompts: List<String>,
+        capturedPins: List<String>? = null): String {
         val current = requireNotNull(conversations.findById(conversation.id)) { "Compaction conversation is unavailable" }
         if (current.currentThread != conversation.currentThread || current.projectId != conversation.projectId) throw CompactionScopeChangedException()
         require(Conversation.Participant.User(actorId) in current.participants && Conversation.Participant.Agent(agent.id) in current.participants)
@@ -44,15 +47,25 @@ class CompactionPreparationScope(
             put("selected", Json.encodeToJsonElement(selected))
             put("summary", Json.encodeToJsonElement(summary))
             put("prompts", Json.encodeToJsonElement(prompts))
-            put("pins", Json.encodeToJsonElement(pins.append(conversation.id, emptyList())))
+            put("pins", Json.encodeToJsonElement(capturedPins ?: pinPrompts(conversation)))
         }.toString())
     }
 }
 
-internal fun compactionHistoryFingerprint(messages: List<Conversation.Message>): String =
-    compactionFingerprint(Json.encodeToString(messages))
+/** Message versions are immutable. Only their resolved user identities can change under the same ID. */
+internal fun authorFingerprint(headers: List<CompactionMessageHeader>): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    val encoded = mutableMapOf<Conversation.Message.Author.User, ByteArray>()
+    for (header in headers) {
+        val author = header.author ?: continue
+        digest.update(encoded.getOrPut(author) {
+            MessageDigest.getInstance("SHA-256").digest(Json.encodeToString(author).encodeToByteArray())
+        })
+    }
+    return digest.digest().toHexString()
+}
 
 private fun compactionFingerprint(text: String): String =
-    MessageDigest.getInstance("SHA-256").digest(text.encodeToByteArray()).joinToString("") { "%02x".format(it) }
+    MessageDigest.getInstance("SHA-256").digest(text.encodeToByteArray()).toHexString()
 
 internal class CompactionScopeChangedException : IllegalStateException("Compaction source scope changed")

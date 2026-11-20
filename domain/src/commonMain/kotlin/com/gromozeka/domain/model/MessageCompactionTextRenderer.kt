@@ -1,8 +1,8 @@
-package com.gromozeka.application.service
+package com.gromozeka.domain.model
 
-import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult
 
-internal object MessageCompactionTextRenderer {
+object MessageCompactionTextRenderer {
     fun render(messages: List<Conversation.Message>): String =
         messages.mapNotNull { message ->
             val content = message.content.mapNotNull(::renderContentItem)
@@ -16,7 +16,11 @@ internal object MessageCompactionTextRenderer {
 
     fun characterCount(message: Conversation.Message): Long =
         message.content.sumOf {
-            if (it is Conversation.Message.ContentItem.ContextCompactionResult) 0L else renderContentItem(it)?.length?.toLong() ?: 0L
+            when (it) {
+                is Conversation.Message.ContentItem.ContextCompactionResult -> 0L
+                is ToolResult -> resultHeader(it).length + it.result.sumOf { data -> 1L + resultText(data).length }
+                else -> renderContentItem(it)?.length?.toLong() ?: 0L
+            }
         } +
             message.instructions.filterNot { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
                 .sumOf { it.toXmlLine().length.toLong() }
@@ -54,21 +58,9 @@ internal object MessageCompactionTextRenderer {
         is Conversation.Message.ContentItem.Thinking -> item.thinking.takeIf(String::isNotBlank)
         is Conversation.Message.ContentItem.System -> item.content
         is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${item.call.name}] id=${item.id.value} ${item.call.input}"
-        is Conversation.Message.ContentItem.ToolResult -> buildString {
-            append("[tool_result:${item.toolName} error=${item.isError} call_id=${item.toolUseId.value}]")
-            item.result.forEach { result ->
-                append('\n')
-                append(
-                    when (result) {
-                        is Conversation.Message.ContentItem.ToolResult.Data.Text -> result.content
-                        is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
-                            "[binary:${result.fileName ?: result.mediaType.value} media_type=${result.mediaType.value}]"
-                        is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url:${result.url}]"
-                        is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
-                            "[attachment:${result.artifact.fileName} id=${result.artifact.id.value} media_type=${result.artifact.mediaType}]"
-                    }
-                )
-            }
+        is ToolResult -> buildString {
+            append(resultHeader(item))
+            item.result.forEach { append('\n').append(resultText(it)) }
         }
         is Conversation.Message.ContentItem.ImageItem -> when (val source = item.source) {
             is Conversation.Message.ImageSource.Base64ImageSource -> "[image:${source.mediaType}]"
@@ -87,5 +79,14 @@ internal object MessageCompactionTextRenderer {
                 error("Opaque compaction must be recovered from its original messages before rendering")
         }
         is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
+    }
+
+    private fun resultHeader(item: ToolResult) = "[tool_result:${item.toolName} error=${item.isError} call_id=${item.toolUseId.value}]"
+
+    private fun resultText(data: ToolResult.Data): String = when (data) {
+        is ToolResult.Data.Text -> data.content
+        is ToolResult.Data.Base64Data -> "[binary:${data.fileName ?: data.mediaType.value} media_type=${data.mediaType.value}]"
+        is ToolResult.Data.UrlData -> "[url:${data.url}]"
+        is ToolResult.Data.ArtifactData -> "[attachment:${data.artifact.fileName} id=${data.artifact.id.value} media_type=${data.artifact.mediaType}]"
     }
 }

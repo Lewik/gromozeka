@@ -1,5 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.MessageCompactionTextRenderer
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
@@ -8,6 +10,9 @@ import kotlin.test.*
 import kotlin.time.Instant
 
 class CompactionHistoryWindowTest {
+    private fun window(messages: List<Conversation.Message>) = CompactionHistoryWindow(messages.map(CompactionMessageHeader::from))
+    private fun prefix(messages: List<Conversation.Message>, pairs: ToolCallPairingService) =
+        messages.take(window(messages).prefix(pairs).size)
     private val pairs = ToolCallPairingService()
     private fun message(id: String, text: String) = Conversation.Message(Conversation.Message.Id(id), Conversation.Id("conversation"),
         role = Conversation.Message.Role.USER, content = listOf(ContentItem.UserMessage(text)), createdAt = Instant.fromEpochSeconds(0))
@@ -17,15 +22,15 @@ class CompactionHistoryWindowTest {
         val crossing = message("crossing", "x".repeat(45_000))
         val last = message("last", "y".repeat(40_000))
         val history = listOf(old, crossing, last)
-        assertEquals(listOf(old), CompactionHistoryWindow.prefix(history, pairs))
+        assertEquals(listOf(old), prefix(history, pairs))
         assertEquals(85_000L, history.drop(1).sumOf(MessageCompactionTextRenderer::characterCount))
-        assertTrue(CompactionHistoryWindow.isFullSelection(history, history.mapTo(mutableSetOf()) { it.id }))
-        assertFalse(CompactionHistoryWindow.isFullSelection(history, setOf(old.id, last.id)))
+        assertTrue(window(history).isFullSelection(history.mapTo(mutableSetOf()) { it.id }))
+        assertFalse(window(history).isFullSelection(setOf(old.id, last.id)))
     }
 
     @Test fun `exact boundary retains exactly the last complete message`() {
         val history = listOf(message("old", "old"), message("last", "x".repeat(80_000)))
-        assertEquals(history.take(1), CompactionHistoryWindow.prefix(history, pairs))
+        assertEquals(history.take(1), prefix(history, pairs))
     }
 
     @Test fun `whole tool group moves the boundary back without dropping intervening messages`() {
@@ -36,7 +41,7 @@ class CompactionHistoryWindowTest {
         val intervening = message("between", "intervening")
         val first = message("result-a", "").copy(content = listOf(ContentItem.ToolResult(ContentItem.ToolCall.Id("a"), "read", listOf(ContentItem.ToolResult.Data.Text("small")))))
         val last = message("result-b", "").copy(content = listOf(ContentItem.ToolResult(ContentItem.ToolCall.Id("b"), "read", listOf(ContentItem.ToolResult.Data.Text("x".repeat(80_000))))))
-        assertEquals(listOf(old), CompactionHistoryWindow.prefix(listOf(old, call, intervening, first, last), pairs))
+        assertEquals(listOf(old), prefix(listOf(old, call, intervening, first, last), pairs))
     }
 
     @Test fun `an unfinished client tool exchange stays outside the compacted prefix`() {
@@ -44,10 +49,10 @@ class CompactionHistoryWindowTest {
         val open = message("open", "").copy(role = Conversation.Message.Role.ASSISTANT,
             content = listOf(ContentItem.ToolCall(ContentItem.ToolCall.Id("pending"), ContentItem.ToolCall.Data("read", JsonObject(emptyMap())))))
         val latest = message("latest", "x".repeat(80_000))
-        assertEquals(listOf(old), CompactionHistoryWindow.prefix(listOf(old, open, latest), pairs))
+        assertEquals(listOf(old), prefix(listOf(old, open, latest), pairs))
         val managed = open.copy(providerMetadata = JsonObject(mapOf(
             com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY to kotlinx.serialization.json.JsonPrimitive(true))))
-        assertEquals(listOf(old, managed), CompactionHistoryWindow.prefix(listOf(old, managed, latest), pairs))
+        assertEquals(listOf(old, managed), prefix(listOf(old, managed, latest), pairs))
     }
 
     @Test fun `existing checkpoint is compacted again instead of preserving its archived originals as raw tail`() {
@@ -58,8 +63,8 @@ class CompactionHistoryWindowTest {
                 coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
         val recent = message("recent", "Recent work")
         val history = listOf(old, checkpoint, recent)
-        assertEquals(listOf(old, checkpoint), CompactionHistoryWindow.prefix(history, pairs))
-        assertTrue(CompactionHistoryWindow.isFullSelection(history, setOf(checkpoint.id, recent.id)))
+        assertEquals(listOf(old, checkpoint), prefix(history, pairs))
+        assertTrue(window(history).isFullSelection(setOf(checkpoint.id, recent.id)))
         assertEquals(listOf(checkpoint, recent), ConversationContext(history).messages())
     }
 
@@ -73,12 +78,12 @@ class CompactionHistoryWindowTest {
             ContentItem.ContextCompactionResult.Origin.USER_REQUESTED, sourceMessageIds = listOf(old.id, selected.id),
             coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
         val last = message("last", "b".repeat(40_000))
-        assertEquals(listOf(ancient, old), CompactionHistoryWindow.prefix(listOf(ancient, old, recent, selected, partial, last), pairs))
+        assertEquals(listOf(ancient, old), prefix(listOf(ancient, old, recent, selected, partial, last), pairs))
     }
 
     @Test fun `one oversized or small recent message is never split or silently discarded`() {
         for (text in listOf("small", "x".repeat(400_000))) {
-            assertTrue(CompactionHistoryWindow.prefix(listOf(message("only", text)), pairs).isEmpty())
+            assertTrue(prefix(listOf(message("only", text)), pairs).isEmpty())
         }
     }
 }

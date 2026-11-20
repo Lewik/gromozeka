@@ -2,7 +2,6 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
-import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.model.recordRetainedOpenAiReplay
 import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.domain.repository.ConversationRepository
@@ -49,7 +48,7 @@ internal class ContextCompactionCommitService(
             ?: error("Conversation not found: ${conversationId.value}")
         // A durable checkpoint ID makes a replay after commit but before task completion a no-op.
         if (threadMessageRepository.contains(conversation.currentThread, message.id)) {
-            val stored = threadMessageRepository.getMessagesByThread(conversation.currentThread).single { it.id == message.id }
+            val stored = threadMessageRepository.compactionBodies(conversation.currentThread, listOf(message.id)).single()
             val checkpoint = stored.content.single() as ContextCompactionResult
             check(checkpoint.historyTransition?.sourceThreadId == expectedThreadId &&
                 checkpoint.payload == result.payload && checkpoint.sourceMessageIds == result.sourceMessageIds &&
@@ -61,22 +60,21 @@ internal class ContextCompactionCommitService(
         }
         check(conversation.currentThread == expectedThreadId) { "Conversation changed while compaction was generated" }
 
-        val messages = threadMessageRepository.getMessagesByThread(expectedThreadId)
+        val messages = threadMessageRepository.compactionHeaders(expectedThreadId)
         val sourceIdSet = result.sourceMessageIds.toSet()
-        require(messages.count { it.id in sourceIdSet } == sourceIdSet.size) {
+        val selected = messages.filter { it.id in sourceIdSet }
+        require(selected.size == sourceIdSet.size) {
             "Some compaction source messages are not in thread ${expectedThreadId.value}"
         }
-        require(messages.filter { it.id in sourceIdSet }.all { source ->
-            source.content.none { it.state == Conversation.Message.BlockState.STREAMING }
-        }) { "Cannot compact streaming messages" }
-        require(toolCallPairingService.includePairedToolMessages(messages, sourceIdSet) == sourceIdSet) {
+        require(selected.none { it.streaming }) { "Cannot compact streaming messages" }
+        require(toolCallPairingService.includePairedHeaders(messages, sourceIdSet) == sourceIdSet) {
             "Compaction source messages must include complete tool call/result pairs"
         }
-        require(messages.filter { it.id in sourceIdSet }.map { it.id } == result.sourceMessageIds) {
+        require(selected.map { it.id } == result.sourceMessageIds) {
             "Compaction source messages must be in current conversation order"
         }
         val sourceEnd = messages.indexOfLast { it.id in sourceIdSet }
-        val lastFullCheckpoint = messages.indexOfLast { it.isFullContextCompaction() }
+        val lastFullCheckpoint = messages.indexOfLast { it.node.isFull }
         if (result.coversAllPrevious) {
             require(messages.take(sourceEnd + 1).map { it.id } == result.sourceMessageIds) {
                 "A full checkpoint must cover exactly the captured canonical prefix"
@@ -93,10 +91,12 @@ internal class ContextCompactionCommitService(
             messages.drop(messages.indexOfFirst { it.id in sourceIdSet })
                 .filter { it.role == Conversation.Message.Role.ASSISTANT && it.id !in sourceIdSet }.map { it.id }
         } else emptyList()
+        val suffix = messages.subList(sourceEnd + 1, messages.size)
+        val previous = messages.getOrNull(lastFullCheckpoint)?.retainedReplay
         val compactionMessage = message.copy(content = listOf(result.copy(
             invalidatedReplayMessageIds = (result.invalidatedReplayMessageIds + invalidatedReplay).distinct(),
             historyTransition = ContextCompactionResult.HistoryTransition(expectedThreadId, newThread.id),
-        ))).recordRetainedOpenAiReplay(messages, sourceEnd)
+        ))).recordRetainedOpenAiReplay(previous, suffix)
         // A selective summary must remain after any existing full checkpoint, otherwise
         // it would disappear behind that checkpoint or split its protected prefix.
         val insertionAnchorId = messages[maxOf(sourceEnd, lastFullCheckpoint)].id

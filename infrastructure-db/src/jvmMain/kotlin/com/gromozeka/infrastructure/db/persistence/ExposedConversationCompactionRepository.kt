@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.infrastructure.db.persistence.tables.Conversations
@@ -85,6 +86,7 @@ class ExposedConversationCompactionRepository(
             it[role] = compactionMessage.role.name
             it[createdAt] = compactionMessage.createdAt
             it[searchText] = compactionMessage.searchText()
+            it[compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(compactionMessage))
             it[messageJson] = json.encodeToString(compactionMessage)
         }
         Threads.insert {
