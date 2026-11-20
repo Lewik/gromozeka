@@ -35,7 +35,7 @@ internal class ConversationToolContributor(
     private inner class RenameCurrentConversationTool : AiToolCallback {
         override val definition = AiToolDefinition(
             name = "grz_conversation_rename",
-            description = "Rename the current conversation. The title should be concise and reflect the conversation's purpose.",
+            description = "Rename the current conversation. Choose a short title of 1–2 words, preferably 15 characters or fewer including spaces.",
             inputSchema = RENAME_CONVERSATION_SCHEMA,
         )
         override val metadata = AiToolMetadata(
