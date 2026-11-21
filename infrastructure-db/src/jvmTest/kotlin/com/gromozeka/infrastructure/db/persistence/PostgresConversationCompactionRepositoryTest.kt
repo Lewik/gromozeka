@@ -170,7 +170,7 @@ class PostgresConversationCompactionRepositoryTest {
             content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
                 payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("A complete handoff"),
                 origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-                strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.SUMMARIZE,
+                strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.COMPACT,
                 sourceMessageIds = listOf(first.id), coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
             )))
         fun message(id: String) = Conversation.Message(Conversation.Message.Id(id), conversation.id,

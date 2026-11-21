@@ -556,7 +556,7 @@ private fun ModelConfigurationsEditor(
                         onEdit = { editing = configuration },
                         onDelete = {
                             if (assignments.isNotEmpty() || draft.modelConfigurations.any {
-                                    it.compaction.summaryModelConfigurationId == configuration.id ||
+                                    it.compaction.compactionModelConfigurationId == configuration.id ||
                                     it.compaction.tokenCounting.modelConfigurationId == configuration.id
                                 }) {
                                 onError(translation.text("ai.model.in_use", "name" to configuration.displayName))
@@ -1725,7 +1725,7 @@ private fun ModelConfigurationDialog(
     }
     var compactionValue by remember { mutableStateOf(existing?.compaction?.thresholdTokens?.toString().orEmpty()) }
     var proactiveThreshold by remember { mutableStateOf(existing?.compaction?.proactiveThresholdTokens?.toString().orEmpty()) }
-    var summaryConfigurationId by remember { mutableStateOf(existing?.compaction?.summaryModelConfigurationId) }
+    var compactionConfigurationId by remember { mutableStateOf(existing?.compaction?.compactionModelConfigurationId) }
     var countMode by remember { mutableStateOf(existing?.compaction?.tokenCounting?.mode ?: AiModelConfiguration.TokenCounting.Mode.CURRENT) }
     var counterConfigurationId by remember { mutableStateOf(existing?.compaction?.tokenCounting?.modelConfigurationId) }
     var reasoningMode by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.mode) }
@@ -1869,8 +1869,8 @@ private fun ModelConfigurationDialog(
                         Text(translation.text("ai.compaction.count_other_hint"), style = MaterialTheme.typography.bodySmall)
                     }
                     LabeledDropdown(
-                        label = translation.text("ai.compaction.summary_model"),
-                        value = summaryConfigurationId,
+                        label = translation.text("ai.compaction.compaction_model"),
+                        value = compactionConfigurationId,
                         options = listOf<AiModelConfiguration.Id?>(null) + configurations.filter { candidate ->
                             candidate.enabled && candidate.id.value != id.trim() && modelSpecs.any { spec ->
                                 spec.id == candidate.providerModelId && spec.limits.textGeneration != null &&
@@ -1880,7 +1880,7 @@ private fun ModelConfigurationDialog(
                         optionLabel = { candidate -> candidate?.let { selected ->
                             configurations.first { it.id == selected }.displayName
                         } ?: translation.text("ai.compaction.current_model") },
-                        onSelect = { summaryConfigurationId = it },
+                        onSelect = { compactionConfigurationId = it },
                     )
                 }
                 if (supportsEmbeddings) {
@@ -1975,7 +1975,7 @@ private fun ModelConfigurationDialog(
                             },
                             proactiveThresholdTokens = if (compactionMode == AutoCompactionEditorMode.None) null else
                                 proactiveThreshold.optionalInt(translation.text("ai.compaction.proactive_threshold"), translation),
-                            summaryModelConfigurationId = summaryConfigurationId,
+                            compactionModelConfigurationId = compactionConfigurationId,
                             tokenCounting = AiModelConfiguration.TokenCounting(countMode,
                                 if (countMode == AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION)
                                     requireNotNull(counterConfigurationId) { translation.text("ai.compaction.count_model") }

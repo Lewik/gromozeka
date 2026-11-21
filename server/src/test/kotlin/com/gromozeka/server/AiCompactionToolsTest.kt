@@ -40,7 +40,7 @@ class AiCompactionToolsTest {
         val upsert = tools.single { it.definition.name == "grz_ai_model_configuration_upsert" }
         val read = tools.single { it.definition.name == "grz_ai_catalog_get" }
         assertTrue(tools.none { it.definition.name.startsWith("grz_ai_compaction_") })
-        val configured = original.copy(compaction = AiModelConfiguration.Compaction(thresholdTokens = 1000, proactiveThresholdTokens = 500, summaryModelConfigurationId = summary.id,
+        val configured = original.copy(compaction = AiModelConfiguration.Compaction(thresholdTokens = 1000, proactiveThresholdTokens = 500, compactionModelConfigurationId = summary.id,
             tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.LOCAL)))
         val args = buildJsonObject {
             put("modelConfiguration", Json.encodeToJsonElement(AiModelConfiguration.serializer(), configured))
@@ -48,7 +48,7 @@ class AiCompactionToolsTest {
         }
         val saved = upsert.invokeStructured(testControlMcpContext(), args)
         assertContains(saved.toString(), "\"thresholdTokens\":1000")
-        assertContains(saved.toString(), "\"summaryModelConfigurationId\":\"compaction-test-summary\"")
+        assertContains(saved.toString(), "\"compactionModelConfigurationId\":\"compaction-test-summary\"")
         val fetched = read.invokeStructured(testControlMcpContext(), buildJsonObject {})
         assertContains(fetched.toString(), "\"thresholdTokens\":1000")
         assertContains(fetched.toString(), "\"proactiveThresholdTokens\":500")

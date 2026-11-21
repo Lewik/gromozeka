@@ -47,7 +47,7 @@ data class AiModelConfiguration(
     data class Compaction(
         val thresholdTokens: Int? = null,
         val proactiveThresholdTokens: Int? = null,
-        val summaryModelConfigurationId: Id? = null,
+        val compactionModelConfigurationId: Id? = null,
         val tokenCounting: TokenCounting = TokenCounting(),
     ) {
         init {

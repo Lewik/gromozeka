@@ -9,12 +9,12 @@ import kotlinx.serialization.Serializable
  *
  * - CONCATENATE: Simple joining without AI processing (preserves exact content)
  * - DISTILL: AI extracts key points and decisions, removing redundancy
- * - SUMMARIZE: AI creates concise summary maintaining essential information
+ * - COMPACT: AI creates a continuation checkpoint for selected history
  *
  * Each type trades off between fidelity and compression:
  * - CONCATENATE: 100% fidelity, minimal compression
  * - DISTILL: High fidelity for key information, removes noise
- * - SUMMARIZE: Lower fidelity, maximum compression
+ * - COMPACT: Continuation-oriented history compression
  */
 @Serializable
 enum class SquashType {
@@ -35,10 +35,9 @@ enum class SquashType {
     DISTILL,
 
     /**
-     * AI-powered summarization.
+     * Conversation compaction.
      *
-     * Creates concise summary capturing main points and outcomes.
-     * More aggressive compression than DISTILL.
+     * A text model creates a continuation checkpoint for the selected history.
      */
-    SUMMARIZE
+    COMPACT
 }

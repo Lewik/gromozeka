@@ -1,9 +1,13 @@
 package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.AiProvider
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class AiModelConfigurationTest {
     @Test
@@ -36,14 +40,30 @@ class AiModelConfigurationTest {
 
     @Test
     fun compactionRoundTripsOnlyAbsoluteTokensAndExplicitReset() {
-        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
-        val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(75_000, summaryModelConfigurationId = AiModelConfiguration.Id("summary")))
+        val json = Json { encodeDefaults = true }
+        val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(75_000, compactionModelConfigurationId = AiModelConfiguration.Id("compactor")))
         val encoded = json.encodeToString(AiModelConfiguration.serializer(), configured)
         assertEquals(configured, json.decodeFromString(AiModelConfiguration.serializer(), encoded))
         kotlin.test.assertFalse(encoded.contains("percent"))
-        val reset = kotlinx.serialization.json.JsonObject(kotlinx.serialization.json.Json.parseToJsonElement(encoded)
+        val reset = kotlinx.serialization.json.JsonObject(Json.parseToJsonElement(encoded)
             .let { it as kotlinx.serialization.json.JsonObject } + ("compaction" to kotlinx.serialization.json.JsonObject(emptyMap())))
         assertEquals(AiModelConfiguration.Compaction(), json.decodeFromString(AiModelConfiguration.serializer(), reset.toString()).compaction)
+    }
+
+    @Test
+    fun compactionWritesOnlyCurrentModelKey() {
+        val compaction = AiModelConfiguration.Compaction(
+            compactionModelConfigurationId = AiModelConfiguration.Id("compactor"),
+        )
+
+        val encoded = Json.encodeToString(compaction)
+        assertTrue(encoded.contains("\"compactionModelConfigurationId\":\"compactor\""))
+        assertFalse(encoded.contains("summaryModelConfigurationId"))
+        assertFailsWith<SerializationException> {
+            Json.decodeFromString<AiModelConfiguration.Compaction>(
+                """{"summaryModelConfigurationId":"legacy-compactor"}""",
+            )
+        }
     }
 
     @Test
@@ -53,7 +73,7 @@ class AiModelConfigurationTest {
         assertFailsWith<IllegalArgumentException> { AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION) }
         assertFailsWith<IllegalArgumentException> { AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.LOCAL, id) }
         assertFailsWith<IllegalArgumentException> { AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.CURRENT, id) }
-        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val json = Json { encodeDefaults = true }
         val configured = configuration().copy(compaction = AiModelConfiguration.Compaction(tokenCounting =
             AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, id)))
         assertEquals(configured, json.decodeFromString(AiModelConfiguration.serializer(), json.encodeToString(AiModelConfiguration.serializer(), configured)))
@@ -64,7 +84,7 @@ class AiModelConfigurationTest {
             AiModelConfiguration.Compaction(thresholdTokens = 100, proactiveThresholdTokens = early)
         }
         assertFailsWith<IllegalArgumentException> { AiModelConfiguration.Compaction(proactiveThresholdTokens = 50) }
-        val json = kotlinx.serialization.json.Json
+        val json = Json
         val policy = AiModelConfiguration.Compaction(thresholdTokens = 140_000, proactiveThresholdTokens = 100_000)
         assertEquals(policy, json.decodeFromString(AiModelConfiguration.Compaction.serializer(), json.encodeToString(AiModelConfiguration.Compaction.serializer(), policy)))
         assertEquals(null, json.decodeFromString(AiModelConfiguration.Compaction.serializer(), """{"thresholdTokens":140000}""").proactiveThresholdTokens)

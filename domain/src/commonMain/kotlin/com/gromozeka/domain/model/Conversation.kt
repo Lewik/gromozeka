@@ -547,7 +547,7 @@ data class Conversation(
                 @Serializable
                 enum class Strategy {
                     CONCATENATE,
-                    SUMMARIZE,
+                    COMPACT,
                     DISTILL,
                     PROVIDER_MANAGED,
                     UNKNOWN,
