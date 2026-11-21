@@ -2,8 +2,10 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.recordRetainedOpenAiReplay
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
@@ -110,6 +112,34 @@ class RecordedRunningCommandsRequestEnricherTest {
         assertEquals(original.messages.single().content, moved.messages.first().content)
         assertTrue(moved.messages.first().instructions.none { it is Conversation.Message.Instruction.UserInstruction })
         assertEquals(2, frames(moved).size)
+    }
+
+    @Test fun `COW carries exact observations or withholds retained reasoning when their cache is lost`() = runBlocking<Unit> {
+        val f = Fixture()
+        f.store(command("running"))
+        val sourceUser = user("u1")
+        val source = f.enrich(request(listOf(sourceUser)))
+        val answer = signedAssistant("a1")
+        val checkpoint = retainedCheckpoint(sourceUser, answer)
+        val nextUser = user("u2")
+        val targetRequest = request(listOf(checkpoint, sourceUser, answer, nextUser), thread = "compacted")
+
+        val carried = f.enrich(targetRequest)
+        assertEquals(source.messages.single().instructions, carried.messages.single { it.id == sourceUser.id }.instructions)
+        assertTrue(carried.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+            .single { it.id == answer.id }.content.any { it is Conversation.Message.ContentItem.Thinking })
+
+        val changed = targetRequest.copy(messages = targetRequest.messages.map {
+            if (it.id == sourceUser.id) it.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("changed"))) else it
+        })
+        val changedSafe = f.enrich(changed)
+        assertTrue(changedSafe.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+            .single { it.id == answer.id }.content.none { it is Conversation.Message.ContentItem.Thinking })
+
+        val restarted = RecordedRunningCommandsRequestEnricher(f.coordinator)
+        val safe = restarted.enrich(CONVERSATION, nextUser.id, TURN, MODEL, targetRequest)
+        assertTrue(safe.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+            .single { it.id == answer.id }.content.none { it is Conversation.Message.ContentItem.Thinking })
     }
 
     @Test fun `read-only snapshots cannot seed or evict live replay observations`() = runBlocking<Unit> {
@@ -258,8 +288,22 @@ class RecordedRunningCommandsRequestEnricherTest {
             content = listOf(Conversation.Message.ContentItem.UserMessage("input $id")), createdAt = NOW)
         private fun assistant(id: String) = Conversation.Message(Conversation.Message.Id(id), CONVERSATION, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("reply"))), createdAt = NOW)
-        private fun request(messages: List<Conversation.Message>) = AiRuntimeRequest(listOf("system"), messages, options = AiRuntimeOptions(toolContext = mapOf(
-            TOOL_CONTEXT_CONVERSATION_ID to CONVERSATION.value, TOOL_CONTEXT_THREAD_ID to "thread", TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent", TOOL_CONTEXT_USER_ID to "user")))
+        private fun signedAssistant(id: String) = assistant(id).copy(
+            content = listOf(
+                Conversation.Message.ContentItem.Thinking("retained reasoning", "signature"),
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("reply")),
+            ),
+            providerMetadata = buildJsonObject {
+                put("provider", AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+                put("connectionId", "connection")
+                put("model", MODEL.id)
+                put(AI_REPLAY_THREAD_METADATA_KEY, "thread")
+            },
+        )
+        private fun request(messages: List<Conversation.Message>, thread: String = "thread") =
+            AiRuntimeRequest(listOf("system"), messages, options = AiRuntimeOptions(toolContext = mapOf(
+                TOOL_CONTEXT_CONVERSATION_ID to CONVERSATION.value, TOOL_CONTEXT_THREAD_ID to thread,
+                TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent", TOOL_CONTEXT_USER_ID to "user")))
         private fun command(id: String, description: String? = null, status: CommandTask.Status = CommandTask.Status.WORKING) = CommandTask(
             CommandTask.Id(id), CONVERSATION, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
             agentDefinitionId = AgentDefinition.Id("agent"), command = "PRIVATE_COMMAND", workingDirectory = "/tmp",
@@ -273,6 +317,27 @@ class RecordedRunningCommandsRequestEnricherTest {
                 sourceMessageIds = listOf(Conversation.Message.Id("u1")),
                 providerScope = if (opaque) Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(AiConnection.Kind.OPENAI_SUBSCRIPTION.name) else null)
             return Conversation.Message(Conversation.Message.Id("summary"), CONVERSATION, role = Conversation.Message.Role.USER, content = listOf(item), createdAt = NOW)
+        }
+        private fun retainedCheckpoint(user: Conversation.Message, answer: Conversation.Message): Conversation.Message {
+            val item = Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                    obj("""{"encrypted_content":"opaque"}"""),
+                ),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                sourceBoundaryMessageId = Conversation.Message.Id("compacted-prefix"),
+                providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                    AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
+                    connectionId = "connection",
+                    modelName = MODEL.id,
+                ),
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                historyTransition = Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(
+                    Conversation.Thread.Id("thread"), Conversation.Thread.Id("compacted"),
+                ),
+            )
+            return Conversation.Message(Conversation.Message.Id("checkpoint"), CONVERSATION,
+                role = Conversation.Message.Role.ASSISTANT, content = listOf(item), createdAt = NOW)
+                .recordRetainedOpenAiReplay(null, listOf(user, answer).map(CompactionMessageHeader::from))
         }
         private fun parseFrame(text: String) = obj(text.substringAfter("<runtime-command-context>").substringBefore("</runtime-command-context>"))
         private fun frames(request: AiRuntimeRequest): List<JsonObject> = (request.messages.flatMap { it.instructions }

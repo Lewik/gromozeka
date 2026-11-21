@@ -1089,6 +1089,85 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
     }
 
+    @Test fun `COW replay carries retained command observations through the full engine request`() = runBlocking {
+        val f = Fixture(withCommandContext = true)
+        val root = f.messages.single()
+        val old = root.copy(id = Conversation.Message.Id("old-prefix"),
+            content = listOf(ContentItem.UserMessage("old prefix")))
+        f.messages.add(0, old)
+        f.coordinator.upsertCommandTask(CommandTask(
+            CommandTask.Id("running"), conversation.id, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
+            agentDefinitionId = agentId, command = "PRIVATE_COMMAND", workingDirectory = "/tmp",
+            status = CommandTask.Status.WORKING, processId = 1, processStartedAt = now,
+            outputFile = "/tmp/running", outputBytes = 0, createdAt = now, updatedAt = now,
+            description = "Analyze data",
+        ))
+        val task = f.begin()
+        var calls = 0
+        lateinit var sourceObservation: Conversation.Message.Instruction.RuntimeObservation
+        f.onCall = { request ->
+            if (calls++ == 0) {
+                sourceObservation = request.messages.single { it.id == root.id }.instructions
+                    .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().single()
+                AiRuntimeResponse(
+                    messages = listOf(AiAssistantMessage(listOf(
+                        ContentItem.Thinking("retained reasoning", "signature"),
+                        ContentItem.AssistantMessage(Conversation.Message.StructuredText("First answer")),
+                    ))),
+                    providerMetadata = mapOf(
+                        "provider" to AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
+                        "connectionId" to "test",
+                        "model" to "test-model",
+                        AI_REPLAY_THREAD_METADATA_KEY to conversation.currentThread.value,
+                    ),
+                )
+            } else {
+                assertEquals(sourceObservation, request.messages.single { it.id == root.id }.instructions
+                    .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().single())
+                assertTrue(request.messages.filter { it.role == Conversation.Message.Role.ASSISTANT }
+                    .flatMap { it.content }.any { it is ContentItem.Thinking })
+                answer()
+            }
+        }
+        f.onApply = {
+            val sourceThread = f.currentConversation.currentThread
+            val targetThread = Conversation.Thread.Id("compacted-thread")
+            val assistant = f.messages.last { it.role == Conversation.Message.Role.ASSISTANT }
+            val result = ContentItem.ContextCompactionResult(
+                payload = ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                    buildJsonObject { put("encrypted_content", "opaque") },
+                ),
+                origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                sourceBoundaryMessageId = old.id,
+                providerScope = ContentItem.ContextCompactionResult.ProviderScope(
+                    AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
+                    connectionId = "test",
+                    modelName = "test-model",
+                ),
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                historyTransition = ContentItem.ContextCompactionResult.HistoryTransition(sourceThread, targetThread),
+            )
+            val checkpoint = old.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(result)).recordRetainedOpenAiReplay(
+                    previous = null,
+                    suffix = listOf(root, assistant).map(CompactionMessageHeader::from),
+                )
+            f.messages.add(1, checkpoint)
+            f.currentConversation = f.currentConversation.copy(currentThread = targetThread)
+            f.onApply = { null }
+            f.currentConversation
+        }
+
+        val first = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(first)
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, first))
+        assertTrue(f.coordinator.submit(input("next")))
+        f.drain()
+
+        assertEquals(2, f.requests.size)
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+    }
+
     @Test fun `command observations preserve automatic batched completion and its one model continuation`() = runBlocking {
         val f = Fixture(realBackground = true, withCommandContext = true)
         f.queueCommandCompletion("successful")

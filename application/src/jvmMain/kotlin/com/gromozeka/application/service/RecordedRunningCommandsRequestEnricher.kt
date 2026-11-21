@@ -2,6 +2,9 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.RetainedOpenAiReplayLineage
+import com.gromozeka.domain.model.retainedOpenAiReplayLineage
+import com.gromozeka.domain.model.withoutRetainedOpenAiReplay
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.originalCollaborationMessages
@@ -36,6 +39,7 @@ import org.springframework.stereotype.Service
 class RecordedRunningCommandsRequestEnricher(private val coordinator: ConversationRuntimeCoordinator) : ConversationRequestEnricher {
     private val mutex = Mutex()
     private val contexts = linkedMapOf<ContextKey, List<Observation>>()
+    private val unreconstructableContexts = mutableSetOf<ContextKey>()
 
     override suspend fun enrich(
         conversationId: Conversation.Id,
@@ -74,8 +78,23 @@ class RecordedRunningCommandsRequestEnricher(private val coordinator: Conversati
         val anchors = retained.filter { it.role == Conversation.Message.Role.USER }.associateBy { it.id }
         val positions = retained.mapIndexed { index, message -> message.id to index }.toMap()
         val latest = retained.lastOrNull()?.takeIf { it.role == Conversation.Message.Role.USER }
+        val lineage = retained.firstNotNullOfOrNull {
+            it.retainedOpenAiReplayLineage(Conversation.Thread.Id(key.thread))
+        }
         return mutex.withLock {
-            val previous = contexts[key].orEmpty()
+            val sourceKey = lineage?.let { key.copy(thread = it.sourceThread.value) }
+            val replayKey = when {
+                key in contexts -> key
+                sourceKey != null && sourceKey in contexts -> sourceKey
+                else -> null
+            }
+            var replayExact = lineage == null || (replayKey != null && replayKey !in unreconstructableContexts)
+            val baseRequest = if (lineage != null && !replayExact) request.withoutRetainedOpenAiReplay(lineage) else request
+            val previous = replayKey?.let { contexts[it] }.orEmpty()
+            if (recordReplay && replayKey != null) {
+                contexts.remove(replayKey)
+                unreconstructableContexts.remove(replayKey)
+            }
             val signatures = mutableMapOf<Conversation.Message.Id, String>()
             fun signature(message: Conversation.Message): String = signatures.getOrPut(message.id) {
                 // Moving sticky instructions must not invalidate an unchanged canonical USER anchor.
@@ -84,34 +103,62 @@ class RecordedRunningCommandsRequestEnricher(private val coordinator: Conversati
             val replay = previous.filter { entry ->
                 anchors[entry.anchor]?.let { signature(it) == entry.sourceSignature } == true
             }.sortedBy { positions.getValue(it.anchor) }.toMutableList()
+            val sourceMaterialization = apply(baseRequest, previous)
+            val baseline = apply(baseRequest, replay)
+            if (lineage != null && replayExact &&
+                !sameRetainedPrefix(sourceMaterialization, baseline, retained, lineage)
+            ) {
+                replayExact = false
+            }
+            fun complete(result: AiRuntimeRequest): AiRuntimeRequest {
+                if (lineage != null && replayExact && !sameRetainedPrefix(baseline, result, retained, lineage)) {
+                    replayExact = false
+                }
+                val safe = if (lineage != null && !replayExact) result.withoutRetainedOpenAiReplay(lineage) else result
+                remember(key, replay, recordReplay, replayExact)
+                return safe
+            }
             if (latest == null) {
                 // Native CONTINUE may end on signed assistant state; never mutate that content.
-                remember(key, replay, recordReplay)
-                return@withLock apply(request, replay).let {
+                return@withLock complete(baseline.let {
                     it.copy(systemPrompts = it.systemPrompts + current)
-                }
+                })
             }
             val last = replay.lastOrNull()
             if (last?.anchor == latest.id && last.sourceSignature == signature(latest)) {
-                remember(key, replay, recordReplay)
-                val retainedRequest = apply(request, replay)
                 // Inserting another instruction before an already-sent USER body would rewrite its wire prefix.
-                return@withLock if (last.text == current) retainedRequest
-                    else retainedRequest.copy(systemPrompts = retainedRequest.systemPrompts + current)
+                return@withLock complete(if (last.text == current) baseline
+                    else baseline.copy(systemPrompts = baseline.systemPrompts + current))
             }
             val entry = Observation(latest.id, signature(latest), current)
             if (replay.size >= MAX_OBSERVATIONS || replay.sumOf { it.bytes } + entry.bytes > MAX_REPLAY_BYTES) replay.clear()
             replay += entry
-            remember(key, replay, recordReplay)
-            apply(request, replay)
+            complete(apply(baseRequest, replay))
         }
     }
 
-    private fun remember(key: ContextKey, observations: List<Observation>, recordReplay: Boolean) {
+    private fun remember(key: ContextKey, observations: List<Observation>, recordReplay: Boolean, replayExact: Boolean) {
         if (!recordReplay) return
         contexts.remove(key)
-        if (observations.isNotEmpty()) contexts[key] = observations.toList()
-        while (contexts.size > MAX_CONTEXTS) contexts.remove(contexts.keys.first())
+        contexts[key] = observations.toList()
+        if (replayExact) unreconstructableContexts.remove(key) else unreconstructableContexts += key
+        while (contexts.size > MAX_CONTEXTS) {
+            val oldest = contexts.keys.first()
+            contexts.remove(oldest)
+            unreconstructableContexts.remove(oldest)
+        }
+    }
+
+    private fun sameRetainedPrefix(
+        expected: AiRuntimeRequest,
+        actual: AiRuntimeRequest,
+        retained: List<Conversation.Message>,
+        lineage: RetainedOpenAiReplayLineage,
+    ): Boolean {
+        val boundary = retained.indexOfLast { it.id in lineage.messageIds }
+        if (boundary < 0 || expected.systemPrompts != actual.systemPrompts) return false
+        val ids = retained.take(boundary + 1).mapTo(mutableSetOf()) { it.id }
+        return expected.messages.filter { it.id in ids } == actual.messages.filter { it.id in ids }
     }
 
     private fun apply(request: AiRuntimeRequest, observations: List<Observation>): AiRuntimeRequest {

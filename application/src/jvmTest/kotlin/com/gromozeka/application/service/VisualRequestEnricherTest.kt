@@ -114,6 +114,33 @@ class VisualRequestEnricherTest {
         assertEquals(1, frames(f.enrich(edited)).size)
     }
 
+    @Test fun `COW carries exact visual context or withholds retained reasoning when its cache is lost`() = runBlocking<Unit> {
+        val f = Fixture()
+        val sourceUser = user("u1")
+        val source = f.enrich(request(listOf(sourceUser)))
+        val answer = signedAssistant("a1")
+        val checkpoint = retainedCheckpoint(sourceUser, answer)
+        val nextUser = user("u2")
+        val targetRequest = request(listOf(checkpoint, sourceUser, answer, nextUser), thread = "compacted")
+
+        val carried = f.enrich(targetRequest)
+        assertEquals(source.messages.single().content, carried.messages.single { it.id == sourceUser.id }.content)
+        assertTrue(carried.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+            .single { it.id == answer.id }.content.any { it is Conversation.Message.ContentItem.Thinking })
+
+        val changed = targetRequest.copy(messages = targetRequest.messages.map {
+            if (it.id == sourceUser.id) it.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("changed"))) else it
+        })
+        val changedSafe = f.enrich(changed)
+        assertTrue(changedSafe.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+            .single { it.id == answer.id }.content.none { it is Conversation.Message.ContentItem.Thinking })
+
+        val restarted = VisualRequestEnricher(f.repository)
+        val safe = restarted.enrich(CONVERSATION, nextUser.id, TURN, MODEL, targetRequest)
+        assertTrue(safe.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+            .single { it.id == answer.id }.content.none { it is Conversation.Message.ContentItem.Thinking })
+    }
+
     @Test fun `closed visuals are announced and a conversation with no visuals is untouched`() = runBlocking<Unit> {
         val f = Fixture()
         f.visuals = emptyList()
@@ -335,7 +362,24 @@ class VisualRequestEnricherTest {
         private fun obj(text: String) = Json.parseToJsonElement(text).jsonObject
         private fun user(id: String) = Conversation.Message(Conversation.Message.Id(id), CONVERSATION, role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("input $id")), createdAt = NOW)
         private fun assistant(id: String) = Conversation.Message(Conversation.Message.Id(id), CONVERSATION, role = Conversation.Message.Role.ASSISTANT, content = listOf(Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("reply"))), createdAt = NOW)
-        private fun request(messages: List<Conversation.Message>) = AiRuntimeRequest(listOf("system"), messages, options = AiRuntimeOptions(toolContext = mapOf(TOOL_CONTEXT_CONVERSATION_ID to CONVERSATION.value, TOOL_CONTEXT_THREAD_ID to "thread", TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent", TOOL_CONTEXT_USER_ID to "user")))
+        private fun signedAssistant(id: String) = assistant(id).copy(
+            content = listOf(
+                Conversation.Message.ContentItem.Thinking("retained reasoning", "signature"),
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("reply")),
+            ),
+            providerMetadata = buildJsonObject {
+                put("provider", AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+                put("connectionId", "connection")
+                put("model", MODEL.id)
+                put(AI_REPLAY_THREAD_METADATA_KEY, "thread")
+            },
+        )
+        private fun request(messages: List<Conversation.Message>, thread: String = "thread") = AiRuntimeRequest(
+            listOf("system"), messages, options = AiRuntimeOptions(toolContext = mapOf(
+                TOOL_CONTEXT_CONVERSATION_ID to CONVERSATION.value, TOOL_CONTEXT_THREAD_ID to thread,
+                TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent", TOOL_CONTEXT_USER_ID to "user",
+            )),
+        )
         private fun checkpoint(coverage: Conversation.Message.ContentItem.ContextCompactionResult.Coverage, opaque: Boolean): Conversation.Message {
             val result = Conversation.Message.ContentItem.ContextCompactionResult(
                 payload = if (opaque) Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(obj("""{"encrypted_content":"opaque"}""")) else Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
@@ -345,6 +389,27 @@ class VisualRequestEnricherTest {
                 providerScope = if (opaque) Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(AiConnection.Kind.OPENAI_SUBSCRIPTION.name) else null,
             )
             return Conversation.Message(Conversation.Message.Id("summary"), CONVERSATION, role = Conversation.Message.Role.USER, content = listOf(result), createdAt = NOW)
+        }
+        private fun retainedCheckpoint(user: Conversation.Message, answer: Conversation.Message): Conversation.Message {
+            val result = Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                    obj("""{"encrypted_content":"opaque"}"""),
+                ),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                sourceBoundaryMessageId = Conversation.Message.Id("compacted-prefix"),
+                providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                    AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
+                    connectionId = "connection",
+                    modelName = MODEL.id,
+                ),
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                historyTransition = Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(
+                    Conversation.Thread.Id("thread"), Conversation.Thread.Id("compacted"),
+                ),
+            )
+            return Conversation.Message(Conversation.Message.Id("checkpoint"), CONVERSATION,
+                role = Conversation.Message.Role.ASSISTANT, content = listOf(result), createdAt = NOW)
+                .recordRetainedOpenAiReplay(null, listOf(user, answer).map(CompactionMessageHeader::from))
         }
     }
 }

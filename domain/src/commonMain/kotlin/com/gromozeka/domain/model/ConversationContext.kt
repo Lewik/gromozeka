@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation.Message
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -121,6 +122,25 @@ private fun RetainedOpenAiReplay?.idsFor(provider: String?, thread: String?): Se
 
 internal fun Message?.retainedOpenAiReplayIds(provider: String?, thread: String?): Set<Message.Id> =
     this?.retainedOpenAiReplay().idsFor(provider, thread)
+
+data class RetainedOpenAiReplayLineage(
+    val provider: String,
+    val sourceThread: Conversation.Thread.Id,
+    val targetThread: Conversation.Thread.Id,
+    val messageIds: Set<Message.Id>,
+)
+
+fun Message.retainedOpenAiReplayLineage(targetThread: Conversation.Thread.Id): RetainedOpenAiReplayLineage? {
+    val replay = retainedOpenAiReplay()?.takeIf { it.targetThread == targetThread.value } ?: return null
+    val transition = (content.singleOrNull() as? ContextCompactionResult)?.historyTransition ?: return null
+    check(transition.targetThreadId == targetThread) { "Retained replay targets another thread" }
+    return RetainedOpenAiReplayLineage(replay.provider, transition.sourceThreadId, targetThread, replay.ids)
+}
+
+fun AiRuntimeRequest.withoutRetainedOpenAiReplay(lineage: RetainedOpenAiReplayLineage): AiRuntimeRequest =
+    copy(messages = messages.map { message ->
+        if (message.id in lineage.messageIds) message.withoutProviderReplay() else message
+    })
 
 /** Carry only immutable messages that could already be replayed on the verified source branch. */
 fun Message.recordRetainedOpenAiReplay(previous: RetainedOpenAiReplay?, suffix: List<CompactionMessageHeader>): Message {

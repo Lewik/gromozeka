@@ -2,6 +2,9 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.RetainedOpenAiReplayLineage
+import com.gromozeka.domain.model.retainedOpenAiReplayLineage
+import com.gromozeka.domain.model.withoutRetainedOpenAiReplay
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.originalCollaborationMessages
@@ -36,6 +39,7 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
     private val log = klog.KLoggers.logger(this)
     private val mutex = Mutex()
     private val contexts = linkedMapOf<ContextKey, MutableList<Entry>>()
+    private val unreconstructableContexts = mutableSetOf<ContextKey>()
 
     override suspend fun enrich(
         conversationId: Conversation.Id,
@@ -80,8 +84,23 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
         val anchors = retained.filter { it.role == Conversation.Message.Role.USER }.associateBy { it.id }
         val positions = retained.mapIndexed { index, message -> message.id to index }.toMap()
         val latest = retained.lastOrNull()?.takeIf { it.role == Conversation.Message.Role.USER }
+        val lineage = retained.firstNotNullOfOrNull {
+            it.retainedOpenAiReplayLineage(Conversation.Thread.Id(key.thread))
+        }
         return mutex.withLock {
-            val previous = if (recordReplay) contexts.remove(key).orEmpty() else contexts[key].orEmpty()
+            val sourceKey = lineage?.let { key.copy(thread = it.sourceThread.value) }
+            val replayKey = when {
+                key in contexts -> key
+                sourceKey != null && sourceKey in contexts -> sourceKey
+                else -> null
+            }
+            var replayExact = lineage == null || (replayKey != null && replayKey !in unreconstructableContexts)
+            val baseRequest = if (lineage != null && !replayExact) request.withoutRetainedOpenAiReplay(lineage) else request
+            val previous = replayKey?.let { contexts[it] }.orEmpty()
+            if (recordReplay && replayKey != null) {
+                contexts.remove(replayKey)
+                unreconstructableContexts.remove(replayKey)
+            }
             val signatures = mutableMapOf<Conversation.Message.Id, String>()
             fun signature(message: Conversation.Message): String = signatures.getOrPut(message.id) {
                 // Sticky/runtime instructions move or expire between requests. They are freshly
@@ -104,29 +123,42 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
                 previousIds = entry.records.mapTo(mutableSetOf()) { it.id }
                 replay += entry
             }
+            val sourceMaterialization = apply(baseRequest, previous)
+            val baseline = apply(baseRequest, replay)
+            if (lineage != null && replayExact &&
+                !sameRetainedPrefix(sourceMaterialization, baseline, retained, lineage)
+            ) {
+                replayExact = false
+            }
+            fun complete(result: AiRuntimeRequest): AiRuntimeRequest {
+                if (lineage != null && replayExact && !sameRetainedPrefix(baseline, result, retained, lineage)) {
+                    replayExact = false
+                }
+                val safe = if (lineage != null && !replayExact) result.withoutRetainedOpenAiReplay(lineage) else result
+                remember(key, replay, recordReplay, replayExact)
+                return safe
+            }
             // These observations are request-only cache entries, not persisted chat history.
             // Drop the replay chain so opting out cannot re-inject an older full snapshot.
             if (replay.any { entry -> entry.records.any { it.id in disabledIds && it.fingerprint != null } }) {
                 replay.clear()
                 known.clear()
             }
-            if (current.isEmpty() && replay.isEmpty()) return@withLock request
+            if (current.isEmpty() && replay.isEmpty()) return@withLock complete(baseRequest)
             val removed = previousIds - current.mapTo(mutableSetOf()) { it.id }
             if (latest == null) {
                 // Provider CONTINUE can end on assistant/native state with no new user/tool-result
                 // anchor. Supply a full live block rather than modifying signed assistant content.
-                remember(key, replay, recordReplay)
-                return@withLock apply(request, replay).let {
+                return@withLock complete(apply(baseRequest, replay).let {
                     it.copy(systemPrompts = it.systemPrompts + render(current, removed))
-                }
+                })
             }
             val last = replay.lastOrNull()
             if (last?.anchor == latest.id && last.sourceSignature == signature(latest) &&
                 last.records.map(Record::identity) == current.map(Record::identity)
             ) {
                 // Rebuilding the exact same request must not append another short marker.
-                remember(key, replay, recordReplay)
-                return@withLock apply(request, replay)
+                return@withLock complete(apply(baseRequest, replay))
             }
             val records = current.map { if (it.fingerprint != null && known[it.id] == it.fingerprint) it.copy(state = null) else it }
             var entry = Entry(latest.id, signature(latest), records, removed, render(records, removed))
@@ -135,21 +167,37 @@ class VisualRequestEnricher(private val repository: VisualRepository) : Conversa
                 entry = Entry(latest.id, signature(latest), current, removed, render(current, removed))
             }
             replay += entry
-            remember(key, replay, recordReplay)
             log.debug {
                 "VISUAL_CONTEXT call=${request.options.toolContext["aiCallDiagnosticId"] ?: "none"} " +
                     "snapshots=${entry.records.count { it.state != null }} unchanged=${entry.records.count { it.state == null && it.fingerprint != null }} " +
                     "disabled=${entry.records.count { it.fingerprint == null }} " +
                     "closed=${removed.size} replayed=${replay.size - 1}"
             }
-            apply(request, replay)
+            complete(apply(baseRequest, replay))
         }
     }
 
-    private fun remember(key: ContextKey, entries: MutableList<Entry>, recordReplay: Boolean) {
+    private fun remember(key: ContextKey, entries: MutableList<Entry>, recordReplay: Boolean, replayExact: Boolean) {
         if (!recordReplay) return
-        if (entries.isNotEmpty()) contexts[key] = entries
-        while (contexts.size > MAX_CONTEXTS) contexts.remove(contexts.keys.first())
+        contexts[key] = entries.toMutableList()
+        if (replayExact) unreconstructableContexts.remove(key) else unreconstructableContexts += key
+        while (contexts.size > MAX_CONTEXTS) {
+            val oldest = contexts.keys.first()
+            contexts.remove(oldest)
+            unreconstructableContexts.remove(oldest)
+        }
+    }
+
+    private fun sameRetainedPrefix(
+        expected: AiRuntimeRequest,
+        actual: AiRuntimeRequest,
+        retained: List<Conversation.Message>,
+        lineage: RetainedOpenAiReplayLineage,
+    ): Boolean {
+        val boundary = retained.indexOfLast { it.id in lineage.messageIds }
+        if (boundary < 0 || expected.systemPrompts != actual.systemPrompts) return false
+        val ids = retained.take(boundary + 1).mapTo(mutableSetOf()) { it.id }
+        return expected.messages.filter { it.id in ids } == actual.messages.filter { it.id in ids }
     }
 
     private fun apply(request: AiRuntimeRequest, entries: List<Entry>): AiRuntimeRequest {
