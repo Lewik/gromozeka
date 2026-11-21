@@ -23,16 +23,16 @@ class ConversationCompactionServiceTest {
             val f = Fixture(threshold)
             assertNull(f.apply())
             assertEquals(if (threshold == null) 0 else 1, f.inspections)
-            assertEquals(0, f.summaryCalls + f.nativeCalls + f.commits)
+            assertEquals(0, f.textCompactionCalls + f.nativeCalls + f.commits)
         }
     }
 
-    @Test fun `text auto summarizes the old prefix and commits only after the owner check`() = runBlocking {
+    @Test fun `text auto compacts the old prefix and commits only after the owner check`() = runBlocking {
         val f = Fixture(100)
         val changed = assertNotNull(f.apply())
         assertNotEquals(f.conversation.currentThread, changed.currentThread)
-        assertEquals(listOf("inspect", "owner", "summary", "owner", "commit", "event"), f.order)
-        assertEquals(f.sources.dropLast(1), f.summarized)
+        assertEquals(listOf("inspect", "owner", "text-compact", "owner", "commit", "event"), f.order)
+        assertEquals(f.sources.dropLast(1), f.compactedSources)
         val result = assertNotNull(f.committed).content.single() as Checkpoint
         assertEquals(f.sources.dropLast(1).map { it.id }, result.sourceMessageIds)
         assertEquals(Checkpoint.Strategy.SUMMARIZE, result.strategy)
@@ -49,7 +49,7 @@ class ConversationCompactionServiceTest {
         assertEquals(f.nativeSourceIds, result.sourceMessageIds)
         assertFalse(f.sources.last().id in result.sourceMessageIds)
         assertEquals(1, f.nativeCalls)
-        assertEquals(0, f.summaryCalls)
+        assertEquals(0, f.textCompactionCalls)
     }
 
     @Test fun `native checkpoint cannot claim a gapped or reordered provider prefix`() = runBlocking {
@@ -67,21 +67,21 @@ class ConversationCompactionServiceTest {
         f.nativeFailure = IllegalStateException("provider compact failed")
         assertFailsWith<IllegalStateException> { f.apply() }
         assertEquals(1, f.nativeCalls)
-        assertEquals(0, f.summaryCalls + f.commits)
+        assertEquals(0, f.textCompactionCalls + f.commits)
     }
 
     @Test fun `stop after preparation prevents commit`() = runBlocking {
         val f = Fixture(100)
         var stopped = false
-        f.onSummary = { stopped = true }
+        f.onTextCompaction = { stopped = true }
         assertFailsWith<CancellationException> { f.apply { if (stopped) throw CancellationException("Stop") } }
-        assertEquals(1, f.summaryCalls)
+        assertEquals(1, f.textCompactionCalls)
         assertEquals(0, f.commits)
     }
 
     @Test fun `configuration change during preparation prevents commit`() = runBlocking {
         val f = Fixture(100)
-        f.onSummary = { f.resolved = f.resolved.copy(modelConfiguration = f.resolved.modelConfiguration.copy(displayName = "Changed")) }
+        f.onTextCompaction = { f.resolved = f.resolved.copy(modelConfiguration = f.resolved.modelConfiguration.copy(displayName = "Changed")) }
         assertFailsWith<IllegalStateException> { f.apply() }
         assertEquals(0, f.commits)
     }
@@ -90,20 +90,20 @@ class ConversationCompactionServiceTest {
         val f = Fixture(100)
         f.persisted = true
         assertEquals(f.conversation, f.apply())
-        assertEquals(0, f.inspections + f.summaryCalls + f.nativeCalls + f.commits)
+        assertEquals(0, f.inspections + f.textCompactionCalls + f.nativeCalls + f.commits)
     }
 
     @Test fun `insufficient compaction blocks instead of looping or starting inference`() = runBlocking {
         val f = Fixture(100)
         assertFailsWith<IllegalStateException> { f.apply(alreadyCompacted = true) }
         assertEquals(1, f.inspections)
-        assertEquals(0, f.summaryCalls + f.nativeCalls + f.commits)
+        assertEquals(0, f.textCompactionCalls + f.nativeCalls + f.commits)
     }
 
-    @Test fun `unrevealed secret space participates in the threshold without entering a summary`() = runBlocking {
+    @Test fun `unrevealed secret space participates in the threshold without entering text compaction`() = runBlocking {
         val f = Fixture(500)
         assertNotNull(f.apply(extraTokens = 400))
-        assertEquals(f.sources.dropLast(1), f.summarized)
+        assertEquals(f.sources.dropLast(1), f.compactedSources)
     }
 
     @Test fun `measured append only continuation has no count call even near the threshold`() = runBlocking {
@@ -155,7 +155,7 @@ class ConversationCompactionServiceTest {
         assertNotNull(f.apply())
         assertEquals(1, f.counterCalls)
         assertEquals(0, f.inspections + f.nativeCalls)
-        assertEquals(1, f.summaryCalls)
+        assertEquals(1, f.textCompactionCalls)
         assertEquals("CONTEXT_COUNT", f.counterRequest?.options?.usagePurpose)
         assertEquals(f.request.messages.map { it.content }, f.counterRequest?.messages?.map { it.content })
         val next = Fixture(1000)
@@ -170,7 +170,7 @@ class ConversationCompactionServiceTest {
             if (alternate) { f.useCounter(); f.counterFailure = IllegalStateException("counter unavailable") }
             else f.countFailure = IllegalStateException("counter unavailable")
             assertFailsWith<IllegalStateException> { f.apply() }
-            assertEquals(0, f.nativeCalls + f.summaryCalls + f.commits)
+            assertEquals(0, f.nativeCalls + f.textCompactionCalls + f.commits)
         }
     }
 
@@ -260,14 +260,14 @@ class ConversationCompactionServiceTest {
         var counterRequest: AiRuntimeRequest? = null
         var counterResolved: ResolvedAiRuntime? = null
         var counterFailure: Exception? = null
-        var summaryCalls = 0
+        var textCompactionCalls = 0
         var nativeCalls = 0
         var commits = 0
         var persisted = false
         var nativeSourceIds = sources.dropLast(1).map { it.id }
         var nativeFailure: Exception? = null
-        var onSummary: () -> Unit = {}
-        var summarized: List<Conversation.Message>? = null
+        var onTextCompaction: () -> Unit = {}
+        var compactedSources: List<Conversation.Message>? = null
         var committed: Conversation.Message? = null
         val provider = object : AiRuntime {
             override val capabilities = AiRuntimeCapabilities(supportsNativeCompaction = native, supportsDetachedNativeCompaction = native)
@@ -306,13 +306,13 @@ class ConversationCompactionServiceTest {
                 else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
             }
         }
-        private val summaries = Mockito.mock(MessageSquashService::class.java) { invocation ->
+        private val textCompactions = Mockito.mock(MessageSquashService::class.java) { invocation ->
             if (invocation.method.name.startsWith("generateWithAi")) {
-                summaryCalls++; order += "summary"
+                textCompactionCalls++; order += "text-compact"
                 @Suppress("UNCHECKED_CAST")
-                summarized = invocation.arguments[1] as List<Conversation.Message>
-                assertEquals(SquashType.SUMMARIZE, invocation.arguments[2])
-                onSummary()
+                compactedSources = invocation.arguments[1] as List<Conversation.Message>
+                assertEquals(SquashType.COMPACT, invocation.arguments[2])
+                onTextCompaction()
                 MessageSquashService.GeneratedCompaction("Handoff", null, null)
             } else if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
             else Mockito.RETURNS_DEFAULTS.answer(invocation)
@@ -366,7 +366,7 @@ class ConversationCompactionServiceTest {
             resolved = resolved.copy(modelConfiguration = resolved.modelConfiguration.copy(compaction = resolved.modelConfiguration.compaction.copy(
                 tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, counterId))))
         }
-        private val service = ConversationCompactionService(configurations, history, summaries, committer, coordinator, events, runtimeProvider,
+        private val service = ConversationCompactionService(configurations, history, textCompactions, committer, coordinator, events, runtimeProvider,
             Mockito.mock(ProactiveCompactionJobs::class.java), Mockito.mock(CompactionPreparationScope::class.java) { if (it.method.name == "pinPrompts") emptyList<String>() else "scope" }, ToolCallPairingService())
         suspend fun apply(alreadyCompacted: Boolean = false, extraTokens: Int = 0, owner: suspend () -> Unit = {}): Conversation? =
             service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted, extraTokens) {

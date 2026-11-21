@@ -243,7 +243,7 @@ class AiCatalogTest {
     }
 
     @Test
-    fun validatesCompactionLimitsAndSummaryReferences() {
+    fun validatesCompactionLimitsAndModelReferences() {
         val catalog = testCatalog()
         fun configured(policy: AiModelConfiguration.Compaction) = catalog.copy(modelConfigurations = catalog.modelConfigurations.map {
             if (it.id == CHAT_CONFIGURATION_ID) it.copy(compaction = policy) else it
@@ -251,15 +251,15 @@ class AiCatalogTest {
         assertEquals(100_000, configured(AiModelConfiguration.Compaction(100_000)).modelConfigurations.first().compaction.thresholdTokens)
         assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(128_000)) }
         assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(200_000)) }
-        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(summaryModelConfigurationId = EMBEDDING_CONFIGURATION_ID)) }
-        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(summaryModelConfigurationId = AiModelConfiguration.Id("missing"))) }
+        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(compactionModelConfigurationId = EMBEDDING_CONFIGURATION_ID)) }
+        assertFailsWith<IllegalArgumentException> { configured(AiModelConfiguration.Compaction(compactionModelConfigurationId = AiModelConfiguration.Id("missing"))) }
         assertFailsWith<IllegalArgumentException> { catalog.copy(modelConfigurations = catalog.modelConfigurations.map {
             if (it.id == EMBEDDING_CONFIGURATION_ID) it.copy(compaction = AiModelConfiguration.Compaction(100)) else it
         }) }
-        val second = catalog.modelConfigurations.first().copy(id = AiModelConfiguration.Id("summary"))
-        val withSummary = catalog.copy(modelConfigurations = catalog.modelConfigurations + second)
-        val used = withSummary.copy(modelConfigurations = withSummary.modelConfigurations.map {
-            if (it.id == CHAT_CONFIGURATION_ID) it.copy(compaction = AiModelConfiguration.Compaction(100_000, summaryModelConfigurationId = second.id)) else it
+        val second = catalog.modelConfigurations.first().copy(id = AiModelConfiguration.Id("compactor"))
+        val withCompactor = catalog.copy(modelConfigurations = catalog.modelConfigurations + second)
+        val used = withCompactor.copy(modelConfigurations = withCompactor.modelConfigurations.map {
+            if (it.id == CHAT_CONFIGURATION_ID) it.copy(compaction = AiModelConfiguration.Compaction(100_000, compactionModelConfigurationId = second.id)) else it
         })
         assertFailsWith<IllegalArgumentException> { used.copy(modelConfigurations = used.modelConfigurations.filterNot { it.id == second.id }) }
         assertFailsWith<IllegalArgumentException> { used.copy(modelConfigurations = used.modelConfigurations.map {

@@ -6,7 +6,7 @@ Compaction policy belongs to `AiModelConfiguration.compaction`:
 {
   "thresholdTokens": 140000,
   "proactiveThresholdTokens": 100000,
-  "summaryModelConfigurationId": null,
+  "compactionModelConfigurationId": null,
   "tokenCounting": { "mode": "CURRENT" }
 }
 ```
@@ -133,13 +133,13 @@ separately from ordinary native compaction support.
   replay window is retained intact, followed by the saved suffix and new appends.
 - OpenAI Subscription uses compact-only Responses Lite when available, with a
   preparation-specific transport namespace so it cannot mutate the foreground
-  incremental-replay cache. Other profiles use the configured text summarizer.
+  incremental-replay cache. Other profiles use the configured text compaction model.
 - Claude Code's live-session `/compact` is not a detached prefix operation. These
-  Harness full/prefix compactions therefore use the configured text summarizer.
+  Harness full/prefix compactions therefore use the configured text compaction model.
   With a Harness threshold enabled, competing intrinsic Claude auto-compaction is
-  disabled. Summary calls also disable it. With the Harness policy disabled,
+  disabled. Text-compaction calls also disable it. With the Harness policy disabled,
   ordinary intrinsic provider compaction retains its provider-defined behavior.
-- Other routes use the existing text summarizer unless their adapter explicitly
+- Other routes use the configured text compaction model unless their adapter explicitly
   supports safe detached native compaction. A failed native operation is not
   silently retried through a different provider.
 
@@ -153,7 +153,7 @@ adds no deployment or automatic update operation.
 ## Diagnostics and verification
 
 Lifecycle logs use `COMPACTION` with operation IDs, mode, source/retained counts,
-input estimates, summary character counts, durations and bounded failure metadata.
+input estimates, compacted character counts, durations and bounded failure metadata.
 Waiting, cancellation, stale-result discard and blocking fallback are distinct.
 History bodies, prompts, raw provider errors and credentials are not logged by
 these lifecycle events. The public Runtime status distinguishes preparation,

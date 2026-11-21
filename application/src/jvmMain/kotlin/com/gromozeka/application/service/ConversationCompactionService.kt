@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service
 class ConversationCompactionService internal constructor(
     private val configurations: AiConfigurationProvider,
     private val history: ThreadMessageRepository,
-    private val summaries: MessageSquashService,
+    private val textCompactions: MessageSquashService,
     private val committer: ContextCompactionCommitter,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val events: ConversationRuntimeEventBus,
@@ -179,7 +179,7 @@ class ConversationCompactionService internal constructor(
         val inspectionWindow = if (request.messages.isEmpty())
             history.getContextMessagesByThread(conversation.currentThread, resolved.connection.kind.nativeCompactionProvider()) else request.messages
         val pins = preparationScope.pinPrompts(conversation)
-        val inspectionRequest = request.copy(systemPrompts = request.systemPrompts + pins, messages = summaries.materializeSnapshot(conversation.id, inspectionWindow))
+        val inspectionRequest = request.copy(systemPrompts = request.systemPrompts + pins, messages = textCompactions.materializeSnapshot(conversation.id, inspectionWindow))
         val estimate = AiContextMeasurement.portableInspection(resolved, inspectionRequest)?.inputTokens
             ?: AiRequestTokenEstimate.input(inspectionRequest.copy(messages = inspectionRequest.projectedMessages(resolved.connection.kind.nativeCompactionProvider())))
         if (estimate < threshold) return
@@ -225,7 +225,7 @@ class ConversationCompactionService internal constructor(
         val provider = resolved.connection.kind.nativeCompactionProvider()
         val prefixRequest = if (runtime.capabilities.supportsDetachedNativeCompaction) {
             val messages = window.messages(history, conversation.currentThread, prefix, provider)
-            request.copy(messages = summaries.materializeSnapshot(conversation.id, messages),
+            request.copy(messages = textCompactions.materializeSnapshot(conversation.id, messages),
                 options = request.options.copy(usagePurpose = "CONTEXT_COMPACTION", toolContext = compactionContext +
                     ("compactionTransportId" to checkpointId.value)))
                 .takeIf { runtime.inspectContext(it, allowProviderCount = false).nativeCompactionAvailable }
@@ -244,11 +244,11 @@ class ConversationCompactionService internal constructor(
             return normalizeNative(mapped.single().copy(id = checkpointId), prefix, prefixRequest.messages.map { it.id })
         }
         // A live-session /compact cannot compact just an older prefix while retaining its suffix.
-        // Use the existing configured text summarizer, not a speculative mutation of that session.
+        // Use the configured text compaction model, not a speculative mutation of that session.
         val readable = window.messages(history, conversation.currentThread, prefix, null)
-        val generated = summaries.generateWithAi(conversation, readable,
-            SquashType.SUMMARIZE, agent.runtimeSelection, compactionContext, pins)
-        log.info { "COMPACTION phase=generated id=${checkpointId.value} summaryChars=${generated.text.length}" }
+        val generated = textCompactions.generateWithAi(conversation, readable,
+            SquashType.COMPACT, agent.runtimeSelection, compactionContext, pins)
+        log.info { "COMPACTION phase=generated id=${checkpointId.value} compactedChars=${generated.text.length}" }
         return Conversation.Message(
             id = checkpointId, conversationId = conversation.id, role = Conversation.Message.Role.ASSISTANT,
             author = Conversation.Message.Author.Agent(agent.id, agent.name), createdAt = Clock.System.now(),

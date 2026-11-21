@@ -1507,8 +1507,8 @@ class TabViewModel(
         runSelectedMessageSquash(SquashType.DISTILL)
     }
 
-    suspend fun summarizeSelectedMessages() {
-        runSelectedMessageSquash(SquashType.SUMMARIZE)
+    suspend fun compactSelectedMessages() {
+        runSelectedMessageSquash(SquashType.COMPACT)
     }
 
     private suspend fun runSelectedMessageSquash(

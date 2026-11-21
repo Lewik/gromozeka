@@ -95,7 +95,7 @@ Compaction is configured on `AiModelConfiguration`, not `AiModelSpec`:
   "compaction": {
     "thresholdTokens": 140000,
     "proactiveThresholdTokens": 100000,
-    "summaryModelConfigurationId": null,
+    "compactionModelConfigurationId": null,
     "tokenCounting": { "mode": "CURRENT", "modelConfigurationId": null }
   }
 }
@@ -175,17 +175,18 @@ The executor is selected before execution:
   receives its instructions. Ordinary `/responses` calls remain stateless
   (`store=false`) and no longer send `context_management` thresholds.
 - OpenAI Subscription: Responses Lite uses an explicit compact-only trigger.
-  Other profiles use text summarization. The adapter's decoded-opaque estimate
+  Other profiles use text compaction. The adapter's decoded-opaque estimate
   is calibrated to scoped usage; it is not a provider token count. Native replay
   may retain raw items according to its protocol, independently of text policy.
 - Claude Code: live-session `/compact` is not a detached prefix operation. Harness
   full compactions retain a suffix and therefore select the configured text
-  summarizer before any native session mutation. With a Harness threshold enabled,
-  competing intrinsic auto-compaction is disabled; summary calls disable it too.
+  compaction model before any native session mutation. With a Harness threshold
+  enabled, competing intrinsic auto-compaction is disabled; text-compaction calls
+  disable it too.
   When the Harness trigger is disabled, provider-emitted checkpoints retain their
   native COW/replay contract rather than being rewritten to manufacture a tail.
 - Anthropic Messages: `/messages/count_tokens` counts fresh/invalidated contexts when selected;
-  text summarization performs compaction. Bedrock has no universal count endpoint
+  text compaction uses the configured model. Bedrock has no universal count endpoint
   in this adapter and uses an explicitly marked estimate.
 - Chat Completions, including TrueFoundry: no speculative count endpoint or header
   is used. The estimate uses the same mapped messages, tools and response schema
@@ -201,11 +202,11 @@ The executor is selected before execution:
   not an exact tokenizer, hidden-reasoning or multimodal token count.
 
 Context-size accounting is separate from TPM quota reservation: calibration does
-not change the configured quota formula or balances. Count, compact and summary
-HTTP operations retain their model configuration's admission policy. Required TPM
+not change the configured quota formula or balances. Count, native compact and
+text-compaction HTTP operations retain their model configuration's admission policy. Required TPM
 feedback must be compatible with those endpoint responses. Quota calculators that
 need an output reserve must configure it explicitly when the request omits an
-output limit; the Harness does not invent a summary cap or bypass quota policy.
+output limit; the Harness does not invent a compaction-output cap or bypass quota policy.
 
 A failed blocking counter or native operation is an error, not permission to retry
 through another route. Confirmed failures of background preparation follow the
@@ -215,7 +216,7 @@ Conversation/Agent collaboration addresses continue. New provider output after a
 native checkpoint receives the new replay scope; archived opaque state is not
 retagged. Server and Workers must use the matching Gateway protocol (currently version 30).
 
-Text auto-compaction always uses the continuation-oriented SUMMARIZE prompt.
+Text auto-compaction always uses the continuation-oriented COMPACT prompt.
 Full compactions retain approximately 80,000 recent text characters as whole
 messages and complete tool groups; the boundary-crossing message remains whole.
 Partial explicit selections do not gain an extra suffix. The older prefix is
@@ -223,7 +224,7 @@ summarized semantically, preserving current instructions, verified results,
 obligations, constraints and next actions. There is no separate summary-length setting. Readable material and supported
 committed image/PDF attachments are sent to the helper, not raw provider replay.
 One-shot revealed secrets are reserved for the ordinary request and are not sent
-to the counter or summary model. DISTILL remains a manual-only prompt variant;
+to the counter or compaction model. DISTILL remains a manual-only prompt variant;
 CONCATENATE remains non-generative. Manual AI compaction uses the single automatic
 responder, or the sole connected agent; ambiguous multi-agent selection is an
 explicit error rather than an arbitrary model choice.

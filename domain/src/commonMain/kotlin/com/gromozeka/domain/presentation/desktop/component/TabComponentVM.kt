@@ -37,7 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
  * ├─────────────────────────────────────────────────────────────────┤
  * │ Edit Mode Toolbar (when editMode = true):                      │
  * │ [Select All] [User] [Assistant] [Thinking] [Tools] [Plain]     │
- * │ Selected: 3 | [Squash] [Distill] [Summarize] [Delete]          │
+ * │ Selected: 3 | [Squash] [Distill] [Compact] [Delete]            │
  * ├─────────────────────────────────────────────────────────────────┤
  * │ Message Instructions: [R]                                       │
  * ├─────────────────────────────────────────────────────────────────┤
@@ -81,7 +81,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - Click message checkbox → [toggleMessageSelection]
  * - Shift+Click → [toggleMessageSelectionRange] (select range)
  * - Selected messages highlighted, count shown in toolbar
- * - Bulk operations: Squash, Distill, Summarize, Delete
+ * - Bulk operations: Squash, Distill, Compact, Delete
  *
  * ### Message Instructions
  * - Groups defined in [messageInstructionGroups]
@@ -95,7 +95,7 @@ import kotlinx.coroutines.flow.StateFlow
  * ### Message Squashing
  * - **Manual Squash**: Concatenate selected messages as-is
  * - **Distill**: Use AI to extract key decisions and context
- * - **Summarize**: Use AI to create brief summary
+ * - **Compact**: Create a continuation checkpoint for selected history
  * - Squashing is TRANSACTIONAL - replaces multiple messages with one atomically
  *
  * ## State Management
@@ -335,17 +335,12 @@ interface TabComponentVM {
     suspend fun distillSelectedMessages()
     
     /**
-     * Squash selected messages using AI summarization.
-     * This is a TRANSACTIONAL operation - uses AI to create brief summary, then replaces messages atomically.
+     * Compact selected messages into a continuation checkpoint.
+     * This is a TRANSACTIONAL operation that uses AI text compaction.
      *
-     * Summarization:
-     * - Creates concise overview
-     * - Preserves main points
-     * - Shorter than distillation
-     *
-     * @throws IllegalStateException if less than 2 messages selected
+     * @throws IllegalStateException if no messages are selected
      */
-    suspend fun summarizeSelectedMessages()
+    suspend fun compactSelectedMessages()
     
     /**
      * Complete UI state for a conversation tab.

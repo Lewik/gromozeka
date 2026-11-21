@@ -91,8 +91,8 @@ internal fun ConversationThreadPanel(
                         uiState.selectedMessageIds.size >= 2 && !running, { coroutineScope.launch { viewModel.squashSelectedMessages() } })
                     ThreadActionButton(translation.text("chat.selection.distill"), translation.text("chat.selection.distillHint"), Icons.Default.Compress,
                         uiState.selectedMessageIds.isNotEmpty() && !running, { coroutineScope.launch { viewModel.distillSelectedMessages() } })
-                    ThreadActionButton(translation.text("chat.selection.summarize"), translation.text("chat.selection.summarizeHint"), Icons.AutoMirrored.Filled.Subject,
-                        uiState.selectedMessageIds.isNotEmpty() && !running, { coroutineScope.launch { viewModel.summarizeSelectedMessages() } })
+                    ThreadActionButton(translation.text("chat.selection.compact"), translation.text("chat.selection.compactHint"), Icons.AutoMirrored.Filled.Subject,
+                        uiState.selectedMessageIds.isNotEmpty() && !running, { coroutineScope.launch { viewModel.compactSelectedMessages() } })
                     ThreadActionButton(translation.text("chat.selection.delete"), translation.text("chat.selection.deleteHint"), Icons.Default.Delete,
                         uiState.selectedMessageIds.isNotEmpty() && uiState.selectedMessageIds.none { it in protectedIds } && !running,
                         { coroutineScope.launch { viewModel.deleteSelectedMessages() } })
@@ -152,5 +152,5 @@ private fun MessageSquashStatus(state: MessageSquashUiState) {
 private fun com.gromozeka.domain.model.SquashType.actionTitle(localization: Translation): String = when (this) {
     com.gromozeka.domain.model.SquashType.CONCATENATE -> localization.text("chat.selection.concat")
     com.gromozeka.domain.model.SquashType.DISTILL -> localization.text("chat.selection.distill")
-    com.gromozeka.domain.model.SquashType.SUMMARIZE -> localization.text("chat.selection.summarize")
+    com.gromozeka.domain.model.SquashType.COMPACT -> localization.text("chat.selection.compact")
 }

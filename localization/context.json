@@ -2170,7 +2170,7 @@
       "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:27",
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:404"
     ],
-    "description": "Help text under this workflow/stage model selector. This entry configures the model used for Message squash: Model used to summarize or compact chat messages. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback. Squash means condense/summarize messages; it is not a Git squash or a physical crushing action.",
+    "description": "Help text under this workflow/stage model selector. This entry configures the model used for Message squash: Model used to compact chat messages. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback. Squash means compact messages; it is not a Git squash or a physical crushing action.",
     "args": []
   },
   "ai.runtime.purpose.message_squash.label": {
@@ -2178,7 +2178,7 @@
       "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:26",
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:402"
     ],
-    "description": "Name of the runtime model-assignment workflow/stage. This entry configures the model used for Message squash: Model used to summarize or compact chat messages. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback. Squash means condense/summarize messages; it is not a Git squash or a physical crushing action.",
+    "description": "Name of the runtime model-assignment workflow/stage. This entry configures the model used for Message squash: Model used to compact chat messages. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback. Squash means compact messages; it is not a Git squash or a physical crushing action.",
     "args": []
   },
   "ai.runtime.purpose.quick_text_action.description": {
@@ -4180,13 +4180,13 @@
   "chat.selection.distill": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Action label for model-assisted context distillation; also used in operation status.", "args": [], "translationNotes": "Distill means extract essential context with an AI model for context transfer; this is not chemical distillation and differs from a conventional history summary."},
   "chat.selection.distillHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for model-assisted extraction of essential context from selected messages.", "args": []},
   "chat.selection.editHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for editing the one selected message.", "args": []},
-  "chat.selection.operationComplete": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Successful message-squash status; action is a translated action name.", "args": ["action"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Summarize."}, "argumentExamples": {"action": "Summarize"}},
-  "chat.selection.operationFailed": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Failed message-squash status. Preserve the operation error message as data.", "args": ["action", "message"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Summarize.", "message": "Underlying error or source message supplied by the operation; preserve it as data."}, "argumentExamples": {"action": "Summarize", "message": "Operation failed"}},
-  "chat.selection.operationRunning": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Status of the running message-squash operation; action is a translated Concat, Distill, or Summarize label.", "args": ["action"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Summarize."}, "argumentExamples": {"action": "Summarize"}},
+  "chat.selection.operationComplete": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Successful message-squash status; action is a translated action name.", "args": ["action"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Compact."}, "argumentExamples": {"action": "Compact"}},
+  "chat.selection.operationFailed": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Failed message-squash status. Preserve the operation error message as data.", "args": ["action", "message"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Compact.", "message": "Underlying error or source message supplied by the operation; preserve it as data."}, "argumentExamples": {"action": "Compact", "message": "Operation failed"}},
+  "chat.selection.operationRunning": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Status of the running message-squash operation; action is a translated Concat, Distill, or Compact label.", "args": ["action"], "argumentDescriptions": {"action": "Already translated name of the message transformation, Concat, Distill, or Compact."}, "argumentExamples": {"action": "Compact"}},
   "chat.selection.plainMessages": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting ordinary plain-message blocks.", "args": []},
   "chat.selection.selectedCount": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Count of selected messages in the selection toolbar.", "args": ["count"], "argumentDescriptions": {"count": "Number of conversation messages selected in the selection toolbar."}, "argumentExamples": {"count": 3}},
-  "chat.selection.summarize": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Action label for model-assisted message summarization; also used in operation status.", "args": [], "translationNotes": "Summarize means compress selected message history into an AI-generated summary. Keep it distinct from distilling essential context for transfer."},
-  "chat.selection.summarizeHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for model-assisted summarization of selected messages.", "args": []},
+  "chat.selection.compact": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Action label for model-assisted history compaction; also used in operation status.", "args": [], "translationNotes": "Compact means compress selected message history into a continuation checkpoint. Keep it distinct from distilling essential context for transfer."},
+  "chat.selection.compactHint": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Tooltip for model-assisted compaction of selected messages.", "args": []},
   "chat.selection.thinkingBlocks": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting visible/opaque assistant thinking content.", "args": []},
   "chat.selection.toggleAll": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Selection toolbar toggle for all message kinds.", "args": []},
   "chat.selection.toolCalls": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt"], "description": "Filter label selecting assistant tool-call content.", "args": []},
@@ -15785,7 +15785,7 @@
   "ai.tpm.preset.INPUT_ONLY": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Input text estimate TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []},
   "ai.tpm.preset.INPUT_PLUS_OUTPUT": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Input plus output reserve TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []},
   "ai.tpm.preset.OPENAI_MAXIMUM": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTpmSettings.kt"], "description": "Maximum of input and output reserve TPM policy setting; preserve protocol identifiers and JSON Pointer syntax.", "args": []},
-  "ai.compaction.summary_model": {
+  "ai.compaction.compaction_model": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
     ],
@@ -15796,7 +15796,7 @@
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
     ],
-    "description": "Use the active agent model for summarization; the default without an override.",
+    "description": "Use the active agent model for text compaction; the default without an override.",
     "args": []
   },
   "ai.compaction.title": {

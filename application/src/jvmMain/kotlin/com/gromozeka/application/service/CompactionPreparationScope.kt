@@ -32,9 +32,9 @@ class CompactionPreparationScope(
         projects.requirePermission(actorId, current.projectId, ProjectPermission.READ)
         if (agents.findById(agent.id) != agent) throw CompactionScopeChangedException()
         val selected = configurations.resolveAiRuntime(agent.runtimeSelection)
-        val summary = selected.modelConfiguration.compaction.summaryModelConfigurationId
+        val compactor = selected.modelConfiguration.compaction.compactionModelConfigurationId
             ?.let { configurations.resolveAiRuntime(AiRuntimeSelection(it)) } ?: selected
-        for (resolved in listOf(selected, summary).distinct()) {
+        for (resolved in listOf(selected, compactor).distinct()) {
             (resolved.connection.executionTarget as? AiExecutionTarget.Worker)?.let {
                 val worker = ConversationRuntimeWorkerId(it.workerId)
                 workers.requirePermission(actor, worker, WorkerPermission.USE, current.projectId)
@@ -45,7 +45,8 @@ class CompactionPreparationScope(
             put("actor", actorId.value)
             put("agent", Json.encodeToJsonElement(agent))
             put("selected", Json.encodeToJsonElement(selected))
-            put("summary", Json.encodeToJsonElement(summary))
+            // Keep the fingerprint field stable across the terminology-only rename.
+            put("summary", Json.encodeToJsonElement(compactor))
             put("prompts", Json.encodeToJsonElement(prompts))
             put("pins", Json.encodeToJsonElement(capturedPins ?: pinPrompts(conversation)))
         }.toString())

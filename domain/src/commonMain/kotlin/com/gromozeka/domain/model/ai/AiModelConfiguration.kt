@@ -1,6 +1,7 @@
 package com.gromozeka.domain.model.ai
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 import kotlin.jvm.JvmInline
 
 /**
@@ -47,7 +48,8 @@ data class AiModelConfiguration(
     data class Compaction(
         val thresholdTokens: Int? = null,
         val proactiveThresholdTokens: Int? = null,
-        val summaryModelConfigurationId: Id? = null,
+        @JsonNames("summaryModelConfigurationId")
+        val compactionModelConfigurationId: Id? = null,
         val tokenCounting: TokenCounting = TokenCounting(),
     ) {
         init {

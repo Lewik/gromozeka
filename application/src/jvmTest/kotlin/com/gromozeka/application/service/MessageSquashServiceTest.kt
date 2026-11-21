@@ -201,7 +201,7 @@ class MessageSquashServiceTest {
             service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
-                strategy = SquashType.SUMMARIZE,
+                strategy = SquashType.COMPACT,
             )
         }
 
@@ -228,11 +228,11 @@ class MessageSquashServiceTest {
     }
 
     @Test
-    fun `select all after a summary summarizes the effective context without duplicate originals`() = runBlocking {
+    fun `select all after a checkpoint compacts the effective context without duplicate originals`() = runBlocking {
         val fixture = Fixture()
         val service = fixture.service()
         val first = service.compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.SUMMARIZE,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
         )
         val firstHistory = fixture.threadMessages.messages(first.currentThread)
         val updated = service.compactRuntimeHistory(
@@ -249,8 +249,8 @@ class MessageSquashServiceTest {
     }
 
     @Test
-    fun `single old source can be summarized or distilled without unlocking a full checkpoint`() = runBlocking {
-        listOf(SquashType.SUMMARIZE, SquashType.DISTILL).forEach { strategy ->
+    fun `single old source can be compacted or distilled without unlocking a full checkpoint`() = runBlocking {
+        listOf(SquashType.COMPACT, SquashType.DISTILL).forEach { strategy ->
             val fixture = Fixture()
             val boundary = fixture.checkpoint(opaque = true)
             fixture.append(boundary)
@@ -288,7 +288,7 @@ class MessageSquashServiceTest {
         fixture.append(fixture.checkpoint(opaque = true))
         val original = fixture.threadMessages.messages(fixture.initialThread.id)
         val updated = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, original.map { it.id }, SquashType.SUMMARIZE,
+            fixture.conversation.id, original.map { it.id }, SquashType.COMPACT,
         )
         val text = fixture.runtimeProvider.requests.single().messages.single().content.single().toString()
         assertContains(text, "raw output")
@@ -299,7 +299,7 @@ class MessageSquashServiceTest {
 
     @Test
     fun `repeated select all after opaque and selective compaction respects coverage including after fork`() = runBlocking {
-        for (strategy in listOf(SquashType.SUMMARIZE, SquashType.DISTILL)) {
+        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
             for (forked in listOf(false, true)) {
                 for (coverToolPair in listOf(false, true)) {
                     val case = "$strategy fork=$forked toolPair=$coverToolPair"
@@ -376,7 +376,7 @@ class MessageSquashServiceTest {
     fun `editing selective source invalidates nested summaries and restores the other sources`() = runBlocking {
         val fixture = Fixture()
         val first = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.SUMMARIZE,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
         )
         val summaryId = fixture.threadMessages.messages(first.currentThread).last().id
         val second = fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(summaryId), SquashType.DISTILL)
@@ -397,7 +397,7 @@ class MessageSquashServiceTest {
         listOf(false, true).forEach { deleteSummary ->
             val fixture = Fixture()
             val compacted = fixture.service().compactRuntimeHistory(
-                fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.SUMMARIZE,
+                fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
             )
             val selected = if (deleteSummary) fixture.threadMessages.messages(compacted.currentThread).last().id else fixture.third.id
             val updated = fixture.historyService().deleteRuntimeHistory(fixture.conversation.id, listOf(selected))!!
@@ -443,7 +443,7 @@ class MessageSquashServiceTest {
     fun `fork remaps selective coverage and keeps source mutations independent`() = runBlocking {
         val fixture = Fixture()
         val compacted = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.SUMMARIZE,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
         )
         val sourceHistory = fixture.threadMessages.messages(compacted.currentThread)
         val fork = fixture.historyService().fork(fixture.conversation.id)
@@ -467,7 +467,7 @@ class MessageSquashServiceTest {
             fixture.messages.values[fixture.third.id] = fixture.third.copy(content = content)
             val counts = fixture.storageCounts()
             assertFailsWith<IllegalArgumentException> {
-                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), SquashType.SUMMARIZE)
+                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), SquashType.COMPACT)
             }
             assertEquals(counts, fixture.storageCounts())
             assertTrue(fixture.runtimeProvider.requests.isEmpty())
@@ -482,14 +482,14 @@ class MessageSquashServiceTest {
         fixture.threadMessages.links[fixture.initialThread.id] = mutableListOf(ThreadMessageLink(fixture.initialThread.id, checkpoint.id, 0))
         val counts = fixture.storageCounts()
         assertFailsWith<IllegalStateException> {
-            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(checkpoint.id), SquashType.SUMMARIZE)
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(checkpoint.id), SquashType.COMPACT)
         }
         assertEquals(counts, fixture.storageCounts())
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
 
     @Test fun `full manual compaction keeps whole recent messages while partial selection adds no suffix`() = runBlocking {
-        for (strategy in listOf(SquashType.SUMMARIZE, SquashType.DISTILL)) {
+        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
             val f = Fixture()
             val crossing = f.third.copy(id = Conversation.Message.Id("crossing"), content = listOf(Conversation.Message.ContentItem.UserMessage("a".repeat(45_000))))
             val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
@@ -511,7 +511,7 @@ class MessageSquashServiceTest {
         val f = Fixture()
         val history = f.threadMessages.messages(f.initialThread.id)
         val before = f.storageCounts()
-        assertFailsWith<IllegalArgumentException> { f.service().compactRuntimeHistory(f.conversation.id, history.map { it.id }, SquashType.SUMMARIZE) }
+        assertFailsWith<IllegalArgumentException> { f.service().compactRuntimeHistory(f.conversation.id, history.map { it.id }, SquashType.COMPACT) }
         assertEquals(before, f.storageCounts())
         assertTrue(f.runtimeProvider.requests.isEmpty())
     }
@@ -917,6 +917,6 @@ private class InMemoryConversationCompactionRepository(
 private fun SquashType.expectedResultStrategy(): Conversation.Message.ContentItem.ContextCompactionResult.Strategy =
     when (this) {
         SquashType.CONCATENATE -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.CONCATENATE
-        SquashType.SUMMARIZE -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.SUMMARIZE
+        SquashType.COMPACT -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.SUMMARIZE
         SquashType.DISTILL -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.DISTILL
     }

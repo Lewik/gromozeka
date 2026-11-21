@@ -72,7 +72,7 @@ domain/src/commonMain/kotlin/com/gromozeka/domain/presentation/
    - Сообщения (streaming, filtering)
    - Message tags (thinking_ultrathink, mode_readonly)
    - Редактирование/удаление сообщений
-   - Squashing (manual, distill, summarize)
+   - Squashing (manual, distill, compact)
    - Bulk selection и операции
    - Token statistics
 

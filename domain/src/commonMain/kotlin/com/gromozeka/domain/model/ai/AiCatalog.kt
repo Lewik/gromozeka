@@ -93,10 +93,10 @@ data class AiCatalog(
                         "The selected token counter has no count API: ${counterId.value}"
                     }
                 }
-                compaction.summaryModelConfigurationId?.let { summaryId ->
-                    val summary = modelConfigurations.singleOrNull { it.id == summaryId }
-                    require(summary != null && summary.enabled && modelSpecFor(summary)?.limits?.textGeneration != null) {
-                        "Compaction references a missing, disabled or non-text summary configuration: ${summaryId.value}"
+                compaction.compactionModelConfigurationId?.let { compactionId ->
+                    val compactor = modelConfigurations.singleOrNull { it.id == compactionId }
+                    require(compactor != null && compactor.enabled && modelSpecFor(compactor)?.limits?.textGeneration != null) {
+                        "Compaction references a missing, disabled or non-text compaction configuration: ${compactionId.value}"
                     }
                 }
             }
