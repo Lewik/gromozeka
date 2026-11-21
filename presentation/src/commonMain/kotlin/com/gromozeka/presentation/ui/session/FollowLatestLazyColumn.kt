@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 internal fun <T> FollowLatestLazyColumn(
     items: List<T>,
     itemKey: (T) -> Any,
-    unreadKey: (T) -> Any = itemKey,
+    unreadKey: (T) -> Any? = itemKey,
     contentRevision: Any?,
     unreadLabel: (Int) -> String,
     unreadRevision: Any? = contentRevision,
@@ -113,15 +113,16 @@ internal fun <T> FollowLatestLazyColumn(
     }
 
     val itemKeys = items.map(itemKey)
-    val currentUnreadKeys = items.mapTo(linkedSetOf(), unreadKey)
+    val currentUnreadKeys = items.mapNotNullTo(linkedSetOf(), unreadKey)
     LaunchedEffect(itemKeys, contentRevision, unreadRevision) {
         val previousItems = previousItemKeys
         val previousUnread = previousUnreadKeys
         val prependOnly = previousItems != null && itemKeys.size > previousItems.size && itemKeys.takeLast(previousItems.size) == previousItems
-        val previousLastUnread = previousItemKeys?.lastOrNull()?.let { previousLast ->
-            items.indexOfLast { itemKey(it) == previousLast }
+        val previousLastUnread = previousItemKeys?.asReversed()?.firstNotNullOfOrNull { previousKey ->
+            items.indexOfLast { itemKey(it) == previousKey }.takeIf { it >= 0 }
         } ?: -1
-        val appendedUnreadKeys = if (previousLastUnread >= 0) items.drop(previousLastUnread + 1).mapTo(mutableSetOf(), unreadKey) else emptySet()
+        val appendedUnreadKeys = if (previousLastUnread >= 0)
+            items.drop(previousLastUnread + 1).mapNotNullTo(mutableSetOf(), unreadKey) else emptySet()
         val addedUnreadKeys = if (previousUnread == null || prependOnly) emptySet() else (currentUnreadKeys - previousUnread).intersect(appendedUnreadKeys)
 
         val unreadChanged = previousUnreadRevision != unreadRevision

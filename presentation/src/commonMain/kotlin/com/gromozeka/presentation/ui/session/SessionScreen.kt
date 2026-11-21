@@ -128,11 +128,13 @@ internal fun SessionScreen(
         voiceTranscriptions.firstOrNull { it.target.tabId.value == uiState.tabId && it.error != null }?.error?.resolve(localization),
     ).firstOrNull()
     val jsonToShow = viewModel.jsonToShow
-    val messageEntries = rememberMessageListEntries(
+    val modelActivity = activityPresentation.modelRequest.takeIf { newerHistory == null }
+    val messageEntries = rememberConversationTimeline(
         messages = filteredHistory,
         collapsedContentItems = uiState.collapsedContentItems,
         toolResultsMap = toolResultsMap,
         expandedActivityKeys = uiState.expandedActivityKeys,
+        modelRequest = modelActivity,
     )
     val runtimeStrings = LocalTranslation.current.runtime
     val editLastMessageShortcut = remember(settings.userProfile.keyboardShortcuts) {
@@ -157,9 +159,10 @@ internal fun SessionScreen(
                 OptionalTooltip(activityPresentation.tooltip) {
                     Box(Modifier.size(controls.minHeight).testTag("composer-state-indicator")
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null,
+                            enabled = modelActivity == null,
                             role = Role.Button, onClickLabel = localization.text("chat.activity.details"),
                             onClick = { onInspectRuntime(RuntimeInspectionSection.OVERVIEW) }), contentAlignment = Alignment.Center) {
-                        ConversationIndicator(activityPresentation.indicator, ConversationIndicatorDrawing.FULL, activityPresentation.tooltip)
+                        if (modelActivity == null) ConversationIndicator(activityPresentation.indicator, ConversationIndicatorDrawing.FULL, activityPresentation.tooltip)
                     }
                 }
             }
@@ -199,9 +202,9 @@ internal fun SessionScreen(
                                 onLoadOlder = { historyContent.firstLoadedMessageId?.let { viewModel.loadOlderHistory(it) } },
                                 onLoadNewer = { historyContent.lastLoadedMessageId?.let { viewModel.loadNewerHistory(it) } },
                                 onLoadLatest = viewModel::loadLatestHistory,
-                                onVisibleItemChanged = { viewModel.rememberHistoryAnchor(it?.message?.id) },
-                                itemKey = MessageListEntry::key,
-                                unreadKey = { it.message.id },
+                                onVisibleItemChanged = { item -> item?.messageId?.let(viewModel::rememberHistoryAnchor) },
+                                itemKey = ConversationTimelineItem::key,
+                                unreadKey = ConversationTimelineItem::messageId,
                                 contentRevision = messageEntries,
                                 unreadRevision = historyActivityRevision,
                                 unreadLabel = { count ->
@@ -212,33 +215,36 @@ internal fun SessionScreen(
                                     }
                                 },
                                 focusKey = messageFocusRequest?.value,
-                                focusItemKey = { it.message.id.value },
+                                focusItemKey = { it.messageId?.value },
                                 onFocusConsumed = {
                                     messageFocusRequest?.let(viewModel::consumeMessageFocus)
                                 },
                                 modifier = Modifier.weight(1f),
-                            ) { entry, pauseFollowingLatest ->
-                                if ((entry.isFirstInMessage || entry.segment is MessageSegment.Activity) && viewModel.hasDeferredHistoryContent(entry.message, deferredHistory)) {
-                                    TextButton(
-                                        onClick = { pauseFollowingLatest(); viewModel.loadHistoryDetails(entry.message.id) },
-                                        modifier = Modifier.testTag("history-details:${entry.message.id.value}"),
-                                    ) { Text(localization.text("chat.history.loadFull")) }
+                            ) { timelineItem, pauseFollowingLatest ->
+                                ConversationTimelineItemContent(timelineItem) { entry ->
+                                    if ((entry.isFirstInMessage || entry.segment is MessageSegment.Activity) && viewModel.hasDeferredHistoryContent(entry.message, deferredHistory)) {
+                                        TextButton(
+                                            onClick = { pauseFollowingLatest(); viewModel.loadHistoryDetails(entry.message.id) },
+                                            modifier = Modifier.testTag("history-details:${entry.message.id.value}"),
+                                        ) { Text(localization.text("chat.history.loadFull")) }
+                                    }
+                                    MessageItem(
+                                        entry = entry,
+                                        workspaceRootPath = null,
+                                        isCompactLayout = isCompactLayout,
+                                        isSelected = entry.message.id in uiState.selectedMessageIds,
+                                        onToggleSelection = { messageId, isShiftPressed ->
+                                            viewModel.toggleMessageSelectionRange(messageId, isShiftPressed)
+                                        },
+                                        onToggleContentItemCollapse = { messageId, contentItemIndex ->
+                                            viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
+                                        },
+                                        onManualContentResize = pauseFollowingLatest,
+                                        expandedActivityKeys = uiState.expandedActivityKeys,
+                                        onToggleActivityExpansion = viewModel::toggleActivityExpansion,
+                                        loadArtifactContent = viewModel::loadArtifactContent,
+                                    )
                                 }
-                                MessageItem(
-                                    entry = entry,
-                                    workspaceRootPath = null,
-                                    isSelected = entry.message.id in uiState.selectedMessageIds,
-                                    onToggleSelection = { messageId, isShiftPressed ->
-                                        viewModel.toggleMessageSelectionRange(messageId, isShiftPressed)
-                                    },
-                                    onToggleContentItemCollapse = { messageId, contentItemIndex ->
-                                        viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
-                                    },
-                                    onManualContentResize = pauseFollowingLatest,
-                                    expandedActivityKeys = uiState.expandedActivityKeys,
-                                    onToggleActivityExpansion = viewModel::toggleActivityExpansion,
-                                    loadArtifactContent = viewModel::loadArtifactContent,
-                                )
                             }
                         }
 

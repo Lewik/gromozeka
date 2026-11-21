@@ -23,6 +23,7 @@ import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,6 +77,7 @@ internal data class MessageListEntry(
     val isLastInMessage: Boolean,
     val activityDepth: Int = 0,
     val groupContentKey: String? = null,
+    val activityGroupKey: String? = null,
 ) {
     val sourceKey: String = "${message.id.value}:${segment.key}"
     val key: String = if (activityDepth > 0 && segment is MessageSegment.Activity) "$sourceKey:member" else sourceKey
@@ -135,9 +137,12 @@ internal sealed interface MessageSegment {
         override val key: String = "$contentIndex:content"
     }
 
-    data class ActivityGroup(val activities: List<ActivityReference>) : MessageSegment {
+    data class ActivityGroup(
+        val activities: List<ActivityReference>,
+        val modelRequest: ModelRequestActivity? = null,
+    ) : MessageSegment {
         init {
-            require(activities.size >= 2) { "An activity group must contain at least two activities" }
+            require(activities.isNotEmpty()) { "An activity group must contain a persisted activity" }
         }
         override val key: String = "${activities.first().contentIndex}:content"
     }
@@ -160,12 +165,13 @@ internal enum class MarkdownKind {
 }
 
 @Composable
-internal fun rememberMessageListEntries(
+internal fun rememberConversationTimeline(
     messages: List<Conversation.Message>,
     collapsedContentItems: Map<Conversation.Message.Id, Set<Int>>,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     expandedActivityKeys: Set<String> = emptySet(),
-): List<MessageListEntry> {
+    modelRequest: ModelRequestActivity? = null,
+): List<ConversationTimelineItem> {
     val entries = mutableListOf<MessageListEntry>()
 
     for (message in messages.filterNot { it.providerMetadata["collaborationReceipt"]?.toString() == "true" }) {
@@ -231,36 +237,84 @@ internal fun rememberMessageListEntries(
     }
     val groupStarts = remember { mutableSetOf<String>() }
     val grouped = groupActivityEntries(entries, groupStarts)
-    grouped.filter { it.segment is MessageSegment.ActivityGroup }.forEach { groupStarts += it.sourceKey }
-    return expandActivityEntries(grouped, expandedActivityKeys)
+    val timeline = bindModelRequest(grouped, modelRequest)
+    timeline.filterIsInstance<ConversationTimelineItem.Message>().filter { it.entry.segment is MessageSegment.ActivityGroup }
+        .forEach { groupStarts += it.entry.sourceKey }
+    return expandActivityEntries(timeline, expandedActivityKeys)
 }
 
 @Composable
 private fun expandActivityEntries(
-    entries: List<MessageListEntry>,
+    entries: List<ConversationTimelineItem>,
     expandedActivityKeys: Set<String>,
-): List<MessageListEntry> {
-    val result = mutableListOf<MessageListEntry>()
-    for (entry in entries) {
+): List<ConversationTimelineItem> {
+    val result = mutableListOf<ConversationTimelineItem>()
+    for (item in entries) {
+        if (item !is ConversationTimelineItem.Message) {
+            check(item !is ConversationTimelineItem.ActivityDivider) { "Activity dividers are created during expansion" }
+            result += item
+            continue
+        }
+        val entry = item.entry
         val group = entry.segment as? MessageSegment.ActivityGroup
         if (group == null) {
-            result += rememberActivityEntries(entry, expandedActivityKeys)
-        } else {
-            val isExpanded = activityGroupExpansionKey(entry.key) in expandedActivityKeys
-            result += entry.copy(isLastInMessage = entry.isLastInMessage && !isExpanded)
-            if (isExpanded) {
-                for ((index, reference) in group.activities.withIndex()) {
-                    val child = reference.toEntry().copy(
-                        isFirstInMessage = false,
-                        activityDepth = 1,
-                        groupContentKey = entry.key.takeIf { index == 0 },
-                    )
-                    result += rememberActivityEntries(child, expandedActivityKeys)
+            result += rememberActivityEntries(entry, expandedActivityKeys).map(ConversationTimelineItem::Message)
+            continue
+        }
+        val expanded = activityGroupExpansionKey(entry.key) in expandedActivityKeys
+        result += ConversationTimelineItem.Message(entry.copy(isLastInMessage = entry.isLastInMessage && !expanded))
+        if (!expanded) continue
+        val sections = buildList {
+            ActivityGroupSection.entries.forEach { section ->
+                val activities = group.activities.filter { it.activity.state.groupSection == section }
+                if (activities.isNotEmpty() || section == ActivityGroupSection.RUNNING && group.modelRequest != null) {
+                    add(section to activities)
                 }
+            }
+        }
+        val firstMember = sections.firstNotNullOf { it.second.firstOrNull() }
+        @Composable
+        fun appendMembers(references: List<ActivityReference>) {
+            references.forEach { reference ->
+                val child = reference.toEntry().copy(
+                    isFirstInMessage = false,
+                    activityDepth = 1,
+                    groupContentKey = entry.key.takeIf { reference == firstMember },
+                    activityGroupKey = entry.key,
+                )
+                result += rememberActivityEntries(child, expandedActivityKeys).map(ConversationTimelineItem::Message)
+            }
+        }
+        sections.forEachIndexed { index, (section, activities) ->
+            if (index > 0) result += ConversationTimelineItem.ActivityDivider(entry.key, section)
+            appendMembers(activities)
+            if (section == ActivityGroupSection.RUNNING) {
+                group.modelRequest?.let { result += ConversationTimelineItem.ModelRequest(it, entry.key) }
             }
         }
     }
     return result
+}
+
+@Composable
+internal fun ConversationTimelineItemContent(
+    item: ConversationTimelineItem,
+    messageContent: @Composable (MessageListEntry) -> Unit,
+) {
+    when (item) {
+        is ConversationTimelineItem.Message -> messageContent(item.entry)
+        is ConversationTimelineItem.ModelRequest -> {
+            val background = if (item.groupKey != null) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else Color.Transparent
+            Box(Modifier.fillMaxWidth().background(background).padding(horizontal = 12.dp, vertical = 4.dp)) {
+                ModelRequestIndicator(item.activity, Modifier.testTag(item.key))
+            }
+        }
+        is ConversationTimelineItem.ActivityDivider -> HorizontalDivider(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .padding(horizontal = 12.dp, vertical = 6.dp).testTag(item.key),
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
 }
 
 @Composable
@@ -367,7 +421,7 @@ internal fun MessageItem(
     onManualContentResize: () -> Unit = {},
     expandedActivityKeys: Set<String> = emptySet(),
     onToggleActivityExpansion: (String) -> Unit = {},
-    activitySummaryStyle: ActivitySummaryStyle = ActivitySummaryStyle.ICONS,
+    isCompactLayout: Boolean = false,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     val message = entry.message
@@ -377,6 +431,7 @@ internal fun MessageItem(
 
     Column(
         modifier = Modifier.fillMaxWidth()
+            .then(if (entry.activityGroupKey != null) Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)) else Modifier)
             .padding(start = (entry.activityDepth * 12).dp)
             .then(entry.groupContentKey?.let { Modifier.testTag(UiTestTag.ActivityGroupContent(it).value) } ?: Modifier),
     ) {
@@ -466,7 +521,7 @@ internal fun MessageItem(
                         onManualContentResize = onManualContentResize,
                         expandedActivityKeys = expandedActivityKeys,
                         onToggleActivityExpansion = onToggleActivityExpansion,
-                        activitySummaryStyle = activitySummaryStyle,
+                        isCompactLayout = isCompactLayout,
                         loadArtifactContent = loadArtifactContent,
                     )
                 }
@@ -516,7 +571,7 @@ private fun MessageSegmentContent(
     onManualContentResize: () -> Unit,
     expandedActivityKeys: Set<String>,
     onToggleActivityExpansion: (String) -> Unit,
-    activitySummaryStyle: ActivitySummaryStyle,
+    isCompactLayout: Boolean,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (val segment = entry.segment) {
@@ -599,7 +654,8 @@ private fun MessageSegmentContent(
                 onManualContentResize()
                 onToggleActivityExpansion(activityGroupExpansionKey(entry.key))
             },
-            summaryStyle = activitySummaryStyle,
+            isCompactLayout = isCompactLayout,
+            workspaceRootPath = workspaceRootPath,
         )
 
         is MessageSegment.Instructions -> InstructionChips(

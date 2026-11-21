@@ -159,6 +159,21 @@ private fun extractKeyParameters(
     ""
 }
 
+internal fun toolCallDisplayTitle(
+    call: Conversation.Message.ContentItem.ToolCall.Data,
+    state: ActivityState,
+    workspaceRootPath: String?,
+    localization: Translation,
+): String {
+    val displayName = if (state == ActivityState.RUNNING) call.name else toolDisplayName(call.name, localization.runtime)
+    val parameters = extractKeyParameters(call.name, call.input, workspaceRootPath, localization)
+    return when {
+        parameters.isEmpty() -> displayName
+        call.name.replace(Regex("__v\\d+$"), "") == "grz_execute_command" -> parameters
+        else -> "$displayName: $parameters"
+    }
+}
+
 @Composable
 internal fun ToolCallItem(
     toolCall: Conversation.Message.ContentItem.ToolCall.Data,
@@ -174,13 +189,7 @@ internal fun ToolCallItem(
     // Get tool display information
     val toolName = toolCall.name
     val commandCall = toolName.replace(Regex("__v\\d+$"), "") == "grz_execute_command"
-    val displayName = if (activityState == ActivityState.RUNNING) toolName else toolDisplayName(toolName, localization.runtime)
-    val keyParameters = extractKeyParameters(toolName, toolCall.input, workspaceRootPath, localization)
-    val toolDescription = when {
-        keyParameters.isEmpty() -> displayName
-        commandCall -> keyParameters
-        else -> "$displayName: $keyParameters"
-    }
+    val toolDescription = toolCallDisplayTitle(toolCall, activityState, workspaceRootPath, localization)
     val detailedParameters = buildDetailedParameters(toolName, toolCall.input, workspaceRootPath, localization)
 
     Column {
