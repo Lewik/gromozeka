@@ -20,7 +20,7 @@ class AsyncCleanBackupUpgradeTest {
     private data class ArchiveArtifact(val bytes: Long, val sha256: String)
     private data class MessageSnapshot(val count: Long, val digest: String, val artifacts: Set<String>)
 
-    @Test fun `restored pre async backup upgrades compact terminology without changing history semantics or losing managed artifacts`() {
+    @Test fun `restored pre async backup upgrades compact records without changing history semantics or losing managed artifacts`() {
         assumeTrue("Requires an independently restored private backup", System.getenv("GROMOZEKA_ASYNC_BACKUP_TEST") == "true")
         val schema = requireNotNull(System.getenv("GROMOZEKA_ASYNC_BACKUP_SCHEMA"))
         require(schema.matches(Regex("[A-Za-z_][A-Za-z0-9_]*")))
@@ -116,8 +116,14 @@ class AsyncCleanBackupUpgradeTest {
                             fail("Backup message ${rows.getString("id")} cannot be decoded (${failure::class.simpleName}); private payload is not logged")
                         }
                         if (validateTypedMetadata && message.syntheticKind != null) message.backgroundActivitySource
-                        val metadata = JsonObject(message.providerMetadata.filterKeys { it !in setOf("syntheticKind", "backgroundActivitySource") })
-                        val canonical = Json.encodeToString(Conversation.Message.serializer(), message.copy(providerMetadata = metadata))
+                        if (validateTypedMetadata) message.content.filterIsInstance<ContentItem.ContextCompactionResult>()
+                            .filter { it.coversAllPrevious }.forEach { checkpoint ->
+                                assertTrue(checkpoint.sourceMessageIds.isEmpty())
+                                assertNotNull(checkpoint.sourceBoundaryMessageId)
+                            }
+                        val normalized = normalizeFullCompactions(message)
+                        val metadata = JsonObject(normalized.providerMetadata.filterKeys { it !in setOf("syntheticKind", "backgroundActivitySource") })
+                        val canonical = Json.encodeToString(Conversation.Message.serializer(), normalized.copy(providerMetadata = metadata))
                         digest.update(canonical.encodeToByteArray()); digest.update(0.toByte())
                         message.content.forEach { item -> when (item) {
                             is ContentItem.ArtifactItem -> artifacts += item.artifact.id.value
@@ -140,4 +146,11 @@ class AsyncCleanBackupUpgradeTest {
             "\"id\":\"gromozeka.message-compaction.summarize\"",
             "\"id\":\"gromozeka.message-compaction.compact\"",
         )
+
+    private fun normalizeFullCompactions(message: Conversation.Message): Conversation.Message = message.copy(
+        content = message.content.map { item ->
+            if (item !is ContentItem.ContextCompactionResult || !item.coversAllPrevious) item
+            else item.copy(sourceBoundaryMessageId = null, sourceMessageIds = emptyList())
+        },
+    )
 }

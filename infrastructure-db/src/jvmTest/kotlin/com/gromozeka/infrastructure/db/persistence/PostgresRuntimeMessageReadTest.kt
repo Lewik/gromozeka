@@ -6,8 +6,12 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.UserIdentity
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -67,6 +71,25 @@ class PostgresRuntimeMessageReadTest {
                     it.setString(1, legacyCheckpoint)
                     assertEquals(1, it.executeUpdate())
                 }
+                val fullCheckpoint = f.message("archive-15001").copy(
+                    role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(ContentItem.ContextCompactionResult(
+                        payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Earlier history"),
+                        origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                        strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
+                        sourceMessageIds = (1..15_000).map { Conversation.Message.Id("archive-$it") },
+                        coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                    )),
+                )
+                val fullDocument = Json.parseToJsonElement(Json.encodeToString(fullCheckpoint)).jsonObject
+                val fullContent = fullDocument.getValue("content").jsonArray.single().jsonObject
+                val legacyFullJson = JsonObject(fullDocument + ("content" to JsonArray(listOf(
+                    JsonObject(fullContent + ("migrationCanary" to buildJsonObject { put("preserved", true) })),
+                )))).toString()
+                connection.prepareStatement("UPDATE messages SET role = 'ASSISTANT', message_json = ? WHERE id = 'archive-15001'").use {
+                    it.setString(1, legacyFullJson)
+                    assertEquals(1, it.executeUpdate())
+                }
             }
             f.migrate()
             f.source.connection.use { connection ->
@@ -94,6 +117,21 @@ class PostgresRuntimeMessageReadTest {
                             Json.decodeFromString<com.gromozeka.domain.model.CompactionMessageHeader>(rows.getString(2)).id,
                         )
                     }
+                    statement.executeQuery("SELECT message_json, compaction_header FROM messages WHERE id = 'archive-15001'").use { rows ->
+                        assertTrue(rows.next())
+                        val migratedJson = rows.getString(1)
+                        val migratedContent = Json.parseToJsonElement(migratedJson).jsonObject
+                            .getValue("content").jsonArray.single().jsonObject
+                        assertEquals(buildJsonObject { put("preserved", true) }, migratedContent["migrationCanary"])
+                        val checkpoint = Json { ignoreUnknownKeys = true }.decodeFromString<Conversation.Message>(migratedJson)
+                            .content.single() as ContentItem.ContextCompactionResult
+                        assertTrue(checkpoint.sourceMessageIds.isEmpty())
+                        assertEquals(Conversation.Message.Id("archive-15000"), checkpoint.sourceBoundaryMessageId)
+                        assertEquals(ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS, checkpoint.coverage)
+                        val header = Json.decodeFromString<com.gromozeka.domain.model.CompactionMessageHeader>(rows.getString(2))
+                        assertTrue(header.coverage.single().coversAllPrevious)
+                        assertTrue(header.coverage.single().sourceMessageIds.isEmpty())
+                    }
                 }
             }
             val ids = listOf(Conversation.Message.Id("archive-16000"), Conversation.Message.Id("archive-3"))
@@ -106,6 +144,93 @@ class PostgresRuntimeMessageReadTest {
             assertEquals(0, headers.bodies)
             val selected = f.measure { assertEquals(ids, f.links.compactionBodies(thread, ids).map { it.id }) }
             assertEquals(2, selected.bodies)
+        }
+    }
+
+    @Test
+    fun `V92 rejects a full checkpoint that is not an exact prefix in every branch before mutation`() = runBlocking {
+        withFixture(target = "91") { f ->
+            val source = f.message("source")
+            val checkpoint = f.message("checkpoint").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("History"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
+                    sourceMessageIds = listOf(source.id),
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )),
+            )
+            val tail = f.message("tail")
+            f.insertRaw(source, 0)
+            f.insertRaw(checkpoint, 1)
+            f.insertRaw(tail, 2)
+            val branch = Conversation.Thread.Id("branch")
+            ExposedThreadRepository().save(Conversation.Thread(
+                branch, f.conversation.id, originalThread = f.conversation.currentThread,
+                createdAt = f.now, updatedAt = f.now,
+            ))
+            f.links.add(branch, source.id, 0)
+            f.links.add(branch, tail.id, 1)
+            f.links.add(branch, checkpoint.id, 2)
+            val before = f.source.connection.use { connection ->
+                connection.prepareStatement("SELECT message_json FROM messages WHERE id = ?").use {
+                    it.setString(1, checkpoint.id.value)
+                    it.executeQuery().use { rows -> assertTrue(rows.next()); rows.getString(1) }
+                }
+            }
+
+            val failure = assertFails { f.migrate() }
+            val details = generateSequence(failure as Throwable?) { it.cause }.joinToString("\n") { it.toString() }
+            assertContains(details, "not an exact prefix")
+            f.source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("""
+                        SELECT count(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'messages'
+                          AND column_name = 'compaction_header'
+                    """.trimIndent()).use { rows -> assertTrue(rows.next()); assertEquals(0, rows.getInt(1)) }
+                    statement.executeQuery("SELECT message_json FROM messages WHERE id = 'checkpoint'").use { rows ->
+                        assertTrue(rows.next()); assertEquals(before, rows.getString(1))
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `V92 gives a reused provider checkpoint its common preceding boundary`() = runBlocking {
+        withFixture(target = "91") { f ->
+            val source = f.message("source")
+            val checkpoint = f.message("checkpoint").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                        buildJsonObject { put("state", "opaque") },
+                    ),
+                    origin = ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                    strategy = ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )),
+            )
+            f.insertRaw(source, 0)
+            f.insertRaw(checkpoint, 1)
+            val branch = Conversation.Thread.Id("branch")
+            ExposedThreadRepository().save(Conversation.Thread(
+                branch, f.conversation.id, originalThread = f.conversation.currentThread,
+                createdAt = f.now, updatedAt = f.now,
+            ))
+            f.links.add(branch, source.id, 0)
+            f.links.add(branch, checkpoint.id, 1)
+
+            f.migrate()
+
+            val migrated = assertNotNull(ExposedMessageRepository(Json).findById(checkpoint.id))
+                .content.single() as ContentItem.ContextCompactionResult
+            assertTrue(migrated.sourceMessageIds.isEmpty())
+            assertEquals(source.id, migrated.sourceBoundaryMessageId)
         }
     }
 
@@ -207,11 +332,7 @@ class PostgresRuntimeMessageReadTest {
     @Test
     fun `context metadata backfills and follows canonical writes without rewriting payloads`() = runBlocking {
         withFixture(target = "80") { f ->
-            val summary = f.message("summary").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(ContentItem.ContextCompactionResult(
-                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
-            )))
-            val messages = listOf(
+            val prefix = listOf(
                 f.message("normal").copy(instructions = listOf(Conversation.Message.Instruction.UserInstruction("mode", "Mode", "Value"))),
                 f.message("synthetic").copy(providerMetadata = buildJsonObject { put("synthetic", true) }),
                 f.message("synthetic-string").copy(providerMetadata = buildJsonObject { put("synthetic", "true") }),
@@ -219,6 +340,13 @@ class PostgresRuntimeMessageReadTest {
                 f.message("binary").copy(content = listOf(ContentItem.UserMessage("escaped\u0000payload"))),
                 f.message("visual").copy(content = listOf(ContentItem.VisualInteraction("v", "Title", 1, "e", "b", "Button",
                     buildJsonObject { put("form", buildJsonObject {}); put("data", buildJsonObject {}) }))),
+            )
+            val summary = f.message("summary").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                sourceMessageIds = prefix.map { it.id },
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )))
+            val messages = prefix + listOf(
                 summary,
                 f.message("corrected").copy(role = Conversation.Message.Role.ASSISTANT,
                     author = Conversation.Message.Author.Agent(com.gromozeka.domain.model.AgentDefinition.Id("agent"), "Agent"),
@@ -233,7 +361,12 @@ class PostgresRuntimeMessageReadTest {
             messages.forEachIndexed { index, message -> f.insertRaw(message, index) }
             f.migrate()
             messages.forEach { message ->
-                assertEquals(message, ExposedMessageRepository(Json).findById(message.id))
+                val expected = if (message == summary) summary.copy(content = listOf(
+                    (summary.content.single() as ContentItem.ContextCompactionResult).copy(
+                        sourceMessageIds = emptyList(), sourceBoundaryMessageId = prefix.last().id,
+                    )
+                )) else message
+                assertEquals(expected, ExposedMessageRepository(Json).findById(message.id))
                 if (message.id.value == "binary") assertNull(f.metadata(message.id))
                 else assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(message), f.metadata(message.id))
             }
