@@ -175,6 +175,41 @@ class ConversationEngineDeliveryTest {
             "prepareAfterResponse owns the fresh pin snapshot")
     }
 
+    @Test fun `manual compact task supplies the canonical detached request to its native generator`() = runBlocking {
+        fun tool(name: String) = object : AiToolCallback {
+            override val definition = AiToolDefinition(name, "Synthetic $name", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX)
+        val f = Fixture(
+            withEnricher = true,
+            reasoningOverride = reasoning,
+            maxOutputTokens = 512,
+            selectedTools = listOf(tool("inspect_state")),
+            compactionEnrichedTools = listOf(tool("grz_slot_release")),
+            assembledSystemPrompts = listOf("Actual agent instructions"),
+        )
+        f.captureNativeCompactRequest = true
+        f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
+        val task = input("manual-compact").copy(payload = ConversationRuntimeTask.Payload.HistoryMutation(
+            mutation = ConversationHistoryMutation.Compact(listOf(Conversation.Message.Id("root")), SquashType.COMPACT),
+            expectedThreadId = conversation.currentThread,
+        ))
+        assertTrue(f.coordinator.submit(task))
+        f.claim(task)
+
+        assertIs<ConversationRuntimeTaskOutcome.HistoryChanged>(f.engine.runRuntimeTask(task, executor) {})
+
+        val request = assertNotNull(f.nativeCompactRequest)
+        assertTrue("Actual agent instructions" in request.systemPrompts)
+        assertTrue("COMPACTION_SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it })
+        assertEquals(listOf("inspect_state", "grz_slot_release"), request.tools.map { it.definition.name })
+        assertEquals(reasoning, request.options.reasoning)
+        assertEquals(512, request.options.maxOutputTokens)
+    }
+
     @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
         val f = Fixture(proactive = true)
         val task = f.begin()
@@ -1058,7 +1093,8 @@ class ConversationEngineDeliveryTest {
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
         realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null,
         reasoningOverride: AiReasoningConfig? = null, maxOutputTokens: Int? = null,
-        selectedTools: List<AiToolCallback> = emptyList(), compactionEnrichedTools: List<AiToolCallback> = emptyList()) {
+        selectedTools: List<AiToolCallback> = emptyList(), compactionEnrichedTools: List<AiToolCallback> = emptyList(),
+        assembledSystemPrompts: List<String> = emptyList()) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -1087,6 +1123,8 @@ class ConversationEngineDeliveryTest {
         var onCall: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { answer() }
         var onAppend: suspend (Conversation.Message) -> Unit = {}
         var historyMutationFailure: Throwable? = null
+        var captureNativeCompactRequest = false
+        var nativeCompactRequest: AiRuntimeRequest? = null
         var allowFullHistoryLoad = true
         var backgroundBatch: BackgroundActivityCompletionApplicationService.Batch? = null
         val backgroundOrigins = TestBackgroundActivityOrigins()
@@ -1226,6 +1264,11 @@ class ConversationEngineDeliveryTest {
             when (it.method.name.substringBefore('-')) {
                 "execute" -> {
                     historyMutationFailure?.let { failure -> throw failure }
+                    if (captureNativeCompactRequest) {
+                        @Suppress("UNCHECKED_CAST")
+                        val assemble = it.arguments[4] as suspend (Conversation, AgentDefinition) -> AiRuntimeRequest?
+                        nativeCompactRequest = runBlocking { assemble(currentConversation, agent) }
+                    }
                     currentConversation
                 }
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
@@ -1235,7 +1278,7 @@ class ConversationEngineDeliveryTest {
             aiRuntimeProvider = responding { runtime }, aiToolProvider = responding { emptyList<Any>() },
             agentDomainService = responding { invocation ->
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
-            }, agentPromptAssemblyService = responding { emptyList<String>() },
+            }, agentPromptAssemblyService = responding { assembledSystemPrompts },
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
             conversationMessageAppender = appender, historyMutationExecutor = historyMutationExecutor, compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)

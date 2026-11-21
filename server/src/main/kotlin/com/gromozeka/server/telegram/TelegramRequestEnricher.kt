@@ -1,6 +1,7 @@
 package com.gromozeka.server.telegram
 
 import com.gromozeka.domain.model.*
+import com.gromozeka.application.service.ContextSnapshotUnavailableException
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.repository.TelegramChannelRepository
@@ -21,7 +22,7 @@ class TelegramRequestEnricher(
         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest {
         // A synthetic snapshot turn cannot authorize Telegram's live-invocation history filter.
         if (conversations.findById(conversationId)?.externalChannel?.provider == "telegram") {
-            throw UnsupportedOperationException("Telegram context does not support read-only snapshots")
+            throw ContextSnapshotUnavailableException("Telegram context does not support read-only snapshots")
         }
         return request
     }

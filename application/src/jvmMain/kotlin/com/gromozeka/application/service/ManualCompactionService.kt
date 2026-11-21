@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageCompactionTextRenderer
 import com.gromozeka.domain.model.SquashType
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AgentDomainService
@@ -29,6 +30,7 @@ class ManualCompactionService internal constructor(
         strategy: SquashType,
         checkpointId: Conversation.Message.Id = Conversation.Message.Id(com.gromozeka.shared.uuid.uuid7()),
         requestContext: Map<String, Any?> = emptyMap(),
+        nativeRequest: suspend (Conversation, AgentDefinition) -> AiRuntimeRequest? = { _, _ -> null },
         beforeCommit: (suspend () -> Unit)? = null,
     ): Conversation {
         val minimum = if (strategy == SquashType.CONCATENATE) 2 else 1
@@ -59,12 +61,20 @@ class ManualCompactionService internal constructor(
         require(selection.none { it.streaming }) { "Wait for selected messages to finish streaming before compaction" }
         log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$full sources=${selection.size} retained=${headers.size - selection.size}" }
         val checkpoint = if (full && strategy == SquashType.COMPACT) {
+            val agent = currentAgent(conversation)
+            val request = try {
+                nativeRequest(conversation, agent)
+            } catch (unavailable: ContextSnapshotUnavailableException) {
+                log.info { "COMPACTION phase=native_skipped id=${checkpointId.value} reason=context_snapshot_unavailable" }
+                null
+            }
             fullCompactions.generateRequestedCompact(
                 conversation = conversation,
-                agent = currentAgent(conversation),
+                agent = agent,
                 window = window,
                 prefix = selection,
                 checkpointId = checkpointId,
+                request = request,
                 requestContext = requestContext,
             )
         } else {

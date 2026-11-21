@@ -5,6 +5,10 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompac
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.*
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -55,6 +59,22 @@ class ConversationCompactionServiceTest {
 
     @Test fun `requested full compact uses detached native compaction and records user origin`() = runBlocking {
         val f = Fixture(100, native = true)
+        val reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX)
+        val tool = object : AiToolCallback {
+            override val definition = AiToolDefinition("inspect_state", "Inspect state", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        f.request = f.request.copy(
+            systemPrompts = listOf("Actual agent instructions"),
+            tools = listOf(tool),
+            options = f.request.options.copy(
+                reasoning = reasoning,
+                maxOutputTokens = 321,
+                toolContext = f.request.options.toolContext + ("agentDefinitionId" to "agent"),
+            ),
+        )
+        f.pins = listOf("Current conversation pin")
         val result = f.requestedCompact().content.single() as Checkpoint
         assertEquals(1, f.nativeCalls)
         assertEquals(0, f.textCompactionCalls + f.commits)
@@ -62,6 +82,21 @@ class ConversationCompactionServiceTest {
         assertEquals(Checkpoint.Coverage.ALL_PREVIOUS, result.coverage)
         assertTrue(result.sourceMessageIds.isEmpty())
         assertEquals(f.sources.dropLast(1).last().id, result.sourceBoundaryMessageId)
+        val sent = assertNotNull(f.nativeRequest)
+        assertEquals(listOf("Actual agent instructions", "Current conversation pin"), sent.systemPrompts)
+        assertEquals(listOf("inspect_state"), sent.tools.map { it.definition.name })
+        assertEquals(reasoning, sent.options.reasoning)
+        assertEquals(321, sent.options.maxOutputTokens)
+        assertEquals("agent", sent.options.toolContext["agentDefinitionId"])
+    }
+
+    @Test fun `requested full compact skips native when no exact request snapshot is available`() = runBlocking {
+        val f = Fixture(100, native = true)
+        val result = f.requestedCompact(request = null).content.single() as Checkpoint
+        assertEquals(0, f.nativeCalls)
+        assertEquals(1, f.textCompactionCalls)
+        assertIs<Checkpoint.Payload.ReadableSummary>(result.payload)
+        assertEquals(Checkpoint.Origin.USER_REQUESTED, result.origin)
     }
 
     @Test fun `native checkpoint cannot claim a boundary outside its captured input`() = runBlocking {
@@ -274,8 +309,10 @@ class ConversationCompactionServiceTest {
         var counterFailure: Exception? = null
         var textCompactionCalls = 0
         var nativeCalls = 0
+        var nativeRequest: AiRuntimeRequest? = null
         var commits = 0
         var persisted = false
+        var pins: List<String> = emptyList()
         var nativeBoundaryId = sources.dropLast(1).last().id
         var nativeFailure: Exception? = null
         var onTextCompaction: () -> Unit = {}
@@ -290,6 +327,7 @@ class ConversationCompactionServiceTest {
             }
             override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
                 nativeCalls++; order += "native"
+                this@Fixture.nativeRequest = request
                 assertEquals("CONTEXT_COMPACTION", request.options.usagePurpose)
                 nativeFailure?.let { throw it }
                 return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(Checkpoint(
@@ -380,12 +418,14 @@ class ConversationCompactionServiceTest {
                 tokenCounting = AiModelConfiguration.TokenCounting(AiModelConfiguration.TokenCounting.Mode.MODEL_CONFIGURATION, counterId))))
         }
         private val service = ConversationCompactionService(configurations, history, textCompactions, committer, coordinator, events, runtimeProvider,
-            Mockito.mock(ProactiveCompactionJobs::class.java), Mockito.mock(CompactionPreparationScope::class.java) { if (it.method.name == "pinPrompts") emptyList<String>() else "scope" }, ToolCallPairingService())
+            Mockito.mock(ProactiveCompactionJobs::class.java), Mockito.mock(CompactionPreparationScope::class.java) {
+                if (it.method.name == "pinPrompts") pins else "scope"
+            }, ToolCallPairingService())
         suspend fun apply(alreadyCompacted: Boolean = false, extraTokens: Int = 0, owner: suspend () -> Unit = {}): Conversation? =
             service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted, extraTokens) {
                 order += "owner"; owner()
             }
-        suspend fun requestedCompact(): Conversation.Message {
+        suspend fun requestedCompact(request: AiRuntimeRequest? = this.request): Conversation.Message {
             val window = CompactionHistoryWindow(sources.map(CompactionMessageHeader::from))
             return service.generateRequestedCompact(
                 conversation = conversation,
@@ -393,6 +433,7 @@ class ConversationCompactionServiceTest {
                 window = window,
                 prefix = window.prefix(ToolCallPairingService()),
                 checkpointId = Conversation.Message.Id("requested"),
+                request = request,
                 requestContext = mapOf("userId" to "user"),
             )
         }

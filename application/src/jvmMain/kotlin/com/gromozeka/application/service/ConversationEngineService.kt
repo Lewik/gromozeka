@@ -240,6 +240,18 @@ class ConversationEngineService(
                     "Conversation history mutation has no expected thread; repeat the operation"
                 },
                 task = task,
+                nativeCompactRequest = { conversation, agent ->
+                    val context = buildConversationRuntimeContext(agent.id, conversation, executor)
+                    val assembled = assembleRuntimeRequest(
+                        task = task,
+                        conversation = conversation,
+                        context = context,
+                        rootUserMessageId = null,
+                        diagnosticId = "${task.id.value}:manual-compaction",
+                        readOnlySnapshot = true,
+                    )
+                    assembled.request.copy(systemPrompts = assembled.unpinnedPrompts)
+                },
             ) {
                 ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
             }

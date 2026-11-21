@@ -310,7 +310,7 @@ class TelegramChannelTest {
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
         val enricher = TelegramRequestEnricher(repository, conversations, coordinator, access)
-        assertFailsWith<UnsupportedOperationException> {
+        assertFailsWith<com.gromozeka.application.service.ContextSnapshotUnavailableException> {
             enricher.enrichSnapshot(conversation.id, root.id, ConversationRuntimeTurnId("context-snapshot:synthetic"), model, request)
         }
         Mockito.verify(conversations).findById(conversation.id)

@@ -1,6 +1,8 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.service.ConversationHistoryMutation
 import org.springframework.stereotype.Service
 
@@ -18,6 +20,7 @@ class ConversationRuntimeHistoryMutationExecutor(
         mutation: ConversationHistoryMutation,
         expectedThreadId: Conversation.Thread.Id,
         task: com.gromozeka.domain.service.ConversationRuntimeTask,
+        nativeCompactRequest: suspend (Conversation, AgentDefinition) -> AiRuntimeRequest? = { _, _ -> null },
         beforeCommit: suspend () -> Unit,
     ): Conversation {
         val currentThreadId = conversationService.findById(conversationId)?.currentThread
@@ -43,6 +46,7 @@ class ConversationRuntimeHistoryMutationExecutor(
                 strategy = mutation.strategy,
                 checkpointId = Conversation.Message.Id("${task.id.value}:compaction"),
                 requestContext = mapOf("userId" to task.actorUserId?.value),
+                nativeRequest = nativeCompactRequest,
                 beforeCommit = beforeCommit,
             )
         }

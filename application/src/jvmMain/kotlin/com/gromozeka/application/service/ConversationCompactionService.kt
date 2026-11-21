@@ -237,26 +237,21 @@ class ConversationCompactionService internal constructor(
         window: CompactionHistoryWindow,
         prefix: List<CompactionMessageHeader>,
         checkpointId: Conversation.Message.Id,
+        request: AiRuntimeRequest?,
         requestContext: Map<String, Any?>,
     ): Conversation.Message {
         val pins = preparationScope.pinPrompts(conversation)
-        val request = AiRuntimeRequest(
-            systemPrompts = pins,
-            messages = emptyList(),
-            options = AiRuntimeOptions(
-                usagePurpose = "CONTEXT_COMPACTION",
-                toolContext = requestContext + mapOf(
-                    "conversationId" to conversation.id.value,
-                    "threadId" to conversation.currentThread.value,
-                    "projectId" to conversation.projectId.value,
-                ),
-            ),
-        )
+        val nativeRequest = request?.copy(systemPrompts = request.systemPrompts + pins)
         return generateCheckpoint(
             conversation = conversation,
             agent = agent,
             runtime = runtimes.getRuntime(agent.runtimeSelection, workspaceRootPath = null),
-            request = request,
+            request = nativeRequest,
+            requestContext = request?.options?.toolContext.orEmpty() + requestContext + mapOf(
+                "conversationId" to conversation.id.value,
+                "threadId" to conversation.currentThread.value,
+                "projectId" to conversation.projectId.value,
+            ),
             window = window,
             prefix = prefix,
             checkpointId = checkpointId,
@@ -269,17 +264,18 @@ class ConversationCompactionService internal constructor(
         conversation: Conversation,
         agent: AgentDefinition,
         runtime: AiRuntime,
-        request: AiRuntimeRequest,
+        request: AiRuntimeRequest?,
         window: CompactionHistoryWindow,
         prefix: List<CompactionMessageHeader>,
         checkpointId: Conversation.Message.Id,
         pins: List<String>,
         origin: Checkpoint.Origin,
+        requestContext: Map<String, Any?> = request?.options?.toolContext.orEmpty(),
     ): Conversation.Message {
         val resolved = configurations.resolveAiRuntime(agent.runtimeSelection)
-        val compactionContext = request.options.toolContext + ("aiCallDiagnosticId" to checkpointId.value)
+        val compactionContext = requestContext + ("aiCallDiagnosticId" to checkpointId.value)
         val provider = resolved.connection.kind.nativeCompactionProvider()
-        val prefixRequest = if (runtime.capabilities.supportsDetachedNativeCompaction) {
+        val prefixRequest = if (request != null && runtime.capabilities.supportsDetachedNativeCompaction) {
             val messages = window.messages(history, conversation.currentThread, prefix, provider)
             request.copy(messages = textCompactions.materializeSnapshot(conversation.id, messages),
                 options = request.options.copy(usagePurpose = "CONTEXT_COMPACTION", toolContext = compactionContext +
