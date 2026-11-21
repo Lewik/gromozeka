@@ -272,20 +272,20 @@ class ConversationEngineService(
             if (task.actorUserId == expected.actorUserId) {
                 val conversation = requireNotNull(conversationService.findById(task.conversationId))
                 val context = buildConversationRuntimeContext(expected.agentId, conversation, executor)
-                val request = assembleRuntimeRequest(
+                val assembledRequest = assembleRuntimeRequest(
                     task = task,
                     conversation = conversation,
                     context = context,
                     rootUserMessageId = null,
                     diagnosticId = "${expected.id}:history-mutation-reprepare",
                     readOnlySnapshot = true,
-                ).request
+                )
                 started = compactions.prepareAfterResponse(
                     task = task,
                     executor = executor,
                     conversation = conversation,
                     agent = context.agent,
-                    request = request,
+                    request = assembledRequest.request.copy(systemPrompts = assembledRequest.unpinnedPrompts),
                     promptScope = context.runtimeSystemPrompts,
                 )
             }

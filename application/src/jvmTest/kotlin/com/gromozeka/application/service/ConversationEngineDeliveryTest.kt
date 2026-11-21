@@ -104,6 +104,7 @@ class ConversationEngineDeliveryTest {
         }
         val f = Fixture(proactive = true, withEnricher = true, reasoningOverride = reasoning,
             maxOutputTokens = 256, selectedTools = listOf(tool))
+        f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
         val source = f.begin()
         val preparation = ProactiveCompaction(
             id = "stale-preparation",
@@ -164,6 +165,8 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf("inspect_state"), request.tools.map { it.definition.name })
         assertTrue("SNAPSHOT_ENRICHER" in request.systemPrompts)
         assertFalse("ENRICHER_LAST" in request.systemPrompts)
+        assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it },
+            "prepareAfterResponse owns the fresh pin snapshot")
     }
 
     @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
