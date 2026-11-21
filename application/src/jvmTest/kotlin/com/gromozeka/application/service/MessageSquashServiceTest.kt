@@ -917,6 +917,6 @@ private class InMemoryConversationCompactionRepository(
 private fun SquashType.expectedResultStrategy(): Conversation.Message.ContentItem.ContextCompactionResult.Strategy =
     when (this) {
         SquashType.CONCATENATE -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.CONCATENATE
-        SquashType.COMPACT -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.SUMMARIZE
+        SquashType.COMPACT -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.COMPACT
         SquashType.DISTILL -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.DISTILL
     }

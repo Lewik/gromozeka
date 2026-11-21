@@ -254,7 +254,7 @@ class ConversationCompactionService internal constructor(
             author = Conversation.Message.Author.Agent(agent.id, agent.name), createdAt = Clock.System.now(),
             content = listOf(Checkpoint(
                 payload = Checkpoint.Payload.ReadableSummary(generated.text), origin = Checkpoint.Origin.GROMOZEKA_POLICY,
-                strategy = Checkpoint.Strategy.SUMMARIZE, sourceMessageIds = prefix.map { it.id },
+                strategy = Checkpoint.Strategy.COMPACT, sourceMessageIds = prefix.map { it.id },
                 coverage = Checkpoint.Coverage.SELECTED_MESSAGES, providerScope = generated.providerScope,
                 promptTemplate = generated.promptTemplate,
             )),

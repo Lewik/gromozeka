@@ -105,8 +105,8 @@ The threshold is an absolute input-token count below the model's context window.
 Percentage input in Settings is converted to tokens; percentages are not stored.
 `thresholdTokens: null` disables the Harness automatic trigger (the default for
 new and migrated configurations). A provider's intrinsic session compaction can
-still occur; its emitted checkpoints also use the COW commit. The optional summary configuration is used only for
-text summarization; null means the active agent's model. Existing Control MCP
+still occur; its emitted checkpoints also use the COW commit. The optional compaction-model configuration is used only for
+text compaction; null means the active agent's model. Existing Control MCP
 `grz_ai_catalog_get` and `grz_ai_model_configuration_upsert` read and replace these
 settings. `compaction: {}` resets the whole policy, including token counting. The global `MESSAGE_SQUASH` runtime
 assignment and model-spec threshold policy have been removed.
@@ -220,8 +220,8 @@ Text auto-compaction always uses the continuation-oriented COMPACT prompt.
 Full compactions retain approximately 80,000 recent text characters as whole
 messages and complete tool groups; the boundary-crossing message remains whole.
 Partial explicit selections do not gain an extra suffix. The older prefix is
-summarized semantically, preserving current instructions, verified results,
-obligations, constraints and next actions. There is no separate summary-length setting. Readable material and supported
+compacted semantically, preserving current instructions, verified results,
+obligations, constraints and next actions. There is no separate compaction-length setting. Readable material and supported
 committed image/PDF attachments are sent to the helper, not raw provider replay.
 One-shot revealed secrets are reserved for the ordinary request and are not sent
 to the counter or compaction model. DISTILL remains a manual-only prompt variant;
@@ -229,10 +229,10 @@ CONCATENATE remains non-generative. Manual AI compaction uses the single automat
 responder, or the sole connected agent; ambiguous multi-agent selection is an
 explicit error rather than an arbitrary model choice.
 
-Summary calls do not inherit the ordinary model configuration's output cap.
+Text-compaction calls do not inherit the ordinary model configuration's output cap.
 Optional output-token fields are omitted. APIs requiring an output budget use
 model-declared limits and the available request budget; missing required model
-knowledge fails explicitly. Truncated, refused or incomplete summaries are never
+knowledge fails explicitly. Truncated, refused or incomplete compactions are never
 committed. Native compaction billing is not mislabeled as retained context usage.
 
 Regression coverage uses the production SDKs against local HTTP fixtures,

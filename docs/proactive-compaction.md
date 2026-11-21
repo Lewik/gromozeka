@@ -31,8 +31,8 @@ Selection walks backward through complete messages. The message crossing 80,000
 characters stays whole, and the boundary expands to include complete tool
 exchanges and intervening messages. It is a soft character budget, not a tokenizer
 or hard token cap. Textual content and instructions are counted, not JSON
-wrappers or base64 media. A prior prefix checkpoint is summarized again rather
-than treated as raw recent dialogue. Selective summaries do not arbitrarily
+wrappers or base64 media. A prior prefix checkpoint is compacted again rather
+than treated as raw recent dialogue. Selective checkpoints do not arbitrarily
 reset that boundary. Checkpoints are not charged as raw dialogue; any checkpoint
 inside a retained whole-message suffix stays intact. Archived sources remain
 available for history recovery.

@@ -20,7 +20,7 @@ class AsyncCleanBackupUpgradeTest {
     private data class ArchiveArtifact(val bytes: Long, val sha256: String)
     private data class MessageSnapshot(val count: Long, val digest: String, val artifacts: Set<String>)
 
-    @Test fun `restored pre async backup upgrades without changing history payloads or losing managed artifacts`() {
+    @Test fun `restored pre async backup upgrades compact terminology without changing history semantics or losing managed artifacts`() {
         assumeTrue("Requires an independently restored private backup", System.getenv("GROMOZEKA_ASYNC_BACKUP_TEST") == "true")
         val schema = requireNotNull(System.getenv("GROMOZEKA_ASYNC_BACKUP_SCHEMA"))
         require(schema.matches(Regex("[A-Za-z_][A-Za-z0-9_]*")))
@@ -44,7 +44,7 @@ class AsyncCleanBackupUpgradeTest {
         flyway.validate()
         assertEquals("92", assertNotNull(flyway.info().current()).version.toString())
         val after = messages(source, validateTypedMetadata = true)
-        assertEquals(before, after, "Upgrade may type the existing synthetic provenance, but must not alter history or opaque replay payloads")
+        assertEquals(before, after, "Upgrade may normalize typed metadata and compact terminology, but must preserve history semantics and opaque replay payloads")
         assertTrue(after.count > 0, "The restored backup must contain actual history")
         var verified = 0
         source.connection.use { connection ->
@@ -111,7 +111,7 @@ class AsyncCleanBackupUpgradeTest {
                 statement.executeQuery().use { rows ->
                     while (rows.next()) {
                         val message = try {
-                            Json.decodeFromString(Conversation.Message.serializer(), rows.getString("message_json"))
+                            Json.decodeFromString(Conversation.Message.serializer(), currentCompactionTerminology(rows.getString("message_json")))
                         } catch (failure: Exception) {
                             fail("Backup message ${rows.getString("id")} cannot be decoded (${failure::class.simpleName}); private payload is not logged")
                         }
@@ -133,4 +133,11 @@ class AsyncCleanBackupUpgradeTest {
         }
         return MessageSnapshot(count, digest.digest().joinToString("") { "%02x".format(it) }, artifacts)
     }
+
+    private fun currentCompactionTerminology(value: String): String = value
+        .replace("\"strategy\":\"SUMMARIZE\"", "\"strategy\":\"COMPACT\"")
+        .replace(
+            "\"id\":\"gromozeka.message-compaction.summarize\"",
+            "\"id\":\"gromozeka.message-compaction.compact\"",
+        )
 }

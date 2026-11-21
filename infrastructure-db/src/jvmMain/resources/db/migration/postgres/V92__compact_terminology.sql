@@ -14,14 +14,38 @@ WHERE (payload_json::jsonb -> 'compaction') ? 'summaryModelConfigurationId';
 
 UPDATE runtime_catalog_configuration SET revision = revision + 1;
 
+UPDATE messages
+SET message_json = replace(
+    replace(message_json, '"strategy":"SUMMARIZE"', '"strategy":"COMPACT"'),
+    '"id":"gromozeka.message-compaction.summarize"',
+    '"id":"gromozeka.message-compaction.compact"'
+)
+WHERE message_json LIKE '%"strategy":"SUMMARIZE"%'
+   OR message_json LIKE '%"id":"gromozeka.message-compaction.summarize"%';
+
 UPDATE conversation_runtime_records
-SET scheduling = replace(scheduling::text, '"strategy": "SUMMARIZE"', '"strategy": "COMPACT"')::jsonb
-WHERE scheduling::text LIKE '%"strategy": "SUMMARIZE"%';
+SET scheduling = replace(
+    replace(scheduling::text, '"strategy": "SUMMARIZE"', '"strategy": "COMPACT"'),
+    '"id": "gromozeka.message-compaction.summarize"',
+    '"id": "gromozeka.message-compaction.compact"'
+)::jsonb
+WHERE scheduling::text LIKE '%"strategy": "SUMMARIZE"%'
+   OR scheduling::text LIKE '%"id": "gromozeka.message-compaction.summarize"%';
 
 UPDATE conversation_runtime_events
-SET entry_json = replace(entry_json::text, '"strategy": "SUMMARIZE"', '"strategy": "COMPACT"')::jsonb
-WHERE entry_json::text LIKE '%"strategy": "SUMMARIZE"%';
+SET entry_json = replace(
+    replace(entry_json::text, '"strategy": "SUMMARIZE"', '"strategy": "COMPACT"'),
+    '"id": "gromozeka.message-compaction.summarize"',
+    '"id": "gromozeka.message-compaction.compact"'
+)::jsonb
+WHERE entry_json::text LIKE '%"strategy": "SUMMARIZE"%'
+   OR entry_json::text LIKE '%"id": "gromozeka.message-compaction.summarize"%';
 
 UPDATE conversation_runtime_trace
-SET entry_json = replace(entry_json::text, '"strategy": "SUMMARIZE"', '"strategy": "COMPACT"')::jsonb
-WHERE entry_json::text LIKE '%"strategy": "SUMMARIZE"%';
+SET entry_json = replace(
+    replace(entry_json::text, '"strategy": "SUMMARIZE"', '"strategy": "COMPACT"'),
+    '"id": "gromozeka.message-compaction.summarize"',
+    '"id": "gromozeka.message-compaction.compact"'
+)::jsonb
+WHERE entry_json::text LIKE '%"strategy": "SUMMARIZE"%'
+   OR entry_json::text LIKE '%"id": "gromozeka.message-compaction.summarize"%';

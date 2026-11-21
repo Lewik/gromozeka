@@ -1,12 +1,16 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.junit.Assume.assumeTrue
 import org.postgresql.ds.PGSimpleDataSource
 import java.util.UUID
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,14 +36,40 @@ class PostgresCompactTerminologyMigrationTest {
                         sql.execute("CREATE TABLE conversation_runtime_records (scheduling JSONB NOT NULL)")
                         sql.execute("CREATE TABLE conversation_runtime_events (entry_json JSONB NOT NULL)")
                         sql.execute("CREATE TABLE conversation_runtime_trace (entry_json JSONB NOT NULL)")
+                        sql.execute("CREATE TABLE messages (message_json TEXT NOT NULL)")
                         sql.execute("INSERT INTO runtime_catalog_configuration VALUES (7)")
                         sql.execute(
                             """INSERT INTO ai_model_configurations VALUES ('main',
                                 '{"id":"main","connectionId":"connection","providerModelId":"model","displayName":"Main","compaction":{"thresholdTokens":1000,"summaryModelConfigurationId":"compactor"}}')""".trimIndent()
                         )
-                        sql.execute("""INSERT INTO conversation_runtime_records VALUES ('{"mutation":{"strategy":"SUMMARIZE"},"label":"SUMMARIZE"}')""")
-                        sql.execute("""INSERT INTO conversation_runtime_events VALUES ('{"event":{"mutation":{"strategy":"SUMMARIZE"}},"label":"SUMMARIZE"}')""")
-                        sql.execute("""INSERT INTO conversation_runtime_trace VALUES ('{"mutation":{"strategy":"SUMMARIZE"},"label":"SUMMARIZE"}')""")
+                        sql.execute("""INSERT INTO conversation_runtime_records VALUES ('{"mutation":{"strategy":"SUMMARIZE","promptTemplate":{"id":"gromozeka.message-compaction.summarize"}},"label":"SUMMARIZE"}')""")
+                        sql.execute("""INSERT INTO conversation_runtime_events VALUES ('{"event":{"mutation":{"strategy":"SUMMARIZE","promptTemplate":{"id":"gromozeka.message-compaction.summarize"}}},"label":"SUMMARIZE"}')""")
+                        sql.execute("""INSERT INTO conversation_runtime_trace VALUES ('{"mutation":{"strategy":"SUMMARIZE","promptTemplate":{"id":"gromozeka.message-compaction.summarize"}},"label":"SUMMARIZE"}')""")
+                        val currentMessage = Conversation.Message(
+                            id = Conversation.Message.Id("checkpoint"),
+                            conversationId = Conversation.Id("conversation"),
+                            role = Conversation.Message.Role.ASSISTANT,
+                            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("Handoff"),
+                                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                                strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.COMPACT,
+                                promptTemplate = Conversation.Message.ContentItem.ContextCompactionResult.PromptTemplateReference(
+                                    "gromozeka.message-compaction.compact", 2,
+                                ),
+                                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                            )),
+                            providerMetadata = buildJsonObject {
+                                put("literal", """{"strategy":"SUMMARIZE","id":"gromozeka.message-compaction.summarize"}""")
+                            },
+                            createdAt = Instant.fromEpochMilliseconds(1),
+                        )
+                        val legacyMessage = Json.encodeToString(Conversation.Message.serializer(), currentMessage)
+                            .replace("\"strategy\":\"COMPACT\"", "\"strategy\":\"SUMMARIZE\"")
+                            .replace("\"id\":\"gromozeka.message-compaction.compact\"", "\"id\":\"gromozeka.message-compaction.summarize\"")
+                        connection.prepareStatement("INSERT INTO messages VALUES (?)").use { insert ->
+                            insert.setString(1, legacyMessage)
+                            insert.executeUpdate()
+                        }
                         sql.execute(requireNotNull(javaClass.getResource(
                             "/db/migration/postgres/V92__compact_terminology.sql")).readText())
                     }
@@ -63,8 +93,23 @@ class PostgresCompactTerminologyMigrationTest {
                                 assertTrue(rows.next())
                                 val value = rows.getString(1)
                                 assertTrue(value.contains("\"strategy\": \"COMPACT\""), value)
+                                assertTrue(value.contains("\"id\": \"gromozeka.message-compaction.compact\""), value)
                                 assertTrue(value.contains("\"label\": \"SUMMARIZE\""), value)
                             }
+                        }
+                        statement.executeQuery("SELECT message_json FROM messages").use { rows ->
+                            assertTrue(rows.next())
+                            val value = rows.getString(1)
+                            assertFalse(value.contains("\"strategy\":\"SUMMARIZE\""), value)
+                            assertFalse(value.contains("\"id\":\"gromozeka.message-compaction.summarize\""), value)
+                            val message = Json.decodeFromString(Conversation.Message.serializer(), value)
+                            val checkpoint = message.content.single() as Conversation.Message.ContentItem.ContextCompactionResult
+                            assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Strategy.COMPACT, checkpoint.strategy)
+                            assertEquals("gromozeka.message-compaction.compact", checkpoint.promptTemplate?.id)
+                            assertEquals(
+                                """{"strategy":"SUMMARIZE","id":"gromozeka.message-compaction.summarize"}""",
+                                message.providerMetadata.getValue("literal").jsonPrimitive.content,
+                            )
                         }
                         statement.executeQuery("SELECT revision FROM runtime_catalog_configuration").use { rows ->
                             assertTrue(rows.next())

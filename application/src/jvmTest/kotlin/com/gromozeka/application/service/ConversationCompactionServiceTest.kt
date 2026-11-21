@@ -35,7 +35,7 @@ class ConversationCompactionServiceTest {
         assertEquals(f.sources.dropLast(1), f.compactedSources)
         val result = assertNotNull(f.committed).content.single() as Checkpoint
         assertEquals(f.sources.dropLast(1).map { it.id }, result.sourceMessageIds)
-        assertEquals(Checkpoint.Strategy.SUMMARIZE, result.strategy)
+        assertEquals(Checkpoint.Strategy.COMPACT, result.strategy)
         assertEquals(Checkpoint.Coverage.SELECTED_MESSAGES, result.coverage)
         assertEquals(Checkpoint.Origin.GROMOZEKA_POLICY, result.origin)
         assertEquals(0, f.nativeCalls)

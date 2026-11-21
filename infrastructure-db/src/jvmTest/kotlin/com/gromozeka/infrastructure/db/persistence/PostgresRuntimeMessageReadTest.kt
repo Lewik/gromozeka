@@ -273,7 +273,7 @@ class PostgresRuntimeMessageReadTest {
             val summary = f.message("compaction").copy(content = listOf(ContentItem.ContextCompactionResult(
                 payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Synthetic summary"),
                 origin = ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-                strategy = ContentItem.ContextCompactionResult.Strategy.SUMMARIZE,
+                strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
                 coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
             )))
             f.save(summary, thread, count - 1)

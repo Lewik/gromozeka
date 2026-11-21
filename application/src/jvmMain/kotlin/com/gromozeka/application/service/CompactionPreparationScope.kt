@@ -45,8 +45,7 @@ class CompactionPreparationScope(
             put("actor", actorId.value)
             put("agent", Json.encodeToJsonElement(agent))
             put("selected", Json.encodeToJsonElement(selected))
-            // Keep the fingerprint field stable across the terminology-only rename.
-            put("summary", Json.encodeToJsonElement(compactor))
+            put("compactor", Json.encodeToJsonElement(compactor))
             put("prompts", Json.encodeToJsonElement(prompts))
             put("pins", Json.encodeToJsonElement(capturedPins ?: pinPrompts(conversation)))
         }.toString())
