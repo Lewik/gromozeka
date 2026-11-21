@@ -74,6 +74,23 @@ class ProactiveCompactionTest {
         }
     }
 
+    @Test fun `external channel never starts a durable proactive preparation`() = runBlocking {
+        Fixture(native = true).use { f ->
+            f.conversation = f.conversation.copy(
+                externalChannel = ExternalConversationChannel("telegram", "connection", "chat"),
+            )
+            f.startTurn()
+
+            assertFalse(f.service.prepareAfterResponse(
+                f.task!!, f.executor, f.conversation, f.agent, f.request(),
+            ))
+
+            assertNull(f.coordinator.proactiveCompaction(f.conversation.id))
+            assertEquals(0, f.nativeCalls)
+            assertNull(f.nativeRequest)
+        }
+    }
+
     @Test fun `ready summary preserves the retained suffix and concurrent append and applies only once`() = runBlocking {
         Fixture().use { f ->
             f.startTurn()

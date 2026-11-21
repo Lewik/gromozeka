@@ -185,6 +185,10 @@ class ConversationCompactionService internal constructor(
                 ?: runtimeCoordinator.proactiveCompaction(conversation.id)
             if (deferred?.reprepareAfterHistoryMutation == true) return false
         }
+        if (conversation.externalChannel != null) {
+            log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=external_channel" }
+            return false
+        }
         val hasOneUseContext = request.messages.any { message ->
             message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
         }
