@@ -307,14 +307,14 @@ class ConversationCompactionServiceTest {
                 else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
             }
         }
-        private val textCompactions = Mockito.mock(MessageSquashService::class.java) { invocation ->
+        private val textCompactions = Mockito.mock(CompactionTextService::class.java) { invocation ->
             if (invocation.method.name.startsWith("generateWithAi")) {
                 textCompactionCalls++; order += "text-compact"
                 @Suppress("UNCHECKED_CAST")
                 compactedSources = invocation.arguments[1] as List<Conversation.Message>
                 assertEquals(SquashType.COMPACT, invocation.arguments[2])
                 onTextCompaction()
-                MessageSquashService.GeneratedCompaction("Handoff", null, null)
+                CompactionTextService.GeneratedCompaction("Handoff", null, null)
             } else if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
             else Mockito.RETURNS_DEFAULTS.answer(invocation)
         }

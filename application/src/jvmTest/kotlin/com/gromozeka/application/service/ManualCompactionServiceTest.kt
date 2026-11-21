@@ -54,7 +54,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-class MessageSquashServiceTest {
+class ManualCompactionServiceTest {
     @Test
     fun `foreign nested native checkpoints load only the surviving readable handoff and its tail`() = runBlocking {
         val f = Fixture()
@@ -625,14 +625,12 @@ class MessageSquashServiceTest {
             conversations, compactions, threadMessages, pairingService, NoOpDeclarativeStateChangePublisher,
         )
 
-        fun service(): MessageSquashService {
-            return MessageSquashService(
-                aiRuntimeProvider = runtimeProvider,
-                artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
+        fun service(): ManualCompactionService {
+            val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
                     if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
                     else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
-                },
-                aiConfigurationProvider = configurationProvider,
+                }
+            return ManualCompactionService(
                 agents = Mockito.mock(com.gromozeka.domain.service.AgentDomainService::class.java) { invocation ->
                     if (invocation.method.name.startsWith("findById")) AgentDefinition(
                         id = AgentDefinition.Id("agent"), name = "Agent", prompts = emptyList(),
@@ -643,8 +641,13 @@ class MessageSquashServiceTest {
                 conversationRepository = conversations,
                 threadMessageRepository = threadMessages,
                 toolCallPairingService = pairingService,
+                textCompactions = CompactionTextService(
+                    aiRuntimeProvider = runtimeProvider,
+                    aiConfigurationProvider = configurationProvider,
+                    artifacts = artifacts,
+                    conversationPins = ConversationPinnedPrompt(pins),
+                ),
                 compactionCommitter = committer,
-                conversationPins = ConversationPinnedPrompt(pins),
             )
         }
 

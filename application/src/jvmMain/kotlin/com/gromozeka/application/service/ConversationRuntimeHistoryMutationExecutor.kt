@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service
 @Service
 class ConversationRuntimeHistoryMutationExecutor(
     private val conversationService: ConversationApplicationService,
-    private val messageSquashService: MessageSquashService,
+    private val manualCompactions: ManualCompactionService,
 ) {
     internal suspend fun replaceExternalMessage(originalId: Conversation.Message.Id, message: Conversation.Message) {
         conversationService.replaceExternalRuntimeMessage(originalId, message)
@@ -30,7 +30,7 @@ class ConversationRuntimeHistoryMutationExecutor(
             messageIds = mutation.messageIds,
         ) ?: error("Conversation not found: ${conversationId.value}")
 
-        is ConversationHistoryMutation.Compact -> messageSquashService.compactRuntimeHistory(
+        is ConversationHistoryMutation.Compact -> manualCompactions.compactRuntimeHistory(
             conversationId = conversationId,
             messageIds = mutation.messageIds,
             strategy = mutation.strategy,

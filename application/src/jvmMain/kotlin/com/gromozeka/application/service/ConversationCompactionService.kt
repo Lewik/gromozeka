@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service
 class ConversationCompactionService internal constructor(
     private val configurations: AiConfigurationProvider,
     private val history: ThreadMessageRepository,
-    private val textCompactions: MessageSquashService,
+    private val textCompactions: CompactionTextService,
     private val committer: ContextCompactionCommitter,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val events: ConversationRuntimeEventBus,

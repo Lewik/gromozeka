@@ -400,7 +400,7 @@ class ProactiveCompactionTest {
                 return conversation
             }
         }
-        val summaries = MessageSquashService(providers, configs, agents, artifacts, conversations, history, ToolCallPairingService(), pins, committer)
+        val summaries = CompactionTextService(providers, configs, artifacts, pins)
         val access = CompactionPreparationScope(conversations, agents, users, projects, workers, configs, pins)
         val service = ConversationCompactionService(configs, history, summaries, committer, coordinator,
             Mockito.mock(ConversationRuntimeEventBus::class.java), providers, jobs, access, ToolCallPairingService())
