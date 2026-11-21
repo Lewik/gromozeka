@@ -1629,7 +1629,8 @@ class ClaudeCodeCliRuntimeTest {
         val compact = runtime.compact(compactRequest)
         assertEquals(2, executor.commands.size, "Compact must not run ordinary inference")
         val checkpoint = compact.messages.single().content.single() as Conversation.Message.ContentItem.ContextCompactionResult
-        assertEquals(history.take(2).map { it.id }, checkpoint.sourceMessageIds)
+        assertTrue(checkpoint.sourceMessageIds.isEmpty())
+        assertEquals(history.take(2).last().id, checkpoint.sourceBoundaryMessageId)
         val targetThread = Conversation.Thread.Id("after-compaction")
         val checkpointMessage = assistantMessage("").copy(content = listOf(checkpoint.copy(
             historyTransition = Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(
