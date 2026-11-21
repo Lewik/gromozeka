@@ -14,7 +14,7 @@ import kotlin.test.*
 import kotlin.time.Clock
 
 class ProactiveCompactionTest {
-    @Test fun `long native blocking and proactive compactions read only the active prefix and capture current pins`() = runBlocking {
+    @Test fun `native blocking and proactive compactions preserve the materialized active prefix and current pins`() = runBlocking {
         for (background in listOf(false, true)) Fixture(native = true).use { f ->
             val archive = List(15_997) { f.message("archived-$it", "archived text") }
             val checkpoint = f.message("earlier", "").copy(role = Conversation.Message.Role.ASSISTANT, content = listOf(Checkpoint(
@@ -23,8 +23,12 @@ class ProactiveCompactionTest {
                 providerScope = Checkpoint.ProviderScope("OPENAI_API"),
             )))
             val (old, tail) = f.messages
+            val materializedOld = old.copy(instructions = old.instructions + listOf(
+                Conversation.Message.Instruction.MessageTemporalRuntimeContext(MessageTemporalContext(f.now, 37)),
+                Conversation.Message.Instruction.RuntimeObservation("<runtime-observation>exact captured state</runtime-observation>"),
+            ))
             f.messages = archive + listOf(checkpoint, old, tail)
-            val activeRequest = f.request().copy(messages = listOf(checkpoint, old, tail))
+            val activeRequest = f.request().copy(messages = listOf(checkpoint, materializedOld, tail))
             f.startTurn()
             f.pin = "new pin"
             if (background) {
@@ -39,7 +43,8 @@ class ProactiveCompactionTest {
                     activeRequest.copy(systemPrompts = f.prompts + "old pin"), false,
                     promptScope = f.prompts, unpinnedPrompts = f.prompts) {})
             }
-            assertEquals(listOf(checkpoint.id, old.id), f.bodyReads)
+            assertTrue(f.bodyReads.isEmpty(), "Native compaction must not replace the captured prefix with raw bodies")
+            assertEquals(listOf(checkpoint, materializedOld), f.nativeRequest!!.messages)
             assertEquals(f.prompts + "new pin", f.nativeRequest!!.systemPrompts)
             val saved = f.messages[15_999].content.single() as Checkpoint
             assertTrue(saved.sourceMessageIds.isEmpty())

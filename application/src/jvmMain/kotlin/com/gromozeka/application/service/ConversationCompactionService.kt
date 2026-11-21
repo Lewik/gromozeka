@@ -192,14 +192,17 @@ class ConversationCompactionService internal constructor(
         if (estimate < threshold) return false
         val sources = history.compactionHeaders(conversation.currentThread)
         if (sources.isEmpty() || sources.any { it.streaming }) return false
-        val captured = request.copy(systemPrompts = request.systemPrompts + pins, messages = emptyList(), options = request.options.copy(toolContext = request.options.toolContext +
-            ("threadId" to conversation.currentThread.value)))
         val window = CompactionHistoryWindow(sources)
         val prefix = window.prefix(toolPairs)
         if (prefix.isEmpty()) {
             log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=only_retained_suffix" }
             return false
         }
+        val captured = request.forCompactionPrefix(prefix).copy(
+            systemPrompts = request.systemPrompts + pins,
+            options = request.options.copy(toolContext = request.options.toolContext +
+                ("threadId" to conversation.currentThread.value)),
+        )
         val signature = preparationScope.fingerprint(conversation, agent, actor, promptScope, pins)
         val preparation = ProactiveCompaction(
             id = "${task.id.value}:proactive-compaction", conversationId = conversation.id,
@@ -272,15 +275,13 @@ class ConversationCompactionService internal constructor(
         origin: Checkpoint.Origin,
         requestContext: Map<String, Any?> = request?.options?.toolContext.orEmpty(),
     ): Conversation.Message {
-        val resolved = configurations.resolveAiRuntime(agent.runtimeSelection)
         val compactionContext = requestContext + ("aiCallDiagnosticId" to checkpointId.value)
-        val provider = resolved.connection.kind.nativeCompactionProvider()
         val prefixRequest = if (request != null && runtime.capabilities.supportsDetachedNativeCompaction) {
-            val messages = window.messages(history, conversation.currentThread, prefix, provider)
-            request.copy(messages = textCompactions.materializeSnapshot(conversation.id, messages),
-                options = request.options.copy(usagePurpose = "CONTEXT_COMPACTION", toolContext = compactionContext +
+            request.forCompactionPrefix(prefix)
+                .takeIf { it.messages.lastOrNull()?.id == prefix.last().id }
+                ?.copy(options = request.options.copy(usagePurpose = "CONTEXT_COMPACTION", toolContext = compactionContext +
                     ("compactionTransportId" to checkpointId.value)))
-                .takeIf { runtime.inspectContext(it, allowProviderCount = false).nativeCompactionAvailable }
+                ?.takeIf { runtime.inspectContext(it, allowProviderCount = false).nativeCompactionAvailable }
         } else null
         log.info { "COMPACTION phase=generating id=${checkpointId.value} method=${if (prefixRequest != null) "native-prefix" else "text"} sources=${prefix.size}" }
         if (prefixRequest != null) {
@@ -313,6 +314,12 @@ class ConversationCompactionService internal constructor(
                 promptTemplate = generated.promptTemplate,
             )),
         )
+    }
+
+    /** Preserve the exact request-only materialization used by the ordinary model path. */
+    private fun AiRuntimeRequest.forCompactionPrefix(prefix: List<CompactionMessageHeader>): AiRuntimeRequest {
+        val ids = prefix.mapTo(hashSetOf()) { it.id }
+        return copy(messages = messages.filter { it.id in ids })
     }
 
     private suspend fun inspectContext(resolved: ResolvedAiRuntime, runtime: AiRuntime, request: AiRuntimeRequest): AiContextInspection {
