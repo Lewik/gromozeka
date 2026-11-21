@@ -1886,17 +1886,21 @@ Live assistant-progress checks are opt-in. Claude Code uses its existing CLI log
 GROMOZEKA_CLAUDE_CODE_REAL=true GROMOZEKA_CLAUDE_CODE_MODEL=haiku ./gradlew :infrastructure-ai:jvmTest --tests '*ClaudeCodeCliRuntimeTest.realClaudeCodeReturnsWrapperToolCallWhenEnabled' --rerun -q
 ```
 
-The subscription check covers a remark, an external tool result, a structured
-final answer, and history replay on a fresh connection. It reads an explicitly
-selected Codex auth file without refreshing or modifying credentials. Run it
-separately for `gpt-5.6-luna` and `gpt-6-astra`; both use low reasoning effort:
+The subscription checks cover a remark, an external tool result, a structured
+final answer, history replay on a fresh connection, and detached compaction
+committed ahead of a concurrently generated reasoning tail. They read an
+explicitly selected Codex auth file without refreshing or modifying credentials.
+Run them separately for the relevant GPT-5 and GPT-6 subscription models. The
+progress check uses low reasoning effort; the detached-compaction check uses the
+maximum supported effort so that it can assert exact encrypted-reasoning replay:
 
 ```bash
-GROMOZEKA_OPENAI_SUBSCRIPTION_REAL=true GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE=/path/to/codex/auth.json GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL=gpt-5.6-luna ./gradlew :infrastructure-ai:openai-subscription:jvmTest --tests '*OpenAiSubscriptionProgressRealTest' --rerun -q
+GROMOZEKA_OPENAI_SUBSCRIPTION_REAL=true GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE=/path/to/codex/auth.json GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL=gpt-5.6-sol ./gradlew :infrastructure-ai:openai-subscription:jvmTest --tests '*OpenAiSubscriptionProgressRealTest' --rerun -q
 ```
 
 This also checks automatic Lite compaction, persisted checkpoint replay on fresh
-connections, and retention of a random marker known only through a tool result.
+connections, retention of a random marker known only through a tool result, and
+the absence of provider-reported reasoning removal after the detached COW commit.
 
 Use `--rerun` to bypass the test task cache when changing live-test environment
 variables; it does not force recompilation of every dependency.
