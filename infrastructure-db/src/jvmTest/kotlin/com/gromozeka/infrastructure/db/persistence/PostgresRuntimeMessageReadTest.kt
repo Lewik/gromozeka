@@ -46,6 +46,19 @@ class PostgresRuntimeMessageReadTest {
                 """.trimIndent()).use { it.setString(1, thread.value); it.executeUpdate() }
             }
             f.migrate()
+            f.source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("""
+                        SELECT count(*), count(DISTINCT xmin::text)
+                        FROM messages
+                        WHERE id LIKE 'archive-%' AND compaction_header IS NOT NULL
+                    """.trimIndent()).use { rows ->
+                        assertTrue(rows.next())
+                        assertEquals(16_000, rows.getInt(1))
+                        assertEquals(16, rows.getInt(2), "V91 must commit each 1000-message backfill batch separately")
+                    }
+                }
+            }
             val ids = listOf(Conversation.Message.Id("archive-16000"), Conversation.Message.Id("archive-3"))
             val headers = f.measure {
                 val all = f.links.compactionHeaders(thread)
