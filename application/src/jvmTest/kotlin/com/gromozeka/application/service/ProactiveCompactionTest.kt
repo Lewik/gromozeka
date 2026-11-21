@@ -42,7 +42,8 @@ class ProactiveCompactionTest {
             assertEquals(listOf(checkpoint.id, old.id), f.bodyReads)
             assertEquals(f.prompts + "new pin", f.nativeRequest!!.systemPrompts)
             val saved = f.messages[15_999].content.single() as Checkpoint
-            assertEquals((archive + checkpoint + old).map { it.id }, saved.sourceMessageIds)
+            assertTrue(saved.sourceMessageIds.isEmpty())
+            assertEquals(old.id, saved.sourceBoundaryMessageId)
             assertEquals(tail, f.messages[16_000])
         }
     }
@@ -126,6 +127,173 @@ class ProactiveCompactionTest {
         }
     }
 
+    @Test fun `history mutation batch cancels stale preparation and allows one fresh preparation at its end`() = runBlocking {
+        Fixture().use { f ->
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            f.generate = {
+                if (f.generations == 1) withContext(NonCancellable) {
+                    started.complete(Unit); release.await(); "stale"
+                } else "fresh"
+            }
+            f.startTurn()
+            assertTrue(f.prepare())
+            started.await()
+
+            val first = f.historyMutation("history-1")
+            val second = f.historyMutation("history-2")
+            assertTrue(f.coordinator.submit(first))
+            assertTrue(f.coordinator.submit(second))
+            f.finishTurn()
+            f.task = assertNotNull(f.coordinator.claimDeliveredTask(
+                f.conversation.id, first.id, f.executor, f.descriptor.capabilities, emptySet(),
+            ))
+            assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, first.id, f.executor, f.now))
+
+            assertNotNull(f.service.reconcileHistoryMutations(f.conversation.id))
+            val cancelled = f.preparation()
+            assertEquals(ProactiveCompaction.Status.CANCELLED, cancelled.status)
+            assertTrue(cancelled.reprepareAfterHistoryMutation)
+            assertFalse(f.prepare(), "The remaining mutation keeps the batch open while the old provider call is still unwinding")
+
+            f.conversation = f.conversation.copy(currentThread = Conversation.Thread.Id("after-history-1"))
+            assertTrue(f.coordinator.completeActiveTask(
+                f.conversation.id,
+                first.id,
+                f.executor,
+                ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE),
+            ))
+            f.task = assertNotNull(f.coordinator.claimDeliveredTask(
+                f.conversation.id, second.id, f.executor, f.descriptor.capabilities, emptySet(),
+            ))
+            assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, second.id, f.executor, f.now))
+
+            assertTrue(f.prepare(), "The last mutation may recheck the new history")
+            val fresh = f.preparation()
+            if (fresh.status == ProactiveCompaction.Status.RUNNING) f.jobs.await(fresh)
+            assertEquals(ProactiveCompaction.Status.READY, f.preparation().status)
+            assertFalse(f.preparation().reprepareAfterHistoryMutation)
+            assertEquals(2, f.generations)
+            release.complete(Unit)
+            yield()
+            assertEquals(fresh.id, f.preparation().id, "The cancelled preparation cannot replace its successor")
+        }
+    }
+
+    @Test fun `history mutation reprepare marker clears only with no other mutation in the same transition`() = runBlocking {
+        Fixture().use { f ->
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            f.generate = { withContext(NonCancellable) { started.complete(Unit); release.await(); "stale" } }
+            f.startTurn()
+            assertTrue(f.prepare())
+            started.await()
+            val first = f.historyMutation("history-1")
+            val second = f.historyMutation("history-2")
+            assertTrue(f.coordinator.submit(first))
+            assertTrue(f.coordinator.submit(second))
+            f.finishTurn()
+            f.task = assertNotNull(f.coordinator.claimDeliveredTask(
+                f.conversation.id, first.id, f.executor, f.descriptor.capabilities, emptySet(),
+            ))
+            assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, first.id, f.executor, f.now))
+            val cancelled = assertNotNull(f.service.reconcileHistoryMutations(f.conversation.id))
+
+            assertFalse(f.coordinator.finishHistoryMutationReprepare(cancelled, first.id))
+            assertTrue(f.preparation().reprepareAfterHistoryMutation)
+            assertTrue(f.coordinator.completeActiveTask(
+                f.conversation.id, first.id, f.executor,
+                ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE),
+            ))
+            f.task = assertNotNull(f.coordinator.claimDeliveredTask(
+                f.conversation.id, second.id, f.executor, f.descriptor.capabilities, emptySet(),
+            ))
+            assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, second.id, f.executor, f.now))
+
+            assertTrue(f.coordinator.finishHistoryMutationReprepare(cancelled, second.id))
+            assertFalse(f.preparation().reprepareAfterHistoryMutation)
+            release.complete(Unit)
+            Unit
+        }
+    }
+
+    @Test fun `late ready result is atomically rejected when a history mutation is queued`() = runBlocking {
+        Fixture().use { f ->
+            f.startTurn()
+            val source = assertNotNull(f.task)
+            val preparation = ProactiveCompaction(
+                id = "late-ready",
+                conversationId = f.conversation.id,
+                sourceTaskId = source.id,
+                sourceTurnId = source.turnId,
+                executor = f.executor,
+                agentId = f.agent.id,
+                actorUserId = f.user.id,
+                threadId = f.conversation.currentThread,
+                capturedMessageCount = f.messages.size,
+                historyFingerprint = "a".repeat(64),
+                scopeFingerprint = "b".repeat(64),
+                inputTokens = f.inputTokens,
+                sourceCount = 1,
+                retainedCount = f.messages.size - 1,
+                createdAt = f.now,
+            )
+            assertTrue(f.coordinator.beginProactiveCompaction(preparation))
+            val mutation = source.copy(
+                id = ConversationRuntimeTask.Id("queued-history"),
+                turnId = ConversationRuntimeTurnId("queued-history"),
+                payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                    ConversationHistoryMutation.Delete(listOf(f.messages.first().id)),
+                    f.conversation.currentThread,
+                ),
+                idempotencyKey = "queued-history",
+            )
+            assertTrue(f.coordinator.submit(mutation))
+            val ready = preparation.copy(
+                status = ProactiveCompaction.Status.READY,
+                checkpoint = f.message(preparation.id, "late result").copy(role = Conversation.Message.Role.ASSISTANT),
+                updatedAt = Clock.System.now(),
+            )
+
+            assertFalse(f.coordinator.updateProactiveCompaction(preparation, ready))
+            val stored = f.preparation()
+            assertEquals(ProactiveCompaction.Status.CANCELLED, stored.status)
+            assertTrue(stored.reprepareAfterHistoryMutation)
+            assertEquals(listOf(mutation.id), f.coordinator.listPending(f.conversation.id).map { it.id })
+        }
+    }
+
+    @Test fun `queued history mutation defers preparation without starting a model call`() = runBlocking {
+        Fixture().use { f ->
+            f.startTurn()
+            val source = assertNotNull(f.task)
+            val mutation = source.copy(
+                id = ConversationRuntimeTask.Id("queued-before-preparation"),
+                turnId = ConversationRuntimeTurnId("queued-before-preparation"),
+                payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                    ConversationHistoryMutation.Delete(listOf(f.messages.first().id)),
+                    f.conversation.currentThread,
+                ),
+                idempotencyKey = "queued-before-preparation",
+            )
+            assertTrue(f.coordinator.submit(mutation))
+
+            assertFalse(f.prepare())
+            assertEquals(0, f.generations)
+            assertEquals(ProactiveCompaction.Status.CANCELLED, f.preparation().status)
+            assertTrue(f.preparation().reprepareAfterHistoryMutation)
+
+            f.finishTurn()
+            f.task = assertNotNull(f.coordinator.claimDeliveredTask(
+                f.conversation.id, mutation.id, f.executor, f.descriptor.capabilities, emptySet(),
+            ))
+            assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, mutation.id, f.executor, f.now))
+            assertTrue(f.prepare())
+            assertEquals(1, f.generations)
+            assertEquals(ProactiveCompaction.Status.READY, f.preparation().status)
+        }
+    }
+
     @Test fun `duplicate preparation and source-turn replay never start another model call`() = runBlocking {
         Fixture().use { f ->
             f.startTurn(); f.prepare(); f.prepare()
@@ -202,7 +370,9 @@ class ProactiveCompactionTest {
             assertEquals(f.preparation().id, f.nativeRequest!!.options.toolContext["compactionTransportId"])
             assertEquals(f.conversation.id.value, f.nativeRequest!!.options.toolContext["conversationId"])
             assertNotNull(f.apply())
-            assertEquals(listOf("old"), (f.messages[1].content.single() as Checkpoint).sourceMessageIds.map { it.value })
+            val checkpoint = f.messages[1].content.single() as Checkpoint
+            assertTrue(checkpoint.sourceMessageIds.isEmpty())
+            assertEquals("old", checkpoint.sourceBoundaryMessageId?.value)
             assertEquals("tail", ConversationContext(f.messages).messages().last().id.value)
         }
     }
@@ -353,7 +523,7 @@ class ProactiveCompactionTest {
                 return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(Checkpoint(
                     Checkpoint.Payload.OpaqueProviderState(buildJsonObject { put("encrypted_content", "opaque") }),
                     Checkpoint.Origin.GROMOZEKA_POLICY, coverage = Checkpoint.Coverage.ALL_PREVIOUS,
-                    sourceMessageIds = request.messages.map { it.id }, providerScope = Checkpoint.ProviderScope("OPENAI_API"))))))
+                    sourceBoundaryMessageId = request.messages.last().id, providerScope = Checkpoint.ProviderScope("OPENAI_API"))))))
             }
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
                 generations++; summaryRequests += request
@@ -387,19 +557,32 @@ class ProactiveCompactionTest {
             override suspend fun commit(expectedThreadId: Conversation.Thread.Id, message: Conversation.Message, preparedCompactionId: String?): Conversation {
                 assertEquals(expectedThreadId, conversation.currentThread)
                 val checkpoint = message.content.single() as Checkpoint
-                val end = messages.indexOfLast { it.id in checkpoint.sourceMessageIds }
+                val end = if (checkpoint.coversAllPrevious) {
+                    messages.indexOfFirst { it.id == checkpoint.sourceBoundaryMessageId }
+                } else messages.indexOfLast { it.id in checkpoint.sourceMessageIds }
+                check(end >= 0)
                 messages = messages.take(end + 1) + message + messages.drop(end + 1)
                 conversation = conversation.copy(currentThread = Conversation.Thread.Id("compacted-${++commits}"))
                 inputTokens = 20_000
                 return conversation
             }
         }
-        val summaries = MessageSquashService(providers, configs, agents, artifacts, conversations, history, ToolCallPairingService(), pins, committer)
+        val summaries = CompactionTextService(providers, configs, artifacts, pins)
         val access = CompactionPreparationScope(conversations, agents, users, projects, workers, configs, pins)
         val service = ConversationCompactionService(configs, history, summaries, committer, coordinator,
             Mockito.mock(ConversationRuntimeEventBus::class.java), providers, jobs, access, ToolCallPairingService())
         fun message(id: String, text: String) = Conversation.Message(Conversation.Message.Id(id), conversation.id,
             role = Conversation.Message.Role.USER, content = listOf(ContentItem.UserMessage(text)), createdAt = now)
+        fun historyMutation(id: String) = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(id), conversationId = conversation.id, actorUserId = user.id,
+            payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                mutation = ConversationHistoryMutation.Delete(listOf(messages.first().id)),
+                expectedThreadId = conversation.currentThread,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id,
+            requirements = ConversationRuntimeTaskRequirements(descriptor.capabilities, ConversationRuntimeTaskTarget.Server),
+            createdAt = now,
+        )
         fun request() = AiRuntimeRequest(prompts, messages, options = AiRuntimeOptions(toolContext = mapOf(
             "conversationId" to conversation.id.value, "threadId" to conversation.currentThread.value, "userId" to user.id.value), usagePurpose = "CONVERSATION"))
         suspend fun startTurn(id: String = "source") {

@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.recordRetainedOpenAiReplay
 import com.gromozeka.domain.repository.ConversationCompactionRepository
@@ -39,9 +40,18 @@ internal class ContextCompactionCommitService(
         require(result.state == Conversation.Message.BlockState.COMPLETE) { "Cannot commit an incomplete compaction" }
         require(result.historyTransition == null) { "A new compaction cannot supply its own history transition" }
         val minimum = if (result.strategy == ContextCompactionResult.Strategy.CONCATENATE) 2 else 1
-        require(result.sourceMessageIds.size >= minimum) { "Need at least $minimum source message(s) to compact" }
-        require(result.sourceMessageIds.distinct().size == result.sourceMessageIds.size) {
-            "Duplicate compaction source message IDs are not allowed"
+        when (result.coverage) {
+            ContextCompactionResult.Coverage.SELECTED_MESSAGES -> {
+                require(result.sourceBoundaryMessageId == null) { "A selective checkpoint cannot have a source boundary" }
+                require(result.sourceMessageIds.size >= minimum) { "Need at least $minimum source message(s) to compact" }
+                require(result.sourceMessageIds.distinct().size == result.sourceMessageIds.size) {
+                    "Duplicate compaction source message IDs are not allowed"
+                }
+            }
+            ContextCompactionResult.Coverage.ALL_PREVIOUS -> {
+                require(result.sourceMessageIds.isEmpty()) { "A full checkpoint must use one source boundary instead of message IDs" }
+                requireNotNull(result.sourceBoundaryMessageId) { "A full checkpoint must identify its source boundary" }
+            }
         }
         val conversationId = message.conversationId
         val conversation = conversationRepository.findById(conversationId)
@@ -52,6 +62,7 @@ internal class ContextCompactionCommitService(
             val checkpoint = stored.content.single() as ContextCompactionResult
             check(checkpoint.historyTransition?.sourceThreadId == expectedThreadId &&
                 checkpoint.payload == result.payload && checkpoint.sourceMessageIds == result.sourceMessageIds &&
+                checkpoint.sourceBoundaryMessageId == result.sourceBoundaryMessageId && checkpoint.coverage == result.coverage &&
                 checkpoint.providerScope == result.providerScope && checkpoint.strategy == result.strategy &&
                 checkpoint.origin == result.origin && checkpoint.promptTemplate == result.promptTemplate) {
                 "Compaction ID belongs to another operation"
@@ -61,24 +72,33 @@ internal class ContextCompactionCommitService(
         check(conversation.currentThread == expectedThreadId) { "Conversation changed while compaction was generated" }
 
         val messages = threadMessageRepository.compactionHeaders(expectedThreadId)
-        val sourceIdSet = result.sourceMessageIds.toSet()
-        val selected = messages.filter { it.id in sourceIdSet }
-        require(selected.size == sourceIdSet.size) {
-            "Some compaction source messages are not in thread ${expectedThreadId.value}"
+        val selected = when (result.coverage) {
+            ContextCompactionResult.Coverage.SELECTED_MESSAGES -> {
+                val sourceIdSet = result.sourceMessageIds.toSet()
+                messages.filter { it.id in sourceIdSet }.also {
+                    require(it.size == sourceIdSet.size) {
+                        "Some compaction source messages are not in thread ${expectedThreadId.value}"
+                    }
+                    require(it.map(CompactionMessageHeader::id) == result.sourceMessageIds) {
+                        "Compaction source messages must be in current conversation order"
+                    }
+                }
+            }
+            ContextCompactionResult.Coverage.ALL_PREVIOUS -> {
+                val boundary = messages.indexOfFirst { it.id == result.sourceBoundaryMessageId }
+                require(boundary >= 0) { "Compaction source boundary is not in thread ${expectedThreadId.value}" }
+                messages.take(boundary + 1)
+            }
         }
+        require(selected.size >= minimum) { "Need at least $minimum source message(s) to compact" }
         require(selected.none { it.streaming }) { "Cannot compact streaming messages" }
+        val sourceIdSet = selected.mapTo(linkedSetOf(), CompactionMessageHeader::id)
         require(toolCallPairingService.includePairedHeaders(messages, sourceIdSet) == sourceIdSet) {
             "Compaction source messages must include complete tool call/result pairs"
         }
-        require(selected.map { it.id } == result.sourceMessageIds) {
-            "Compaction source messages must be in current conversation order"
-        }
-        val sourceEnd = messages.indexOfLast { it.id in sourceIdSet }
+        val sourceEnd = messages.indexOfFirst { it.id == selected.last().id }
         val lastFullCheckpoint = messages.indexOfLast { it.node.isFull }
         if (result.coversAllPrevious) {
-            require(messages.take(sourceEnd + 1).map { it.id } == result.sourceMessageIds) {
-                "A full checkpoint must cover exactly the captured canonical prefix"
-            }
             require(sourceEnd >= lastFullCheckpoint) { "Compaction input precedes the current full checkpoint" }
         }
 
@@ -97,7 +117,7 @@ internal class ContextCompactionCommitService(
             invalidatedReplayMessageIds = (result.invalidatedReplayMessageIds + invalidatedReplay).distinct(),
             historyTransition = ContextCompactionResult.HistoryTransition(expectedThreadId, newThread.id),
         ))).recordRetainedOpenAiReplay(previous, suffix)
-        // A selective summary must remain after any existing full checkpoint, otherwise
+        // A selective checkpoint must remain after any existing full checkpoint, otherwise
         // it would disappear behind that checkpoint or split its protected prefix.
         val insertionAnchorId = messages[maxOf(sourceEnd, lastFullCheckpoint)].id
         check(conversationCompactionRepository.commitIfCurrent(

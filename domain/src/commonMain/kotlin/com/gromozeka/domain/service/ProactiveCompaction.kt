@@ -29,6 +29,7 @@ data class ProactiveCompaction(
     val failureCode: String? = null,
     val outcomeUnknown: Boolean = false,
     val capturedLastMessageId: Conversation.Message.Id? = null,
+    val reprepareAfterHistoryMutation: Boolean = false,
 ) {
     init {
         require(id.isNotBlank() && capturedMessageCount > 0 && sourceCount > 0 && retainedCount >= 0 && inputTokens >= 0)
@@ -36,6 +37,7 @@ data class ProactiveCompaction(
         require(historyFingerprint.matches(Regex("[0-9a-f]{64}")) && scopeFingerprint.matches(Regex("[0-9a-f]{64}")))
         require((status == Status.READY) == (checkpoint != null))
         require(checkpoint == null || (checkpoint.conversationId == conversationId && checkpoint.id.value == id))
+        require(!reprepareAfterHistoryMutation || status == Status.CANCELLED)
     }
 
     @Serializable
@@ -43,7 +45,15 @@ data class ProactiveCompaction(
     val pending: Boolean get() = status == Status.RUNNING || status == Status.READY
     val cancellable: Boolean get() = pending || (status == Status.FAILED && outcomeUnknown)
     fun cancel(now: Instant): ProactiveCompaction =
-        if (cancellable) copy(status = Status.CANCELLED, checkpoint = null, updatedAt = now) else this
+        if (cancellable) copy(status = Status.CANCELLED, checkpoint = null, updatedAt = now,
+            reprepareAfterHistoryMutation = false) else this
+    fun cancelForHistoryMutation(now: Instant): ProactiveCompaction =
+        if (cancellable) copy(status = Status.CANCELLED, checkpoint = null, updatedAt = now,
+            reprepareAfterHistoryMutation = true) else this
+    fun finishHistoryMutationReprepare(now: Instant): ProactiveCompaction {
+        require(status == Status.CANCELLED && reprepareAfterHistoryMutation)
+        return copy(updatedAt = now, reprepareAfterHistoryMutation = false)
+    }
     fun applicationTask() = ConversationRuntimeTask(
         id = ConversationRuntimeTask.Id("$id:apply"), conversationId = conversationId, actorUserId = actorUserId,
         payload = ConversationRuntimeTask.Payload.ApplyPreparedCompaction(id), placement = QueuedMessagePlacement.END_OF_TURN,

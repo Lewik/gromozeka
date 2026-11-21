@@ -6,7 +6,11 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.model.memory.MemoryRun
 import kotlinx.serialization.json.*
 import com.gromozeka.domain.service.*
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
+import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import org.mockito.Mockito
@@ -89,6 +93,80 @@ class ConversationEngineDeliveryTest {
             other.engine.runRuntimeTask(active, executor) {}
             assertTrue(other.preparations.isEmpty(), outcome.name)
         }
+    }
+
+    @Test fun `history mutation batch rechecks proactive compaction once even when its last mutation is stale`() = runBlocking {
+        val reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX)
+        val tool = object : AiToolCallback {
+            override val definition = AiToolDefinition("inspect_state", "Inspect current state", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val f = Fixture(proactive = true, withEnricher = true, reasoningOverride = reasoning,
+            maxOutputTokens = 256, selectedTools = listOf(tool))
+        f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
+        val source = f.begin()
+        val preparation = ProactiveCompaction(
+            id = "stale-preparation",
+            conversationId = conversation.id,
+            sourceTaskId = source.id,
+            sourceTurnId = source.turnId,
+            executor = executor,
+            agentId = agentId,
+            actorUserId = user,
+            threadId = conversation.currentThread,
+            capturedMessageCount = 1,
+            historyFingerprint = "a".repeat(64),
+            scopeFingerprint = "b".repeat(64),
+            inputTokens = 600,
+            sourceCount = 1,
+            retainedCount = 0,
+            createdAt = now,
+        )
+        assertTrue(f.coordinator.beginProactiveCompaction(preparation))
+
+        fun mutation(id: String) = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(id),
+            conversationId = conversation.id,
+            actorUserId = user,
+            payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                mutation = ConversationHistoryMutation.Delete(listOf(Conversation.Message.Id("root"))),
+                expectedThreadId = conversation.currentThread,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = id,
+            requirements = requirements,
+            createdAt = now,
+        )
+
+        val first = mutation("history-1")
+        val second = mutation("history-2")
+        assertTrue(f.coordinator.submit(first))
+        assertTrue(f.coordinator.submit(second))
+        assertNotNull(f.coordinator.cancelProactiveCompactionForHistoryMutation(conversation.id))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, source.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+
+        f.claim(first)
+        val firstOutcome = f.engine.runRuntimeTask(first, executor) {}
+        assertIs<ConversationRuntimeTaskOutcome.HistoryChanged>(firstOutcome)
+        assertTrue(f.preparations.isEmpty(), "The second mutation keeps the batch open")
+        f.currentConversation = f.currentConversation.copy(currentThread = Conversation.Thread.Id("after-history-1"))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, first.id, executor, firstOutcome))
+
+        f.claim(second)
+        f.historyMutationFailure = IllegalStateException("stale mutation")
+        assertFailsWith<IllegalStateException> {
+            f.engine.runRuntimeTask(second, executor) {}
+        }
+        val request = f.preparations.single()
+        assertEquals("after-history-1", request.options.toolContext["threadId"])
+        assertEquals(reasoning, request.options.reasoning)
+        assertEquals(256, request.options.maxOutputTokens)
+        assertEquals(listOf("inspect_state"), request.tools.map { it.definition.name })
+        assertTrue("SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertFalse("ENRICHER_LAST" in request.systemPrompts)
+        assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it },
+            "prepareAfterResponse owns the fresh pin snapshot")
     }
 
     @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
@@ -972,7 +1050,9 @@ class ConversationEngineDeliveryTest {
         .let { Json.parseToJsonElement(it).jsonObject.getValue("recorded_running_commands").jsonArray }
 
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
-        realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null) {
+        realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null,
+        reasoningOverride: AiReasoningConfig? = null, maxOutputTokens: Int? = null,
+        selectedTools: List<AiToolCallback> = emptyList()) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -991,7 +1071,7 @@ class ConversationEngineDeliveryTest {
             } else if (it.method.name.startsWith("applyPreparedIfReady")) {
                 onApply()
             } else if (it.method.name.startsWith("prepareAfterResponse")) {
-                onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; Unit
+                onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; true
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
         val pins = ReadOnlyTestPins()
@@ -1000,6 +1080,7 @@ class ConversationEngineDeliveryTest {
         val requests = mutableListOf<AiRuntimeRequest>()
         var onCall: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { answer() }
         var onAppend: suspend (Conversation.Message) -> Unit = {}
+        var historyMutationFailure: Throwable? = null
         var allowFullHistoryLoad = true
         var backgroundBatch: BackgroundActivityCompletionApplicationService.Batch? = null
         val backgroundOrigins = TestBackgroundActivityOrigins()
@@ -1018,6 +1099,7 @@ class ConversationEngineDeliveryTest {
         }
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("config"))
         private val agent = AgentDefinition(agentId, name = "Test", prompts = emptyList(), runtimeSelection = selection,
+            runtimeOverrides = AiRuntimeOverrides(maxOutputTokens, reasoningOverride),
             type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
         private val connection = AiConnection.OpenAiSubscription(AiConnection.Id("test"), "Test", enabled = true)
         private val resolved = ResolvedAiRuntime(connection,
@@ -1058,7 +1140,7 @@ class ConversationEngineDeliveryTest {
         }
         private val artifacts = responding<ConversationArtifactApplicationService> {
             when (it.method.name.substringBefore('-')) {
-                "materialize" -> it.arguments[1]
+                "materialize", "materializeSnapshot" -> it.arguments[1]
                 "persistAndCommitMessageOutputs" -> it.arguments[2]
                 "persistAndCommitToolResults" -> {
                     @Suppress("UNCHECKED_CAST")
@@ -1134,20 +1216,29 @@ class ConversationEngineDeliveryTest {
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
+        private val historyMutationExecutor = responding<ConversationRuntimeHistoryMutationExecutor> {
+            when (it.method.name.substringBefore('-')) {
+                "execute" -> {
+                    historyMutationFailure?.let { failure -> throw failure }
+                    currentConversation
+                }
+                else -> Mockito.RETURNS_DEFAULTS.answer(it)
+            }
+        }
         val engine = ConversationEngineService(
             aiRuntimeProvider = responding { runtime }, aiToolProvider = responding { emptyList<Any>() },
             agentDomainService = responding { invocation ->
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
             }, agentPromptAssemblyService = responding { emptyList<String>() },
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
-            conversationMessageAppender = appender, historyMutationExecutor = mock(), compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
+            conversationMessageAppender = appender, historyMutationExecutor = historyMutationExecutor, compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)
             },
             backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),
             toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { profile },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
-            aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
+            aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(selectedTools, emptyList()) },
             aiToolCapabilityCatalogService = mock(), toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
@@ -1168,6 +1259,9 @@ class ConversationEngineDeliveryTest {
                     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
                         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
                         request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
+                    override suspend fun enrichSnapshot(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+                        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+                        request.copy(systemPrompts = request.systemPrompts + "SNAPSHOT_ENRICHER")
                 })
                 if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
             },

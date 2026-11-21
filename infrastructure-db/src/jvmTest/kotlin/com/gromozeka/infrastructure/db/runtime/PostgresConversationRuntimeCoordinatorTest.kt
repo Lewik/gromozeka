@@ -5,6 +5,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingState
+import com.gromozeka.domain.service.ConversationHistoryMutation
 import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -126,6 +127,88 @@ class PostgresConversationRuntimeCoordinatorTest {
                 assertFalse(restored.snapshot(id).proactiveCompaction!!.pending)
                 assertFalse(restored.schedulingSnapshot(id).toString().contains("private prepared summary"))
             }
+        }
+    }
+
+    @Test fun `queued history mutation atomically cancels preparation and fences its late result`() = runBlocking {
+        withInventoryDatabase { source, coordinator, json ->
+            val id = Conversation.Id("proactive-history-mutation")
+            val now = kotlin.time.Clock.System.now()
+            val executor = ConversationRuntimeExecutorIdentity.Server(
+                com.gromozeka.domain.service.ConversationRuntimeServerSessionId("server"),
+            )
+            val requirements = ConversationRuntimeTaskRequirements(
+                ConversationRuntimeCapability.entries.toSet(),
+                ConversationRuntimeTaskTarget.Server,
+            )
+            val root = agentInvocationTask(id, "start", now).copy(requirements = requirements)
+            assertTrue(coordinator.submit(root))
+            kotlin.test.assertNotNull(
+                coordinator.claimDeliveredTask(id, root.id, executor, requirements.capabilities, emptySet()),
+            )
+            assertTrue(coordinator.markActiveTaskStarted(id, root.id, executor, now))
+            val preparation = com.gromozeka.domain.service.ProactiveCompaction(
+                "prepared-history-mutation",
+                id,
+                root.id,
+                root.turnId,
+                executor,
+                AgentDefinition.Id("agent"),
+                com.gromozeka.domain.model.User.Id("user"),
+                Conversation.Thread.Id("source"),
+                1,
+                "a".repeat(64),
+                "b".repeat(64),
+                100_000,
+                1,
+                0,
+                now,
+            )
+            assertTrue(coordinator.beginProactiveCompaction(preparation))
+            val mutation = ConversationRuntimeTask(
+                id = ConversationRuntimeTask.Id("history-mutation"),
+                conversationId = id,
+                actorUserId = com.gromozeka.domain.model.User.Id("user"),
+                payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                    ConversationHistoryMutation.Delete(listOf(Conversation.Message.Id("old"))),
+                    Conversation.Thread.Id("source"),
+                ),
+                placement = QueuedMessagePlacement.END_OF_TURN,
+                idempotencyKey = "history-mutation",
+                requirements = requirements,
+                createdAt = now,
+            )
+            assertTrue(coordinator.submit(mutation))
+
+            val cancelled = kotlin.test.assertNotNull(
+                coordinator.cancelProactiveCompactionForHistoryMutation(id),
+            )
+            assertTrue(cancelled.reprepareAfterHistoryMutation)
+            val checkpoint = Conversation.Message(
+                Conversation.Message.Id(preparation.id),
+                id,
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(Conversation.Message.ContentItem.UserMessage("late")),
+                createdAt = now,
+            )
+            val ready = preparation.copy(
+                status = com.gromozeka.domain.service.ProactiveCompaction.Status.READY,
+                checkpoint = checkpoint,
+            )
+            assertFalse(coordinator.updateProactiveCompaction(preparation, ready))
+
+            val restored = PostgresConversationRuntimeCoordinator(source, json)
+            val stored = kotlin.test.assertNotNull(restored.proactiveCompaction(id))
+            assertEquals(com.gromozeka.domain.service.ProactiveCompaction.Status.CANCELLED, stored.status)
+            assertTrue(stored.reprepareAfterHistoryMutation)
+            assertEquals(listOf(mutation.id), restored.listPending(id).map { it.id })
+            assertTrue(restored.completeActiveTask(id, root.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+            kotlin.test.assertNotNull(restored.claimDeliveredTask(
+                id, mutation.id, executor, requirements.capabilities, emptySet(),
+            ))
+            assertTrue(restored.markActiveTaskStarted(id, mutation.id, executor, now))
+            assertTrue(restored.finishHistoryMutationReprepare(stored, mutation.id))
+            assertFalse(kotlin.test.assertNotNull(restored.proactiveCompaction(id)).reprepareAfterHistoryMutation)
         }
     }
 

@@ -248,6 +248,7 @@ class ConversationRuntimeDispatcher(
         taskId: ConversationRuntimeTask.Id,
         mutation: ConversationHistoryMutation,
         actorUserId: User.Id,
+        expectedThreadId: Conversation.Thread.Id,
     ): Boolean {
         val capabilities = when (mutation) {
             is ConversationHistoryMutation.Edit,
@@ -269,7 +270,7 @@ class ConversationRuntimeDispatcher(
                 id = taskId,
                 conversationId = conversationId,
                 actorUserId = actorUserId,
-                payload = ConversationRuntimeTask.Payload.HistoryMutation(mutation),
+                payload = ConversationRuntimeTask.Payload.HistoryMutation(mutation, expectedThreadId),
                 placement = QueuedMessagePlacement.END_OF_TURN,
                 idempotencyKey = "conversation:${conversationId.value}:history:${taskId.value}",
                 requirements = ConversationRuntimeTaskRequirements(

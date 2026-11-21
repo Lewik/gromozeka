@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.ConversationHistoryMutation
+import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service
 class ConversationHistoryRuntimeApplicationService(
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
+    private val conversations: ConversationDomainService,
 ) {
     suspend fun editMessage(
         actorUser: User,
@@ -69,12 +71,16 @@ class ConversationHistoryRuntimeApplicationService(
         runtimeCoordinator.findTaskIncident(conversationId, taskId)?.let { incident ->
             error(incident.message)
         }
+        val expectedThreadId = requireNotNull(conversations.findById(conversationId)) {
+            "Conversation not found: ${conversationId.value}"
+        }.currentThread
 
         val accepted = runtimeDispatcher.submitHistoryMutation(
             conversationId = conversationId,
             taskId = taskId,
             mutation = mutation,
             actorUserId = actorUser.id,
+            expectedThreadId = expectedThreadId,
         )
         if (!accepted && !runtimeCoordinator.schedulingSnapshot(conversationId).containsTask(taskId)) {
             if (findCompletedMutation(conversationId, taskId) != null) return

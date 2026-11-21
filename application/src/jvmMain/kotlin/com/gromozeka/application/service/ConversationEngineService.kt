@@ -71,6 +71,8 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -145,8 +147,9 @@ class ConversationEngineService(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
         emitMessage: suspend (Conversation.Message) -> Unit,
-    ): ConversationRuntimeTaskOutcome =
-        when (val payload = task.payload) {
+    ): ConversationRuntimeTaskOutcome {
+        compactions.reconcileHistoryMutations(task.conversationId)
+        return when (val payload = task.payload) {
             is ConversationRuntimeTask.Payload.PostMessage -> runPostMessageStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.AgentInvocation ->
                 runAgentInvocationStep(task, executor, payload, emitMessage)
@@ -176,6 +179,7 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ExecutionIncident ->
                 runExecutionIncidentStep(task, executor, payload, emitMessage)
         }
+    }
 
     private suspend fun runPreparedCompactionStep(
         task: ConversationRuntimeTask,
@@ -228,8 +232,21 @@ class ConversationEngineService(
     ): ConversationRuntimeTaskOutcome {
         ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
         requireActorConnected(task)
-        historyMutationExecutor.execute(task.conversationId, payload.mutation, task) {
-            ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        try {
+            historyMutationExecutor.execute(
+                conversationId = task.conversationId,
+                mutation = payload.mutation,
+                expectedThreadId = requireNotNull(payload.expectedThreadId) {
+                    "Conversation history mutation has no expected thread; repeat the operation"
+                },
+                task = task,
+            ) {
+                ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+            }
+        } finally {
+            if (currentCoroutineContext().isActive) {
+                reprepareAfterHistoryMutationsIfReady(task, executor)
+            }
         }
         val kind = when (payload.mutation) {
             is ConversationHistoryMutation.Edit -> ConversationHistoryMutationKind.EDIT
@@ -237,6 +254,54 @@ class ConversationEngineService(
             is ConversationHistoryMutation.Compact -> ConversationHistoryMutationKind.COMPACT
         }
         return ConversationRuntimeTaskOutcome.HistoryChanged(kind)
+    }
+
+    private suspend fun reprepareAfterHistoryMutationsIfReady(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+    ) {
+        val expected = runtimeCoordinator.proactiveCompaction(task.conversationId)
+            ?.takeIf { it.status == ProactiveCompaction.Status.CANCELLED && it.reprepareAfterHistoryMutation }
+            ?: return
+        val pendingMutation = runtimeCoordinator.schedulingSnapshot(task.conversationId).pendingTasks
+            .any { it.payload is ConversationRuntimeTask.Payload.HistoryMutation }
+        if (pendingMutation) return
+
+        var started = false
+        try {
+            if (task.actorUserId == expected.actorUserId) {
+                val conversation = requireNotNull(conversationService.findById(task.conversationId))
+                val context = buildConversationRuntimeContext(expected.agentId, conversation, executor)
+                val assembledRequest = assembleRuntimeRequest(
+                    task = task,
+                    conversation = conversation,
+                    context = context,
+                    rootUserMessageId = null,
+                    diagnosticId = "${expected.id}:history-mutation-reprepare",
+                    readOnlySnapshot = true,
+                )
+                started = compactions.prepareAfterResponse(
+                    task = task,
+                    executor = executor,
+                    conversation = conversation,
+                    agent = context.agent,
+                    request = assembledRequest.request.copy(systemPrompts = assembledRequest.unpinnedPrompts),
+                    promptScope = context.runtimeSystemPrompts,
+                )
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Proactive compaction recheck failed after history mutation: " +
+                    "conversation=${task.conversationId.value} task=${task.id.value} type=${error::class.simpleName}"
+            }
+        }
+        if (!started) {
+            if (runtimeCoordinator.finishHistoryMutationReprepare(expected, task.id)) {
+                runtimeStateSyncService.invalidate(task.conversationId)
+            }
+        }
     }
 
     private suspend fun runPostMessageStep(
@@ -397,73 +462,21 @@ class ConversationEngineService(
                 backgroundDeliveryReceipts = beforeModel.backgroundDeliveryReceipts)
         }
 
-        // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
-        var currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
-        val runtimeMessages = stickyMessageInstructionService.materialize(
-            messages = messageTemporalContextService.enrich(
-                messages = currentMessages,
-                enabled = context.includeMessageTemporalContext,
-            ),
-            groups = settingsProvider.userProfile.messageInstructionGroups,
+        val activeCollaboration = collaboration.takeIf { conversation.externalChannel == null }
+        val assembledRequest = assembleRuntimeRequest(
+            task = task,
+            conversation = conversation,
+            context = context,
+            rootUserMessageId = payload.rootUserMessageId,
+            diagnosticId = diagnosticId,
+            readOnlySnapshot = false,
         )
-        // External channels keep their existing turn lifecycle; collaboration is opt-out for the whole turn.
-        val collaboration = collaboration.takeIf { conversation.externalChannel == null }
-        val collaborationRequests = if (collaboration != null && task.actorUserId != null)
-            collaboration.context(AgentAddress(conversation.id, payload.agentDefinitionId), requireNotNull(task.actorUserId)) else emptyList()
-        val toolSelection = aiToolRuntimeCatalogService.selectTools(
-            agent = context.agent,
-            catalog = context.toolCatalog,
-            messages = currentMessages,
-            memoryEnabled = context.automaticMemoryRememberEnabled || context.automaticMemoryRecallEnabled,
-        )
-
-        var runtimeRequest = AiRuntimeRequest(
-            systemPrompts = buildList {
-                addAll(context.runtimeSystemPrompts)
-                if (collaboration != null) add(collaboration.prompt(AgentAddress(conversation.id, payload.agentDefinitionId), collaborationRequests))
-                toolSelection.unavailableToolsSystemPrompt()?.let(::add)
-            },
-            messages = runtimeMessages,
-            tools = toolSelection.tools,
-            options = AiRuntimeOptions(
-                maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,
-                toolAccess = context.agent.toolAccess,
-                reasoning = context.agent.runtimeOverrides.reasoning,
-                toolChoice = AiToolChoice.Auto,
-                responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(
-                    context.assistantResponseFormat,
-                    includeSuggestedReplies = context.suggestedRepliesSettings.mode ==
-                        UserProfile.SuggestedRepliesSettings.Mode.INLINE,
-                ),
-                assistantResponseFormat = context.assistantResponseFormat,
-                toolContext = buildMap {
-                    put("aiCallDiagnosticId", diagnosticId)
-                    put(AI_ADMISSION_CONVERSATION_CONTEXT_KEY, conversationId.value)
-                    put(AI_ADMISSION_TASK_CONTEXT_KEY, task.id.value)
-                    put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
-                    put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
-                    put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
-                    put(TOOL_CONTEXT_PROJECT_ID, context.project.id.value)
-                    put(TOOL_CONTEXT_AGENT_DEFINITION_ID, payload.agentDefinitionId.value)
-                    task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
-                    put("aiProvider", context.provider.name)
-                    put("modelName", context.modelName)
-                },
-                usagePurpose = "CONVERSATION",
-            )
-        )
-
-        for (enricher in requestEnrichers) {
-            runtimeRequest = enricher.enrich(conversationId, payload.rootUserMessageId, task.turnId, context.modelSpec, runtimeRequest)
-        }
-        runtimeRequest = runtimeRequest.copy(messages = artifactService.materialize(conversationId, runtimeRequest.messages))
-        val unpinnedPrompts = runtimeRequest.systemPrompts
-        runtimeRequest = conversationPins.append(conversationId, runtimeRequest)
-        context.modelSpec.requireSupportsInputs(runtimeRequest.messages)
+        var runtimeRequest = assembledRequest.request
+        var currentMessages = assembledRequest.rawMessages
 
         val compacted = compactions.compactIfNeeded(task, conversation, context.agent, context.runtime, runtimeRequest,
             payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId),
-            promptScope = context.runtimeSystemPrompts, unpinnedPrompts = unpinnedPrompts) {
+            promptScope = context.runtimeSystemPrompts, unpinnedPrompts = assembledRequest.unpinnedPrompts) {
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             check(agentDomainService.findById(context.agent.id) == context.agent) { "Agent changed during compaction" }
         }
@@ -476,7 +489,7 @@ class ConversationEngineService(
 
         val generationStartedAt = Clock.System.now()
         log.debug {
-            "AI_TURN_TRACE call=$diagnosticId phase=request_ready messages=${runtimeMessages.size} " +
+            "AI_TURN_TRACE call=$diagnosticId phase=request_ready messages=${assembledRequest.runtimeMessageCount} " +
                 "tools=${runtimeRequest.tools.size} elapsedMs=${(System.nanoTime() - diagnosticStartedAt) / 1_000_000}"
         }
         val activeGeneration = ActiveGenerationSnapshot(
@@ -504,7 +517,7 @@ class ConversationEngineService(
                 throw e
             } catch (e: Exception) {
                 log.error(e) { "Chat call error" }
-                collaboration?.failRequest(payload.rootUserMessageId, "Recipient model call failed: ${e::class.simpleName}")
+                activeCollaboration?.failRequest(payload.rootUserMessageId, "Recipient model call failed: ${e::class.simpleName}")
                 if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
                     throw e
                 }
@@ -576,7 +589,7 @@ class ConversationEngineService(
             }
             currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
         }
-        if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && collaboration != null && responseReview != null) {
+        if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && activeCollaboration != null && responseReview != null) {
             val draft = responseReview.prepare(task, payload, conversation, currentMessages, mappedAssistantMessages)
             if (draft != null) return ConversationRuntimeTaskOutcome.Continue(
                 ConversationRuntimeTask(
@@ -640,7 +653,8 @@ class ConversationEngineService(
             return failAgentTurn(payload.rootUserMessageId, ConversationRuntimeCompletion.Reason.MODEL_REFUSED)
         }
         conversation = afterCommittedModelResponse(task, executor, conversation, context,
-            runtimeRequest.copy(systemPrompts = unpinnedPrompts, messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages))
+            runtimeRequest.copy(systemPrompts = assembledRequest.unpinnedPrompts,
+                messages = (if (nativeCheckpoints.isEmpty()) runtimeRequest.messages else currentMessages) + assistantMessages))
         // A model-only answer has no tool-result step. Do not strand human steering until a new turn.
         // If the model returned tool calls, keep their call/result pairs intact and use the existing tool boundary.
         if (allToolCalls.isEmpty()) {
@@ -1265,6 +1279,98 @@ class ConversationEngineService(
             }
             append("</system-reminder>")
         }
+
+    private data class RuntimeRequestAssembly(
+        val request: AiRuntimeRequest,
+        val unpinnedPrompts: List<String>,
+        val runtimeMessageCount: Int,
+        val rawMessages: List<Conversation.Message>,
+    )
+
+    private suspend fun assembleRuntimeRequest(
+        task: ConversationRuntimeTask,
+        conversation: Conversation,
+        context: ConversationRuntimeStepContext,
+        rootUserMessageId: Conversation.Message.Id?,
+        diagnosticId: String,
+        readOnlySnapshot: Boolean,
+    ): RuntimeRequestAssembly {
+        // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
+        val currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
+        val runtimeMessages = stickyMessageInstructionService.materialize(
+            messages = messageTemporalContextService.enrich(
+                messages = currentMessages,
+                enabled = context.includeMessageTemporalContext,
+            ),
+            groups = settingsProvider.userProfile.messageInstructionGroups,
+        )
+        val targetMessageId = rootUserMessageId
+            ?: currentMessages.lastOrNull { it.role == Conversation.Message.Role.USER }?.id
+            ?: Conversation.Message.Id("history-mutation-reprepare:${task.id.value}")
+        // External channels keep their existing turn lifecycle; collaboration is opt-out for the whole turn.
+        val activeCollaboration = collaboration.takeIf { conversation.externalChannel == null }
+        val address = AgentAddress(conversation.id, context.agent.id)
+        val collaborationRequests = if (activeCollaboration != null && task.actorUserId != null) {
+            activeCollaboration.context(address, requireNotNull(task.actorUserId))
+        } else emptyList()
+        val toolSelection = aiToolRuntimeCatalogService.selectTools(
+            agent = context.agent,
+            catalog = context.toolCatalog,
+            messages = currentMessages,
+            memoryEnabled = context.automaticMemoryRememberEnabled || context.automaticMemoryRecallEnabled,
+        )
+        var request = AiRuntimeRequest(
+            systemPrompts = buildList {
+                addAll(context.runtimeSystemPrompts)
+                if (activeCollaboration != null) add(activeCollaboration.prompt(address, collaborationRequests))
+                toolSelection.unavailableToolsSystemPrompt()?.let(::add)
+            },
+            messages = runtimeMessages,
+            tools = toolSelection.tools,
+            options = AiRuntimeOptions(
+                maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,
+                toolAccess = context.agent.toolAccess,
+                reasoning = context.agent.runtimeOverrides.reasoning,
+                toolChoice = AiToolChoice.Auto,
+                responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(
+                    context.assistantResponseFormat,
+                    includeSuggestedReplies = context.suggestedRepliesSettings.mode ==
+                        UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+                ),
+                assistantResponseFormat = context.assistantResponseFormat,
+                toolContext = buildMap {
+                    put("aiCallDiagnosticId", diagnosticId)
+                    put(AI_ADMISSION_CONVERSATION_CONTEXT_KEY, conversation.id.value)
+                    put(AI_ADMISSION_TASK_CONTEXT_KEY, task.id.value)
+                    put(TOOL_CONTEXT_CONVERSATION_ID, conversation.id.value)
+                    put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
+                    put(TOOL_CONTEXT_TARGET_MESSAGE_ID, targetMessageId.value)
+                    put(TOOL_CONTEXT_PROJECT_ID, context.project.id.value)
+                    put(TOOL_CONTEXT_AGENT_DEFINITION_ID, context.agent.id.value)
+                    task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
+                    put("aiProvider", context.provider.name)
+                    put("modelName", context.modelName)
+                },
+                usagePurpose = "CONVERSATION",
+            ),
+        )
+        for (enricher in requestEnrichers) {
+            request = if (readOnlySnapshot) {
+                enricher.enrichSnapshot(conversation.id, targetMessageId, task.turnId, context.modelSpec, request)
+            } else {
+                enricher.enrich(conversation.id, targetMessageId, task.turnId, context.modelSpec, request)
+            }
+        }
+        request = request.copy(messages = if (readOnlySnapshot) {
+            artifactService.materializeSnapshot(conversation.id, request.messages)
+        } else {
+            artifactService.materialize(conversation.id, request.messages)
+        })
+        val unpinnedPrompts = request.systemPrompts
+        request = conversationPins.append(conversation.id, request)
+        context.modelSpec.requireSupportsInputs(request.messages)
+        return RuntimeRequestAssembly(request, unpinnedPrompts, runtimeMessages.size, currentMessages)
+    }
 
     private data class ConversationRuntimeStepContext(
         val runtimeContext: RuntimeEnvironmentContext.ProjectBound,

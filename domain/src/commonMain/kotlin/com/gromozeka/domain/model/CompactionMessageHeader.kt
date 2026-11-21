@@ -18,7 +18,8 @@ data class CompactionCoverage(
     val invalidatedReplayMessageIds: List<Message.Id> = emptyList(),
 ) {
     constructor(result: ContextCompactionResult) : this(
-        result.coversAllPrevious, result.sourceMessageIds, result.payload is ContextCompactionResult.Payload.OpaqueProviderState,
+        result.coversAllPrevious, if (result.coversAllPrevious) emptyList() else result.sourceMessageIds,
+        result.payload is ContextCompactionResult.Payload.OpaqueProviderState,
         result.providerScope?.provider, result.invalidatedReplayMessageIds,
     )
 }

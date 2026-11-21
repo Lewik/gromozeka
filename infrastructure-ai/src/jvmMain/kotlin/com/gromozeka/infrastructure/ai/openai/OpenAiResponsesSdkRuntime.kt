@@ -359,7 +359,7 @@ internal class OpenAiResponsesMessageMapper(
                 origin = ContextCompactionResult.Origin.GROMOZEKA_POLICY,
                 strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
                 coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
-                sourceMessageIds = request.messages.map { it.id },
+                sourceBoundaryMessageId = request.messages.last().id,
                 providerScope = ContextCompactionResult.ProviderScope("OPENAI_API", connectionId, modelConfigurationId, modelName),
             )))),
             usage = response.usage().toAiUsage(), outcome = AiStepOutcome.CONTINUE, finishReason = "compaction",

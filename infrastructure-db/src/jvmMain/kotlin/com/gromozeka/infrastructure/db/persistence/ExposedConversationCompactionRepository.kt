@@ -49,6 +49,7 @@ class ExposedConversationCompactionRepository(
             val captured = requireNotNull(prepared.checkpoint).compactions().single()
             val actual = compactionMessage.compactions().single()
             check(captured.payload == actual.payload && captured.sourceMessageIds == actual.sourceMessageIds &&
+                captured.sourceBoundaryMessageId == actual.sourceBoundaryMessageId && captured.coverage == actual.coverage &&
                 captured.strategy == actual.strategy && captured.origin == actual.origin && captured.providerScope == actual.providerScope) {
                 "Prepared checkpoint does not match the committed compaction"
             }

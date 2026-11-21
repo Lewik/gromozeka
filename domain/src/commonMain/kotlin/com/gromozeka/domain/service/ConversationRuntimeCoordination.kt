@@ -89,6 +89,7 @@ data class ConversationRuntimeTask(
         @SerialName("history_mutation")
         data class HistoryMutation(
             val mutation: ConversationHistoryMutation,
+            val expectedThreadId: Conversation.Thread.Id? = null,
         ) : Payload
 
         @Serializable
@@ -919,6 +920,11 @@ data class ConversationRuntimeEventLogEntry(
 interface ConversationRuntimeCoordinator {
     suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean
     suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean
+    suspend fun cancelProactiveCompactionForHistoryMutation(conversationId: Conversation.Id): ProactiveCompaction?
+    suspend fun finishHistoryMutationReprepare(
+        expected: ProactiveCompaction,
+        activeMutationTaskId: ConversationRuntimeTask.Id,
+    ): Boolean
     suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction?
     suspend fun runningProactiveCompactions(): List<ProactiveCompaction>
 

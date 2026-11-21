@@ -173,7 +173,8 @@ class OpenAiResponsesCompactionTest {
             assertNull(compact.contextUsage)
             val stored = persist(compact)
             val checkpoint = stored.single().content.single() as Compaction
-            assertEquals(archive.map { it.id }, checkpoint.sourceMessageIds)
+            assertTrue(checkpoint.sourceMessageIds.isEmpty())
+            assertEquals(archive.last().id, checkpoint.sourceBoundaryMessageId)
             val result = runtime.call(request(archive + stored + text("continue")))
             assertEquals(AiStepOutcome.COMPLETE, result.outcome)
             assertEquals(listOf("/api/llm/responses/input_tokens", "/api/llm/responses/compact", "/api/llm/responses"), server.requests.map { it.target })
