@@ -37,6 +37,7 @@ class ConversationCompactionService internal constructor(
         conversation: Conversation,
         agent: AgentDefinition,
         promptScope: List<String>,
+        request: AiRuntimeRequest,
         beforeCommit: suspend () -> Unit,
     ): Conversation? {
         reconcileHistoryMutations(conversation.id)
@@ -48,14 +49,17 @@ class ConversationCompactionService internal constructor(
             return conversation
         }
         val sources = history.compactionHeaders(conversation.currentThread)
+        val scopedRequest = request.forPreparedPrefix(prepared, sources)
         val valid = prepared.agentId == agent.id && prepared.actorUserId == task.actorUserId &&
-            prepared.matches(conversation, sources)
+            prepared.matches(conversation, sources) && scopedRequest != null
         if (!valid) {
             preparations.finish(prepared, ProactiveCompaction.Status.DISCARDED)
             return null
         }
+        val currentRequest = requireNotNull(scopedRequest)
         val scope = try {
-            preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope)
+            preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope,
+                request = currentRequest)
         } catch (_: CompactionScopeChangedException) {
             preparations.finish(prepared, ProactiveCompaction.Status.DISCARDED)
             return null
@@ -66,7 +70,8 @@ class ConversationCompactionService internal constructor(
         }
         currentCoroutineContext().ensureActive()
         beforeCommit()
-        check(preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope) == prepared.scopeFingerprint) {
+        check(preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope,
+            request = currentRequest) == prepared.scopeFingerprint) {
             "Compaction scope changed before application"
         }
         check(runtimeCoordinator.proactiveCompaction(conversation.id) == prepared) { "Compaction preparation was cancelled or replaced" }
@@ -112,9 +117,11 @@ class ConversationCompactionService internal constructor(
             check(!(prepared.status == ProactiveCompaction.Status.FAILED && prepared.outcomeUnknown && occupied >= threshold)) {
                 "Compaction outcome is unknown; inspect it or use Stop to discard the preparation before a new request"
             }
+            val scopedRequest = request.forPreparedPrefix(prepared, sources)
             val valid = prepared.agentId == agent.id && prepared.actorUserId == task.actorUserId &&
                 prepared.matches(conversation, sources) &&
-                preparationScope.fingerprint(conversation, agent, prepared.actorUserId, promptScope) == prepared.scopeFingerprint
+                scopedRequest != null && preparationScope.fingerprint(conversation, agent, prepared.actorUserId,
+                    promptScope, request = scopedRequest) == prepared.scopeFingerprint
             if (!valid) {
                 preparations.finish(prepared, ProactiveCompaction.Status.DISCARDED)
                 prepared = null
@@ -130,7 +137,7 @@ class ConversationCompactionService internal constructor(
                 }
             }
             if (prepared?.status == ProactiveCompaction.Status.READY) {
-                applyPreparedIfReady(task, conversation, agent, promptScope, beforeCommit)?.let { return it }
+                applyPreparedIfReady(task, conversation, agent, promptScope, request, beforeCommit)?.let { return it }
                 prepared = runtimeCoordinator.proactiveCompaction(conversation.id)
             }
             if (prepared?.status == ProactiveCompaction.Status.FAILED && occupied >= threshold) {
@@ -203,7 +210,7 @@ class ConversationCompactionService internal constructor(
             options = request.options.copy(toolContext = request.options.toolContext +
                 ("threadId" to conversation.currentThread.value)),
         )
-        val signature = preparationScope.fingerprint(conversation, agent, actor, promptScope, pins)
+        val signature = preparationScope.fingerprint(conversation, agent, actor, promptScope, pins, captured)
         val preparation = ProactiveCompaction(
             id = "${task.id.value}:proactive-compaction", conversationId = conversation.id,
             sourceTaskId = task.id, sourceTurnId = task.turnId, executor = executor, agentId = agent.id, actorUserId = actor,
@@ -212,11 +219,15 @@ class ConversationCompactionService internal constructor(
             inputTokens = estimate, sourceCount = prefix.size, retainedCount = sources.size - prefix.size, createdAt = Clock.System.now(),
         )
         return preparations.start(preparation) {
-            if (preparationScope.fingerprint(conversation, agent, actor, promptScope) != signature) throw CompactionScopeChangedException()
+            if (preparationScope.fingerprint(conversation, agent, actor, promptScope, request = captured) != signature) {
+                throw CompactionScopeChangedException()
+            }
             val preparationRuntime = runtimes.getRuntime(agent.runtimeSelection, null)
             val checkpoint = generateCheckpoint(conversation, agent, preparationRuntime, captured, window, prefix,
                 Conversation.Message.Id(preparation.id), pins, Checkpoint.Origin.GROMOZEKA_POLICY)
-            if (preparationScope.fingerprint(conversation, agent, actor, promptScope) != signature) throw CompactionScopeChangedException()
+            if (preparationScope.fingerprint(conversation, agent, actor, promptScope, request = captured) != signature) {
+                throw CompactionScopeChangedException()
+            }
             checkpoint
         }
     }
@@ -320,6 +331,15 @@ class ConversationCompactionService internal constructor(
     private fun AiRuntimeRequest.forCompactionPrefix(prefix: List<CompactionMessageHeader>): AiRuntimeRequest {
         val ids = prefix.mapTo(hashSetOf()) { it.id }
         return copy(messages = messages.filter { it.id in ids })
+    }
+
+    private fun AiRuntimeRequest.forPreparedPrefix(
+        prepared: ProactiveCompaction,
+        sources: List<CompactionMessageHeader>,
+    ): AiRuntimeRequest? {
+        if (prepared.sourceCount > sources.size) return null
+        val prefix = sources.take(prepared.sourceCount)
+        return forCompactionPrefix(prefix).takeIf { it.messages.lastOrNull()?.id == prefix.lastOrNull()?.id }
     }
 
     private suspend fun inspectContext(resolved: ResolvedAiRuntime, runtime: AiRuntime, request: AiRuntimeRequest): AiContextInspection {

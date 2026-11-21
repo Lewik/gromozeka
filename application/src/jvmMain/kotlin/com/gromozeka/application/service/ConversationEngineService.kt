@@ -194,7 +194,15 @@ class ConversationEngineService(
         val conversation = requireNotNull(conversationService.findById(task.conversationId))
         requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor, readOnlySnapshot = true)
-        compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts) {
+        val assembled = assembleRuntimeRequest(
+            task = task,
+            conversation = conversation,
+            context = context,
+            rootUserMessageId = null,
+            diagnosticId = "${prepared.id}:apply",
+            readOnlySnapshot = true,
+        )
+        compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts, assembled.request) {
             ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
         }
         return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
@@ -207,7 +215,9 @@ class ConversationEngineService(
         context: ConversationRuntimeStepContext,
         request: AiRuntimeRequest,
     ): Conversation {
-        suspend fun apply() = compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts) {
+        suspend fun apply() = compactions.applyPreparedIfReady(
+            task, conversation, context.agent, context.runtimeSystemPrompts, request,
+        ) {
             ensureRuntimeTaskOwner(conversation.id, task.id, executor)
         }
         apply()?.let { return it }

@@ -1000,6 +1000,8 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.coordinator.finishIfIdle(conversation.id))
         assertEquals(completion, f.coordinator.snapshot(conversation.id).lastCompletion)
         assertTrue(f.requests.isEmpty()); assertTrue(f.preparations.isEmpty()); assertTrue(f.emitted.isEmpty())
+        assertEquals(1, f.applicationRequests.size)
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
         assertEquals(ProactiveCompaction.Status.APPLIED, f.coordinator.proactiveCompaction(conversation.id)?.status)
     }
 
@@ -1106,6 +1108,7 @@ class ConversationEngineDeliveryTest {
         var onApply: () -> Conversation? = { null }
         val compactionChecks = mutableListOf<Pair<AiRuntimeRequest, Boolean>>()
         val preparations = mutableListOf<AiRuntimeRequest>()
+        val applicationRequests = mutableListOf<AiRuntimeRequest>()
         var onPrepare: () -> Unit = {}
         private val compactions = responding<ConversationCompactionService> {
             if (it.method.name.startsWith("compactIfNeeded")) {
@@ -1113,6 +1116,7 @@ class ConversationEngineDeliveryTest {
                 compactionChecks += request to (it.arguments[5] as Boolean)
                 onCompact(request)
             } else if (it.method.name.startsWith("applyPreparedIfReady")) {
+                applicationRequests += it.arguments[4] as AiRuntimeRequest
                 onApply()
             } else if (it.method.name.startsWith("prepareAfterResponse")) {
                 onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; true

@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompac
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.repository.*
 import com.gromozeka.domain.service.*
+import com.gromozeka.domain.tool.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.serialization.json.*
@@ -35,7 +36,7 @@ class ProactiveCompactionTest {
                 f.service.prepareAfterResponse(f.task!!, f.executor, f.conversation, f.agent, activeRequest)
                 assertEquals(ProactiveCompaction.Status.READY, f.preparation().status)
                 f.messages += f.message("append", "arrived after capture")
-                assertNotNull(f.applyReady())
+                assertNotNull(f.applyReady(activeRequest.copy(messages = activeRequest.messages + f.messages.last())))
                 assertEquals("append", f.messages.last().id.value)
             } else {
                 f.inputTokens = 160_000
@@ -77,6 +78,39 @@ class ProactiveCompactionTest {
             assertNull(f.applyReady())
             assertEquals(1, f.generations)
             assertEquals(1, f.commits)
+        }
+    }
+
+    @Test fun `ready preparation is discarded when the enriched transport prefix changes`() = runBlocking {
+        Fixture().use { f ->
+            fun tool(name: String) = object : AiToolCallback {
+                override val definition = AiToolDefinition(name, "Synthetic $name", """{"type":"object"}""")
+                override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER)
+                override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+            }
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            f.generate = { started.complete(Unit); release.await(); "handoff" }
+            val initial = f.request().copy(
+                systemPrompts = f.prompts + "Development slots: no active lease",
+                tools = listOf(tool("inspect_state")),
+            )
+            f.startTurn()
+            assertTrue(f.service.prepareAfterResponse(
+                f.task!!, f.executor, f.conversation, f.agent, initial, promptScope = f.prompts,
+            ))
+            started.await()
+            val changed = initial.copy(
+                systemPrompts = f.prompts + "Development slots: active lease lease-7",
+                tools = initial.tools + tool("grz_slot_release"),
+            )
+            release.complete(Unit)
+            yield()
+            assertEquals(ProactiveCompaction.Status.READY, f.preparation().status)
+
+            assertNull(f.applyReady(changed))
+            assertEquals(ProactiveCompaction.Status.DISCARDED, f.preparation().status)
+            assertEquals(0, f.commits)
         }
     }
 
@@ -607,7 +641,8 @@ class ProactiveCompactionTest {
             task = assertNotNull(coordinator.claimDeliveredTask(conversation.id, application.id, executor, descriptor.capabilities, emptySet()))
             assertTrue(coordinator.markActiveTaskStarted(conversation.id, application.id, executor, now))
         }
-        suspend fun applyReady() = service.applyPreparedIfReady(task!!, conversation, agent, prompts) {
+        suspend fun applyReady(request: AiRuntimeRequest = request()) =
+            service.applyPreparedIfReady(task!!, conversation, agent, prompts, request) {
             check(coordinator.confirmActiveTaskOwner(conversation.id, task!!.id, executor))
         }
         suspend fun prepare() = service.prepareAfterResponse(task!!, executor, conversation, agent, request())

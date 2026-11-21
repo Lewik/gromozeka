@@ -23,7 +23,7 @@ class CompactionPreparationScope(
     suspend fun pinPrompts(conversation: Conversation) = pins.append(conversation.id, emptyList())
 
     suspend fun fingerprint(conversation: Conversation, agent: AgentDefinition, actorId: User.Id, prompts: List<String>,
-        capturedPins: List<String>? = null): String {
+        capturedPins: List<String>? = null, request: AiRuntimeRequest? = null): String {
         val current = requireNotNull(conversations.findById(conversation.id)) { "Compaction conversation is unavailable" }
         if (current.currentThread != conversation.currentThread || current.projectId != conversation.projectId) throw CompactionScopeChangedException()
         require(Conversation.Participant.User(actorId) in current.participants && Conversation.Participant.Agent(agent.id) in current.participants)
@@ -41,14 +41,88 @@ class CompactionPreparationScope(
                 workers.requireProjectAccess(worker, current.projectId)
             }
         }
+        val currentPins = capturedPins ?: pinPrompts(conversation)
         return compactionFingerprint(buildJsonObject {
             put("actor", actorId.value)
             put("agent", Json.encodeToJsonElement(agent))
             put("selected", Json.encodeToJsonElement(selected))
             put("compactor", Json.encodeToJsonElement(compactor))
             put("prompts", Json.encodeToJsonElement(prompts))
-            put("pins", Json.encodeToJsonElement(capturedPins ?: pinPrompts(conversation)))
+            put("pins", Json.encodeToJsonElement(currentPins))
+            request?.let {
+                put("request", compactionRequestFingerprint(
+                    request = it,
+                    nativeProvider = selected.connection.kind.nativeCompactionProvider(),
+                    pins = currentPins,
+                ))
+            }
         }.toString())
+    }
+}
+
+/** Model-visible request state that may change without mutating canonical history. */
+private fun compactionRequestFingerprint(
+    request: AiRuntimeRequest,
+    nativeProvider: String?,
+    pins: List<String>,
+): String {
+    val unpinnedPrompts = if (pins.isNotEmpty() && request.systemPrompts.takeLast(pins.size) == pins) {
+        request.systemPrompts.dropLast(pins.size)
+    } else request.systemPrompts
+    val messages = request.projectedMessages(nativeProvider)
+    val digest = MessageDigest.getInstance("SHA-256")
+    digest.updateFramed("compaction-request-v1")
+    digest.updateFramed("systemPrompts:${unpinnedPrompts.size}")
+    unpinnedPrompts.forEach(digest::updateFramed)
+    digest.updateFramed("messages:${messages.size}")
+    messages.forEach { digest.updateFramed(Json.encodeToString(it)) }
+    digest.updateFramed("tools:${request.tools.size}")
+    request.tools.forEach { digest.updateFramed(Json.encodeToString(it.definition)) }
+    digest.updateFramed(buildJsonObject {
+        request.options.maxOutputTokens?.let { put("maxOutputTokens", it) }
+            ?: put("maxOutputTokens", JsonNull)
+        put("reasoning", Json.encodeToJsonElement<AiReasoningConfig?>(request.options.reasoning))
+        put("toolChoice", request.options.toolChoice.fingerprintJson())
+        put("responseFormat", request.options.responseFormat.fingerprintJson())
+        put("assistantResponseFormat", request.options.assistantResponseFormat.name)
+        put("toolAccess", Json.encodeToJsonElement(request.options.toolAccess))
+    }.toString())
+    return digest.digest().toHexString()
+}
+
+private fun MessageDigest.updateFramed(value: String) {
+    val bytes = value.encodeToByteArray()
+    update(byteArrayOf(
+        (bytes.size ushr 24).toByte(),
+        (bytes.size ushr 16).toByte(),
+        (bytes.size ushr 8).toByte(),
+        bytes.size.toByte(),
+    ))
+    update(bytes)
+}
+
+private fun AiToolChoice.fingerprintJson(): JsonObject = buildJsonObject {
+    when (this@fingerprintJson) {
+        AiToolChoice.Auto -> put("type", "auto")
+        AiToolChoice.None -> put("type", "none")
+        AiToolChoice.RequiredAny -> put("type", "required_any")
+        is AiToolChoice.RequiredTool -> {
+            put("type", "required_tool")
+            put("name", name)
+        }
+    }
+}
+
+private fun AiResponseFormat.fingerprintJson(): JsonObject = buildJsonObject {
+    when (this@fingerprintJson) {
+        AiResponseFormat.Text -> put("type", "text")
+        is AiResponseFormat.JsonSchema -> {
+            put("type", "json_schema")
+            put("name", name)
+            description?.let { put("description", it) }
+            put("strict", strict)
+            put("schema", schema)
+        }
     }
 }
 
