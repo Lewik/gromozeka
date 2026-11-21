@@ -148,8 +148,17 @@ data class OpenAiSubscriptionCompletedResponse(
     val status: String? = null,
     val usage: OpenAiSubscriptionUsage? = null,
     val output: List<JsonObject> = emptyList(),
+    @SerialName("input_transformations")
+    val inputTransformations: List<OpenAiSubscriptionInputTransformation> = emptyList(),
     @SerialName("incomplete_details")
     val incompleteDetails: JsonObject? = null,
+)
+
+@Serializable
+data class OpenAiSubscriptionInputTransformation(
+    val action: String? = null,
+    val type: String? = null,
+    val reason: String? = null,
 )
 
 @Serializable

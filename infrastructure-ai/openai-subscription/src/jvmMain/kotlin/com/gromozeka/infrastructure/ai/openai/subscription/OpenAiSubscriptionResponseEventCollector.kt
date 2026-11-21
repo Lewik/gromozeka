@@ -65,6 +65,17 @@ internal class OpenAiSubscriptionResponseEventCollector(
 
             "response.completed", "response.incomplete" -> {
                 completed = envelope.response?.let(responseMapper::parseCompletedResponse)
+                completed?.inputTransformations.orEmpty().let { transformations ->
+                    val removedReasoning = transformations.removedReasoningLogSummary()
+                    when {
+                        removedReasoning != null -> log.warn(
+                            "OpenAI subscription retained reasoning removed: $removedReasoning"
+                        )
+                        transformations.isNotEmpty() -> log.debug(
+                            "OpenAI subscription input transformations received: count=${transformations.size}"
+                        )
+                    }
+                }
                 responseId = completed?.id ?: responseId
             }
 
@@ -110,3 +121,14 @@ internal class OpenAiSubscriptionResponseEventCollector(
             containsKey("message")
 
 }
+
+internal fun List<OpenAiSubscriptionInputTransformation>.removedReasoningLogSummary(): String? {
+    val removals = filter { it.action == "removed" && it.type == "reasoning" }
+    if (removals.isEmpty()) return null
+    val reasons = removals.groupingBy { transformation ->
+        transformation.reason?.takeIf { SAFE_TRANSFORMATION_REASON.matches(it) } ?: "unknown"
+    }.eachCount().toSortedMap()
+    return "count=${removals.size} reasons=${reasons.entries.joinToString(",") { (reason, count) -> "$reason:$count" }}"
+}
+
+private val SAFE_TRANSFORMATION_REASON = Regex("[a-zA-Z0-9_.-]{1,64}")
