@@ -1356,7 +1356,8 @@ class ConversationEngineService(
         )
         for (enricher in requestEnrichers) {
             request = if (readOnlySnapshot) {
-                enricher.enrichSnapshot(conversation.id, targetMessageId, task.turnId, context.modelSpec, request)
+                enricher.enrichCompactionSnapshot(
+                    conversation.id, targetMessageId, task.turnId, context.modelSpec, request)
             } else {
                 enricher.enrich(conversation.id, targetMessageId, task.turnId, context.modelSpec, request)
             }

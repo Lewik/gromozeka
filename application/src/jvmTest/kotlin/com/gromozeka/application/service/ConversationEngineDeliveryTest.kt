@@ -102,8 +102,13 @@ class ConversationEngineDeliveryTest {
             override val metadata = ServerToolMetadata
             override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
         }
+        val releaseTool = object : AiToolCallback {
+            override val definition = AiToolDefinition("grz_slot_release", "Release the held slot", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
         val f = Fixture(proactive = true, withEnricher = true, reasoningOverride = reasoning,
-            maxOutputTokens = 256, selectedTools = listOf(tool))
+            maxOutputTokens = 256, selectedTools = listOf(tool), compactionEnrichedTools = listOf(releaseTool))
         f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
         val source = f.begin()
         val preparation = ProactiveCompaction(
@@ -162,8 +167,9 @@ class ConversationEngineDeliveryTest {
         assertEquals("after-history-1", request.options.toolContext["threadId"])
         assertEquals(reasoning, request.options.reasoning)
         assertEquals(256, request.options.maxOutputTokens)
-        assertEquals(listOf("inspect_state"), request.tools.map { it.definition.name })
-        assertTrue("SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertEquals(listOf("inspect_state", "grz_slot_release"), request.tools.map { it.definition.name })
+        assertTrue("COMPACTION_SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertFalse("SNAPSHOT_ENRICHER" in request.systemPrompts)
         assertFalse("ENRICHER_LAST" in request.systemPrompts)
         assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it },
             "prepareAfterResponse owns the fresh pin snapshot")
@@ -1052,7 +1058,7 @@ class ConversationEngineDeliveryTest {
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
         realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null,
         reasoningOverride: AiReasoningConfig? = null, maxOutputTokens: Int? = null,
-        selectedTools: List<AiToolCallback> = emptyList()) {
+        selectedTools: List<AiToolCallback> = emptyList(), compactionEnrichedTools: List<AiToolCallback> = emptyList()) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -1262,6 +1268,12 @@ class ConversationEngineDeliveryTest {
                     override suspend fun enrichSnapshot(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
                         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
                         request.copy(systemPrompts = request.systemPrompts + "SNAPSHOT_ENRICHER")
+                    override suspend fun enrichCompactionSnapshot(conversationId: Conversation.Id,
+                        rootUserMessageId: Conversation.Message.Id, turnId: ConversationRuntimeTurnId,
+                        model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest = request.copy(
+                        systemPrompts = request.systemPrompts + "COMPACTION_SNAPSHOT_ENRICHER",
+                        tools = request.tools + compactionEnrichedTools,
+                    )
                 })
                 if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
             },
