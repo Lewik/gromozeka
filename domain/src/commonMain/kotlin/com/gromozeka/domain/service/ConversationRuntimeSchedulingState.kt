@@ -103,13 +103,9 @@ data class ConversationRuntimeSchedulingState(
             val cancelled = expected.cancelForHistoryMutation(updated.updatedAt)
             return changed(withUpdatedProactiveCompaction(cancelled), false)
         }
-        val finishesHistoryMutationReprepare = expected.status == ProactiveCompaction.Status.CANCELLED &&
-            expected.reprepareAfterHistoryMutation && updated.status == ProactiveCompaction.Status.CANCELLED &&
-            !updated.reprepareAfterHistoryMutation
         if (!expected.pending &&
             !(expected.status == ProactiveCompaction.Status.FAILED &&
-                updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED)) &&
-            !finishesHistoryMutationReprepare) {
+                updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED))) {
             return unchanged(expected == updated)
         }
         require(updated.status != ProactiveCompaction.Status.RUNNING || updated == expected)
@@ -121,6 +117,21 @@ data class ConversationRuntimeSchedulingState(
         val expected = proactiveCompaction?.takeIf { it.cancellable } ?: return unchanged(null)
         val cancelled = expected.cancelForHistoryMutation(now)
         return changed(withUpdatedProactiveCompaction(cancelled), cancelled)
+    }
+
+    fun finishHistoryMutationReprepare(
+        expected: ProactiveCompaction,
+        activeMutationTaskId: ConversationRuntimeTask.Id,
+        now: Instant,
+    ): ConversationRuntimeStateTransition<Boolean> {
+        require(expected.conversationId == conversationId && expected.status == ProactiveCompaction.Status.CANCELLED &&
+            expected.reprepareAfterHistoryMutation) { "Invalid history-mutation reprepare receipt" }
+        if (proactiveCompaction != expected) return unchanged(false)
+        if (activeTask?.id != activeMutationTaskId || activeTask.payload !is ConversationRuntimeTask.Payload.HistoryMutation) {
+            return unchanged(false)
+        }
+        if (hasHistoryMutationWork(excludingActiveTaskId = activeMutationTaskId)) return unchanged(false)
+        return changed(withUpdatedProactiveCompaction(expected.finishHistoryMutationReprepare(now)), true)
     }
 
     fun hasHistoryMutationWork(excludingActiveTaskId: ConversationRuntimeTask.Id? = null): Boolean =

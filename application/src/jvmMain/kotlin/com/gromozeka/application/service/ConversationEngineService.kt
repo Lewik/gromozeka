@@ -298,16 +298,8 @@ class ConversationEngineService(
             }
         }
         if (!started) {
-            val stillPending = runtimeCoordinator.schedulingSnapshot(task.conversationId).pendingTasks
-                .any { it.payload is ConversationRuntimeTask.Payload.HistoryMutation }
-            if (!stillPending && runtimeCoordinator.proactiveCompaction(task.conversationId) == expected) {
-                val cleared = runtimeCoordinator.updateProactiveCompaction(
-                    expected,
-                    expected.finishHistoryMutationReprepare(Clock.System.now()),
-                )
-                if (cleared) {
-                    runtimeStateSyncService.invalidate(task.conversationId)
-                }
+            if (runtimeCoordinator.finishHistoryMutationReprepare(expected, task.id)) {
+                runtimeStateSyncService.invalidate(task.conversationId)
             }
         }
     }

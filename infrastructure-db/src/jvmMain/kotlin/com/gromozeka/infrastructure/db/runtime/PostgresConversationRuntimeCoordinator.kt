@@ -111,6 +111,16 @@ class PostgresConversationRuntimeCoordinator(
             transition.result
         }
 
+    override suspend fun finishHistoryMutationReprepare(
+        expected: ProactiveCompaction,
+        activeMutationTaskId: ConversationRuntimeTask.Id,
+    ): Boolean = mutateRecord(expected.conversationId, createIfMissing = false) { record ->
+        val transition = record.scheduling.finishHistoryMutationReprepare(
+            expected, activeMutationTaskId, Clock.System.now())
+        if (transition.changed) { record.scheduling = transition.state; record.bumpRevision() }
+        transition.result
+    }
+
     override suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction? =
         readJson(conversationId, "SELECT scheduling -> 'proactiveCompaction' FROM conversation_runtime_records WHERE conversation_id = ?")
             ?.let { json.decodeFromString(it) }

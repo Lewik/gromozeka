@@ -132,35 +132,16 @@ class ProactiveCompactionTest {
             val started = CompletableDeferred<Unit>()
             val release = CompletableDeferred<Unit>()
             f.generate = {
-                withContext(NonCancellable) {
-                    started.complete(Unit)
-                    release.await()
-                    "stale"
-                }
+                if (f.generations == 1) withContext(NonCancellable) {
+                    started.complete(Unit); release.await(); "stale"
+                } else "fresh"
             }
             f.startTurn()
             assertTrue(f.prepare())
             started.await()
 
-            fun mutation(id: String) = ConversationRuntimeTask(
-                id = ConversationRuntimeTask.Id(id),
-                conversationId = f.conversation.id,
-                actorUserId = f.user.id,
-                payload = ConversationRuntimeTask.Payload.HistoryMutation(
-                    mutation = ConversationHistoryMutation.Delete(listOf(f.messages.first().id)),
-                    expectedThreadId = f.conversation.currentThread,
-                ),
-                placement = QueuedMessagePlacement.END_OF_TURN,
-                idempotencyKey = id,
-                requirements = ConversationRuntimeTaskRequirements(
-                    f.descriptor.capabilities,
-                    ConversationRuntimeTaskTarget.Server,
-                ),
-                createdAt = f.now,
-            )
-
-            val first = mutation("history-1")
-            val second = mutation("history-2")
+            val first = f.historyMutation("history-1")
+            val second = f.historyMutation("history-2")
             assertTrue(f.coordinator.submit(first))
             assertTrue(f.coordinator.submit(second))
             f.finishTurn()
@@ -173,10 +154,7 @@ class ProactiveCompactionTest {
             val cancelled = f.preparation()
             assertEquals(ProactiveCompaction.Status.CANCELLED, cancelled.status)
             assertTrue(cancelled.reprepareAfterHistoryMutation)
-            release.complete(Unit)
-            yield()
-            assertEquals(ProactiveCompaction.Status.CANCELLED, f.preparation().status)
-            assertFalse(f.prepare(), "The remaining mutation keeps the batch open")
+            assertFalse(f.prepare(), "The remaining mutation keeps the batch open while the old provider call is still unwinding")
 
             f.conversation = f.conversation.copy(currentThread = Conversation.Thread.Id("after-history-1"))
             assertTrue(f.coordinator.completeActiveTask(
@@ -191,9 +169,51 @@ class ProactiveCompactionTest {
             assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, second.id, f.executor, f.now))
 
             assertTrue(f.prepare(), "The last mutation may recheck the new history")
+            val fresh = f.preparation()
+            if (fresh.status == ProactiveCompaction.Status.RUNNING) f.jobs.await(fresh)
             assertEquals(ProactiveCompaction.Status.READY, f.preparation().status)
             assertFalse(f.preparation().reprepareAfterHistoryMutation)
             assertEquals(2, f.generations)
+            release.complete(Unit)
+            yield()
+            assertEquals(fresh.id, f.preparation().id, "The cancelled preparation cannot replace its successor")
+        }
+    }
+
+    @Test fun `history mutation reprepare marker clears only with no other mutation in the same transition`() = runBlocking {
+        Fixture().use { f ->
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            f.generate = { withContext(NonCancellable) { started.complete(Unit); release.await(); "stale" } }
+            f.startTurn()
+            assertTrue(f.prepare())
+            started.await()
+            val first = f.historyMutation("history-1")
+            val second = f.historyMutation("history-2")
+            assertTrue(f.coordinator.submit(first))
+            assertTrue(f.coordinator.submit(second))
+            f.finishTurn()
+            f.task = assertNotNull(f.coordinator.claimDeliveredTask(
+                f.conversation.id, first.id, f.executor, f.descriptor.capabilities, emptySet(),
+            ))
+            assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, first.id, f.executor, f.now))
+            val cancelled = assertNotNull(f.service.reconcileHistoryMutations(f.conversation.id))
+
+            assertFalse(f.coordinator.finishHistoryMutationReprepare(cancelled, first.id))
+            assertTrue(f.preparation().reprepareAfterHistoryMutation)
+            assertTrue(f.coordinator.completeActiveTask(
+                f.conversation.id, first.id, f.executor,
+                ConversationRuntimeTaskOutcome.HistoryChanged(ConversationHistoryMutationKind.DELETE),
+            ))
+            f.task = assertNotNull(f.coordinator.claimDeliveredTask(
+                f.conversation.id, second.id, f.executor, f.descriptor.capabilities, emptySet(),
+            ))
+            assertTrue(f.coordinator.markActiveTaskStarted(f.conversation.id, second.id, f.executor, f.now))
+
+            assertTrue(f.coordinator.finishHistoryMutationReprepare(cancelled, second.id))
+            assertFalse(f.preparation().reprepareAfterHistoryMutation)
+            release.complete(Unit)
+            Unit
         }
     }
 
@@ -553,6 +573,16 @@ class ProactiveCompactionTest {
             Mockito.mock(ConversationRuntimeEventBus::class.java), providers, jobs, access, ToolCallPairingService())
         fun message(id: String, text: String) = Conversation.Message(Conversation.Message.Id(id), conversation.id,
             role = Conversation.Message.Role.USER, content = listOf(ContentItem.UserMessage(text)), createdAt = now)
+        fun historyMutation(id: String) = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(id), conversationId = conversation.id, actorUserId = user.id,
+            payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                mutation = ConversationHistoryMutation.Delete(listOf(messages.first().id)),
+                expectedThreadId = conversation.currentThread,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id,
+            requirements = ConversationRuntimeTaskRequirements(descriptor.capabilities, ConversationRuntimeTaskTarget.Server),
+            createdAt = now,
+        )
         fun request() = AiRuntimeRequest(prompts, messages, options = AiRuntimeOptions(toolContext = mapOf(
             "conversationId" to conversation.id.value, "threadId" to conversation.currentThread.value, "userId" to user.id.value), usagePurpose = "CONVERSATION"))
         suspend fun startTurn(id: String = "source") {

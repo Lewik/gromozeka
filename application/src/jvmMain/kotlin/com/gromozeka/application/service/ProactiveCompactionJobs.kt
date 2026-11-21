@@ -89,10 +89,17 @@ class ProactiveCompactionJobs(
         running[conversationId]?.takeIf { expectedId == null || it.id == expectedId }?.job?.cancel()
     }
 
+    /** Durable cancellation fences late completion, so a replacement need not wait for provider unwind. */
+    private fun cancelAndRelease(conversationId: Conversation.Id, expectedId: String) {
+        val active = running[conversationId]?.takeIf { it.id == expectedId } ?: return
+        running.remove(conversationId, active)
+        active.job.cancel()
+    }
+
     internal suspend fun cancelForHistoryMutationIfNeeded(conversationId: Conversation.Id): ProactiveCompaction? {
         if (coordinator.proactiveCompaction(conversationId)?.cancellable != true) return null
         val cancelled = coordinator.cancelProactiveCompactionForHistoryMutation(conversationId) ?: return null
-        cancel(conversationId, cancelled.id)
+        cancelAndRelease(conversationId, cancelled.id)
         stateSync.invalidate(conversationId)
         log.info { "COMPACTION phase=cancelled id=${cancelled.id} reason=history_mutation" }
         return cancelled

@@ -202,6 +202,13 @@ class PostgresConversationRuntimeCoordinatorTest {
             assertEquals(com.gromozeka.domain.service.ProactiveCompaction.Status.CANCELLED, stored.status)
             assertTrue(stored.reprepareAfterHistoryMutation)
             assertEquals(listOf(mutation.id), restored.listPending(id).map { it.id })
+            assertTrue(restored.completeActiveTask(id, root.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+            kotlin.test.assertNotNull(restored.claimDeliveredTask(
+                id, mutation.id, executor, requirements.capabilities, emptySet(),
+            ))
+            assertTrue(restored.markActiveTaskStarted(id, mutation.id, executor, now))
+            assertTrue(restored.finishHistoryMutationReprepare(stored, mutation.id))
+            assertFalse(kotlin.test.assertNotNull(restored.proactiveCompaction(id)).reprepareAfterHistoryMutation)
         }
     }
 
