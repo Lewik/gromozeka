@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.ui.session
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -91,6 +92,40 @@ class ConversationTimelineTest {
             val group = assertIs<MessageSegment.ActivityGroup>(timeline.filterIsInstance<ConversationTimelineItem.Message>().last().entry.segment)
             assertNull(group.modelRequest)
         }
+    }
+
+    @Test fun attachmentOnlyUserInputIsAVisibleTurnBoundary() {
+        val request = modelRequestActivity(generation, runtime(), indicator, "Calling model")!!
+        val attachment = Conversation.Message.ContentItem.ArtifactItem(
+            Artifact.Reference(
+                id = Artifact.Id("attachment"),
+                fileName = "notes.txt",
+                mediaType = "text/plain",
+                sizeBytes = 1,
+                purpose = Artifact.Purpose.USER_ATTACHMENT,
+                kind = Artifact.Kind.DOCUMENT,
+            )
+        )
+        val attachmentMessage = Conversation.Message(
+            Conversation.Message.Id("attachment-only"),
+            conversation,
+            role = Conversation.Message.Role.USER,
+            content = listOf(attachment),
+            createdAt = now,
+        )
+        val activityEntries = entries()
+        val input = listOf(
+            activityEntries.first(),
+            MessageListEntry(attachmentMessage, MessageSegment.Content(0, attachment), true, true),
+        ) + activityEntries.drop(1)
+
+        val timeline = bindModelRequest(input, request)
+
+        assertIs<ConversationTimelineItem.ModelRequest>(timeline.last())
+        val group = assertIs<MessageSegment.ActivityGroup>(
+            assertIs<ConversationTimelineItem.Message>(timeline[timeline.lastIndex - 1]).entry.segment
+        )
+        assertNull(group.modelRequest)
     }
 
     @Test fun captionsShrinkFromTheRightWhileIconsKeepTheirSlots() {

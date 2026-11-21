@@ -74,9 +74,7 @@ internal fun bindModelRequest(
     }
     val rootIndex = request?.rootUserMessageId?.let { root -> entries.indexOfLast { it.message.id == root } } ?: -1
     val belongsToVisibleTurn = rootIndex >= 0 && entries.drop(rootIndex + 1).none {
-        it.message.role == Conversation.Message.Role.USER && it.message.content.any { content ->
-            content is Conversation.Message.ContentItem.UserMessage
-        }
+        it.message.role == Conversation.Message.Role.USER
     }
     val canAttach = request != null && request.owner != null && belongsToVisibleTurn && references.isNotEmpty() &&
         references.all { reference ->
