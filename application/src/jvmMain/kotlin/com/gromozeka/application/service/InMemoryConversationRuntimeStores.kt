@@ -94,6 +94,17 @@ class InMemoryConversationRuntimeCoordinator(
         transition.result
     }
 
+    override suspend fun cancelProactiveCompactionForHistoryMutation(conversationId: Conversation.Id): ProactiveCompaction? = mutex.withLock {
+        val current = schedulingByConversation[conversationId] ?: return@withLock null
+        val transition = current.cancelProactiveCompactionForHistoryMutation(Clock.System.now())
+        if (transition.changed) {
+            schedulingByConversation[conversationId] = transition.state
+            scheduleNextRunnableTaskIfReady(conversationId)
+            bumpRevision(conversationId)
+        }
+        transition.result
+    }
+
     override suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction? = mutex.withLock {
         schedulingByConversation[conversationId]?.proactiveCompaction
     }

@@ -61,6 +61,17 @@ new branch. Resolved user identities and pins can change on the same branch, so
 they are checked separately. The native request and text fallback use the same
 pin snapshot that preparation validates.
 
+Edit, delete and manual Compact tasks form a dynamic history-mutation batch in
+the serialized Runtime queue. Any active or queued mutation cancels a RUNNING or
+READY preparation, suppresses a new one, and removes its queued application task.
+After the last mutation attempt, Runtime measures the current branch once and may
+start a fresh preparation. Ordinary appends do not invalidate a captured prefix.
+Each queued mutation records the thread current when the user requested it; if an
+earlier copy-on-write mutation replaced that thread, the later request fails
+explicitly instead of being reinterpreted against different history. A message
+queued after a manual Compact is ordinary append work and therefore lands on the
+new thread when its Runtime task executes.
+
 Selection and commit read per-message headers (coverage, tool pairs, character
 counts and replay eligibility). Bodies are loaded for the selected input,
 including any originals needed to recover an incompatible opaque checkpoint.
@@ -108,6 +119,12 @@ preparations even when the foreground is idle. The owned inference coroutine is
 cancelled too. Late completion cannot replace CANCELLED with READY, and cancellation
 does not trigger an ordinary fallback. Stopping does not undo a history commit
 that already won the transaction race.
+
+History-mutation cancellation uses the same atomic receipt transition. The
+sequential task preflight is the normal cancellation point; the READY publication
+and application paths repeat the queue check as a cheap race guard. If application
+already won that race, the mutation's captured-thread check rejects the stale user
+operation without changing history.
 
 Applying a prepared result locks Runtime before Conversation. The READY check,
 COW history change and APPLIED receipt are one SQL transaction. Stop winning first

@@ -64,8 +64,9 @@ class ProactiveCompactionJobs(
         val entry = Running(preparation.id, job)
         if (running.putIfAbsent(preparation.conversationId, entry) != null) { job.cancel(); return false }
         try {
-            if (!coordinator.beginProactiveCompaction(preparation)) { job.cancel(); return false }
+            val accepted = coordinator.beginProactiveCompaction(preparation)
             stateSync.invalidate(preparation.conversationId)
+            if (!accepted) { job.cancel(); return false }
             job.start()
             return true
         } finally {
@@ -86,6 +87,15 @@ class ProactiveCompactionJobs(
     /** The coordinator marks cancellation first, so a late completion cannot become READY. */
     fun cancel(conversationId: Conversation.Id, expectedId: String? = null) {
         running[conversationId]?.takeIf { expectedId == null || it.id == expectedId }?.job?.cancel()
+    }
+
+    internal suspend fun cancelForHistoryMutationIfNeeded(conversationId: Conversation.Id): ProactiveCompaction? {
+        if (coordinator.proactiveCompaction(conversationId)?.cancellable != true) return null
+        val cancelled = coordinator.cancelProactiveCompactionForHistoryMutation(conversationId) ?: return null
+        cancel(conversationId, cancelled.id)
+        stateSync.invalidate(conversationId)
+        log.info { "COMPACTION phase=cancelled id=${cancelled.id} reason=history_mutation" }
+        return cancelled
     }
 
     @EventListener(ApplicationReadyEvent::class)

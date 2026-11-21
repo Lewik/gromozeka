@@ -71,6 +71,8 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -145,8 +147,9 @@ class ConversationEngineService(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
         emitMessage: suspend (Conversation.Message) -> Unit,
-    ): ConversationRuntimeTaskOutcome =
-        when (val payload = task.payload) {
+    ): ConversationRuntimeTaskOutcome {
+        compactions.reconcileHistoryMutations(task.conversationId)
+        return when (val payload = task.payload) {
             is ConversationRuntimeTask.Payload.PostMessage -> runPostMessageStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.AgentInvocation ->
                 runAgentInvocationStep(task, executor, payload, emitMessage)
@@ -176,6 +179,7 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ExecutionIncident ->
                 runExecutionIncidentStep(task, executor, payload, emitMessage)
         }
+    }
 
     private suspend fun runPreparedCompactionStep(
         task: ConversationRuntimeTask,
@@ -228,8 +232,21 @@ class ConversationEngineService(
     ): ConversationRuntimeTaskOutcome {
         ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
         requireActorConnected(task)
-        historyMutationExecutor.execute(task.conversationId, payload.mutation, task) {
-            ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        try {
+            historyMutationExecutor.execute(
+                conversationId = task.conversationId,
+                mutation = payload.mutation,
+                expectedThreadId = requireNotNull(payload.expectedThreadId) {
+                    "Conversation history mutation has no expected thread; repeat the operation"
+                },
+                task = task,
+            ) {
+                ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+            }
+        } finally {
+            if (currentCoroutineContext().isActive) {
+                reprepareAfterHistoryMutationsIfReady(task, executor)
+            }
         }
         val kind = when (payload.mutation) {
             is ConversationHistoryMutation.Edit -> ConversationHistoryMutationKind.EDIT
@@ -237,6 +254,70 @@ class ConversationEngineService(
             is ConversationHistoryMutation.Compact -> ConversationHistoryMutationKind.COMPACT
         }
         return ConversationRuntimeTaskOutcome.HistoryChanged(kind)
+    }
+
+    private suspend fun reprepareAfterHistoryMutationsIfReady(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+    ) {
+        val expected = runtimeCoordinator.proactiveCompaction(task.conversationId)
+            ?.takeIf { it.status == ProactiveCompaction.Status.CANCELLED && it.reprepareAfterHistoryMutation }
+            ?: return
+        val pendingMutation = runtimeCoordinator.schedulingSnapshot(task.conversationId).pendingTasks
+            .any { it.payload is ConversationRuntimeTask.Payload.HistoryMutation }
+        if (pendingMutation) return
+
+        var started = false
+        try {
+            if (task.actorUserId == expected.actorUserId) {
+                val conversation = requireNotNull(conversationService.findById(task.conversationId))
+                val context = buildConversationRuntimeContext(expected.agentId, conversation, executor)
+                val request = AiRuntimeRequest(
+                    systemPrompts = context.runtimeSystemPrompts,
+                    messages = loadRuntimeMessages(conversation, context.connectionKind),
+                    options = AiRuntimeOptions(
+                        usagePurpose = "CONVERSATION",
+                        toolContext = buildMap {
+                            put(TOOL_CONTEXT_CONVERSATION_ID, conversation.id.value)
+                            put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
+                            put(TOOL_CONTEXT_PROJECT_ID, conversation.projectId.value)
+                            put(TOOL_CONTEXT_AGENT_DEFINITION_ID, context.agent.id.value)
+                            put(TOOL_CONTEXT_USER_ID, expected.actorUserId.value)
+                            put(AI_ADMISSION_CONVERSATION_CONTEXT_KEY, conversation.id.value)
+                            put(AI_ADMISSION_TASK_CONTEXT_KEY, task.id.value)
+                        },
+                    ),
+                )
+                started = compactions.prepareAfterResponse(
+                    task = task,
+                    executor = executor,
+                    conversation = conversation,
+                    agent = context.agent,
+                    request = request,
+                    promptScope = context.runtimeSystemPrompts,
+                )
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Proactive compaction recheck failed after history mutation: " +
+                    "conversation=${task.conversationId.value} task=${task.id.value} type=${error::class.simpleName}"
+            }
+        }
+        if (!started) {
+            val stillPending = runtimeCoordinator.schedulingSnapshot(task.conversationId).pendingTasks
+                .any { it.payload is ConversationRuntimeTask.Payload.HistoryMutation }
+            if (!stillPending && runtimeCoordinator.proactiveCompaction(task.conversationId) == expected) {
+                val cleared = runtimeCoordinator.updateProactiveCompaction(
+                    expected,
+                    expected.finishHistoryMutationReprepare(Clock.System.now()),
+                )
+                if (cleared) {
+                    runtimeStateSyncService.invalidate(task.conversationId)
+                }
+            }
+        }
     }
 
     private suspend fun runPostMessageStep(

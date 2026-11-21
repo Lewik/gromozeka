@@ -91,6 +91,65 @@ class ConversationEngineDeliveryTest {
         }
     }
 
+    @Test fun `history mutation batch rechecks proactive compaction once even when its last mutation is stale`() = runBlocking {
+        val f = Fixture(proactive = true)
+        val source = f.begin()
+        val preparation = ProactiveCompaction(
+            id = "stale-preparation",
+            conversationId = conversation.id,
+            sourceTaskId = source.id,
+            sourceTurnId = source.turnId,
+            executor = executor,
+            agentId = agentId,
+            actorUserId = user,
+            threadId = conversation.currentThread,
+            capturedMessageCount = 1,
+            historyFingerprint = "a".repeat(64),
+            scopeFingerprint = "b".repeat(64),
+            inputTokens = 600,
+            sourceCount = 1,
+            retainedCount = 0,
+            createdAt = now,
+        )
+        assertTrue(f.coordinator.beginProactiveCompaction(preparation))
+
+        fun mutation(id: String) = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(id),
+            conversationId = conversation.id,
+            actorUserId = user,
+            payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                mutation = ConversationHistoryMutation.Delete(listOf(Conversation.Message.Id("root"))),
+                expectedThreadId = conversation.currentThread,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = id,
+            requirements = requirements,
+            createdAt = now,
+        )
+
+        val first = mutation("history-1")
+        val second = mutation("history-2")
+        assertTrue(f.coordinator.submit(first))
+        assertTrue(f.coordinator.submit(second))
+        assertNotNull(f.coordinator.cancelProactiveCompactionForHistoryMutation(conversation.id))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, source.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+
+        f.claim(first)
+        val firstOutcome = f.engine.runRuntimeTask(first, executor) {}
+        assertIs<ConversationRuntimeTaskOutcome.HistoryChanged>(firstOutcome)
+        assertTrue(f.preparations.isEmpty(), "The second mutation keeps the batch open")
+        f.currentConversation = f.currentConversation.copy(currentThread = Conversation.Thread.Id("after-history-1"))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, first.id, executor, firstOutcome))
+
+        f.claim(second)
+        f.historyMutationFailure = IllegalStateException("stale mutation")
+        assertFailsWith<IllegalStateException> {
+            f.engine.runRuntimeTask(second, executor) {}
+        }
+        assertEquals(1, f.preparations.size)
+        assertEquals("after-history-1", f.preparations.single().options.toolContext["threadId"])
+    }
+
     @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
         val f = Fixture(proactive = true)
         val task = f.begin()
@@ -991,7 +1050,7 @@ class ConversationEngineDeliveryTest {
             } else if (it.method.name.startsWith("applyPreparedIfReady")) {
                 onApply()
             } else if (it.method.name.startsWith("prepareAfterResponse")) {
-                onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; Unit
+                onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; true
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
         val pins = ReadOnlyTestPins()
@@ -1000,6 +1059,7 @@ class ConversationEngineDeliveryTest {
         val requests = mutableListOf<AiRuntimeRequest>()
         var onCall: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { answer() }
         var onAppend: suspend (Conversation.Message) -> Unit = {}
+        var historyMutationFailure: Throwable? = null
         var allowFullHistoryLoad = true
         var backgroundBatch: BackgroundActivityCompletionApplicationService.Batch? = null
         val backgroundOrigins = TestBackgroundActivityOrigins()
@@ -1134,13 +1194,22 @@ class ConversationEngineDeliveryTest {
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
+        private val historyMutationExecutor = responding<ConversationRuntimeHistoryMutationExecutor> {
+            when (it.method.name.substringBefore('-')) {
+                "execute" -> {
+                    historyMutationFailure?.let { failure -> throw failure }
+                    currentConversation
+                }
+                else -> Mockito.RETURNS_DEFAULTS.answer(it)
+            }
+        }
         val engine = ConversationEngineService(
             aiRuntimeProvider = responding { runtime }, aiToolProvider = responding { emptyList<Any>() },
             agentDomainService = responding { invocation ->
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
             }, agentPromptAssemblyService = responding { emptyList<String>() },
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
-            conversationMessageAppender = appender, historyMutationExecutor = mock(), compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
+            conversationMessageAppender = appender, historyMutationExecutor = historyMutationExecutor, compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)
             },
             backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),

@@ -39,6 +39,7 @@ class ConversationCompactionService internal constructor(
         promptScope: List<String>,
         beforeCommit: suspend () -> Unit,
     ): Conversation? {
+        reconcileHistoryMutations(conversation.id)
         val prepared = runtimeCoordinator.proactiveCompaction(conversation.id)
             ?.takeIf { it.status == ProactiveCompaction.Status.READY } ?: return null
         if (history.contains(conversation.currentThread, Conversation.Message.Id(prepared.id))) {
@@ -171,11 +172,16 @@ class ConversationCompactionService internal constructor(
         agent: AgentDefinition,
         request: AiRuntimeRequest,
         promptScope: List<String> = request.systemPrompts,
-    ) {
+    ): Boolean {
+        if (hasHistoryMutationWork(conversation.id, excludingActiveTaskId = task.id)) {
+            val deferred = reconcileHistoryMutations(conversation.id)
+                ?: runtimeCoordinator.proactiveCompaction(conversation.id)
+            if (deferred?.reprepareAfterHistoryMutation == true) return false
+        }
         val resolved = configurations.resolveAiRuntime(agent.runtimeSelection)
-        val threshold = resolved.modelConfiguration.compaction.proactiveThresholdTokens ?: return
-        val actor = task.actorUserId ?: return
-        if (runtimeCoordinator.proactiveCompaction(conversation.id)?.cancellable == true) return
+        val threshold = resolved.modelConfiguration.compaction.proactiveThresholdTokens ?: return false
+        val actor = task.actorUserId ?: return false
+        if (runtimeCoordinator.proactiveCompaction(conversation.id)?.cancellable == true) return false
         // Use the active request window to trigger preparation. Fetch archived sources only when needed.
         val inspectionWindow = if (request.messages.isEmpty())
             history.getContextMessagesByThread(conversation.currentThread, resolved.connection.kind.nativeCompactionProvider()) else request.messages
@@ -183,16 +189,16 @@ class ConversationCompactionService internal constructor(
         val inspectionRequest = request.copy(systemPrompts = request.systemPrompts + pins, messages = textCompactions.materializeSnapshot(conversation.id, inspectionWindow))
         val estimate = AiContextMeasurement.portableInspection(resolved, inspectionRequest)?.inputTokens
             ?: AiRequestTokenEstimate.input(inspectionRequest.copy(messages = inspectionRequest.projectedMessages(resolved.connection.kind.nativeCompactionProvider())))
-        if (estimate < threshold) return
+        if (estimate < threshold) return false
         val sources = history.compactionHeaders(conversation.currentThread)
-        if (sources.isEmpty() || sources.any { it.streaming }) return
+        if (sources.isEmpty() || sources.any { it.streaming }) return false
         val captured = request.copy(systemPrompts = request.systemPrompts + pins, messages = emptyList(), options = request.options.copy(toolContext = request.options.toolContext +
             ("threadId" to conversation.currentThread.value)))
         val window = CompactionHistoryWindow(sources)
         val prefix = window.prefix(toolPairs)
         if (prefix.isEmpty()) {
             log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=only_retained_suffix" }
-            return
+            return false
         }
         val signature = preparationScope.fingerprint(conversation, agent, actor, promptScope, pins)
         val preparation = ProactiveCompaction(
@@ -202,7 +208,7 @@ class ConversationCompactionService internal constructor(
             capturedLastMessageId = sources.last().id, historyFingerprint = authorFingerprint(sources), scopeFingerprint = signature,
             inputTokens = estimate, sourceCount = prefix.size, retainedCount = sources.size - prefix.size, createdAt = Clock.System.now(),
         )
-        preparations.start(preparation) {
+        return preparations.start(preparation) {
             if (preparationScope.fingerprint(conversation, agent, actor, promptScope) != signature) throw CompactionScopeChangedException()
             val preparationRuntime = runtimes.getRuntime(agent.runtimeSelection, null)
             val checkpoint = generateCheckpoint(conversation, agent, preparationRuntime, captured, window, prefix,
@@ -210,6 +216,19 @@ class ConversationCompactionService internal constructor(
             if (preparationScope.fingerprint(conversation, agent, actor, promptScope) != signature) throw CompactionScopeChangedException()
             checkpoint
         }
+    }
+
+    internal suspend fun reconcileHistoryMutations(conversationId: Conversation.Id): ProactiveCompaction? =
+        preparations.cancelForHistoryMutationIfNeeded(conversationId)
+
+    private suspend fun hasHistoryMutationWork(
+        conversationId: Conversation.Id,
+        excludingActiveTaskId: ConversationRuntimeTask.Id? = null,
+    ): Boolean {
+        val snapshot = runtimeCoordinator.schedulingSnapshot(conversationId)
+        return snapshot.activeTask?.takeUnless { it.id == excludingActiveTaskId }
+            ?.payload is ConversationRuntimeTask.Payload.HistoryMutation ||
+            snapshot.pendingTasks.any { it.payload is ConversationRuntimeTask.Payload.HistoryMutation }
     }
 
     internal suspend fun generateRequestedCompact(

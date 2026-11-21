@@ -35,7 +35,13 @@ import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.ConversationHistoryMutation
+import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
+import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -524,6 +530,14 @@ class ManualCompactionServiceTest {
                 assertEquals(latest.id, checkpoint.sourceBoundaryMessageId)
             }
             if (strategy == SquashType.CONCATENATE) assertTrue(f.runtimeProvider.requests.isEmpty())
+
+            val queued = f.third.copy(
+                id = Conversation.Message.Id("queued-after-${strategy.name.lowercase()}"),
+                content = listOf(Conversation.Message.ContentItem.UserMessage("queued after compact")),
+            )
+            assertNotNull(f.historyService().appendRuntimeMessage(f.conversation.id, queued))
+            assertEquals(queued, f.threadMessages.messages(compacted.currentThread).last())
+            assertEquals(queued, ConversationContext(f.threadMessages.messages(compacted.currentThread)).messages().last())
         }
         for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
             val f = Fixture()
@@ -535,6 +549,40 @@ class ManualCompactionServiceTest {
             assertTrue(after.none { it.id == crossing.id })
             assertTrue(after.any { it.id == latest.id && it.content == latest.content })
         }
+    }
+
+    @Test fun `queued history mutation is stale after an earlier copy-on-write change`() = runBlocking {
+        val f = Fixture()
+        val history = f.historyService()
+        val initialThread = f.conversation.currentThread
+        val edited = assertNotNull(history.editRuntimeHistory(
+            f.conversation.id,
+            f.third.id,
+            listOf(Conversation.Message.ContentItem.UserMessage("first mutation")),
+        ))
+        val before = f.storageCounts()
+        val executor = ConversationRuntimeHistoryMutationExecutor(history, f.service())
+        val mutation = ConversationHistoryMutation.Delete(listOf(f.first.id))
+        val task = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("stale-history-mutation"),
+            conversationId = f.conversation.id,
+            actorUserId = User.Id("user"),
+            payload = ConversationRuntimeTask.Payload.HistoryMutation(mutation, initialThread),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "stale-history-mutation",
+            requirements = ConversationRuntimeTaskRequirements(
+                setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                ConversationRuntimeTaskTarget.Server,
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+        assertFailsWith<IllegalStateException> {
+            executor.execute(f.conversation.id, mutation, initialThread, task) {}
+        }
+        assertEquals(edited.currentThread, f.conversations.values.getValue(f.conversation.id).currentThread)
+        assertEquals(before, f.storageCounts())
+        assertTrue(f.runtimeProvider.requests.isEmpty())
     }
 
     @Test fun `full manual compaction with only the raw suffix fails explicitly without generation`() = runBlocking {
@@ -735,7 +783,7 @@ class ManualCompactionServiceTest {
                     batch: List<Conversation.Message>, at: kotlin.time.Instant): List<Conversation.Message> {
                     val linked = threadMessages.links.getValue(expectedThreadId).map { it.messageId }.toSet()
                     val appended = batch.filterNot { it.id in linked }
-                    appended.forEach { append(it) }
+                    appended.forEach { append(it, expectedThreadId) }
                     return appended
                 }
             },

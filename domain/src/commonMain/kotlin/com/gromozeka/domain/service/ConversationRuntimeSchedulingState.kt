@@ -81,27 +81,62 @@ data class ConversationRuntimeSchedulingState(
         if (proactiveCompaction?.cancellable == true || proactiveCompaction?.id == preparation.id) return unchanged(false)
         if (executionState?.controlState != ConversationExecutionState.ControlState.RUNNING ||
             !confirmActiveTaskOwner(preparation.sourceTaskId, preparation.executor)) return unchanged(false)
+        if (hasHistoryMutationWork(excludingActiveTaskId = preparation.sourceTaskId)) {
+            return changed(
+                withUpdatedProactiveCompaction(preparation.cancelForHistoryMutation(preparation.createdAt)),
+                false,
+            )
+        }
         return changed(copy(proactiveCompaction = preparation), true)
     }
 
     fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): ConversationRuntimeStateTransition<Boolean> {
         require(expected.conversationId == conversationId && updated.conversationId == conversationId && expected.id == updated.id)
         require(updated.copy(status = expected.status, checkpoint = expected.checkpoint, updatedAt = expected.updatedAt,
-            failureCode = expected.failureCode, outcomeUnknown = expected.outcomeUnknown) == expected) {
+            failureCode = expected.failureCode, outcomeUnknown = expected.outcomeUnknown,
+            reprepareAfterHistoryMutation = expected.reprepareAfterHistoryMutation) == expected) {
             "Compaction completion cannot change the captured input or owner"
         }
         if (proactiveCompaction != expected) return unchanged(false)
-        if (!expected.pending && !(expected.status == ProactiveCompaction.Status.FAILED && updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED))) {
+        if (updated.status == ProactiveCompaction.Status.READY &&
+            hasHistoryMutationWork(excludingActiveTaskId = expected.sourceTaskId)) {
+            val cancelled = expected.cancelForHistoryMutation(updated.updatedAt)
+            return changed(withUpdatedProactiveCompaction(cancelled), false)
+        }
+        val finishesHistoryMutationReprepare = expected.status == ProactiveCompaction.Status.CANCELLED &&
+            expected.reprepareAfterHistoryMutation && updated.status == ProactiveCompaction.Status.CANCELLED &&
+            !updated.reprepareAfterHistoryMutation
+        if (!expected.pending &&
+            !(expected.status == ProactiveCompaction.Status.FAILED &&
+                updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED)) &&
+            !finishesHistoryMutationReprepare) {
             return unchanged(expected == updated)
         }
         require(updated.status != ProactiveCompaction.Status.RUNNING || updated == expected)
+        return changed(withUpdatedProactiveCompaction(updated), true)
+    }
+
+    fun cancelProactiveCompactionForHistoryMutation(now: Instant): ConversationRuntimeStateTransition<ProactiveCompaction?> {
+        if (!hasHistoryMutationWork()) return unchanged(null)
+        val expected = proactiveCompaction?.takeIf { it.cancellable } ?: return unchanged(null)
+        val cancelled = expected.cancelForHistoryMutation(now)
+        return changed(withUpdatedProactiveCompaction(cancelled), cancelled)
+    }
+
+    fun hasHistoryMutationWork(excludingActiveTaskId: ConversationRuntimeTask.Id? = null): Boolean =
+        activeTask?.takeUnless { it.id == excludingActiveTaskId }?.payload is ConversationRuntimeTask.Payload.HistoryMutation ||
+            pendingTasks.any { it.payload is ConversationRuntimeTask.Payload.HistoryMutation }
+
+    private fun withUpdatedProactiveCompaction(updated: ProactiveCompaction): ConversationRuntimeSchedulingState {
         val application = updated.applicationTask()
         val pending = pendingTasks.filterNot { it.id == application.id }
-        return changed(copy(
+        return copy(
             proactiveCompaction = updated,
-            executionState = if (updated.status == ProactiveCompaction.Status.READY) executionState ?: idleRunningState(updated.updatedAt) else executionState,
+            executionState = if (updated.status == ProactiveCompaction.Status.READY) {
+                executionState ?: idleRunningState(updated.updatedAt)
+            } else executionState,
             pendingTasks = if (updated.status == ProactiveCompaction.Status.READY) listOf(application) + pending else pending,
-        ), true)
+        )
     }
 
     fun submit(

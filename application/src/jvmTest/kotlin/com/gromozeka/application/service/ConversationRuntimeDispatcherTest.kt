@@ -18,6 +18,7 @@ import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationExecutionState
+import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationHistoryMutation
 import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -60,6 +61,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 import kotlinx.serialization.json.JsonObject
 import org.springframework.beans.factory.ObjectProvider
+import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -706,6 +708,7 @@ class ConversationRuntimeDispatcherTest {
                         newContent = listOf(Conversation.Message.ContentItem.UserMessage("Edited")),
                     ),
                     actorUserId = User.Id("user-1"),
+                    expectedThreadId = Conversation.Thread.Id("thread-1"),
                 )
             )
             assertNull(withTimeoutOrNull(350) { harness.runner.awaitStarted() })
@@ -738,6 +741,7 @@ class ConversationRuntimeDispatcherTest {
         val historyService = ConversationHistoryRuntimeApplicationService(
             runtimeDispatcher = harness.dispatcher,
             runtimeCoordinator = harness.coordinator,
+            conversations = conversationDomainService(),
         )
         try {
             val taskId = ConversationRuntimeTask.Id("history-delete-1")
@@ -768,6 +772,7 @@ class ConversationRuntimeDispatcherTest {
         val historyService = ConversationHistoryRuntimeApplicationService(
             runtimeDispatcher = harness.dispatcher,
             runtimeCoordinator = harness.coordinator,
+            conversations = conversationDomainService(),
         )
         try {
             val taskId = ConversationRuntimeTask.Id("history-delete-retry-1")
@@ -779,6 +784,7 @@ class ConversationRuntimeDispatcherTest {
                         messageIds = listOf(Conversation.Message.Id("message-1")),
                     ),
                     actorUserId = User.Id("user-1"),
+                    expectedThreadId = Conversation.Thread.Id("thread-1"),
                 )
             )
             assertEquals(taskId, harness.runner.awaitStarted().id)
@@ -829,6 +835,7 @@ class ConversationRuntimeDispatcherTest {
         val ids = listOf(Conversation.Message.Id("message-1"))
         assertTrue(dispatcher.submitHistoryMutation(
             conversationId, taskId, ConversationHistoryMutation.Delete(ids), actorUser().id,
+            Conversation.Thread.Id("thread-1"),
         ))
         val descriptor = serverExecutorDescriptor(
             "history-race-test", setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
@@ -844,7 +851,7 @@ class ConversationRuntimeDispatcherTest {
         assertNull(delegate.findHistoryChanged(conversationId, taskId))
         publishAfterLookup = true
 
-        val history = ConversationHistoryRuntimeApplicationService(dispatcher, coordinator)
+        val history = ConversationHistoryRuntimeApplicationService(dispatcher, coordinator, conversationDomainService())
         withTimeout(TEST_EVENT_TIMEOUT_MS) {
             history.deleteMessages(actorUser(), taskId, conversationId, ids)
         }
@@ -858,10 +865,11 @@ class ConversationRuntimeDispatcherTest {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val dispatcher = ConversationRuntimeDispatcher(coordinator, InMemoryConversationRuntimeEventBus(),
             testConversationRuntimeStateSyncService(coordinator), acceptingArtifactReferenceValidator)
-        val history = ConversationHistoryRuntimeApplicationService(dispatcher, coordinator)
+        val history = ConversationHistoryRuntimeApplicationService(dispatcher, coordinator, conversationDomainService())
         val taskId = ConversationRuntimeTask.Id("history-publication-window")
         val ids = listOf(Conversation.Message.Id("message-1"))
-        assertTrue(dispatcher.submitHistoryMutation(conversationId, taskId, ConversationHistoryMutation.Delete(ids), actorUser().id))
+        assertTrue(dispatcher.submitHistoryMutation(conversationId, taskId, ConversationHistoryMutation.Delete(ids), actorUser().id,
+            Conversation.Thread.Id("thread-1")))
         val descriptor = serverExecutorDescriptor("history-test", setOf(ConversationRuntimeCapability.CONVERSATION_TURN))
         assertNotNull(coordinator.claimDeliveredTask(conversationId, taskId, descriptor.identity, descriptor.capabilities, emptySet()))
         assertTrue(coordinator.markActiveTaskStarted(conversationId, taskId, descriptor.identity, Clock.System.now()))
@@ -1684,6 +1692,25 @@ class ConversationRuntimeDispatcherTest {
         createdAt = Clock.System.now(),
         updatedAt = Clock.System.now(),
     )
+
+    private fun conversationDomainService(): ConversationDomainService =
+        Mockito.mock(ConversationDomainService::class.java).also { service ->
+            runBlocking {
+                Mockito.`when`(service.findById(conversationId)).thenReturn(
+                    Conversation(
+                        id = conversationId,
+                        projectId = Project.Id("project-1"),
+                        participants = setOf(
+                            Conversation.Participant.User(actorUser().id),
+                            Conversation.Participant.Agent(agentDefinitionId),
+                        ),
+                        currentThread = Conversation.Thread.Id("thread-1"),
+                        createdAt = Clock.System.now(),
+                        updatedAt = Clock.System.now(),
+                    )
+                )
+            }
+        }
 
     private fun runtimeAgentInvocationTask(
         userMessage: Conversation.Message,
