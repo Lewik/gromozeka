@@ -80,7 +80,8 @@ class OpenAiSubscriptionCompaction(
             messages = listOf(message.copy(content = listOf(checkpoint.copy(
                 payload = payload.copy(state = JsonObject(payload.state +
                     ("retained_input" to JsonArray(retainedInput)))),
-                sourceMessageIds = request.messages.map { it.id },
+                sourceMessageIds = emptyList(),
+                sourceBoundaryMessageId = request.messages.last().id,
                 origin = ContextCompactionResult.Origin.GROMOZEKA_POLICY,
             )))),
             contextUsage = null,

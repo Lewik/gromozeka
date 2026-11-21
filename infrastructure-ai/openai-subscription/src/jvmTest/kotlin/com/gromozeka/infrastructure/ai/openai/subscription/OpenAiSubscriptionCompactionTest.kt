@@ -69,6 +69,9 @@ class OpenAiSubscriptionCompactionTest {
             assertEquals(9_000, response.usage?.totalInputTokens)
             assertNull(response.contextUsage, "A byte estimate is not measured context usage")
             val checkpoint = persisted(response).single()
+            val compacted = checkpoint.content.single() as Checkpoint
+            assertTrue(compacted.sourceMessageIds.isEmpty())
+            assertEquals(request.messages.last().id, compacted.sourceBoundaryMessageId)
             val restored = Json.decodeFromString(Conversation.Message.serializer(),
                 Json.encodeToString(Conversation.Message.serializer(), checkpoint))
             val resumed = request.copy(messages = request.messages + restored)
