@@ -53,6 +53,17 @@ class ConversationCompactionServiceTest {
         assertEquals(0, f.textCompactionCalls)
     }
 
+    @Test fun `requested full compact uses detached native compaction and records user origin`() = runBlocking {
+        val f = Fixture(100, native = true)
+        val result = f.requestedCompact().content.single() as Checkpoint
+        assertEquals(1, f.nativeCalls)
+        assertEquals(0, f.textCompactionCalls + f.commits)
+        assertEquals(Checkpoint.Origin.USER_REQUESTED, result.origin)
+        assertEquals(Checkpoint.Coverage.ALL_PREVIOUS, result.coverage)
+        assertTrue(result.sourceMessageIds.isEmpty())
+        assertEquals(f.sources.dropLast(1).last().id, result.sourceBoundaryMessageId)
+    }
+
     @Test fun `native checkpoint cannot claim a boundary outside its captured input`() = runBlocking {
         for (id in listOf("missing", "retained")) {
             val f = Fixture(100, native = true)
@@ -337,6 +348,7 @@ class ConversationCompactionServiceTest {
         private val runtimeProvider = object : AiRuntimeProvider {
             override fun capabilities(selection: AiRuntimeSelection) = AiRuntimeCapabilities()
             override fun getRuntime(selection: AiRuntimeSelection, workspaceRootPath: String?): AiRuntime {
+                if (selection == this@Fixture.selection) return provider
                 assertEquals(counterResolved?.modelConfiguration?.id, selection.modelConfigurationId)
                 return object : AiRuntime {
                     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
@@ -373,5 +385,16 @@ class ConversationCompactionServiceTest {
             service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted, extraTokens) {
                 order += "owner"; owner()
             }
+        suspend fun requestedCompact(): Conversation.Message {
+            val window = CompactionHistoryWindow(sources.map(CompactionMessageHeader::from))
+            return service.generateRequestedCompact(
+                conversation = conversation,
+                agent = agent,
+                window = window,
+                prefix = window.prefix(ToolCallPairingService()),
+                checkpointId = Conversation.Message.Id("requested"),
+                requestContext = mapOf("userId" to "user"),
+            )
+        }
     }
 }

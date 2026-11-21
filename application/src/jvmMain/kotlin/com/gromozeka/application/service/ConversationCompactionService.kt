@@ -149,7 +149,8 @@ class ConversationCompactionService internal constructor(
         log.info { "COMPACTION phase=start id=${checkpointId.value} mode=blocking inputTokens=$occupied sources=${prefix.size} retained=${sources.size - prefix.size}" }
         val pins = preparationScope.pinPrompts(conversation)
         val scope = task.actorUserId?.let { preparationScope.fingerprint(conversation, agent, it, promptScope, pins) }
-        val message = generateCheckpoint(conversation, agent, runtime, request.copy(systemPrompts = unpinnedPrompts + pins), window, prefix, checkpointId, pins)
+        val message = generateCheckpoint(conversation, agent, runtime, request.copy(systemPrompts = unpinnedPrompts + pins),
+            window, prefix, checkpointId, pins, Checkpoint.Origin.GROMOZEKA_POLICY)
         currentCoroutineContext().ensureActive()
         beforeCommit()
         check(configurations.resolveAiRuntime(agent.runtimeSelection) == resolved) { "Model configuration changed during compaction" }
@@ -204,10 +205,45 @@ class ConversationCompactionService internal constructor(
         preparations.start(preparation) {
             if (preparationScope.fingerprint(conversation, agent, actor, promptScope) != signature) throw CompactionScopeChangedException()
             val preparationRuntime = runtimes.getRuntime(agent.runtimeSelection, null)
-            val checkpoint = generateCheckpoint(conversation, agent, preparationRuntime, captured, window, prefix, Conversation.Message.Id(preparation.id), pins)
+            val checkpoint = generateCheckpoint(conversation, agent, preparationRuntime, captured, window, prefix,
+                Conversation.Message.Id(preparation.id), pins, Checkpoint.Origin.GROMOZEKA_POLICY)
             if (preparationScope.fingerprint(conversation, agent, actor, promptScope) != signature) throw CompactionScopeChangedException()
             checkpoint
         }
+    }
+
+    internal suspend fun generateRequestedCompact(
+        conversation: Conversation,
+        agent: AgentDefinition,
+        window: CompactionHistoryWindow,
+        prefix: List<CompactionMessageHeader>,
+        checkpointId: Conversation.Message.Id,
+        requestContext: Map<String, Any?>,
+    ): Conversation.Message {
+        val pins = preparationScope.pinPrompts(conversation)
+        val request = AiRuntimeRequest(
+            systemPrompts = pins,
+            messages = emptyList(),
+            options = AiRuntimeOptions(
+                usagePurpose = "CONTEXT_COMPACTION",
+                toolContext = requestContext + mapOf(
+                    "conversationId" to conversation.id.value,
+                    "threadId" to conversation.currentThread.value,
+                    "projectId" to conversation.projectId.value,
+                ),
+            ),
+        )
+        return generateCheckpoint(
+            conversation = conversation,
+            agent = agent,
+            runtime = runtimes.getRuntime(agent.runtimeSelection, workspaceRootPath = null),
+            request = request,
+            window = window,
+            prefix = prefix,
+            checkpointId = checkpointId,
+            pins = pins,
+            origin = Checkpoint.Origin.USER_REQUESTED,
+        )
     }
 
     private suspend fun generateCheckpoint(
@@ -219,6 +255,7 @@ class ConversationCompactionService internal constructor(
         prefix: List<CompactionMessageHeader>,
         checkpointId: Conversation.Message.Id,
         pins: List<String>,
+        origin: Checkpoint.Origin,
     ): Conversation.Message {
         val resolved = configurations.resolveAiRuntime(agent.runtimeSelection)
         val compactionContext = request.options.toolContext + ("aiCallDiagnosticId" to checkpointId.value)
@@ -241,7 +278,9 @@ class ConversationCompactionService internal constructor(
             check(mapped.size == 1 && mapped.single().content.singleOrNull() is Checkpoint) {
                 "Native compact-only operation must return exactly one checkpoint and no ordinary answer"
             }
-            return normalizeNative(mapped.single().copy(id = checkpointId), prefix, prefixRequest.messages.map { it.id })
+            val normalized = normalizeNative(mapped.single().copy(id = checkpointId), prefix, prefixRequest.messages.map { it.id })
+            val checkpoint = normalized.content.single() as Checkpoint
+            return normalized.copy(content = listOf(checkpoint.copy(origin = origin)))
         }
         // A live-session /compact cannot compact just an older prefix while retaining its suffix.
         // Use the configured text compaction model, not a speculative mutation of that session.
@@ -253,7 +292,7 @@ class ConversationCompactionService internal constructor(
             id = checkpointId, conversationId = conversation.id, role = Conversation.Message.Role.ASSISTANT,
             author = Conversation.Message.Author.Agent(agent.id, agent.name), createdAt = Clock.System.now(),
             content = listOf(Checkpoint(
-                payload = Checkpoint.Payload.ReadableSummary(generated.text), origin = Checkpoint.Origin.GROMOZEKA_POLICY,
+                payload = Checkpoint.Payload.ReadableSummary(generated.text), origin = origin,
                 strategy = Checkpoint.Strategy.COMPACT, sourceBoundaryMessageId = prefix.last().id,
                 coverage = Checkpoint.Coverage.ALL_PREVIOUS, providerScope = generated.providerScope,
                 promptTemplate = generated.promptTemplate,

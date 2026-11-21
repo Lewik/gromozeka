@@ -323,7 +323,6 @@ class ManualCompactionServiceTest {
                     val target = if (forked) fixture.historyService().fork(partial.id) else partial
                     val targetHistory = fixture.threadMessages.messages(target.currentThread)
                     val targetIds = targetHistory.map { it.id }
-                    val protectedIds = ConversationContext(targetHistory).protectedMessageIds()
                     assertTrue(targetHistory.flatMap { it.compactions() }.flatMap { it.sourceMessageIds }.all { it in targetIds }, message = case)
                     val updated = service.compactRuntimeHistory(target.id, targetIds, strategy)
 
@@ -352,8 +351,12 @@ class ManualCompactionServiceTest {
 
                     val history = fixture.threadMessages.messages(updated.currentThread)
                     assertEquals(targetHistory, history.dropLast(1), message = case)
-                    assertEquals(targetIds, history.last().compactions().single().sourceMessageIds, message = case)
-                    assertEquals(protectedIds, ConversationContext(history).protectedMessageIds(), message = case)
+                    val checkpoint = history.last().compactions().single()
+                    assertTrue(checkpoint.sourceMessageIds.isEmpty(), message = case)
+                    assertEquals(targetIds.last(), checkpoint.sourceBoundaryMessageId, message = case)
+                    assertEquals(Compaction.Coverage.ALL_PREVIOUS, checkpoint.coverage, message = case)
+                    assertEquals(Compaction.Origin.USER_REQUESTED, checkpoint.origin, message = case)
+                    assertTrue(targetIds.all { it in ConversationContext(history).protectedMessageIds() }, message = case)
                     assertEquals(listOf(history.last()), ConversationContext(history).messages(), message = case)
                     assertEquals(targetHistory, fixture.threadMessages.messages(target.currentThread), message = case)
                     assertEquals(original, fixture.threadMessages.messages(fixture.initialThread.id), message = case)
@@ -368,7 +371,11 @@ class ManualCompactionServiceTest {
                     assertEquals(1, Regex("AI compacted text").findAll(repeatedText).count(), message = case)
                     assertFalse(repeatedText.contains("raw output"), message = case)
                     assertFalse(repeatedText.contains("Keep this decision"), message = case)
-                    assertEquals(1, ConversationContext(fixture.threadMessages.messages(repeated.currentThread)).messages().size, message = case)
+                    val repeatedHistory = fixture.threadMessages.messages(repeated.currentThread)
+                    val repeatedCheckpoint = repeatedHistory.last().compactions().single()
+                    assertTrue(repeatedCheckpoint.sourceMessageIds.isEmpty(), message = case)
+                    assertEquals(history.last().id, repeatedCheckpoint.sourceBoundaryMessageId, message = case)
+                    assertEquals(1, ConversationContext(repeatedHistory).messages().size, message = case)
                     assertEquals(history, fixture.threadMessages.messages(updated.currentThread), message = case)
                     assertEquals(3, fixture.runtimeProvider.requests.size, message = case)
                 }
@@ -383,16 +390,19 @@ class ManualCompactionServiceTest {
             fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
         )
         val summaryId = fixture.threadMessages.messages(first.currentThread).last().id
+        val tail = fixture.third.copy(id = Conversation.Message.Id("tail"))
+        fixture.append(tail, first.currentThread)
         val second = fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(summaryId), SquashType.DISTILL)
         val before = fixture.threadMessages.messages(second.currentThread)
         val updated = fixture.historyService().editRuntimeHistory(
             fixture.conversation.id, fixture.third.id, listOf(Conversation.Message.ContentItem.UserMessage("Changed decision")),
         )!!
         val after = fixture.threadMessages.messages(updated.currentThread)
-        assertEquals(3, after.size)
+        assertEquals(4, after.size)
         assertTrue(after.all { it.compactions().isEmpty() })
         assertEquals(listOf(fixture.first, fixture.toolResult), after.take(2))
-        assertEquals(listOf(fixture.third.id), after.last().originalIds)
+        assertEquals(listOf(fixture.third.id), after[2].originalIds)
+        assertEquals(tail, after.last())
         assertEquals(before, fixture.threadMessages.messages(second.currentThread))
     }
 
@@ -492,8 +502,8 @@ class ManualCompactionServiceTest {
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
 
-    @Test fun `full manual compaction keeps whole recent messages while partial selection adds no suffix`() = runBlocking {
-        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
+    @Test fun `full compact keeps the recent suffix while full distill and concatenate consume all history`() = runBlocking {
+        for (strategy in SquashType.entries) {
             val f = Fixture()
             val crossing = f.third.copy(id = Conversation.Message.Id("crossing"), content = listOf(Conversation.Message.ContentItem.UserMessage("a".repeat(45_000))))
             val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
@@ -501,9 +511,25 @@ class ManualCompactionServiceTest {
             val all = f.threadMessages.messages(f.initialThread.id)
             val compacted = f.service().compactRuntimeHistory(f.conversation.id, all.map { it.id }, strategy)
             val active = ConversationContext(f.threadMessages.messages(compacted.currentThread)).messages()
-            assertEquals(3, active.size)
-            assertEquals(listOf(crossing, latest), active.takeLast(2))
-            assertEquals(all.take(3).map { it.id }, active.first().compactions().single().sourceMessageIds)
+            val checkpoint = active.first().compactions().single()
+            assertTrue(checkpoint.sourceMessageIds.isEmpty())
+            assertEquals(Compaction.Coverage.ALL_PREVIOUS, checkpoint.coverage)
+            assertEquals(Compaction.Origin.USER_REQUESTED, checkpoint.origin)
+            if (strategy == SquashType.COMPACT) {
+                assertEquals(3, active.size)
+                assertEquals(listOf(crossing, latest), active.takeLast(2))
+                assertEquals(all[2].id, checkpoint.sourceBoundaryMessageId)
+            } else {
+                assertEquals(listOf(active.first()), active)
+                assertEquals(latest.id, checkpoint.sourceBoundaryMessageId)
+            }
+            if (strategy == SquashType.CONCATENATE) assertTrue(f.runtimeProvider.requests.isEmpty())
+        }
+        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
+            val f = Fixture()
+            val crossing = f.third.copy(id = Conversation.Message.Id("crossing"), content = listOf(Conversation.Message.ContentItem.UserMessage("a".repeat(45_000))))
+            val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
+            f.append(crossing); f.append(latest)
             val selection = f.service().compactRuntimeHistory(f.conversation.id, listOf(crossing.id), strategy)
             val after = ConversationContext(f.threadMessages.messages(selection.currentThread)).messages()
             assertTrue(after.none { it.id == crossing.id })
@@ -627,26 +653,50 @@ class ManualCompactionServiceTest {
 
         fun service(): ManualCompactionService {
             val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
-                    if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
-                    else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
-                }
+                if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
+                else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
+            }
+            val agentService = Mockito.mock(com.gromozeka.domain.service.AgentDomainService::class.java) { invocation ->
+                if (invocation.method.name.startsWith("findById")) AgentDefinition(
+                    id = AgentDefinition.Id("agent"), name = "Agent", prompts = emptyList(),
+                    runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-config")),
+                    type = AgentDefinition.Type.Global, createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
+                ) else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
+            }
+            val conversationPins = ConversationPinnedPrompt(pins)
+            val textCompactions = CompactionTextService(
+                aiRuntimeProvider = runtimeProvider,
+                aiConfigurationProvider = configurationProvider,
+                artifacts = artifacts,
+                conversationPins = conversationPins,
+            )
+            val fullCompactions = ConversationCompactionService(
+                configurations = configurationProvider,
+                history = threadMessages,
+                textCompactions = textCompactions,
+                committer = committer,
+                runtimeCoordinator = mock(),
+                events = mock(),
+                runtimes = runtimeProvider,
+                preparations = mock(),
+                preparationScope = CompactionPreparationScope(
+                    conversations = conversations,
+                    agents = agentService,
+                    users = mock(),
+                    projects = mock(),
+                    workers = mock(),
+                    configurations = configurationProvider,
+                    pins = conversationPins,
+                ),
+                toolPairs = pairingService,
+            )
             return ManualCompactionService(
-                agents = Mockito.mock(com.gromozeka.domain.service.AgentDomainService::class.java) { invocation ->
-                    if (invocation.method.name.startsWith("findById")) AgentDefinition(
-                        id = AgentDefinition.Id("agent"), name = "Agent", prompts = emptyList(),
-                        runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-config")),
-                        type = AgentDefinition.Type.Global, createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
-                    ) else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
-                },
+                agents = agentService,
                 conversationRepository = conversations,
                 threadMessageRepository = threadMessages,
                 toolCallPairingService = pairingService,
-                textCompactions = CompactionTextService(
-                    aiRuntimeProvider = runtimeProvider,
-                    aiConfigurationProvider = configurationProvider,
-                    artifacts = artifacts,
-                    conversationPins = ConversationPinnedPrompt(pins),
-                ),
+                textCompactions = textCompactions,
+                fullCompactions = fullCompactions,
                 compactionCommitter = committer,
             )
         }
@@ -663,10 +713,10 @@ class ManualCompactionServiceTest {
             )),
         )
 
-        fun append(message: Conversation.Message) {
+        fun append(message: Conversation.Message, threadId: Conversation.Thread.Id = initialThread.id) {
             messages.values[message.id] = message
-            val links = threadMessages.links.getValue(initialThread.id)
-            links += ThreadMessageLink(initialThread.id, message.id, links.size)
+            val links = threadMessages.links.getValue(threadId)
+            links += ThreadMessageLink(threadId, message.id, links.size)
         }
 
         private inline fun <reified T> mock(): T = Mockito.mock(T::class.java)

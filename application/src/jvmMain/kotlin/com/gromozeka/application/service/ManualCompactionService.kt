@@ -1,9 +1,9 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageCompactionTextRenderer
 import com.gromozeka.domain.model.SquashType
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AgentDomainService
@@ -18,6 +18,7 @@ class ManualCompactionService internal constructor(
     private val threadMessageRepository: ThreadMessageRepository,
     private val toolCallPairingService: ToolCallPairingService,
     private val textCompactions: CompactionTextService,
+    private val fullCompactions: ConversationCompactionService,
     private val compactionCommitter: ContextCompactionCommitter,
 ) {
     private val log = KLoggers.logger(this)
@@ -46,7 +47,9 @@ class ManualCompactionService internal constructor(
         }
 
         val full = window.isFullSelection(requested)
-        val selection = if (full) window.prefix(toolCallPairingService) else {
+        val selection = if (full && strategy == SquashType.COMPACT) window.prefix(toolCallPairingService)
+        else if (full) headers
+        else {
             val paired = toolCallPairingService.includePairedHeaders(headers, requested)
             headers.filter { it.id in paired }
         }
@@ -55,54 +58,67 @@ class ManualCompactionService internal constructor(
         }
         require(selection.none { it.streaming }) { "Wait for selected messages to finish streaming before compaction" }
         log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$full sources=${selection.size} retained=${headers.size - selection.size}" }
-        val sourceMessageIds = selection.map { it.id }
-        val readableMessages = window.messages(threadMessageRepository, expectedThreadId, selection, null)
-
-        val generated = when (strategy) {
-            SquashType.CONCATENATE -> CompactionTextService.GeneratedCompaction(
-                text = MessageCompactionTextRenderer.render(readableMessages),
-                providerScope = null,
-                promptTemplate = null,
-            )
-
-            SquashType.DISTILL, SquashType.COMPACT -> textCompactions.generateWithAi(
+        val checkpoint = if (full && strategy == SquashType.COMPACT) {
+            fullCompactions.generateRequestedCompact(
                 conversation = conversation,
-                sourceMessages = readableMessages,
-                strategy = strategy,
-                currentSelection = currentSelection(conversation),
+                agent = currentAgent(conversation),
+                window = window,
+                prefix = selection,
+                checkpointId = checkpointId,
                 requestContext = requestContext,
+            )
+        } else {
+            val readableMessages = window.messages(threadMessageRepository, expectedThreadId, selection, null)
+            val generated = when (strategy) {
+                SquashType.CONCATENATE -> CompactionTextService.GeneratedCompaction(
+                    text = MessageCompactionTextRenderer.render(readableMessages),
+                    providerScope = null,
+                    promptTemplate = null,
+                )
+
+                SquashType.DISTILL, SquashType.COMPACT -> textCompactions.generateWithAi(
+                    conversation = conversation,
+                    sourceMessages = readableMessages,
+                    strategy = strategy,
+                    currentSelection = currentAgent(conversation).runtimeSelection,
+                    requestContext = requestContext,
+                )
+            }
+            val coverage = if (full) Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS
+                else Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES
+            val result = Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary(generated.text),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                strategy = strategy.toCompactionStrategy(),
+                sourceMessageIds = if (full) emptyList() else selection.map { it.id },
+                sourceBoundaryMessageId = if (full) selection.last().id else null,
+                coverage = coverage,
+                providerScope = generated.providerScope,
+                promptTemplate = generated.promptTemplate,
+            )
+            Conversation.Message(
+                id = checkpointId,
+                conversationId = conversationId,
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(result),
+                createdAt = kotlin.time.Clock.System.now(),
             )
         }
 
-        val result = Conversation.Message.ContentItem.ContextCompactionResult(
-            payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary(generated.text),
-            origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-            strategy = strategy.toCompactionStrategy(),
-            sourceMessageIds = sourceMessageIds,
-            coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
-            providerScope = generated.providerScope,
-            promptTemplate = generated.promptTemplate,
-        )
-
         kotlinx.coroutines.currentCoroutineContext().ensureActive()
         beforeCommit?.invoke()
-        return compactionCommitter.commit(expectedThreadId, Conversation.Message(
-            id = checkpointId,
-            conversationId = conversationId,
-            role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(result),
-            createdAt = kotlin.time.Clock.System.now(),
-        )).also { log.info { "COMPACTION phase=applied id=${checkpointId.value} mode=manual full=$full compactedChars=${generated.text.length}" } }
+        return compactionCommitter.commit(expectedThreadId, checkpoint)
+            .also { log.info { "COMPACTION phase=applied id=${checkpointId.value} mode=manual full=$full strategy=$strategy" } }
     }
 
-    private suspend fun currentSelection(conversation: Conversation): AiRuntimeSelection {
+    private suspend fun currentAgent(conversation: Conversation): AgentDefinition {
         val candidates = conversation.autoRespondAgentIds.ifEmpty {
             conversation.participants.filterIsInstance<Conversation.Participant.Agent>().map { it.agentDefinitionId }.toSet()
         }
         val agentId = requireNotNull(candidates.singleOrNull()) {
             "Manual compaction requires one auto-responding agent, or one connected agent"
         }
-        return requireNotNull(agents.findById(agentId)) { "Compaction agent no longer exists" }.runtimeSelection
+        return requireNotNull(agents.findById(agentId)) { "Compaction agent no longer exists" }
     }
 }
 
