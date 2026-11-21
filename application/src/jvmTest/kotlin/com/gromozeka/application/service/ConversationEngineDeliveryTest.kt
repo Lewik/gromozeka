@@ -107,8 +107,10 @@ class ConversationEngineDeliveryTest {
             override val metadata = ServerToolMetadata
             override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
         }
+        val capabilityPrompt = """<tool_source status="generating">inspect_state</tool_source>"""
         val f = Fixture(proactive = true, withEnricher = true, reasoningOverride = reasoning,
-            maxOutputTokens = 256, selectedTools = listOf(tool), compactionEnrichedTools = listOf(releaseTool))
+            maxOutputTokens = 256, selectedTools = listOf(tool), compactionEnrichedTools = listOf(releaseTool),
+            catalogTools = listOf(tool), capabilityCatalogPrompt = capabilityPrompt)
         f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
         val source = f.begin()
         val preparation = ProactiveCompaction(
@@ -169,11 +171,13 @@ class ConversationEngineDeliveryTest {
         assertEquals(256, request.options.maxOutputTokens)
         assertEquals(listOf("inspect_state", "grz_slot_release"), request.tools.map { it.definition.name })
         assertTrue("COMPACTION_SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertTrue(capabilityPrompt in request.systemPrompts)
         assertFalse("SNAPSHOT_ENRICHER" in request.systemPrompts)
         assertFalse("ENRICHER_LAST" in request.systemPrompts)
         assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it },
             "prepareAfterResponse owns the fresh pin snapshot")
         assertEquals(listOf("readSnapshot"), f.catalogOperations)
+        assertEquals(listOf("readOnlyPromptFor"), f.capabilityCatalogOperations)
     }
 
     @Test fun `manual compact task supplies the canonical detached request to its native generator`() = runBlocking {
@@ -1192,7 +1196,8 @@ class ConversationEngineDeliveryTest {
         realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null,
         reasoningOverride: AiReasoningConfig? = null, maxOutputTokens: Int? = null,
         selectedTools: List<AiToolCallback> = emptyList(), compactionEnrichedTools: List<AiToolCallback> = emptyList(),
-        assembledSystemPrompts: List<String> = emptyList()) {
+        assembledSystemPrompts: List<String> = emptyList(), catalogTools: List<AiToolCallback> = emptyList(),
+        capabilityCatalogPrompt: String? = null) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -1260,11 +1265,18 @@ class ConversationEngineDeliveryTest {
                 ConversationRuntimeToolRoutingResult.Accepted(calls.associate { call -> call.id.value to ConversationRuntimeTaskTarget.Server }, false)
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
-        private val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
+        private val catalog = DistributedAiToolCatalogSnapshot(catalogTools, emptyMap(), emptyList(), "revision", "environment")
         val catalogOperations = mutableListOf<String>()
         private val distributedCatalog = responding<DistributedAiToolCatalog> {
             it.method.name.substringBefore('-').also(catalogOperations::add)
             catalog
+        }
+        val capabilityCatalogOperations = mutableListOf<String>()
+        private val capabilityCatalog = responding<AiToolCapabilityCatalogService> {
+            when (val operation = it.method.name.substringBefore('-').also(capabilityCatalogOperations::add)) {
+                "promptFor", "readOnlyPromptFor", "cachedPromptFor" -> capabilityCatalogPrompt
+                else -> error("Unexpected capability catalog operation: $operation")
+            }
         }
         private val conversations = responding<ConversationDomainService> {
             when (it.method.name.substringBefore('-')) {
@@ -1393,7 +1405,7 @@ class ConversationEngineDeliveryTest {
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = distributedCatalog, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(selectedTools, emptyList()) },
-            aiToolCapabilityCatalogService = mock(), toolRoutingService = routing,
+            aiToolCapabilityCatalogService = capabilityCatalog, toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
             suggestedRepliesGenerationService = SuggestedRepliesGenerationService(

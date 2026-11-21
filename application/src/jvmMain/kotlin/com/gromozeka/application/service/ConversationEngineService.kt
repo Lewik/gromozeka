@@ -1468,7 +1468,11 @@ class ConversationEngineService(
         )
         val toolCatalog = agentSkillRuntime.toolCatalog
         val capabilityCatalogDefinitions = toolCatalog.tools.map(AiToolCallback::definition)
-        val toolCapabilityCatalogPrompt = aiToolCapabilityCatalogService.promptFor(capabilityCatalogDefinitions)
+        val toolCapabilityCatalogPrompt = if (readOnlySnapshot) {
+            aiToolCapabilityCatalogService.readOnlyPromptFor(capabilityCatalogDefinitions)
+        } else {
+            aiToolCapabilityCatalogService.promptFor(capabilityCatalogDefinitions)
+        }
         val memoryPipelineTools = aiToolProvider.getTools()
             .forMemoryPipeline(agent.toolAccess)
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)

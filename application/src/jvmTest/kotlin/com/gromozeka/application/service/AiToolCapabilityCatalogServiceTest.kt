@@ -207,6 +207,7 @@ class AiToolCapabilityCatalogServiceTest {
 
             assertContains(firstPrompt, """status="unavailable"""")
             assertEquals(firstPrompt, secondPrompt)
+            assertEquals(firstPrompt, service.readOnlyPromptFor(sampleTools()))
             assertEquals(0, calls.get())
         } finally {
             scope.cancel()
@@ -216,13 +217,24 @@ class AiToolCapabilityCatalogServiceTest {
     @Test
     fun `read-only catalog miss never starts generation or saves a placeholder`() = runBlocking {
         val repository = InMemoryCatalogRepository()
+        val calls = AtomicInteger()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val generator = AiToolCapabilityCatalogGenerator { _, _ -> error("Snapshot must not generate") }
+        val generator = AiToolCapabilityCatalogGenerator { source, fingerprint ->
+            calls.incrementAndGet()
+            catalog(source, fingerprint)
+        }
         try {
             assertFailsWith<ContextSnapshotUnavailableException> {
                 service(repository, generator, scope).cachedPromptFor(sampleTools())
             }
+            val service = service(repository, generator, scope)
+            val readOnly = service.readOnlyPromptFor(sampleTools())
+            assertContains(checkNotNull(readOnly), """status="generating"""")
+            assertEquals(0, calls.get())
             assertEquals(0, repository.saveCalls)
+
+            assertEquals(readOnly, service.promptFor(sampleTools()))
+            assertEquals(1, calls.get())
         } finally { scope.cancel() }
     }
 
@@ -236,6 +248,7 @@ class AiToolCapabilityCatalogServiceTest {
             val service = service(repository, AiToolCapabilityCatalogGenerator { _, _ -> error("Already cached") }, scope)
             val ordinary = service.promptFor(sampleTools())
             assertEquals(ordinary, service.cachedPromptFor(sampleTools()))
+            assertEquals(ordinary, service.readOnlyPromptFor(sampleTools()))
             assertEquals(1, repository.saveCalls) // Only fixture setup.
         } finally { scope.cancel() }
     }

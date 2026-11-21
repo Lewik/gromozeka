@@ -277,7 +277,17 @@ class AiToolCapabilityCatalogService(
     private val generationMutex = Mutex()
     private val generationJobs = mutableMapOf<String, Job>()
 
-    suspend fun promptFor(definitions: List<AiToolDefinition>): String? {
+    suspend fun promptFor(definitions: List<AiToolDefinition>): String? =
+        renderPrompt(definitions, startGeneration = true)
+
+    /** Render the same cache state as an ordinary request without starting background generation. */
+    suspend fun readOnlyPromptFor(definitions: List<AiToolDefinition>): String? =
+        renderPrompt(definitions, startGeneration = false)
+
+    private suspend fun renderPrompt(
+        definitions: List<AiToolDefinition>,
+        startGeneration: Boolean,
+    ): String? {
         val sources = resolveSources(definitions)
         if (sources.isEmpty()) {
             return null
@@ -289,7 +299,7 @@ class AiToolCapabilityCatalogService(
                 ?.let(::renderSourceCatalog)
                 ?: run {
                     if (generationAvailable) {
-                        ensureGenerationStarted(source, fingerprint)
+                        if (startGeneration) ensureGenerationStarted(source, fingerprint)
                         renderPendingSource(source, fingerprint)
                     } else {
                         renderUnavailableSource(source, fingerprint)
