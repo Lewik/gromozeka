@@ -185,6 +185,13 @@ class ConversationCompactionService internal constructor(
                 ?: runtimeCoordinator.proactiveCompaction(conversation.id)
             if (deferred?.reprepareAfterHistoryMutation == true) return false
         }
+        val hasOneUseContext = request.messages.any { message ->
+            message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
+        }
+        if (hasOneUseContext) {
+            log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=one_use_context" }
+            return false
+        }
         val resolved = configurations.resolveAiRuntime(agent.runtimeSelection)
         val threshold = resolved.modelConfiguration.compaction.proactiveThresholdTokens ?: return false
         val actor = task.actorUserId ?: return false
