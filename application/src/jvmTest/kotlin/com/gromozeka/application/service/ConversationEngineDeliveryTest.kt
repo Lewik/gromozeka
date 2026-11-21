@@ -173,6 +173,7 @@ class ConversationEngineDeliveryTest {
         assertFalse("ENRICHER_LAST" in request.systemPrompts)
         assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it },
             "prepareAfterResponse owns the fresh pin snapshot")
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
     }
 
     @Test fun `manual compact task supplies the canonical detached request to its native generator`() = runBlocking {
@@ -208,6 +209,7 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf("inspect_state", "grz_slot_release"), request.tools.map { it.definition.name })
         assertEquals(reasoning, request.options.reasoning)
         assertEquals(512, request.options.maxOutputTokens)
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
     }
 
     @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
@@ -1161,6 +1163,11 @@ class ConversationEngineDeliveryTest {
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
         private val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
+        val catalogOperations = mutableListOf<String>()
+        private val distributedCatalog = responding<DistributedAiToolCatalog> {
+            it.method.name.substringBefore('-').also(catalogOperations::add)
+            catalog
+        }
         private val conversations = responding<ConversationDomainService> {
             when (it.method.name.substringBefore('-')) {
                 "findById" -> currentConversation; "getProject" -> project
@@ -1286,7 +1293,7 @@ class ConversationEngineDeliveryTest {
             backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),
             toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { profile },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
-            distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
+            distributedToolCatalog = distributedCatalog, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(selectedTools, emptyList()) },
             aiToolCapabilityCatalogService = mock(), toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),

@@ -193,7 +193,7 @@ class ConversationEngineService(
         check(task.actorUserId == prepared.actorUserId) { "Compaction application actor changed" }
         val conversation = requireNotNull(conversationService.findById(task.conversationId))
         requireActorConnected(task, conversation)
-        val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor)
+        val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor, readOnlySnapshot = true)
         compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts) {
             ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
         }
@@ -241,7 +241,7 @@ class ConversationEngineService(
                 },
                 task = task,
                 nativeCompactRequest = { conversation, agent ->
-                    val context = buildConversationRuntimeContext(agent.id, conversation, executor)
+                    val context = buildConversationRuntimeContext(agent.id, conversation, executor, readOnlySnapshot = true)
                     val assembled = assembleRuntimeRequest(
                         task = task,
                         conversation = conversation,
@@ -283,7 +283,7 @@ class ConversationEngineService(
         try {
             if (task.actorUserId == expected.actorUserId) {
                 val conversation = requireNotNull(conversationService.findById(task.conversationId))
-                val context = buildConversationRuntimeContext(expected.agentId, conversation, executor)
+                val context = buildConversationRuntimeContext(expected.agentId, conversation, executor, readOnlySnapshot = true)
                 val assembledRequest = assembleRuntimeRequest(
                     task = task,
                     conversation = conversation,
@@ -1415,6 +1415,7 @@ class ConversationEngineService(
         agentDefinitionId: AgentDefinition.Id,
         conversation: Conversation,
         executor: ConversationRuntimeExecutorIdentity,
+        readOnlySnapshot: Boolean = false,
     ): ConversationRuntimeStepContext {
         val agent = agentDomainService.findById(agentDefinitionId)
             ?: throw IllegalStateException(
@@ -1447,7 +1448,11 @@ class ConversationEngineService(
             agent.runtimeSelection,
             null,
         )
-        val baseToolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess, conversation)
+        val baseToolCatalog = if (readOnlySnapshot) {
+            distributedToolCatalog.readSnapshot(project, agent.toolAccess, conversation)
+        } else {
+            distributedToolCatalog.snapshot(project, agent.toolAccess, conversation)
+        }
         val agentSkillRuntime = agentSkillRuntimeCatalogService.prepare(
             agent = agent,
             projectId = project.id,
