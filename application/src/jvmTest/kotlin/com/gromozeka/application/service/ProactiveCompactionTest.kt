@@ -42,7 +42,8 @@ class ProactiveCompactionTest {
             assertEquals(listOf(checkpoint.id, old.id), f.bodyReads)
             assertEquals(f.prompts + "new pin", f.nativeRequest!!.systemPrompts)
             val saved = f.messages[15_999].content.single() as Checkpoint
-            assertEquals((archive + checkpoint + old).map { it.id }, saved.sourceMessageIds)
+            assertTrue(saved.sourceMessageIds.isEmpty())
+            assertEquals(old.id, saved.sourceBoundaryMessageId)
             assertEquals(tail, f.messages[16_000])
         }
     }
@@ -202,7 +203,9 @@ class ProactiveCompactionTest {
             assertEquals(f.preparation().id, f.nativeRequest!!.options.toolContext["compactionTransportId"])
             assertEquals(f.conversation.id.value, f.nativeRequest!!.options.toolContext["conversationId"])
             assertNotNull(f.apply())
-            assertEquals(listOf("old"), (f.messages[1].content.single() as Checkpoint).sourceMessageIds.map { it.value })
+            val checkpoint = f.messages[1].content.single() as Checkpoint
+            assertTrue(checkpoint.sourceMessageIds.isEmpty())
+            assertEquals("old", checkpoint.sourceBoundaryMessageId?.value)
             assertEquals("tail", ConversationContext(f.messages).messages().last().id.value)
         }
     }
@@ -353,7 +356,7 @@ class ProactiveCompactionTest {
                 return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(Checkpoint(
                     Checkpoint.Payload.OpaqueProviderState(buildJsonObject { put("encrypted_content", "opaque") }),
                     Checkpoint.Origin.GROMOZEKA_POLICY, coverage = Checkpoint.Coverage.ALL_PREVIOUS,
-                    sourceMessageIds = request.messages.map { it.id }, providerScope = Checkpoint.ProviderScope("OPENAI_API"))))))
+                    sourceBoundaryMessageId = request.messages.last().id, providerScope = Checkpoint.ProviderScope("OPENAI_API"))))))
             }
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
                 generations++; summaryRequests += request
@@ -387,7 +390,10 @@ class ProactiveCompactionTest {
             override suspend fun commit(expectedThreadId: Conversation.Thread.Id, message: Conversation.Message, preparedCompactionId: String?): Conversation {
                 assertEquals(expectedThreadId, conversation.currentThread)
                 val checkpoint = message.content.single() as Checkpoint
-                val end = messages.indexOfLast { it.id in checkpoint.sourceMessageIds }
+                val end = if (checkpoint.coversAllPrevious) {
+                    messages.indexOfFirst { it.id == checkpoint.sourceBoundaryMessageId }
+                } else messages.indexOfLast { it.id in checkpoint.sourceMessageIds }
+                check(end >= 0)
                 messages = messages.take(end + 1) + message + messages.drop(end + 1)
                 conversation = conversation.copy(currentThread = Conversation.Thread.Id("compacted-${++commits}"))
                 inputTokens = 20_000

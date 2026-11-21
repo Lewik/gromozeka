@@ -360,6 +360,7 @@ class ConversationApplicationService(
                 content = message.content.map { item ->
                     if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
                         sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
+                        sourceBoundaryMessageId = item.sourceBoundaryMessageId?.let { messageIdMap[it] ?: it },
                         invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
                         historyTransition = null,
                     ) else item

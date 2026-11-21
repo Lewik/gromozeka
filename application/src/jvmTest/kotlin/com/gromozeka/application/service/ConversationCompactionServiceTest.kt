@@ -34,28 +34,29 @@ class ConversationCompactionServiceTest {
         assertEquals(listOf("inspect", "owner", "text-compact", "owner", "commit", "event"), f.order)
         assertEquals(f.sources.dropLast(1), f.compactedSources)
         val result = assertNotNull(f.committed).content.single() as Checkpoint
-        assertEquals(f.sources.dropLast(1).map { it.id }, result.sourceMessageIds)
+        assertTrue(result.sourceMessageIds.isEmpty())
+        assertEquals(f.sources.dropLast(1).last().id, result.sourceBoundaryMessageId)
         assertEquals(Checkpoint.Strategy.COMPACT, result.strategy)
-        assertEquals(Checkpoint.Coverage.SELECTED_MESSAGES, result.coverage)
+        assertEquals(Checkpoint.Coverage.ALL_PREVIOUS, result.coverage)
         assertEquals(Checkpoint.Origin.GROMOZEKA_POLICY, result.origin)
         assertEquals(0, f.nativeCalls)
     }
 
     @Test fun `native executor covers only its captured prefix and does not hide unseen appends`() = runBlocking {
         val f = Fixture(100, native = true)
-        f.nativeSourceIds = f.sources.take(2).map { it.id }
+        f.nativeBoundaryId = f.sources[1].id
         f.apply()
         val result = assertNotNull(f.committed).content.single() as Checkpoint
-        assertEquals(f.nativeSourceIds, result.sourceMessageIds)
-        assertFalse(f.sources.last().id in result.sourceMessageIds)
+        assertTrue(result.sourceMessageIds.isEmpty())
+        assertEquals(f.sources[1].id, result.sourceBoundaryMessageId)
         assertEquals(1, f.nativeCalls)
         assertEquals(0, f.textCompactionCalls)
     }
 
-    @Test fun `native checkpoint cannot claim a gapped or reordered provider prefix`() = runBlocking {
-        for (ids in listOf(listOf("m1", "m3"), listOf("m2", "m1"))) {
+    @Test fun `native checkpoint cannot claim a boundary outside its captured input`() = runBlocking {
+        for (id in listOf("missing", "retained")) {
             val f = Fixture(100, native = true)
-            f.nativeSourceIds = ids.map(Conversation.Message::Id)
+            f.nativeBoundaryId = Conversation.Message.Id(id)
             assertFailsWith<IllegalArgumentException> { f.apply() }
             assertEquals(0, f.commits)
             assertEquals(1, f.nativeCalls)
@@ -264,7 +265,7 @@ class ConversationCompactionServiceTest {
         var nativeCalls = 0
         var commits = 0
         var persisted = false
-        var nativeSourceIds = sources.dropLast(1).map { it.id }
+        var nativeBoundaryId = sources.dropLast(1).last().id
         var nativeFailure: Exception? = null
         var onTextCompaction: () -> Unit = {}
         var compactedSources: List<Conversation.Message>? = null
@@ -282,7 +283,7 @@ class ConversationCompactionServiceTest {
                 nativeFailure?.let { throw it }
                 return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(Checkpoint(
                     Checkpoint.Payload.OpaqueProviderState(JsonObject(mapOf("state" to JsonPrimitive("opaque")))),
-                    Checkpoint.Origin.GROMOZEKA_POLICY, sourceMessageIds = nativeSourceIds,
+                    Checkpoint.Origin.GROMOZEKA_POLICY, sourceBoundaryMessageId = nativeBoundaryId,
                     coverage = Checkpoint.Coverage.ALL_PREVIOUS,
                     providerScope = Checkpoint.ProviderScope("OPENAI_API", "connection", "configuration", "model"),
                 )))), outcome = AiStepOutcome.CONTINUE)

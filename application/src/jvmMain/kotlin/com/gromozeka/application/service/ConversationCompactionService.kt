@@ -254,8 +254,8 @@ class ConversationCompactionService internal constructor(
             author = Conversation.Message.Author.Agent(agent.id, agent.name), createdAt = Clock.System.now(),
             content = listOf(Checkpoint(
                 payload = Checkpoint.Payload.ReadableSummary(generated.text), origin = Checkpoint.Origin.GROMOZEKA_POLICY,
-                strategy = Checkpoint.Strategy.COMPACT, sourceMessageIds = prefix.map { it.id },
-                coverage = Checkpoint.Coverage.SELECTED_MESSAGES, providerScope = generated.providerScope,
+                strategy = Checkpoint.Strategy.COMPACT, sourceBoundaryMessageId = prefix.last().id,
+                coverage = Checkpoint.Coverage.ALL_PREVIOUS, providerScope = generated.providerScope,
                 promptTemplate = generated.promptTemplate,
             )),
         )
@@ -323,15 +323,22 @@ class ConversationCompactionService internal constructor(
         require(checkpoint.payload is Checkpoint.Payload.OpaqueProviderState && checkpoint.coversAllPrevious) {
             "Native compaction must identify its complete input boundary"
         }
-        val ids = checkpoint.sourceMessageIds.ifEmpty { capturedInputIds }
-        val covered = ids.toSet()
-        require(ids.isNotEmpty() && covered.size == ids.size && capturedInputIds.take(ids.size) == ids &&
-            sources.mapTo(mutableSetOf()) { it.id }.containsAll(ids)) {
+        require(checkpoint.sourceMessageIds.isEmpty()) { "Native compaction must use a source boundary" }
+        require(capturedInputIds.isNotEmpty() && capturedInputIds.distinct().size == capturedInputIds.size) {
+            "Native compaction captured an invalid input"
+        }
+        val boundaryId = checkpoint.sourceBoundaryMessageId ?: capturedInputIds.last()
+        val inputBoundary = capturedInputIds.indexOf(boundaryId)
+        val positions = sources.mapIndexed { index, source -> source.id to index }.toMap()
+        val sourcePositions = capturedInputIds.take(inputBoundary + 1).map { positions[it] ?: -1 }
+        require(inputBoundary >= 0 && sourcePositions.all { it >= 0 } &&
+            sourcePositions.zipWithNext().all { (left, right) -> left < right }) {
             "Native compaction input is not a valid captured history prefix"
         }
-        val boundary = sources.indexOfLast { it.id in covered }
-        // The provider sees the projected prefix, while coverage names all archived canonical sources.
-        return message.copy(content = listOf(checkpoint.copy(sourceMessageIds = sources.take(boundary + 1).map { it.id })))
+        return message.copy(content = listOf(checkpoint.copy(
+            sourceMessageIds = emptyList(),
+            sourceBoundaryMessageId = sources[sourcePositions.last()].id,
+        )))
     }
 
     private suspend fun publishHistoryChange(task: ConversationRuntimeTask) {

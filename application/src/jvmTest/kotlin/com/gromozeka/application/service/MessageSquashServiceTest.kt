@@ -113,7 +113,11 @@ class MessageSquashServiceTest {
         val sources = listOf(f.first.id, f.toolResult.id, f.third.id)
         suspend fun commit(id: String, thread: Conversation.Thread.Id, prefix: List<Conversation.Message.Id>): Conversation.Thread.Id {
             val checkpoint = f.checkpoint(opaque = true)
-            val result = checkpoint.compactions().single().copy(providerScope = scope, sourceMessageIds = prefix)
+            val result = checkpoint.compactions().single().copy(
+                providerScope = scope,
+                sourceMessageIds = emptyList(),
+                sourceBoundaryMessageId = prefix.last(),
+            )
             return f.committer.commit(thread, checkpoint.copy(id = Conversation.Message.Id(id), content = listOf(result))).currentThread
         }
         fun reasoning(history: List<Conversation.Message>, thread: String) =
@@ -481,7 +485,7 @@ class MessageSquashServiceTest {
         fixture.messages.values[checkpoint.id] = checkpoint
         fixture.threadMessages.links[fixture.initialThread.id] = mutableListOf(ThreadMessageLink(fixture.initialThread.id, checkpoint.id, 0))
         val counts = fixture.storageCounts()
-        assertFailsWith<IllegalStateException> {
+        assertFailsWith<IllegalArgumentException> {
             fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(checkpoint.id), SquashType.COMPACT)
         }
         assertEquals(counts, fixture.storageCounts())
@@ -650,7 +654,7 @@ class MessageSquashServiceTest {
                     else Compaction.Payload.ReadableSummary("Earlier context"),
                 origin = Compaction.Origin.PROVIDER_AUTO,
                 strategy = Compaction.Strategy.PROVIDER_MANAGED,
-                sourceMessageIds = listOf(first.id, toolResult.id, third.id),
+                sourceBoundaryMessageId = third.id,
                 providerScope = Compaction.ProviderScope(provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name),
                 coverage = Compaction.Coverage.ALL_PREVIOUS,
             )),

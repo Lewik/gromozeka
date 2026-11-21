@@ -507,6 +507,7 @@ data class Conversation(
                 val origin: Origin,
                 val strategy: Strategy = Strategy.UNKNOWN,
                 val sourceMessageIds: List<Id> = emptyList(),
+                val sourceBoundaryMessageId: Id? = null,
                 val providerScope: ProviderScope? = null,
                 val promptTemplate: PromptTemplateReference? = null,
                 val coverage: Coverage,
