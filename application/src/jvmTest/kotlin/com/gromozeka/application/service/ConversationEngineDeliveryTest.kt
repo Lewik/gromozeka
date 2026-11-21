@@ -6,7 +6,11 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.model.memory.MemoryRun
 import kotlinx.serialization.json.*
 import com.gromozeka.domain.service.*
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
+import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import org.mockito.Mockito
@@ -92,7 +96,14 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `history mutation batch rechecks proactive compaction once even when its last mutation is stale`() = runBlocking {
-        val f = Fixture(proactive = true)
+        val reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX)
+        val tool = object : AiToolCallback {
+            override val definition = AiToolDefinition("inspect_state", "Inspect current state", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val f = Fixture(proactive = true, withEnricher = true, reasoningOverride = reasoning,
+            maxOutputTokens = 256, selectedTools = listOf(tool))
         val source = f.begin()
         val preparation = ProactiveCompaction(
             id = "stale-preparation",
@@ -146,8 +157,13 @@ class ConversationEngineDeliveryTest {
         assertFailsWith<IllegalStateException> {
             f.engine.runRuntimeTask(second, executor) {}
         }
-        assertEquals(1, f.preparations.size)
-        assertEquals("after-history-1", f.preparations.single().options.toolContext["threadId"])
+        val request = f.preparations.single()
+        assertEquals("after-history-1", request.options.toolContext["threadId"])
+        assertEquals(reasoning, request.options.reasoning)
+        assertEquals(256, request.options.maxOutputTokens)
+        assertEquals(listOf("inspect_state"), request.tools.map { it.definition.name })
+        assertTrue("SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertFalse("ENRICHER_LAST" in request.systemPrompts)
     }
 
     @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
@@ -1031,7 +1047,9 @@ class ConversationEngineDeliveryTest {
         .let { Json.parseToJsonElement(it).jsonObject.getValue("recorded_running_commands").jsonArray }
 
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
-        realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null) {
+        realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null,
+        reasoningOverride: AiReasoningConfig? = null, maxOutputTokens: Int? = null,
+        selectedTools: List<AiToolCallback> = emptyList()) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
         val pendingSecrets = PendingSecretRevealService()
@@ -1078,6 +1096,7 @@ class ConversationEngineDeliveryTest {
         }
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("config"))
         private val agent = AgentDefinition(agentId, name = "Test", prompts = emptyList(), runtimeSelection = selection,
+            runtimeOverrides = AiRuntimeOverrides(maxOutputTokens, reasoningOverride),
             type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
         private val connection = AiConnection.OpenAiSubscription(AiConnection.Id("test"), "Test", enabled = true)
         private val resolved = ResolvedAiRuntime(connection,
@@ -1118,7 +1137,7 @@ class ConversationEngineDeliveryTest {
         }
         private val artifacts = responding<ConversationArtifactApplicationService> {
             when (it.method.name.substringBefore('-')) {
-                "materialize" -> it.arguments[1]
+                "materialize", "materializeSnapshot" -> it.arguments[1]
                 "persistAndCommitMessageOutputs" -> it.arguments[2]
                 "persistAndCommitToolResults" -> {
                     @Suppress("UNCHECKED_CAST")
@@ -1216,7 +1235,7 @@ class ConversationEngineDeliveryTest {
             toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { profile },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
-            aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
+            aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(selectedTools, emptyList()) },
             aiToolCapabilityCatalogService = mock(), toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
@@ -1237,6 +1256,9 @@ class ConversationEngineDeliveryTest {
                     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
                         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
                         request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
+                    override suspend fun enrichSnapshot(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+                        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+                        request.copy(systemPrompts = request.systemPrompts + "SNAPSHOT_ENRICHER")
                 })
                 if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
             },
