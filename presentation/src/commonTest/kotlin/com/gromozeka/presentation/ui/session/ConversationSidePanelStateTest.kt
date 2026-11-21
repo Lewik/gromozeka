@@ -23,6 +23,21 @@ class ConversationSidePanelStateTest {
         }
     }
 
+    @Test fun messageSelectionRequiresTheVisibleThreadPanel() {
+        val wide = ConversationSidePanelState().panel(a, compact = false)
+        assertFalse(wide.messageSelectionEnabled)
+        wide.open(Section.THREAD)
+        assertTrue(wide.messageSelectionEnabled)
+        wide.hide()
+        assertFalse(wide.messageSelectionEnabled)
+        wide.open(Section.PINS)
+        assertFalse(wide.messageSelectionEnabled)
+
+        val compact = ConversationSidePanelState().panel(a, compact = true)
+        compact.open(Section.THREAD)
+        assertTrue(compact.messageSelectionEnabled)
+    }
+
     @Test fun conversationSwitchesRestoreBothVisibilityAndTheSelectedStandardTab() {
         val state = ConversationSidePanelState()
         val first = state.panel(a, compact = false)
