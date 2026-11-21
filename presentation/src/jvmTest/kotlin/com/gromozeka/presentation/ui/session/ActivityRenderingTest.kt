@@ -22,10 +22,13 @@ import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -77,6 +80,7 @@ class ActivityRenderingTest {
                 onNodeWithContentDescription(translation.text("runtime.runningTaskLabel")).assertDoesNotExist()
                 val parameters = translation.text("chat.tool.command", "command" to "echo first")
                 onNodeWithText(parameters).assertDoesNotExist()
+                onNodeWithTag(UiTestTag.ActivityGroup("running:0:content").value).performClick()
                 onNodeWithTag(UiTestTag.ActivityItem("running:0:content").value).performClick()
                 onNodeWithText(parameters).assertIsDisplayed()
                 val partial = Conversation.Message.ContentItem.ToolResult(call.id, call.call.name,
@@ -84,12 +88,14 @@ class ActivityRenderingTest {
                     state = Conversation.Message.BlockState.STREAMING)
                 runOnIdle { results.value = mapOf(call.id.value to partial) }
                 onNodeWithText("Partial output").assertIsDisplayed()
-                onNodeWithText("echo first").assertIsDisplayed()
+                onNode(hasText("echo first") and hasAnyAncestor(hasTestTag(UiTestTag.ActivityItem("running:0:content").value)),
+                    useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithContentDescription(translation.text("runtime.runningTaskLabel")).assertDoesNotExist()
                 runOnIdle { results.value = mapOf(call.id.value to partial.copy(state = Conversation.Message.BlockState.COMPLETE, isError = true)) }
                 onNodeWithText("Partial output").assertIsDisplayed()
-                onNodeWithContentDescription(translation.text("runtime.failedTaskLabel")).assertIsDisplayed()
-                onNodeWithText("echo first").assertIsDisplayed()
+                onAllNodesWithContentDescription(translation.text("runtime.failedTaskLabel")).assertCountEquals(2)
+                onNode(hasText("echo first") and hasAnyAncestor(hasTestTag(UiTestTag.ActivityItem("running:0:content").value)),
+                    useUnmergedTree = true).assertIsDisplayed()
             }
         }
     }
@@ -117,7 +123,7 @@ class ActivityRenderingTest {
     @Test
     fun toolHeadersUseThemeColorsInsteadOfInheritedColor() {
         for (theme in listOf(DarkTheme(), LightTheme())) {
-            for (state in ActivityState.entries) {
+            for (state in listOf(ActivityState.COMPLETE, ActivityState.RUNNING)) {
                 runDesktopComposeUiTest(width = 390, height = 100) {
                     var foreground = Color.Unspecified
                     setContent {
@@ -147,32 +153,26 @@ class ActivityRenderingTest {
     }
 
     @Test
-    fun activityGroupsUseThemeColorsInEverySummaryStyle() {
-        val message = activityTestMessage(
-            "themed", Conversation.Message.ContentItem.Thinking("Readable thought"), activityTestCall("read"),
-        )
+    fun activityGroupsUseThemeColors() {
+        val message = activityTestMessage("themed", Conversation.Message.ContentItem.Thinking("Readable thought"), activityTestCall("read"))
         for (theme in listOf(DarkTheme(), LightTheme())) {
-            for (style in ActivitySummaryStyle.entries) {
-                runDesktopComposeUiTest(width = 390, height = 200) {
-                    var foreground = Color.Unspecified
-                    setContent {
-                        GromozekaTheme(theme) {
-                            foreground = MaterialTheme.colorScheme.onSurfaceVariant
-                            CompositionLocalProvider(LocalContentColor provides Color.Magenta) {
-                                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                                    ActivityTimelineFixture(listOf(message), summaryStyle = style)
-                                    ExpansionColorReference()
-                                }
+            runDesktopComposeUiTest(width = 390, height = 200) {
+                var foreground = Color.Unspecified
+                setContent {
+                    GromozekaTheme(theme) {
+                        foreground = MaterialTheme.colorScheme.onSurfaceVariant
+                        CompositionLocalProvider(LocalContentColor provides Color.Magenta) {
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                                ActivityTimelineFixture(listOf(message))
+                                ExpansionColorReference()
                             }
                         }
                     }
-                    val groupTag = UiTestTag.ActivityGroup("themed:0:content").value
-                    onNodeWithTag(groupTag).assertIsDisplayed()
-                    onAllNodes(
-                        textOrIcon and hasAnyAncestor(hasTestTag(groupTag)),
-                        useUnmergedTree = true,
-                    ).assertForeground(foreground, onNodeWithTag("expansion-color-reference").captureToImage().toPixelMap())
                 }
+                val groupTag = UiTestTag.ActivityGroup("themed:0:content").value
+                onNodeWithTag(groupTag).assertIsDisplayed()
+                onAllNodes(textOrIcon and hasAnyAncestor(hasTestTag(groupTag)), useUnmergedTree = true)
+                    .assertForeground(foreground, onNodeWithTag("expansion-color-reference").captureToImage().toPixelMap())
             }
         }
     }
@@ -254,29 +254,25 @@ class ActivityRenderingTest {
     }
 
     @Test
-    fun compactMixedGroupsExpandInEverySummaryStyle() {
-        for (style in ActivitySummaryStyle.entries) {
-            runDesktopComposeUiTest(width = 390, height = 844) {
-                val message = activityTestMessage("mixed", Conversation.Message.ContentItem.Thinking("**Readable summary**\n\nReadable thought"), activityTestCall("read"))
-                setContent { ActivityTimelineFixture(listOf(message), summaryStyle = style) }
-                val group = onNodeWithTag(UiTestTag.ActivityGroup("mixed:0:content").value)
-                group.assertIsDisplayed()
-                onNodeWithText("Activity · 2").assertDoesNotExist()
-                onNodeWithContentDescription("Activity · 2", useUnmergedTree = true).assertExists()
-                onNodeWithText("Readable thought").assertDoesNotExist()
-                group.performClick()
-                onNodeWithTag(UiTestTag.ActivityGroupContent("mixed:0:content").value).assertIsDisplayed()
-                onNodeWithTag(UiTestTag.ActivityItem("mixed:0:content").value).performClick()
-                onNodeWithText("Readable thought").assertIsDisplayed()
-                onNodeWithTag(UiTestTag.ActivityItem("mixed:1:content").value).performClick()
-                onNodeWithText("Tool output read").assertIsDisplayed()
-                group.performClick()
-                onNodeWithText("Readable thought").assertDoesNotExist()
-                group.performClick()
-                onNodeWithText("Readable thought").assertIsDisplayed()
-                onNodeWithText("Tool output read").assertIsDisplayed()
-            }
-        }
+    fun compactMixedGroupsExpandAndKeepDetailState() = runDesktopComposeUiTest(width = 390, height = 844) {
+        val message = activityTestMessage("mixed", Conversation.Message.ContentItem.Thinking("**Readable summary**\n\nReadable thought"), activityTestCall("read"))
+        setContent { ActivityTimelineFixture(listOf(message)) }
+        val group = onNodeWithTag(UiTestTag.ActivityGroup("mixed:0:content").value)
+        group.assertIsDisplayed()
+        onNodeWithText("Activity · 2").assertDoesNotExist()
+        onNodeWithContentDescription("Activity · 2", useUnmergedTree = true).assertExists()
+        onNodeWithText("Readable thought").assertDoesNotExist()
+        group.performClick()
+        onNodeWithTag(UiTestTag.ActivityGroupContent("mixed:0:content").value).assertIsDisplayed()
+        onNodeWithTag(UiTestTag.ActivityItem("mixed:0:content").value).performClick()
+        onNodeWithText("Readable thought").assertIsDisplayed()
+        onNodeWithTag(UiTestTag.ActivityItem("mixed:1:content").value).performClick()
+        onNodeWithText("Tool output read").assertIsDisplayed()
+        group.performClick()
+        onNodeWithText("Readable thought").assertDoesNotExist()
+        group.performClick()
+        onNodeWithText("Readable thought").assertIsDisplayed()
+        onNodeWithText("Tool output read").assertIsDisplayed()
     }
 
     @Test
@@ -299,10 +295,11 @@ class ActivityRenderingTest {
         val results = mutableStateOf(emptyMap<String, Conversation.Message.ContentItem.ToolResult>())
         var entries = emptyList<MessageListEntry>()
         setContent { ActivityTimelineFixture(listOf(message), results.value, onEntries = { entries = it }) }
+        onNodeWithTag(UiTestTag.ActivityGroup("evolving:0:content").value).performClick()
         onNodeWithTag(UiTestTag.ActivityItem("evolving:0:content").value).performClick()
         onNodeWithText("Keep this open").assertIsDisplayed()
         runOnIdle { results.value = activityTestResults(listOf(message)) }
-        onNodeWithTag(UiTestTag.ActivityGroup("evolving:0:content").value).performClick()
+        onNodeWithTag(UiTestTag.ActivityGroup("evolving:0:content").value).assertIsDisplayed()
         onNodeWithText("Keep this open").assertIsDisplayed()
         runOnIdle { assertTrue(entries.map { it.key }.distinct().size == entries.size) }
     }

@@ -29,6 +29,7 @@ internal data class ConversationActivityPresentation(
     val indicator: ConversationIndicatorState,
     val tooltip: String,
     val canControl: Boolean,
+    val modelRequest: ModelRequestActivity?,
 )
 
 @Composable
@@ -101,6 +102,10 @@ internal fun rememberConversationActivityPresentation(
             add(translation.text("chat.activity.loadConcurrency", "count" to snapshot.waitingForConcurrency))
         }
     }.joinToString("\n")
-    return ConversationActivityPresentation(state, tooltip,
-        connected && (waiting || generation != null || runtime.hasControllableWork()))
+    return ConversationActivityPresentation(
+        indicator = state,
+        tooltip = tooltip,
+        canControl = connected && (waiting || generation != null || runtime.hasControllableWork()),
+        modelRequest = modelRequestActivity(generation, runtime, state, tooltip),
+    )
 }

@@ -22,7 +22,7 @@ class ConversationNavigationTabsTest {
         pressure: ConversationPressure = ConversationPressure.NORMAL) = ConversationActivityPresentation(
         ConversationIndicatorState(phase, pressure, unread, false,
             if (pressure == ConversationPressure.LOCAL_WAIT) setOf(AiRequestWaitReason.TPM) else emptySet()),
-        phase.name, phase != ConversationActivity.READY,
+        phase.name, phase != ConversationActivity.READY, null,
     )
     private val alpha = ConversationTabHeader(Conversation.Id("alpha"), "Alpha", activity = activity())
     private val beta = ConversationTabHeader(Conversation.Id("beta"), "Beta", activity = activity(unread = true))

@@ -52,7 +52,7 @@ class ToolCallGroupingTest {
     }
 
     @Test
-    fun `keeps running and failed calls outside successful groups`() {
+    fun `groups running and failed calls with their completed history`() {
         val message = message(
             "message-1",
             listOf(
@@ -69,11 +69,10 @@ class ToolCallGroupingTest {
 
         val grouped = groupWithResults(entries(message), results)
 
-        assertEquals(4, grouped.size)
-        assertEquals(listOf("success-1", "success-2"), groupCalls(grouped[0]))
-        assertEquals("running", assertIs<MessageSegment.Activity>(grouped[1].segment).toolCallId())
-        assertEquals("failed", assertIs<MessageSegment.Activity>(grouped[2].segment).toolCallId())
-        assertEquals(listOf("success-3", "success-4"), groupCalls(grouped[3]))
+        val group = assertIs<MessageSegment.ActivityGroup>(grouped.single().segment)
+        assertEquals(listOf("success-1", "success-2", "running", "failed", "success-3", "success-4"), groupCalls(grouped.single()))
+        assertEquals(listOf(ActivityState.COMPLETE, ActivityState.COMPLETE, ActivityState.RUNNING,
+            ActivityState.FAILED, ActivityState.COMPLETE, ActivityState.COMPLETE), group.activities.map { it.activity.state })
     }
 
     @Test
@@ -88,7 +87,31 @@ class ToolCallGroupingTest {
         )
         val activities = message.content.map { ChatActivity.Tool(it as Conversation.Message.ContentItem.ToolCall, null) }
         assertEquals(
-            listOf(ActivitySummary(ActivityKind.Tool("grz_read_file"), 2), ActivitySummary(ActivityKind.Tool("grz_edit_file"), 1)),
+            listOf(
+                ActivitySummary(ActivityKind.Tool("grz_read_file"), ActivityState.RUNNING, 2),
+                ActivitySummary(ActivityKind.Tool("grz_edit_file"), ActivityState.RUNNING, 1),
+            ),
+            summarizeActivities(activities),
+        )
+    }
+
+    @Test
+    fun `keeps the same tool distinct across terminal states`() {
+        val activities = listOf(
+            ChatActivity.Tool(toolCall("complete"), toolResult("complete")),
+            ChatActivity.Tool(toolCall("failed-1"), toolResult("failed-1", isError = true)),
+            ChatActivity.Tool(toolCall("interrupted"), toolResult("interrupted").copy(
+                state = Conversation.Message.BlockState.INTERRUPTED,
+            )),
+            ChatActivity.Tool(toolCall("failed-2"), toolResult("failed-2", isError = true)),
+        )
+
+        assertEquals(
+            listOf(
+                ActivitySummary(ActivityKind.Tool("grz_read_file"), ActivityState.COMPLETE, 1),
+                ActivitySummary(ActivityKind.Tool("grz_read_file"), ActivityState.FAILED, 2),
+                ActivitySummary(ActivityKind.Tool("grz_read_file"), ActivityState.INTERRUPTED, 1),
+            ),
             summarizeActivities(activities),
         )
     }
@@ -103,7 +126,7 @@ class ToolCallGroupingTest {
     }
 
     @Test
-    fun `partial and interrupted tool results stay outside completed groups`() {
+    fun `partial and interrupted results retain their states inside the group`() {
         val message = message("tool-states", listOf(
             toolCall("done-one"), toolCall("done-two"), toolCall("partial"), toolCall("interrupted"),
         ))
@@ -112,10 +135,9 @@ class ToolCallGroupingTest {
             "interrupted" to toolResult("interrupted").copy(state = Conversation.Message.BlockState.INTERRUPTED),
         )
         val grouped = groupWithResults(entries(message), results)
-        assertEquals(3, grouped.size)
-        assertIs<MessageSegment.ActivityGroup>(grouped.first().segment)
-        assertEquals(ActivityState.RUNNING, assertIs<MessageSegment.Activity>(grouped[1].segment).activity.state)
-        assertEquals(ActivityState.INTERRUPTED, assertIs<MessageSegment.Activity>(grouped[2].segment).activity.state)
+        val group = assertIs<MessageSegment.ActivityGroup>(grouped.single().segment)
+        assertEquals(listOf(ActivityState.COMPLETE, ActivityState.COMPLETE, ActivityState.RUNNING, ActivityState.INTERRUPTED),
+            group.activities.map { it.activity.state })
     }
 
     @Test
@@ -131,7 +153,10 @@ class ToolCallGroupingTest {
         )
         assertEquals(listOf(0, 1, 2, 3), group.activities.map { it.contentIndex })
         assertEquals(
-            listOf(ActivitySummary(ActivityKind.Reasoning, 2), ActivitySummary(ActivityKind.Tool("grz_read_file"), 2)),
+            listOf(
+                ActivitySummary(ActivityKind.Reasoning, ActivityState.COMPLETE, 2),
+                ActivitySummary(ActivityKind.Tool("grz_read_file"), ActivityState.COMPLETE, 2),
+            ),
             summarizeActivities(group.activities.map { it.activity }),
         )
     }
@@ -148,7 +173,7 @@ class ToolCallGroupingTest {
     }
 
     @Test
-    fun `interrupted and running reasoning remain outside completed groups`() {
+    fun `interrupted and running reasoning remain distinct inside the group`() {
         val message = message("states", listOf(
             Conversation.Message.ContentItem.Thinking("done"),
             toolCall("one"),
@@ -157,10 +182,9 @@ class ToolCallGroupingTest {
             toolCall("two"),
         ))
         val grouped = groupWithResults(entries(message), successfulResults("one", "two"))
-        assertEquals(4, grouped.size)
-        assertIs<MessageSegment.ActivityGroup>(grouped.first().segment)
-        assertEquals(ActivityState.RUNNING, assertIs<MessageSegment.Activity>(grouped[1].segment).activity.state)
-        assertEquals(ActivityState.INTERRUPTED, assertIs<MessageSegment.Activity>(grouped[2].segment).activity.state)
+        val group = assertIs<MessageSegment.ActivityGroup>(grouped.single().segment)
+        assertEquals(listOf(ActivityState.COMPLETE, ActivityState.COMPLETE, ActivityState.RUNNING, ActivityState.INTERRUPTED, ActivityState.COMPLETE),
+            group.activities.map { it.activity.state })
     }
 
     @Test
@@ -201,7 +225,7 @@ class ToolCallGroupingTest {
     }
 
     @Test
-    fun `proven background updates still respect text and failure boundaries`() {
+    fun `proven background updates respect text boundaries and retain failures`() {
         val owner = AgentDefinition.Id("owner")
         val before = message("before", listOf(toolCall("before-call"))).copy(author = Conversation.Message.Author.Agent(owner, "Agent"))
         val text = message("text", listOf(assistantText())).copy(author = before.author)
@@ -209,7 +233,8 @@ class ToolCallGroupingTest {
         val input = entries(before) + entries(text) + entries(completion)
         assertEquals(3, groupWithResults(input, successfulResults("before-call", "completion-call")).size)
         val failed = successfulResults("before-call") + ("completion-call" to toolResult("completion-call", isError = true))
-        assertEquals(2, groupWithResults(entries(before) + entries(completion), failed).size)
+        val failedGroup = assertIs<MessageSegment.ActivityGroup>(groupWithResults(entries(before) + entries(completion), failed).single().segment)
+        assertEquals(listOf(ActivityState.COMPLETE, ActivityState.FAILED), failedGroup.activities.map { it.activity.state })
     }
 
     private fun notification(id: String, kind: SyntheticMessageKind, launch: String, owner: AgentDefinition.Id) =
@@ -250,9 +275,6 @@ class ToolCallGroupingTest {
 
     private fun groupCalls(entry: MessageListEntry): List<String> =
         assertIs<MessageSegment.ActivityGroup>(entry.segment).activities.map { (it.activity as ChatActivity.Tool).call.id.value }
-
-    private fun MessageSegment.Activity.toolCallId(): String =
-        assertIs<ChatActivity.Tool>(activity).call.id.value
 
     private fun message(
         id: String,
