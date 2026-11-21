@@ -1,7 +1,6 @@
 package com.gromozeka.domain.model
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonNames
 
 /**
  * Type of squash operation for message consolidation.
@@ -40,6 +39,5 @@ enum class SquashType {
      *
      * A text model creates a continuation checkpoint for the selected history.
      */
-    @JsonNames("SUMMARIZE")
     COMPACT
 }

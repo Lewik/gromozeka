@@ -1,4 +1,4 @@
--- Persist the current names while Kotlin serializers continue to accept the old wire values.
+-- Migrate persisted old names before application code reads the new schema.
 UPDATE ai_model_configurations
 SET payload_json = CASE
     WHEN (payload_json::jsonb -> 'compaction') ? 'compactionModelConfigurationId'

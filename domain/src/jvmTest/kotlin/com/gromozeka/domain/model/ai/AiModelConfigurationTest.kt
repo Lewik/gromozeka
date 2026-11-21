@@ -1,6 +1,7 @@
 package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.AiProvider
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,15 +51,19 @@ class AiModelConfigurationTest {
     }
 
     @Test
-    fun compactionAcceptsLegacyModelKeyAndWritesCurrentKey() {
-        val legacy = Json.decodeFromString<AiModelConfiguration.Compaction>(
-            """{"summaryModelConfigurationId":"legacy-compactor"}""",
+    fun compactionWritesOnlyCurrentModelKey() {
+        val compaction = AiModelConfiguration.Compaction(
+            compactionModelConfigurationId = AiModelConfiguration.Id("compactor"),
         )
 
-        assertEquals(AiModelConfiguration.Id("legacy-compactor"), legacy.compactionModelConfigurationId)
-        val encoded = Json.encodeToString(legacy)
-        assertTrue(encoded.contains("\"compactionModelConfigurationId\":\"legacy-compactor\""))
+        val encoded = Json.encodeToString(compaction)
+        assertTrue(encoded.contains("\"compactionModelConfigurationId\":\"compactor\""))
         assertFalse(encoded.contains("summaryModelConfigurationId"))
+        assertFailsWith<SerializationException> {
+            Json.decodeFromString<AiModelConfiguration.Compaction>(
+                """{"summaryModelConfigurationId":"legacy-compactor"}""",
+            )
+        }
     }
 
     @Test
