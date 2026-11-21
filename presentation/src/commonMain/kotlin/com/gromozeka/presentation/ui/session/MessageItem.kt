@@ -272,12 +272,20 @@ private fun expandActivityEntries(
                 }
             }
         }
-        val firstMember = sections.firstNotNullOf { it.second.firstOrNull() }
+        val orderedMembers = sections.flatMap { it.second }
+        val firstMember = orderedMembers.first()
+        val messagesEndingInGroup = group.activities.filter(ActivityReference::isLastInMessage)
+            .mapTo(mutableSetOf()) { it.message.id }
+        val lastMemberKeyByMessage = buildMap {
+            orderedMembers.forEach { reference -> put(reference.message.id, reference.key) }
+        }
         @Composable
         fun appendMembers(references: List<ActivityReference>) {
             references.forEach { reference ->
                 val child = reference.toEntry().copy(
                     isFirstInMessage = false,
+                    isLastInMessage = reference.message.id in messagesEndingInGroup &&
+                        lastMemberKeyByMessage[reference.message.id] == reference.key,
                     activityDepth = 1,
                     groupContentKey = entry.key.takeIf { reference == firstMember },
                     activityGroupKey = entry.key,
@@ -299,6 +307,7 @@ private fun expandActivityEntries(
 @Composable
 internal fun ConversationTimelineItemContent(
     item: ConversationTimelineItem,
+    onModelRequestClick: () -> Unit,
     messageContent: @Composable (MessageListEntry) -> Unit,
 ) {
     when (item) {
@@ -306,7 +315,7 @@ internal fun ConversationTimelineItemContent(
         is ConversationTimelineItem.ModelRequest -> {
             val background = if (item.groupKey != null) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else Color.Transparent
             Box(Modifier.fillMaxWidth().background(background).padding(horizontal = 12.dp, vertical = 4.dp)) {
-                ModelRequestIndicator(item.activity, Modifier.testTag(item.key))
+                ModelRequestIndicator(item.activity, onModelRequestClick, Modifier.testTag(item.key))
             }
         }
         is ConversationTimelineItem.ActivityDivider -> HorizontalDivider(
@@ -419,6 +428,7 @@ internal fun MessageItem(
     onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit = { _, _ -> },
     onManualContentResize: () -> Unit = {},
+    onModelRequestClick: () -> Unit = {},
     expandedActivityKeys: Set<String> = emptySet(),
     onToggleActivityExpansion: (String) -> Unit = {},
     isCompactLayout: Boolean = false,
@@ -519,6 +529,7 @@ internal fun MessageItem(
                         workspaceRootPath = workspaceRootPath,
                         onToggleContentItemCollapse = onToggleContentItemCollapse,
                         onManualContentResize = onManualContentResize,
+                        onModelRequestClick = onModelRequestClick,
                         expandedActivityKeys = expandedActivityKeys,
                         onToggleActivityExpansion = onToggleActivityExpansion,
                         isCompactLayout = isCompactLayout,
@@ -569,6 +580,7 @@ private fun MessageSegmentContent(
     workspaceRootPath: String?,
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
     onManualContentResize: () -> Unit,
+    onModelRequestClick: () -> Unit,
     expandedActivityKeys: Set<String>,
     onToggleActivityExpansion: (String) -> Unit,
     isCompactLayout: Boolean,
@@ -654,6 +666,7 @@ private fun MessageSegmentContent(
                 onManualContentResize()
                 onToggleActivityExpansion(activityGroupExpansionKey(entry.key))
             },
+            onModelRequestClick = onModelRequestClick,
             isCompactLayout = isCompactLayout,
             workspaceRootPath = workspaceRootPath,
         )

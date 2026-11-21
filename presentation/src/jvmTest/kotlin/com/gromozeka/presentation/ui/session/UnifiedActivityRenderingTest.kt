@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getBoundsInRoot
@@ -33,6 +34,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -83,6 +85,45 @@ class UnifiedActivityRenderingTest {
         }
     }
 
+    @Test fun reorderedSectionsKeepTheClosingBoundaryOnTheFinalVisualRow() = runDesktopComposeUiTest(width = 800, height = 400) {
+        val message = activityTestMessage("reordered-boundary", command(0), command(1))
+        val results = activityTestResults(listOf(message)).filterKeys { it == "call-1" }
+        var timeline = emptyList<ConversationTimelineItem>()
+        setContent { ActivityTimelineFixture(listOf(message), results, onTimeline = { timeline = it }) }
+
+        onNodeWithTag(UiTestTag.ActivityGroup("reordered-boundary:0:content").value).performClick()
+
+        runOnIdle {
+            val children = timeline.filterIsInstance<ConversationTimelineItem.Message>()
+                .map(ConversationTimelineItem.Message::entry)
+                .filter { it.activityDepth > 0 }
+            assertEquals(listOf(1, 0), children.map { (it.segment as MessageSegment.Activity).contentIndex })
+            assertFalse(children.first().isLastInMessage)
+            assertTrue(children.last().isLastInMessage)
+        }
+    }
+
+    @Test fun reorderedCrossMessageGroupClosesEachMessageOnItsFinalVisualOccurrence() = runDesktopComposeUiTest(width = 800, height = 500) {
+        val first = activityTestMessage("cross-first", command(0), command(1))
+        val second = activityTestMessage("cross-second", command(2), command(3))
+        val results = activityTestResults(listOf(first, second)).filterKeys { it == "call-1" || it == "call-3" }
+        var timeline = emptyList<ConversationTimelineItem>()
+        setContent { ActivityTimelineFixture(listOf(first, second), results, onTimeline = { timeline = it }) }
+
+        onNodeWithTag(UiTestTag.ActivityGroup("cross-first:0:content").value).performClick()
+
+        runOnIdle {
+            val children = timeline.filterIsInstance<ConversationTimelineItem.Message>()
+                .map(ConversationTimelineItem.Message::entry)
+                .filter { it.activityDepth > 0 }
+            assertEquals(
+                listOf("cross-first" to 1, "cross-second" to 1, "cross-first" to 0, "cross-second" to 0),
+                children.map { it.message.id.value to (it.segment as MessageSegment.Activity).contentIndex },
+            )
+            assertEquals(listOf(false, false, true, true), children.map(MessageListEntry::isLastInMessage))
+        }
+    }
+
     @Test fun terminalStatesRemainSeparateAndVisibleWhenTheGroupIsCollapsed() = runDesktopComposeUiTest {
         val message = activityTestMessage("terminal-states", activityTestCall("complete"), activityTestCall("failed"), activityTestCall("interrupted"))
         val results = activityTestResults(listOf(message)).mapValues { (key, value) -> when (key) {
@@ -108,14 +149,27 @@ class UnifiedActivityRenderingTest {
     @Test fun modelRequestIsACompactUnlabelledTransientIndicator() = runDesktopComposeUiTest(width = 390, height = 200) {
         val request = mutableStateOf<ModelRequestActivity?>(request())
         var timeline = emptyList<ConversationTimelineItem>()
-        setContent { ActivityTimelineFixture(emptyList(), modelRequest = request.value, onTimeline = { timeline = it }) }
+        var detailClicks = 0
+        setContent {
+            ActivityTimelineFixture(
+                emptyList(),
+                modelRequest = request.value,
+                onModelRequestClick = { detailClicks++ },
+                onTimeline = { timeline = it },
+            )
+        }
         val ring = onNodeWithContentDescription("Calling model", useUnmergedTree = true)
         ring.assertIsDisplayed()
         val bounds = ring.getBoundsInRoot()
         assertEquals(14.dp, bounds.right - bounds.left)
         assertEquals(14.dp, bounds.bottom - bounds.top)
         onNodeWithText("Calling model").assertDoesNotExist()
-        runOnIdle { assertTrue(timeline.single() is ConversationTimelineItem.ModelRequest); request.value = null }
+        onNodeWithTag("model-request:generation").assertHasClickAction().performClick()
+        runOnIdle {
+            assertEquals(1, detailClicks)
+            assertTrue(timeline.single() is ConversationTimelineItem.ModelRequest)
+            request.value = null
+        }
         onNodeWithTag("model-request:generation").assertDoesNotExist()
         runOnIdle { assertTrue(timeline.isEmpty()) }
     }
@@ -141,8 +195,18 @@ class UnifiedActivityRenderingTest {
         val root = activityTestMessage("root", Conversation.Message.ContentItem.UserMessage("Continue")).copy(role = Conversation.Message.Role.USER)
         val work = activityTestMessage("one", command(0)).copy(author = Conversation.Message.Author.Agent(owner, "Agent"))
         val active = mutableStateOf<ModelRequestActivity?>(request().copy(owner = owner, rootUserMessageId = root.id))
-        setContent { ActivityTimelineFixture(listOf(root, work), modelRequest = active.value) }
+        var detailClicks = 0
+        setContent {
+            ActivityTimelineFixture(
+                listOf(root, work),
+                modelRequest = active.value,
+                onModelRequestClick = { detailClicks++ },
+            )
+        }
         val group = onNodeWithTag(UiTestTag.ActivityGroup("one:0:content").value)
+        onNodeWithTag("activity-model:one:0:content").assertHasClickAction().performClick()
+        runOnIdle { assertEquals(1, detailClicks) }
+        onNodeWithTag(UiTestTag.ActivityItem("one:0:content").value).assertDoesNotExist()
         group.performClick()
         onNodeWithTag(UiTestTag.ActivityItem("one:0:content").value).performClick()
         onNodeWithText("Tool output call-0").assertIsDisplayed()

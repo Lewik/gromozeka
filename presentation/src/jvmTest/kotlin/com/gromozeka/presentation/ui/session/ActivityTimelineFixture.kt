@@ -39,6 +39,7 @@ internal fun ActivityTimelineFixture(
     results: Map<String, Conversation.Message.ContentItem.ToolResult> = activityTestResults(messages),
     isCompactLayout: Boolean = false,
     modelRequest: ModelRequestActivity? = null,
+    onModelRequestClick: () -> Unit = {},
     onTimeline: (List<ConversationTimelineItem>) -> Unit = {},
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray = { byteArrayOf() },
     onEntries: (List<MessageListEntry>) -> Unit = {},
@@ -55,12 +56,13 @@ internal fun ActivityTimelineFixture(
             unreadLabel = { "$it new activity" },
             modifier = Modifier.fillMaxSize(),
         ) { item, pauseFollowingLatest ->
-            ConversationTimelineItemContent(item) { entry ->
+            ConversationTimelineItemContent(item, onModelRequestClick) { entry ->
                 MessageItem(
                     entry = entry,
                     expandedActivityKeys = expanded,
                     onToggleActivityExpansion = { key -> expanded = if (key in expanded) expanded - key else expanded + key },
                     onManualContentResize = pauseFollowingLatest,
+                    onModelRequestClick = onModelRequestClick,
                     isCompactLayout = isCompactLayout,
                     loadArtifactContent = loadArtifactContent,
                 )

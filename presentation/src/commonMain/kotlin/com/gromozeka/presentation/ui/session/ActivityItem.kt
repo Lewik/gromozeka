@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -147,6 +148,7 @@ internal fun ActivityGroupItem(
     groupKey: String,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
+    onModelRequestClick: () -> Unit,
     isCompactLayout: Boolean,
     workspaceRootPath: String?,
 ) {
@@ -240,7 +242,11 @@ internal fun ActivityGroupItem(
                     if (visibleSlots > 0) Spacer(Modifier.width(dp(leadingGap)))
                     var shown = 0
                     if (modelVisible) {
-                        ModelRequestIndicator(checkNotNull(group.modelRequest), Modifier.testTag("activity-model:$groupKey"))
+                        ModelRequestIndicator(
+                            request = checkNotNull(group.modelRequest),
+                            onClick = onModelRequestClick,
+                            modifier = Modifier.testTag("activity-model:$groupKey"),
+                        )
                         shown++
                     }
                     visibleTools.forEachIndexed { index, summary ->
@@ -271,10 +277,21 @@ internal fun ActivityGroupItem(
 }
 
 @Composable
-internal fun ModelRequestIndicator(request: ModelRequestActivity, modifier: Modifier = Modifier) {
+internal fun ModelRequestIndicator(
+    request: ModelRequestActivity,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val detailsLabel = LocalTranslation.current.text("chat.activity.details")
     OptionalTooltip(request.description) {
-        Box(modifier.size(activityIconSize),
-            contentAlignment = Alignment.Center) {
+        Box(
+            modifier.size(activityIconSize).clickable(
+                role = Role.Button,
+                onClickLabel = detailsLabel,
+                onClick = onClick,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
             ConversationIndicator(request.indicator, ConversationIndicatorDrawing.COMPACT, request.description)
         }
     }

@@ -155,13 +155,14 @@ internal fun SessionScreen(
             val narrow = isCompactLayout || maxWidth < 600.dp
             val resizable = !narrow && (clientPlatform == ClientPlatform.DESKTOP || clientPlatform == ClientPlatform.WEB_DESKTOP)
             val rightWidth = sidePanelResize.width(availableWidth)
+            val inspectRuntimeOverview = { onInspectRuntime(RuntimeInspectionSection.OVERVIEW) }
             val lampContent: @Composable () -> Unit = {
                 OptionalTooltip(activityPresentation.tooltip) {
                     Box(Modifier.size(controls.minHeight).testTag("composer-state-indicator")
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null,
                             enabled = modelActivity == null,
                             role = Role.Button, onClickLabel = localization.text("chat.activity.details"),
-                            onClick = { onInspectRuntime(RuntimeInspectionSection.OVERVIEW) }), contentAlignment = Alignment.Center) {
+                            onClick = inspectRuntimeOverview), contentAlignment = Alignment.Center) {
                         if (modelActivity == null) ConversationIndicator(activityPresentation.indicator, ConversationIndicatorDrawing.FULL, activityPresentation.tooltip)
                     }
                 }
@@ -221,7 +222,7 @@ internal fun SessionScreen(
                                 },
                                 modifier = Modifier.weight(1f),
                             ) { timelineItem, pauseFollowingLatest ->
-                                ConversationTimelineItemContent(timelineItem) { entry ->
+                                ConversationTimelineItemContent(timelineItem, inspectRuntimeOverview) { entry ->
                                     if ((entry.isFirstInMessage || entry.segment is MessageSegment.Activity) && viewModel.hasDeferredHistoryContent(entry.message, deferredHistory)) {
                                         TextButton(
                                             onClick = { pauseFollowingLatest(); viewModel.loadHistoryDetails(entry.message.id) },
@@ -240,6 +241,7 @@ internal fun SessionScreen(
                                             viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
                                         },
                                         onManualContentResize = pauseFollowingLatest,
+                                        onModelRequestClick = inspectRuntimeOverview,
                                         expandedActivityKeys = uiState.expandedActivityKeys,
                                         onToggleActivityExpansion = viewModel::toggleActivityExpansion,
                                         loadArtifactContent = viewModel::loadArtifactContent,

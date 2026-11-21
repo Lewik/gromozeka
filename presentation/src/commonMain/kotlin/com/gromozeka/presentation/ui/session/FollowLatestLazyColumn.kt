@@ -69,6 +69,7 @@ internal fun <T> FollowLatestLazyColumn(
     var hasUnreadContent by remember { mutableStateOf(false) }
     var unreadKeys by remember { mutableStateOf(emptySet<Any>()) }
     var previousItemKeys by remember { mutableStateOf<List<Any>?>(null) }
+    var previousUnreadItemKeys by remember { mutableStateOf<List<Any>?>(null) }
     var previousUnreadKeys by remember { mutableStateOf<Set<Any>?>(null) }
     var previousUnreadRevision by remember { mutableStateOf<Any?>(null) }
     var followScrollsInProgress by remember { mutableIntStateOf(0) }
@@ -113,13 +114,17 @@ internal fun <T> FollowLatestLazyColumn(
     }
 
     val itemKeys = items.map(itemKey)
-    val currentUnreadKeys = items.mapNotNullTo(linkedSetOf(), unreadKey)
+    val unreadItems = items.mapIndexedNotNull { index, item ->
+        unreadKey(item)?.let { itemKeys[index] to it }
+    }
+    val currentUnreadItemKeys = unreadItems.map { it.first }
+    val currentUnreadKeys = unreadItems.mapTo(linkedSetOf()) { it.second }
     LaunchedEffect(itemKeys, contentRevision, unreadRevision) {
         val previousItems = previousItemKeys
         val previousUnread = previousUnreadKeys
         val prependOnly = previousItems != null && itemKeys.size > previousItems.size && itemKeys.takeLast(previousItems.size) == previousItems
-        val previousLastUnread = previousItemKeys?.asReversed()?.firstNotNullOfOrNull { previousKey ->
-            items.indexOfLast { itemKey(it) == previousKey }.takeIf { it >= 0 }
+        val previousLastUnread = previousUnreadItemKeys?.asReversed()?.firstNotNullOfOrNull { previousKey ->
+            itemKeys.indexOfLast { it == previousKey }.takeIf { it >= 0 }
         } ?: -1
         val appendedUnreadKeys = if (previousLastUnread >= 0)
             items.drop(previousLastUnread + 1).mapNotNullTo(mutableSetOf(), unreadKey) else emptySet()
@@ -128,6 +133,7 @@ internal fun <T> FollowLatestLazyColumn(
         val unreadChanged = previousUnreadRevision != unreadRevision
         previousUnreadRevision = unreadRevision
         previousItemKeys = itemKeys
+        previousUnreadItemKeys = currentUnreadItemKeys
         previousUnreadKeys = currentUnreadKeys
 
         when {
