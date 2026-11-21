@@ -201,6 +201,53 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `V92 rejects a reused provider checkpoint with different branch prefixes`() = runBlocking {
+        withFixture(target = "91") { f ->
+            val original = f.message("original")
+            val replacement = f.message("replacement")
+            val boundary = f.message("boundary")
+            val checkpoint = f.message("checkpoint").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                        buildJsonObject { put("state", "opaque") },
+                    ),
+                    origin = ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                    strategy = ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )),
+            )
+            f.insertRaw(original, 0)
+            f.insertRaw(boundary, 1)
+            f.insertRaw(checkpoint, 2)
+            val branch = Conversation.Thread.Id("branch")
+            ExposedThreadRepository().save(Conversation.Thread(
+                branch, f.conversation.id, originalThread = f.conversation.currentThread,
+                createdAt = f.now, updatedAt = f.now,
+            ))
+            f.insertRawMessage(replacement)
+            f.links.add(branch, replacement.id, 0)
+            f.links.add(branch, boundary.id, 1)
+            f.links.add(branch, checkpoint.id, 2)
+
+            val failure = assertFails { f.migrate() }
+            val details = generateSequence(failure as Throwable?) { it.cause }.joinToString("\n") { it.toString() }
+            assertContains(details, "different source prefixes")
+            f.source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("""
+                        SELECT count(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'messages'
+                          AND column_name = 'compaction_header'
+                    """.trimIndent()).use { rows -> assertTrue(rows.next()); assertEquals(0, rows.getInt(1)) }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `V92 gives a reused provider checkpoint its common preceding boundary`() = runBlocking {
         withFixture(target = "91") { f ->
             val source = f.message("source")
@@ -532,15 +579,21 @@ class PostgresRuntimeMessageReadTest {
             Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration/postgres").load().migrate()
         }
+        fun insertRawMessage(message: Conversation.Message) {
+            source.connection.use { connection -> insertRawMessage(connection, message) }
+        }
         fun insertRaw(message: Conversation.Message, position: Int) {
             source.connection.use { connection ->
-                connection.prepareStatement("INSERT INTO messages(id, conversation_id, original_ids_json, role, created_at, search_text, message_json) VALUES (?, ?, '[]', ?, now(), '', ?)").use {
-                    it.setString(1, message.id.value); it.setString(2, message.conversationId.value)
-                    it.setString(3, message.role.name); it.setString(4, Json.encodeToString(message)); it.executeUpdate()
-                }
+                insertRawMessage(connection, message)
                 connection.prepareStatement("INSERT INTO thread_messages(thread_id, message_id, position) VALUES (?, ?, ?)").use {
                     it.setString(1, conversation.currentThread.value); it.setString(2, message.id.value); it.setInt(3, position); it.executeUpdate()
                 }
+            }
+        }
+        private fun insertRawMessage(connection: Connection, message: Conversation.Message) {
+            connection.prepareStatement("INSERT INTO messages(id, conversation_id, original_ids_json, role, created_at, search_text, message_json) VALUES (?, ?, '[]', ?, now(), '', ?)").use {
+                it.setString(1, message.id.value); it.setString(2, message.conversationId.value)
+                it.setString(3, message.role.name); it.setString(4, Json.encodeToString(message)); it.executeUpdate()
             }
         }
         fun metadata(id: Conversation.Message.Id): com.gromozeka.domain.model.MessageContextMetadata? = source.connection.use { connection ->

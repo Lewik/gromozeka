@@ -114,31 +114,40 @@ class V92__compaction_headers : BaseJavaMigration() {
     }
 
     private fun inferBoundary(connection: Connection, id: String): String {
-        val boundaries = mutableListOf<String>()
-        connection.prepareStatement(
+        val validation = connection.prepareStatement(
             """
-                SELECT previous.message_id
-                FROM thread_messages checkpoint
-                LEFT JOIN thread_messages previous
-                  ON previous.thread_id = checkpoint.thread_id
-                 AND previous.position = checkpoint.position - 1
-                WHERE checkpoint.message_id = ?
+                WITH branch_prefixes AS (
+                    SELECT checkpoint.thread_id,
+                           array_agg(prefix.message_id ORDER BY prefix.position)
+                               FILTER (WHERE prefix.message_id IS NOT NULL) AS prefix
+                    FROM thread_messages checkpoint
+                    LEFT JOIN thread_messages prefix
+                      ON prefix.thread_id = checkpoint.thread_id
+                     AND prefix.position < checkpoint.position
+                    WHERE checkpoint.message_id = ?
+                    GROUP BY checkpoint.thread_id
+                )
+                SELECT count(*),
+                       count(*) FILTER (WHERE prefix IS NULL OR cardinality(prefix) = 0),
+                       count(DISTINCT prefix),
+                       min(prefix[cardinality(prefix)])
+                FROM branch_prefixes
             """.trimIndent(),
         ).use { select ->
             select.setString(1, id)
             select.executeQuery().use { rows ->
-                while (rows.next()) {
-                    boundaries += checkNotNull(rows.getString(1)) {
-                        "Full compaction $id has no preceding source in one of its threads"
-                    }
-                }
+                check(rows.next())
+                PrefixValidation(rows.getInt(1), rows.getInt(2), rows.getInt(3), rows.getString(4))
             }
         }
-        check(boundaries.isNotEmpty()) { "Full compaction $id is not linked to a thread" }
-        check(boundaries.distinct().size == 1) {
-            "Full compaction $id has different source boundaries across threads"
+        check(validation.branchCount > 0) { "Full compaction $id is not linked to a thread" }
+        check(validation.emptyPrefixCount == 0) {
+            "Full compaction $id has no preceding source in one of its threads"
         }
-        return boundaries.first()
+        check(validation.distinctPrefixCount == 1) {
+            "Full compaction $id has different source prefixes across threads"
+        }
+        return checkNotNull(validation.boundary)
     }
 
     private fun validateFullPrefixes(connection: Connection, update: FullUpdate) {
@@ -242,6 +251,12 @@ class V92__compaction_headers : BaseJavaMigration() {
     }
 
     private data class HeaderUpdate(val id: String, val header: String)
+    private data class PrefixValidation(
+        val branchCount: Int,
+        val emptyPrefixCount: Int,
+        val distinctPrefixCount: Int,
+        val boundary: String?,
+    )
     private data class FullUpdate(
         val id: String,
         val original: String,
