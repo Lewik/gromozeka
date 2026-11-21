@@ -31,7 +31,7 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
-    fun `V91 normalizes compact terminology before V92 indexes 16000 legacy messages`() = runBlocking {
+    fun `V93 upgrades an existing V92 database after the batched legacy header backfill`() = runBlocking {
         withFixture(target = "90") { f ->
             val thread = f.conversation.currentThread
             f.source.connection.use { connection ->
@@ -91,7 +91,7 @@ class PostgresRuntimeMessageReadTest {
                     assertEquals(1, it.executeUpdate())
                 }
             }
-            f.migrate()
+            f.migrate("92")
             f.source.connection.use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeQuery("""
@@ -103,6 +103,35 @@ class PostgresRuntimeMessageReadTest {
                         assertEquals(16_000, rows.getInt(1))
                         assertEquals(16, rows.getInt(2), "V92 must commit each 1000-message backfill batch separately")
                     }
+                    val oldHeader = statement.executeQuery(
+                        "SELECT compaction_header FROM messages WHERE id = 'archive-15001'",
+                    ).use { rows ->
+                        assertTrue(rows.next())
+                        Json.decodeFromString<com.gromozeka.domain.model.CompactionMessageHeader>(rows.getString(1))
+                    }
+                    val oldCoverage = oldHeader.coverage.single().copy(
+                        sourceMessageIds = (1..15_000).map { Conversation.Message.Id("archive-$it") },
+                    )
+                    connection.prepareStatement(
+                        "UPDATE messages SET compaction_header = ? WHERE id = 'archive-15001'",
+                    ).use {
+                        it.setString(1, Json.encodeToString(oldHeader.copy(coverage = listOf(oldCoverage))))
+                        assertEquals(1, it.executeUpdate())
+                    }
+                    statement.executeQuery("SELECT message_json, compaction_header FROM messages WHERE id = 'archive-15001'").use { rows ->
+                        assertTrue(rows.next())
+                        val checkpoint = Json { ignoreUnknownKeys = true }.decodeFromString<Conversation.Message>(rows.getString(1))
+                            .content.single() as ContentItem.ContextCompactionResult
+                        assertEquals(15_000, checkpoint.sourceMessageIds.size)
+                        assertNull(checkpoint.sourceBoundaryMessageId)
+                        val header = Json.decodeFromString<com.gromozeka.domain.model.CompactionMessageHeader>(rows.getString(2))
+                        assertEquals(15_000, header.coverage.single().sourceMessageIds.size)
+                    }
+                }
+            }
+            f.migrate()
+            f.source.connection.use { connection ->
+                connection.createStatement().use { statement ->
                     statement.executeQuery("SELECT message_json, compaction_header FROM messages WHERE id = 'archive-2'").use { rows ->
                         assertTrue(rows.next())
                         val messageJson = rows.getString(1)
@@ -148,7 +177,7 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `V92 rejects a full checkpoint that is not an exact prefix in every branch before mutation`() = runBlocking {
+    fun `V93 rejects a full checkpoint that is not an exact prefix in every branch before mutation`() = runBlocking {
         withFixture(target = "91") { f ->
             val source = f.message("source")
             val checkpoint = f.message("checkpoint").copy(
@@ -173,10 +202,11 @@ class PostgresRuntimeMessageReadTest {
             f.links.add(branch, source.id, 0)
             f.links.add(branch, tail.id, 1)
             f.links.add(branch, checkpoint.id, 2)
+            f.migrate("92")
             val before = f.source.connection.use { connection ->
-                connection.prepareStatement("SELECT message_json FROM messages WHERE id = ?").use {
+                connection.prepareStatement("SELECT message_json, compaction_header FROM messages WHERE id = ?").use {
                     it.setString(1, checkpoint.id.value)
-                    it.executeQuery().use { rows -> assertTrue(rows.next()); rows.getString(1) }
+                    it.executeQuery().use { rows -> assertTrue(rows.next()); rows.getString(1) to rows.getString(2) }
                 }
             }
 
@@ -191,9 +221,9 @@ class PostgresRuntimeMessageReadTest {
                         WHERE table_schema = current_schema()
                           AND table_name = 'messages'
                           AND column_name = 'compaction_header'
-                    """.trimIndent()).use { rows -> assertTrue(rows.next()); assertEquals(0, rows.getInt(1)) }
-                    statement.executeQuery("SELECT message_json FROM messages WHERE id = 'checkpoint'").use { rows ->
-                        assertTrue(rows.next()); assertEquals(before, rows.getString(1))
+                    """.trimIndent()).use { rows -> assertTrue(rows.next()); assertEquals(1, rows.getInt(1)) }
+                    statement.executeQuery("SELECT message_json, compaction_header FROM messages WHERE id = 'checkpoint'").use { rows ->
+                        assertTrue(rows.next()); assertEquals(before, rows.getString(1) to rows.getString(2))
                     }
                 }
             }
@@ -201,7 +231,7 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `V92 rejects a reused provider checkpoint with different branch prefixes`() = runBlocking {
+    fun `V93 rejects a reused provider checkpoint with different branch prefixes`() = runBlocking {
         withFixture(target = "91") { f ->
             val original = f.message("original")
             val replacement = f.message("replacement")
@@ -230,6 +260,13 @@ class PostgresRuntimeMessageReadTest {
             f.links.add(branch, boundary.id, 1)
             f.links.add(branch, checkpoint.id, 2)
 
+            f.migrate("92")
+            val before = f.source.connection.use { connection ->
+                connection.prepareStatement("SELECT message_json, compaction_header FROM messages WHERE id = ?").use {
+                    it.setString(1, checkpoint.id.value)
+                    it.executeQuery().use { rows -> assertTrue(rows.next()); rows.getString(1) to rows.getString(2) }
+                }
+            }
             val failure = assertFails { f.migrate() }
             val details = generateSequence(failure as Throwable?) { it.cause }.joinToString("\n") { it.toString() }
             assertContains(details, "different source prefixes")
@@ -241,14 +278,17 @@ class PostgresRuntimeMessageReadTest {
                         WHERE table_schema = current_schema()
                           AND table_name = 'messages'
                           AND column_name = 'compaction_header'
-                    """.trimIndent()).use { rows -> assertTrue(rows.next()); assertEquals(0, rows.getInt(1)) }
+                    """.trimIndent()).use { rows -> assertTrue(rows.next()); assertEquals(1, rows.getInt(1)) }
+                    statement.executeQuery("SELECT message_json, compaction_header FROM messages WHERE id = 'checkpoint'").use { rows ->
+                        assertTrue(rows.next()); assertEquals(before, rows.getString(1) to rows.getString(2))
+                    }
                 }
             }
         }
     }
 
     @Test
-    fun `V92 gives a reused provider checkpoint its common preceding boundary`() = runBlocking {
+    fun `V93 gives a reused provider checkpoint its common preceding boundary`() = runBlocking {
         withFixture(target = "91") { f ->
             val source = f.message("source")
             val checkpoint = f.message("checkpoint").copy(
@@ -278,6 +318,42 @@ class PostgresRuntimeMessageReadTest {
                 .content.single() as ContentItem.ContextCompactionResult
             assertTrue(migrated.sourceMessageIds.isEmpty())
             assertEquals(source.id, migrated.sourceBoundaryMessageId)
+        }
+    }
+
+    @Test
+    fun `V93 leaves an already boundary based body and header untouched`() = runBlocking {
+        withFixture(target = "91") { f ->
+            val source = f.message("source")
+            val checkpoint = f.message("checkpoint").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("History"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
+                    sourceBoundaryMessageId = source.id,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )),
+            )
+            f.insertRaw(source, 0)
+            f.insertRaw(checkpoint, 1)
+            f.migrate("92")
+            fun stored() = f.source.connection.use { connection ->
+                connection.prepareStatement(
+                    "SELECT message_json, compaction_header, xmin::text FROM messages WHERE id = ?",
+                ).use {
+                    it.setString(1, checkpoint.id.value)
+                    it.executeQuery().use { rows ->
+                        assertTrue(rows.next())
+                        Triple(rows.getString(1), rows.getString(2), rows.getString(3))
+                    }
+                }
+            }
+            val before = stored()
+
+            f.migrate()
+
+            assertEquals(before, stored())
         }
     }
 
@@ -574,10 +650,12 @@ class PostgresRuntimeMessageReadTest {
             links.add(thread, message.id, position)
         }
         fun sql(sql: String) { source.connection.use { it.createStatement().use { it.execute(sql) } } }
-        fun migrate() {
+        fun migrate(target: String? = null) {
             val schema = requireNotNull(source.currentSchema).substringBefore(',')
-            Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
-                .locations("classpath:db/migration/postgres").load().migrate()
+            val migration = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres")
+            target?.let(migration::target)
+            migration.load().migrate()
         }
         fun insertRawMessage(message: Conversation.Message) {
             source.connection.use { connection -> insertRawMessage(connection, message) }
