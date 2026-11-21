@@ -406,9 +406,24 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf("a", "b"), f.messages.takeLast(2).map { it.id.value })
     }
 
-    @Test fun `reviewed responses prepare compaction only after committing the accepted draft`() = runBlocking {
+    @Test fun `reviewed responses do not compact from reconstructed requests`() = runBlocking {
+        fun tool(name: String) = object : AiToolCallback {
+            override val definition = AiToolDefinition(name, "Synthetic $name", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
         for (text in listOf("Visible final", null)) {
-            val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
+            val f = Fixture(
+                enableReview = true,
+                proactive = true,
+                withEnricher = true,
+                reasoningOverride = AiReasoningConfig(effort = AiReasoningEffort.MAX),
+                maxOutputTokens = 256,
+                selectedTools = listOf(tool("inspect_state")),
+                compactionEnrichedTools = listOf(tool("grz_slot_release")),
+                assembledSystemPrompts = listOf("Actual agent instructions"),
+            )
+            val model = f.begin()
             val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
                 content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Original answer"))), createdAt = now)
             f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
@@ -418,19 +433,20 @@ class ConversationEngineDeliveryTest {
             val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
                 payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
             f.advance(model, task)
-            f.onPrepare = {
-                assertTrue(f.emitted.any { it.providerMetadata["collaborationReviewId"] == JsonPrimitive("draft") })
-                if (text != null) assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } })
-            }
+            f.onPrepare = { fail("Review must not prepare compaction from a reconstructed request") }
+            f.onApply = { fail("Review must not apply compaction from a reconstructed request") }
             val result = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
             if (text == null) assertIs<ConversationRuntimeTaskOutcome.CompleteWithoutNotification>(result)
             else assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(result)
-            assertEquals(1, f.preparations.size)
+            assertTrue(f.emitted.any { it.providerMetadata["collaborationReviewId"] == JsonPrimitive("draft") })
+            if (text != null) assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } })
+            assertTrue(f.preparations.isEmpty())
+            assertTrue(f.applicationRequests.isEmpty())
         }
     }
 
     @Test fun `steer invalidates an unpublished response review and preserves replay without stale visible answer`() = runBlocking {
-        val f = Fixture(enableReview = true); val model = f.begin()
+        val f = Fixture(enableReview = true, proactive = true, withEnricher = true); val model = f.begin()
         val stale = Conversation.Message(Conversation.Message.Id("stale"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Stale answer"))), createdAt = now)
         f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
@@ -446,6 +462,8 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.messages.first { it.id == stale.id }.providerMetadata.isNotEmpty(), "Original provider output is retained for replay")
         assertEquals("new", f.emitted.last().id.value)
         assertTrue(Mockito.mockingDetails(f.reviewRepository).invocations.none { it.method.name.startsWith("applyDecision") })
+        assertTrue(f.preparations.isEmpty())
+        assertTrue(f.applicationRequests.isEmpty())
     }
 
     @Test fun `pin add edit delete affects next ordinary or post-tool call but never the in-flight request`() = runBlocking<Unit> {
@@ -1025,7 +1043,7 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.preparations.isEmpty())
     }
 
-    @Test fun `review applies ready compaction only after accepted messages and routing receipt are committed`() = runBlocking {
+    @Test fun `review does not apply compaction from a reconstructed request`() = runBlocking {
         val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
         val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Accepted answer"))), createdAt = now)
@@ -1036,16 +1054,13 @@ class ConversationEngineDeliveryTest {
         val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
             payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
         f.advance(model, task)
-        f.onApply = {
-            assertEquals(conversation.currentThread, f.currentConversation.currentThread)
-            assertTrue(f.messages.any { it.id == candidate.id })
-            assertTrue(f.messages.any { it.id.value == "draft:receipt" })
-            f.onApply = { null }
-            f.currentConversation.copy(currentThread = Conversation.Thread.Id("reviewed-and-compacted")).also { f.currentConversation = it }
-        }
+        f.onApply = { fail("Review must leave prepared compaction for canonical application") }
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) { f.emitted += it })
+        assertEquals(conversation.currentThread, f.currentConversation.currentThread)
+        assertTrue(f.messages.any { it.id == candidate.id })
+        assertTrue(f.messages.any { it.id.value == "draft:receipt" })
         assertTrue(f.requests.isEmpty()); assertTrue(f.preparations.isEmpty())
-        assertEquals(Conversation.Thread.Id("reviewed-and-compacted"), f.currentConversation.currentThread)
+        assertTrue(f.applicationRequests.isEmpty())
     }
 
     @Test fun `running command observations reach ordinary requests without changing history or acknowledgement`() = runBlocking {

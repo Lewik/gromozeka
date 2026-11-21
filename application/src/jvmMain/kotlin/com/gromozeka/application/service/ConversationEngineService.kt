@@ -796,10 +796,12 @@ class ConversationEngineService(
         val service = requireNotNull(responseReview) { "Collaboration review is disabled; draft retained" }
         val collaboration = requireNotNull(collaboration)
         val draft = requireNotNull(collaboration.repository.findDraft(payload.draftId)) { "Missing response draft" }
-        var conversation = requireNotNull(conversationService.findById(task.conversationId))
+        val conversation = requireNotNull(conversationService.findById(task.conversationId))
         require(draft.endpoint.threadId == conversation.currentThread && draft.actorUserId == task.actorUserId && draft.endpoint.agentId == payload.agentDefinitionId)
         requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
+        // A persisted review draft does not retain the exact request that produced it. Detached
+        // compaction must wait for a canonical request boundary instead of rebuilding that prefix.
         suspend fun continueAfterNewInput(): ConversationRuntimeTaskOutcome {
             // Keep the actual provider output for replay, but do not publish this stale draft as an answer.
             service.acceptedMessages(draft, AgentResponseDecision(null, AgentResponseDecision.Next.CONTINUE, emptyList(), emptyList())).forEach {
@@ -809,8 +811,6 @@ class ConversationEngineService(
                 conversation, context.runtimeContext, context.memorySystemPrompts, context.memoryPipelineTools,
                 context.automaticMemoryRememberEnabled, context.automaticMemoryRecallEnabled)
             steering.messages.forEach { emitMessage(it) }
-            conversation = afterCommittedModelResponse(task, executor, conversation, context,
-                AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind)))
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
                 payload.agentDefinitionId, draft.iteration + 1, if (steering.consumedTasks) steering.actorUserId else task.actorUserId),
                 backgroundDeliveryReceipts = steering.backgroundDeliveryReceipts)
@@ -855,8 +855,6 @@ class ConversationEngineService(
             createdAt = Clock.System.now(),
         )
         if (addRuntimeMessageIfMissing(conversation.id, receipt)) emitMessage(receipt)
-        conversation = afterCommittedModelResponse(task, executor, conversation, context,
-            AiRuntimeRequest(context.runtimeSystemPrompts, loadRuntimeMessages(conversation, context.connectionKind)))
         return if (decision.next == AgentResponseDecision.Next.CONTINUE) {
             ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
                 payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
