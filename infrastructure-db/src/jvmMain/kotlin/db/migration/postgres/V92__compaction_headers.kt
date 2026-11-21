@@ -7,7 +7,7 @@ import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
 import java.sql.Connection
 
-class V91__compaction_headers : BaseJavaMigration() {
+class V92__compaction_headers : BaseJavaMigration() {
     override fun canExecuteInTransaction(): Boolean = false
 
     override fun migrate(context: Context) {

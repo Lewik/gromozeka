@@ -71,7 +71,7 @@ class PostgresCompactTerminologyMigrationTest {
                             insert.executeUpdate()
                         }
                         sql.execute(requireNotNull(javaClass.getResource(
-                            "/db/migration/postgres/V92__compact_terminology.sql")).readText())
+                            "/db/migration/postgres/V91__compact_terminology.sql")).readText())
                     }
 
                     connection.createStatement().use { statement ->

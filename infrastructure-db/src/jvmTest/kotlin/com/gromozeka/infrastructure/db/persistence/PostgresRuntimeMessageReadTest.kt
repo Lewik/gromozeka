@@ -27,7 +27,7 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
-    fun `V91 indexes 16000 legacy messages and selection reads only the requested bodies`() = runBlocking {
+    fun `V91 normalizes compact terminology before V92 indexes 16000 legacy messages`() = runBlocking {
         withFixture(target = "90") { f ->
             val thread = f.conversation.currentThread
             f.source.connection.use { connection ->
@@ -44,6 +44,29 @@ class PostgresRuntimeMessageReadTest {
                     INSERT INTO thread_messages(thread_id, message_id, position)
                     SELECT ?, 'archive-' || i, i - 1 FROM generate_series(1, 16000) AS i
                 """.trimIndent()).use { it.setString(1, thread.value); it.executeUpdate() }
+                val checkpoint = f.message("archive-2").copy(
+                    role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(ContentItem.ContextCompactionResult(
+                        payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Handoff"),
+                        origin = ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                        strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
+                        sourceMessageIds = listOf(Conversation.Message.Id("archive-1")),
+                        promptTemplate = ContentItem.ContextCompactionResult.PromptTemplateReference(
+                            "gromozeka.message-compaction.compact", 2,
+                        ),
+                        coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+                    )),
+                )
+                val legacyCheckpoint = Json.encodeToString(checkpoint)
+                    .replace("\"strategy\":\"COMPACT\"", "\"strategy\":\"SUMMARIZE\"")
+                    .replace(
+                        "\"id\":\"gromozeka.message-compaction.compact\"",
+                        "\"id\":\"gromozeka.message-compaction.summarize\"",
+                    )
+                connection.prepareStatement("UPDATE messages SET role = 'ASSISTANT', message_json = ? WHERE id = 'archive-2'").use {
+                    it.setString(1, legacyCheckpoint)
+                    assertEquals(1, it.executeUpdate())
+                }
             }
             f.migrate()
             f.source.connection.use { connection ->
@@ -55,7 +78,21 @@ class PostgresRuntimeMessageReadTest {
                     """.trimIndent()).use { rows ->
                         assertTrue(rows.next())
                         assertEquals(16_000, rows.getInt(1))
-                        assertEquals(16, rows.getInt(2), "V91 must commit each 1000-message backfill batch separately")
+                        assertEquals(16, rows.getInt(2), "V92 must commit each 1000-message backfill batch separately")
+                    }
+                    statement.executeQuery("SELECT message_json, compaction_header FROM messages WHERE id = 'archive-2'").use { rows ->
+                        assertTrue(rows.next())
+                        val messageJson = rows.getString(1)
+                        assertFalse(messageJson.contains("\"strategy\":\"SUMMARIZE\""), messageJson)
+                        assertFalse(messageJson.contains("gromozeka.message-compaction.summarize"), messageJson)
+                        val checkpoint = Json.decodeFromString<Conversation.Message>(messageJson)
+                            .content.single() as ContentItem.ContextCompactionResult
+                        assertEquals(ContentItem.ContextCompactionResult.Strategy.COMPACT, checkpoint.strategy)
+                        assertEquals("gromozeka.message-compaction.compact", checkpoint.promptTemplate?.id)
+                        assertEquals(
+                            Conversation.Message.Id("archive-2"),
+                            Json.decodeFromString<com.gromozeka.domain.model.CompactionMessageHeader>(rows.getString(2)).id,
+                        )
                     }
                 }
             }

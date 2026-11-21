@@ -64,7 +64,7 @@ pin snapshot that preparation validates.
 Selection and commit read per-message headers (coverage, tool pairs, character
 counts and replay eligibility). Bodies are loaded for the selected input,
 including any originals needed to recover an incompatible opaque checkpoint.
-V91 backfills headers on existing messages. An older READY receipt without a
+V92 backfills headers on existing messages. An older READY receipt without a
 captured boundary is discarded on application.
 
 Preparation runs under
