@@ -24,6 +24,29 @@ import kotlin.time.Instant
 @OptIn(ExperimentalTestApi::class)
 class MessageTextSelectionTest {
     @Test
+    fun runtimeObservationHasNoTimelineEntry() = runDesktopComposeUiTest {
+        val message = Conversation.Message(
+            id = Conversation.Message.Id("runtime-observation"),
+            conversationId = Conversation.Id("conversation"),
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "state",
+                key = "state",
+                revision = "revision",
+            )),
+            createdAt = Instant.fromEpochMilliseconds(0),
+        )
+        var entries = emptyList<MessageListEntry>()
+        setContent {
+            entries = rememberMessageListEntries(listOf(message), emptyMap(), emptyMap())
+        }
+
+        runOnIdle { assertTrue(entries.isEmpty()) }
+    }
+
+    @Test
     fun partialSelectionSpansInlineFormattingWithoutSelectingTheWholeLine() = runDesktopComposeUiTest {
         val clipboard = MemoryClipboard()
         showMessage("Alpha **bold** `code` *italic* Omega", Conversation.Message.Role.ASSISTANT, clipboard)

@@ -773,12 +773,26 @@ data class Conversation(
                 override fun toXmlLine() = "<user-instruction>${serializeContent()}</user-instruction>"
             }
 
-            /** Request-only application data, never a new human utterance or user instruction. */
+            /** Runtime-owned application data, never a human utterance or user instruction. */
             @Serializable
             @SerialName("runtime_observation")
-            data class RuntimeObservation(val text: String) : Instruction() {
+            data class RuntimeObservation(
+                val text: String,
+                /** Stable application-owned state key. Null observations are unversioned event context. */
+                val key: String? = null,
+                /** Content revision for [key]. The latest retained revision replaces older values. */
+                val revision: String? = null,
+            ) : Instruction() {
+                init {
+                    require((key == null) == (revision == null)) {
+                        "Runtime observation key and revision must be supplied together"
+                    }
+                    require(key == null || key.isNotBlank()) { "Runtime observation key must not be blank" }
+                    require(revision == null || revision.isNotBlank()) { "Runtime observation revision must not be blank" }
+                }
+
                 override val title = "Runtime observation"
-                override val description = "Request-only application data"
+                override val description = "Runtime-owned application data"
                 override fun serializeContent() = text
                 override fun toXmlLine() = text
             }

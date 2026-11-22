@@ -58,6 +58,9 @@ object ConversationMessageProjection {
         }
         var projected = entry.message.copy(
             content = content,
+            instructions = entry.message.instructions.filterNot {
+                it is Conversation.Message.Instruction.RuntimeObservation
+            },
             providerMetadata = JsonObject(entry.message.providerMetadata.filterKeys { it == "compactionBoundary" } + presentationMetadata),
         )
         if (Json.encodeToString(projected).encodeToByteArray().size > MAX_MESSAGE_BYTES) {

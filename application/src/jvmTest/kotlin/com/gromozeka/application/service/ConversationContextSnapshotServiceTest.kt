@@ -216,7 +216,7 @@ class ConversationContextSnapshotServiceTest {
                 </current_agent>
             """.trimIndent(), result[2])
             assertEquals(listOf("catalog", "env", "skills"), result.subList(3, 6))
-            assertEquals(RecordedRunningCommandsRequestEnricher.INSTRUCTION, result[6])
+            assertEquals(ConversationRuntimeObservationService.RECORDED_RUNNING_COMMANDS_INSTRUCTION, result[6])
             assertEquals(listOfNotNull(AssistantResponseFormatContract.instruction(format, false)), result.drop(7))
         }
     }

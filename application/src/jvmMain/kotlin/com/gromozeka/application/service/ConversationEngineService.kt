@@ -136,6 +136,7 @@ class ConversationEngineService(
     private val stickyMessageInstructionService: StickyMessageInstructionService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val conversationPins: ConversationPinnedPrompt,
+    private val runtimeObservations: ConversationRuntimeObservationService,
     private val requestEnrichers: List<ConversationRequestEnricher> = emptyList(),
     private val collaboration: AgentCollaborationService? = null,
     private val responseReview: AgentResponseReviewService? = null,
@@ -197,6 +198,7 @@ class ConversationEngineService(
             val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor, readOnlySnapshot = true)
             val assembled = assembleRuntimeRequest(
                 task = task,
+                executor = executor,
                 conversation = conversation,
                 context = context,
                 rootUserMessageId = null,
@@ -252,6 +254,7 @@ class ConversationEngineService(
                 draft.endpoint.agentId, conversation, executor, readOnlySnapshot = true)
             val assembled = assembleRuntimeRequest(
                 task = task,
+                executor = executor,
                 conversation = conversation,
                 context = context,
                 rootUserMessageId = null,
@@ -287,6 +290,7 @@ class ConversationEngineService(
                     val context = buildConversationRuntimeContext(agent.id, conversation, executor, readOnlySnapshot = true)
                     val assembled = assembleRuntimeRequest(
                         task = task,
+                        executor = executor,
                         conversation = conversation,
                         context = context,
                         rootUserMessageId = null,
@@ -329,6 +333,7 @@ class ConversationEngineService(
                 val context = buildConversationRuntimeContext(expected.agentId, conversation, executor, readOnlySnapshot = true)
                 val assembledRequest = assembleRuntimeRequest(
                     task = task,
+                    executor = executor,
                     conversation = conversation,
                     context = context,
                     rootUserMessageId = null,
@@ -520,6 +525,7 @@ class ConversationEngineService(
         val activeCollaboration = collaboration.takeIf { conversation.externalChannel == null }
         val assembledRequest = assembleRuntimeRequest(
             task = task,
+            executor = executor,
             conversation = conversation,
             context = context,
             rootUserMessageId = payload.rootUserMessageId,
@@ -1342,6 +1348,7 @@ class ConversationEngineService(
 
     private suspend fun assembleRuntimeRequest(
         task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
         conversation: Conversation,
         context: ConversationRuntimeStepContext,
         rootUserMessageId: Conversation.Message.Id?,
@@ -1349,7 +1356,12 @@ class ConversationEngineService(
         readOnlySnapshot: Boolean,
     ): RuntimeRequestAssembly {
         // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
-        val currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
+        val loadedMessages = loadRuntimeMessages(conversation, context.connectionKind)
+        val currentMessages = if (readOnlySnapshot) loadedMessages else {
+            loadedMessages + runtimeObservations.appendChanged(conversation, task.id, loadedMessages) {
+                ensureRuntimeTaskOwner(conversation.id, task.id, executor)
+            }
+        }
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
                 messages = currentMessages,
@@ -1358,7 +1370,14 @@ class ConversationEngineService(
             groups = settingsProvider.userProfile.messageInstructionGroups,
         )
         val targetMessageId = rootUserMessageId
-            ?: currentMessages.lastOrNull { it.role == Conversation.Message.Role.USER }?.id
+            ?: currentMessages.lastOrNull {
+                it.role == Conversation.Message.Role.USER && !(
+                    it.content.isEmpty() && it.instructions.isNotEmpty() &&
+                        it.instructions.all { instruction ->
+                            instruction is Conversation.Message.Instruction.RuntimeObservation
+                        }
+                )
+            }?.id
             ?: Conversation.Message.Id("history-mutation-reprepare:${task.id.value}")
         // External channels keep their existing turn lifecycle; collaboration is opt-out for the whole turn.
         val activeCollaboration = collaboration.takeIf { conversation.externalChannel == null }

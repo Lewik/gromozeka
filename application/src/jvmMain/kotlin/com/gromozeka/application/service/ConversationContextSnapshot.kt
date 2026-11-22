@@ -79,7 +79,7 @@ internal fun assembleConversationSystemPrompts(
     capabilityCatalog?.let(::add)
     add(environment)
     skills?.let(::add)
-    add(RecordedRunningCommandsRequestEnricher.INSTRUCTION)
+    add(ConversationRuntimeObservationService.RECORDED_RUNNING_COMMANDS_INSTRUCTION)
     AssistantResponseFormatContract.instruction(responseFormat, includeSuggestedReplies, inlineSuggestedRepliesPrompt)?.let(::add)
 }
 

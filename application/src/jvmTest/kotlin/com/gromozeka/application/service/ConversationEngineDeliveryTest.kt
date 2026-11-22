@@ -1070,7 +1070,7 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.preparations.isEmpty())
     }
 
-    @Test fun `running command observations reach ordinary requests without changing history or acknowledgement`() = runBlocking {
+    @Test fun `running command observations persist before ordinary requests without acknowledging completion`() = runBlocking {
         val f = Fixture(withCommandContext = true)
         val running = f.begin()
         val root = f.messages.single()
@@ -1082,9 +1082,16 @@ class ConversationEngineDeliveryTest {
         val outcome = f.engine.runRuntimeTask(running, executor) { f.emitted += it }
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
         assertEquals(JsonArray(listOf(buildJsonObject { put("task_id", "background"); put("description", "Analyze data") })), recordedCommands(f.requests.single()))
-        assertEquals(1, f.requests.single().systemPrompts.count { it == RecordedRunningCommandsRequestEnricher.INSTRUCTION })
+        assertEquals(1, f.requests.single().systemPrompts.count {
+            it == ConversationRuntimeObservationService.RECORDED_RUNNING_COMMANDS_INSTRUCTION
+        })
         assertFalse(f.requests.single().toString().contains("PRIVATE_COMMAND"))
         assertEquals(root, f.messages.single { it.id == root.id })
+        assertTrue(f.messages.any { message ->
+            message.author is Conversation.Message.Author.Runtime &&
+                message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
+                    .any { it.key == ConversationRuntimeObservationService.COMMANDS_KEY }
+        })
         assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
         f.coordinator.upsertCommandTask(command.copy(status = CommandTask.Status.COMPLETED, completedAt = now, updatedAt = now))
         assertTrue(f.coordinator.submit(input("next")))
@@ -1114,8 +1121,9 @@ class ConversationEngineDeliveryTest {
         lateinit var sourceObservation: Conversation.Message.Instruction.RuntimeObservation
         f.onCall = { request ->
             if (calls++ == 0) {
-                sourceObservation = request.messages.single { it.id == root.id }.instructions
-                    .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().single()
+                sourceObservation = request.messages.flatMap { it.instructions }
+                    .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
+                    .single { it.key == ConversationRuntimeObservationService.COMMANDS_KEY }
                 AiRuntimeResponse(
                     messages = listOf(AiAssistantMessage(listOf(
                         ContentItem.Thinking("retained reasoning", "signature"),
@@ -1129,8 +1137,9 @@ class ConversationEngineDeliveryTest {
                     ),
                 )
             } else {
-                assertEquals(sourceObservation, request.messages.single { it.id == root.id }.instructions
-                    .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().single())
+                assertEquals(sourceObservation, request.messages.flatMap { it.instructions }
+                    .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
+                    .single { it.key == ConversationRuntimeObservationService.COMMANDS_KEY })
                 assertTrue(request.messages.filter { it.role == Conversation.Message.Role.ASSISTANT }
                     .flatMap { it.content }.any { it is ContentItem.Thinking })
                 answer()
@@ -1311,6 +1320,18 @@ class ConversationEngineDeliveryTest {
                 messages += message; onAppend(message); return currentConversation
             }
         }
+        private val runtimeObservationService = if (withCommandContext) {
+            ConversationRuntimeObservationService(
+                responding<com.gromozeka.domain.visual.VisualRepository> { emptyList<com.gromozeka.domain.visual.Visual>() },
+                coordinator,
+                appender,
+            )
+        } else {
+            responding<ConversationRuntimeObservationService> {
+                if (it.method.name.substringBefore('-') == "appendChanged") emptyList<Conversation.Message>()
+                else Mockito.RETURNS_DEFAULTS.answer(it)
+            }
+        }
         private val artifacts = responding<ConversationArtifactApplicationService> {
             when (it.method.name.substringBefore('-')) {
                 "materialize", "materializeSnapshot" -> it.arguments[1]
@@ -1432,6 +1453,7 @@ class ConversationEngineDeliveryTest {
                 } }, ConversationPinnedPrompt(pins), responding { agent.runtimeSelection },
             ),
             conversationPins = ConversationPinnedPrompt(pins),
+            runtimeObservations = runtimeObservationService,
             requestEnrichers = buildList {
                 if (withEnricher) add(object : ConversationRequestEnricher {
                     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
@@ -1447,7 +1469,6 @@ class ConversationEngineDeliveryTest {
                         tools = request.tools + compactionEnrichedTools,
                     )
                 })
-                if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
             },
             asyncAdmission = asyncRecovery,
             collaboration = collaboration.takeIf { enableReview },

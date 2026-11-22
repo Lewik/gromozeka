@@ -110,6 +110,36 @@ class ConversationUnreadStateApplicationServiceTest {
         assertEquals(setOf(conversation.id), service.snapshot(secondUserId).conversationIds)
     }
 
+    @Test
+    fun `durable runtime observations do not mark a conversation unread`() = runBlocking {
+        val conversationRepository = FakeConversationRepository().apply { create(conversation) }
+        val changes = RecordingStateChanges()
+        val service = ConversationUnreadStateApplicationService(
+            TestConversationUnreadStateRepository(),
+            conversationRepository,
+            changes,
+        )
+        val observation = Conversation.Message(
+            id = Conversation.Message.Id("runtime-observation"),
+            conversationId = conversation.id,
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "state",
+                key = "state",
+                revision = "revision",
+            )),
+            createdAt = conversation.updatedAt,
+        )
+
+        service.recordMessage(conversation, observation)
+
+        assertEquals(emptySet(), service.snapshot(firstUserId).conversationIds)
+        assertEquals(emptySet(), service.snapshot(secondUserId).conversationIds)
+        assertEquals(emptyList(), changes.keys)
+    }
+
     private val firstUserId = User.Id("user-1")
     private val secondUserId = User.Id("user-2")
     private val conversation = Conversation(

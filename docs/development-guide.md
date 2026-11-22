@@ -1279,30 +1279,35 @@ The persisted/read model requires this field explicitly. V88 fills missing field
 on existing panels with true and enforces a boolean storage constraint. There is
 no reader fallback for old records; the default belongs only to new-panel creation.
 
-Before each conversation LLM request, `VisualRequestEnricher` adds saved
-`form + data` observations only for Visuals with this setting enabled. Disabled
-Visuals remain in the inventory as `state-status=disabled`, with metadata but no
-state or snapshot ID; they are not reported as closed. Opting out also discards
-cached snapshot replay, so earlier automatic state is not re-injected. Other
-Visuals receive fresh full baselines where needed, and reenabling a Visual can
-resume normal state snapshots. This is not a privacy/permission boundary: it does
-not erase previously delivered model context or chat history. Explicit `get` and
-button submissions still carry full state, and handler output cannot change the
-setting through `form/data` updates.
+Before each ordinary conversation LLM request,
+`ConversationRuntimeObservationService` compares saved Visual state with keyed
+observations already present in the current conversation history. It atomically
+appends one Runtime-authored USER message containing only changed observations:
+a complete Visual inventory plus one full state snapshot for each changed enabled
+Visual. An unchanged large Visual is therefore not copied into every request, but
+its latest full keyed snapshot remains durable and survives Server restarts and
+copy-on-write branches. The message has no ordinary content, and its runtime
+instructions are removed from client history projections. It is invisible in the
+chat timeline, does not mark the conversation unread, and does not trigger an
+automatic response by itself.
 
-Updates coalesce between requests and do not trigger model work. Full snapshots are sent when state changes;
-short unchanged markers refer to full snapshots reconstructed earlier in the same
-request. Canonical JSON hashing ignores object-key order and transport revisions.
-The request-only replay cache is bounded and isolated by conversation, thread,
-agent, actor and model. It anchors observations to retained USER/tool-result
-messages without changing persisted history or introducing synthetic message IDs.
-Compacted, truncated or edited anchors invalidate dependent short markers. Cache
-loss, branch changes and Server restarts safely produce fresh full snapshots.
-Assistant-only continuations get a full live block instead of modifying signed
-assistant content. Channel history filtering precedes this late enrichment.
-JSON values are untrusted data and XML delimiters are escaped; neither reminders
-nor client drafts implicitly submit forms. `get` remains useful for autonomous
-fresh reads, markup and diagnostics.
+Disabled Visuals remain in the complete inventory as `state-status=disabled`,
+with metadata but no state or snapshot ID. Reenabling one writes a fresh full
+snapshot. Closing a Visual changes the complete inventory; no tombstone or
+process-local replay state is required. This is not a privacy/permission boundary:
+it does not erase observations already delivered to a model or retained in chat
+history. Explicit `get` and button submissions still carry full state, and handler
+output cannot change the setting through `form/data` updates.
+
+Updates coalesce between model requests and do not trigger model work. Canonical
+JSON hashing ignores object-key order and transport revisions. Compaction consumes
+the durable history and never performs a live Visual read; after observations are
+compacted away, the next ordinary request writes the missing current snapshots
+again. An isolated context query remains read-only and receives one fresh ephemeral
+view. There is no backfill migration for old conversations: the first ordinary
+request after upgrade writes a complete baseline. JSON values are untrusted data
+and XML delimiters are escaped; neither reminders nor client drafts implicitly
+submit forms. `get` remains useful for autonomous fresh reads, markup and diagnostics.
 
 `create` requires both complete state sections, `form` and `data`. `update.state`
 contains one or both complete sections: omitted roots remain unchanged, supplied
@@ -1700,26 +1705,27 @@ Kotlin/Flyway migration, not a runtime compatibility path.
 Worker Gateway protocol **33** requires the updated Server, Workers and clients;
 drain in-flight calls before the coordinated upgrade.
 
-Model requests also receive a request-only `recorded_running_commands` inventory
-from the Server's saved command state. Each entry contains only `task_id` and an
+Model requests also receive a keyed `recorded_running_commands` observation from
+the Server's saved command state. Each entry contains only `task_id` and an
 optional nonblank `description`, limited to 160 Unicode code points. Missing
 labels never fall back to the shell command. Only recorded `WORKING` commands in
 the authorized conversation are included; an empty list replaces a previous list.
 This is not a Worker liveness check, does not enumerate detached external services,
-and does not request action or status polling. It does not wake the model, append
-history, or acknowledge automatic completion delivery.
+and does not request action or status polling. A changed inventory is appended by
+the same durable Runtime message path as Visual state. This does not wake the model
+or acknowledge automatic completion delivery.
 
 The shared system-prompt assembler supplies the static interpretation contract.
 Dynamic blocks contain only JSON in `<runtime-command-context>`. Observations use
-the distinct request-only `Instruction.RuntimeObservation` type, not user text;
+the distinct `Instruction.RuntimeObservation` type, not user text;
 semantic consumers such as pending WebSearch and recent human-input selection do
 not mistake them for a new human turn. Authenticated submissions reject this type.
-Bounded replay keeps observations on retained canonical USER anchors without
-synthetic message IDs. Branch, actor, Agent and provider/model changes isolate
-replay. Native continuations ending in signed assistant state, and changed views
-on an already-sent USER anchor, receive the current block in system instructions
-without rewriting that anchor; the current block takes precedence over older
-observations. Isolated snapshots never seed or mutate the live observation cache.
+Each durable observation has an application-owned key and content revision. The
+latest retained revision for a key replaces older revisions; the complete command
+and Visual inventories also remove absent entries. The first post-upgrade baseline
+marks a replay boundary: unreconstructable pre-boundary reasoning is projected
+portably, and compaction carries the boundary forward. Isolated snapshots do not
+append history or affect later change detection.
 Worker Gateway protocol **32** carries the new instruction variant; update Server
 and Workers together.
 

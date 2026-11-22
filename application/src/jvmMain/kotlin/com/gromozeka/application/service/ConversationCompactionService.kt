@@ -332,7 +332,7 @@ class ConversationCompactionService internal constructor(
         )
     }
 
-    /** Preserve the exact request-only materialization used by the ordinary model path. */
+    /** Preserve the exact model-call materialization used by the ordinary runtime path. */
     private fun AiRuntimeRequest.forCompactionPrefix(prefix: List<CompactionMessageHeader>): AiRuntimeRequest {
         val ids = prefix.mapTo(hashSetOf()) { it.id }
         return copy(messages = messages.filter { it.id in ids })

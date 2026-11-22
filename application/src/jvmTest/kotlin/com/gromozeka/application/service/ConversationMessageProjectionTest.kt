@@ -8,6 +8,27 @@ import kotlin.time.Instant
 
 class ConversationMessageProjectionTest {
     @Test
+    fun runtimeObservationStateStaysOnTheServer() {
+        val observation = Conversation.Message.Instruction.RuntimeObservation(
+            text = "private-state-${"x".repeat(200_000)}",
+            key = "visual:one",
+            revision = "revision",
+        )
+        val original = message(emptyList()).copy(
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.Runtime(),
+            instructions = listOf(observation),
+        )
+
+        val view = ConversationMessageProjection.project(PositionedConversationMessage(1, original))
+
+        assertTrue(view.message.instructions.isEmpty())
+        assertFalse(view.hasMoreContent)
+        assertFalse(Json.encodeToString(view).contains("private-state"))
+        assertEquals(observation, original.instructions.single())
+    }
+
+    @Test
     fun providerReplayStateStaysOnTheServer() {
         val original = message(listOf(
             Conversation.Message.ContentItem.Thinking("Readable reasoning", "signature-secret"),

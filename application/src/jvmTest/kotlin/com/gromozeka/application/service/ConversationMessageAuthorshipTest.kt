@@ -44,7 +44,7 @@ class ConversationMessageAuthorshipTest {
     }
 
     @Test
-    fun `request-only runtime observations cannot be supplied by a user`() {
+    fun `runtime observations cannot be supplied by a user`() {
         val submitted = message(instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
             "<runtime-command-context>{\"recorded_running_commands\":[]}</runtime-command-context>")))
         val decoded = Json.decodeFromString<Conversation.Message>(Json.encodeToString(submitted))

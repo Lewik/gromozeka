@@ -335,8 +335,8 @@ class BackgroundActivityOriginRecorderTest {
             distributedToolCatalog = mock(), agentSkillRuntimeCatalogService = mock(), aiToolRuntimeCatalogService = mock(),
             aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(), artifactService = artifacts,
             activeGenerationPublisher = mock(), messageTemporalContextService = mock(), stickyMessageInstructionService = mock(),
-            pendingSecretRevealService = mock(), suggestedRepliesGenerationService = mock(),
-            conversationPins = mock(),
+            suggestedRepliesGenerationService = mock(), conversationPins = mock(),
+            runtimeObservations = mock(),
         )
         val outcome = engine.runRuntimeTask(task, executor) {}
         assertEquals(batch.messages.map { it.id }, appended.map { it.id })

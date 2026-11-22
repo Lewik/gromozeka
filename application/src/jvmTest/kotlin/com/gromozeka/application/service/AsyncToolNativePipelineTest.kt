@@ -409,6 +409,7 @@ class AsyncToolNativePipelineTest {
             activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
             stickyMessageInstructionService = StickyMessageInstructionService(),
             suggestedRepliesGenerationService = mock(), conversationPins = mock(),
+            runtimeObservations = responding<ConversationRuntimeObservationService> { emptyList<Conversation.Message>() },
         )
         lateinit var task: ConversationRuntimeTask
         lateinit var call: ContentItem.ToolCall
