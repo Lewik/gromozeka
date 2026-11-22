@@ -17,11 +17,11 @@ import kotlinx.coroutines.flow.StateFlow
  * ├─────────────────────────────────────────────────────────────────┤
  * │                                                                 │ ↑
  * │  ┌──────────────────────────────────────────────────────────┐  │ │
- * │  │ [☑] [USER] Message 1                              [⚙]    │  │ │
+ * │  │ [USER] Message 1                                  [⚙]    │  │ │
  * │  └──────────────────────────────────────────────────────────┘  │ │
  * │                                                                 │ │
  * │  ┌──────────────────────────────────────────────────────────┐  │ │
- * │  │ [☐] [ASSISTANT] Response 1                        [⚙]    │  │ │ Scrollable
+ * │  │ [ASSISTANT] Response 1                            [⚙]    │  │ │ Scrollable
  * │  │ <Markdown rendered content>                              │  │ │ Message
  * │  │ ┌──────────────────────────────────────────────────────┐ │  │ │ List
  * │  │ │ [Thinking ▼] (click to expand)                       │ │  │ │
@@ -34,11 +34,6 @@ import kotlinx.coroutines.flow.StateFlow
  * │  │ Partial text appears here █                              │  │
  * │  └──────────────────────────────────────────────────────────┘  │
  * │                                                                 │
- * ├─────────────────────────────────────────────────────────────────┤
- * │ Edit Mode Toolbar (when editMode = true):                      │
- * │ [Select All] [User] [Assistant] [Thinking] [Tools] [Plain]     │
- * │ Selected: 3 | [Squash] [Distill] [Compact] [Delete]            │
- * ├─────────────────────────────────────────────────────────────────┤
  * │ Message Instructions: [R]                                       │
  * ├─────────────────────────────────────────────────────────────────┤
  * │ ┌─────────────────────────────────────────────────────────────┐ │
@@ -77,11 +72,11 @@ import kotlinx.coroutines.flow.StateFlow
  * - [isWaitingForResponse] = false
  *
  * ### Message Selection & Editing
- * - Toggle [editMode] to enable selection checkboxes
- * - Click message checkbox → [toggleMessageSelection]
+ * - Selecting the Thread side-panel section enables message selection
+ * - Click a message → [toggleMessageSelection]
  * - Shift+Click → [toggleMessageSelectionRange] (select range)
- * - Selected messages highlighted, count shown in toolbar
- * - Bulk operations: Squash, Distill, Compact, Delete
+ * - Selected messages remain stored when another side-panel section is shown
+ * - Thread-panel bulk operations: Squash, Distill, Compact, Delete
  *
  * ### Message Instructions
  * - Groups defined in [messageInstructionGroups]
@@ -105,7 +100,6 @@ import kotlinx.coroutines.flow.StateFlow
  * - [isWaitingForResponse] - whether AI is currently responding
  * - [tokenStats] - token usage statistics for this conversation
  * - [activeMessageInstructionIds] - currently selected message instructions
- * - [editMode] - whether bulk editing UI is visible
  * - [selectedMessageIds] - IDs of selected messages for bulk operations
  * - [collapsedMessageIds] - IDs of messages with collapsed thinking blocks
  *
@@ -191,13 +185,7 @@ interface TabComponentVM {
      */
     fun selectMessageInstruction(group: MessageInstructionGroup, controlIndex: Int)
     
-    // Actions - Edit Mode & Selection
-    /**
-     * Toggle edit mode (show/hide message selection checkboxes).
-     * When enabled, shows selection UI and bulk operation toolbar.
-     */
-    fun toggleEditMode()
-    
+    // Actions - Message Selection
     /**
      * Toggle selection state of single message.
      * Updates [selectedMessageIds] in [uiState].
@@ -353,7 +341,6 @@ interface TabComponentVM {
      * @property isWaitingForResponse whether AI is currently responding
      * @property tabId stable tab identifier for MCP
      * @property parentTabId ID of tab that spawned this tab (null if user-created)
-     * @property editMode whether bulk editing UI is visible
      * @property selectedMessageIds IDs of messages selected for bulk operations
      * @property collapsedMessageIds IDs of messages with collapsed thinking blocks
      * @property editingMessageId ID of message currently being edited (null = not editing)
@@ -367,7 +354,6 @@ interface TabComponentVM {
         val isWaitingForResponse: Boolean,
         val tabId: String,
         val parentTabId: String?,
-        val editMode: Boolean,
         val selectedMessageIds: Set<Conversation.Message.Id>,
         val collapsedMessageIds: Set<Conversation.Message.Id>,
         val editingMessageId: Conversation.Message.Id?,

@@ -39,6 +39,9 @@ internal fun ActivityTimelineFixture(
     results: Map<String, Conversation.Message.ContentItem.ToolResult> = activityTestResults(messages),
     isCompactLayout: Boolean = false,
     modelRequest: ModelRequestActivity? = null,
+    messageSelectionEnabled: Boolean = false,
+    selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
+    onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
     onModelRequestClick: () -> Unit = {},
     onTimeline: (List<ConversationTimelineItem>) -> Unit = {},
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray = { byteArrayOf() },
@@ -59,6 +62,9 @@ internal fun ActivityTimelineFixture(
             ConversationTimelineItemContent(item, onModelRequestClick) { entry ->
                 MessageItem(
                     entry = entry,
+                    messageSelectionEnabled = messageSelectionEnabled,
+                    isSelected = entry.message.id in selectedMessageIds,
+                    onToggleSelection = onToggleSelection,
                     expandedActivityKeys = expanded,
                     onToggleActivityExpansion = { key -> expanded = if (key in expanded) expanded - key else expanded + key },
                     onManualContentResize = pauseFollowingLatest,

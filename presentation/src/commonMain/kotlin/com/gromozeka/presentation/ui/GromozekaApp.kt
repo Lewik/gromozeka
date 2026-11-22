@@ -661,6 +661,7 @@ fun GromozekaAppContent(
                                                         viewModel = tabViewModel,
                                                         activityPresentation = conversationActivities.getValue(tabViewModel.conversationId),
                                                         conversationSidePanelVisible = !isCompactLayout && sidePanelVisible,
+                                                        messageSelectionEnabled = sidePanel.messageSelectionEnabled,
                                                         conversationSidePanelContent = sidePanelContent,
                                                         sidePanelResize = sidePanelResize,
                                                         slotInventory = slotInventory,

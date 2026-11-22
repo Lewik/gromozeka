@@ -174,6 +174,31 @@ class UnifiedActivityRenderingTest {
         runOnIdle { assertTrue(timeline.isEmpty()) }
     }
 
+    @Test fun groupedModelDetailsDoesNotSelectOutsideMessageSelectionMode() = runDesktopComposeUiTest(width = 800, height = 300) {
+        val owner = AgentDefinition.Id("agent")
+        val root = activityTestMessage("selection-root", Conversation.Message.ContentItem.UserMessage("Continue"))
+            .copy(role = Conversation.Message.Role.USER)
+        val work = activityTestMessage("selection-work", command(0))
+            .copy(author = Conversation.Message.Author.Agent(owner, "Agent"))
+        var detailClicks = 0
+        var selections = 0
+        setContent {
+            ActivityTimelineFixture(
+                listOf(root, work),
+                modelRequest = request().copy(owner = owner, rootUserMessageId = root.id),
+                onModelRequestClick = { detailClicks++ },
+                onToggleSelection = { _, _ -> selections++ },
+            )
+        }
+
+        onNodeWithTag("activity-model:selection-work:0:content").performClick()
+
+        runOnIdle {
+            assertEquals(1, detailClicks)
+            assertEquals(0, selections)
+        }
+    }
+
     @Test fun hoverCoversPaddingButNotTheRoundedCorner() = runDesktopComposeUiTest(width = 800, height = 200) {
         val message = activityTestMessage("hover", command(0), command(1))
         setContent { MaterialTheme { Box(Modifier.fillMaxSize()) { ActivityTimelineFixture(listOf(message), emptyMap()) } } }

@@ -1342,12 +1342,6 @@ class TabViewModel(
         }
     }
     
-    fun toggleEditMode() {
-        _uiState.update { currentState ->
-            currentState.copy(editMode = !currentState.editMode)
-        }
-    }
-
     fun toggleMessageSelectionRange(messageId: Conversation.Message.Id, isShiftPressed: Boolean) {
         _selectedHistoryKinds.value = emptySet()
         if (!isShiftPressed || _uiState.value.lastToggledMessageId == null) {
