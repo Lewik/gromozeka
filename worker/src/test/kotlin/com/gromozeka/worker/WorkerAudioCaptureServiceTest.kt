@@ -10,12 +10,16 @@ import com.gromozeka.domain.service.WorkerAudioCaptureResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class WorkerAudioCaptureServiceTest {
@@ -37,6 +41,51 @@ class WorkerAudioCaptureServiceTest {
             assertTrue(startResult.isFailure)
             assertTrue(startResult.exceptionOrNull()?.message.orEmpty().contains("cancelled while starting"))
             assertTrue(factory.handle.cancelled.await())
+        } finally {
+            service.shutdown()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `cancelled start removes its reservation so the session can retry`() = runBlocking {
+        val factory = ControlledHandleFactory()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val service = WorkerAudioCaptureService(factory, scope)
+
+        try {
+            val first = launch { service.handle(request(Start)) }
+            factory.opening.await()
+            first.cancelAndJoin()
+
+            factory.allowOpen.complete(Unit)
+            val retried = service.handle(request(Start))
+            assertEquals(WorkerAudioCaptureResult.Status.STARTED, retried.status)
+            service.handle(request(WorkerAudioCaptureRequest.Command.Cancel("capture-1")))
+        } finally {
+            service.shutdown()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `cancelled start after opening removes its reservation so the session can retry`() = runBlocking {
+        val factory = ControlledHandleFactory().apply {
+            allowOpen.complete(Unit)
+            cancelCallerAfterOpen = true
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val service = WorkerAudioCaptureService(factory, scope)
+
+        try {
+            val first = launch { service.handle(request(Start)) }
+            first.join()
+            assertTrue(first.isCancelled)
+
+            factory.cancelCallerAfterOpen = false
+            val retried = service.handle(request(Start))
+            assertEquals(WorkerAudioCaptureResult.Status.STARTED, retried.status)
+            service.handle(request(WorkerAudioCaptureRequest.Command.Cancel("capture-1")))
         } finally {
             service.shutdown()
             scope.cancel()
@@ -95,11 +144,15 @@ class WorkerAudioCaptureServiceTest {
         val allowOpen = CompletableDeferred<Unit>()
         val handle = RecordingHandle()
         var openCount = 0
+        var cancelCallerAfterOpen = false
 
         override suspend fun open(request: WorkerAudioCaptureRequest): WorkerAudioCaptureHandle {
             openCount += 1
             opening.complete(Unit)
             allowOpen.await()
+            if (cancelCallerAfterOpen) {
+                currentCoroutineContext().cancel(CancellationException("synthetic post-open cancellation"))
+            }
             return handle
         }
     }

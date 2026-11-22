@@ -48,6 +48,17 @@ identity/enrollment, command records, artifacts and conversation history are not
 reset. This is a one-time coordinated format change, not normal restart behavior;
 subsequent restarts retain and replay the current journal as usual.
 
+## Protocol 37 cutover
+
+Protocol 37 removes the Claude Code Voice capture commands and their
+`PREPARED`/`TRANSCRIBED` results from the Worker audio protocol. Worker Gateway
+requires exact protocol equality, so Server and every Worker must be updated
+together; do not run protocol 36 and 37 processes as one installation.
+
+Stop active speech capture before the cutover. Migration V93 discards outstanding
+detached Claude Voice admission leases and removes their handoff columns; it does
+not replay or convert an in-flight voice operation.
+
 ## Tool invocation context
 
 Tool declarations separate execution scope, context data requirements and access policy.

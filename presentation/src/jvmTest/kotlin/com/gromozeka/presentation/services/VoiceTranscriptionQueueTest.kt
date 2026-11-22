@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.client.AudioTranscriptionService
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserDeviceSettings
@@ -53,6 +54,28 @@ class VoiceTranscriptionQueueTest {
 
         assertEquals("First phrase", fixture.app.tabs.value[0].userInput)
         assertEquals("Second phrase", fixture.app.tabs.value[1].userInput)
+    }
+
+    @Test
+    fun `immediate transcription completion leaves no stale activity`() = runTest {
+        val fixture = VoiceInputTestFixture(backgroundScope, autoSend = false)
+        fixture.open("a")
+        runCurrent()
+        val delivery = VoiceInputDelivery(fixture.app, fixture.settings, MessageInputContext.ClientPlatform.DESKTOP)
+        val queue = VoiceTranscriptionQueue(
+            immediateTranscription("Immediate phrase"),
+            delivery,
+            fixture.settings,
+            UiFeedbackController(),
+            backgroundScope,
+        )
+        val target = assertNotNull(delivery.captureTarget(MessageInputContext.Source.PUSH_TO_TALK))
+
+        queue.submit(recording("immediate"), target)
+        runCurrent()
+
+        assertEquals("Immediate phrase", fixture.app.tabs.value.single().userInput)
+        assertTrue(delivery.transcriptions.value.isEmpty())
     }
 
     @Test
@@ -211,6 +234,15 @@ class VoiceTranscriptionQueueTest {
         independent.forEach { it.complete(it.recording.sessionId) }
         runCurrent()
     }
+
+    private fun immediateTranscription(text: String): AudioTranscriptionService =
+        object : AudioTranscriptionService {
+            override suspend fun transcribe(recording: RemoteAudioRecording): String = text
+            override suspend fun captureUnavailableReason() = null
+            override suspend fun startCapture(sessionId: String) = error("Unexpected capture start")
+            override suspend fun stopCapture(sessionId: String) = error("Unexpected capture stop")
+            override suspend fun cancelCapture(sessionId: String) = error("Unexpected capture cancel")
+        }
 
     private fun VoiceTestSettings.setIndependentTabs(enabled: Boolean) {
         saveSettings {

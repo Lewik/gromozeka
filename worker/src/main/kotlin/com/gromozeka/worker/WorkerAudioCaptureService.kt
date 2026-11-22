@@ -43,7 +43,7 @@ internal class WorkerAudioCaptureService(
         val handle = try {
             handleFactory.open(request)
         } catch (error: Throwable) {
-            mutex.withLock { sessions.remove(sessionId, reservation) }
+            removeReservation(sessionId, reservation)
             throw error
         }
 
@@ -62,6 +62,7 @@ internal class WorkerAudioCaptureService(
             }
         } catch (error: Throwable) {
             timeoutJob.cancel()
+            removeReservation(sessionId, reservation)
             withContext(NonCancellable) { runCatching { handle.cancel() } }
             throw error
         }
@@ -93,6 +94,13 @@ internal class WorkerAudioCaptureService(
         }
         check(sessionId !in sessions) { "Worker audio capture session already exists: $sessionId" }
         SessionState.Starting().also { sessions[sessionId] = it }
+    }
+
+    private suspend fun removeReservation(
+        sessionId: String,
+        reservation: SessionState.Starting,
+    ) = withContext(NonCancellable) {
+        mutex.withLock { sessions.remove(sessionId, reservation) }
     }
 
     private suspend fun stop(sessionId: String): WorkerAudioCaptureResult {

@@ -14,6 +14,11 @@ import kotlin.test.assertEquals
 
 class WorkerGatewayProtocolTest {
     @Test
+    fun `Worker Gateway protocol advances after removing Claude Voice commands`() {
+        assertEquals(37, WORKER_GATEWAY_PROTOCOL_VERSION)
+    }
+
+    @Test
     fun `Worker welcome catalog retains explicit model behavior in strict CBOR`() {
         val connection = AiConnection.OpenAiApi(AiConnection.Id("synthetic"), "Synthetic",
             baseUrl = "https://gateway.example/api/llm", apiKey = com.gromozeka.domain.model.SecretRef.File("/worker/token"),

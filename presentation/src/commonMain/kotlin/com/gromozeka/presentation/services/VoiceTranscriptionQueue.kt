@@ -32,10 +32,10 @@ class VoiceTranscriptionQueue(
         val (key, start) = mutex.withLock {
             val mode = activeMode ?: configuredMode().also { activeMode = it }
             val key = mode.key(target)
+            delivery.transcriptionStarted(recording.sessionId, target)
             queues.getOrPut(key, ::ArrayDeque).addLast(PendingTranscription(recording, target))
             key to running.add(key)
         }
-        delivery.transcriptionStarted(recording.sessionId, target)
         if (start) scope.launch { drain(key) }
     }
 
