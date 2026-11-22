@@ -50,6 +50,9 @@ internal class SidePanelState(
     var selected by mutableStateOf(initialTab)
         private set
 
+    val messageSelectionEnabled: Boolean
+        get() = selected == ConversationSidePanelTab.Section.THREAD
+
     fun open(tab: ConversationSidePanelTab) {
         selected = tab
         visible = true

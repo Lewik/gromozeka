@@ -424,6 +424,7 @@ private fun splitRawMarkdown(text: String, maxChunkLength: Int = 2_000): List<St
 internal fun MessageItem(
     entry: MessageListEntry,
     workspaceRootPath: String? = null,
+    messageSelectionEnabled: Boolean = false,
     isSelected: Boolean = false,
     onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit = { _, _ -> },
@@ -462,9 +463,9 @@ internal fun MessageItem(
                         Color.Transparent
                     }
                 )
-                .messageSelectionInput(message.id, onToggleSelection)
+                .then(if (messageSelectionEnabled) Modifier.messageSelectionInput(message.id, onToggleSelection) else Modifier)
                 .drawBehind {
-                    if (!isSelected) return@drawBehind
+                    if (!messageSelectionEnabled || !isSelected) return@drawBehind
 
                     val strokeWidth = 3.dp.toPx()
                     if (entry.isFirstInMessage && entry.isLastInMessage) {

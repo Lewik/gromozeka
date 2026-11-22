@@ -44,6 +44,7 @@ internal fun SessionScreen(
     viewModel: TabViewModel,
     activityPresentation: ConversationActivityPresentation,
     conversationSidePanelVisible: Boolean,
+    messageSelectionEnabled: Boolean,
     conversationSidePanelContent: @Composable () -> Unit,
     sidePanelResize: ConversationSidePanelResizeState,
 
@@ -233,7 +234,8 @@ internal fun SessionScreen(
                                         entry = entry,
                                         workspaceRootPath = null,
                                         isCompactLayout = isCompactLayout,
-                                        isSelected = entry.message.id in uiState.selectedMessageIds,
+                                        messageSelectionEnabled = messageSelectionEnabled,
+                                        isSelected = messageSelectionEnabled && entry.message.id in uiState.selectedMessageIds,
                                         onToggleSelection = { messageId, isShiftPressed ->
                                             viewModel.toggleMessageSelectionRange(messageId, isShiftPressed)
                                         },
