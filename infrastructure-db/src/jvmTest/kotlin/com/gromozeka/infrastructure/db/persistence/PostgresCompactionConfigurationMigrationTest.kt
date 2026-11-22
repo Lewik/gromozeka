@@ -42,6 +42,7 @@ class PostgresCompactionConfigurationMigrationTest {
                     }
                     connection.createStatement().use { it.execute(requireNotNull(javaClass.getResource(
                         "/db/migration/postgres/V85__configuration_compaction.sql")).readText()) }
+                    val v85Json = Json { ignoreUnknownKeys = true }
                     connection.createStatement().use { statement ->
                         statement.executeQuery("SELECT payload_json FROM ai_model_specs ORDER BY id").use { result ->
                             var count = 0
@@ -57,7 +58,11 @@ class PostgresCompactionConfigurationMigrationTest {
                         statement.executeQuery("SELECT payload_json FROM ai_model_configurations ORDER BY id").use { result ->
                             var count = 0
                             while (result.next()) {
-                                val model = Json.decodeFromString(AiModelConfiguration.serializer(), result.getString(1))
+                                val payload = result.getString(1)
+                                val compaction = Json.parseToJsonElement(payload).jsonObject.getValue("compaction").jsonObject
+                                assertEquals(JsonNull, compaction["thresholdTokens"])
+                                assertEquals(JsonNull, compaction["summaryModelConfigurationId"])
+                                val model = v85Json.decodeFromString(AiModelConfiguration.serializer(), payload)
                                 assertEquals(AiModelConfiguration.Compaction(), model.compaction)
                                 assertEquals(500, model.defaultParameters.maxOutputTokens)
                                 assertEquals("Preserve me", model.displayName)
