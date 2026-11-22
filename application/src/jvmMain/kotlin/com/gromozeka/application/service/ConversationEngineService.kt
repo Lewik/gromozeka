@@ -193,17 +193,23 @@ class ConversationEngineService(
         check(task.actorUserId == prepared.actorUserId) { "Compaction application actor changed" }
         val conversation = requireNotNull(conversationService.findById(task.conversationId))
         requireActorConnected(task, conversation)
-        val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor, readOnlySnapshot = true)
-        val assembled = assembleRuntimeRequest(
-            task = task,
-            conversation = conversation,
-            context = context,
-            rootUserMessageId = null,
-            diagnosticId = "${prepared.id}:apply",
-            readOnlySnapshot = true,
-        )
-        compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts, assembled.request) {
-            ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        try {
+            val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor, readOnlySnapshot = true)
+            val assembled = assembleRuntimeRequest(
+                task = task,
+                conversation = conversation,
+                context = context,
+                rootUserMessageId = null,
+                diagnosticId = "${prepared.id}:apply",
+                readOnlySnapshot = true,
+            )
+            compactions.applyPreparedIfReady(task, conversation, context.agent, context.runtimeSystemPrompts, assembled.request) {
+                ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+            }
+        } catch (_: ContextSnapshotUnavailableException) {
+            if (compactions.discardPreparedIfCurrent(prepared)) {
+                log.debug { "COMPACTION phase=discarded id=${prepared.id} reason=application_snapshot_unavailable" }
+            }
         }
         return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
     }

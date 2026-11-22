@@ -32,6 +32,9 @@ class ConversationCompactionService internal constructor(
 ) {
     private val log = KLoggers.logger(this)
 
+    suspend fun discardPreparedIfCurrent(prepared: ProactiveCompaction): Boolean =
+        preparations.finish(prepared, ProactiveCompaction.Status.DISCARDED)
+
     suspend fun applyPreparedIfReady(
         task: ConversationRuntimeTask,
         conversation: Conversation,

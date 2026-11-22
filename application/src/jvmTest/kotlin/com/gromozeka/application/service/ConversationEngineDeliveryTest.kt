@@ -1026,6 +1026,30 @@ class ConversationEngineDeliveryTest {
         assertEquals(ProactiveCompaction.Status.APPLIED, f.coordinator.proactiveCompaction(conversation.id)?.status)
     }
 
+    @Test fun `idle READY application discards an unavailable snapshot without an incident`() = runBlocking {
+        val f = Fixture(); val task = f.begin()
+        val preparation = ProactiveCompaction("unavailable-preparation", conversation.id, task.id, task.turnId, executor, agentId, user,
+            conversation.currentThread, 1, "a".repeat(64), "b".repeat(64), 1000, 1, 0, now)
+        assertTrue(f.coordinator.beginProactiveCompaction(preparation))
+        val checkpoint = f.messages.single().copy(id = Conversation.Message.Id(preparation.id), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(ContentItem.ContextCompactionResult.Payload.ReadableSummary("handoff"),
+                ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY, sourceMessageIds = listOf(f.messages.single().id),
+                coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+        val ready = preparation.copy(status = ProactiveCompaction.Status.READY, checkpoint = checkpoint)
+        assertTrue(f.coordinator.updateProactiveCompaction(preparation, ready))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+        f.catalogFailure = ContextSnapshotUnavailableException("Synthetic unregistered tool contract")
+        f.onApply = { fail("An unavailable snapshot must not reach checkpoint application") }
+
+        f.drain()
+
+        assertTrue(f.coordinator.finishIfIdle(conversation.id))
+        assertEquals(ProactiveCompaction.Status.DISCARDED, f.coordinator.proactiveCompaction(conversation.id)?.status)
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+        assertTrue(f.requests.isEmpty()); assertTrue(f.applicationRequests.isEmpty()); assertTrue(f.emitted.isEmpty())
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
+    }
+
     @Test fun `ready compaction applies before tool routing while keeping the pending call and root`() = runBlocking {
         val f = Fixture(); val task = f.begin()
         val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("pending-call"), ContentItem.ToolCall.Data("example", JsonObject(emptyMap())))
@@ -1197,6 +1221,14 @@ class ConversationEngineDeliveryTest {
                 onApply()
             } else if (it.method.name.startsWith("prepareAfterResponse")) {
                 onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; true
+            } else if (it.method.name.startsWith("discardPreparedIfCurrent")) {
+                val expected = it.arguments[0] as ProactiveCompaction
+                runBlocking {
+                    coordinator.updateProactiveCompaction(expected, expected.copy(
+                        status = ProactiveCompaction.Status.DISCARDED,
+                        checkpoint = null,
+                    ))
+                }
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
         val pins = ReadOnlyTestPins()
@@ -1245,8 +1277,10 @@ class ConversationEngineDeliveryTest {
         }
         private val catalog = DistributedAiToolCatalogSnapshot(catalogTools, emptyMap(), emptyList(), "revision", "environment")
         val catalogOperations = mutableListOf<String>()
+        var catalogFailure: ContextSnapshotUnavailableException? = null
         private val distributedCatalog = responding<DistributedAiToolCatalog> {
-            it.method.name.substringBefore('-').also(catalogOperations::add)
+            val operation = it.method.name.substringBefore('-').also(catalogOperations::add)
+            if (operation == "readSnapshot") catalogFailure?.let { failure -> throw failure }
             catalog
         }
         val capabilityCatalogOperations = mutableListOf<String>()
