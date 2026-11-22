@@ -51,7 +51,7 @@ internal class SidePanelState(
         private set
 
     val messageSelectionEnabled: Boolean
-        get() = visible && selected == ConversationSidePanelTab.Section.THREAD
+        get() = selected == ConversationSidePanelTab.Section.THREAD
 
     fun open(tab: ConversationSidePanelTab) {
         selected = tab

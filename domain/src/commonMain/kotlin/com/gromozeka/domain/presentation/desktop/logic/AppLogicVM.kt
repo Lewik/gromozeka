@@ -212,7 +212,6 @@ interface AppLogicVM {
          * @property tabId Stable tab identifier for MCP
          * @property parentTabId ID of tab that spawned this tab (null = user created)
          * @property initiator Who created this tab
-         * @property editMode Whether message editing mode is active
          * @property selectedMessageIds IDs of messages selected for bulk operations
          * @property collapsedMessageIds IDs of messages with collapsed thinking blocks
          */
@@ -224,7 +223,6 @@ interface AppLogicVM {
             val tabId: String,
             val parentTabId: String?,
             val initiator: ConversationInitiator,
-            val editMode: Boolean,
             val selectedMessageIds: Set<Conversation.Message.Id>,
             val collapsedMessageIds: Set<Conversation.Message.Id>
         )
