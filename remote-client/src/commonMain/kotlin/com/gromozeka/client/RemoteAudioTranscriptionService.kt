@@ -11,13 +11,14 @@ import com.gromozeka.remote.protocol.TranscribeAudioRequest
 import com.gromozeka.remote.protocol.StartSpeechCaptureRequest
 import com.gromozeka.remote.protocol.SpeechCaptureStartedResponse
 import com.gromozeka.remote.protocol.SpeechCaptureAvailabilityResponse
+import com.gromozeka.remote.protocol.SpeechCaptureStoppedResponse
 import com.gromozeka.remote.protocol.StopSpeechCaptureRequest
 
 interface AudioTranscriptionService {
     suspend fun transcribe(recording: RemoteAudioRecording): String
     suspend fun captureUnavailableReason(): SpeechAvailabilityFailure?
     suspend fun startCapture(sessionId: String)
-    suspend fun stopCapture(sessionId: String): String
+    suspend fun stopCapture(sessionId: String): RemoteAudioRecording
     suspend fun cancelCapture(sessionId: String)
 }
 
@@ -40,10 +41,10 @@ class RemoteAudioTranscriptionService internal constructor(
         )
     }
 
-    override suspend fun stopCapture(sessionId: String): String =
-        client.requestTyped<StopSpeechCaptureRequest, AudioTranscriptionResponse>(
+    override suspend fun stopCapture(sessionId: String): RemoteAudioRecording =
+        client.requestTyped<StopSpeechCaptureRequest, SpeechCaptureStoppedResponse>(
             StopSpeechCaptureRequest(sessionId)
-        ).text
+        ).recording
 
     override suspend fun cancelCapture(sessionId: String) {
         client.requestTyped<CancelSpeechCaptureRequest, OperationResultResponse>(

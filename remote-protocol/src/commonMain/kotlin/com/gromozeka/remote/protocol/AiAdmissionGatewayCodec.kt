@@ -16,9 +16,6 @@ sealed interface AiAdmissionCommand {
     data class Acquire(val operation: AiAdmissionOperation, val workerRequestId: String, val httpRequest: JsonElement? = null, val accountingRequest: JsonElement? = null) : AiAdmissionCommand
 
     @Serializable
-    data class Accept(val operationId: String) : AiAdmissionCommand
-
-    @Serializable
     data class Finish(val operationId: String, val outcome: AiAdmissionOutcome, val feedback: AiHttpQuotaFeedback? = null) : AiAdmissionCommand
 }
 

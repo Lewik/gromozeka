@@ -12,7 +12,7 @@ import kotlin.time.Clock
 
 class PostgresAiAdmissionRepositoryTest {
     @Test
-    fun `migration assigns default and real durable leases preserve remote ownership and background handoff`() = runBlocking {
+    fun `migrations remove detached voice leases and durable leases preserve remote ownership`() = runBlocking {
         val url = System.getenv("GROMOZEKA_AI_HTTP_TEST_URL") ?: run {
             println("SKIP: isolated PostgreSQL fixture not configured for AI admission")
             return@runBlocking
@@ -52,6 +52,20 @@ class PostgresAiAdmissionRepositoryTest {
                     sql.execute("UPDATE ai_connections SET payload_json = jsonb_set(payload_json::jsonb, '{concurrencyGroupId}', '\"shared\"'::jsonb)::text WHERE id = 'one'")
                     sql.execute("INSERT INTO ai_model_configurations VALUES ('model-one', 'one', '{}')")
                     sql.execute(requireNotNull(PostgresAiAdmissionRepositoryTest::class.java.getResource("/db/migration/postgres/V84__model_configuration_tpm.sql")).readText())
+                    sql.execute(
+                        """
+                        INSERT INTO ai_admission_leases(
+                            id, group_id, worker_id, worker_request_id, background_session_id,
+                            accepted, payload_json, created_at
+                        ) VALUES
+                            ('legacy-accepted', 'default', 'worker', 'capture-root', 'capture-a', TRUE, '{}', now()),
+                            ('legacy-pending', 'default', 'worker', 'capture-root', 'capture-b', FALSE, '{}', now())
+                        """.trimIndent()
+                    )
+                    sql.execute(requireNotNull(PostgresAiAdmissionRepositoryTest::class.java.getResource("/db/migration/postgres/V93__remove_background_ai_admission.sql")).readText())
+                    sql.executeQuery("SELECT count(*) FROM ai_admission_leases").use { rows ->
+                        rows.next(); assertEquals(0, rows.getInt(1))
+                    }
                     sql.executeQuery("SELECT payload_json FROM ai_model_configurations WHERE id = 'model-one'").use { rows ->
                         rows.next(); assertEquals("shared", Json.parseToJsonElement(rows.getString(1)).jsonObject.getValue("concurrencyGroupId").jsonPrimitive.content)
                     }
@@ -62,8 +76,8 @@ class PostgresAiAdmissionRepositoryTest {
 
                 } }
                 val repository = PostgresAiAdmissionRepository(source, Json { encodeDefaults = true })
-                fun lease(id: String, worker: String? = null, root: String? = null, background: String? = null) = AiAdmissionLease(
-                    AiAdmissionOperation(id, AiAdmissionTarget.Connection(AiConnection.Id("one")), "TEST", backgroundSessionId = background),
+                fun lease(id: String, worker: String? = null, root: String? = null) = AiAdmissionLease(
+                    AiAdmissionOperation(id, AiAdmissionTarget.Connection(AiConnection.Id("one")), "TEST"),
                     AiConcurrencyGroup.DEFAULT_ID, Clock.System.now(), worker, root,
                 )
                 repository.create(lease("local"))
@@ -90,26 +104,18 @@ class PostgresAiAdmissionRepositoryTest {
                 assertEquals("invalid feedback", repository.findCompletion("quota-call", "worker")?.feedbackError)
                 assertFailsWith<IllegalArgumentException> { repository.findCompletion("quota-call", "other") }
 
-                repository.create(lease("capture", "worker", "capture-root", "capture-session"))
-                repository.create(lease("lost-grant", "worker", "capture-root", "lost-session"))
-                repository.accept("capture", "worker")
+                repository.create(lease("capture", "worker", "capture-root"))
                 source.connection.use { connection -> connection.createStatement().use {
                     it.execute("UPDATE worker_requests SET completed_at = now()")
                 } }
-                assertFailsWith<IllegalArgumentException> { repository.accept("lost-grant", "worker") }
                 repository.finishWorkerRequest("worker", "root")
                 repository.finishWorkerRequest("worker", "capture-root")
-                val background = repository.restoreRemoteLeases().single()
-                assertEquals("capture", background.operation.id)
-                assertTrue(background.accepted)
+                assertTrue(repository.restoreRemoteLeases().isEmpty())
                 assertFailsWith<java.sql.SQLException> {
                     source.connection.use { connection -> connection.createStatement().use { it.execute("DELETE FROM ai_concurrency_groups WHERE id = 'default'") } }
                 }
-                repository.finish("capture", "worker")
-                repository.finish("capture", "worker")
-                assertTrue(repository.restoreRemoteLeases().isEmpty())
                 assertFailsWith<IllegalArgumentException> { repository.create(lease("late", "worker", "root")) }
-                println("AI_ADMISSION_PG: default migration, ownership, restoration, background accept, group dependency and idempotent completion verified")
+                println("AI_ADMISSION_PG: migration cleanup, ownership, restoration, group dependency and idempotent completion verified")
             } finally {
                 admin.createStatement().use { it.execute("DROP SCHEMA $schema CASCADE") }
             }

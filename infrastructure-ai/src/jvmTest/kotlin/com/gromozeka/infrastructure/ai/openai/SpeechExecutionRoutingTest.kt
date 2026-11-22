@@ -39,7 +39,6 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.speech.LocalWhisperTranscriptionService
-import com.gromozeka.infrastructure.ai.claude.ClaudeCodeVoiceTranscriptionService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -77,7 +76,6 @@ class SpeechExecutionRoutingTest {
             directProvider = OpenAiSpeechTranscriptionExecutor(
                 clientFactory,
                 LocalWhisperTranscriptionService(settings),
-                ClaudeCodeVoiceTranscriptionService(),
                 admission = TestAiAdmission(),
             ),
             workerTargetResolver = resolver,
@@ -133,7 +131,6 @@ class SpeechExecutionRoutingTest {
             directProvider = OpenAiSpeechTranscriptionExecutor(
                 clientFactory,
                 LocalWhisperTranscriptionService(settings),
-                ClaudeCodeVoiceTranscriptionService(),
                 admission = TestAiAdmission(),
             ),
             workerTargetResolver = resolver,

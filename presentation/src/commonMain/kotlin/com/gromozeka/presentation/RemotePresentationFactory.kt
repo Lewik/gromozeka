@@ -33,6 +33,7 @@ import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.UIStateStore
 import com.gromozeka.presentation.services.UiFeedbackController
 import com.gromozeka.presentation.services.VoiceInputDelivery
+import com.gromozeka.presentation.services.VoiceTranscriptionQueue
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.SystemAudioMuteService
 import com.gromozeka.presentation.services.NoOpTurnCompletionNotificationSink
@@ -146,11 +147,18 @@ suspend fun createRemoteAppComponents(
     val themeService = ThemeService().also { it.init(remoteServices.settingsService) }
     val clientSideSpeechToTextService = clientSideSpeechToTextServiceFactory(remoteServices.settingsService)
     val voiceInputDelivery = VoiceInputDelivery(appViewModel, remoteServices.settingsService, messageInputClientPlatform)
+    val voiceTranscriptionQueue = VoiceTranscriptionQueue(
+        transcriptionService = remoteServices.audioTranscriptionService,
+        delivery = voiceInputDelivery,
+        settingsService = remoteServices.settingsService,
+        uiFeedbackController = uiFeedbackController,
+        scope = scope,
+    )
     val pttController = RemotePttController(
         appViewModel = appViewModel,
         audioRecorder = audioRecorder,
         audioTranscriptionService = remoteServices.audioTranscriptionService,
-        clientSideSpeechToTextService = clientSideSpeechToTextService,
+        transcriptionQueue = voiceTranscriptionQueue,
         ttsQueue = ttsQueue,
         systemAudioMuteService = systemAudioMuteService,
         settingsService = remoteServices.settingsService,

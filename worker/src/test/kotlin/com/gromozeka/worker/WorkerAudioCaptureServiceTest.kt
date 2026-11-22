@@ -1,5 +1,6 @@
 package com.gromozeka.worker
 
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.WorkerAudioInput
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
@@ -43,6 +44,33 @@ class WorkerAudioCaptureServiceTest {
     }
 
     @Test
+    fun `failed stop with failed cleanup keeps the hardware session cancellable`() = runBlocking {
+        val factory = ControlledHandleFactory().apply {
+            allowOpen.complete(Unit)
+            handle.stopFailure = IllegalStateException("synthetic stop failure")
+            handle.cancelFailuresRemaining = 1
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val service = WorkerAudioCaptureService(factory, scope)
+
+        try {
+            service.handle(request(Start))
+            val stopped = runCatching {
+                service.handle(request(WorkerAudioCaptureRequest.Command.Stop("capture-1")))
+            }
+
+            assertTrue(stopped.isFailure)
+            val cancelled = service.handle(request(WorkerAudioCaptureRequest.Command.Cancel("capture-1")))
+            assertEquals(WorkerAudioCaptureResult.Status.CANCELLED, cancelled.status)
+            assertTrue(factory.handle.cancelled.await())
+            assertEquals(2, factory.handle.cancelCalls)
+        } finally {
+            service.shutdown()
+            scope.cancel()
+        }
+    }
+
+    @Test
     fun `cancel arriving before start prevents the device from opening`() = runBlocking {
         val factory = ControlledHandleFactory().apply { allowOpen.complete(Unit) }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -68,10 +96,6 @@ class WorkerAudioCaptureServiceTest {
         val handle = RecordingHandle()
         var openCount = 0
 
-        override suspend fun prepare(
-            command: WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone,
-        ) = Unit
-
         override suspend fun open(request: WorkerAudioCaptureRequest): WorkerAudioCaptureHandle {
             openCount += 1
             opening.complete(Unit)
@@ -82,13 +106,25 @@ class WorkerAudioCaptureServiceTest {
 
     private class RecordingHandle : WorkerAudioCaptureHandle {
         val cancelled = CompletableDeferred<Boolean>()
+        var stopFailure: Throwable? = null
+        var cancelFailuresRemaining = 0
+        var cancelCalls = 0
 
-        override suspend fun stop(): WorkerAudioCaptureResult = WorkerAudioCaptureResult(
-            status = WorkerAudioCaptureResult.Status.TRANSCRIBED,
-            transcript = "test",
-        )
+        override suspend fun stop(): WorkerAudioCaptureResult {
+            stopFailure?.let { throw it }
+            return WorkerAudioCaptureResult(
+                status = WorkerAudioCaptureResult.Status.AUDIO_CAPTURED,
+                audioData = byteArrayOf(1),
+                format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
+            )
+        }
 
         override suspend fun cancel() {
+            cancelCalls++
+            if (cancelFailuresRemaining > 0) {
+                cancelFailuresRemaining--
+                error("synthetic cancel failure")
+            }
             cancelled.complete(true)
         }
     }

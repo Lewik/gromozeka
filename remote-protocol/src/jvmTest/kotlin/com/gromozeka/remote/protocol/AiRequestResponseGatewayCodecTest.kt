@@ -324,46 +324,6 @@ class AiRequestResponseGatewayCodecTest {
     }
 
     @Test
-    fun `codec preserves Claude Code voice connection for Worker transcription`() = runBlocking {
-        val connection = AiConnection.ClaudeCode(
-            id = AiConnection.Id("claude-voice"),
-            displayName = "Claude voice",
-            executablePath = "/opt/claude/bin/claude",
-            voiceTranscriptionEnabled = true,
-            executionTarget = AiExecutionTarget.Worker("worker-1"),
-        )
-        val request = AiSpeechTranscriptionRequest(
-            audioData = byteArrayOf(7, 8, 9),
-            format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
-            engine = UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE,
-            selection = null,
-            claudeCodeConnection = connection,
-            language = "en",
-            prompt = null,
-        )
-        val handler = object : AiRequestResponseExecutionHandler by TestHandler() {
-            override suspend fun transcribe(
-                runtime: ResolvedAiRuntime?,
-                localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
-                request: AiSpeechTranscriptionRequest,
-            ): String {
-                require(runtime == null)
-                require(localWhisperSettings == null)
-                require(request.claudeCodeConnection == connection)
-                require(request.audioData.contentEquals(byteArrayOf(7, 8, 9)))
-                return "voice transcript"
-            }
-        }
-
-        val payload = AiRequestResponseGatewayCodec.execute(
-            AiRequestResponseGatewayCodec.encodeTranscriptionRequest(null, null, request),
-            handler,
-        )
-
-        assertEquals("voice transcript", AiRequestResponseGatewayCodec.decodeTranscriptionResponse(payload))
-    }
-
-    @Test
     fun `codec preserves Worker-targeted Copilot runtime`() = runBlocking {
         val connection = AiConnection.GitHubCopilot(
             id = AiConnection.Id("copilot-worker"),

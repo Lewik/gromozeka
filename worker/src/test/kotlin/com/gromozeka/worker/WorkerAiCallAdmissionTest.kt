@@ -50,42 +50,6 @@ class WorkerAiCallAdmissionTest {
     }
 
     @Test
-    fun `background ownership is journaled and accepted before use and recovered after process restart`() = runBlocking {
-        withTimeout(15_000) {
-            fixture { settings, identity, scope ->
-                val outbound = WorkerGatewayOutbound(ConversationRuntimeWorkerProperties(identity.workerId.value))
-                val state = PeerState(identity.workerId.value)
-                val peer = connect(scope, outbound, state)
-                var journal = JvmWorkerRequestJournal(settings, identity)
-                var admission = WorkerAiCallAdmission(outbound, identity, journal, scope)
-                admission.initialize()
-                try {
-                    withContext(AiAdmissionWorkerContext("capture-start")) {
-                        admission.openSession(connection, "SPEECH_TO_TEXT", "capture")
-                    }
-                    val stored = journal.loadAiAdmissions().single()
-                    assertEquals("capture", stored.operation.backgroundSessionId)
-                    assertTrue(stored.operation.id in state.accepted)
-                    assertEquals(1, state.active.size)
-                    admission.stop()
-                    journal.close()
-                    journal = JvmWorkerRequestJournal(settings, identity.copy(sessionId = ConversationRuntimeWorkerSessionId("second")))
-                    admission = WorkerAiCallAdmission(outbound, identity, journal, scope)
-                    admission.initialize()
-                    waitUntil { journal.loadAiAdmissions().isEmpty() }
-                    assertTrue(state.active.isEmpty())
-                    assertEquals(1, state.acquisitions.get())
-                    assertEquals(listOf(AiAdmissionOutcome.OWNER_STOPPED), state.outcomes.toList())
-                } finally {
-                    admission.stop()
-                    peer.close(outbound)
-                    journal.close()
-                }
-            }
-        }
-    }
-
-    @Test
     fun `a Worker operation without a Server owner fails before requesting a grant`() = runBlocking {
         fixture { settings, identity, scope ->
             val journal = JvmWorkerRequestJournal(settings, identity)
@@ -164,7 +128,6 @@ class WorkerAiCallAdmissionTest {
 
     private class PeerState(val workerId: String) {
         val active = ConcurrentHashMap<String, AiAdmissionLease>()
-        val accepted = ConcurrentHashMap.newKeySet<String>()
         val acquisitions = AtomicInteger()
         val finishEffects = AtomicInteger()
         val finishAttempts = AtomicInteger()
@@ -197,11 +160,6 @@ class WorkerAiCallAdmissionTest {
                         val lease = AiAdmissionLease(operation, AiConcurrencyGroup.DEFAULT_ID, Clock.System.now(), state.workerId, command.workerRequestId)
                         check(state.active.putIfAbsent(command.operation.id, lease) == null)
                         AiAdmissionGatewayCodec.encodeLease(lease)
-                    }
-                    is AiAdmissionCommand.Accept -> {
-                        check(state.active.containsKey(command.operationId))
-                        state.accepted += command.operationId
-                        byteArrayOf()
                     }
                     is AiAdmissionCommand.Finish -> {
                         state.finishAttempts.incrementAndGet()

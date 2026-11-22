@@ -35,6 +35,19 @@ class LocalWhisperSettingsTest {
     }
 
     @Test
+    fun concurrentTranscriptionsDefaultToOneAndRequireABoundedPositiveLimit() {
+        assertEquals(1, UserProfile.SpeechSettings.SpeechToText.LocalWhisper().maxConcurrentTranscriptions)
+        UserProfile.SpeechSettings.SpeechToText.LocalWhisper(maxConcurrentTranscriptions = 64)
+
+        assertFailsWith<IllegalArgumentException> {
+            UserProfile.SpeechSettings.SpeechToText.LocalWhisper(maxConcurrentTranscriptions = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            UserProfile.SpeechSettings.SpeechToText.LocalWhisper(maxConcurrentTranscriptions = 65)
+        }
+    }
+
+    @Test
     fun extraArgumentsMustNotContainBlankValues() {
         UserProfile.SpeechSettings.SpeechToText.LocalWhisper(extraArguments = listOf("--no-gpu"))
 

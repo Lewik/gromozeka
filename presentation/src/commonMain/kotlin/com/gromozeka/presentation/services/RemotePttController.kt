@@ -1,15 +1,15 @@
 package com.gromozeka.presentation.services
 
-import com.gromozeka.presentation.services.translation.LocalizedText
-import com.gromozeka.presentation.services.translation.LocalizedTextException
-import com.gromozeka.presentation.services.translation.localizedText
-
 import com.gromozeka.client.AudioTranscriptionService
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.presentation.services.translation.LocalizedText
+import com.gromozeka.presentation.services.translation.LocalizedTextException
+import com.gromozeka.presentation.services.translation.localizedText
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
+import com.gromozeka.remote.protocol.RemoteAudioRecording
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -32,7 +32,7 @@ class RemotePttController(
     private val appViewModel: AppViewModel,
     private val audioRecorder: ClientAudioRecorder,
     private val audioTranscriptionService: AudioTranscriptionService,
-    private val clientSideSpeechToTextService: ClientSideSpeechToTextService,
+    private val transcriptionQueue: VoiceTranscriptionQueue,
     private val ttsQueue: TtsQueue,
     private val systemAudioMuteService: SystemAudioMuteService,
     private val settingsService: SettingsService,
@@ -73,10 +73,17 @@ class RemotePttController(
     override suspend fun handlePTTEvent(event: PTTEvent) {
         log.info { "PTT event received: event=$event state=${_state.value}" }
         when (event) {
-            PTTEvent.SINGLE_PUSH -> if (canRecord) beginRecording(
-                settingsService.userProfile.speechSettings.speechToText.audioSource,
-                voiceInputDelivery.captureTarget(MessageInputContext.Source.PUSH_TO_TALK),
-            )
+            PTTEvent.SINGLE_PUSH -> if (canRecord) {
+                val target = voiceInputDelivery.captureTarget(MessageInputContext.Source.PUSH_TO_TALK)
+                if (target == null) {
+                    reportError(localizedText("voice.noConversation"))
+                } else {
+                    beginRecording(
+                        settingsService.userProfile.speechSettings.speechToText.audioSource,
+                        target,
+                    )
+                }
+            }
             PTTEvent.SINGLE_CLICK -> stopCurrentTts("single click")
             PTTEvent.DOUBLE_CLICK -> {
                 stopCurrentTts("double click")
@@ -97,8 +104,8 @@ class RemotePttController(
                 }
                 is CaptureLifecycle.Recording -> {
                     captureLifecycle = null
-                    _state.value = PttState.TRANSCRIBING
-                    _statusMessage.value = null
+                    _state.value = PttState.FINALIZING
+                    _statusMessage.value = localizedText("voice.finishingRecording")
                     ReleaseAction.Transcribe(current)
                 }
             }
@@ -110,54 +117,38 @@ class RemotePttController(
             is ReleaseAction.Transcribe -> release.capture
         }
 
-        transcribeAndDeliver(capture)
+        finalizeAndQueue(capture)
     }
 
-    private suspend fun transcribeAndDeliver(capture: CaptureLifecycle.Recording) {
-        voiceInputDelivery.transcriptionStarted(capture.session.sessionId, capture.target)
+    private suspend fun finalizeAndQueue(capture: CaptureLifecycle.Recording) {
         var failure: LocalizedText? = null
-        val text = try {
-            runCatching {
+        try {
+            val recording = try {
                 when (val session = capture.session) {
-                    is ActiveRecordingSession.Local -> transcribeLocal(session)
-                    is ActiveRecordingSession.Worker ->
-                        audioTranscriptionService.stopCapture(session.sessionId).trim()
+                    is ActiveRecordingSession.Local -> stopLocalRecording(session)
+                    is ActiveRecordingSession.Worker -> audioTranscriptionService.stopCapture(session.sessionId)
                 }
-            }.getOrElse { error ->
-                if (error is CancellationException) throw error
+            } catch (error: CancellationException) {
+                cancelAfterFailedFinalization(capture.session)
+                throw error
+            } catch (error: Throwable) {
                 failure = localizedText("voice.recognitionFailed", "error" to error.localizedText())
-                reportError(requireNotNull(failure))
+                cancelAfterFailedFinalization(capture.session)
                 log.warn(error) {
-                    "PTT recording or transcription failed: " +
-                        "session=${capture.session.sessionId} error=${error.message}"
+                    "PTT recording finalization failed: session=${capture.session.sessionId} error=${error.message}"
                 }
-                return
+                null
+            }
+            if (recording != null) {
+                withContext(NonCancellable) {
+                    transcriptionQueue.submit(recording, capture.target)
+                }
             }
         } finally {
             restoreSystemAudioAfterPtt(capture.systemAudioMuted)
             finishPtt()
-            voiceInputDelivery.transcriptionFinished(capture.session.sessionId, failure)
         }
-
-        if (text.isBlank()) {
-            reportError(localizedText("voice.emptyTranscript"))
-            log.info { "PTT transcription returned blank text: session=${capture.session.sessionId}" }
-            return
-        }
-
-        if (!voiceInputDelivery.deliver(capture.target, text)) {
-            reportError(localizedText("voice.noConversation"))
-            log.warn {
-                "PTT transcription target is unavailable: " +
-                    "session=${capture.session.sessionId} textChars=${text.length}"
-            }
-            return
-        }
-
-        _statusMessage.value = null
-        log.info {
-            "PTT transcription delivered: session=${capture.session.sessionId} textChars=${text.length}"
-        }
+        failure?.let(::reportError)
     }
 
     override suspend fun handlePTTCancel() {
@@ -173,7 +164,6 @@ class RemotePttController(
                     captureLifecycle = null
                     current.preparationJob?.cancel(CancellationException("PTT preparation cancelled"))
                     _statusMessage.value = null
-                    _state.value = PttState.IDLE
                     CancelAction.CancelPreparation(current)
                 }
                 is CaptureLifecycle.Recording -> {
@@ -186,9 +176,12 @@ class RemotePttController(
         val capture = when (cancellation) {
             CancelAction.None -> return
             is CancelAction.CancelPreparation -> {
-                cancelRemotePreparation(cancellation.preparation)
-                restoreSystemAudioAfterPtt(cancellation.preparation.systemAudioMuted)
-                finishPtt()
+                withContext(NonCancellable) {
+                    cancelRemotePreparation(cancellation.preparation)
+                    cancellation.preparation.preparationJob?.join()
+                    restoreSystemAudioAfterPtt(cancellation.preparation.systemAudioMuted)
+                    finishPtt()
+                }
                 return
             }
             is CancelAction.CancelRecording -> cancellation.capture
@@ -196,7 +189,7 @@ class RemotePttController(
         runCatching { cancelSession(capture.session) }
             .onFailure { error ->
                 log.warn(error) { "PTT recording cancel failed: ${error.message}" }
-        }
+            }
         restoreSystemAudioAfterPtt(capture.systemAudioMuted)
         finishPtt()
         log.info { "PTT recording cancelled" }
@@ -214,7 +207,7 @@ class RemotePttController(
         appViewModel.sendInterruptToCurrentSession()
     }
 
-    private suspend fun beginRecording(source: SpeechAudioSource, target: VoiceInputTarget?) {
+    private suspend fun beginRecording(source: SpeechAudioSource, target: VoiceInputTarget) {
         val preparation = mutex.withLock {
             if (_state.value != PttState.IDLE || captureLifecycle != null) {
                 log.info { "PTT recording start skipped: state=${_state.value}" }
@@ -259,8 +252,8 @@ class RemotePttController(
                 audioRecorder.unavailableReason?.let { throw LocalizedTextException(it) }
             }
             muteSystemAudioBeforePtt(preparation.systemAudioMuted)
-            session = withTimeout(PREPARATION_TIMEOUT_MILLIS) {
-                when (source) {
+            withTimeout(PREPARATION_TIMEOUT_MILLIS) {
+                session = when (source) {
                     SpeechAudioSource.CurrentClient -> ActiveRecordingSession.Local(
                         sessionId = preparation.sessionId,
                         value = audioRecorder.start(scope),
@@ -285,35 +278,42 @@ class RemotePttController(
         }
 
         val preparedSession = requireNotNull(session)
-        val preparedAction = mutex.withLock {
-            val recording = CaptureLifecycle.Recording(
-                session = preparedSession,
-                target = preparation.target,
-                systemAudioMuted = preparation.systemAudioMuted,
-            )
-            if (captureLifecycle !== preparation) {
-                PreparedAction.Cancel
-            } else {
-                when (preparation.completionRequest) {
-                    null -> {
-                        captureLifecycle = recording
-                        _state.value = PttState.RECORDING
-                        PreparedAction.Recording
-                    }
-                    PreparationCompletion.CANCEL -> PreparedAction.Cancel
-                    PreparationCompletion.RELEASE -> {
-                        captureLifecycle = null
-                        _state.value = PttState.TRANSCRIBING
-                        _statusMessage.value = null
-                        PreparedAction.Transcribe(recording)
+        val preparedAction = try {
+            mutex.withLock {
+                val recording = CaptureLifecycle.Recording(
+                    session = preparedSession,
+                    target = preparation.target,
+                    systemAudioMuted = preparation.systemAudioMuted,
+                )
+                if (captureLifecycle !== preparation) {
+                    PreparedAction.Cancel
+                } else {
+                    when (preparation.completionRequest) {
+                        null -> {
+                            captureLifecycle = recording
+                            _state.value = PttState.RECORDING
+                            PreparedAction.Recording
+                        }
+                        PreparationCompletion.CANCEL -> PreparedAction.Cancel
+                        PreparationCompletion.RELEASE -> {
+                            captureLifecycle = null
+                            _state.value = PttState.FINALIZING
+                            _statusMessage.value = localizedText("voice.finishingRecording")
+                            PreparedAction.Transcribe(recording)
+                        }
                     }
                 }
             }
+        } catch (error: CancellationException) {
+            withContext(NonCancellable) {
+                cleanupPreparation(preparation, preparedSession, null)
+            }
+            throw error
         }
         when (preparedAction) {
             PreparedAction.Recording -> log.info { "PTT recording started" }
             PreparedAction.Cancel -> cleanupPreparation(preparation, preparedSession, null)
-            is PreparedAction.Transcribe -> transcribeAndDeliver(preparedAction.capture)
+            is PreparedAction.Transcribe -> finalizeAndQueue(preparedAction.capture)
         }
     }
 
@@ -334,16 +334,21 @@ class RemotePttController(
                 PreparationCleanupResult(ownsLifecycle = false, reportFailure = false)
             }
         }
-        session?.let {
-            runCatching { cancelSession(it) }
+        if (session != null) {
+            runCatching { cancelSession(session) }
                 .onFailure { cancelError ->
                     log.warn(cancelError) { "PTT prepared session cancel failed: ${cancelError.message}" }
                 }
+        } else {
+            cancelRemotePreparation(preparation)
         }
+        if (!cleanupResult.ownsLifecycle) {
+            log.info { "PTT recording preparation cancelled by its owner" }
+            return
+        }
+
         restoreSystemAudioAfterPtt(preparation.systemAudioMuted)
-        if (cleanupResult.ownsLifecycle) {
-            finishPtt()
-        }
+        finishPtt()
         if (cleanupResult.reportFailure) {
             val failure = requireNotNull(error)
             reportError(localizedText("voice.microphoneFailed", "error" to failure.localizedText()))
@@ -359,6 +364,18 @@ class RemotePttController(
             is ActiveRecordingSession.Local -> session.value.cancel()
             is ActiveRecordingSession.Worker ->
                 audioTranscriptionService.cancelCapture(session.sessionId)
+        }
+    }
+
+    private suspend fun cancelAfterFailedFinalization(session: ActiveRecordingSession) {
+        withContext(NonCancellable) {
+            runCatching { cancelSession(session) }
+                .onFailure { error ->
+                    log.warn(error) {
+                        "PTT failed recording cleanup failed: " +
+                            "session=${session.sessionId} error=${error.message}"
+                    }
+                }
         }
     }
 
@@ -413,11 +430,8 @@ class RemotePttController(
             SpeechAudioSource.CurrentClient -> audioRecorder.unavailableReason
             is SpeechAudioSource.WorkerInput -> null
         }
-        val usesClientTranscription =
-            source == SpeechAudioSource.CurrentClient && clientSideSpeechToTextService.isEnabled()
         val reason = when {
             localReason != null -> localReason
-            usesClientTranscription -> null
             else -> runCatching {
                 audioTranscriptionService.captureUnavailableReason()?.localizedText()
             }.getOrElse { error ->
@@ -432,7 +446,7 @@ class RemotePttController(
     private suspend fun refreshAvailability(): LocalizedText? =
         refreshAvailability(settingsService.userProfile.speechSettings.speechToText.audioSource)
 
-    private suspend fun transcribeLocal(session: ActiveRecordingSession.Local): String {
+    private suspend fun stopLocalRecording(session: ActiveRecordingSession.Local): RemoteAudioRecording {
         val recording = session.value.stop()
         if (recording.byteSize == 0) {
             throw LocalizedTextException(localizedText("voice.emptyRecording"))
@@ -441,24 +455,17 @@ class RemotePttController(
             "PTT recording captured: session=${session.sessionId} " +
                 "bytes=${recording.byteSize} format=${recording.format}"
         }
-        val remoteRecording = recording.toRemoteRecording(session.sessionId)
-        return if (clientSideSpeechToTextService.isEnabled()) {
-            log.info { "PTT transcription using client-side speech-to-text: session=${session.sessionId}" }
-            clientSideSpeechToTextService.transcribe(remoteRecording).trim()
-        } else {
-            log.info { "PTT transcription using remote speech-to-text: session=${session.sessionId}" }
-            audioTranscriptionService.transcribe(remoteRecording).trim()
-        }
+        return recording.toRemoteRecording(session.sessionId)
     }
 
     private sealed interface CaptureLifecycle {
         val systemAudioMuted: Boolean
-        val target: VoiceInputTarget?
+        val target: VoiceInputTarget
 
         data class Preparing(
             val sessionId: String,
             val source: SpeechAudioSource,
-            override val target: VoiceInputTarget?,
+            override val target: VoiceInputTarget,
             override val systemAudioMuted: Boolean,
             var completionRequest: PreparationCompletion? = null,
             var preparationJob: Job? = null,
@@ -466,7 +473,7 @@ class RemotePttController(
 
         data class Recording(
             val session: ActiveRecordingSession,
-            override val target: VoiceInputTarget?,
+            override val target: VoiceInputTarget,
             override val systemAudioMuted: Boolean,
         ) : CaptureLifecycle
     }

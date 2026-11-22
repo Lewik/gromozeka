@@ -168,43 +168,12 @@ fun SettingsPanel(
     val desktopWindowSettings = settings.desktopWindowSettings
     var availableQuickTextAgents by remember { mutableStateOf(emptyList<AgentDefinition>()) }
     val aiCatalogSnapshot by aiConfigurationService.snapshotFlow.collectAsState()
-    val claudeCodeConnections = aiCatalogSnapshot?.catalog?.connections
-        ?.filterIsInstance<AiConnection.ClaudeCode>()
-        .orEmpty()
-    val eligibleClaudeCodeConnectionIds = claudeCodeConnections
-        .filter { it.enabled && it.voiceTranscriptionEnabled }
-        .map { it.id }
     var workers by remember { mutableStateOf(emptyList<WorkerCatalogEntry>()) }
     var selectedSection by remember(contentMode) {
         mutableStateOf(SettingsSection.AiRuntime)
     }
     val availableSections = SettingsSection.entries.filter {
         it !in setOf(SettingsSection.Usage, SettingsSection.Telegram) || canAdministerUsers
-    }
-
-    LaunchedEffect(
-        speechToText.engine,
-        speechToText.claudeCodeConnectionId,
-        eligibleClaudeCodeConnectionIds,
-    ) {
-        val soleConnectionId = eligibleClaudeCodeConnectionIds.singleOrNull()
-        if (
-            speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE &&
-            speechToText.claudeCodeConnectionId == null &&
-            soleConnectionId != null
-        ) {
-            onSettingsChange(
-                settings.updateUserProfile {
-                    copy(
-                        speechSettings = speechSettings.copy(
-                            speechToText = speechSettings.speechToText.copy(
-                                claudeCodeConnectionId = soleConnectionId
-                            )
-                        )
-                    )
-                }
-            )
-        }
     }
 
     LaunchedEffect(isVisible, agentService) {
@@ -408,80 +377,20 @@ fun SettingsPanel(
                                     when (it) {
                                         UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API -> translation.text("settingsUi.openaiAPI")
                                         UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> translation.text("settingsUi.localWhisper")
-                                        UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE -> translation.text("settingsUi.claudeCodeVoice")
                                     }
                                 },
                                 onValueChange = { engine ->
-                                    val claudeConnectionId = if (
-                                        engine == UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE
-                                    ) {
-                                        speechToText.claudeCodeConnectionId
-                                            ?: eligibleClaudeCodeConnectionIds.singleOrNull()
-                                    } else {
-                                        speechToText.claudeCodeConnectionId
-                                    }
                                     onSettingsChange(
                                         settings.updateUserProfile {
                                             copy(
                                                 speechSettings = speechSettings.copy(
-                                                    speechToText = speechSettings.speechToText.copy(
-                                                        engine = engine,
-                                                        claudeCodeConnectionId = claudeConnectionId,
-                                                    )
+                                                    speechToText = speechSettings.speechToText.copy(engine = engine)
                                                 )
                                             )
                                         }
                                     )
                                 }
                             )
-
-                            if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE) {
-                                val connectionIds = buildList {
-                                    addAll(claudeCodeConnections.map { it.id })
-                                    speechToText.claudeCodeConnectionId?.takeIf { it !in this }?.let(::add)
-                                }
-                                if (connectionIds.isEmpty()) {
-                                    Text(
-                                        translation.text("settingsUi.createAClaudeCodeConnectionAndEnableVoice"),
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                } else {
-                                    DropdownSettingItem(
-                                        label = translation.text("settingsUi.claudeCodeConnection"),
-                                        description = translation.text("settingsUi.requiresAnOrganizationApprovedClaudeAiLoginOn"),
-                                        value = speechToText.claudeCodeConnectionId,
-                                        options = listOf(null) + connectionIds,
-                                        optionLabel = { id ->
-                                            if (id == null) return@DropdownSettingItem translation.text("settingsUi.selectAClaudeCodeConnection")
-                                            val connection = claudeCodeConnections.firstOrNull { it.id == id }
-                                            buildString {
-                                                append(connection?.displayName ?: id.value)
-                                                when {
-                                                    connection == null -> append(translation.text("settingsUi.unavailable"))
-                                                    !connection.enabled -> append(translation.text("settingsUi.disabled"))
-                                                    !connection.voiceTranscriptionEnabled -> append(translation.text("settingsUi.voiceDisabled"))
-                                                }
-                                            }
-                                        },
-                                        optionEnabled = { it != null },
-                                        onValueChange = { connectionId ->
-                                            if (connectionId == null) return@DropdownSettingItem
-                                            onSettingsChange(
-                                                settings.updateUserProfile {
-                                                    copy(
-                                                        speechSettings = speechSettings.copy(
-                                                            speechToText = speechSettings.speechToText.copy(
-                                                                claudeCodeConnectionId = connectionId
-                                                            )
-                                                        )
-                                                    )
-                                                }
-                                            )
-                                        },
-                                    )
-                                }
-                            }
 
                             val selectedWorkerSource = speechToText.audioSource as? SpeechAudioSource.WorkerInput
                             val sourceOptions = buildList {
@@ -712,6 +621,30 @@ fun SettingsPanel(
                                 )
 
                                 TextFieldSettingItem(
+                                    label = translation.text("settingsUi.whisperConcurrentTranscriptions"),
+                                    description = translation.text("settingsUi.maximumLocalWhisperProcessesRunningAtOnce"),
+                                    value = localWhisper.maxConcurrentTranscriptions.toString(),
+                                    placeholder = "1",
+                                    onValueChange = { value ->
+                                        value.trim().toIntOrNull()?.takeIf { it in 1..64 }?.let { limit ->
+                                            onSettingsChange(
+                                                settings.updateUserProfile {
+                                                    copy(
+                                                        speechSettings = speechSettings.copy(
+                                                            speechToText = speechSettings.speechToText.copy(
+                                                                localWhisper = localWhisper.copy(
+                                                                    maxConcurrentTranscriptions = limit
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                )
+
+                                TextFieldSettingItem(
                                     label = translation.text("settingsUi.whisperExtraArguments"),
                                     description = translation.text("settingsUi.advancedWhisperCppArgsAppendedAfterGromozekaRequired"),
                                     value = localWhisper.extraArguments.joinToString(" "),
@@ -785,6 +718,19 @@ fun SettingsPanel(
                                 onValueChange = {
                                     onSettingsChange(
                                         settings.updateVoiceInputSettings { copy(autoSend = it) }
+                                    )
+                                }
+                            )
+
+                            SwitchSettingItem(
+                                label = translation.text("settingsUi.independentVoiceTranscriptionAcrossTabs"),
+                                description = translation.text("settingsUi.whenEnabledDifferentTabsMayFinishRecognitionIndependently"),
+                                value = voiceInputSettings.allowIndependentTranscriptionAcrossTabs,
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateVoiceInputSettings {
+                                            copy(allowIndependentTranscriptionAcrossTabs = it)
+                                        }
                                     )
                                 }
                             )

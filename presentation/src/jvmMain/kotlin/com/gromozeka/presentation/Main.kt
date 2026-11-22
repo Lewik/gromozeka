@@ -331,7 +331,7 @@ fun main(args: Array<String>) {
                     PttState.IDLE -> "Gromozeka"
                     PttState.PREPARING -> localization.runtime.preparingVoiceStatus
                     PttState.RECORDING -> localization.runtime.recordingVoiceStatus
-                    PttState.TRANSCRIBING -> localization.runtime.transcribingVoiceStatus
+                    PttState.FINALIZING -> localization.text("voice.finishingRecording")
                 },
                 onAction = ::showWindow,
             ) {
@@ -357,7 +357,7 @@ fun main(args: Array<String>) {
                         text = when (trayPttState) {
                             PttState.PREPARING -> localization.text("native.voiceStatus", "status" to localization.runtime.preparingVoiceStatus)
                             PttState.RECORDING -> localization.text("native.voiceStatus", "status" to localization.runtime.recordingVoiceStatus)
-                            PttState.TRANSCRIBING -> localization.text("native.voiceStatus", "status" to localization.runtime.transcribingVoiceStatus)
+                            PttState.FINALIZING -> localization.text("native.voiceStatus", "status" to localization.text("voice.finishingRecording"))
                             PttState.IDLE -> localization.text("native.voiceStatus", "status" to localization.text("native.idle"))
                         },
                         enabled = false,
