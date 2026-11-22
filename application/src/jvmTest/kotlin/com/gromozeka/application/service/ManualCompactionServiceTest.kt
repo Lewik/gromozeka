@@ -7,6 +7,8 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.compactions
+import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
+import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
 import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -137,6 +139,31 @@ class ManualCompactionServiceTest {
         assertEquals(listOf(kept.id), reasoning(latest, second.value))
         assertTrue(reasoning(latest, "real-fork").isEmpty())
         assertEquals(kept, f.messages.values.getValue(kept.id))
+    }
+
+    @Test
+    fun `compaction carries a covered durable runtime observation boundary`() = runBlocking {
+        val f = Fixture()
+        val observation = f.third.copy(
+            id = Conversation.Message.Id("runtime-observation"),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "state",
+                key = "state",
+                revision = "revision",
+            )),
+        ).withDurableRuntimeObservationBoundary()
+        f.append(observation)
+        val checkpoint = f.checkpoint(opaque = true).copy(id = Conversation.Message.Id("checkpoint"))
+        val result = checkpoint.compactions().single().copy(sourceBoundaryMessageId = observation.id)
+
+        val updated = f.committer.commit(
+            f.initialThread.id,
+            checkpoint.copy(content = listOf(result)),
+        )
+
+        val committed = f.threadMessages.messages(updated.currentThread).single { it.id == checkpoint.id }
+        assertTrue(committed.isDurableRuntimeObservationBoundary)
     }
 
     @Test

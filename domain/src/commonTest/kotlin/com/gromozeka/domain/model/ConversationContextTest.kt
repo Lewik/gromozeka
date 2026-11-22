@@ -77,6 +77,96 @@ class ConversationContextTest {
     }
 
     @Test
+    fun durableRuntimeObservationBoundaryDropsOnlyEarlierReasoningReplay() {
+        val provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name
+        val thread = "thread"
+        fun assistant(id: String) = text(id).copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(
+                Message.ContentItem.Thinking("reason-$id", signature = "signature-$id"),
+                Message.ContentItem.AssistantMessage(Message.StructuredText(fullText = id)),
+            ),
+            providerMetadata = JsonObject(mapOf(
+                "provider" to JsonPrimitive(provider),
+                "connectionId" to JsonPrimitive("connection"),
+                "model" to JsonPrimitive("model"),
+                AI_REPLAY_THREAD_METADATA_KEY to JsonPrimitive(thread),
+            )),
+        )
+        val before = assistant("before")
+        val boundary = text("observations").copy(
+            author = Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),
+        ).withDurableRuntimeObservationBoundary()
+        val after = assistant("after")
+
+        val projected = AiRuntimeRequest(
+            emptyList(),
+            listOf(before, boundary, after),
+            options = AiRuntimeOptions(toolContext = mapOf("threadId" to thread)),
+        ).projectedMessages(provider)
+
+        assertEquals(before.withoutProviderReplay(), projected[0])
+        assertEquals(boundary, projected[1])
+        assertEquals(after, projected[2])
+    }
+
+    @Test
+    fun retainedReplayStartsAfterTheLastDurableRuntimeObservationBoundary() {
+        val provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name
+        val source = Conversation.Thread.Id("source")
+        val target = Conversation.Thread.Id("target")
+        fun assistant(id: String) = text(id).copy(
+            role = Message.Role.ASSISTANT,
+            providerMetadata = JsonObject(mapOf(
+                "provider" to JsonPrimitive(provider),
+                "connectionId" to JsonPrimitive("connection"),
+                "model" to JsonPrimitive("model"),
+                "modelConfigurationId" to JsonPrimitive("configuration"),
+                AI_REPLAY_THREAD_METADATA_KEY to JsonPrimitive(source.value),
+            )),
+        )
+        val before = assistant("before")
+        val boundary = text("observations").copy(
+            author = Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),
+        ).withDurableRuntimeObservationBoundary()
+        val after = assistant("after")
+        val checkpoint = text("checkpoint").copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(Compaction(
+                payload = Compaction.Payload.OpaqueProviderState(JsonObject(emptyMap())),
+                origin = Compaction.Origin.PROVIDER_AUTO,
+                coverage = Compaction.Coverage.ALL_PREVIOUS,
+                sourceBoundaryMessageId = Message.Id("source-boundary"),
+                providerScope = Compaction.ProviderScope(
+                    provider = provider,
+                    connectionId = "connection",
+                    modelConfigurationId = "configuration",
+                    modelName = "model",
+                ),
+                historyTransition = Compaction.HistoryTransition(source, target),
+            )),
+        ).recordRetainedOpenAiReplay(
+            previous = null,
+            suffix = listOf(before, boundary, after).map(CompactionMessageHeader::from),
+        )
+
+        assertEquals(setOf(after.id), checkpoint.retainedOpenAiReplayLineage(target)?.messageIds)
+    }
+
+    @Test
+    fun runtimeObservationReadsLegacyJsonAndRoundTripsKeyedState() {
+        val legacy = Json.decodeFromString<Message.Instruction.RuntimeObservation>("""{"text":"legacy"}""")
+        assertEquals(Message.Instruction.RuntimeObservation("legacy"), legacy)
+
+        val keyed = Message.Instruction.RuntimeObservation("current", "visual:one", "revision")
+        assertEquals(keyed, Json.decodeFromString(Json.encodeToString(keyed)))
+    }
+
+    @Test
     fun selectiveSummaryKeepsUnselectedEarlierAndLaterMessages() {
         val a = text("a"); val b = text("b"); val c = text("c"); val d = text("d")
         val summary = summary("bc", listOf(b, c))

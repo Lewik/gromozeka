@@ -40,6 +40,7 @@ data class CompactionMessageHeader(
     val standaloneCheckpoint: Boolean = false,
     val portableStandaloneCheckpoint: Boolean = false,
     val retainedReplay: RetainedOpenAiReplay? = null,
+    val durableRuntimeObservationBoundary: Boolean = false,
     val replayMetadata: JsonObject = JsonObject(emptyMap()),
 ) {
     val node get() = CompactionNode(id, coverage)
@@ -60,6 +61,7 @@ data class CompactionMessageHeader(
             portableStandaloneCheckpoint = message.compactions().isNotEmpty() &&
                 message.content.count { it !is ContentItem.Thinking } == 1,
             retainedReplay = message.retainedOpenAiReplay(),
+            durableRuntimeObservationBoundary = message.isDurableRuntimeObservationBoundary,
             replayMetadata = JsonObject(message.providerMetadata.filterKeys { it in replayKeys }),
         )
     }

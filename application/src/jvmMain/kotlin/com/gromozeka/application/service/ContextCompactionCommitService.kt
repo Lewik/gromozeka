@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.recordRetainedOpenAiReplay
+import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -113,10 +114,14 @@ internal class ContextCompactionCommitService(
         } else emptyList()
         val suffix = messages.subList(sourceEnd + 1, messages.size)
         val previous = messages.getOrNull(lastFullCheckpoint)?.retainedReplay
-        val compactionMessage = message.copy(content = listOf(result.copy(
+        var compactionMessage = message.copy(content = listOf(result.copy(
             invalidatedReplayMessageIds = (result.invalidatedReplayMessageIds + invalidatedReplay).distinct(),
             historyTransition = ContextCompactionResult.HistoryTransition(expectedThreadId, newThread.id),
-        ))).recordRetainedOpenAiReplay(previous, suffix)
+        )))
+        if (selected.any { it.durableRuntimeObservationBoundary }) {
+            compactionMessage = compactionMessage.withDurableRuntimeObservationBoundary()
+        }
+        compactionMessage = compactionMessage.recordRetainedOpenAiReplay(previous, suffix)
         // A selective checkpoint must remain after any existing full checkpoint, otherwise
         // it would disappear behind that checkpoint or split its protected prefix.
         val insertionAnchorId = messages[maxOf(sourceEnd, lastFullCheckpoint)].id

@@ -153,7 +153,9 @@ fun Message.recordRetainedOpenAiReplay(previous: RetainedOpenAiReplay?, suffix: 
     val sourceThread = requireNotNull(checkpoint.historyTransition).sourceThreadId.value
     val inherited = previous.idsFor(scope.provider, sourceThread)
     val invalidated = checkpoint.invalidatedReplayMessageIds.toSet()
-    val ids = suffix.filter { message ->
+    val boundary = suffix.indexOfLast { it.durableRuntimeObservationBoundary }
+    val replayableSuffix = suffix.drop(boundary + 1)
+    val ids = replayableSuffix.filter { message ->
         val metadata = message.replayMetadata
         message.role == Message.Role.ASSISTANT && message.id !in invalidated &&
             metadata["provider"] == JsonPrimitive(scope.provider) &&
@@ -166,10 +168,13 @@ fun Message.recordRetainedOpenAiReplay(previous: RetainedOpenAiReplay?, suffix: 
     return copy(providerMetadata = JsonObject(providerMetadata + (RETAINED_OPENAI_REPLAY_IDS to JsonArray(ids))))
 }
 
-/** Request-only normalization: persisted content and usage/provenance remain unchanged. */
+/** Request projection only: persisted content and usage/provenance remain unchanged. */
 fun Conversation.Message.withoutProviderReplay(): Conversation.Message = copy(
     content = content.filterNot { it is Conversation.Message.ContentItem.Thinking },
-    providerMetadata = JsonObject(providerMetadata.filterKeys { it == "providerManagedTool" || it == RETAINED_OPENAI_REPLAY_IDS }),
+    providerMetadata = JsonObject(providerMetadata.filterKeys {
+        it == "providerManagedTool" || it == RETAINED_OPENAI_REPLAY_IDS ||
+            it == DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA
+    }),
 )
 
 /** Restore provider-generated content before context projection, never the human-facing correction. */
