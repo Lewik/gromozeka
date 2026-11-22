@@ -5,6 +5,7 @@ import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -1690,6 +1691,61 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun stateNotFoundFreshTranscriptFencesReasoningBeforeDurableObservationsAndKeepsReadableCheckpoint() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"),
+            "final_answer" to JsonPrimitive("OK"),
+        )))
+        val oldAssistant = assistantMessage("Visible earlier answer").copy(content = listOf(
+            Conversation.Message.ContentItem.Thinking("PRE_BOUNDARY_REASONING", signature = "signed"),
+            Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Visible earlier answer")),
+        ))
+        val readable = assistantMessage("").copy(content = listOf(
+            Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("READABLE_CHECKPOINT"),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
+            ),
+        ))
+        val boundary = runtimeObservationBoundary()
+
+        runtime(executor).call(request(listOf(oldAssistant, readable, boundary, userMessage("Next")), emptyList()))
+
+        val prompt = executor.commands.single().userPrompt
+        assertFalse(prompt.contains("PRE_BOUNDARY_REASONING"))
+        assertTrue(prompt.contains("Visible earlier answer"))
+        assertTrue(prompt.contains("READABLE_CHECKPOINT"))
+        assertTrue(prompt.contains("CURRENT_RUNTIME_STATE"))
+    }
+
+    @Test
+    fun resetFreshTranscriptFencesReasoningBeforeDurableObservations() = runBlocking {
+        val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
+        val executor = FakeClaudeCodeCliExecutor(
+            response(structuredOutput = answer),
+            response(structuredOutput = answer),
+        )
+        val runtime = runtime(executor)
+        val initial = userMessage("Initial")
+        runtime.call(request(listOf(initial), emptyList()))
+        val changedInitial = initial.copy(id = Conversation.Message.Id("changed-initial"))
+        val oldAssistant = assistantMessage("Visible reset answer").copy(content = listOf(
+            Conversation.Message.ContentItem.Thinking("RESET_PRE_BOUNDARY_REASONING", signature = "signed"),
+            Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Visible reset answer")),
+        ))
+
+        runtime.call(request(
+            listOf(changedInitial, oldAssistant, runtimeObservationBoundary(), userMessage("Next")),
+            emptyList(),
+        ))
+
+        assertNull(executor.commands[1].resumeSessionId)
+        assertFalse(executor.commands[1].userPrompt.contains("RESET_PRE_BOUNDARY_REASONING"))
+        assertTrue(executor.commands[1].userPrompt.contains("Visible reset answer"))
+        assertTrue(executor.commands[1].userPrompt.contains("CURRENT_RUNTIME_STATE"))
+    }
+
+    @Test
     fun recoveredNativeCheckpointReattachesImagesWithoutReplayingThinking() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))))
         val state = Json.parseToJsonElement("""{"kind":"claude_code_transcript","messages":[{"uuid":"retained","type":"user","message":{"role":"user","content":[{"type":"text","text":"Retained visual context"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"aGVsbG8="}},{"type":"thinking","thinking":"Do not flatten signed reasoning"}]}}]}""").jsonObject
@@ -2045,6 +2101,16 @@ class ClaudeCodeCliRuntimeTest {
             ),
             createdAt = Clock.System.now(),
         )
+
+    private fun runtimeObservationBoundary(): Conversation.Message = userMessage("").copy(
+        author = Conversation.Message.Author.Runtime(),
+        content = emptyList(),
+        instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+            text = "CURRENT_RUNTIME_STATE",
+            key = "runtime-state",
+            revision = "revision",
+        )),
+    ).withDurableRuntimeObservationBoundary()
 
     private fun response(
         sessionId: String = "session-1",

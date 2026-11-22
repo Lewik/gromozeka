@@ -56,13 +56,17 @@ class TelegramRequestEnricher(
         val root = request.messages.single { it.id == invocation.rootMessageId }
         val current = request.messages.filter { it.id in ownMessageIds }
         check(current.firstOrNull()?.id == root.id) { "Current Telegram request must precede its continuations" }
+        val observations = ConversationContext(request.messages).messages()
+            .filter { it.isDurableRuntimeObservationMessage }
+        val observationIds = observations.mapTo(mutableSetOf(), Conversation.Message::id)
         val outputReserve = request.options.maxOutputTokens ?: model.maxOutputTokens ?: 4096
-        val mandatory = estimate(Json.encodeToString(current)) + request.systemPrompts.sumOf(::estimate) + estimate(policy) +
+        val mandatory = estimate(Json.encodeToString(current)) + estimate(Json.encodeToString(observations)) +
+            request.systemPrompts.sumOf(::estimate) + estimate(policy) +
             request.tools.sumOf { estimate(Json.encodeToString(it.definition)) } + outputReserve.toLong() + window / 20 + 2048
         check(mandatory < window) { "Telegram invocation exceeds the model context budget" }
         var remaining = minOf(window.toLong() * invocation.route.contextPercent / 100, window - mandatory)
         val selected = mutableListOf<Conversation.Message>()
-        for (message in request.messages.filter { it.id !in ownMessageIds }.asReversed()) {
+        for (message in request.messages.filter { it.id !in ownMessageIds && it.id !in observationIds }.asReversed()) {
             val cost = estimate(transcript(message).toString()) + 128
             if (cost > remaining) break
             selected += message
@@ -76,7 +80,10 @@ class TelegramRequestEnricher(
         val attachments = selected.asReversed().flatMap { it.content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>() }
         val authorized = root.copy(content = listOf(Conversation.Message.ContentItem.UserMessage(context.toString())) + attachments +
             Conversation.Message.ContentItem.UserMessage("CURRENT AUTHORIZED REQUEST (message ${root.id.value}, Telegram user ${invocation.binding.initiatorTelegramUserId}):") + root.content)
-        return request.copy(systemPrompts = request.systemPrompts + policy, messages = listOf(authorized) + current.drop(1))
+        return request.copy(
+            systemPrompts = request.systemPrompts + policy,
+            messages = listOf(authorized) + observations + current.drop(1),
+        )
     }
 
     private fun transcript(message: Conversation.Message): JsonObject = buildJsonObject {

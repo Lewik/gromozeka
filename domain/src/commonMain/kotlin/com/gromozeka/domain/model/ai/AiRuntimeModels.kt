@@ -2,7 +2,7 @@ package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
-import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
+import com.gromozeka.domain.model.applyDurableRuntimeObservationReplayFence
 import com.gromozeka.domain.model.retainedOpenAiReplayIds
 import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.withPortableSyntheticToolCallIds
@@ -156,12 +156,11 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
     val currentThread = options.toolContext["threadId"] as? String
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
-    val originalMessages = originalCollaborationMessages().withPortableSyntheticToolCallIds()
+    val originalMessages = originalCollaborationMessages()
+        .withPortableSyntheticToolCallIds()
+        .applyDurableRuntimeObservationReplayFence()
     val contextWindow = ConversationContext(originalMessages).messagesForProvider(nativeProvider)
-    val observationBoundary = contextWindow.indexOfLast { it.isDurableRuntimeObservationBoundary }
-    val window = contextWindow.mapIndexed { index, message ->
-        if (observationBoundary >= 0 && index < observationBoundary) message.withoutProviderReplay() else message
-    }
+    val window = contextWindow
     val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeProvider, currentThread)
     val projected = window.map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull

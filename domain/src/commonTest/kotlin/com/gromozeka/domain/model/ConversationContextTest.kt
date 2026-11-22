@@ -113,6 +113,27 @@ class ConversationContextTest {
     }
 
     @Test
+    fun durableRuntimeObservationBoundaryStillFencesReasoningWhenCoveredBySelectiveSummary() {
+        val before = text("before").copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(
+                Message.ContentItem.Thinking("old reasoning", signature = "old signature"),
+                Message.ContentItem.AssistantMessage(Message.StructuredText("visible answer")),
+            ),
+        )
+        val boundary = text("observations").copy(
+            author = Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),
+        ).withDurableRuntimeObservationBoundary()
+        val compact = summary("compact", listOf(boundary))
+
+        val projected = AiRuntimeRequest(emptyList(), listOf(before, boundary, compact)).projectedMessages()
+
+        assertEquals(listOf(before.withoutProviderReplay(), compact), projected)
+    }
+
+    @Test
     fun retainedReplayStartsAfterTheLastDurableRuntimeObservationBoundary() {
         val provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name
         val source = Conversation.Thread.Id("source")

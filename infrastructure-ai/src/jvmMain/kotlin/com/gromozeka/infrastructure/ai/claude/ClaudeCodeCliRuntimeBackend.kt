@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.claude
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.applyDurableRuntimeObservationReplayFence
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiContextUsage
@@ -125,7 +126,9 @@ internal class ClaudeCodeCliRuntime(
 
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
         val key = sessionStateKey(request)
-        val projected = request.copy(messages = ConversationContext(request.messages).messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
+        val projected = request.copy(messages = ConversationContext(
+            request.messages.applyDurableRuntimeObservationReplayFence(),
+        ).messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
         if (key == null) return AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)
         return sessionLocks.computeIfAbsent(key.lockKey()) { Mutex() }.withLock {
             val plan = planSession(key, request.messages)
@@ -635,7 +638,9 @@ internal class ClaudeCodeCliRuntime(
             "New Gromozeka messages since the previous Claude Code session turn:"
         }
         val attachments = ClaudeCodeAttachmentCollector()
-        val replayMessages = ConversationContext(plan.messagesToSend)
+        val replayMessages = ConversationContext(
+            plan.messagesToSend.applyDurableRuntimeObservationReplayFence(),
+        )
             .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name)
         val prompt = listOf(
             "$header\n\n${messagesToTranscript(replayMessages, attachments)}",

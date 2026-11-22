@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
+import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTurnId
@@ -103,10 +104,16 @@ class ConversationRuntimeObservationServiceTest {
             listOf(
                 ConversationRuntimeObservationService.COMMANDS_KEY,
                 ConversationRuntimeObservationService.VISUAL_INVENTORY_KEY,
+                "${ConversationRuntimeObservationService.VISUAL_STATE_KEY_PREFIX}${VISUAL.id}",
             ),
             baseline.observations().map { it.key },
         )
         assertFalse(baseline.toString().contains("saved"))
+        assertEquals(
+            "disabled",
+            frame(baseline.observations().last().text, "visual-state-context")
+                .getValue("state-status").jsonPrimitive.content,
+        )
 
         f.visuals = listOf(VISUAL.copy(
             includeStateInContext = false,
@@ -127,6 +134,41 @@ class ConversationRuntimeObservationServiceTest {
             enabled.observations().map { it.key },
         )
         assertTrue(enabled.toString().contains("visible"))
+    }
+
+    @Test
+    fun `full checkpoint forces one complete post checkpoint baseline`() = runBlocking {
+        val f = Fixture()
+        val baseline = f.append("baseline", emptyList()).single()
+        val checkpoint = checkpoint("full", listOf(baseline), full = true)
+            .withDurableRuntimeObservationBoundary()
+
+        val restored = f.append("restored", listOf(baseline, checkpoint)).single()
+        assertEquals(3, restored.observations().size)
+        assertTrue(f.append("unchanged", listOf(baseline, checkpoint, restored)).isEmpty())
+    }
+
+    @Test
+    fun `selective checkpoint cannot expose an older matching observation revision`() = runBlocking {
+        val f = Fixture()
+        val baselineA = f.append("baseline-a", emptyList()).single()
+        f.visuals = listOf(VISUAL.copy(state = json("""{"form":{"query":"B"},"data":{"count":1}}""")))
+        val changedB = f.append("changed-b", listOf(baselineA)).single()
+        val checkpointB = checkpoint("checkpoint-b", listOf(changedB))
+
+        f.visuals = listOf(VISUAL)
+        val restoredA = f.append("restored-a", listOf(baselineA, changedB, checkpointB)).single()
+
+        assertTrue(restoredA.isDurableRuntimeObservationBoundary)
+        assertEquals(
+            listOf(
+                ConversationRuntimeObservationService.COMMANDS_KEY,
+                ConversationRuntimeObservationService.VISUAL_INVENTORY_KEY,
+                "${ConversationRuntimeObservationService.VISUAL_STATE_KEY_PREFIX}${VISUAL.id}",
+            ),
+            restoredA.observations().map { it.key },
+        )
+        assertTrue(restoredA.toString().contains("saved"))
     }
 
     @Test
@@ -266,6 +308,20 @@ class ConversationRuntimeObservationServiceTest {
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage("input")),
             createdAt = NOW,
+        )
+
+        private fun checkpoint(id: String, sources: List<Conversation.Message>, full: Boolean = false) = user(id).copy(
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary(id),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                sourceMessageIds = sources.map(Conversation.Message::id),
+                coverage = if (full) {
+                    Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS
+                } else {
+                    Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES
+                },
+            )),
         )
 
         private fun frame(text: String, tag: String): JsonObject = Json.parseToJsonElement(

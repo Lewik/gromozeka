@@ -12,6 +12,21 @@ fun Conversation.Message.withDurableRuntimeObservationBoundary(): Conversation.M
     providerMetadata = JsonObject(providerMetadata + (DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA to JsonPrimitive(true))),
 )
 
+val Conversation.Message.isDurableRuntimeObservationMessage: Boolean
+    get() = author is Conversation.Message.Author.Runtime &&
+        content.isEmpty() &&
+        instructions.isNotEmpty() &&
+        instructions.all { it is Conversation.Message.Instruction.RuntimeObservation }
+
+/** Keep ordinary transcript content but never replay provider reasoning from before the latest observation baseline. */
+fun List<Conversation.Message>.applyDurableRuntimeObservationReplayFence(): List<Conversation.Message> {
+    val boundary = indexOfLast { it.isDurableRuntimeObservationBoundary }
+    if (boundary <= 0) return this
+    return mapIndexed { index, message ->
+        if (index < boundary) message.withoutProviderReplay() else message
+    }
+}
+
 fun Conversation.Message.assistantTextWithRuntimeObservations(text: String): String {
     val observations = instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
     if (observations.isEmpty()) return text

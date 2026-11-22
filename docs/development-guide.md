@@ -1286,14 +1286,18 @@ appends one Runtime-authored USER message containing only changed observations:
 a complete Visual inventory plus one full state snapshot for each changed enabled
 Visual. An unchanged large Visual is therefore not copied into every request, but
 its latest full keyed snapshot remains durable and survives Server restarts and
-copy-on-write branches. The message has no ordinary content, and its runtime
+copy-on-write branches. Any compaction checkpoint invalidates the inferred keyed
+frontier; the next ordinary request writes one complete baseline. The checkpoint
+carries an existing replay boundary when it covers one; otherwise that baseline
+establishes a new boundary. The message has no ordinary content, and its runtime
 instructions are removed from client history projections. It is invisible in the
 chat timeline, does not mark the conversation unread, and does not trigger an
 automatic response by itself.
 
 Disabled Visuals remain in the complete inventory as `state-status=disabled`,
-with metadata but no state or snapshot ID. Reenabling one writes a fresh full
-snapshot. Closing a Visual changes the complete inventory; no tombstone or
+with metadata but no state or snapshot ID. A small keyed disabled marker replaces
+the earlier state observation without copying the saved state. Reenabling one
+writes a fresh full snapshot. Closing a Visual changes the complete inventory; no
 process-local replay state is required. This is not a privacy/permission boundary:
 it does not erase observations already delivered to a model or retained in chat
 history. Explicit `get` and button submissions still carry full state, and handler

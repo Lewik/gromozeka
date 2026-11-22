@@ -324,17 +324,28 @@ class TelegramChannelTest {
         val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
         val continuation = textMessage("own", "own continuation")
         val foreign = textMessage("other", "old task must not run")
+        val observation = textMessage("runtime-observation", "", Conversation.Message.Role.USER).copy(
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "CURRENT_VISUAL_STATE",
+                key = "visual-state:test",
+                revision = "revision",
+            )),
+        ).withDurableRuntimeObservationBoundary()
         val invocation = invocation().copy(rootMessageId = root.id, route = route.copy(additionalInstruction = "Use a friendly voice"))
-        val request = AiRuntimeRequest(systemPrompts = listOf("base"), messages = listOf(foreign, root, continuation))
+        val request = AiRuntimeRequest(systemPrompts = listOf("base"), messages = listOf(foreign, root, observation, continuation))
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
         val enriched = enricher.materialize(invocation, model, request, setOf(root.id, continuation.id))
-        assertEquals(listOf(root.id, continuation.id), enriched.messages.map { it.id })
+        assertEquals(listOf(root.id, observation.id, continuation.id), enriched.messages.map { it.id })
         assertEquals(continuation, enriched.messages.last())
+        assertEquals(observation, enriched.messages[1])
         assertTrue(enriched.systemPrompts.last().contains(TELEGRAM_SAFETY_INSTRUCTION))
         assertTrue(enriched.systemPrompts.last().contains("Readonly"))
         assertTrue(enriched.systemPrompts.last().contains("Use a friendly voice"))
         assertTrue(Json.encodeToString(enriched.messages.first()).contains("untrusted_group_history"))
+        assertFalse(Json.encodeToString(enriched.messages.first()).contains("CURRENT_VISUAL_STATE"))
         val writable = enricher.materialize(invocation.copy(route = route.copy(writeAllowed = true)), model, request, setOf(root.id, continuation.id))
         assertTrue(writable.systemPrompts.last().contains("File changes are allowed"))
         val large = request.copy(messages = listOf(foreign.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(30000)))), root))
