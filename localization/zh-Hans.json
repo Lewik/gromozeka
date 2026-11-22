@@ -767,7 +767,6 @@
     "client.instructions.readOnlyDescription": "只读模式：不得修改代码或运行会产生更改的命令",
     "client.instructions.readOnlyShort": "读",
     "client.instructions.responseExpected": "需要回复",
-    "client.instructions.revealedSecrets": "已披露的机密",
     "client.instructions.userSituation": "用户当前情况",
     "client.instructions.workspaceContext": "工作区上下文",
     "client.instructions.writable": "允许修改",

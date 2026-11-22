@@ -8,8 +8,7 @@ object MessageCompactionTextRenderer {
             val content = message.content.mapNotNull(::renderContentItem)
                 .filter(String::isNotBlank)
                 .joinToString("\n")
-            val instructions = message.instructions.filterNot { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
-                .joinToString("\n") { it.toXmlLine() }
+            val instructions = message.instructions.joinToString("\n") { it.toXmlLine() }
             listOf(instructions, content).filter(String::isNotBlank).joinToString("\n").takeIf(String::isNotBlank)
                 ?.let { "[${message.role.name.lowercase()} id=${message.id.value} at=${message.createdAt}]\n$it" }
         }.joinToString("\n\n").trim().also { require(it.isNotBlank()) { "Selected messages contain no readable content" } }
@@ -21,9 +20,7 @@ object MessageCompactionTextRenderer {
                 is ToolResult -> resultHeader(it).length + it.result.sumOf { data -> 1L + resultText(data).length }
                 else -> renderContentItem(it)?.length?.toLong() ?: 0L
             }
-        } +
-            message.instructions.filterNot { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
-                .sumOf { it.toXmlLine().length.toLong() }
+        } + message.instructions.sumOf { it.toXmlLine().length.toLong() }
 
     fun attachments(messages: List<Conversation.Message>): List<Conversation.Message.ContentItem> = buildList {
         messages.flatMap { it.content }.forEach { item ->

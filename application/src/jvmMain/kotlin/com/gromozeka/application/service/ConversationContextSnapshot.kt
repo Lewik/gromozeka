@@ -18,7 +18,7 @@ class ContextSnapshotUnavailableException(message: String, cause: Throwable? = n
 /**
  * Immutable request view. History is pinned to [target]'s thread and ends at a complete group.
  * Runtime/environment observations are read during assembly, not an atomic distributed snapshot.
- * No turn, queue admission, one-use secret, or replay-anchor mutation is performed to build it.
+ * No turn, queue admission, or replay-anchor mutation is performed to build it.
  */
 data class ConversationContextSnapshot(
     val target: AgentContextRef,

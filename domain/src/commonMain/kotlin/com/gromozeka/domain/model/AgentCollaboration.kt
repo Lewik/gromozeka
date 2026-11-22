@@ -106,7 +106,6 @@ data class AgentResponseDraft(
     val createdAt: Instant,
     val decision: AgentResponseDecision? = null,
     val failure: String? = null,
-    val proactiveCompactionAllowed: Boolean = false,
 )
 
 const val AGENT_CONTEXT_QUERY_TOOL_NAME = "grz_agent_query_context"

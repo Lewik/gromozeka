@@ -637,7 +637,7 @@ existing rows once. A repeatable-read transaction loads ordered headers and chec
 uses the shared coverage/recovery index, then reads only selected bodies in bounded
 batches. Checkpoints and a small set of covered anchors preserve transitive coverage,
 provider replay invalidation, sticky winners, exact human-message time intervals,
-one-use secret placement and OpenAI context-usage observations. The final provider
+and OpenAI context-usage observations. The final provider
 projection is unchanged; there is no last-N cutoff or mutable transcript cache.
 
 Native CLI sessions (Claude Code and Copilot), external-channel filtering, timeline
@@ -1128,7 +1128,7 @@ during assembly are not a globally atomic distributed snapshot.
 
 The invoker makes one application-level model call, with a temporary question at
 the end, no tools or native capabilities, no automatic compaction and no model or
-Worker fallback. Pending one-use secret reveals are not consumed. Claude native
+Worker fallback. Claude native
 cache/resume/session persistence are disabled; OpenAI Subscription transport
 state uses an independent namespace. Copilot is initially unsupported for this
 strict zero-tool contract. A Worker target must advertise
@@ -1776,8 +1776,9 @@ The consumer must read its environment directly (for example `gh` reads
 variable into a child program's arguments still exposes the value in process
 listings and audit/EDR logs. Environment injection is not isolation from code
 that can read the environment, and does not redact command output. Do not print
-credentials or enable shell tracing. Explicit secret revelation remains a
-separate, confirmed, one-request operation.
+credentials or enable shell tracing. Models receive only `secret://` references;
+plaintext values are resolved at tool execution and are not exposed through a
+model-facing reveal tool.
 
 ## CI and Release Workflow
 

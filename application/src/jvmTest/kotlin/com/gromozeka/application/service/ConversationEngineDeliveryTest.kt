@@ -432,8 +432,7 @@ class ConversationEngineDeliveryTest {
                 content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Original answer"))), createdAt = now)
             f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
                 Conversation.Message.Id("root"), model.turnId.value, 1, listOf(candidate), emptyList(), emptyList(), emptyList(), "", listOf("root"), now,
-                decision = AgentResponseDecision(text, AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()),
-                proactiveCompactionAllowed = true)
+                decision = AgentResponseDecision(text, AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()))
             f.acceptReview = true
             val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
                 payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
@@ -917,14 +916,12 @@ class ConversationEngineDeliveryTest {
         }
     }
 
-    @Test fun `COW compaction keeps the root and queued steering and consumes secrets only for inference`() = runBlocking {
+    @Test fun `COW compaction keeps the root and queued steering across continuation`() = runBlocking {
         val f = Fixture()
         val root = f.messages.single()
         val running = f.begin()
-        f.pendingSecrets.queue(conversation.id, user, mapOf("fixture" to "approved-model-only-value"))
         f.onCompact = { request ->
             assertTrue(f.requests.isEmpty())
-            assertFalse(request.messages.any { message -> message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext } })
             val target = Conversation.Thread.Id("compacted-thread")
             f.messages += root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
                 author = Conversation.Message.Author.Agent(agentId, "Test"),
@@ -940,7 +937,6 @@ class ConversationEngineDeliveryTest {
         }
         val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) { f.emitted += it })
         assertTrue(f.requests.isEmpty())
-        assertTrue(f.pendingSecrets.estimatedInputTokens(conversation.id, user) > 0)
         val continuation = assertIs<ConversationRuntimeTask.Payload.LlmCall>(outcome.nextTask.payload)
         assertTrue(continuation.afterCompaction)
         assertEquals(root.id, continuation.rootUserMessageId)
@@ -952,10 +948,6 @@ class ConversationEngineDeliveryTest {
         assertEquals("compacted-thread", request.options.toolContext["threadId"])
         assertEquals(root.id.value, request.options.toolContext[com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID])
         assertTrue(request.messages.any { it.id.value == "late-steering" })
-        val secrets = request.messages.flatMap { it.instructions }.filterIsInstance<Conversation.Message.Instruction.RevealedSecretRuntimeContext>()
-        assertEquals(1, secrets.size)
-        assertContains(secrets.single().serializeContent(), "approved-model-only-value")
-        assertEquals(0, f.pendingSecrets.estimatedInputTokens(conversation.id, user))
         assertEquals(root, f.messages.single { it.id == root.id })
         assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
     }
@@ -1052,27 +1044,6 @@ class ConversationEngineDeliveryTest {
         assertEquals(task.turnId, outcome.nextTask.turnId)
         assertEquals(1, f.requests.size)
         assertTrue(f.preparations.isEmpty())
-    }
-
-    @Test fun `review without proactive eligibility does not assemble compaction`() = runBlocking {
-        val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
-        val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Accepted answer"))), createdAt = now)
-        f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
-            Conversation.Message.Id("root"), model.turnId.value, 1, listOf(candidate), emptyList(), emptyList(), emptyList(), "", listOf("root"), now,
-            decision = AgentResponseDecision("Accepted answer", AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()),
-            proactiveCompactionAllowed = false)
-        f.acceptReview = true
-        val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
-            payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
-        f.advance(model, task)
-        f.onApply = { fail("Review must leave prepared compaction for canonical application") }
-        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) { f.emitted += it })
-        assertEquals(conversation.currentThread, f.currentConversation.currentThread)
-        assertTrue(f.messages.any { it.id == candidate.id })
-        assertTrue(f.messages.any { it.id.value == "draft:receipt" })
-        assertTrue(f.requests.isEmpty()); assertTrue(f.preparations.isEmpty())
-        assertTrue(f.applicationRequests.isEmpty())
     }
 
     @Test fun `running command observations reach ordinary requests without changing history or acknowledgement`() = runBlocking {
@@ -1208,7 +1179,6 @@ class ConversationEngineDeliveryTest {
         capabilityCatalogPrompt: String? = null) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
-        val pendingSecrets = PendingSecretRevealService()
         var profile = UserProfile()
         val suggestionRequests = mutableListOf<AiRuntimeRequest>()
         var onCompact: (AiRuntimeRequest) -> Conversation? = { null }
@@ -1415,7 +1385,7 @@ class ConversationEngineDeliveryTest {
             aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(selectedTools, emptyList()) },
             aiToolCapabilityCatalogService = capabilityCatalog, toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
-            stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
+            stickyMessageInstructionService = StickyMessageInstructionService(),
             suggestedRepliesGenerationService = SuggestedRepliesGenerationService(
                 responding { object : AiRuntime {
                     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {

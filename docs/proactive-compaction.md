@@ -96,9 +96,7 @@ Application removes its queued maintenance work atomically with the checkpoint
 and APPLIED receipt. New messages appended after capture are preserved. Input
 edits, thread changes, Agent/configuration/pin changes and access revocation
 prevent stale application. No synthetic user continuation is written or emitted.
-One-use revealed secrets remain request-only input even if their original user
-anchor is covered; archived user text is not restored to deliver them. Credentials
-are not stored in preparation receipts; scope fingerprints are hashes, and public
+Credentials are not stored in preparation receipts; scope fingerprints are hashes, and public
 Runtime snapshots expose status, not prepared content.
 
 At the blocking threshold, a running preparation is awaited rather than duplicated.

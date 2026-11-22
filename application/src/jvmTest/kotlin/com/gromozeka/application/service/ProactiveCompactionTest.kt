@@ -54,26 +54,6 @@ class ProactiveCompactionTest {
         }
     }
 
-    @Test fun `one-use secret context is never reused by proactive preparation`() = runBlocking {
-        Fixture(native = true).use { f ->
-            val secret = f.messages.first().copy(instructions = listOf(
-                Conversation.Message.Instruction.RevealedSecretRuntimeContext(
-                    RevealedSecretRuntimeContext(mapOf("fixture" to "approved-one-use-value")),
-                ),
-            ))
-            f.messages = listOf(secret, f.message("later-output", "x".repeat(80_001)))
-            f.startTurn()
-
-            assertFalse(f.service.prepareAfterResponse(
-                f.task!!, f.executor, f.conversation, f.agent, f.request(),
-            ))
-
-            assertNull(f.coordinator.proactiveCompaction(f.conversation.id))
-            assertEquals(0, f.nativeCalls)
-            assertNull(f.nativeRequest)
-        }
-    }
-
     @Test fun `external channel never starts a durable proactive preparation`() = runBlocking {
         Fixture(native = true).use { f ->
             f.conversation = f.conversation.copy(

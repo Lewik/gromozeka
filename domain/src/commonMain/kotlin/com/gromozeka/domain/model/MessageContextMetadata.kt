@@ -37,7 +37,7 @@ data class MessageContextHeader(val id: Message.Id, val metadata: MessageContext
 /**
  * A sufficient sparse raw history, not an already projected provider request.
  * Checkpoints retain coverage/replay provenance. Extra covered anchors preserve the existing
- * sticky-instruction, temporal-context and one-use secret placement before provider projection.
+ * sticky-instruction and temporal-context placement before provider projection.
  */
 fun selectModelHistoryMessageIds(
     headers: List<MessageContextHeader>,

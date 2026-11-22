@@ -12,7 +12,6 @@ import kotlin.time.Duration.Companion.seconds
 
 class SparseModelPreparationTest {
     private val conversation = Conversation.Id("conversation")
-    private val actor = User.Id("user")
     private val readonly = Message.Instruction.UserInstruction("readonly", "Readonly", "Read only")
     private val writable = Message.Instruction.UserInstruction("writable", "Writable", "May write")
     private val groups = listOf(MessageInstructionGroup(id = "access", title = "Access", controls = listOf(
@@ -37,7 +36,7 @@ class SparseModelPreparationTest {
     }
 
     @Test
-    fun `secret placement and tool discovery remain unchanged across a full checkpoint`() {
+    fun `tool discovery remains unchanged across a full checkpoint`() {
         val archive = (0 until 30).map { text("old-$it", it) }
         val checkpoint = summary("checkpoint", archive, full = true)
         val call = text("search", 31).copy(role = Message.Role.ASSISTANT, content = listOf(ContentItem.ToolCall(
@@ -46,31 +45,12 @@ class SparseModelPreparationTest {
             ContentItem.ToolCall.Id("call"), SEARCH_TOOLS_TOOL_NAME, listOf(ContentItem.ToolResult.Data.Text("""{"tools":[{"name":"example"}]}""")))))
         val full = archive + checkpoint + call + result
         val sparse = sparse(full, "OPENAI_SUBSCRIPTION")
-        val expected = prepare(full, "OPENAI_SUBSCRIPTION", reveal = true)
-        assertEquals(expected, prepare(sparse, "OPENAI_SUBSCRIPTION", reveal = true))
-        val oneUseInput = expected.single { message -> message.instructions.any { it is Message.Instruction.RevealedSecretRuntimeContext } }
-        assertTrue(oneUseInput.content.isEmpty(), "Covered user text must not be restored with one-use context")
-        assertEquals(1, oneUseInput.instructions.size)
-        assertEquals(expected, AiRuntimeRequest(emptyList(), expected).projectedMessages("OPENAI_SUBSCRIPTION"),
-            "Request-only context must remain valid if an adapter projects its input again")
-        assertTrue(full.all { message -> message.instructions.none { it is Message.Instruction.RevealedSecretRuntimeContext } })
+        val expected = prepare(full, "OPENAI_SUBSCRIPTION")
+        assertEquals(expected, prepare(sparse, "OPENAI_SUBSCRIPTION"))
         val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
         val discovery = AiToolRuntimeCatalogService()
         assertEquals(setOf("example"), discovery.discoveredToolNames(full, catalog))
         assertEquals(discovery.discoveredToolNames(full, catalog), discovery.discoveredToolNames(sparse, catalog))
-    }
-
-    @Test
-    fun `one-use context has a separate request identity and does not become a selective summary source`() {
-        val source = text("covered", 0)
-        val checkpoint = summary("selective", listOf(source), full = false)
-        val original = listOf(source, checkpoint)
-        val projected = prepare(original, null, reveal = true)
-        val input = projected.single { message -> message.instructions.any { it is Message.Instruction.RevealedSecretRuntimeContext } }
-        assertNotEquals(source.id, input.id)
-        assertTrue(input.content.isEmpty())
-        assertEquals(projected, AiRuntimeRequest(emptyList(), projected).projectedMessages())
-        assertEquals(listOf(source, checkpoint), original)
     }
 
     @Test
@@ -88,11 +68,8 @@ class SparseModelPreparationTest {
         }
     }
 
-    private fun prepare(messages: List<Message>, provider: String?, reveal: Boolean = false): List<Message> {
-        val secrets = PendingSecretRevealService()
-        if (reveal) secrets.queue(conversation, actor, mapOf("synthetic" to "synthetic-secret"))
-        val consumed = secrets.consume(conversation, actor, messages)
-        val temporal = MessageTemporalContextService().enrich(consumed, enabled = true)
+    private fun prepare(messages: List<Message>, provider: String?): List<Message> {
+        val temporal = MessageTemporalContextService().enrich(messages, enabled = true)
         val sticky = StickyMessageInstructionService().materialize(temporal, groups)
         return AiRuntimeRequest(emptyList(), sticky, options = AiRuntimeOptions(toolContext = mapOf("threadId" to "thread")))
             .projectedMessages(provider)

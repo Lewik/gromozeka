@@ -767,7 +767,6 @@
     "client.instructions.readOnlyDescription": "読み取り専用モード：コードの変更や、変更を伴うコマンドの実行は禁止です",
     "client.instructions.readOnlyShort": "読",
     "client.instructions.responseExpected": "返答が必要",
-    "client.instructions.revealedSecrets": "開示済みシークレット",
     "client.instructions.userSituation": "ユーザーの状況",
     "client.instructions.workspaceContext": "ワークスペースのコンテキスト",
     "client.instructions.writable": "変更可能",

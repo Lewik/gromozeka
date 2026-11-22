@@ -767,7 +767,6 @@
     "client.instructions.readOnlyDescription": "읽기 전용 모드: 코드를 수정하거나 변경을 일으키는 명령을 실행하지 마세요",
     "client.instructions.readOnlyShort": "읽기",
     "client.instructions.responseExpected": "응답 필요",
-    "client.instructions.revealedSecrets": "모델에 제공된 시크릿",
     "client.instructions.userSituation": "사용자 상황 맥락",
     "client.instructions.workspaceContext": "워크스페이스 맥락",
     "client.instructions.writable": "수정 허용",

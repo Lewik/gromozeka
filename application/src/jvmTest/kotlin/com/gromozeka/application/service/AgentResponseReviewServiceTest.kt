@@ -59,12 +59,11 @@ class AgentResponseReviewServiceTest {
             payload = payload, placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "call",
             requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE, ConversationRuntimeCapability.MEMORY_PIPELINE), ConversationRuntimeTaskTarget.Server), createdAt = now)
         val prepared = assertNotNull(reviewer.prepare(
-            task, payload, conversation, emptyList(), listOf(message), proactiveCompactionAllowed = false))
+            task, payload, conversation, emptyList(), listOf(message)))
         assertEquals(next, prepared.endpoint)
         assertEquals(listOf(incoming), prepared.incoming)
         assertEquals(listOf(outgoing), prepared.outgoing)
         assertEquals(listOf(outgoing.id), prepared.waitableIds)
-        assertFalse(prepared.proactiveCompactionAllowed)
         Mockito.verify(repository).saveDraft(prepared)
     }
 

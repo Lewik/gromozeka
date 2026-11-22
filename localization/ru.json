@@ -824,7 +824,6 @@
     "client.instructions.readOnlyDescription": "Режим только чтения: не изменять код и не запускать команды, которые вносят изменения",
     "client.instructions.readOnlyShort": "R",
     "client.instructions.responseExpected": "Ожидается ответ",
-    "client.instructions.revealedSecrets": "Раскрытые секреты",
     "client.instructions.userSituation": "Контекст ситуации пользователя",
     "client.instructions.workspaceContext": "Контекст рабочего пространства",
     "client.instructions.writable": "Изменения разрешены",

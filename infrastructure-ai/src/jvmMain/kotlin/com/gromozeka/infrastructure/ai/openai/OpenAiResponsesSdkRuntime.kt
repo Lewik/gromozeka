@@ -152,7 +152,7 @@ internal class OpenAiResponsesSdkRuntime(
                 val plan = prepared ?: continuations.plan(
                     if (connection.responsesStoredContinuationEnabled) continuations.scope(connection, modelConfigurationId,
                         modelName, request, checkNotNull(session.identity) { "Responses client has no call identity" }) else null,
-                    request, fullInput, connection.responsesStoredContinuationEnabled,
+                    fullInput, connection.responsesStoredContinuationEnabled,
                 ).also { prepared = it }
                 val params = fullParams.toBuilder().store(plan.store).inputOfResponse(plan.input)
                     .apply { plan.previousResponseId?.let(::previousResponseId) }.build()

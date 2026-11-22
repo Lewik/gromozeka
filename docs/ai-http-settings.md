@@ -223,8 +223,7 @@ Partial explicit selections do not gain an extra suffix. The older prefix is
 compacted semantically, preserving current instructions, verified results,
 obligations, constraints and next actions. There is no separate compaction-length setting. Readable material and supported
 committed image/PDF attachments are sent to the helper, not raw provider replay.
-One-shot revealed secrets are reserved for the ordinary request and are not sent
-to the counter or compaction model. DISTILL remains a manual-only prompt variant;
+DISTILL remains a manual-only prompt variant;
 CONCATENATE remains non-generative. Manual AI compaction uses the single automatic
 responder, or the sole connected agent; ambiguous multi-agent selection is an
 explicit error rather than an arbitrary model choice.
@@ -390,9 +389,8 @@ never prove continuation. Edits, shortened context, incompatible projection,
 fork/compaction or changed scope produce a full request. Top-level instructions,
 tools, response format and current permissions are rebuilt on every call; changes
 inside `Message.instructions` participate in the actual input comparison.
-One-use revealed-secret context forces a full `store:false` request and forgets
-the cursor, so it cannot become an implicit stored parent. Context queries,
-isolated/helper calls, token counting and detached compaction remain stateless.
+Context queries, isolated/helper calls, token counting and detached compaction
+remain stateless.
 Failed/incomplete/refused results, parsing failures, cancellation and quota errors
 do not advance the cursor. Concurrent stale completions cannot replace a newer one.
 

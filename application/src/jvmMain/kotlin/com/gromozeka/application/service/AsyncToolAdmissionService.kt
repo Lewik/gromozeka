@@ -71,10 +71,6 @@ class AsyncToolAdmissionService(
         )
         scopes.requireExecution(origin)
         val entry = entry(origin, modelCall.call.name)
-        entry.descriptor.metadata.inlineOnlyReason?.let { reason ->
-            return Admission(null, ContentItem.ToolResult(modelCall.id, modelCall.call.name,
-                listOf(ContentItem.ToolResult.Data.Text("Async invocation is unsupported: $reason. This tool was not executed.")), isError = true))
-        }
         val executionDescriptor = catalog.executionDescriptor(entry, target)
         require(entry.executionName == executionCall.call.name) { "Async tool execution name differs from its approved contract" }
         val binding = context.withValue("toolCallId", executionCall.id.value)

@@ -767,7 +767,6 @@
     "client.instructions.readOnlyDescription": "Mode hanya baca: jangan mengubah kode atau menjalankan perintah yang membuat perubahan",
     "client.instructions.readOnlyShort": "B",
     "client.instructions.responseExpected": "Respons diharapkan",
-    "client.instructions.revealedSecrets": "Rahasia yang diungkapkan",
     "client.instructions.userSituation": "Konteks situasi pengguna",
     "client.instructions.workspaceContext": "Konteks ruang kerja",
     "client.instructions.writable": "Dapat ditulis",

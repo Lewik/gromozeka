@@ -805,7 +805,6 @@
     "client.instructions.readOnlyDescription": "מצב קריאה בלבד: אין לשנות קוד או להריץ פקודות שמבצעות שינויים",
     "client.instructions.readOnlyShort": "R",
     "client.instructions.responseExpected": "נדרשת תשובה",
-    "client.instructions.revealedSecrets": "סודות שנחשפו",
     "client.instructions.userSituation": "מידע על מצב המשתמש",
     "client.instructions.workspaceContext": "הקשר סביבת העבודה",
     "client.instructions.writable": "שינויים מותרים",

@@ -147,12 +147,6 @@ class ConversationCompactionServiceTest {
         assertEquals(0, f.textCompactionCalls + f.nativeCalls + f.commits)
     }
 
-    @Test fun `unrevealed secret space participates in the threshold without entering text compaction`() = runBlocking {
-        val f = Fixture(500)
-        assertNotNull(f.apply(extraTokens = 400))
-        assertEquals(f.sources.dropLast(1), f.compactedSources)
-    }
-
     @Test fun `measured append only continuation has no count call even near the threshold`() = runBlocking {
         val f = Fixture(150)
         f.withMeasurement()
@@ -421,8 +415,8 @@ class ConversationCompactionServiceTest {
             Mockito.mock(ProactiveCompactionJobs::class.java), Mockito.mock(CompactionPreparationScope::class.java) {
                 if (it.method.name == "pinPrompts") pins else "scope"
             }, ToolCallPairingService())
-        suspend fun apply(alreadyCompacted: Boolean = false, extraTokens: Int = 0, owner: suspend () -> Unit = {}): Conversation? =
-            service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted, extraTokens) {
+        suspend fun apply(alreadyCompacted: Boolean = false, owner: suspend () -> Unit = {}): Conversation? =
+            service.compactIfNeeded(task, conversation, agent, routedRuntime ?: provider, request, alreadyCompacted) {
                 order += "owner"; owner()
             }
         suspend fun requestedCompact(request: AiRuntimeRequest? = this.request): Conversation.Message {

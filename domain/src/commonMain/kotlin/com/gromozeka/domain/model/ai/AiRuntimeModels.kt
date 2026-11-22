@@ -166,17 +166,7 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
             message.withoutProviderReplay()
         } else message
     }
-    val retainedIds = projected.mapTo(mutableSetOf()) { it.id }
-    // One-use runtime context must survive a covered user anchor, without restoring its archived text.
-    val oneUseInputs = originalMessages.filter { it.id !in retainedIds }.mapNotNull { message ->
-        val instructions = message.instructions.filterIsInstance<Conversation.Message.Instruction.RevealedSecretRuntimeContext>()
-        if (instructions.isEmpty()) null else {
-            val id = Conversation.Message.Id("${message.id.value}:one-use-context")
-            check(originalMessages.none { it.id == id }) { "One-use runtime context identity collides with history" }
-            message.copy(id = id, content = emptyList(), instructions = instructions, providerMetadata = JsonObject(emptyMap()))
-        }
-    }
-    return (projected + oneUseInputs)
+    return projected
 }
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */

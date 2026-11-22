@@ -134,7 +134,6 @@ class ConversationEngineService(
     private val activeGenerationPublisher: ActiveGenerationPublisher,
     private val messageTemporalContextService: MessageTemporalContextService,
     private val stickyMessageInstructionService: StickyMessageInstructionService,
-    private val pendingSecretRevealService: PendingSecretRevealService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val conversationPins: ConversationPinnedPrompt,
     private val requestEnrichers: List<ConversationRequestEnricher> = emptyList(),
@@ -242,7 +241,6 @@ class ConversationEngineService(
         conversation: Conversation,
         draft: AgentResponseDraft,
     ): Conversation {
-        if (!draft.proactiveCompactionAllowed) return conversation
         return try {
             val context = buildConversationRuntimeContext(
                 draft.endpoint.agentId, conversation, executor, readOnlySnapshot = true)
@@ -522,11 +520,11 @@ class ConversationEngineService(
             diagnosticId = diagnosticId,
             readOnlySnapshot = false,
         )
-        var runtimeRequest = assembledRequest.request
+        val runtimeRequest = assembledRequest.request
         var currentMessages = assembledRequest.rawMessages
 
         val compacted = compactions.compactIfNeeded(task, conversation, context.agent, context.runtime, runtimeRequest,
-            payload.afterCompaction, pendingSecretRevealService.estimatedInputTokens(conversationId, task.actorUserId),
+            payload.afterCompaction,
             promptScope = context.runtimeSystemPrompts, unpinnedPrompts = assembledRequest.unpinnedPrompts) {
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             check(agentDomainService.findById(context.agent.id) == context.agent) { "Agent changed during compaction" }
@@ -535,9 +533,6 @@ class ConversationEngineService(
             return ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversationId, payload.rootUserMessageId,
                 payload.agentDefinitionId, payload.iteration + 1, task.actorUserId, afterCompaction = true))
         }
-        runtimeRequest = runtimeRequest.copy(messages = pendingSecretRevealService.consume(
-            conversationId, task.actorUserId, runtimeRequest.messages))
-
         val generationStartedAt = Clock.System.now()
         log.debug {
             "AI_TURN_TRACE call=$diagnosticId phase=request_ready messages=${assembledRequest.runtimeMessageCount} " +
@@ -643,9 +638,6 @@ class ConversationEngineService(
         if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && activeCollaboration != null && responseReview != null) {
             val draft = responseReview.prepare(
                 task, payload, conversation, currentMessages, mappedAssistantMessages,
-                proactiveCompactionAllowed = runtimeRequest.messages.none { message ->
-                    message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
-                },
             )
             if (draft != null) return ConversationRuntimeTaskOutcome.Continue(
                 ConversationRuntimeTask(

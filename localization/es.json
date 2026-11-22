@@ -805,7 +805,6 @@
     "client.instructions.readOnlyDescription": "Modo de solo lectura: no modificar código ni ejecutar comandos que realicen cambios",
     "client.instructions.readOnlyShort": "L",
     "client.instructions.responseExpected": "Se espera una respuesta",
-    "client.instructions.revealedSecrets": "Secretos revelados",
     "client.instructions.userSituation": "Contexto de la situación del usuario",
     "client.instructions.workspaceContext": "Contexto del espacio de trabajo",
     "client.instructions.writable": "Escritura permitida",

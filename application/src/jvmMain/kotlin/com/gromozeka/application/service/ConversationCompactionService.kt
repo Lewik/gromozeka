@@ -88,7 +88,6 @@ class ConversationCompactionService internal constructor(
         runtime: AiRuntime,
         request: AiRuntimeRequest,
         alreadyCompacted: Boolean,
-        additionalInputTokens: Int = 0,
         promptScope: List<String> = request.systemPrompts,
         unpinnedPrompts: List<String> = request.systemPrompts,
         beforeCommit: suspend () -> Unit,
@@ -102,8 +101,7 @@ class ConversationCompactionService internal constructor(
         val threshold = resolved.modelConfiguration.compaction.thresholdTokens ?: return null
         val inspection = inspectContext(resolved, runtime, request)
         check(configurations.resolveAiRuntime(agent.runtimeSelection) == resolved) { "Model configuration changed during context counting" }
-        require(additionalInputTokens >= 0)
-        val occupied = inspection.inputTokens.toLong() + additionalInputTokens
+        val occupied = inspection.inputTokens.toLong()
         if (alreadyCompacted) log.info { "COMPACTION phase=verified task=${task.id.value} inputTokens=$occupied precision=${inspection.precision}" }
         var prepared = runtimeCoordinator.proactiveCompaction(conversation.id)
         if (occupied < threshold && prepared?.status != ProactiveCompaction.Status.READY) return null
@@ -187,13 +185,6 @@ class ConversationCompactionService internal constructor(
         }
         if (conversation.externalChannel != null) {
             log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=external_channel" }
-            return false
-        }
-        val hasOneUseContext = request.messages.any { message ->
-            message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
-        }
-        if (hasOneUseContext) {
-            log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=one_use_context" }
             return false
         }
         val resolved = configurations.resolveAiRuntime(agent.runtimeSelection)

@@ -862,7 +862,6 @@
     "client.instructions.readOnlyDescription": "وضع القراءة فقط: لا تعدّل الشيفرة ولا تشغّل أوامر تُحدث تغييرات",
     "client.instructions.readOnlyShort": "R",
     "client.instructions.responseExpected": "رد منتظر",
-    "client.instructions.revealedSecrets": "الأسرار التي كُشفت",
     "client.instructions.userSituation": "سياق وضع المستخدم",
     "client.instructions.workspaceContext": "سياق مساحة العمل",
     "client.instructions.writable": "التعديل مسموح",

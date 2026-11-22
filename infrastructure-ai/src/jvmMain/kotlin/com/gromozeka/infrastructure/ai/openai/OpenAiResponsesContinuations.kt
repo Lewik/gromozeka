@@ -1,6 +1,5 @@
 package com.gromozeka.infrastructure.ai.openai
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.tool.*
@@ -25,7 +24,7 @@ internal class OpenAiResponsesContinuations {
         val endpoint: String, val authFingerprint: String, val settingsFingerprint: String,
     )
     class Cursor(val responseId: String, val inputCount: Int, val fingerprint: String)
-    enum class Reason { STATELESS, MISSING_SCOPE, ONE_USE_CONTEXT, NO_PARENT, PREFIX_CHANGED, INCREMENTAL, PREVIOUS_NOT_FOUND }
+    enum class Reason { STATELESS, MISSING_SCOPE, NO_PARENT, PREFIX_CHANGED, INCREMENTAL, PREVIOUS_NOT_FOUND }
     data class Plan(
         val scope: Scope?, val observed: Cursor?, val fullInput: List<ResponseInputItem>,
         val input: List<ResponseInputItem>, val previousResponseId: String?, val store: Boolean, val reason: Reason,
@@ -49,17 +48,10 @@ internal class OpenAiResponsesContinuations {
         )
     }
 
-    fun plan(scope: Scope?, request: AiRuntimeRequest, input: List<ResponseInputItem>, enabled: Boolean): Plan {
+    fun plan(scope: Scope?, input: List<ResponseInputItem>, enabled: Boolean): Plan {
         if (!enabled) return Plan(null, null, input, input, null, false, Reason.STATELESS)
         if (scope == null) return Plan(null, null, input, input, null, false, Reason.MISSING_SCOPE)
         val observed = synchronized(lock) { cursors[scope] }
-        val hasOneUseContext = request.messages.any { message -> message.instructions.any {
-            it is Conversation.Message.Instruction.RevealedSecretRuntimeContext
-        } }
-        if (hasOneUseContext) {
-            forget(scope, observed)
-            return Plan(scope, observed, input, input, null, false, Reason.ONE_USE_CONTEXT)
-        }
         val reason = when {
             observed == null -> Reason.NO_PARENT
             observed.inputCount > input.size || fingerprint(input.subList(0, observed.inputCount)) != observed.fingerprint -> Reason.PREFIX_CHANGED

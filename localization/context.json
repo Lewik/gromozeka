@@ -4878,13 +4878,6 @@
     ],
     "args": []
   },
-  "client.instructions.revealedSecrets": {
-    "description": "History chip marking secrets explicitly approved by the user for inclusion in this model request. The label never includes secret values.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt:38"
-    ],
-    "args": []
-  },
   "client.instructions.userSituation": {
     "description": "History chip marking runtime facts about the user’s current situation, such as device context.",
     "source": [

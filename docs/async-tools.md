@@ -80,13 +80,6 @@ with `async_origin_required` before effects. This is an entry-point constraint,
 not an allowlist of tool names. SDK `await`/`gather` and the managed Python process
 lifecycle remain separate features.
 
-A callback may declare an inline-only reason for an objectively invocation-bound
-effect. Secret revelation injects a secret into the immediate next model request,
-so detaching it is rejected explicitly instead of falling back to inline execution.
-Provider-hosted native tools are not Harness callbacks and do not acquire this
-flag merely because their provider calls them tools. This mechanism is also
-separate from a provider's native async-tool API.
-
 ## Recovery and cancellation
 
 Invocations and outcomes use the existing Server secret cipher. Operation state

@@ -786,7 +786,6 @@
     "client.instructions.readOnlyDescription": "Read-only mode: do not modify code or run commands that make changes",
     "client.instructions.readOnlyShort": "R",
     "client.instructions.responseExpected": "Response expected",
-    "client.instructions.revealedSecrets": "Revealed secrets",
     "client.instructions.userSituation": "User situation context",
     "client.instructions.workspaceContext": "Workspace context",
     "client.instructions.writable": "Writable",

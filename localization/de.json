@@ -786,7 +786,6 @@
     "client.instructions.readOnlyDescription": "Nur-Lese-Modus: keinen Code ändern und keine Befehle ausführen, die Änderungen vornehmen",
     "client.instructions.readOnlyShort": "L",
     "client.instructions.responseExpected": "Antwort erwartet",
-    "client.instructions.revealedSecrets": "Offengelegte Secrets",
     "client.instructions.userSituation": "Kontext zur Situation des Nutzers",
     "client.instructions.workspaceContext": "Kontext des Arbeitsbereichs",
     "client.instructions.writable": "Änderungen erlaubt",

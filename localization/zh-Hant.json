@@ -767,7 +767,6 @@
     "client.instructions.readOnlyDescription": "唯讀模式：不得修改程式碼或執行會造成變更的命令",
     "client.instructions.readOnlyShort": "R",
     "client.instructions.responseExpected": "需要回覆",
-    "client.instructions.revealedSecrets": "已揭露的機密",
     "client.instructions.userSituation": "使用者目前狀況",
     "client.instructions.workspaceContext": "工作區上下文",
     "client.instructions.writable": "可寫入",
