@@ -410,7 +410,7 @@ class ConversationEngineDeliveryTest {
         assertEquals(listOf("a", "b"), f.messages.takeLast(2).map { it.id.value })
     }
 
-    @Test fun `reviewed responses do not compact from reconstructed requests`() = runBlocking {
+    @Test fun `accepted review prepares compaction from the canonical final request`() = runBlocking {
         fun tool(name: String) = object : AiToolCallback {
             override val definition = AiToolDefinition(name, "Synthetic $name", """{"type":"object"}""")
             override val metadata = ServerToolMetadata
@@ -432,20 +432,27 @@ class ConversationEngineDeliveryTest {
                 content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Original answer"))), createdAt = now)
             f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
                 Conversation.Message.Id("root"), model.turnId.value, 1, listOf(candidate), emptyList(), emptyList(), emptyList(), "", listOf("root"), now,
-                decision = AgentResponseDecision(text, AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()))
+                decision = AgentResponseDecision(text, AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()),
+                proactiveCompactionAllowed = true)
             f.acceptReview = true
             val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
                 payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
             f.advance(model, task)
-            f.onPrepare = { fail("Review must not prepare compaction from a reconstructed request") }
-            f.onApply = { fail("Review must not apply compaction from a reconstructed request") }
             val result = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
             if (text == null) assertIs<ConversationRuntimeTaskOutcome.CompleteWithoutNotification>(result)
             else assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(result)
             assertTrue(f.emitted.any { it.providerMetadata["collaborationReviewId"] == JsonPrimitive("draft") })
             if (text != null) assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } })
-            assertTrue(f.preparations.isEmpty())
-            assertTrue(f.applicationRequests.isEmpty())
+            val prepared = f.preparations.single()
+            assertEquals(AiReasoningConfig(effort = AiReasoningEffort.MAX), prepared.options.reasoning)
+            assertEquals(256, prepared.options.maxOutputTokens)
+            assertEquals(listOf("inspect_state", "grz_slot_release"), prepared.tools.map { it.definition.name })
+            assertTrue("Actual agent instructions" in prepared.systemPrompts)
+            assertTrue("COMPACTION_SNAPSHOT_ENRICHER" in prepared.systemPrompts)
+            assertFalse("ENRICHER_LAST" in prepared.systemPrompts)
+            assertTrue(prepared.messages.any { it.id == candidate.id })
+            assertTrue(prepared.messages.any { it.id.value == "draft:receipt" })
+            assertEquals(2, f.applicationRequests.size)
         }
     }
 
@@ -1047,13 +1054,14 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.preparations.isEmpty())
     }
 
-    @Test fun `review does not apply compaction from a reconstructed request`() = runBlocking {
+    @Test fun `review without proactive eligibility does not assemble compaction`() = runBlocking {
         val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
         val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Accepted answer"))), createdAt = now)
         f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
             Conversation.Message.Id("root"), model.turnId.value, 1, listOf(candidate), emptyList(), emptyList(), emptyList(), "", listOf("root"), now,
-            decision = AgentResponseDecision("Accepted answer", AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()))
+            decision = AgentResponseDecision("Accepted answer", AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()),
+            proactiveCompactionAllowed = false)
         f.acceptReview = true
         val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
             payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))

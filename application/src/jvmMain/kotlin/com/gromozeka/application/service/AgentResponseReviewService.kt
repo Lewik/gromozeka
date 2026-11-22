@@ -23,7 +23,8 @@ class AgentResponseReviewService(
     private val stateSync: ConversationRuntimeStateSyncService,
 ) {
     suspend fun prepare(task: ConversationRuntimeTask, payload: ConversationRuntimeTask.Payload.LlmCall,
-        conversation: Conversation, input: List<Conversation.Message>, messages: List<Conversation.Message>): AgentResponseDraft? {
+        conversation: Conversation, input: List<Conversation.Message>, messages: List<Conversation.Message>,
+        proactiveCompactionAllowed: Boolean = true): AgentResponseDraft? {
         if (conversation.externalChannel != null) return null
         val actor = task.actorUserId ?: return null
         val endpoint = AgentContextRef(conversation.id, conversation.currentThread, payload.agentDefinitionId)
@@ -44,6 +45,7 @@ class AgentResponseReviewService(
                 }.joinToString("\n").take(4000)
             }.takeLast(32_000),
             inputMessageIds = input.map { it.id.value }, createdAt = Clock.System.now(),
+            proactiveCompactionAllowed = proactiveCompactionAllowed,
         )
         repository.saveDraft(draft)
         return draft

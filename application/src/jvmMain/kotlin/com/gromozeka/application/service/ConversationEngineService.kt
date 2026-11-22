@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.syntheticKind
 
 import com.gromozeka.domain.model.AgentAddress
 import com.gromozeka.domain.model.AgentResponseDecision
+import com.gromozeka.domain.model.AgentResponseDraft
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiStepOutcome
 
@@ -233,6 +234,34 @@ class ConversationEngineService(
         compactions.prepareAfterResponse(task, executor, conversation, context.agent, captured, promptScope = context.runtimeSystemPrompts)
         // A fast preparation can become READY at this same boundary. A later result has its durable application task.
         return apply() ?: conversation
+    }
+
+    private suspend fun afterAcceptedResponseReview(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        conversation: Conversation,
+        draft: AgentResponseDraft,
+    ): Conversation {
+        if (!draft.proactiveCompactionAllowed) return conversation
+        return try {
+            val context = buildConversationRuntimeContext(
+                draft.endpoint.agentId, conversation, executor, readOnlySnapshot = true)
+            val assembled = assembleRuntimeRequest(
+                task = task,
+                conversation = conversation,
+                context = context,
+                rootUserMessageId = null,
+                diagnosticId = "${draft.id}:accepted-review",
+                readOnlySnapshot = true,
+            )
+            afterCommittedModelResponse(
+                task, executor, conversation, context,
+                assembled.request.copy(systemPrompts = assembled.unpinnedPrompts),
+            )
+        } catch (_: ContextSnapshotUnavailableException) {
+            log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=review_snapshot_unavailable" }
+            conversation
+        }
     }
 
     private suspend fun runHistoryMutationStep(
@@ -612,7 +641,12 @@ class ConversationEngineService(
             currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
         }
         if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && activeCollaboration != null && responseReview != null) {
-            val draft = responseReview.prepare(task, payload, conversation, currentMessages, mappedAssistantMessages)
+            val draft = responseReview.prepare(
+                task, payload, conversation, currentMessages, mappedAssistantMessages,
+                proactiveCompactionAllowed = runtimeRequest.messages.none { message ->
+                    message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext }
+                },
+            )
             if (draft != null) return ConversationRuntimeTaskOutcome.Continue(
                 ConversationRuntimeTask(
                     id = ConversationRuntimeTask.Id("${draft.id}:check"), conversationId = conversationId,
@@ -796,7 +830,7 @@ class ConversationEngineService(
         val service = requireNotNull(responseReview) { "Collaboration review is disabled; draft retained" }
         val collaboration = requireNotNull(collaboration)
         val draft = requireNotNull(collaboration.repository.findDraft(payload.draftId)) { "Missing response draft" }
-        val conversation = requireNotNull(conversationService.findById(task.conversationId))
+        var conversation = requireNotNull(conversationService.findById(task.conversationId))
         require(draft.endpoint.threadId == conversation.currentThread && draft.actorUserId == task.actorUserId && draft.endpoint.agentId == payload.agentDefinitionId)
         requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
@@ -855,6 +889,7 @@ class ConversationEngineService(
             createdAt = Clock.System.now(),
         )
         if (addRuntimeMessageIfMissing(conversation.id, receipt)) emitMessage(receipt)
+        conversation = afterAcceptedResponseReview(task, executor, conversation, draft)
         return if (decision.next == AgentResponseDecision.Next.CONTINUE) {
             ConversationRuntimeTaskOutcome.Continue(llmCallTask(task, conversation.id, draft.rootMessageId,
                 payload.agentDefinitionId, draft.iteration + 1, task.actorUserId))
