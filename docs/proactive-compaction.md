@@ -19,10 +19,11 @@ must be positive and lower than the blocking threshold. Its default is `null`
 
 ## Full versus selected compaction
 
-A full Harness-initiated compaction keeps roughly 80,000 characters of recent
-text without summarizing that suffix. This applies to automatic blocking
-compaction, proactive preparation, and manual selection of the entire effective
-window. A partial explicit selection does not acquire an extra retained suffix;
+A full COMPACT keeps roughly 80,000 characters of recent text without
+summarizing that suffix. This applies to automatic blocking compaction,
+proactive preparation, and manual COMPACT of the entire effective window.
+Full manual DISTILL and CONCATENATE instead consume the entire effective window.
+A partial explicit selection does not acquire an extra retained suffix;
 its tool call/result closure is still included and unselected messages remain.
 Selecting part of the history is not changed into a full operation merely because
 adding paired tool messages happens to cover all messages.
@@ -38,11 +39,12 @@ inside a retained whole-message suffix stays intact. Archived sources remain
 available for history recovery.
 
 If all effective raw history belongs to the suffix, there is no older prefix to
-compact. Background preparation is skipped. A full manual/blocking operation
-fails explicitly before inference instead of cutting a message, silently dropping
-the suffix or entering an endless compaction loop. The user can select older
-messages explicitly or adjust the blocking threshold. CONCATENATE still requires
-at least two source messages and never calls a model.
+compact. Background preparation is skipped. A full COMPACT, whether manual or
+blocking, fails explicitly before inference instead of cutting a message, silently
+dropping the suffix or entering an endless compaction loop. The user can select
+older messages explicitly or adjust the blocking threshold. Full DISTILL and
+CONCATENATE are not suffix-retaining operations; CONCATENATE still requires at
+least two source messages and never calls a model.
 
 ## Preparation and application
 

@@ -214,14 +214,15 @@ explicit ordinary-compaction fallback; cancellation and unknown outcomes do not.
 messages and original IDs remain archived. Runtime roots, queues and stable
 Conversation/Agent collaboration addresses continue. New provider output after a
 native checkpoint receives the new replay scope; archived opaque state is not
-retagged. Server and Workers must use the matching Gateway protocol (currently version 30).
+retagged. Server and Workers must use the matching Gateway protocol (currently version 37).
 
 Text auto-compaction always uses the continuation-oriented COMPACT prompt.
-Full compactions retain approximately 80,000 recent text characters as whole
-messages and complete tool groups; the boundary-crossing message remains whole.
-Partial explicit selections do not gain an extra suffix. The older prefix is
-compacted semantically, preserving current instructions, verified results,
-obligations, constraints and next actions. There is no separate compaction-length setting. Readable material and supported
+Full COMPACT operations retain approximately 80,000 recent text characters as
+whole messages and complete tool groups; the boundary-crossing message remains
+whole. Full manual DISTILL and CONCATENATE instead consume the entire effective
+history. Partial explicit selections do not gain an extra suffix. The older
+COMPACT prefix is compacted semantically, preserving current instructions,
+verified results, obligations, constraints and next actions. There is no separate compaction-length setting. Readable material and supported
 committed image/PDF attachments are sent to the helper, not raw provider replay.
 DISTILL remains a manual-only prompt variant;
 CONCATENATE remains non-generative. Manual AI compaction uses the single automatic
