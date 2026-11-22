@@ -161,6 +161,61 @@ class AppViewModelConversationSyncTest {
         assertTrue(!failure.message.orEmpty().contains("PRIVATE_OTHER_TEXT"))
     }
 
+    @Test
+    fun messageSelectionStateIsIsolatedAndRestoredAcrossConversationTabs() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val first = fixture.add("first", "project-a")
+        val second = fixture.add("second", "project-a")
+        val firstMessages = (1..4).map { fixture.message(first, "first-$it", it.toLong()) }
+        val secondMessages = (1..2).map { fixture.message(second, "second-$it", it.toLong()) }
+        fixture.historyMessages[first.id] = firstMessages
+        fixture.historyMessages[second.id] = secondMessages
+        fixture.historySelectionIds[first.id to ConversationMessageSelection.THINKING] = listOf(firstMessages.last().id)
+
+        fixture.open(first)
+        fixture.open(second)
+        runCurrent()
+        val firstTab = fixture.app.tabs.value[0]
+        val secondTab = fixture.app.tabs.value[1]
+        assertEquals(firstMessages.map { it.id }, firstTab.allMessages.value.map { it.id })
+        assertEquals(secondMessages.map { it.id }, secondTab.allMessages.value.map { it.id })
+
+        fixture.app.selectTab(0)
+        runCurrent()
+        firstTab.toggleMessageSelectionRange(firstMessages.first().id, isShiftPressed = false)
+        firstTab.toggleMessageSelectionRange(firstMessages[2].id, isShiftPressed = true)
+        firstTab.toggleHistorySelection(ConversationMessageSelection.THINKING)
+        runCurrent()
+        val expectedFirstIds = firstMessages.map { it.id }.toSet()
+        assertEquals(expectedFirstIds, firstTab.uiState.value.selectedMessageIds)
+        assertEquals(firstMessages[2].id, firstTab.uiState.value.lastToggledMessageId)
+        assertEquals(true, firstTab.uiState.value.lastToggleAction)
+        assertEquals(setOf(ConversationMessageSelection.THINKING), firstTab.selectedHistoryKinds.value)
+
+        fixture.app.selectTab(1)
+        runCurrent()
+        assertEquals(secondTab, fixture.app.currentTab.value)
+        assertTrue(secondTab.uiState.value.selectedMessageIds.isEmpty())
+        assertEquals(null, secondTab.uiState.value.lastToggledMessageId)
+        assertEquals(null, secondTab.uiState.value.lastToggleAction)
+        assertTrue(secondTab.selectedHistoryKinds.value.isEmpty())
+        secondTab.toggleMessageSelectionRange(secondMessages.first().id, isShiftPressed = false)
+
+        assertEquals(expectedFirstIds, firstTab.uiState.value.selectedMessageIds)
+        assertEquals(firstMessages[2].id, firstTab.uiState.value.lastToggledMessageId)
+        assertEquals(true, firstTab.uiState.value.lastToggleAction)
+        assertEquals(setOf(ConversationMessageSelection.THINKING), firstTab.selectedHistoryKinds.value)
+
+        fixture.app.selectTab(0)
+        runCurrent()
+        assertEquals(firstTab, fixture.app.currentTab.value)
+        assertEquals(expectedFirstIds, firstTab.uiState.value.selectedMessageIds)
+        assertEquals(firstMessages[2].id, firstTab.uiState.value.lastToggledMessageId)
+        assertEquals(true, firstTab.uiState.value.lastToggleAction)
+        assertEquals(setOf(ConversationMessageSelection.THINKING), firstTab.selectedHistoryKinds.value)
+        assertEquals(setOf(secondMessages.first().id), secondTab.uiState.value.selectedMessageIds)
+    }
+
     private class Fixture(scope: CoroutineScope) {
         private val records = mutableMapOf<String, Conversation>()
         private val projects = mutableMapOf<Project.Id, MutableStateFlow<List<Conversation>>>()
@@ -171,6 +226,8 @@ class AppViewModelConversationSyncTest {
         val copiedParticipants = mutableListOf<Set<Conversation.Participant>>()
         val closedTabs = mutableListOf<Conversation.Id>()
         val fullMessages = mutableMapOf<String, Conversation.Message>()
+        val historyMessages = mutableMapOf<Conversation.Id, List<Conversation.Message>>()
+        val historySelectionIds = mutableMapOf<Pair<Conversation.Id, ConversationMessageSelection>, List<Conversation.Message.Id>>()
         val messageLoads = mutableListOf<Pair<String, String>>()
         var failCopy = false
         val defaultAgent = AgentDefinition(id = AgentDefinition.Id("current-default"), name = "Default", prompts = emptyList(),
@@ -225,7 +282,18 @@ class AppViewModelConversationSyncTest {
             conversationService = conversationService,
             conversationHistoryService = stub { name, args ->
                 when {
-                    name.startsWith("loadPage") -> com.gromozeka.domain.model.ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+                    name.startsWith("loadPage") -> {
+                        val conversationId = Conversation.Id(args[0].toString())
+                        ConversationHistoryPage(records.getValue(conversationId.value).currentThread,
+                            historyMessages[conversationId].orEmpty().mapIndexed { index, message ->
+                                ConversationHistoryMessage(index, message)
+                            })
+                    }
+                    name.startsWith("selectMessageIds") -> {
+                        val conversationId = Conversation.Id(args[0].toString())
+                        @Suppress("UNCHECKED_CAST") val selection = args[1] as ConversationMessageSelection
+                        historySelectionIds[conversationId to selection].orEmpty()
+                    }
                     name.startsWith("loadMessage") -> {
                         messageLoads += args[0].toString() to args[1].toString()
                         fullMessages.getValue(args[1].toString())
@@ -267,6 +335,14 @@ class AppViewModelConversationSyncTest {
 
         suspend fun open(conversation: Conversation) = app.createTab(
             conversation.projectId, null, conversation.id, null, true, ConversationInitiator.User,
+        )
+
+        fun message(conversation: Conversation, id: String, epochSeconds: Long) = Conversation.Message(
+            id = Conversation.Message.Id(id),
+            conversationId = conversation.id,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(id)),
+            createdAt = Instant.fromEpochSeconds(epochSeconds),
         )
 
         fun renameExternally(conversation: Conversation, name: String) {
