@@ -54,7 +54,24 @@ class ConversationContextSnapshotServiceTest {
         val observation = snapshot.request.messages.last()
         assertIs<Conversation.Message.Author.Runtime>(observation.author)
         assertTrue(observation.instructions.any { it is Conversation.Message.Instruction.RuntimeObservation })
+        assertTrue(observation.isDurableRuntimeObservationBoundary)
         assertNotEquals(snapshot.lastIncludedMessageId, observation.id)
+    }
+
+    @Test fun `ephemeral runtime observation does not replace a retained replay boundary`() = runBlocking<Unit> {
+        val f = Fixture(includeRuntimeObservations = true)
+        val retained = f.user.copy(
+            id = Conversation.Message.Id("retained-boundary"),
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("old state", "state", "old")),
+        ).withDurableRuntimeObservationBoundary()
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(retained, f.user))
+
+        val snapshot = f.capture()
+
+        assertTrue(snapshot.request.messages.single { it.id == retained.id }.isDurableRuntimeObservationBoundary)
+        assertFalse(snapshot.request.messages.last().isDurableRuntimeObservationBoundary)
     }
 
     @Test fun `history reader never follows an advanced current branch`() = runBlocking<Unit> {

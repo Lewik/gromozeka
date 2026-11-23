@@ -1308,8 +1308,10 @@ JSON hashing ignores object-key order and transport revisions. Compaction consum
 the durable history and never performs a live Visual read; after observations are
 compacted away, the next ordinary request writes the missing current snapshots
 again. An isolated context query remains read-only and receives one fresh ephemeral
-view. There is no backfill migration for old conversations: the first ordinary
-request after upgrade writes a complete baseline. JSON values are untrusted data
+view. Before the first durable baseline, that ephemeral view is a request-local
+replay boundary; it never changes later durable revision detection. There is no
+backfill migration for old conversations: the first ordinary request after upgrade
+writes a complete baseline. JSON values are untrusted data
 and XML delimiters are escaped; neither reminders nor client drafts implicitly
 submit forms. `get` remains useful for autonomous fresh reads, markup and diagnostics.
 
@@ -1728,8 +1730,11 @@ Each durable observation has an application-owned key and content revision. The
 latest retained revision for a key replaces older revisions; the complete command
 and Visual inventories also remove absent entries. The first post-upgrade baseline
 marks a replay boundary: unreconstructable pre-boundary reasoning is projected
-portably, and compaction carries the boundary forward. Isolated snapshots do not
-append history or affect later change detection.
+portably, including sources behind same-provider opaque checkpoints, and compaction
+carries the boundary forward. Native CLI sessions reset when a new boundary was not
+part of their saved prefix. Isolated snapshots do not append history or affect later
+change detection. Telegram materialization fences structured history before quoting
+it and includes only the latest retained observation for each key.
 Worker Gateway protocol **32** introduced the instruction variant. Protocol **37**
 adds its keyed revision fields alongside the proactive-compaction wire changes.
 Update Server and Workers together; protocol 36 Workers are rejected during the

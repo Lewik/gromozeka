@@ -64,10 +64,13 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
         }
         includeRecovery(nodes)
         val invalidated = selection.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
+        val replayBoundary = headers.indexOfLast { it.durableRuntimeObservationBoundary }
         val ids = headers.mapNotNull { it.id.takeIf(required::contains) }
         val bodies = repository.compactionBodies(thread, ids).map {
             if ((it.author as? Message.Author.User) != headers[positions.getValue(it.id)].author) throw CompactionScopeChangedException()
-            if (it.id in visibleIds && it.id in invalidated) it.withoutProviderReplay() else it
+            if (positions.getValue(it.id) < replayBoundary || (it.id in visibleIds && it.id in invalidated)) {
+                it.withoutProviderReplay()
+            } else it
         }
         return ConversationContext(bodies, index).messagesForProvider(provider, visibleIds)
     }

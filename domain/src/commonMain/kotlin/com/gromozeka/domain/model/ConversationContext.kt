@@ -19,6 +19,8 @@ class ConversationContext(
     private val index: ConversationCompactionIndex = ConversationCompactionIndex(history.map(Message::compactionNode)),
 ) {
     private val byId = history.associateBy(Message::id)
+    private val positions = history.mapIndexed { index, message -> message.id to index }.toMap()
+    private val replayBoundary = history.indexOfLast { it.isDurableRuntimeObservationBoundary }
 
     /** Two passes: collect back to the latest full checkpoint, then remove covered nodes. */
     fun messages(): List<Message> = project(history)
@@ -29,7 +31,8 @@ class ConversationContext(
      * A selection is projected independently of unselected summaries elsewhere in history.
      */
     fun messagesForProvider(provider: String?, selection: Set<Message.Id>? = null): List<Message> {
-        val candidates = if (selection == null) history else history.filter { it.id in selection }
+        val candidates = (if (selection == null) history else history.filter { it.id in selection })
+            .map(::fenceProviderReplay)
         // Opaque recovery can restore sources covered by another selected summary.
         // Apply coverage once more to the recovered view, not to unselected history.
         return project(prepare(candidates, provider, emptySet()))
@@ -72,16 +75,20 @@ class ConversationContext(
 
     private fun prepare(input: List<Message>, provider: String?, visiting: Set<Message.Id>): List<Message> =
         project(input).flatMap { message ->
+            val replayProvider = provider.takeUnless {
+                replayBoundary >= 0 && positions.getValue(message.id) < replayBoundary
+            }
             val incompatible = message.compactions().filter {
                 it.payload is ContextCompactionResult.Payload.OpaqueProviderState &&
-                    (provider == null || it.providerScope?.provider != provider)
+                    (replayProvider == null || it.providerScope?.provider != replayProvider)
             }
             if (incompatible.isEmpty()) return@flatMap listOf(message)
             require(message.id !in visiting) { "Cyclic opaque compaction sources at ${message.id.value}" }
             // There must be a real source for recovery. A provider label is not a summary.
             val window = index.recoveryWindow(message.id, incompatible.map(::CompactionCoverage))
             val sources = window.nodes.map { node ->
-                val source = byId[node.id] ?: error("Missing compaction source message: ${node.id.value}")
+                val source = byId[node.id]?.let(::fenceProviderReplay)
+                    ?: error("Missing compaction source message: ${node.id.value}")
                 if (node.id in window.invalidatedReplay) source.withoutProviderReplay() else source
             }
             val recovered = prepare(sources, provider, visiting + message.id).map(Message::withoutProviderReplay)
@@ -91,6 +98,10 @@ class ConversationContext(
                 message.copy(content = tail).withoutProviderReplay()
             )
         }.distinctBy(Message::id)
+
+    private fun fenceProviderReplay(message: Message): Message =
+        if (replayBoundary >= 0 && positions.getValue(message.id) < replayBoundary) message.withoutProviderReplay()
+        else message
 }
 
 fun Conversation.Message.compactions(): List<Conversation.Message.ContentItem.ContextCompactionResult> =

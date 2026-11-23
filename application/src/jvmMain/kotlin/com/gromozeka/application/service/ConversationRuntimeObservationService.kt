@@ -111,7 +111,7 @@ class ConversationRuntimeObservationService(
         requireAuthorizedConversation(conversationId, request)
         val observations = observe(conversationId)
         if (observations.isEmpty()) return request
-        val message = Conversation.Message(
+        var message = Conversation.Message(
             id = Conversation.Message.Id("${turnId.value}:runtime-observations"),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
@@ -120,6 +120,9 @@ class ConversationRuntimeObservationService(
             instructions = observations,
             createdAt = Clock.System.now(),
         )
+        if (request.messages.none { it.isDurableRuntimeObservationBoundary }) {
+            message = message.withDurableRuntimeObservationBoundary()
+        }
         return request.copy(messages = request.messages + message)
     }
 

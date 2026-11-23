@@ -4,6 +4,7 @@ import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.applyDurableRuntimeObservationReplayFence
+import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiContextUsage
@@ -549,7 +550,16 @@ internal class ClaudeCodeCliRuntime(
             )
         }
 
-        val deltaMessages = messages.drop(generatedTailOffset + generatedTailSize)
+        val deltaOffset = generatedTailOffset + generatedTailSize
+        val deltaMessages = messages.drop(deltaOffset)
+        if (deltaMessages.any { it.isDurableRuntimeObservationBoundary }) {
+            sessionStateRepository.delete(sessionKey)
+            return ClaudeCodeSessionPlan(
+                messagesToSend = messages,
+                resumeSessionId = null,
+                decision = ClaudeCodeSessionDecision.RESET_RUNTIME_OBSERVATION_BOUNDARY,
+            )
+        }
         return if (deltaMessages.isEmpty()) {
             ClaudeCodeSessionPlan(
                 messagesToSend = messages,
@@ -1129,6 +1139,7 @@ private enum class ClaudeCodeSessionDecision {
     RESET_MESSAGE_IDS_CHANGED,
     RESET_GENERATED_TAIL_CHANGED,
     RESET_TRANSCRIPT_CHANGED,
+    RESET_RUNTIME_OBSERVATION_BOUNDARY,
     FRESH_WITHOUT_DELTA,
     RESUME_WITH_DELTA,
 }

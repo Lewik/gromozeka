@@ -94,12 +94,18 @@ class ConversationCompactionIndex(private val history: List<CompactionNode>) {
     }
 
     /** Keep checkpoints for transitive coverage and replay invalidation, plus recovery sources. */
-    fun requiredHistoryIds(provider: String?): Set<Message.Id> {
+    fun requiredHistoryIds(provider: String?, portableBeforeIndex: Int? = null): Set<Message.Id> {
+        require(portableBeforeIndex == null || portableBeforeIndex in 0..history.size) {
+            "Portable replay boundary is outside conversation history"
+        }
         val required = project().mapTo(mutableSetOf()) { it.id }
         history.filter { it.compactions.isNotEmpty() }.mapTo(required) { it.id }
         fun recover(input: List<CompactionNode>, visiting: Set<Message.Id>) {
             project(input).forEach { node ->
-                val incompatible = incompatibleCompactions(node, provider)
+                val replayProvider = provider.takeUnless {
+                    portableBeforeIndex != null && positions.getValue(node.id) < portableBeforeIndex
+                }
+                val incompatible = incompatibleCompactions(node, replayProvider)
                 if (incompatible.isEmpty()) return@forEach
                 require(node.id !in visiting) { "Cyclic opaque compaction sources at ${node.id.value}" }
                 val sources = recoverySourceIds(node.id, incompatible)

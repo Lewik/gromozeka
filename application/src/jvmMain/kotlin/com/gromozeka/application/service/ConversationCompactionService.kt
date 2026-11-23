@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.SquashType
@@ -52,7 +53,9 @@ class ConversationCompactionService internal constructor(
             return conversation
         }
         val sources = history.compactionHeaders(conversation.currentThread)
-        val scopedRequest = request.forPreparedPrefix(prepared, sources)
+        val nativeProvider = configurations.resolveAiRuntime(agent.runtimeSelection)
+            .connection.kind.nativeCompactionProvider()
+        val scopedRequest = request.forPreparedPrefix(prepared, sources, nativeProvider)
         val valid = prepared.agentId == agent.id && prepared.actorUserId == task.actorUserId &&
             prepared.matches(conversation, sources) && scopedRequest != null
         if (!valid) {
@@ -118,7 +121,11 @@ class ConversationCompactionService internal constructor(
             check(!(prepared.status == ProactiveCompaction.Status.FAILED && prepared.outcomeUnknown && occupied >= threshold)) {
                 "Compaction outcome is unknown; inspect it or use Stop to discard the preparation before a new request"
             }
-            val scopedRequest = request.forPreparedPrefix(prepared, sources)
+            val scopedRequest = request.forPreparedPrefix(
+                prepared,
+                sources,
+                resolved.connection.kind.nativeCompactionProvider(),
+            )
             val valid = prepared.agentId == agent.id && prepared.actorUserId == task.actorUserId &&
                 prepared.matches(conversation, sources) &&
                 scopedRequest != null && preparationScope.fingerprint(conversation, agent, prepared.actorUserId,
@@ -158,8 +165,18 @@ class ConversationCompactionService internal constructor(
         log.info { "COMPACTION phase=start id=${checkpointId.value} mode=blocking inputTokens=$occupied sources=${prefix.size} retained=${sources.size - prefix.size}" }
         val pins = preparationScope.pinPrompts(conversation)
         val scope = task.actorUserId?.let { preparationScope.fingerprint(conversation, agent, it, promptScope, pins) }
-        val message = generateCheckpoint(conversation, agent, runtime, request.copy(systemPrompts = unpinnedPrompts + pins),
-            window, prefix, checkpointId, pins, Checkpoint.Origin.GROMOZEKA_POLICY)
+        val message = generateCheckpoint(
+            conversation,
+            agent,
+            runtime,
+            request.copy(systemPrompts = unpinnedPrompts + pins),
+            window,
+            prefix,
+            checkpointId,
+            pins,
+            Checkpoint.Origin.GROMOZEKA_POLICY,
+            nativeProvider = resolved.connection.kind.nativeCompactionProvider(),
+        )
         currentCoroutineContext().ensureActive()
         beforeCommit()
         check(configurations.resolveAiRuntime(agent.runtimeSelection) == resolved) { "Model configuration changed during compaction" }
@@ -210,7 +227,8 @@ class ConversationCompactionService internal constructor(
             log.debug { "COMPACTION phase=skipped task=${task.id.value} reason=only_retained_suffix" }
             return false
         }
-        val captured = request.forCompactionPrefix(prefix).copy(
+        val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
+        val captured = request.forCompactionPrefix(prefix, nativeProvider).copy(
             systemPrompts = request.systemPrompts + pins,
             options = request.options.copy(toolContext = request.options.toolContext +
                 ("threadId" to conversation.currentThread.value)),
@@ -229,7 +247,8 @@ class ConversationCompactionService internal constructor(
             }
             val preparationRuntime = runtimes.getRuntime(agent.runtimeSelection, null)
             val checkpoint = generateCheckpoint(conversation, agent, preparationRuntime, captured, window, prefix,
-                Conversation.Message.Id(preparation.id), pins, Checkpoint.Origin.GROMOZEKA_POLICY)
+                Conversation.Message.Id(preparation.id), pins, Checkpoint.Origin.GROMOZEKA_POLICY,
+                nativeProvider = nativeProvider)
             if (preparationScope.fingerprint(conversation, agent, actor, promptScope, request = captured) != signature) {
                 throw CompactionScopeChangedException()
             }
@@ -261,6 +280,8 @@ class ConversationCompactionService internal constructor(
     ): Conversation.Message {
         val pins = preparationScope.pinPrompts(conversation)
         val nativeRequest = request?.copy(systemPrompts = request.systemPrompts + pins)
+        val nativeProvider = configurations.resolveAiRuntime(agent.runtimeSelection)
+            .connection.kind.nativeCompactionProvider()
         return generateCheckpoint(
             conversation = conversation,
             agent = agent,
@@ -276,6 +297,7 @@ class ConversationCompactionService internal constructor(
             checkpointId = checkpointId,
             pins = pins,
             origin = Checkpoint.Origin.USER_REQUESTED,
+            nativeProvider = nativeProvider,
         )
     }
 
@@ -290,10 +312,11 @@ class ConversationCompactionService internal constructor(
         pins: List<String>,
         origin: Checkpoint.Origin,
         requestContext: Map<String, Any?> = request?.options?.toolContext.orEmpty(),
+        nativeProvider: String?,
     ): Conversation.Message {
         val compactionContext = requestContext + ("aiCallDiagnosticId" to checkpointId.value)
         val prefixRequest = if (request != null && runtime.capabilities.supportsDetachedNativeCompaction) {
-            request.forCompactionPrefix(prefix)
+            request.forCompactionPrefix(prefix, nativeProvider)
                 .takeIf { it.messages.lastOrNull()?.id == prefix.last().id }
                 ?.copy(options = request.options.copy(usagePurpose = "CONTEXT_COMPACTION", toolContext = compactionContext +
                     ("compactionTransportId" to checkpointId.value)))
@@ -333,18 +356,23 @@ class ConversationCompactionService internal constructor(
     }
 
     /** Preserve the exact model-call materialization used by the ordinary runtime path. */
-    private fun AiRuntimeRequest.forCompactionPrefix(prefix: List<CompactionMessageHeader>): AiRuntimeRequest {
+    private fun AiRuntimeRequest.forCompactionPrefix(
+        prefix: List<CompactionMessageHeader>,
+        nativeProvider: String?,
+    ): AiRuntimeRequest {
         val ids = prefix.mapTo(hashSetOf()) { it.id }
-        return copy(messages = messages.filter { it.id in ids })
+        return copy(messages = ConversationContext(messages).messagesForProvider(nativeProvider, ids))
     }
 
     private fun AiRuntimeRequest.forPreparedPrefix(
         prepared: ProactiveCompaction,
         sources: List<CompactionMessageHeader>,
+        nativeProvider: String?,
     ): AiRuntimeRequest? {
         if (prepared.sourceCount > sources.size) return null
         val prefix = sources.take(prepared.sourceCount)
-        return forCompactionPrefix(prefix).takeIf { it.messages.lastOrNull()?.id == prefix.lastOrNull()?.id }
+        return forCompactionPrefix(prefix, nativeProvider)
+            .takeIf { it.messages.lastOrNull()?.id == prefix.lastOrNull()?.id }
     }
 
     private suspend fun inspectContext(resolved: ResolvedAiRuntime, runtime: AiRuntime, request: AiRuntimeRequest): AiContextInspection {

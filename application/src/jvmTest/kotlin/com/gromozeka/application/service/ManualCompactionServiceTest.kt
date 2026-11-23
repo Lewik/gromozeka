@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.compactions
 import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
+import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
 import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -86,6 +87,38 @@ class ManualCompactionServiceTest {
         val native = window.messages(f.threadMessages, f.initialThread.id, input, AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
         assertEquals(listOf(outer), native)
         assertEquals(listOf(outer.id), f.threadMessages.bodyReads)
+    }
+
+    @Test
+    fun `text compaction strips provider reasoning when boundary remains in the suffix`() = runBlocking {
+        val f = Fixture()
+        val old = f.third.copy(
+            id = Conversation.Message.Id("pre-boundary"),
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(
+                Conversation.Message.ContentItem.Thinking("STALE_REASONING", signature = "signature"),
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Visible answer")),
+            ),
+        )
+        val boundary = f.third.copy(
+            id = Conversation.Message.Id("runtime-boundary"),
+            author = Conversation.Message.Author.Runtime(),
+            role = Conversation.Message.Role.USER,
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("state", "state", "revision")),
+        ).withDurableRuntimeObservationBoundary()
+        f.append(old)
+        f.append(boundary)
+        val window = CompactionHistoryWindow(f.threadMessages.compactionHeaders(f.initialThread.id))
+
+        val messages = window.messages(
+            f.threadMessages,
+            f.initialThread.id,
+            window.headers.filter { it.id == old.id },
+            provider = null,
+        )
+
+        assertEquals(listOf(old.withoutProviderReplay()), messages)
     }
 
     @Test
@@ -999,11 +1032,16 @@ private class InMemoryThreadMessageRepository(
         bodyReads += ids
         return ids.map(messages(threadId).associateBy { it.id }::getValue)
     }
-    override suspend fun getContextMessagesByThread(threadId: Conversation.Thread.Id, nativeProvider: String?): List<Conversation.Message> {
+    override suspend fun getContextMessagesByThread(
+        threadId: Conversation.Thread.Id,
+        nativeProvider: String?,
+        prepareRuntimeObservationBoundary: Boolean,
+    ): List<Conversation.Message> {
         val history = messages(threadId)
         val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(
             history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
             history.filter { com.gromozeka.domain.model.MessageContextMetadata.from(it).hasCompaction }, nativeProvider,
+            prepareRuntimeObservationBoundary,
         )
         return history.filter { it.id in selected }
     }

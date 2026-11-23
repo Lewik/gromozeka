@@ -106,6 +106,40 @@ class SparseConversationHistoryTest {
     }
 
     @Test
+    fun sameProviderOpaqueCheckpointBeforeRuntimeBoundaryLoadsPortableSources() {
+        val provider = "OPENAI_SUBSCRIPTION"
+        val source = text("source").copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(
+                ContentItem.Thinking("stale reasoning", signature = "signature"),
+                ContentItem.AssistantMessage(Message.StructuredText("visible answer")),
+            ),
+        )
+        val checkpoint = text("checkpoint").copy(role = Message.Role.ASSISTANT, content = listOf(Compaction(
+            Compaction.Payload.OpaqueProviderState(buildJsonObject { put("encrypted_content", "opaque") }),
+            Compaction.Origin.PROVIDER_AUTO,
+            coverage = Compaction.Coverage.ALL_PREVIOUS,
+            providerScope = Compaction.ProviderScope(provider),
+        )))
+        val boundary = text("boundary").copy(
+            author = Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Message.Instruction.RuntimeObservation("current state", "state", "revision")),
+        ).withDurableRuntimeObservationBoundary()
+
+        for (persistedBoundary in listOf(false, true)) {
+            val stored = listOf(source, checkpoint) + if (persistedBoundary) listOf(boundary) else emptyList()
+            val ids = select(stored, provider, prepareRuntimeObservationBoundary = !persistedBoundary)
+            assertTrue(source.id in ids)
+            val request = stored.filter { it.id in ids } + if (persistedBoundary) emptyList() else listOf(boundary)
+            assertEquals(
+                listOf(source.withoutProviderReplay(), boundary),
+                ConversationContext(request).messagesForProvider(provider),
+            )
+        }
+    }
+
+    @Test
     fun retainsNativeUsageObservationsEvenWhenSelectiveCoverageHidesTheirMessages() {
         fun observation(id: String, tokens: JsonElement) = text(id).copy(role = Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Message.StructuredText(id))),
@@ -128,10 +162,14 @@ class SparseConversationHistoryTest {
         assertTrue(malformed.id in invalid && good.id !in invalid)
     }
 
-    private fun select(history: List<Message>, provider: String?): Set<Message.Id> {
+    private fun select(
+        history: List<Message>,
+        provider: String?,
+        prepareRuntimeObservationBoundary: Boolean = false,
+    ): Set<Message.Id> {
         val headers = history.map { MessageContextHeader(it.id, MessageContextMetadata.from(it)) }
         val checkpoints = history.filter { MessageContextMetadata.from(it).hasCompaction }
-        return selectModelHistoryMessageIds(headers, checkpoints, provider)
+        return selectModelHistoryMessageIds(headers, checkpoints, provider, prepareRuntimeObservationBoundary)
     }
 
     private fun text(id: String) = Message(Message.Id(id), Conversation.Id("conversation"), role = Message.Role.USER,

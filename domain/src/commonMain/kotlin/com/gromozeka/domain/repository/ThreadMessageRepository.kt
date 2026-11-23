@@ -113,7 +113,11 @@ interface ThreadMessageRepository {
      * Preserves checkpoints, provider recovery sources and pre-projection enrichment anchors.
      * Not a timeline/archive read or a replacement for an external channel's raw history filter.
      */
-    suspend fun getContextMessagesByThread(threadId: Conversation.Thread.Id, nativeProvider: String?): List<Conversation.Message>
+    suspend fun getContextMessagesByThread(
+        threadId: Conversation.Thread.Id,
+        nativeProvider: String?,
+        prepareRuntimeObservationBoundary: Boolean = false,
+    ): List<Conversation.Message>
 
     /**
      * Deletes all links for thread (CASCADE on thread deletion).

@@ -115,6 +115,7 @@ class ExposedThreadMessageRepository(
     override suspend fun getContextMessagesByThread(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
+        prepareRuntimeObservationBoundary: Boolean,
     ): List<Conversation.Message> = newSuspendedTransaction(
         Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
     ) {
@@ -132,7 +133,12 @@ class ExposedThreadMessageRepository(
         val checkpointIds = headers.filter { it.metadata.hasCompaction }.map { it.id }
         readContextBodies(threadId, checkpointIds.filterNot(bodies::containsKey)).forEach { bodies[it.id] = it }
         val checkpoints = checkpointIds.map(bodies::getValue)
-        val required = selectModelHistoryMessageIds(headers, checkpoints, nativeProvider)
+        val required = selectModelHistoryMessageIds(
+            headers,
+            checkpoints,
+            nativeProvider,
+            prepareRuntimeObservationBoundary,
+        )
         readContextBodies(threadId, required.filterNot(bodies::containsKey)).forEach { bodies[it.id] = it }
         val selected = headers.filter { it.id in required }.map { header ->
             val message = bodies[header.id] ?: error("Missing message in captured context: ${header.id.value}")

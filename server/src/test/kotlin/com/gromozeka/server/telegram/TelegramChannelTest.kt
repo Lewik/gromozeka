@@ -321,9 +321,25 @@ class TelegramChannelTest {
     @Test fun `enrichment preserves only own tool protocol and quotes other agents as bounded history`() {
         val enricher = TelegramRequestEnricher(Mockito.mock(TelegramChannelRepository::class.java), Mockito.mock(ConversationDomainService::class.java),
             Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
-        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
+        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER).copy(
+            providerMetadata = buildJsonObject {
+                put("telegramReplyQuotation", buildJsonObject { put("text", "quoted request") })
+            },
+        )
         val continuation = textMessage("own", "own continuation")
-        val foreign = textMessage("other", "old task must not run")
+        val foreign = textMessage("other", "visible old answer").copy(content = listOf(
+            Conversation.Message.ContentItem.Thinking("STALE_PRIVATE_REASONING", signature = "signature"),
+            Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("visible old answer")),
+        ))
+        val oldObservation = textMessage("old-runtime-observation", "", Conversation.Message.Role.USER).copy(
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "OLD_VISUAL_STATE",
+                key = "visual-state:test",
+                revision = "old-revision",
+            )),
+        )
         val observation = textMessage("runtime-observation", "", Conversation.Message.Role.USER).copy(
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
@@ -334,7 +350,8 @@ class TelegramChannelTest {
             )),
         ).withDurableRuntimeObservationBoundary()
         val invocation = invocation().copy(rootMessageId = root.id, route = route.copy(additionalInstruction = "Use a friendly voice"))
-        val request = AiRuntimeRequest(systemPrompts = listOf("base"), messages = listOf(foreign, root, observation, continuation))
+        val request = AiRuntimeRequest(systemPrompts = listOf("base"),
+            messages = listOf(oldObservation, foreign, root, observation, continuation))
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
         val enriched = enricher.materialize(invocation, model, request, setOf(root.id, continuation.id))
@@ -345,11 +362,29 @@ class TelegramChannelTest {
         assertTrue(enriched.systemPrompts.last().contains("Readonly"))
         assertTrue(enriched.systemPrompts.last().contains("Use a friendly voice"))
         assertTrue(Json.encodeToString(enriched.messages.first()).contains("untrusted_group_history"))
+        assertTrue(Json.encodeToString(enriched.messages.first()).contains("quoted request"))
+        assertTrue(Json.encodeToString(enriched.messages.first()).contains("visible old answer"))
+        assertFalse(Json.encodeToString(enriched.messages.first()).contains("STALE_PRIVATE_REASONING"))
         assertFalse(Json.encodeToString(enriched.messages.first()).contains("CURRENT_VISUAL_STATE"))
+        assertFalse(Json.encodeToString(enriched.messages).contains("OLD_VISUAL_STATE"))
+        assertTrue(enriched.messages[1].isDurableRuntimeObservationBoundary)
         val writable = enricher.materialize(invocation.copy(route = route.copy(writeAllowed = true)), model, request, setOf(root.id, continuation.id))
         assertTrue(writable.systemPrompts.last().contains("File changes are allowed"))
-        val large = request.copy(messages = listOf(foreign.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(30000)))), root))
+        val large = request.copy(messages = listOf(foreign.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(100_000)))), root))
         assertFalse(Json.encodeToString(enricher.materialize(invocation, model, large, setOf(root.id)).messages).contains("x".repeat(500)))
+
+        val largeObservation = observation.copy(instructions = listOf(
+            Conversation.Message.Instruction.RuntimeObservation(
+                text = "L".repeat(40_000),
+                key = "visual-state:large",
+                revision = "large-revision",
+            ),
+        ))
+        val largeObservationRequest = request.copy(messages = listOf(root, largeObservation))
+        assertEquals(
+            largeObservation.id,
+            enricher.materialize(invocation, model, largeObservationRequest, setOf(root.id)).messages[1].id,
+        )
     }
 
     private fun match(message: JsonObject) = TelegramInboundPolicy.matchingRoutes(connection, binding, message, false)

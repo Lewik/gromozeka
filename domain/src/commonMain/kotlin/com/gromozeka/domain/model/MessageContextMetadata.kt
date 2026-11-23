@@ -12,6 +12,7 @@ data class MessageContextMetadata(
     val userText: Boolean,
     val userInstructionIds: List<String>,
     val nativeUsage: JsonObject?,
+    val durableRuntimeObservationBoundary: Boolean = false,
 ) {
     companion object {
         fun from(message: Message): MessageContextMetadata = MessageContextMetadata(
@@ -28,6 +29,7 @@ data class MessageContextMetadata(
                 put("tokens", message.providerMetadata["openaiSubscriptionContextTokens"] ?: JsonNull)
                 put("estimate", message.providerMetadata["openaiSubscriptionContextEstimate"] ?: JsonNull)
             } else null,
+            durableRuntimeObservationBoundary = message.isDurableRuntimeObservationBoundary,
         )
     }
 }
@@ -43,6 +45,7 @@ fun selectModelHistoryMessageIds(
     headers: List<MessageContextHeader>,
     checkpoints: List<Message>,
     nativeProvider: String?,
+    prepareRuntimeObservationBoundary: Boolean = false,
 ): Set<Message.Id> {
     val checkpointIds = headers.filter { it.metadata.hasCompaction }.mapTo(mutableSetOf()) { it.id }
     require(checkpoints.size == checkpointIds.size && checkpoints.mapTo(mutableSetOf()) { it.id } == checkpointIds) {
@@ -53,7 +56,14 @@ fun selectModelHistoryMessageIds(
     val originalIndex = ConversationCompactionIndex(headers.map {
         CompactionNode(it.id, byId[it.id]?.originalCollaborationMessage()?.compactions().orEmpty().map(::CompactionCoverage))
     })
-    val required = originalIndex.requiredHistoryIds(nativeProvider).toMutableSet()
+    val retainedBoundary = headers.indexOfLast { it.metadata.durableRuntimeObservationBoundary }
+    val latestCheckpoint = headers.indexOfLast { it.metadata.hasCompaction }
+    val effectiveBoundary = when {
+        prepareRuntimeObservationBoundary && (retainedBoundary < 0 || retainedBoundary < latestCheckpoint) -> headers.size
+        retainedBoundary >= 0 -> retainedBoundary
+        else -> null
+    }
+    val required = originalIndex.requiredHistoryIds(nativeProvider, effectiveBoundary).toMutableSet()
     // Tool discovery projects the displayed history, while provider replay restores original content.
     rawIndex.project().mapTo(required) { it.id }
     required += checkpointIds

@@ -3,6 +3,7 @@ package com.gromozeka.server.telegram
 import com.gromozeka.domain.model.*
 import com.gromozeka.application.service.ContextSnapshotUnavailableException
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.repository.TelegramChannelRepository
 import com.gromozeka.domain.service.*
@@ -53,21 +54,30 @@ class TelegramRequestEnricher(
             appendLine("Execution mode: ${mode.title}. ${mode.description}.")
             if (invocation.route.additionalInstruction.isNotBlank()) appendLine("Additional channel instruction:\n${invocation.route.additionalInstruction}")
         }
-        val root = request.messages.single { it.id == invocation.rootMessageId }
-        val current = request.messages.filter { it.id in ownMessageIds }
+        val fencedMessages = request.messages.applyDurableRuntimeObservationReplayFence()
+        val originalRoot = request.messages.single { it.id == invocation.rootMessageId }
+        val root = fencedMessages.single { it.id == invocation.rootMessageId }
+        val current = fencedMessages.filter { it.id in ownMessageIds }
         check(current.firstOrNull()?.id == root.id) { "Current Telegram request must precede its continuations" }
-        val observations = ConversationContext(request.messages).messages()
-            .filter { it.isDurableRuntimeObservationMessage }
-        val observationIds = observations.mapTo(mutableSetOf(), Conversation.Message::id)
+        val observations = materializeLatestObservations(fencedMessages)
+        val observationIds = fencedMessages.filter { it.isDurableRuntimeObservationMessage }
+            .mapTo(mutableSetOf(), Conversation.Message::id)
         val outputReserve = request.options.maxOutputTokens ?: model.maxOutputTokens ?: 4096
-        val mandatory = estimate(Json.encodeToString(current)) + estimate(Json.encodeToString(observations)) +
-            request.systemPrompts.sumOf(::estimate) + estimate(policy) +
-            request.tools.sumOf { estimate(Json.encodeToString(it.definition)) } + outputReserve.toLong() + window / 20 + 2048
+        val fixedRequest = request.copy(
+            systemPrompts = request.systemPrompts + policy,
+            messages = current + observations,
+        )
+        val mandatory = AiRequestTokenEstimate.input(fixedRequest).toLong() +
+            outputReserve + window / 20 + 2048
         check(mandatory < window) { "Telegram invocation exceeds the model context budget" }
         var remaining = minOf(window.toLong() * invocation.route.contextPercent / 100, window - mandatory)
         val selected = mutableListOf<Conversation.Message>()
-        for (message in request.messages.filter { it.id !in ownMessageIds && it.id !in observationIds }.asReversed()) {
-            val cost = estimate(transcript(message).toString()) + 128
+        for (message in fencedMessages.filter { it.id !in ownMessageIds && it.id !in observationIds }.asReversed()) {
+            val attachments = message.content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>()
+            val attachmentCost = if (attachments.isEmpty()) 0 else AiRequestTokenEstimate.message(
+                message.copy(content = attachments, instructions = emptyList()),
+            )
+            val cost = AiRequestTokenEstimate.text(transcript(message).toString()).toLong() + attachmentCost + 32
             if (cost > remaining) break
             selected += message
             remaining -= cost
@@ -75,7 +85,7 @@ class TelegramRequestEnricher(
         val context = buildJsonObject {
             put("kind", "untrusted_group_history")
             put("messages", JsonArray(selected.asReversed().map(::transcript)))
-            root.providerMetadata["telegramReplyQuotation"]?.let { put("reply_quotation", it) }
+            originalRoot.providerMetadata["telegramReplyQuotation"]?.let { put("reply_quotation", it) }
         }
         val attachments = selected.asReversed().flatMap { it.content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>() }
         val authorized = root.copy(content = listOf(Conversation.Message.ContentItem.UserMessage(context.toString())) + attachments +
@@ -95,5 +105,23 @@ class TelegramRequestEnricher(
         }.map { if (it is Conversation.Message.ContentItem.Thinking) it.copy(signature = null) else it }))
     }
 
-    private fun estimate(text: String): Long = text.encodeToByteArray().size.toLong()
+    private fun materializeLatestObservations(messages: List<Conversation.Message>): List<Conversation.Message> {
+        val retained = ConversationContext(messages).messages().filter { it.isDurableRuntimeObservationMessage }
+        val latest = linkedMapOf<String, Conversation.Message.Instruction.RuntimeObservation>()
+        retained.forEach { message ->
+            message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().forEach { observation ->
+                observation.key?.let { latest[it] = observation }
+            }
+        }
+        val source = retained.lastOrNull() ?: return emptyList()
+        if (latest.isEmpty()) return emptyList()
+        var materialized = source.copy(
+            providerMetadata = JsonObject(emptyMap()),
+            instructions = latest.values.sortedBy { it.key },
+        )
+        if (messages.any { it.isDurableRuntimeObservationBoundary }) {
+            materialized = materialized.withDurableRuntimeObservationBoundary()
+        }
+        return listOf(materialized)
+    }
 }

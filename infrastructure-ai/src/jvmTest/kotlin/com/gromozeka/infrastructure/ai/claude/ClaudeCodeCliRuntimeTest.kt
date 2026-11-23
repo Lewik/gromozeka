@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
@@ -1742,6 +1743,31 @@ class ClaudeCodeCliRuntimeTest {
         assertNull(executor.commands[1].resumeSessionId)
         assertFalse(executor.commands[1].userPrompt.contains("RESET_PRE_BOUNDARY_REASONING"))
         assertTrue(executor.commands[1].userPrompt.contains("Visible reset answer"))
+        assertTrue(executor.commands[1].userPrompt.contains("CURRENT_RUNTIME_STATE"))
+    }
+
+    @Test
+    fun newDurableObservationBoundaryResetsAnOtherwiseReusableSession() = runBlocking {
+        val answer = jsonObject("kind" to JsonPrimitive("final_answer"), "final_answer" to JsonPrimitive("OK"))
+        val executor = FakeClaudeCodeCliExecutor(
+            response(structuredOutput = answer),
+            response(structuredOutput = answer),
+        )
+        val runtime = runtime(executor)
+        val initial = userMessage("Initial")
+        val first = runtime.call(request(listOf(initial), emptyList()))
+        val generated = assistantMessage("").copy(content = first.messages.single().content)
+        val next = request(
+            listOf(initial, generated, runtimeObservationBoundary(), userMessage("Next")),
+            emptyList(),
+        )
+
+        val inspection = runtime.inspectContext(next, allowProviderCount = false)
+        assertFalse(inspection.nativeCompactionAvailable)
+        assertEquals(AiContextInspection.Precision.ESTIMATE, inspection.precision)
+        runtime.call(next)
+
+        assertNull(executor.commands[1].resumeSessionId)
         assertTrue(executor.commands[1].userPrompt.contains("CURRENT_RUNTIME_STATE"))
     }
 

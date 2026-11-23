@@ -1468,7 +1468,11 @@ class ConversationEngineService(
 
     private suspend fun loadRuntimeMessages(conversation: Conversation, kind: AiConnection.Kind): List<Conversation.Message> =
         if (conversation.externalChannel == null && kind !in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.GITHUB_COPILOT)) {
-            contextHistory.getContextMessagesByThread(conversation.currentThread, kind.nativeCompactionProvider())
+            contextHistory.getContextMessagesByThread(
+                conversation.currentThread,
+                kind.nativeCompactionProvider(),
+                prepareRuntimeObservationBoundary = true,
+            )
         } else conversationService.loadCurrentMessages(conversation.id)
 
     private suspend fun buildConversationRuntimeContext(
