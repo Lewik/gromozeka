@@ -55,6 +55,7 @@ class TelegramRequestEnricher(
             if (invocation.route.additionalInstruction.isNotBlank()) appendLine("Additional channel instruction:\n${invocation.route.additionalInstruction}")
         }
         val fencedMessages = request.messages.applyDurableRuntimeObservationReplayFence()
+            .retainLatestDurableRuntimeObservationChain()
         val originalRoot = request.messages.single { it.id == invocation.rootMessageId }
         val root = fencedMessages.single { it.id == invocation.rootMessageId }
         val current = fencedMessages.filter { it.id in ownMessageIds }

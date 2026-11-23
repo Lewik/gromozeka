@@ -28,6 +28,7 @@ internal class ConversationContextReference(
         // Opaque recovery can restore sources covered by another selected summary.
         // Apply coverage once more to the recovered view, not to unselected history.
         return project(prepare(candidates, provider, emptySet()))
+            .retainLatestDurableRuntimeObservationChain()
     }
 
     /** Full checkpoints protect their prefix and all transitive source versions, including themselves. */

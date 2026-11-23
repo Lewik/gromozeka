@@ -114,6 +114,44 @@ class ConversationContextTest {
     }
 
     @Test
+    fun newerDurableObservationBaselineReplacesOnlyOlderKeyedState() {
+        fun observation(id: String, state: String, keyed: Boolean = true, boundary: Boolean = false): Message {
+            val message = text(id).copy(
+                author = Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Message.Instruction.RuntimeObservation(
+                    text = state,
+                    key = "visual-state:panel".takeIf { keyed },
+                    revision = id.takeIf { keyed },
+                )),
+            )
+            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
+        }
+        val before = text("before").copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(
+                Message.ContentItem.Thinking("old reasoning", signature = "old signature"),
+                Message.ContentItem.AssistantMessage(Message.StructuredText("visible answer")),
+            ),
+        )
+        val first = observation("first", "OLD_BASELINE", boundary = true)
+        val event = observation("event", "UNVERSIONED_EVENT", keyed = false)
+        val delta = observation("delta", "OLD_DELTA")
+        val ordinary = text("ordinary")
+        val reset = observation("reset", "CURRENT_BASELINE", boundary = true)
+
+        val projected = AiRuntimeRequest(
+            emptyList(),
+            listOf(before, first, event, delta, ordinary, reset),
+        ).projectedMessages()
+
+        assertEquals(
+            listOf(before.withoutProviderReplay(), event, ordinary, reset),
+            projected,
+        )
+    }
+
+    @Test
     fun durableRuntimeObservationBoundaryStillFencesReasoningWhenCoveredBySelectiveSummary() {
         val before = text("before").copy(
             role = Message.Role.ASSISTANT,

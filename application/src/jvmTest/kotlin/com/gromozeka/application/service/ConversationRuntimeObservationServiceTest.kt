@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
@@ -102,6 +103,50 @@ class ConversationRuntimeObservationServiceTest {
         assertEquals("closed", tombstone.getValue("state-status").jsonPrimitive.content)
         assertFalse(closed.toString().contains("saved"))
         assertTrue(f.append("still-closed", listOf(baseline, changed, closed)).isEmpty())
+    }
+
+    @Test
+    fun `repeated large Visual changes reset to one bounded durable baseline`() = runBlocking {
+        val f = Fixture()
+        val history = mutableListOf<Conversation.Message>()
+        repeat(10) { index ->
+            f.visuals = listOf(VISUAL.copy(state = json(
+                """{"form":{"query":"saved"},"data":{"count":$index,"payload":"${"x".repeat(300_000)}"}}""",
+            )))
+            history += f.append("large-$index", history).single()
+        }
+
+        val boundaries = history.filter { it.isDurableRuntimeObservationBoundary }
+        val projected = ConversationContext(history).messagesForProvider(null)
+        val retained = projected.filter { it.author is Conversation.Message.Author.Runtime }
+        val retainedBytes = retained.sumOf { message -> message.observations().sumOf { it.text.encodeToByteArray().size.toLong() } }
+
+        assertTrue(boundaries.size > 1)
+        assertEquals(boundaries.last().id, retained.first().id)
+        assertTrue(retained.size < history.size)
+        assertTrue(retainedBytes <= ConversationRuntimeObservationService.MAX_RETAINED_OBSERVATION_BYTES)
+        val latestState = retained.flatMap { it.observations() }.last {
+            it.key == "${ConversationRuntimeObservationService.VISUAL_STATE_KEY_PREFIX}${VISUAL.id}"
+        }
+        assertEquals(
+            "9",
+            frame(latestState.text, "visual-state-context")
+                .getValue("state").jsonObject.getValue("data").jsonObject
+                .getValue("count").jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun `one irreducibly large unchanged baseline is not rewritten on every request`() = runBlocking {
+        val f = Fixture()
+        f.visuals = listOf(VISUAL.copy(state = json(
+            """{"form":{},"data":{"payload":"${"x".repeat(1_100_000)}"}}""",
+        )))
+        val baseline = f.append("large-baseline", emptyList()).single()
+
+        assertTrue(baseline.observations().sumOf { it.text.encodeToByteArray().size.toLong() } >
+            ConversationRuntimeObservationService.MAX_RETAINED_OBSERVATION_BYTES)
+        assertTrue(f.append("unchanged", listOf(baseline)).isEmpty())
     }
 
     @Test

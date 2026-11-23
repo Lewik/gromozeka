@@ -3,9 +3,11 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.compactions
+import com.gromozeka.domain.model.isDurableKeyedRuntimeObservationMessage
 import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.retainLatestDurableRuntimeObservationChain
 import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRequestEnricher
@@ -59,15 +61,21 @@ class ConversationRuntimeObservationService(
         val latestCheckpoint = currentMessages.indexOfLast { it.compactions().isNotEmpty() }
         val establishesBoundary = latestBoundary < 0 || latestBoundary < latestCheckpoint
         val changed = if (establishesBoundary) current else current.filter { known[it.key] != it.revision }
-        if (changed.isEmpty()) return emptyList()
+        val retained = ConversationContext(currentMessages).messages()
+            .retainLatestDurableRuntimeObservationChain()
+            .filter { it.isDurableKeyedRuntimeObservationMessage }
+        val resetsBoundedChain = !establishesBoundary && retained.requiresBoundedReset(changed)
+        val observations = if (establishesBoundary || resetsBoundedChain) current else changed
+        if (observations.isEmpty()) return emptyList()
+        val writesBoundary = establishesBoundary || resetsBoundedChain
 
         val identity = buildString {
             append(conversation.currentThread.value)
             append('\u0000')
             append(taskId.value)
             append('\u0000')
-            append(establishesBoundary)
-            changed.forEach {
+            append(writesBoundary)
+            observations.forEach {
                 append('\u0000')
                 append(if (it.removed) '-' else '+')
                 append(it.key)
@@ -81,16 +89,17 @@ class ConversationRuntimeObservationService(
             role = Conversation.Message.Role.USER,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
-            instructions = changed,
+            instructions = observations,
             createdAt = Clock.System.now(),
         )
-        if (establishesBoundary) message = message.withDurableRuntimeObservationBoundary()
+        if (writesBoundary) message = message.withDurableRuntimeObservationBoundary()
 
         beforeAppend()
         val appended = appender.appendRuntimeMessages(conversation.id, listOf(message))
         log.debug {
             "RUNTIME_OBSERVATIONS conversation=${conversation.id.value} appended=${appended.isNotEmpty()} " +
-                "baseline=$establishesBoundary keys=${changed.joinToString(",") { it.key.orEmpty() }}"
+                "baseline=$writesBoundary boundedReset=$resetsBoundedChain " +
+                "keys=${observations.joinToString(",") { it.key.orEmpty() }}"
         }
         return appended
     }
@@ -293,6 +302,24 @@ class ConversationRuntimeObservationService(
         }
     }
 
+    private fun List<Conversation.Message>.requiresBoundedReset(
+        changed: List<Conversation.Message.Instruction.RuntimeObservation>,
+    ): Boolean {
+        if (isEmpty()) return false
+        val retainedBytes = sumOf { message -> message.runtimeObservationBytes() }
+        val existingCanShrink = size > 1 &&
+            (size > MAX_RETAINED_OBSERVATION_MESSAGES || retainedBytes > MAX_RETAINED_OBSERVATION_BYTES)
+        val changedBytes = changed.sumOf { it.text.encodeToByteArray().size.toLong() }
+        val additionWouldOverflow = changed.isNotEmpty() &&
+            (size + 1 > MAX_RETAINED_OBSERVATION_MESSAGES ||
+                retainedBytes + changedBytes > MAX_RETAINED_OBSERVATION_BYTES)
+        return existingCanShrink || additionWouldOverflow
+    }
+
+    private fun Conversation.Message.runtimeObservationBytes(): Long = instructions
+        .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
+        .sumOf { it.text.encodeToByteArray().size.toLong() }
+
     private fun canonical(value: JsonElement): JsonElement = when (value) {
         is JsonObject -> JsonObject(value.toSortedMap().mapValues { canonical(it.value) })
         is JsonArray -> JsonArray(value.map(::canonical))
@@ -323,6 +350,8 @@ class ConversationRuntimeObservationService(
         internal const val COMMANDS_KEY = "recorded-running-commands"
         internal const val VISUAL_INVENTORY_KEY = "visual-inventory"
         internal const val VISUAL_STATE_KEY_PREFIX = "visual-state:"
+        internal const val MAX_RETAINED_OBSERVATION_MESSAGES = 128
+        internal const val MAX_RETAINED_OBSERVATION_BYTES = 1_048_576L
         private const val MAX_DESCRIPTION_CODEPOINTS = 160
     }
 }

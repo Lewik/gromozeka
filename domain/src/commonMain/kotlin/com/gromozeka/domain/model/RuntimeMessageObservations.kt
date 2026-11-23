@@ -11,6 +11,10 @@ val Conversation.Message.isDurableRuntimeObservationMessage: Boolean
         instructions.isNotEmpty() &&
         instructions.all { it is Conversation.Message.Instruction.RuntimeObservation }
 
+val Conversation.Message.isDurableKeyedRuntimeObservationMessage: Boolean
+    get() = isDurableRuntimeObservationMessage &&
+        instructions.all { it is Conversation.Message.Instruction.RuntimeObservation && it.key != null }
+
 private val Conversation.Message.canCarryDurableRuntimeObservationBoundary: Boolean
     get() = isDurableRuntimeObservationMessage ||
         content.singleOrNull() is Conversation.Message.ContentItem.ContextCompactionResult
@@ -48,6 +52,17 @@ fun List<Conversation.Message>.applyDurableRuntimeObservationReplayFence(): List
     if (boundary <= 0) return this
     return mapIndexed { index, message ->
         if (index < boundary) message.withoutProviderReplay() else message
+    }
+}
+
+/** A keyed boundary is a complete baseline, so older keyed state revisions no longer belong in model context. */
+fun List<Conversation.Message>.retainLatestDurableRuntimeObservationChain(): List<Conversation.Message> {
+    val baseline = indexOfLast {
+        it.isDurableKeyedRuntimeObservationMessage && it.isDurableRuntimeObservationBoundary
+    }
+    if (baseline <= 0) return this
+    return filterIndexed { index, message ->
+        index >= baseline || !message.isDurableKeyedRuntimeObservationMessage
     }
 }
 

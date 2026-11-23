@@ -465,6 +465,69 @@ class TelegramChannelTest {
         })
     }
 
+    @Test fun `current turn observation reset drops old large deltas and keeps portable tool protocol`() {
+        val enricher = TelegramRequestEnricher(Mockito.mock(TelegramChannelRepository::class.java), Mockito.mock(ConversationDomainService::class.java),
+            Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
+        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
+        fun observation(id: String, marker: String, boundary: Boolean = false): Conversation.Message {
+            val message = textMessage(id, "", Conversation.Message.Role.USER).copy(
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                    text = marker + "x".repeat(240_000),
+                    key = "visual-state:test",
+                    revision = id,
+                )),
+            )
+            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
+        }
+        fun toolPair(id: String): List<Conversation.Message> {
+            val callId = Conversation.Message.ContentItem.ToolCall.Id("call-$id")
+            val assistant = textMessage("assistant-$id", "", Conversation.Message.Role.ASSISTANT).copy(
+                content = listOf(
+                    Conversation.Message.ContentItem.Thinking("SIGNED_$id", signature = "signature-$id"),
+                    Conversation.Message.ContentItem.ToolCall(
+                        callId,
+                        Conversation.Message.ContentItem.ToolCall.Data("example", JsonObject(emptyMap())),
+                    ),
+                ),
+            )
+            val result = textMessage("result-$id", "", Conversation.Message.Role.USER).copy(
+                content = listOf(Conversation.Message.ContentItem.ToolResult(
+                    callId,
+                    "example",
+                    listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done-$id")),
+                )),
+            )
+            return listOf(assistant, result)
+        }
+        val oldBaseline = observation("observation-old", "OLD_BASELINE_", boundary = true)
+        val firstPair = toolPair("one")
+        val oldDelta = observation("observation-delta", "OLD_DELTA_")
+        val secondPair = toolPair("two")
+        val reset = observation("observation-reset", "CURRENT_BASELINE_", boundary = true)
+        val messages = listOf(root, oldBaseline) + firstPair + oldDelta + secondPair + reset
+        val invocation = invocation().copy(rootMessageId = root.id)
+        val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
+            AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(140_000, 1024)))
+
+        val enriched = enricher.materialize(
+            invocation,
+            model,
+            AiRuntimeRequest(systemPrompts = emptyList(), messages = messages),
+            messages.mapTo(mutableSetOf(), Conversation.Message::id),
+        )
+
+        assertEquals(listOf(root.id) + firstPair.map { it.id } + secondPair.map { it.id } + reset.id,
+            enriched.messages.map { it.id })
+        assertFalse(Json.encodeToString(enriched.messages).contains("OLD_BASELINE_"))
+        assertFalse(Json.encodeToString(enriched.messages).contains("OLD_DELTA_"))
+        assertTrue(Json.encodeToString(enriched.messages).contains("CURRENT_BASELINE_"))
+        assertTrue(enriched.messages.filter { it.role == Conversation.Message.Role.ASSISTANT }.all { assistant ->
+            assistant.content.none { it is Conversation.Message.ContentItem.Thinking }
+        })
+    }
+
     private fun match(message: JsonObject) = TelegramInboundPolicy.matchingRoutes(connection, binding, message, false)
     private fun message(user: Long, text: String, bot: Boolean = false) = buildJsonObject {
         put("message_id", 7); put("date", 100); put("text", text)
