@@ -17,10 +17,20 @@ import kotlinx.serialization.json.jsonPrimitive
 class ConversationContext(
     private val history: List<Message>,
     private val index: ConversationCompactionIndex = ConversationCompactionIndex(history.map(Message::compactionNode)),
+    portableBeforeIndex: Int? = null,
 ) {
     private val byId = history.associateBy(Message::id)
     private val positions = history.mapIndexed { index, message -> message.id to index }.toMap()
-    private val replayBoundary = history.indexOfLast { it.isDurableRuntimeObservationBoundary }
+    private val replayBoundary = maxOf(
+        history.indexOfLast { it.isDurableRuntimeObservationBoundary },
+        portableBeforeIndex ?: -1,
+    )
+
+    init {
+        require(portableBeforeIndex == null || portableBeforeIndex in 0..history.size) {
+            "Portable replay boundary is outside conversation history"
+        }
+    }
 
     /** Two passes: collect back to the latest full checkpoint, then remove covered nodes. */
     fun messages(): List<Message> = project(history)

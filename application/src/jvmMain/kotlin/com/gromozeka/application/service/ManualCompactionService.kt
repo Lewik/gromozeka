@@ -78,7 +78,13 @@ class ManualCompactionService internal constructor(
                 requestContext = requestContext,
             )
         } else {
-            val readableMessages = window.messages(threadMessageRepository, expectedThreadId, selection, null)
+            val readableMessages = window.messages(
+                threadMessageRepository,
+                expectedThreadId,
+                selection,
+                provider = null,
+                prepareRuntimeObservationBoundary = true,
+            )
             val generated = when (strategy) {
                 SquashType.CONCATENATE -> CompactionTextService.GeneratedCompaction(
                     text = MessageCompactionTextRenderer.render(readableMessages),

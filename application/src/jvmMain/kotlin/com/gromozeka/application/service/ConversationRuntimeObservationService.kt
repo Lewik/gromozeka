@@ -38,6 +38,8 @@ class ConversationRuntimeObservationService(
     private val coordinator: ConversationRuntimeCoordinator,
     private val appender: ConversationRuntimeMessageAppender,
 ) : ConversationRequestEnricher {
+    override val establishesRuntimeObservationBoundaryInSnapshot: Boolean = true
+
     private val log = klog.KLoggers.logger(this)
 
     /**

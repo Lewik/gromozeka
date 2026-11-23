@@ -47,7 +47,15 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
     suspend fun messages(
         repository: ThreadMessageRepository, thread: Conversation.Thread.Id,
         selection: List<CompactionMessageHeader>, provider: String?,
+        prepareRuntimeObservationBoundary: Boolean = false,
     ): List<Message> {
+        val retainedBoundary = headers.indexOfLast { it.durableRuntimeObservationBoundary }
+        val latestCheckpoint = headers.indexOfLast { it.coverage.isNotEmpty() }
+        val replayBoundary = when {
+            prepareRuntimeObservationBoundary && (retainedBoundary < 0 || retainedBoundary < latestCheckpoint) -> headers.size
+            retainedBoundary >= 0 -> retainedBoundary
+            else -> -1
+        }
         val nodes = index.project(selection.map { it.node })
         val visibleIds = nodes.mapTo(linkedSetOf()) { it.id }
         // Foreign opaque checkpoints may need their original canonical sources for recursive recovery.
@@ -55,7 +63,10 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
         val expanded = mutableSetOf<Message.Id>()
         fun includeRecovery(candidates: List<CompactionNode>) {
             for (node in candidates) {
-                val foreign = index.incompatibleCompactions(node, provider)
+                val replayProvider = provider.takeUnless {
+                    replayBoundary >= 0 && positions.getValue(node.id) < replayBoundary
+                }
+                val foreign = index.incompatibleCompactions(node, replayProvider)
                 if (foreign.isEmpty() || !expanded.add(node.id)) continue
                 val recover = index.recoveryWindow(node.id, foreign).nodes
                 recover.mapTo(required) { it.id }
@@ -64,7 +75,6 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
         }
         includeRecovery(nodes)
         val invalidated = selection.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
-        val replayBoundary = headers.indexOfLast { it.durableRuntimeObservationBoundary }
         val ids = headers.mapNotNull { it.id.takeIf(required::contains) }
         val bodies = repository.compactionBodies(thread, ids).map {
             if ((it.author as? Message.Author.User) != headers[positions.getValue(it.id)].author) throw CompactionScopeChangedException()
@@ -72,6 +82,9 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
                 it.withoutProviderReplay()
             } else it
         }
-        return ConversationContext(bodies, index).messagesForProvider(provider, visibleIds)
+        val portableBodyIndex = replayBoundary.takeIf { it >= 0 }?.let { boundary ->
+            bodies.indexOfFirst { positions.getValue(it.id) >= boundary }.takeIf { it >= 0 } ?: bodies.size
+        }
+        return ConversationContext(bodies, index, portableBodyIndex).messagesForProvider(provider, visibleIds)
     }
 }

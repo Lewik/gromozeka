@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.runtimeObservationReplayBoundaryIndex
 import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Checkpoint
@@ -298,6 +299,7 @@ class ConversationCompactionService internal constructor(
             pins = pins,
             origin = Checkpoint.Origin.USER_REQUESTED,
             nativeProvider = nativeProvider,
+            prepareRuntimeObservationBoundary = true,
         )
     }
 
@@ -313,10 +315,11 @@ class ConversationCompactionService internal constructor(
         origin: Checkpoint.Origin,
         requestContext: Map<String, Any?> = request?.options?.toolContext.orEmpty(),
         nativeProvider: String?,
+        prepareRuntimeObservationBoundary: Boolean = false,
     ): Conversation.Message {
         val compactionContext = requestContext + ("aiCallDiagnosticId" to checkpointId.value)
         val prefixRequest = if (request != null && runtime.capabilities.supportsDetachedNativeCompaction) {
-            request.forCompactionPrefix(prefix, nativeProvider)
+            request.forCompactionPrefix(prefix, nativeProvider, prepareRuntimeObservationBoundary)
                 .takeIf { it.messages.lastOrNull()?.id == prefix.last().id }
                 ?.copy(options = request.options.copy(usagePurpose = "CONTEXT_COMPACTION", toolContext = compactionContext +
                     ("compactionTransportId" to checkpointId.value)))
@@ -339,7 +342,13 @@ class ConversationCompactionService internal constructor(
         }
         // A live-session /compact cannot compact just an older prefix while retaining its suffix.
         // Use the configured text compaction model, not a speculative mutation of that session.
-        val readable = window.messages(history, conversation.currentThread, prefix, null)
+        val readable = window.messages(
+            history,
+            conversation.currentThread,
+            prefix,
+            provider = null,
+            prepareRuntimeObservationBoundary = prepareRuntimeObservationBoundary,
+        )
         val generated = textCompactions.generateWithAi(conversation, readable,
             SquashType.COMPACT, agent.runtimeSelection, compactionContext, pins)
         log.info { "COMPACTION phase=generated id=${checkpointId.value} compactedChars=${generated.text.length}" }
@@ -359,9 +368,16 @@ class ConversationCompactionService internal constructor(
     private fun AiRuntimeRequest.forCompactionPrefix(
         prefix: List<CompactionMessageHeader>,
         nativeProvider: String?,
+        prepareRuntimeObservationBoundary: Boolean = false,
     ): AiRuntimeRequest {
         val ids = prefix.mapTo(hashSetOf()) { it.id }
-        return copy(messages = ConversationContext(messages).messagesForProvider(nativeProvider, ids))
+        val portableBeforeIndex = messages.runtimeObservationReplayBoundaryIndex(
+            prepareRuntimeObservationBoundary,
+        )
+        return copy(messages = ConversationContext(
+            messages,
+            portableBeforeIndex = portableBeforeIndex,
+        ).messagesForProvider(nativeProvider, ids))
     }
 
     private fun AiRuntimeRequest.forPreparedPrefix(

@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.applyDurableRuntimeObservationReplayFence
 import com.gromozeka.domain.model.retainedOpenAiReplayIds
+import com.gromozeka.domain.model.runtimeObservationReplayBoundaryIndex
 import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.withPortableSyntheticToolCallIds
 import kotlinx.serialization.json.jsonPrimitive
@@ -152,14 +153,24 @@ fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
     else -> null
 }
 
-fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Conversation.Message> {
+fun AiRuntimeRequest.projectedMessages(
+    nativeProvider: String? = null,
+    prepareRuntimeObservationBoundary: Boolean = false,
+): List<Conversation.Message> {
     val currentThread = options.toolContext["threadId"] as? String
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
-    val originalMessages = originalCollaborationMessages()
+    val restoredMessages = originalCollaborationMessages()
         .withPortableSyntheticToolCallIds()
+    val portableBeforeIndex = restoredMessages.runtimeObservationReplayBoundaryIndex(
+        prepareRuntimeObservationBoundary,
+    )
+    val originalMessages = restoredMessages
         .applyDurableRuntimeObservationReplayFence()
-    val contextWindow = ConversationContext(originalMessages).messagesForProvider(nativeProvider)
+    val contextWindow = ConversationContext(
+        originalMessages,
+        portableBeforeIndex = portableBeforeIndex,
+    ).messagesForProvider(nativeProvider)
     val window = contextWindow
     val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeProvider, currentThread)
     val projected = window.map { message ->

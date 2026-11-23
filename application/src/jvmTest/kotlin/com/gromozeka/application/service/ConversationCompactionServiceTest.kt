@@ -16,7 +16,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
 import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Clock
@@ -88,6 +90,53 @@ class ConversationCompactionServiceTest {
         assertEquals(reasoning, sent.options.reasoning)
         assertEquals(321, sent.options.maxOutputTokens)
         assertEquals("agent", sent.options.toolContext["agentDefinitionId"])
+    }
+
+    @Test fun `first requested compact after upgrade fences legacy replay for native and text paths`() = runBlocking {
+        for (native in listOf(false, true)) {
+            val f = Fixture(100, native = native)
+            val legacy = f.sources.first().copy(
+                id = Conversation.Message.Id("legacy"),
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(
+                    Conversation.Message.ContentItem.Thinking("STALE_LEGACY_REASONING", signature = "legacy-signature"),
+                    Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Legacy visible answer")),
+                ),
+            )
+            val opaque = legacy.copy(
+                id = Conversation.Message.Id("legacy-checkpoint"),
+                content = listOf(Checkpoint(
+                    payload = Checkpoint.Payload.OpaqueProviderState(buildJsonObject {
+                        put("encrypted_content", "STALE_OPAQUE_CHECKPOINT")
+                    }),
+                    origin = Checkpoint.Origin.PROVIDER_AUTO,
+                    strategy = Checkpoint.Strategy.PROVIDER_MANAGED,
+                    sourceBoundaryMessageId = legacy.id,
+                    coverage = Checkpoint.Coverage.ALL_PREVIOUS,
+                    providerScope = Checkpoint.ProviderScope("OPENAI_API", "connection", "configuration", "model"),
+                )),
+            )
+            val tail = legacy.copy(
+                id = Conversation.Message.Id("legacy-tail"),
+                content = listOf(
+                    Conversation.Message.ContentItem.Thinking("STALE_TAIL_REASONING", signature = "tail-signature"),
+                    Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Tail visible answer")),
+                ),
+            )
+            val retained = f.sources.last().copy(id = Conversation.Message.Id("retained"))
+            f.sources = listOf(legacy, opaque, tail, retained)
+            f.request = f.request.copy(messages = f.sources)
+            f.nativeBoundaryId = tail.id
+
+            f.requestedCompact()
+
+            val captured = if (native) assertNotNull(f.nativeRequest).messages else assertNotNull(f.compactedSources)
+            assertEquals(listOf(legacy.id, tail.id), captured.map { it.id })
+            assertTrue(captured.flatMap { it.content }.none { it is Conversation.Message.ContentItem.Thinking })
+            assertFalse(captured.toString().contains("STALE_OPAQUE_CHECKPOINT"))
+            assertContains(captured.toString(), "Legacy visible answer")
+            assertContains(captured.toString(), "Tail visible answer")
+        }
     }
 
     @Test fun `requested full compact skips native when no exact request snapshot is available`() = runBlocking {
@@ -283,7 +332,7 @@ class ConversationCompactionServiceTest {
                 compaction = AiModelConfiguration.Compaction(threshold)),
             AiModelSpec("model", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
                 AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(2000, 1000))))
-        val sources = (1..3).map { index -> Conversation.Message(id = Conversation.Message.Id("m$index"), conversationId = conversation.id,
+        var sources = (1..3).map { index -> Conversation.Message(id = Conversation.Message.Id("m$index"), conversationId = conversation.id,
             role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("Message $index")), createdAt = now) } +
             Conversation.Message(Conversation.Message.Id("retained"), conversation.id, role = Conversation.Message.Role.USER,
                 content = listOf(Conversation.Message.ContentItem.UserMessage("t".repeat(80_000))), createdAt = now)

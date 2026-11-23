@@ -29,9 +29,22 @@ fun Conversation.Message.withDurableRuntimeObservationBoundary(): Conversation.M
     )
 }
 
+/** Index before which provider replay is no longer valid for the current request. */
+fun List<Conversation.Message>.runtimeObservationReplayBoundaryIndex(
+    prepareRuntimeObservationBoundary: Boolean = false,
+): Int? {
+    val retainedBoundary = indexOfLast { it.isDurableRuntimeObservationBoundary }
+    val latestCheckpoint = indexOfLast { it.compactions().isNotEmpty() }
+    return when {
+        prepareRuntimeObservationBoundary && (retainedBoundary < 0 || retainedBoundary < latestCheckpoint) -> size
+        retainedBoundary >= 0 -> retainedBoundary
+        else -> null
+    }
+}
+
 /** Keep ordinary transcript content but never replay provider reasoning from before the latest observation baseline. */
 fun List<Conversation.Message>.applyDurableRuntimeObservationReplayFence(): List<Conversation.Message> {
-    val boundary = indexOfLast { it.isDurableRuntimeObservationBoundary }
+    val boundary = runtimeObservationReplayBoundaryIndex() ?: return this
     if (boundary <= 0) return this
     return mapIndexed { index, message ->
         if (index < boundary) message.withoutProviderReplay() else message

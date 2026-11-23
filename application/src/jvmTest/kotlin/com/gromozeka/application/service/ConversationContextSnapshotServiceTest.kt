@@ -74,6 +74,36 @@ class ConversationContextSnapshotServiceTest {
         assertFalse(snapshot.request.messages.last().isDurableRuntimeObservationBoundary)
     }
 
+    @Test fun `first isolated snapshot recovers same provider opaque checkpoint before adding its boundary`() = runBlocking<Unit> {
+        val f = Fixture(includeRuntimeObservations = true)
+        val checkpoint = f.user.copy(
+            id = Conversation.Message.Id("subscription-checkpoint"),
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                    buildJsonObject { put("encrypted_content", "STALE_SUBSCRIPTION_STATE") },
+                ),
+                origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
+                sourceBoundaryMessageId = f.user.id,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                    AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
+                ),
+            )),
+        )
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, checkpoint))
+
+        val snapshot = f.capture()
+        val projected = snapshot.request.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+
+        assertEquals(f.user.id, snapshot.lastIncludedMessageId)
+        assertEquals(f.user.id, projected.first().id)
+        assertTrue(projected.last().isDurableRuntimeObservationBoundary)
+        assertTrue(projected.none { it.id == checkpoint.id })
+        assertFalse(projected.toString().contains("STALE_SUBSCRIPTION_STATE"))
+    }
+
     @Test fun `history reader never follows an advanced current branch`() = runBlocking<Unit> {
         val f = Fixture()
         val advanced = f.conversation.copy(currentThread = Conversation.Thread.Id("advanced"))
