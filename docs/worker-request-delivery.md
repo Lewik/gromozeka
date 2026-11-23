@@ -57,7 +57,9 @@ together; do not run protocol 36 and 37 processes as one installation.
 
 Stop active speech capture before the cutover. Migration V93 discards outstanding
 detached Claude Voice admission leases and removes their handoff columns; it does
-not replay or convert an in-flight voice operation.
+not replay or convert an in-flight voice operation. On first protocol 37 startup,
+the JVM Worker rewrites finite protocol 36 admission journal records without the
+removed fields and discards detached Claude Voice records that V93 no longer owns.
 
 ## Tool invocation context
 

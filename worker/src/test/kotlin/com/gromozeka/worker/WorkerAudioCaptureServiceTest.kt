@@ -61,7 +61,8 @@ class WorkerAudioCaptureServiceTest {
             factory.allowOpen.complete(Unit)
             val retried = service.handle(request(Start))
             assertEquals(WorkerAudioCaptureResult.Status.STARTED, retried.status)
-            service.handle(request(WorkerAudioCaptureRequest.Command.Cancel("capture-1")))
+            val cancelled = service.handle(request(WorkerAudioCaptureRequest.Command.Cancel("capture-1")))
+            assertEquals(WorkerAudioCaptureResult.Status.CANCELLED, cancelled.status)
         } finally {
             service.shutdown()
             scope.cancel()
@@ -85,7 +86,9 @@ class WorkerAudioCaptureServiceTest {
             factory.cancelCallerAfterOpen = false
             val retried = service.handle(request(Start))
             assertEquals(WorkerAudioCaptureResult.Status.STARTED, retried.status)
-            service.handle(request(WorkerAudioCaptureRequest.Command.Cancel("capture-1")))
+            val cancelled = service.handle(request(WorkerAudioCaptureRequest.Command.Cancel("capture-1")))
+            assertEquals(WorkerAudioCaptureResult.Status.CANCELLED, cancelled.status)
+            assertEquals(2, factory.handle.cancelCalls)
         } finally {
             service.shutdown()
             scope.cancel()

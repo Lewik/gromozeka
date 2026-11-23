@@ -9,7 +9,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -40,12 +42,7 @@ internal class WorkerAudioCaptureService(
     ): WorkerAudioCaptureResult {
         val reservation = reserve(sessionId)
             ?: error("Worker audio capture session was cancelled before start: $sessionId")
-        val handle = try {
-            handleFactory.open(request)
-        } catch (error: Throwable) {
-            removeReservation(sessionId, reservation)
-            throw error
-        }
+        val handle = openReserved(request, sessionId, reservation)
 
         val active = SessionState.Active(handle)
         val timeoutJob = createTimeoutJob(sessionId, active)
@@ -74,6 +71,25 @@ internal class WorkerAudioCaptureService(
 
         timeoutJob.start()
         return WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.STARTED)
+    }
+
+    private suspend fun openReserved(
+        request: WorkerAudioCaptureRequest,
+        sessionId: String,
+        reservation: SessionState.Starting,
+    ): WorkerAudioCaptureHandle {
+        var handle: WorkerAudioCaptureHandle? = null
+        try {
+            handle = handleFactory.open(request)
+            currentCoroutineContext().ensureActive()
+            return handle
+        } catch (error: Throwable) {
+            removeReservation(sessionId, reservation)
+            handle?.let { opened ->
+                withContext(NonCancellable) { runCatching { opened.cancel() } }
+            }
+            throw error
+        }
     }
 
     private fun createTimeoutJob(

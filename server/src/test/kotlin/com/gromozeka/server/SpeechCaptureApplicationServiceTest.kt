@@ -60,7 +60,7 @@ class SpeechCaptureApplicationServiceTest {
         assertEquals("capture-1", stopped.recording.sessionId)
         assertEquals(SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ, stopped.recording.format)
         assertContentEquals(client.audio, stopped.recording.chunks.single().data)
-        assertIs<WorkerAudioCaptureRequest.Command.Stop>(client.requests.last().command)
+        assertTrue(client.requests.last().command is WorkerAudioCaptureRequest.Command.Stop)
     }
 
     @Test

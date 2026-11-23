@@ -111,9 +111,11 @@ class PostgresAiAdmissionRepositoryTest {
                 repository.finishWorkerRequest("worker", "root")
                 repository.finishWorkerRequest("worker", "capture-root")
                 assertTrue(repository.restoreRemoteLeases().isEmpty())
+                repository.create(lease("group-dependency"))
                 assertFailsWith<java.sql.SQLException> {
                     source.connection.use { connection -> connection.createStatement().use { it.execute("DELETE FROM ai_concurrency_groups WHERE id = 'default'") } }
                 }
+                repository.finish("group-dependency")
                 assertFailsWith<IllegalArgumentException> { repository.create(lease("late", "worker", "root")) }
                 println("AI_ADMISSION_PG: migration cleanup, ownership, restoration, group dependency and idempotent completion verified")
             } finally {
