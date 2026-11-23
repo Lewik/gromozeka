@@ -59,13 +59,15 @@ class TelegramRequestEnricher(
         val root = fencedMessages.single { it.id == invocation.rootMessageId }
         val current = fencedMessages.filter { it.id in ownMessageIds }
         check(current.firstOrNull()?.id == root.id) { "Current Telegram request must precede its continuations" }
-        val observations = materializeLatestObservations(fencedMessages)
+        val currentObservationIds = current.filter { it.isDurableRuntimeObservationMessage }
+            .mapTo(mutableSetOf(), Conversation.Message::id)
+        val observations = materializeLatestObservations(fencedMessages, currentObservationIds)
         val observationIds = fencedMessages.filter { it.isDurableRuntimeObservationMessage }
             .mapTo(mutableSetOf(), Conversation.Message::id)
         val outputReserve = request.options.maxOutputTokens ?: model.maxOutputTokens ?: 4096
         val fixedRequest = request.copy(
             systemPrompts = request.systemPrompts + policy,
-            messages = current + observations,
+            messages = listOf(root) + observations + current.drop(1),
         )
         val mandatory = AiRequestTokenEstimate.input(fixedRequest).toLong() +
             outputReserve + window / 20 + 2048
@@ -105,8 +107,13 @@ class TelegramRequestEnricher(
         }.map { if (it is Conversation.Message.ContentItem.Thinking) it.copy(signature = null) else it }))
     }
 
-    private fun materializeLatestObservations(messages: List<Conversation.Message>): List<Conversation.Message> {
-        val retained = ConversationContext(messages).messages().filter { it.isDurableRuntimeObservationMessage }
+    private fun materializeLatestObservations(
+        messages: List<Conversation.Message>,
+        excludedMessageIds: Set<Conversation.Message.Id>,
+    ): List<Conversation.Message> {
+        val retained = ConversationContext(messages).messages().filter {
+            it.isDurableRuntimeObservationMessage && it.id !in excludedMessageIds
+        }
         val latest = linkedMapOf<String, Conversation.Message.Instruction.RuntimeObservation>()
         retained.forEach { message ->
             message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().forEach { observation ->

@@ -531,6 +531,7 @@ class ConversationEngineService(
             rootUserMessageId = payload.rootUserMessageId,
             diagnosticId = diagnosticId,
             readOnlySnapshot = false,
+            emitMessage = emitMessage,
         )
         val runtimeRequest = assembledRequest.request
         var currentMessages = assembledRequest.rawMessages
@@ -1354,13 +1355,19 @@ class ConversationEngineService(
         rootUserMessageId: Conversation.Message.Id?,
         diagnosticId: String,
         readOnlySnapshot: Boolean,
+        emitMessage: (suspend (Conversation.Message) -> Unit)? = null,
     ): RuntimeRequestAssembly {
         // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
         val loadedMessages = loadRuntimeMessages(conversation, context.connectionKind)
         val currentMessages = if (readOnlySnapshot) loadedMessages else {
-            loadedMessages + runtimeObservations.appendChanged(conversation, task.id, loadedMessages) {
+            val emitPersistedMessage = checkNotNull(emitMessage) {
+                "Ordinary runtime request assembly requires a persisted-message emitter"
+            }
+            val appended = runtimeObservations.appendChanged(conversation, task.id, loadedMessages) {
                 ensureRuntimeTaskOwner(conversation.id, task.id, executor)
             }
+            appended.forEach { emitPersistedMessage(it) }
+            loadedMessages + appended
         }
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(

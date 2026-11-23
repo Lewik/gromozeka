@@ -455,6 +455,61 @@ class TabViewModelRuntimeReplayTest {
     }
 
     @Test
+    fun `live runtime observation advances history before the following visible message`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val thread = Conversation.Thread.Id("thread-1")
+        fun visible(id: String, role: Conversation.Message.Role = Conversation.Message.Role.USER) = Conversation.Message(
+            Conversation.Message.Id(id), conversationId,
+            role = role,
+            content = if (role == Conversation.Message.Role.USER) {
+                listOf(Conversation.Message.ContentItem.UserMessage(id))
+            } else {
+                listOf(Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText(id)))
+            },
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        val initial = visible("initial")
+        val observationShell = visible("runtime-observation").copy(
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = emptyList(),
+        )
+        val assistant = visible("assistant", Conversation.Message.Role.ASSISTANT)
+        val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 4)
+        val model = viewModel(backgroundScope, events) {
+            ConversationHistoryPage(
+                threadId = thread,
+                messages = listOf(ConversationHistoryMessage(10, initial)),
+                eventSequence = 1,
+            )
+        }
+        backgroundScope.launch { model.historyContent.collect {} }
+        runCurrent()
+
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            conversationId = conversationId,
+            taskId = null,
+            message = observationShell,
+            cursorSequence = 2,
+            historyThreadId = thread,
+            historyPosition = 11,
+        ))
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            conversationId = conversationId,
+            taskId = null,
+            message = assistant,
+            cursorSequence = 3,
+            historyThreadId = thread,
+            historyPosition = 12,
+        ))
+        runCurrent()
+
+        assertEquals(listOf(initial.id, observationShell.id, assistant.id), model.allMessages.value.map { it.id })
+        assertEquals(listOf(initial.id, assistant.id), model.historyContent.value.messages.map { it.id })
+        assertNull(model.newerHistory.value)
+    }
+
+    @Test
     fun `optimistic tail cannot hide a changed newer page boundary`() = runTest {
         val thread = Conversation.Thread.Id("thread-1")
         fun message(position: Int) = Conversation.Message(

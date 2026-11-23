@@ -401,6 +401,70 @@ class TelegramChannelTest {
         )
     }
 
+    @Test fun `current turn observation deltas keep the signed continuation prefix in chronological order`() {
+        val enricher = TelegramRequestEnricher(Mockito.mock(TelegramChannelRepository::class.java), Mockito.mock(ConversationDomainService::class.java),
+            Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
+        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
+        fun observation(id: String, revision: String, boundary: Boolean = false): Conversation.Message {
+            val message = textMessage(id, "", Conversation.Message.Role.USER).copy(
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                    text = "STATE_$revision",
+                    key = "visual-state:test",
+                    revision = revision,
+                )),
+            )
+            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
+        }
+        val firstObservation = observation("runtime-observation-1", "one", boundary = true)
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
+        val assistant = textMessage("assistant", "", Conversation.Message.Role.ASSISTANT).copy(
+            content = listOf(
+                Conversation.Message.ContentItem.Thinking("SIGNED_REASONING", signature = "signature"),
+                Conversation.Message.ContentItem.ToolCall(
+                    callId,
+                    Conversation.Message.ContentItem.ToolCall.Data("example", JsonObject(emptyMap())),
+                ),
+            ),
+        )
+        val result = textMessage("result", "", Conversation.Message.Role.USER).copy(
+            content = listOf(Conversation.Message.ContentItem.ToolResult(
+                callId,
+                "example",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done")),
+            )),
+        )
+        val secondObservation = observation("runtime-observation-2", "two")
+        val invocation = invocation().copy(rootMessageId = root.id)
+        val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
+            AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
+
+        val initial = enricher.materialize(
+            invocation,
+            model,
+            AiRuntimeRequest(systemPrompts = emptyList(), messages = listOf(root, firstObservation)),
+            setOf(root.id, firstObservation.id),
+        )
+        val continued = enricher.materialize(
+            invocation,
+            model,
+            AiRuntimeRequest(systemPrompts = emptyList(),
+                messages = listOf(root, firstObservation, assistant, result, secondObservation)),
+            setOf(root.id, firstObservation.id, assistant.id, result.id, secondObservation.id),
+        )
+
+        assertEquals(listOf(root.id, firstObservation.id), initial.messages.map { it.id })
+        assertEquals(
+            listOf(root.id, firstObservation.id, assistant.id, result.id, secondObservation.id),
+            continued.messages.map { it.id },
+        )
+        assertEquals(initial.messages.map { it.id }, continued.messages.take(initial.messages.size).map { it.id })
+        assertTrue(continued.messages.single { it.id == assistant.id }.content.any {
+            it is Conversation.Message.ContentItem.Thinking && it.signature == "signature"
+        })
+    }
+
     private fun match(message: JsonObject) = TelegramInboundPolicy.matchingRoutes(connection, binding, message, false)
     private fun message(user: Long, text: String, bot: Boolean = false) = buildJsonObject {
         put("message_id", 7); put("date", 100); put("text", text)

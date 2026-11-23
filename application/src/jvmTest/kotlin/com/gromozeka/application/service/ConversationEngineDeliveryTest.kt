@@ -1087,11 +1087,13 @@ class ConversationEngineDeliveryTest {
         })
         assertFalse(f.requests.single().toString().contains("PRIVATE_COMMAND"))
         assertEquals(root, f.messages.single { it.id == root.id })
-        assertTrue(f.messages.any { message ->
+        val observation = f.messages.single { message ->
             message.author is Conversation.Message.Author.Runtime &&
                 message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
                     .any { it.key == ConversationRuntimeObservationService.COMMANDS_KEY }
-        })
+        }
+        assertEquals(observation, f.emitted.first())
+        assertEquals(Conversation.Message.Role.ASSISTANT, f.emitted.last().role)
         assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
         f.coordinator.upsertCommandTask(command.copy(status = CommandTask.Status.COMPLETED, completedAt = now, updatedAt = now))
         assertTrue(f.coordinator.submit(input("next")))
