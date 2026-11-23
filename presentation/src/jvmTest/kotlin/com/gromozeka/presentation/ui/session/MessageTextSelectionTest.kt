@@ -40,7 +40,9 @@ class MessageTextSelectionTest {
         )
         var entries = emptyList<MessageListEntry>()
         setContent {
-            entries = rememberMessageListEntries(listOf(message), emptyMap(), emptyMap())
+            entries = rememberConversationTimeline(listOf(message), emptyMap(), emptyMap())
+                .filterIsInstance<ConversationTimelineItem.Message>()
+                .map { it.entry }
         }
 
         runOnIdle {
