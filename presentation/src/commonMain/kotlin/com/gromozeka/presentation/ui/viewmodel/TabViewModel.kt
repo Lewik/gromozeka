@@ -610,22 +610,7 @@ class TabViewModel(
         allMessages,
         settingsFlow
     ) { messages, settings ->
-        val visibleMessages = messages.filter { message ->
-            val containsOnlyToolResults = message.content.isNotEmpty() &&
-                    message.content.all { it is Conversation.Message.ContentItem.ToolResult }
-
-            if (containsOnlyToolResults) {
-                false
-            } else if (settings.userDeviceSettings.showSystemMessages) {
-                true
-            } else {
-                message.role != Conversation.Message.Role.SYSTEM ||
-                        message.content.any { content ->
-                            content is Conversation.Message.ContentItem.System &&
-                                    content.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
-                        }
-            }
-        }
+        val visibleMessages = messages.filter { it.isVisibleHistoryMessage(settings) }
         historyMutex.withLock {
             ConversationHistoryContent(visibleMessages, loadedHistoryBoundary(messages, older = true), loadedHistoryBoundary(messages, older = false))
         }
@@ -1356,7 +1341,7 @@ class TabViewModel(
         }
 
         val lastId = _uiState.value.lastToggledMessageId ?: return
-        val allMessages = _allMessages.value
+        val allMessages = _allMessages.value.filter { it.isVisibleHistoryMessage(settingsFlow.value) }
         
         val lastIndex = allMessages.indexOfFirst { it.id == lastId }
         val currentIndex = allMessages.indexOfFirst { it.id == messageId }
@@ -1600,6 +1585,21 @@ private fun UIState.Tab.withSelectedMessageInstruction(
 }
 
 /** Visible messages and their unfiltered loaded-window boundaries are one presentation snapshot. */
+private fun Conversation.Message.isVisibleHistoryMessage(settings: Settings): Boolean {
+    val runtimeObservationShell = role == Conversation.Message.Role.USER &&
+        author is Conversation.Message.Author.Runtime && content.isEmpty() &&
+        instructions.all { it is Conversation.Message.Instruction.RuntimeObservation }
+    if (runtimeObservationShell) return false
+    val containsOnlyToolResults = content.isNotEmpty() &&
+        content.all { it is Conversation.Message.ContentItem.ToolResult }
+    if (containsOnlyToolResults) return false
+    if (settings.userDeviceSettings.showSystemMessages) return true
+    return role != Conversation.Message.Role.SYSTEM || content.any { item ->
+        item is Conversation.Message.ContentItem.System &&
+            item.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
+    }
+}
+
 data class ConversationHistoryContent(
     val messages: List<Conversation.Message> = emptyList(),
     val firstLoadedMessageId: Conversation.Message.Id? = null,

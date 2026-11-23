@@ -28,28 +28,30 @@ class PostgresConversationSessionMetadataTest {
                 connection.createStatement().use { statement ->
                     statement.execute("CREATE SCHEMA $schema")
                     statement.execute("CREATE TABLE threads (id VARCHAR(255) PRIMARY KEY, updated_at TIMESTAMPTZ)")
-                    statement.execute("CREATE TABLE messages (id VARCHAR(255) PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL, role TEXT NOT NULL, message_json TEXT NOT NULL)")
+                    statement.execute("CREATE TABLE messages (id VARCHAR(255) PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL, role TEXT NOT NULL, message_json TEXT NOT NULL, context_metadata_json TEXT)")
                     statement.execute("CREATE TABLE thread_messages (thread_id VARCHAR(255) REFERENCES threads(id), message_id VARCHAR(255) REFERENCES messages(id), position INT NOT NULL, PRIMARY KEY(thread_id,message_id))")
                     statement.execute("CREATE INDEX ON thread_messages(thread_id,position)")
                     statement.execute("INSERT INTO threads(id,updated_at) VALUES ('a','2099-01-01T00:00:00Z'),('fork','2099-01-01T00:00:00Z'),('empty','2099-01-01T00:00:00Z'),('unrelated','2099-01-01T00:00:00Z')")
                 }
-                connection.prepareStatement("INSERT INTO messages(id,created_at,role,message_json) VALUES (?,?,?,?)").use { statement ->
-                    for ((id, at, role) in listOf(
-                        Triple("old", "2026-11-01T00:00:00Z", "USER"),
-                        Triple("newer", "2026-11-04T00:00:00Z", "ASSISTANT"),
-                        Triple("last-in-order", "2026-11-02T00:00:00Z", "SYSTEM"),
-                        Triple("foreign", "2099-01-01T00:00:00Z", "USER"),
+                connection.prepareStatement("INSERT INTO messages(id,created_at,role,message_json,context_metadata_json) VALUES (?,?,?,?,?)").use { statement ->
+                    for ((id, at, role, runtimeObservation) in listOf(
+                        listOf("old", "2026-11-01T00:00:00Z", "USER", "false"),
+                        listOf("newer", "2026-11-04T00:00:00Z", "ASSISTANT", "false"),
+                        listOf("last-in-order", "2026-11-02T00:00:00Z", "SYSTEM", "false"),
+                        listOf("runtime-observation", "2098-01-01T00:00:00Z", "USER", "true"),
+                        listOf("foreign", "2099-01-01T00:00:00Z", "USER", "false"),
                     )) {
                         statement.setString(1, id)
                         statement.setTimestamp(2, Timestamp.from(java.time.Instant.parse(at)))
                         statement.setString(3, role)
                         // This deliberately cannot be deserialized; the query must use scalar metadata only.
                         statement.setString(4, "PRIVATE_INVALID_JSON_BODY")
+                        statement.setString(5, "{\"runtimeObservation\":$runtimeObservation}")
                         statement.addBatch()
                     }
                     statement.executeBatch()
                 }
-                connection.createStatement().use { it.execute("INSERT INTO thread_messages VALUES ('a','old',0),('a','newer',1),('a','last-in-order',2),('fork','old',0),('fork','newer',1),('unrelated','foreign',0)") }
+                connection.createStatement().use { it.execute("INSERT INTO thread_messages VALUES ('a','old',0),('a','newer',1),('a','last-in-order',2),('a','runtime-observation',3),('fork','old',0),('fork','newer',1),('unrelated','foreign',0)") }
             }
             val repository = PostgresConversationHistoryRepository(source, Json)
             val a = Conversation.Thread.Id("a")

@@ -368,6 +368,20 @@ class TelegramChannelTest {
         assertFalse(Json.encodeToString(enriched.messages.first()).contains("CURRENT_VISUAL_STATE"))
         assertFalse(Json.encodeToString(enriched.messages).contains("OLD_VISUAL_STATE"))
         assertTrue(enriched.messages[1].isDurableRuntimeObservationBoundary)
+        val closedObservation = observation.copy(
+            id = Conversation.Message.Id("closed-runtime-observation"),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "CLOSED_VISUAL_STATE",
+                key = "visual-state:test",
+                revision = "closed-revision",
+            )),
+        )
+        val closedRequest = request.copy(messages = request.messages + closedObservation)
+        val closedEnriched = enricher.materialize(invocation, model, closedRequest, setOf(root.id, continuation.id))
+        assertEquals("CLOSED_VISUAL_STATE", closedEnriched.messages[1].instructions
+            .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().single().text)
+        assertFalse(Json.encodeToString(closedEnriched.messages).contains("CURRENT_VISUAL_STATE"))
+        assertTrue(closedEnriched.messages[1].isDurableRuntimeObservationBoundary)
         val writable = enricher.materialize(invocation.copy(route = route.copy(writeAllowed = true)), model, request, setOf(root.id, continuation.id))
         assertTrue(writable.systemPrompts.last().contains("File changes are allowed"))
         val large = request.copy(messages = listOf(foreign.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(100_000)))), root))

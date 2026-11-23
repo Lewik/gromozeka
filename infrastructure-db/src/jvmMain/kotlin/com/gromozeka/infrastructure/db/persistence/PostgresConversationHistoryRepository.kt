@@ -28,6 +28,10 @@ class PostgresConversationHistoryRepository(
                             SELECT m.created_at
                             FROM thread_messages tm JOIN messages m ON m.id = tm.message_id
                             WHERE tm.thread_id = t.id
+                              AND NOT COALESCE(
+                                  (m.context_metadata_json::jsonb ->> 'runtimeObservation')::boolean,
+                                  false
+                              )
                             ORDER BY tm.position DESC LIMIT 1
                         ) last_message ON TRUE
                         WHERE t.id = ANY (?)

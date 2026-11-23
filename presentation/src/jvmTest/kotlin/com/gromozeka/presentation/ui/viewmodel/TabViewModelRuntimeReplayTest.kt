@@ -415,6 +415,46 @@ class TabViewModelRuntimeReplayTest {
     }
 
     @Test
+    fun `runtime observation shells keep paging positions but stay out of display and range selection`() = runTest {
+        val thread = Conversation.Thread.Id("thread-1")
+        fun visible(id: String) = Conversation.Message(
+            Conversation.Message.Id(id), Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(id)),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        fun observation(id: String) = visible(id).copy(
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = emptyList(),
+        )
+        val first = visible("visible-first")
+        val middle = observation("runtime-middle")
+        val last = visible("visible-last")
+        val rawTail = observation("runtime-tail")
+        val response = ConversationHistoryPage(
+            thread,
+            listOf(first, middle, last, rawTail).mapIndexed { position, message ->
+                ConversationHistoryMessage(position + 100, message)
+            },
+            older = ConversationHistoryCursor(thread, 100),
+            newer = ConversationHistoryCursor(thread, 103),
+        )
+        val model = viewModel(backgroundScope, MutableSharedFlow()) { response }
+        backgroundScope.launch { model.historyContent.collect {} }
+        runCurrent()
+
+        val displayed = model.historyContent.value
+        assertEquals(listOf(first.id, last.id), displayed.messages.map { it.id })
+        assertEquals(first.id, displayed.firstLoadedMessageId)
+        assertEquals(rawTail.id, displayed.lastLoadedMessageId)
+
+        model.toggleMessageSelection(first.id)
+        model.toggleMessageSelectionRange(last.id, isShiftPressed = true)
+        assertEquals(setOf(first.id, last.id), model.uiState.value.selectedMessageIds)
+    }
+
+    @Test
     fun `optimistic tail cannot hide a changed newer page boundary`() = runTest {
         val thread = Conversation.Thread.Id("thread-1")
         fun message(position: Int) = Conversation.Message(

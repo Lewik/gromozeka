@@ -87,12 +87,44 @@ class ConversationRuntimeObservationServiceTest {
 
         f.visuals = listOf(large)
         val closed = f.append("closed", listOf(baseline, changed)).single()
-        assertEquals(listOf(ConversationRuntimeObservationService.VISUAL_INVENTORY_KEY),
+        assertEquals(listOf(
+            ConversationRuntimeObservationService.VISUAL_INVENTORY_KEY,
+            "${ConversationRuntimeObservationService.VISUAL_STATE_KEY_PREFIX}${VISUAL.id}",
+        ),
             closed.observations().map { it.key })
-        val inventory = frame(closed.observations().single().text, "visual-inventory-context")
+        val inventory = frame(closed.observations().first().text, "visual-inventory-context")
         assertEquals(listOf("large"), inventory.getValue("visuals").jsonArray.map {
             it.jsonObject.getValue("visual-id").jsonPrimitive.content
         })
+        val tombstone = frame(closed.observations().last().text, "visual-state-context")
+        assertEquals(VISUAL.id, tombstone.getValue("visual-id").jsonPrimitive.content)
+        assertEquals("closed", tombstone.getValue("state-status").jsonPrimitive.content)
+        assertFalse(closed.toString().contains("saved"))
+        assertTrue(f.append("still-closed", listOf(baseline, changed, closed)).isEmpty())
+    }
+
+    @Test
+    fun `closing a Visual after a selective checkpoint still replaces retained state`() = runBlocking {
+        val f = Fixture()
+        val baseline = f.append("baseline", emptyList()).single()
+        val checkpoint = checkpoint("checkpoint", listOf(baseline))
+
+        f.visuals = emptyList()
+        val closed = f.append("closed", listOf(baseline, checkpoint)).single()
+
+        assertEquals(
+            listOf(
+                ConversationRuntimeObservationService.COMMANDS_KEY,
+                ConversationRuntimeObservationService.VISUAL_INVENTORY_KEY,
+                "${ConversationRuntimeObservationService.VISUAL_STATE_KEY_PREFIX}${VISUAL.id}",
+            ),
+            closed.observations().map { it.key },
+        )
+        assertEquals(
+            "closed",
+            frame(closed.observations().last().text, "visual-state-context")
+                .getValue("state-status").jsonPrimitive.content,
+        )
     }
 
     @Test

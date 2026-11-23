@@ -13,6 +13,7 @@ data class MessageContextMetadata(
     val userInstructionIds: List<String>,
     val nativeUsage: JsonObject?,
     val durableRuntimeObservationBoundary: Boolean = false,
+    val runtimeObservation: Boolean = false,
 ) {
     companion object {
         fun from(message: Message): MessageContextMetadata = MessageContextMetadata(
@@ -30,6 +31,7 @@ data class MessageContextMetadata(
                 put("estimate", message.providerMetadata["openaiSubscriptionContextEstimate"] ?: JsonNull)
             } else null,
             durableRuntimeObservationBoundary = message.isDurableRuntimeObservationBoundary,
+            runtimeObservation = message.isDurableRuntimeObservationMessage,
         )
     }
 }

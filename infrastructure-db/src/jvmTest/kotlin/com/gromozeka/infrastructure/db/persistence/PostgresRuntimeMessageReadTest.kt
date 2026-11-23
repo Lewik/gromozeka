@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.UserIdentity
+import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -480,6 +481,15 @@ class PostgresRuntimeMessageReadTest {
                         put("provider", "OPENAI_SUBSCRIPTION"); put("connectionId", "connection"); put("model", "model")
                         put("openaiSubscriptionContextTokens", 1000); put("openaiSubscriptionContextEstimate", 900)
                     }),
+                f.message("runtime-boundary").copy(
+                    content = emptyList(),
+                    author = Conversation.Message.Author.Runtime(),
+                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                        text = "runtime state",
+                        key = "state",
+                        revision = "revision",
+                    )),
+                ).withDurableRuntimeObservationBoundary(),
             )
             messages.forEachIndexed { index, message -> f.insertRaw(message, index) }
             f.migrate()
